@@ -125,9 +125,18 @@ docker ps
 #### Permission Denied Errors
 ```bash
 # Symptom: npm EACCES errors, cannot write to node_modules
-# Solution: Clean and restart development environment
+# Solution 1: Fix permissions without removing data (RECOMMENDED)
+./scripts/start-dev.sh --fix-perms
+
+# Solution 2: Clean and restart development environment (removes all data)
 ./scripts/start-dev.sh --clean
 ```
+
+**Note**: The `--fix-perms` flag now comprehensively fixes both:
+- Host filesystem permissions (directories like node_modules, .next)
+- Docker volume permissions (all Conduit-related volumes)
+
+This is the recommended first approach as it preserves your data while fixing permission issues.
 
 #### Container Conflicts
 ```bash
@@ -140,7 +149,10 @@ docker compose down --volumes --remove-orphans
 #### Volume Permission Issues
 ```bash
 # Symptom: "Volume permission mismatch detected"
-# Solution: Use the clean flag to remove problematic volumes
+# Solution 1: Fix permissions without removing volumes (RECOMMENDED)
+./scripts/start-dev.sh --fix-perms
+
+# Solution 2: Use the clean flag to remove and recreate volumes
 ./scripts/start-dev.sh --clean
 ```
 

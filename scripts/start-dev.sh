@@ -46,7 +46,7 @@ Options:
   --build        Force rebuild of containers
   --clean        Clean existing containers and volumes, then start
   --clean-only   Clean existing containers and volumes without starting
-  --fix-perms    Fix host filesystem permissions without cleaning
+  --fix-perms    Fix host filesystem and Docker volume permissions without cleaning
   --logs         Show logs after startup
   --help         Show this help message
 
@@ -194,6 +194,99 @@ fix_host_permissions() {
     fi
 }
 
+# Fix Docker volume permissions
+fix_volume_permissions() {
+    log_task "Fixing Docker volume permissions..."
+    
+    local current_uid=$(id -u)
+    local current_gid=$(id -g)
+    local volumes_fixed=0
+    local volumes_failed=0
+    local volumes_skipped=0
+    
+    # Get all volumes that match our patterns
+    local problematic_volumes=$(docker volume ls --filter "name=conduit" --format "{{.Name}}" | grep -E "(node_modules|webui|next)" || true)
+    
+    if [[ -z "$problematic_volumes" ]]; then
+        log_info "No volumes found that need permission fixes"
+        return 0
+    fi
+    
+    log_info "Found volumes to check:"
+    echo "$problematic_volumes" | while read -r volume; do
+        echo "  - $volume"
+    done
+    echo
+    
+    # Check if any containers are using these volumes
+    local running_containers=$(docker ps --format "{{.Names}}" --filter "name=conduit" || true)
+    if [[ -n "$running_containers" ]]; then
+        log_warn "Found running Conduit containers. Stopping them to fix volume permissions..."
+        docker compose -f docker-compose.yml -f docker-compose.dev.yml down --timeout 5 2>/dev/null || true
+        sleep 2
+    fi
+    
+    # Fix permissions for each volume
+    for volume in $problematic_volumes; do
+        # First check if the volume already has correct permissions
+        # Redirect all output including stderr to /dev/null for the test
+        if docker run --rm \
+            -v "$volume:/test" \
+            -u "$current_uid:$current_gid" \
+            alpine:latest \
+            sh -c "touch /test/.write_test 2>/dev/null && rm /test/.write_test 2>/dev/null" >/dev/null 2>&1; then
+            
+            log_info "Volume already has correct permissions: $volume"
+            ((volumes_skipped++))
+            continue
+        fi
+        
+        log_info "Fixing permissions for volume: $volume"
+        
+        # Use a temporary Alpine container to fix permissions inside the volume
+        # This runs as root to change ownership, then exits
+        if docker run --rm \
+            -v "$volume:/fix" \
+            alpine:latest \
+            sh -c "chown -R $current_uid:$current_gid /fix && echo 'success'" 2>&1 | grep -q "success"; then
+            
+            # Verify the fix worked by testing write access
+            if docker run --rm \
+                -v "$volume:/test" \
+                -u "$current_uid:$current_gid" \
+                alpine:latest \
+                sh -c "touch /test/.write_test 2>/dev/null && rm /test/.write_test 2>/dev/null" >/dev/null 2>&1; then
+                
+                log_info "Successfully fixed permissions for volume: $volume"
+                ((volumes_fixed++))
+            else
+                log_error "Failed to verify write access after fixing volume: $volume"
+                ((volumes_failed++))
+            fi
+        else
+            log_error "Failed to fix permissions for volume: $volume"
+            log_error "You may need to remove and recreate this volume"
+            ((volumes_failed++))
+        fi
+    done
+    
+    # Report results
+    echo
+    if [[ $volumes_failed -eq 0 ]]; then
+        if [[ $volumes_fixed -gt 0 ]]; then
+            log_info "Successfully fixed permissions for $volumes_fixed volume(s)"
+        fi
+        if [[ $volumes_skipped -gt 0 ]]; then
+            log_info "Skipped $volumes_skipped volume(s) that already had correct permissions"
+        fi
+        return 0
+    else
+        log_warn "Results: Fixed $volumes_fixed, Skipped $volumes_skipped, Failed $volumes_failed"
+        log_warn "For volumes that failed, you may need to use --clean to remove and recreate them"
+        return 1
+    fi
+}
+
 # Check volume permissions and ownership
 check_volume_permissions() {
     log_task "Checking volume permissions..."
@@ -230,7 +323,7 @@ check_volume_permissions() {
             log_error "To fix this, run one of:"
             log_error "  ./scripts/start-dev.sh --fix-perms  # Fix permissions only"
             log_error "  ./scripts/start-dev.sh --clean      # Full clean and restart"
-            log_error "The --fix-perms option will try to fix permissions without removing data."
+            log_error "The --fix-perms option will fix both host and volume permissions without removing data."
             exit 1
         fi
     fi
@@ -692,14 +785,19 @@ main() {
     export FORCE_BUILD=$force_build
     
     if [[ "$fix_perms_only" == "true" ]]; then
-        log_info "Fixing Host Filesystem Permissions"
-        log_info "=================================="
+        log_info "Fixing Permissions (Host Filesystem and Docker Volumes)"
+        log_info "====================================================="
         
         check_prerequisites
+        
+        # Fix host filesystem permissions
         fix_host_permissions
         
+        # Fix Docker volume permissions
+        fix_volume_permissions
+        
         log_info "Permission fix completed!"
-        log_info "Run './scripts/fix-webui-errors.sh' to verify the fixes"
+        log_info "You can now run './scripts/start-dev.sh' to start the development environment"
         return 0
     fi
     
