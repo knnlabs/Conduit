@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using ConduitLLM.Http.Services;
 using MassTransit;
 using ConduitLLM.Core.Events;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ConduitLLM.Http.Authentication
 {
@@ -16,7 +17,7 @@ namespace ConduitLLM.Http.Authentication
     {
         private readonly VirtualKeyRateLimitCache _rateLimitCache;
         private readonly ILogger<VirtualKeySignalRRateLimitFilter> _logger;
-        private readonly IPublishEndpoint? _publishEndpoint;
+        private readonly IServiceProvider _serviceProvider;
         
         // Track connection counts and request times per virtual key
         private readonly ConcurrentDictionary<string, ConnectionRateLimitInfo> _connectionInfo;
@@ -37,11 +38,11 @@ namespace ConduitLLM.Http.Authentication
         public VirtualKeySignalRRateLimitFilter(
             VirtualKeyRateLimitCache rateLimitCache,
             ILogger<VirtualKeySignalRRateLimitFilter> logger,
-            IPublishEndpoint? publishEndpoint = null)
+            IServiceProvider serviceProvider)
         {
             _rateLimitCache = rateLimitCache;
             _logger = logger;
-            _publishEndpoint = publishEndpoint;
+            _serviceProvider = serviceProvider;
             _connectionInfo = new ConcurrentDictionary<string, ConnectionRateLimitInfo>();
         }
 
@@ -210,9 +211,6 @@ namespace ConduitLLM.Http.Authentication
         private void PublishRateLimitExceeded(string virtualKeyHash, string limitType, int limitValue, 
             int currentUsage, string timeWindow, DateTime resetsAt, HubInvocationContext context)
         {
-            if (_publishEndpoint == null)
-                return;
-                
             // Try to get virtual key ID from context
             var virtualKeyId = 0;
             if (context.Context.Items.TryGetValue("VirtualKeyId", out var keyIdObj) && keyIdObj is int keyId)
@@ -228,19 +226,25 @@ namespace ConduitLLM.Http.Authentication
             {
                 try
                 {
-                    await _publishEndpoint.Publish(new RateLimitExceeded
+                    using var scope = _serviceProvider.CreateScope();
+                    var publishEndpoint = scope.ServiceProvider.GetService<IPublishEndpoint>();
+                    
+                    if (publishEndpoint != null)
                     {
-                        VirtualKeyId = virtualKeyId,
-                        VirtualKeyHash = virtualKeyHash,
-                        LimitType = limitType,
-                        LimitValue = limitValue,
-                        CurrentUsage = currentUsage,
-                        TimeWindow = timeWindow,
-                        ResetsAt = resetsAt,
-                        IpAddress = ipAddress,
-                        RequestedModel = null, // Not applicable for SignalR
-                        CorrelationId = Guid.NewGuid().ToString()
-                    });
+                        await publishEndpoint.Publish(new RateLimitExceeded
+                        {
+                            VirtualKeyId = virtualKeyId,
+                            VirtualKeyHash = virtualKeyHash,
+                            LimitType = limitType,
+                            LimitValue = limitValue,
+                            CurrentUsage = currentUsage,
+                            TimeWindow = timeWindow,
+                            ResetsAt = resetsAt,
+                            IpAddress = ipAddress,
+                            RequestedModel = null, // Not applicable for SignalR
+                            CorrelationId = Guid.NewGuid().ToString()
+                        });
+                    }
                 }
                 catch (Exception ex)
                 {
