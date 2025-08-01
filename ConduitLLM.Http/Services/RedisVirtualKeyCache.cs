@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,7 +14,7 @@ namespace ConduitLLM.Http.Services
     /// <summary>
     /// Redis-based Virtual Key cache with immediate invalidation for security-critical validation
     /// </summary>
-    public class RedisVirtualKeyCache : ConduitLLM.Core.Interfaces.IVirtualKeyCache
+    public class RedisVirtualKeyCache : ConduitLLM.Core.Interfaces.IVirtualKeyCache, IBatchInvalidatable
     {
         private readonly IDatabase _database;
         private readonly ISubscriber _subscriber;
@@ -20,6 +22,7 @@ namespace ConduitLLM.Http.Services
         private readonly TimeSpan _defaultExpiry = TimeSpan.FromMinutes(30); // Fallback expiry
         private const string KeyPrefix = "vkey:";
         private const string InvalidationChannel = "vkey_invalidated";
+        private const string BatchInvalidationChannel = "vkey_batch_invalidated";
         
         // Statistics tracking keys
         private const string STATS_HIT_KEY = "conduit:cache:stats:hits";
@@ -37,6 +40,7 @@ namespace ConduitLLM.Http.Services
 
             // Subscribe to invalidation messages
             _subscriber.Subscribe(RedisChannel.Literal(InvalidationChannel), OnKeyInvalidated);
+            _subscriber.Subscribe(RedisChannel.Literal(BatchInvalidationChannel), OnBatchInvalidated);
         }
 
         /// <summary>
@@ -284,6 +288,132 @@ namespace ConduitLLM.Http.Services
             }
             
             return _defaultExpiry;
+        }
+
+        /// <summary>
+        /// Batch invalidate multiple virtual keys for optimal performance
+        /// </summary>
+        public async Task<BatchInvalidationResult> InvalidateBatchAsync(
+            IEnumerable<InvalidationRequest> requests, 
+            CancellationToken cancellationToken = default)
+        {
+            var keyHashes = requests
+                .Where(r => r.EntityType == CacheType.VirtualKey.ToString())
+                .Select(r => KeyPrefix + r.EntityId)
+                .ToArray();
+            
+            if (keyHashes.Length == 0)
+            {
+                return new BatchInvalidationResult 
+                { 
+                    Success = true,
+                    ProcessedCount = 0,
+                    Duration = TimeSpan.Zero
+                };
+            }
+
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            
+            try
+            {
+                // Use Redis pipeline for batch delete
+                var batch = _database.CreateBatch();
+                var deleteTasks = new List<Task<bool>>();
+                
+                foreach (var key in keyHashes)
+                {
+                    deleteTasks.Add(batch.KeyDeleteAsync(key));
+                }
+                
+                // Execute batch
+                batch.Execute();
+                
+                // Wait for all deletes to complete
+                await Task.WhenAll(deleteTasks);
+                
+                // Update invalidation statistics
+                await _database.StringIncrementAsync(STATS_INVALIDATION_KEY, keyHashes.Length);
+                
+                // Publish batch invalidation message to other instances
+                var batchMessage = new VirtualKeyBatchInvalidation
+                {
+                    KeyHashes = keyHashes.Select(k => k.Replace(KeyPrefix, "")).ToArray(),
+                    Timestamp = DateTime.UtcNow
+                };
+                
+                await _subscriber.PublishAsync(
+                    RedisChannel.Literal(BatchInvalidationChannel), 
+                    JsonSerializer.Serialize(batchMessage));
+                
+                stopwatch.Stop();
+                
+                _logger.LogInformation(
+                    "Batch invalidated {Count} virtual keys in {Duration}ms",
+                    keyHashes.Length, 
+                    stopwatch.ElapsedMilliseconds);
+                
+                return new BatchInvalidationResult
+                {
+                    Success = true,
+                    ProcessedCount = keyHashes.Length,
+                    Duration = stopwatch.Elapsed
+                };
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                _logger.LogError(ex, "Failed to batch invalidate virtual keys");
+                
+                return new BatchInvalidationResult
+                {
+                    Success = false,
+                    ProcessedCount = 0,
+                    Duration = stopwatch.Elapsed,
+                    Error = ex.Message
+                };
+            }
+        }
+
+        /// <summary>
+        /// Handle batch invalidation messages from other instances
+        /// </summary>
+        private async void OnBatchInvalidated(RedisChannel channel, RedisValue message)
+        {
+            try
+            {
+                var batchMessage = JsonSerializer.Deserialize<VirtualKeyBatchInvalidation>(message!);
+                if (batchMessage?.KeyHashes != null)
+                {
+                    var batch = _database.CreateBatch();
+                    var deleteTasks = new List<Task<bool>>();
+                    
+                    foreach (var keyHash in batchMessage.KeyHashes)
+                    {
+                        var cacheKey = KeyPrefix + keyHash;
+                        deleteTasks.Add(batch.KeyDeleteAsync(cacheKey));
+                    }
+                    
+                    batch.Execute();
+                    await Task.WhenAll(deleteTasks);
+                    
+                    _logger.LogDebug(
+                        "Batch invalidated {Count} virtual keys from pub/sub",
+                        batchMessage.KeyHashes.Length);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling batch key invalidation");
+            }
+        }
+
+        /// <summary>
+        /// Message for batch invalidation pub/sub
+        /// </summary>
+        private class VirtualKeyBatchInvalidation
+        {
+            public string[] KeyHashes { get; set; } = Array.Empty<string>();
+            public DateTime Timestamp { get; set; }
         }
     }
 }

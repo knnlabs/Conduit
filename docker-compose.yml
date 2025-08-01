@@ -83,6 +83,11 @@ services:
       CONDUITLLM__RABBITMQ__VHOST: /
       CONDUITLLM__RABBITMQ__PREFETCHCOUNT: 10
       CONDUITLLM__RABBITMQ__PARTITIONCOUNT: 10
+      # Batch Cache Invalidation configuration
+      CacheInvalidation__BatchingEnabled: "true"
+      CacheInvalidation__BatchWindow: "100ms"
+      CacheInvalidation__MaxBatchSize: "100"
+      CacheInvalidation__EnableCoalescing: "true"
       # Health monitoring configuration - API endpoint checks
       HealthMonitoring__ApiEndpoints__0__Name: AdminAPI
       HealthMonitoring__ApiEndpoints__0__Url: http://admin:8080/health
@@ -124,6 +129,11 @@ services:
       CONDUITLLM__RABBITMQ__USERNAME: conduit
       CONDUITLLM__RABBITMQ__PASSWORD: conduitpass
       CONDUITLLM__RABBITMQ__VHOST: /
+      # Batch Cache Invalidation configuration
+      CacheInvalidation__BatchingEnabled: "true"
+      CacheInvalidation__BatchWindow: "100ms"
+      CacheInvalidation__MaxBatchSize: "100"
+      CacheInvalidation__EnableCoalescing: "true"
       # Disable IP banning for development
       CONDUIT_ADMIN_IP_BANNING_ENABLED: "false"
     ports:

@@ -6,6 +6,11 @@ services:
   api:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      # Batch Cache Invalidation configuration (development settings)
+      CacheInvalidation__BatchingEnabled: "true"
+      CacheInvalidation__BatchWindow: "50ms"  # Faster for development
+      CacheInvalidation__MaxBatchSize: "50"   # Smaller batches for easier debugging
+      CacheInvalidation__EnableCoalescing: "true"
       # Health monitoring configuration - API endpoint checks
       HealthMonitoring__ApiEndpoints__0__Name: AdminAPI
       HealthMonitoring__ApiEndpoints__0__Url: http://admin:8080/health
@@ -15,6 +20,11 @@ services:
   admin:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      # Batch Cache Invalidation configuration (development settings)
+      CacheInvalidation__BatchingEnabled: "true"
+      CacheInvalidation__BatchWindow: "50ms"  # Faster for development
+      CacheInvalidation__MaxBatchSize: "50"   # Smaller batches for easier debugging
+      CacheInvalidation__EnableCoalescing: "true"
 
   webui:
     # Use base node image for development instead of production build

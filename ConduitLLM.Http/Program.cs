@@ -928,6 +928,12 @@ builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IFileRetrievalService, Con
 // Register Audio services
 builder.Services.AddConduitAudioServices(builder.Configuration);
 
+// Register Batch Cache Invalidation service
+builder.Services.AddBatchCacheInvalidation(builder.Configuration);
+
+// Register Redis batch operations for optimized cache management
+builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IRedisBatchOperations, ConduitLLM.Http.Services.RedisBatchOperations>();
+
 // Register Real-time Audio services
 builder.Services.AddSingleton<IRealtimeConnectionManager, RealtimeConnectionManager>();
 builder.Services.AddSingleton<IRealtimeMessageTranslatorFactory, RealtimeMessageTranslatorFactory>();
