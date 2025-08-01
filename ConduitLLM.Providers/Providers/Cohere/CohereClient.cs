@@ -289,20 +289,15 @@ namespace ConduitLLM.Providers.Providers.Cohere
         }
 
         /// <inheritdoc/>
-        public override async Task<List<ExtendedModelInfo>> GetModelsAsync(
+        public override Task<List<ExtendedModelInfo>> GetModelsAsync(
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            // Cohere doesn't have a public model listing endpoint, so we return a static list
-            return await Task.FromResult(new List<ConduitLLM.Providers.Common.Models.ExtendedModelInfo>
-            {
-                ConduitLLM.Providers.Common.Models.ExtendedModelInfo.Create("command-r-plus", "cohere", "command-r-plus"),
-                ConduitLLM.Providers.Common.Models.ExtendedModelInfo.Create("command-r", "cohere", "command-r"),
-                ConduitLLM.Providers.Common.Models.ExtendedModelInfo.Create("command", "cohere", "command"),
-                ConduitLLM.Providers.Common.Models.ExtendedModelInfo.Create("command-light", "cohere", "command-light"),
-                ConduitLLM.Providers.Common.Models.ExtendedModelInfo.Create("command-nightly", "cohere", "command-nightly"),
-                ConduitLLM.Providers.Common.Models.ExtendedModelInfo.Create("command-light-nightly", "cohere", "command-light-nightly")
-            });
+            Logger.LogWarning("Cohere does not provide a public models listing endpoint");
+            throw new NotSupportedException(
+                "Cohere does not provide a public models listing endpoint. " +
+                "Model availability must be confirmed through Cohere's documentation. " +
+                "Configure specific model IDs directly in your application settings.");
         }
 
         /// <inheritdoc/>

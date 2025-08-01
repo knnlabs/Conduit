@@ -325,29 +325,15 @@ namespace ConduitLLM.Providers.Providers.HuggingFace
         }
 
         /// <inheritdoc />
-        public override async Task<List<ExtendedModelInfo>> GetModelsAsync(
+        public override Task<List<ExtendedModelInfo>> GetModelsAsync(
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogInformation("HuggingFace Inference API does not provide a model listing endpoint. Returning commonly used models.");
-
-            // HuggingFace Inference API doesn't have an endpoint to list models
-            // Return a list of popular models as an example
-            await Task.Delay(1, cancellationToken); // Adding await to make this truly async
-
-            return new List<ExtendedModelInfo>
-            {
-                ExtendedModelInfo.Create("gpt2", ProviderName, "gpt2"),
-                ExtendedModelInfo.Create("mistralai/Mistral-7B-Instruct-v0.2", ProviderName, "mistralai/Mistral-7B-Instruct-v0.2"),
-                ExtendedModelInfo.Create("meta-llama/Llama-2-7b-chat-hf", ProviderName, "meta-llama/Llama-2-7b-chat-hf"),
-                ExtendedModelInfo.Create("facebook/bart-large-cnn", ProviderName, "facebook/bart-large-cnn"),
-                ExtendedModelInfo.Create("google/flan-t5-xl", ProviderName, "google/flan-t5-xl"),
-                ExtendedModelInfo.Create("EleutherAI/gpt-neox-20b", ProviderName, "EleutherAI/gpt-neox-20b"),
-                ExtendedModelInfo.Create("bigscience/bloom", ProviderName, "bigscience/bloom"),
-                ExtendedModelInfo.Create("microsoft/DialoGPT-large", ProviderName, "microsoft/DialoGPT-large"),
-                ExtendedModelInfo.Create("sentence-transformers/all-MiniLM-L6-v2", ProviderName, "sentence-transformers/all-MiniLM-L6-v2"),
-                ExtendedModelInfo.Create("tiiuae/falcon-7b-instruct", ProviderName, "tiiuae/falcon-7b-instruct")
-            };
+            Logger.LogWarning("HuggingFace Inference API does not provide a model listing endpoint");
+            throw new NotSupportedException(
+                "HuggingFace Inference API does not provide a model listing endpoint. " +
+                "Model discovery must be done through the HuggingFace Hub website. " +
+                "Configure specific model IDs directly in your application settings.");
         }
 
         /// <inheritdoc />

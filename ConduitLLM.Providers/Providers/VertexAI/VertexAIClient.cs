@@ -368,113 +368,15 @@ namespace ConduitLLM.Providers.Providers.VertexAI
         }
 
         /// <inheritdoc/>
-        public override async Task<List<ExtendedModelInfo>> GetModelsAsync(
+        public override Task<List<ExtendedModelInfo>> GetModelsAsync(
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogInformation("Listing available models from Google Vertex AI");
-
-            // Vertex AI doesn't have a simple API endpoint to list models via API key
-            // Return hard-coded list of commonly available models
-            await Task.Delay(1, cancellationToken); // Making this truly async
-
-            var models = new List<ConduitLLM.Providers.Common.Models.ExtendedModelInfo>
-            {
-                ConduitLLM.Providers.Common.Models.ExtendedModelInfo.Create("gemini-1.0-pro", ProviderName, "gemini-1.0-pro")
-                    .WithName("Gemini 1.0 Pro")
-                    .WithCapabilities(new ConduitLLM.Providers.Common.Models.ModelCapabilities
-                    {
-                        Chat = true,
-                        TextGeneration = true,
-                        Embeddings = false,
-                        ImageGeneration = false
-                    })
-                    .WithTokenLimits(new ConduitLLM.Providers.Common.Models.ModelTokenLimits
-                    {
-                        MaxInputTokens = 32768,
-                        MaxOutputTokens = 8192
-                    }),
-
-                ConduitLLM.Providers.Common.Models.ExtendedModelInfo.Create("gemini-1.0-pro-vision", ProviderName, "gemini-1.0-pro-vision")
-                    .WithName("Gemini 1.0 Pro Vision")
-                    .WithCapabilities(new ConduitLLM.Providers.Common.Models.ModelCapabilities
-                    {
-                        Chat = true,
-                        TextGeneration = true,
-                        Embeddings = false,
-                        ImageGeneration = false,
-                        Vision = true
-                    })
-                    .WithTokenLimits(new ConduitLLM.Providers.Common.Models.ModelTokenLimits
-                    {
-                        MaxInputTokens = 32768,
-                        MaxOutputTokens = 4096
-                    }),
-
-                ConduitLLM.Providers.Common.Models.ExtendedModelInfo.Create("gemini-1.5-pro", ProviderName, "gemini-1.5-pro")
-                    .WithName("Gemini 1.5 Pro")
-                    .WithCapabilities(new ConduitLLM.Providers.Common.Models.ModelCapabilities
-                    {
-                        Chat = true,
-                        TextGeneration = true,
-                        Embeddings = false,
-                        ImageGeneration = false,
-                        Vision = true
-                    })
-                    .WithTokenLimits(new ConduitLLM.Providers.Common.Models.ModelTokenLimits
-                    {
-                        MaxInputTokens = 1000000,
-                        MaxOutputTokens = 8192
-                    }),
-
-                ConduitLLM.Providers.Common.Models.ExtendedModelInfo.Create("gemini-1.5-flash", ProviderName, "gemini-1.5-flash")
-                    .WithName("Gemini 1.5 Flash")
-                    .WithCapabilities(new ConduitLLM.Providers.Common.Models.ModelCapabilities
-                    {
-                        Chat = true,
-                        TextGeneration = true,
-                        Embeddings = false,
-                        ImageGeneration = false,
-                        Vision = true
-                    })
-                    .WithTokenLimits(new ConduitLLM.Providers.Common.Models.ModelTokenLimits
-                    {
-                        MaxInputTokens = 1000000,
-                        MaxOutputTokens = 8192
-                    }),
-
-                ConduitLLM.Providers.Common.Models.ExtendedModelInfo.Create("text-bison@002", ProviderName, "text-bison@002")
-                    .WithName("Text Bison")
-                    .WithCapabilities(new ConduitLLM.Providers.Common.Models.ModelCapabilities
-                    {
-                        Chat = false,
-                        TextGeneration = true,
-                        Embeddings = false,
-                        ImageGeneration = false
-                    })
-                    .WithTokenLimits(new ConduitLLM.Providers.Common.Models.ModelTokenLimits
-                    {
-                        MaxInputTokens = 8192,
-                        MaxOutputTokens = 1024
-                    }),
-
-                ConduitLLM.Providers.Common.Models.ExtendedModelInfo.Create("chat-bison@002", ProviderName, "chat-bison@002")
-                    .WithName("Chat Bison")
-                    .WithCapabilities(new ConduitLLM.Providers.Common.Models.ModelCapabilities
-                    {
-                        Chat = true,
-                        TextGeneration = true,
-                        Embeddings = false,
-                        ImageGeneration = false
-                    })
-                    .WithTokenLimits(new ConduitLLM.Providers.Common.Models.ModelTokenLimits
-                    {
-                        MaxInputTokens = 8192,
-                        MaxOutputTokens = 2048
-                    })
-            };
-
-            return models;
+            Logger.LogWarning("Vertex AI does not provide a simple API endpoint for listing models via API key");
+            throw new NotSupportedException(
+                "Vertex AI does not provide a simple API endpoint for listing models via API key. " +
+                "Model availability must be confirmed through Google Cloud documentation. " +
+                "Configure specific model IDs directly in your application settings.");
         }
 
         /// <inheritdoc/>

@@ -809,19 +809,15 @@ namespace ConduitLLM.Providers.Providers.MiniMax
         }
 
         /// <inheritdoc/>
-        public override async Task<List<ExtendedModelInfo>> GetModelsAsync(
+        public override Task<List<ExtendedModelInfo>> GetModelsAsync(
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            // MiniMax doesn't provide a models endpoint, return static list
-            return await Task.FromResult(new List<ExtendedModelInfo>
-            {
-                ExtendedModelInfo.Create("abab6.5-chat", "minimax", "abab6.5-chat"),
-                ExtendedModelInfo.Create("abab6.5s-chat", "minimax", "abab6.5s-chat"),
-                ExtendedModelInfo.Create("abab5.5-chat", "minimax", "abab5.5-chat"),
-                ExtendedModelInfo.Create("image-01", "minimax", "image-01"),
-                ExtendedModelInfo.Create("video-01", "minimax", "video-01")
-            });
+            Logger.LogWarning("MiniMax does not provide a models listing endpoint");
+            throw new NotSupportedException(
+                "MiniMax does not provide a models listing endpoint. " +
+                "Model availability must be confirmed through MiniMax's documentation. " +
+                "Configure specific model IDs directly in your application settings.");
         }
 
         /// <inheritdoc/>

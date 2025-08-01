@@ -313,6 +313,9 @@ namespace ConduitLLM.Tests.Core.Services
 
             await Task.WhenAll(tasks);
 
+            // Allow time for statistics recording to complete (race condition fix)
+            await Task.Delay(100);
+
             // Assert - Verify statistics
             var stats = await statsCollector.GetStatisticsAsync(CacheRegion.ProviderResponses);
             stats.HitCount.Should().BeGreaterThanOrEqualTo(100);

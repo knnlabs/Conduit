@@ -526,43 +526,17 @@ namespace ConduitLLM.Providers.Providers.Anthropic
         /// it doesn't actually make any API requests.
         /// </para>
         /// </remarks>
-        public override async Task<List<ConduitLLM.Providers.Common.Models.ExtendedModelInfo>> GetModelsAsync(
+        public override Task<List<ConduitLLM.Providers.Common.Models.ExtendedModelInfo>> GetModelsAsync(
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            // Anthropic doesn't have a models endpoint, so we return a static list of supported models
-            return await Task.FromResult(new List<ConduitLLM.Providers.Common.Models.ExtendedModelInfo>
-            {
-                CreateVisionCapableModel("claude-3-opus-20240229", "anthropic"),
-                CreateVisionCapableModel("claude-3-sonnet-20240229", "anthropic"),
-                CreateVisionCapableModel("claude-3-haiku-20240307", "anthropic"),
-                ConduitLLM.Providers.Common.Models.ExtendedModelInfo.Create("claude-2.1", "anthropic", "claude-2.1"),
-                ConduitLLM.Providers.Common.Models.ExtendedModelInfo.Create("claude-2.0", "anthropic", "claude-2.0"),
-                ConduitLLM.Providers.Common.Models.ExtendedModelInfo.Create("claude-instant-1.2", "anthropic", "claude-instant-1.2")
-            });
+            Logger.LogWarning("Anthropic does not provide a models listing endpoint");
+            throw new NotSupportedException(
+                "Anthropic does not provide a models listing endpoint. " +
+                "Model availability must be confirmed through Anthropic's documentation. " +
+                "Configure specific model IDs directly in your application settings.");
         }
 
-        /// <summary>
-        /// Creates an ExtendedModelInfo with vision capability set to true.
-        /// </summary>
-        /// <param name="id">The model ID</param>
-        /// <param name="provider">The provider name</param>
-        /// <param name="displayName">The display name (optional)</param>
-        /// <returns>An ExtendedModelInfo with vision capability</returns>
-        private static ConduitLLM.Providers.Common.Models.ExtendedModelInfo CreateVisionCapableModel(string id, string provider, string? displayName = null)
-        {
-            var modelInfo = ConduitLLM.Providers.Common.Models.ExtendedModelInfo.Create(id, provider, displayName ?? id);
-
-            // Set the vision capability
-            if (modelInfo.Capabilities == null)
-            {
-                modelInfo.Capabilities = new ConduitLLM.Providers.Common.Models.ModelCapabilities();
-            }
-
-            modelInfo.Capabilities.Vision = true;
-
-            return modelInfo;
-        }
 
         /// <summary>
         /// Creates embeddings using the Anthropic API (not currently supported).

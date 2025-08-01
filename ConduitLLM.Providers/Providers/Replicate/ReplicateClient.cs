@@ -207,83 +207,15 @@ namespace ConduitLLM.Providers.Providers.Replicate
         }
 
         /// <inheritdoc/>
-        public override async Task<List<ExtendedModelInfo>> GetModelsAsync(
+        public override Task<List<ExtendedModelInfo>> GetModelsAsync(
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            try
-            {
-                // Get a list of selected popular LLM models from Replicate
-                // In a real implementation, this would query the Replicate API for models
-                // However, Replicate doesn't have a simple endpoint for listing all available LLMs
-                // So we return a curated list of known models
-
-                // This is a simplified implementation - in production, you might want to:
-                // 1. Cache this list and refresh periodically
-                // 2. Query the collections endpoint for more models
-                // 3. Allow administrators to configure which models to include
-
-                await Task.Delay(1, cancellationToken); // Making this truly async
-
-                var models = new List<ConduitLLM.Providers.Common.Models.ExtendedModelInfo>
-                {
-                    ConduitLLM.Providers.Common.Models.ExtendedModelInfo.Create(
-                        "meta/llama-3-70b-instruct:a532122398cff93aa48f32d63902fa4545c4fb642f91e3e51bcf5d2f8da23eff",
-                        ProviderName,
-                        "meta/llama-3-70b-instruct:a532122398cff93aa48f32d63902fa4545c4fb642f91e3e51bcf5d2f8da23eff")
-                        .WithName("Llama-3 70B Instruct")
-                        .WithCapabilities(new ConduitLLM.Providers.Common.Models.ModelCapabilities
-                        {
-                            Chat = true,
-                            TextGeneration = true,
-                            Embeddings = false,
-                            ImageGeneration = false
-                        })
-                        .WithTokenLimits(new ConduitLLM.Providers.Common.Models.ModelTokenLimits
-                        {
-                            MaxInputTokens = 32000,
-                            MaxOutputTokens = 4096
-                        }),
-
-                    ConduitLLM.Providers.Common.Models.ExtendedModelInfo.Create(
-                        "meta/llama-3-8b-instruct:dd2c4157802af9020a7272a6e5c27f3dd56ec1026a7556e193ee8e8738549590",
-                        ProviderName,
-                        "meta/llama-3-8b-instruct:dd2c4157802af9020a7272a6e5c27f3dd56ec1026a7556e193ee8e8738549590")
-                        .WithName("Llama-3 8B Instruct")
-                        .WithCapabilities(new ConduitLLM.Providers.Common.Models.ModelCapabilities
-                        {
-                            Chat = true,
-                            TextGeneration = true,
-                            Embeddings = false,
-                            ImageGeneration = false
-                        })
-                        .WithTokenLimits(new ConduitLLM.Providers.Common.Models.ModelTokenLimits
-                        {
-                            MaxInputTokens = 16000,
-                            MaxOutputTokens = 4096
-                        }),
-
-                    ConduitLLM.Providers.Common.Models.ExtendedModelInfo.Create(
-                        "stability-ai/sdxl:4a1ee9c9f06e811f991e83a0d1ee9c9ca2d6dc03d6cd7c9322bfff81c350da82",
-                        ProviderName,
-                        "stability-ai/sdxl:4a1ee9c9f06e811f991e83a0d1ee9c9ca2d6dc03d6cd7c9322bfff81c350da82")
-                        .WithName("SDXL 1.0")
-                        .WithCapabilities(new ConduitLLM.Providers.Common.Models.ModelCapabilities
-                        {
-                            Chat = false,
-                            TextGeneration = false,
-                            Embeddings = false,
-                            ImageGeneration = true
-                        })
-                };
-
-                return models;
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "An unexpected error occurred while listing Replicate models");
-                throw new LLMCommunicationException($"An unexpected error occurred while listing models: {ex.Message}", ex);
-            }
+            Logger.LogWarning("Replicate does not provide a public API endpoint for listing available models");
+            throw new NotSupportedException(
+                "Replicate does not provide a public API endpoint for listing available models. " +
+                "Model discovery must be done through the Replicate website or documentation. " +
+                "Configure specific model IDs directly in your application settings.");
         }
 
         /// <inheritdoc/>
