@@ -8,7 +8,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       # Batch Cache Invalidation configuration (development settings)
       CacheInvalidation__BatchingEnabled: "true"
-      CacheInvalidation__BatchWindow: "50ms"  # Faster for development
+      CacheInvalidation__BatchWindow: "00:00:00.050"  # 50ms - Faster for development
       CacheInvalidation__MaxBatchSize: "50"   # Smaller batches for easier debugging
       CacheInvalidation__EnableCoalescing: "true"
       # Health monitoring configuration - API endpoint checks
@@ -22,7 +22,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       # Batch Cache Invalidation configuration (development settings)
       CacheInvalidation__BatchingEnabled: "true"
-      CacheInvalidation__BatchWindow: "50ms"  # Faster for development
+      CacheInvalidation__BatchWindow: "00:00:00.050"  # 50ms - Faster for development
       CacheInvalidation__MaxBatchSize: "50"   # Smaller batches for easier debugging
       CacheInvalidation__EnableCoalescing: "true"
 

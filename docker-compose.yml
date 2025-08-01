@@ -85,7 +85,7 @@ services:
       CONDUITLLM__RABBITMQ__PARTITIONCOUNT: 10
       # Batch Cache Invalidation configuration
       CacheInvalidation__BatchingEnabled: "true"
-      CacheInvalidation__BatchWindow: "100ms"
+      CacheInvalidation__BatchWindow: "00:00:00.100"  # 100ms
       CacheInvalidation__MaxBatchSize: "100"
       CacheInvalidation__EnableCoalescing: "true"
       # Health monitoring configuration - API endpoint checks
@@ -131,7 +131,7 @@ services:
       CONDUITLLM__RABBITMQ__VHOST: /
       # Batch Cache Invalidation configuration
       CacheInvalidation__BatchingEnabled: "true"
-      CacheInvalidation__BatchWindow: "100ms"
+      CacheInvalidation__BatchWindow: "00:00:00.100"  # 100ms
       CacheInvalidation__MaxBatchSize: "100"
       CacheInvalidation__EnableCoalescing: "true"
       # Disable IP banning for development

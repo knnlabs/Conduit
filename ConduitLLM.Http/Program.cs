@@ -235,6 +235,7 @@ builder.Services.AddRepositories();
 // Register services
 builder.Services.AddScoped<ConduitLLM.Configuration.IModelProviderMappingService, ConduitLLM.Configuration.ModelProviderMappingService>();
 builder.Services.AddScoped<ConduitLLM.Configuration.IProviderService, ConduitLLM.Configuration.ProviderService>();
+builder.Services.AddScoped<ConduitLLM.Configuration.Services.IRequestLogService, ConduitLLM.Configuration.Services.RequestLogService>();
 
 // Register System Notification Service
 builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.ISystemNotificationService, ConduitLLM.Http.Services.SystemNotificationService>();
