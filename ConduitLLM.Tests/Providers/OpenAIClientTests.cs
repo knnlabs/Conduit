@@ -14,15 +14,14 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Providers;
-using ConduitLLM.Providers.InternalModels;
+using ConduitLLM.Providers.Providers.OpenAI;
+using ConduitLLM.Providers.Providers.OpenAI.Models;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
 using Xunit;
 using Xunit.Abstractions;
 using ConduitLLM.Tests.TestHelpers;
-using OpenAIModels = ConduitLLM.Providers.InternalModels.OpenAIModels;
-using AzureOpenAIModels = ConduitLLM.Providers.AzureOpenAIModels;
 
 namespace ConduitLLM.Tests.Providers
 {
@@ -249,7 +248,7 @@ namespace ConduitLLM.Tests.Providers
                 Model = "whisper-1"
             };
 
-            var expectedResponse = new OpenAIModels.TranscriptionResponse
+            var expectedResponse = new TranscriptionResponse
             {
                 Text = "This is the transcribed text",
                 Language = "en",
@@ -300,7 +299,7 @@ namespace ConduitLLM.Tests.Providers
                     return new HttpResponseMessage
                     {
                         StatusCode = HttpStatusCode.OK,
-                        Content = new StringContent(JsonSerializer.Serialize(new OpenAIModels.TranscriptionResponse
+                        Content = new StringContent(JsonSerializer.Serialize(new TranscriptionResponse
                         {
                             Text = "Transcribed text"
                         }))
@@ -415,7 +414,7 @@ namespace ConduitLLM.Tests.Providers
                 .ReturnsAsync(new HttpResponseMessage
                 {
                     StatusCode = HttpStatusCode.OK,
-                    Content = new StringContent(JsonSerializer.Serialize(new OpenAIModels.TranscriptionResponse
+                    Content = new StringContent(JsonSerializer.Serialize(new TranscriptionResponse
                     {
                         Text = "Transcribed text"
                     }))
@@ -440,7 +439,7 @@ namespace ConduitLLM.Tests.Providers
         {
             // Arrange
             var client = CreateOpenAIClient();
-            var request = new TextToSpeechRequest
+            var request = new ConduitLLM.Core.Models.Audio.TextToSpeechRequest
             {
                 Input = "Hello, this is a test",
                 Voice = "alloy",
@@ -466,7 +465,7 @@ namespace ConduitLLM.Tests.Providers
         {
             // Arrange
             var client = CreateOpenAIClient();
-            var request = new TextToSpeechRequest
+            var request = new ConduitLLM.Core.Models.Audio.TextToSpeechRequest
             {
                 Input = "Test audio",
                 Voice = "nova",
@@ -511,7 +510,7 @@ namespace ConduitLLM.Tests.Providers
         {
             // Arrange
             var client = CreateOpenAIClient();
-            var request = new TextToSpeechRequest
+            var request = new ConduitLLM.Core.Models.Audio.TextToSpeechRequest
             {
                 Input = "Test",
                 Voice = "invalid-voice",
@@ -532,7 +531,7 @@ namespace ConduitLLM.Tests.Providers
         {
             // Arrange
             var client = CreateOpenAIClient();
-            var request = new TextToSpeechRequest
+            var request = new ConduitLLM.Core.Models.Audio.TextToSpeechRequest
             {
                 Input = "Test streaming",
                 Voice = "echo",
@@ -736,9 +735,9 @@ namespace ConduitLLM.Tests.Providers
         {
             // Arrange
             var client = CreateOpenAIClient();
-            var response = new OpenAIModels.ListModelsResponse
+            var response = new ListModelsResponse
             {
-                Data = new List<OpenAIModels.OpenAIModelData>
+                Data = new List<OpenAIModelData>
                 {
                     new() { Id = "gpt-4", Object = "model", OwnedBy = "openai" },
                     new() { Id = "gpt-3.5-turbo", Object = "model", OwnedBy = "openai" }
@@ -762,9 +761,9 @@ namespace ConduitLLM.Tests.Providers
         {
             // Arrange
             var client = CreateAzureOpenAIClient();
-            var response = new AzureOpenAIModels.ListDeploymentsResponse
+            var response = new ConduitLLM.Providers.Providers.OpenAI.AzureOpenAIModels.ListDeploymentsResponse
             {
-                Data = new List<AzureOpenAIModels.DeploymentInfo>
+                Data = new List<ConduitLLM.Providers.Providers.OpenAI.AzureOpenAIModels.DeploymentInfo>
                 {
                     new() { DeploymentId = "my-gpt4", Model = "gpt-4", Status = "succeeded" },
                     new() { DeploymentId = "my-gpt35", Model = "gpt-3.5-turbo", Status = "succeeded" }

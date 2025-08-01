@@ -9,7 +9,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
-using ConduitLLM.Providers.InternalModels;
+using ConduitLLM.Providers.Common.Models;
 
 using Microsoft.Extensions.Logging;
 
@@ -38,7 +38,7 @@ namespace ConduitLLM.Providers
     /// - Different model listing behavior (deployments instead of models)
     /// </para>
     /// </remarks>
-    public class AzureOpenAIClient : OpenAICompatibleClient
+    public class AzureOpenAIClient : ConduitLLM.Providers.Providers.OpenAICompatible.OpenAICompatibleClient
     {
         private const string ApiVersion = "2024-02-01";
         private readonly string _deploymentName;
@@ -136,12 +136,12 @@ namespace ConduitLLM.Providers
         /// In a real-world scenario, listing Azure OpenAI deployments requires Azure SDK 
         /// and RBAC permissions, which is beyond the scope of simple API key interaction.
         /// </remarks>
-        public override Task<List<InternalModels.ExtendedModelInfo>> GetModelsAsync(
+        public override Task<List<ConduitLLM.Providers.Common.Models.ExtendedModelInfo>> GetModelsAsync(
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
             Logger.LogWarning("Listing models is not supported for Azure OpenAI provider via API key authentication.");
-            return Task.FromResult(new List<InternalModels.ExtendedModelInfo>());
+            return Task.FromResult(new List<ConduitLLM.Providers.Common.Models.ExtendedModelInfo>());
         }
 
         /// <summary>

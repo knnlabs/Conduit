@@ -17,7 +17,7 @@ using Amazon.TranscribeService.Model;
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Providers.InternalModels;
+using ConduitLLM.Providers.Common.Models;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;

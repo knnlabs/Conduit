@@ -13,7 +13,7 @@ using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Utilities;
-using ConduitLLM.Providers.InternalModels;
+using ConduitLLM.Providers.Common.Models;
 
 using Microsoft.Extensions.Logging;
 
