@@ -195,8 +195,8 @@ export class RealtimeNotificationsService implements IRealtimeNotificationServic
    * Subscribe to virtual key events (not implemented)
    */
   async onVirtualKeyEvent(
-    callback: (event: any) => void,
-    options?: AdminNotificationOptions
+    _callback: (event: unknown) => void,
+    _options?: AdminNotificationOptions
   ): Promise<NotificationSubscription> {
     throw new Error('onVirtualKeyEvent not implemented');
   }
@@ -205,8 +205,8 @@ export class RealtimeNotificationsService implements IRealtimeNotificationServic
    * Subscribe to configuration changes (not implemented)
    */
   async onConfigurationChange(
-    callback: (event: any) => void,
-    options?: AdminNotificationOptions
+    _callback: (event: unknown) => void,
+    _options?: AdminNotificationOptions
   ): Promise<NotificationSubscription> {
     throw new Error('onConfigurationChange not implemented');
   }
@@ -215,8 +215,8 @@ export class RealtimeNotificationsService implements IRealtimeNotificationServic
    * Subscribe to admin notifications (not implemented)
    */
   async onAdminNotification(
-    callback: (event: any) => void,
-    options?: AdminNotificationOptions
+    _callback: (event: unknown) => void,
+    _options?: AdminNotificationOptions
   ): Promise<NotificationSubscription> {
     throw new Error('onAdminNotification not implemented');
   }

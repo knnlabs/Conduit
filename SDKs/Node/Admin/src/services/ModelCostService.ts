@@ -177,7 +177,7 @@ export class ModelCostService extends FetchBaseApiClient {
     return costs.find(c => c.isActive) ?? null;
   }
 
-  async updateCosts(models: string[], inputCost: number, outputCost: number): Promise<void> {
+  async updateCosts(_models: string[], _inputCost: number, _outputCost: number): Promise<void> {
     // This method is deprecated and needs refactoring
     // The new model cost system requires costName and modelProviderMappingIds
     throw new Error('updateCosts method is deprecated. Use create/update methods with proper DTOs instead.');
