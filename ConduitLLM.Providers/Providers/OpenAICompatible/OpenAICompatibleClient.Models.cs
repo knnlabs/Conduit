@@ -47,7 +47,7 @@ namespace ConduitLLM.Providers.Providers.OpenAICompatible
                         client,
                         HttpMethod.Get,
                         endpoint,
-                        new { }, // Use empty object instead of null
+                        null, // GET requests should not have a body
                         CreateStandardHeaders(apiKey),
                         DefaultJsonOptions,
                         Logger,

@@ -21,11 +21,11 @@ namespace ConduitLLM.Providers.Providers.OpenAI
     public partial class OpenAIClient
     {
         /// <summary>
-        /// Connects to OpenAI's realtime audio API.
+        /// Creates a realtime audio session with OpenAI's API.
         /// </summary>
-        public async Task<RealtimeSession> ConnectAsync(
-            string? apiKey,
+        public async Task<RealtimeSession> CreateSessionAsync(
             RealtimeSessionConfig config,
+            string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
             // OpenAI Realtime API uses WebSocket connection
@@ -39,6 +39,23 @@ namespace ConduitLLM.Providers.Providers.OpenAI
             await session.ConnectAsync(cancellationToken);
 
             return session;
+        }
+
+        /// <summary>
+        /// Creates a realtime audio session with OpenAI's API.
+        /// </summary>
+        /// <remarks>
+        /// This method is obsolete and will be removed in the next major version.
+        /// Use CreateSessionAsync instead, which has the correct parameter order.
+        /// </remarks>
+        [Obsolete("Use CreateSessionAsync instead. This method will be removed in the next major version.")]
+        public async Task<RealtimeSession> ConnectAsync(
+            string? apiKey,
+            RealtimeSessionConfig config,
+            CancellationToken cancellationToken = default)
+        {
+            // Forward to new method with corrected parameter order
+            return await CreateSessionAsync(config, apiKey, cancellationToken);
         }
 
         /// <summary>
@@ -92,17 +109,6 @@ namespace ConduitLLM.Providers.Providers.OpenAI
                 SupportsFunctionCalling = true,
                 SupportsInterruptions = true
             });
-        }
-
-        /// <summary>
-        /// Creates a realtime audio session.
-        /// </summary>
-        public async Task<RealtimeSession> CreateSessionAsync(
-            RealtimeSessionConfig config,
-            string? apiKey = null,
-            CancellationToken cancellationToken = default)
-        {
-            return await ConnectAsync(apiKey, config, cancellationToken);
         }
 
         /// <summary>

@@ -35,8 +35,7 @@ namespace ConduitLLM.Providers.Providers.OpenAI
                         client,
                         HttpMethod.Get,
                         endpoint,
-                        // Use empty string instead of null to avoid possible null reference
-                        string.Empty,
+                        null, // GET requests should not have a body
                         new Dictionary<string, string>(),
                         DefaultJsonOptions,
                         Logger,
