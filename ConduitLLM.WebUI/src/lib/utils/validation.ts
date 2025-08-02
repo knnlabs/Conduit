@@ -77,7 +77,7 @@ export function createValidator<T>(
     const validatedData = {} as T;
     const bodyObj = body as Record<string, unknown>;
 
-    for (const [field, validator] of Object.entries(schema) as Array<[string, (value: unknown) => boolean]>) {
+    for (const [field, validator] of Object.entries(schema)) {
       const value = bodyObj[field];
       if (!validator(value)) {
         errors.push({
