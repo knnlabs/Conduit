@@ -19,7 +19,7 @@ export function useModelCostsApi() {
       pageSize: pageSize.toString(),
     });
 
-    // Note: ModelCostFilters has 'providerId' but the API expects 'provider'
+    // Map providerId to provider for API compatibility
     if (filters?.providerId !== undefined) {
       params.append('provider', filters.providerId);
     }

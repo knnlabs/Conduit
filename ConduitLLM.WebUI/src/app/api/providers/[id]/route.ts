@@ -59,10 +59,8 @@ export async function PUT(
       updateData.providerName = body.providerName as string;
     }
     
-    // Handle apiKey if provided (only update if not empty)
-    if (body.apiKey) {
-      updateData.apiKey = body.apiKey as string;
-    }
+    // Note: API keys cannot be updated through the provider update endpoint
+    // They must be managed through the separate provider keys endpoints
     
     await adminClient.providers.update(parseInt(id, 10), updateData as Parameters<typeof adminClient.providers.update>[1]);
     

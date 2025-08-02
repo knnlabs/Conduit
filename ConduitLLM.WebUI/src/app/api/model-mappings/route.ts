@@ -10,8 +10,7 @@ export async function GET() {
     // SDK now returns an array directly (backend doesn't support pagination yet)
     const response = await adminClient.modelMappings.list();
     
-    // Log the response to debug provider type issue
-    console.warn('[Model Mappings API] Response sample:', JSON.stringify(response[0], null, 2));
+    // Response sample available for debugging if needed
     
     return NextResponse.json(response);
   } catch (error) {
@@ -45,8 +44,13 @@ export async function POST(req: NextRequest) {
       metadata?: string;
     };
     
-    // Log the incoming data for debugging
-    console.warn('[Model Mappings] Creating with data:', JSON.stringify(body, null, 2));
+    // Validate required fields
+    if (!body.modelId || !body.providerModelId || !body.providerId) {
+      return NextResponse.json(
+        { error: 'Missing required fields: modelId, providerModelId, and providerId are required' },
+        { status: 400 }
+      );
+    }
     
     // Pass data directly to SDK - providerId is already a number from the frontend
     const transformedBody = {
@@ -70,7 +74,6 @@ export async function POST(req: NextRequest) {
       isDefault: body.isDefault ?? false,
     };
     
-    console.warn('[Model Mappings] Transformed data:', JSON.stringify(transformedBody, null, 2));
     
     const mapping = await adminClient.modelMappings.create(transformedBody);
     return NextResponse.json(mapping, { status: 201 });

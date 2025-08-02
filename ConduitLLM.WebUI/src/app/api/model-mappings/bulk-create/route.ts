@@ -33,8 +33,6 @@ export async function POST(req: NextRequest) {
     const adminClient = getServerAdminClient();
     const body = await req.json() as BulkCreateRequest;
     
-    console.warn('[Bulk Create] Request received with', body.models?.length || 0, 'models');
-    console.warn('[Bulk Create] First model data:', JSON.stringify(body.models?.[0], null, 2));
     
     if (!body.models || body.models.length === 0) {
       return NextResponse.json(
@@ -80,16 +78,10 @@ export async function POST(req: NextRequest) {
       replaceExisting: false
     };
     
-    console.warn('[Bulk Create] Calling SDK bulkCreate with', mappings.length, 'mappings');
-    console.warn('[Bulk Create] First mapping:', JSON.stringify(mappings[0], null, 2));
     
     const bulkResponse = await adminClient.modelMappings.bulkCreate(bulkRequest);
     
-    console.warn('[Bulk Create] Response received:', {
-      created: bulkResponse.created.length,
-      failed: bulkResponse.failed.length,
-      failedDetails: bulkResponse.failed
-    });
+    // Response summary available for debugging if needed
     
     // Return detailed results matching the expected format
     return NextResponse.json({

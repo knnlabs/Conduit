@@ -57,10 +57,8 @@ export default function ImageGallery() {
 
   const getImageSrc = (image: GeneratedImage): string => {
     if (image.url) {
-      console.warn('Image URL:', image.url);
       return image.url;
     } else if (image.b64_json) {
-      console.warn('Using base64 image');
       return `data:image/png;base64,${image.b64_json}`;
     }
     console.warn('No image data available');

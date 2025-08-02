@@ -3,7 +3,7 @@ import { getServerAdminClient } from '@/lib/server/adminClient';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import type { UpdateProviderKeyCredentialDto } from '@knn_labs/conduit-admin-client';
 
-export async function PATCH(
+export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; keyId: string }> }
 ) {

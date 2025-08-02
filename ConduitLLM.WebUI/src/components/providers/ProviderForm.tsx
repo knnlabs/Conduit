@@ -211,10 +211,9 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
           color: 'green',
         });
       } else {
-        // Edit mode
+        // Edit mode - Note: API keys cannot be updated here, only through the keys management page
         const payload = {
           providerName: values.providerName ?? undefined,
-          apiKey: values.apiKey ?? undefined, // Only send if changed
           apiEndpoint: values.apiEndpoint ?? undefined,
           organizationId: values.organizationId ?? undefined,
           isEnabled: values.isEnabled,
@@ -440,18 +439,25 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
                 </Group>
                 
                 <Stack gap="md">
-                  <PasswordInput
-                    label="API Key"
-                    placeholder={mode === 'add' ? "Enter API key" : "Leave empty to keep existing key"}
-                    description={mode === 'edit' ? "Only enter if you want to update the API key" : undefined}
-                    required={mode === 'add'}
-                    autoComplete="new-password"
-                    data-form-type="other"
-                    {...form.getInputProps('apiKey')}
-                    size="md"
-                  />
+                  {mode === 'edit' ? (
+                    <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
+                      <Text size="sm">
+                        API keys cannot be updated here. To manage API keys, use the <Text component="span" fw={600}>Manage Keys</Text> button on the providers list page.
+                      </Text>
+                    </Alert>
+                  ) : (
+                    <PasswordInput
+                      label="API Key"
+                      placeholder="Enter API key"
+                      required
+                      autoComplete="new-password"
+                      data-form-type="other"
+                      {...form.getInputProps('apiKey')}
+                      size="md"
+                    />
+                  )}
 
-                  {config && (
+                  {config && mode === 'add' && (
                     <>
                       {config.requiresOrganizationId && (
                         <TextInput

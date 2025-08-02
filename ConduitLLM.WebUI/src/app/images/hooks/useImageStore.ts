@@ -85,7 +85,6 @@ export const useImageStore = create<ImageStore>((set, get) => ({
       }
 
       const result = await response.json() as ImageGenerationResponse;
-      console.warn('Image generation response:', result);
       set({ 
         status: 'completed', 
         results: result.data,

@@ -10,7 +10,8 @@ const isPublicRoute = createRouteMatcher([
   '/api/discovery/models',
   '/api/videos/generate',
   '/api/videos/tasks/(.*)',
-  '/api/images/generate'
+  '/api/images/generate',
+  '/api/images/tasks/(.*)'
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
