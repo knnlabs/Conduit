@@ -31,11 +31,9 @@ namespace ConduitLLM.Providers.Providers.OpenAI
                     using var client = CreateHttpClient(apiKey);
                     var endpoint = GetModelsEndpoint();
 
-                    var response = await ConduitLLM.Core.Utilities.HttpClientHelper.SendJsonRequestAsync<object, AzureOpenAIModels.ListDeploymentsResponse>(
+                    var response = await ConduitLLM.Core.Utilities.HttpClientHelper.GetJsonAsync<AzureOpenAIModels.ListDeploymentsResponse>(
                         client,
-                        HttpMethod.Get,
                         endpoint,
-                        null, // GET requests should not have a body
                         new Dictionary<string, string>(),
                         DefaultJsonOptions,
                         Logger,

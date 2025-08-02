@@ -43,11 +43,9 @@ namespace ConduitLLM.Providers.Providers.OpenAICompatible
 
                     Logger.LogDebug("Getting available models from {Provider} at {Endpoint}", ProviderName, endpoint);
 
-                    var response = await CoreUtils.HttpClientHelper.SendJsonRequestAsync<object, OpenAIModels.ListModelsResponse>(
+                    var response = await CoreUtils.HttpClientHelper.GetJsonAsync<OpenAIModels.ListModelsResponse>(
                         client,
-                        HttpMethod.Get,
                         endpoint,
-                        null, // GET requests should not have a body
                         CreateStandardHeaders(apiKey),
                         DefaultJsonOptions,
                         Logger,
