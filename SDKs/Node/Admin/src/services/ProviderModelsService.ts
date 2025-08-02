@@ -1,5 +1,4 @@
 import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
-import { CACHE_TTL } from '../constants';
 
 export interface ProviderModel {
   id: string;

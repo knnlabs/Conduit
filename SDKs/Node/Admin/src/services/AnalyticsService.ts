@@ -13,7 +13,6 @@ import {
 } from '../models/analytics';
 import {
   ExportResult,
-  ExportRequestLogsParams,
   RequestLogStatistics,
   RequestLog,
   ExportStatus,
@@ -122,7 +121,7 @@ export class AnalyticsService extends FetchBaseApiClient {
   /**
    * @deprecated EXPORT_REQUEST_LOGS endpoint no longer exists
    */
-  async exportRequestLogs(params: ExportRequestLogsParams): Promise<ExportResult> {
+  async exportRequestLogs(): Promise<ExportResult> {
     throw new Error('Export request logs endpoint no longer exists in the API');
   }
 
@@ -200,14 +199,14 @@ export class AnalyticsService extends FetchBaseApiClient {
   /**
    * @deprecated EXPORT_STATUS endpoint no longer exists
    */
-  async getExportStatus(exportId: string): Promise<ExportStatus> {
+  async getExportStatus(): Promise<ExportStatus> {
     throw new Error('Export status endpoint no longer exists in the API');
   }
 
   /**
    * @deprecated EXPORT_DOWNLOAD endpoint no longer exists
    */
-  async downloadExport(exportId: string): Promise<Blob> {
+  async downloadExport(): Promise<Blob> {
     throw new Error('Export download endpoint no longer exists in the API');
   }
 

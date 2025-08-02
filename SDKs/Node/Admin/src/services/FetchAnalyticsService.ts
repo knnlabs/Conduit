@@ -5,8 +5,6 @@ import type {
   RequestLogParams,
   RequestLogPage,
   RequestLogDto,
-  ExportParams,
-  ExportResult,
 } from '../models/analytics';
 
 /**

@@ -1,15 +1,10 @@
 import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
-import { HttpMethod } from '../client/HttpMethod';
 import type { DiagnosticChecks } from '../models/common-types';
 import { ApiClientConfig } from '../client/types';
 import { ENDPOINTS, CACHE_TTL } from '../constants';
 import {
   SystemInfoDto,
   HealthStatusDto,
-  BackupDto,
-  CreateBackupRequest,
-  RestoreBackupRequest,
-  BackupRestoreResult,
   NotificationDto,
   CreateNotificationDto,
   MaintenanceTaskDto,
@@ -18,10 +13,10 @@ import {
   AuditLogDto,
   AuditLogFilters,
   FeatureAvailability,
+  CreateBackupRequest,
 } from '../models/system';
 import { PaginatedResponse } from '../models/common';
-import { ValidationError, NotImplementedError } from '../utils/errors';
-import { z } from 'zod';
+import { NotImplementedError } from '../utils/errors';
 import { FetchVirtualKeyService as VirtualKeyService } from './FetchVirtualKeyService';
 import { SettingsService } from './SettingsService';
 // Get SDK version from package.json at build time
@@ -49,26 +44,6 @@ interface SystemInfoApiResponse {
   };
 }
 
-const createBackupSchema = z.object({
-  description: z.string().max(500).optional(),
-  includeKeys: z.boolean().optional(),
-  includeProviders: z.boolean().optional(),
-  includeSettings: z.boolean().optional(),
-  includeLogs: z.boolean().optional(),
-  encryptionPassword: z.string().min(8).optional(),
-});
-
-const restoreBackupSchema = z.object({
-  backupId: z.string().min(1),
-  decryptionPassword: z.string().optional(),
-  overwriteExisting: z.boolean().optional(),
-  selectedItems: z.object({
-    keys: z.boolean().optional(),
-    providers: z.boolean().optional(),
-    settings: z.boolean().optional(),
-    logs: z.boolean().optional(),
-  }).optional(),
-});
 
 export class SystemService extends FetchBaseApiClient {
   // System Information

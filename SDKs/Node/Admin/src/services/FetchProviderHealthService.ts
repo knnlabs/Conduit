@@ -10,15 +10,11 @@ import type {
   HealthHistory,
   HistoryParams,
   HealthAlert,
-  AlertParams,
   ConnectionTestResult,
-  PerformanceParams,
-  PerformanceMetrics,
   ProviderHealthHistoryOptions,
   ProviderHealthHistoryResponse,
 } from '../models/providerHealth';
 import type {
-  HealthHistoryData,
   HealthConfigurationData
 } from '../models/providerResponses';
 

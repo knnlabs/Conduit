@@ -8,8 +8,7 @@ import type {
 } from '../models/providerHealth';
 import type {
   ProviderData,
-  HealthDataResponse,
-  MetricsDataResponse
+  HealthDataResponse
 } from '../models/providerResponses';
 import type {
   ProviderDto,
@@ -468,8 +467,7 @@ export class FetchProvidersService {
    */
   async getHealthMetrics(
     providerType: ProviderType,
-    timeRange?: string,
-    config?: RequestConfig
+    timeRange?: string
   ): Promise<ProviderHealthMetricsDto> {
     const searchParams = new URLSearchParams();
     if (timeRange) {

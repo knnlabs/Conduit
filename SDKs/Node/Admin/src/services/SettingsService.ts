@@ -1,13 +1,9 @@
 import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { ENDPOINTS, CACHE_TTL } from '../constants';
-import { ProviderType } from '../models/providerType';
 import {
   GlobalSettingDto,
   CreateGlobalSettingDto,
   UpdateGlobalSettingDto,
-  AudioConfigurationDto,
-  CreateAudioConfigurationDto,
-  UpdateAudioConfigurationDto,
   RouterConfigurationDto,
   RouterRule,
   UpdateRouterConfigurationDto,
@@ -26,17 +22,6 @@ const createSettingSchema = z.object({
   isSecret: z.boolean().optional(),
 });
 
-const audioConfigSchema = z.object({
-  provider: z.string().min(1),
-  isEnabled: z.boolean().optional(),
-  apiKey: z.string().optional(),
-  apiEndpoint: z.string().url().optional(),
-  defaultVoice: z.string().optional(),
-  defaultModel: z.string().optional(),
-  maxDuration: z.number().positive().optional(),
-  allowedVoices: z.array(z.string()).optional(),
-  customSettings: z.record(z.string(), z.unknown()).optional(),
-});
 
 export class SettingsService extends FetchBaseApiClient {
   // Global Settings

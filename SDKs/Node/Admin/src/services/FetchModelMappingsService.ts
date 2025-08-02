@@ -1,14 +1,11 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { RequestConfig } from '../client/types';
 import { ENDPOINTS } from '../constants';
-import { ProviderType } from '../models/providerType';
 import type {
   ModelProviderMappingDto,
   CreateModelProviderMappingDto,
   UpdateModelProviderMappingDto,
   DiscoveredModel,
-  CapabilityTestResult,
-  ModelMappingSuggestion,
   BulkMappingRequest,
   BulkMappingResponse,
 } from '../models/modelMapping';

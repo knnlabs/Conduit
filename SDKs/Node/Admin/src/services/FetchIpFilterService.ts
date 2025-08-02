@@ -8,15 +8,10 @@ import {
   UpdateIpFilterSettingsDto,
   IpCheckResult,
   IpFilterFilters,
+  FilterType,
   IpFilterStatistics,
   BulkIpFilterResponse,
   IpFilterValidationResult,
-  FilterType,
-  CreateTemporaryIpFilterDto,
-  BulkOperationResult,
-  IpFilterImport,
-  IpFilterImportResult,
-  BlockedRequestStats,
 } from '../models/ipFilter';
 import { ValidationError, NotImplementedError } from '../utils/errors';
 import { z } from 'zod';

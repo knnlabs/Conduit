@@ -1,5 +1,5 @@
 import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
-import { ENDPOINTS, CACHE_TTL, DEFAULT_PAGE_SIZE } from '../constants';
+import { ENDPOINTS, CACHE_TTL } from '../constants';
 import { ProviderType } from '../models/providerType';
 import {
   ProviderCredentialDto,
@@ -14,7 +14,6 @@ import {
   ProviderHealthStatusDto,
   ProviderHealthSummaryDto,
   ProviderFilters,
-  ProviderHealthFilters,
   ProviderUsageStatistics,
 } from '../models/provider';
 import { PaginatedResponse } from '../models/common';
@@ -50,7 +49,7 @@ export class ProviderService extends FetchBaseApiClient {
     // Extract the API key from the request
     const { apiKey, ...providerData } = request;
 
-    console.log('[SDK ProviderService] create called with:', { hasApiKey: !!apiKey, providerData });
+    console.warn('[SDK ProviderService] create called with:', { hasApiKey: !!apiKey, providerData });
 
     // First, create the provider without the API key
     const provider = await this.post<ProviderCredentialDto>(
@@ -58,11 +57,11 @@ export class ProviderService extends FetchBaseApiClient {
       providerData
     );
 
-    console.log('[SDK ProviderService] Provider created:', provider);
+    console.warn('[SDK ProviderService] Provider created:', provider);
 
     // If an API key was provided, create it as a separate call
     if (apiKey && provider.id) {
-      console.log('[SDK ProviderService] Creating API key for provider:', provider.id);
+      console.warn('[SDK ProviderService] Creating API key for provider:', provider.id);
       try {
         const keyResponse = await this.post(
           ENDPOINTS.PROVIDER_KEYS.BASE(provider.id),
@@ -74,7 +73,7 @@ export class ProviderService extends FetchBaseApiClient {
             providerAccountGroup: 0
           }
         );
-        console.log('[SDK ProviderService] API key created successfully:', keyResponse);
+        console.warn('[SDK ProviderService] API key created successfully:', keyResponse);
       } catch (keyError) {
         console.error('[SDK ProviderService] Failed to create API key:', keyError);
         // Don't throw - return the provider even if key creation fails
@@ -194,9 +193,7 @@ export class ProviderService extends FetchBaseApiClient {
     );
   }
 
-  async getHealthHistory(
-    filters?: ProviderHealthFilters
-  ): Promise<PaginatedResponse<ProviderHealthRecordDto>> {
+  async getHealthHistory(): Promise<PaginatedResponse<ProviderHealthRecordDto>> {
     throw new Error('Health history endpoint no longer exists. Use getHealthRecords instead.');
   }
 

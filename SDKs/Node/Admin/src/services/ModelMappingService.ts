@@ -128,7 +128,7 @@ export class ModelMappingService extends FetchBaseApiClient {
     return this.withCache(
       cacheKey,
       () =>
-        super.get<ModelProviderMappingDto[]>(ENDPOINTS.MODEL_MAPPINGS.BASE + `?modelId=${modelId}` /* BY_MODEL endpoint does not exist */),
+        super.get<ModelProviderMappingDto[]>(`${ENDPOINTS.MODEL_MAPPINGS.BASE  }?modelId=${modelId}` /* BY_MODEL endpoint does not exist */),
       CACHE_TTL.MEDIUM
     );
   }
@@ -211,11 +211,11 @@ export class ModelMappingService extends FetchBaseApiClient {
     return response;
   }
 
-  async importMappings(file: File | Blob, format: 'csv' | 'json'): Promise<BulkMappingResponse> {
+  async importMappings(): Promise<BulkMappingResponse> {
     throw new Error('IMPORT endpoint no longer exists in the API.');
   }
 
-  async exportMappings(format: 'csv' | 'json'): Promise<Blob> {
+  async exportMappings(): Promise<Blob> {
     throw new Error('EXPORT endpoint no longer exists in the API.');
   }
 
@@ -229,20 +229,20 @@ export class ModelMappingService extends FetchBaseApiClient {
     );
   }
 
-  async discoverModelCapabilities(providerId: number, modelId: string): Promise<DiscoveredModel> {
+  async discoverModelCapabilities(): Promise<DiscoveredModel> {
     throw new Error('DISCOVER_MODEL endpoint no longer exists. Use DISCOVER with a specific provider ID instead.');
   }
 
-  async testCapability(modelAlias: string, capability: string): Promise<CapabilityTestResult> {
+  async testCapability(): Promise<CapabilityTestResult> {
     throw new Error('TEST_CAPABILITY endpoint no longer exists in the API.');
   }
 
   // Advanced Operations
-  async getRoutingInfo(modelId: string): Promise<ModelRoutingInfo> {
+  async getRoutingInfo(): Promise<ModelRoutingInfo> {
     throw new Error('ROUTING endpoint no longer exists in the API.');
   }
 
-  async suggestOptimalMapping(modelId: string): Promise<ModelMappingSuggestion> {
+  async suggestOptimalMapping(): Promise<ModelMappingSuggestion> {
     throw new Error('SUGGEST endpoint no longer exists in the API.');
   }
 

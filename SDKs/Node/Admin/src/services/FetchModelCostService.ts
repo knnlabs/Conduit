@@ -30,12 +30,6 @@ interface ModelCostOverviewParams {
   groupBy?: 'provider' | 'model';
 }
 
-interface BulkUpdateRequest {
-  updates: Array<{
-    id: number;
-    changes: Partial<UpdateModelCostDto>;
-  }>;
-}
 
 // Validation schemas
 const createCostSchema = z.object({
@@ -209,10 +203,7 @@ export class FetchModelCostService {
   /**
    * Bulk update multiple model costs
    */
-  async bulkUpdate(
-    updates: BulkUpdateRequest['updates'],
-    config?: RequestConfig
-  ): Promise<ModelCostDto[]> {
+  async bulkUpdate(): Promise<ModelCostDto[]> {
     throw new Error('Bulk update endpoint no longer exists. Update model costs individually.');
   }
 

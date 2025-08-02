@@ -611,7 +611,7 @@ export class FetchSystemService {
       return {
         events: events.slice(0, limit ?? 50),
       };
-    } catch (error) {
+    } catch {
       // If all else fails, return empty events
       return { events: [] };
     }
