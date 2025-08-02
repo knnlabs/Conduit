@@ -151,23 +151,6 @@ export class FetchSettingsService {
     );
   }
 
-  /**
-   * Batch update multiple settings
-   */
-  async batchUpdateSettings(
-    settings: SettingUpdate[],
-    config?: RequestConfig
-  ): Promise<void> {
-    return this.client['post']<void, { settings: SettingUpdate[] }>(
-      ENDPOINTS.SETTINGS.BATCH_UPDATE,
-      { settings },
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
 
   /**
    * Get settings grouped by category

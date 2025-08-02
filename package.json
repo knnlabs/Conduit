@@ -13,10 +13,16 @@
     "precommit": "npm run css:lint"
   },
   "devDependencies": {
+    "@types/node": "^24.1.0",
+    "@types/node-fetch": "^2.6.13",
+    "node-fetch": "^3.3.2",
     "stylelint": "^16.2.1",
     "stylelint-config-recess-order": "^4.4.0",
     "stylelint-config-standard": "^36.0.0",
-    "stylelint-order": "^6.0.4"
+    "stylelint-order": "^6.0.4",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.3",
+    "typescript": "^5.9.2"
   },
   "keywords": [
     "css",

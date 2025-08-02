@@ -183,7 +183,7 @@ export { ProviderModelsService } from './services/ProviderModelsService';
 export { ModelMappingService } from './services/ModelMappingService';
 export { SettingsService } from './services/SettingsService';
 export { IpFilterService } from './services/IpFilterService';
-export { ModelCostService } from './services/ModelCostService';
+export { FetchModelCostService as ModelCostService } from './services/FetchModelCostService'; // Alias for backward compatibility
 export { AnalyticsService } from './services/AnalyticsService';
 export { SystemService } from './services/SystemService';
 // DiscoveryService removed - use ModelMappingService.discoverProviderModels() instead
@@ -195,8 +195,8 @@ export { NotificationsService } from './services/NotificationsService';
 export { SignalRService } from './services/SignalRService';
 // export { ConnectionService } from './services/ConnectionService'; // Removed
 export { RealtimeNotificationsService } from './services/RealtimeNotificationsService';
-export { SecurityService } from './services/SecurityService';
-export { ConfigurationService } from './services/ConfigurationService';
+export { FetchSecurityService as SecurityService } from './services/FetchSecurityService'; // Alias for backward compatibility
+export { FetchConfigurationService as ConfigurationService } from './services/FetchConfigurationService'; // Alias for backward compatibility
 
 // SignalR Hub Clients
 export { NavigationStateHubClient } from './signalr/NavigationStateHubClient';

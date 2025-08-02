@@ -129,63 +129,7 @@ export class SystemService extends FetchBaseApiClient {
     return super.get<HealthStatusDto>(ENDPOINTS.SYSTEM.HEALTH);
   }
 
-  // Backup Management
-  async listBackups(): Promise<BackupDto[]> {
-    const cacheKey = 'backups';
-    return this.withCache(
-      cacheKey,
-      () => super.get<BackupDto[]>(ENDPOINTS.SYSTEM.BACKUP),
-      CACHE_TTL.SHORT
-    );
-  }
-
-  async createBackup(request?: CreateBackupRequest): Promise<BackupDto> {
-    if (request) {
-      try {
-        createBackupSchema.parse(request);
-      } catch (error) {
-        throw new ValidationError('Invalid backup request', { validationError: error });
-      }
-    }
-
-    const response = await this.post<BackupDto>(
-      ENDPOINTS.SYSTEM.BACKUP,
-      request ?? {}
-    );
-
-    await this.invalidateCache();
-    return response;
-  }
-
-  async downloadBackup(backupId: string): Promise<Blob> {
-    const response = await super.request<Blob>(
-      `${ENDPOINTS.SYSTEM.BACKUP}/${backupId}/download`,
-      {
-        method: HttpMethod.GET,
-        headers: { Accept: 'application/octet-stream' },
-        responseType: 'blob'
-      }
-    );
-    return response;
-  }
-
-  async deleteBackup(backupId: string): Promise<void> {
-    await this.delete(`${ENDPOINTS.SYSTEM.BACKUP}/${backupId}`);
-    await this.invalidateCache();
-  }
-
-  async restoreBackup(request: RestoreBackupRequest): Promise<BackupRestoreResult> {
-    try {
-      restoreBackupSchema.parse(request);
-    } catch (error) {
-      throw new ValidationError('Invalid restore request', { validationError: error });
-    }
-
-    return this.post<BackupRestoreResult>(
-      ENDPOINTS.SYSTEM.RESTORE,
-      request
-    );
-  }
+  // Backup Management - removed (endpoints no longer exist)
 
   // Notifications
   async getNotifications(unreadOnly?: boolean): Promise<NotificationDto[]> {

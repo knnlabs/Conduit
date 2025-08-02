@@ -61,7 +61,7 @@ export class FetchProviderHealthService {
    */
   async getProviderHealth(providerType: ProviderType, config?: RequestConfig): Promise<ProviderHealthDto> {
     return this.client['get']<ProviderHealthDto>(
-      ENDPOINTS.HEALTH.STATUS_BY_PROVIDER(providerType),
+      ENDPOINTS.HEALTH.STATUS_BY_ID(providerType),
       {
         signal: config?.signal,
         timeout: config?.timeout,
@@ -75,7 +75,7 @@ export class FetchProviderHealthService {
    */
   async getLegacyProviderStatus(providerType: ProviderType, config?: RequestConfig): Promise<ProviderHealthStatusDto> {
     return this.client['get']<ProviderHealthStatusDto>(
-      ENDPOINTS.HEALTH.STATUS_BY_PROVIDER(providerType),
+      ENDPOINTS.HEALTH.STATUS_BY_ID(providerType),
       {
         signal: config?.signal,
         timeout: config?.timeout,
@@ -118,71 +118,6 @@ export class FetchProviderHealthService {
     );
   }
 
-  /**
-   * Get all health history records
-   */
-  async getAllHealthHistory(
-    startDate?: string,
-    endDate?: string,
-    config?: RequestConfig
-  ): Promise<HealthHistoryData[]> {
-    const queryParams = new URLSearchParams();
-    if (startDate) queryParams.append('startDate', startDate);
-    if (endDate) queryParams.append('endDate', endDate);
-
-    const queryString = queryParams.toString();
-    const url = queryString 
-      ? `${ENDPOINTS.HEALTH.HISTORY}?${queryString}`
-      : ENDPOINTS.HEALTH.HISTORY;
-
-    return this.client['get']<HealthHistoryData[]>(
-      url,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  /**
-   * Get health alerts
-   */
-  async getHealthAlerts(params?: AlertParams, config?: RequestConfig): Promise<HealthAlert[]> {
-    const queryParams = new URLSearchParams();
-    
-    if (params) {
-      if (params.pageNumber) queryParams.append('page', params.pageNumber.toString());
-      if (params.pageSize) queryParams.append('pageSize', params.pageSize.toString());
-      if (params.severity?.length) {
-        params.severity.forEach(s => queryParams.append('severity', s));
-      }
-      if (params.type?.length) {
-        params.type.forEach(t => queryParams.append('type', t));
-      }
-      if (params.providerId) queryParams.append('providerId', params.providerId);
-      if (params.acknowledged !== undefined) {
-        queryParams.append('acknowledged', params.acknowledged.toString());
-      }
-      if (params.resolved !== undefined) {
-        queryParams.append('resolved', params.resolved.toString());
-      }
-      if (params.startDate) queryParams.append('startDate', params.startDate);
-      if (params.endDate) queryParams.append('endDate', params.endDate);
-    }
-
-    const queryString = queryParams.toString();
-    const url = queryString ? `${ENDPOINTS.HEALTH.ALERTS}?${queryString}` : ENDPOINTS.HEALTH.ALERTS;
-
-    return this.client['get']<HealthAlert[]>(
-      url,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
 
   /**
    * Test provider connectivity
@@ -202,36 +137,6 @@ export class FetchProviderHealthService {
     );
   }
 
-  /**
-   * Get provider performance metrics
-   */
-  async getProviderPerformance(
-    providerType: ProviderType, 
-    params?: PerformanceParams, 
-    config?: RequestConfig
-  ): Promise<PerformanceMetrics> {
-    const queryParams = new URLSearchParams();
-    
-    if (params) {
-      if (params.startDate) queryParams.append('startDate', params.startDate);
-      if (params.endDate) queryParams.append('endDate', params.endDate);
-      if (params.resolution) queryParams.append('resolution', params.resolution);
-    }
-
-    const queryString = queryParams.toString();
-    const url = queryString 
-      ? `${ENDPOINTS.HEALTH.PERFORMANCE(providerType)}?${queryString}`
-      : ENDPOINTS.HEALTH.PERFORMANCE(providerType);
-
-    return this.client['get']<PerformanceMetrics>(
-      url,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
 
   /**
    * Get provider health configurations
@@ -301,35 +206,6 @@ export class FetchProviderHealthService {
     );
   }
 
-  /**
-   * Acknowledge a health alert
-   */
-  async acknowledgeAlert(alertId: string, config?: RequestConfig): Promise<void> {
-    return this.client['post']<void>(
-      `${ENDPOINTS.HEALTH.ALERTS}/${alertId}/acknowledge`,
-      {},
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  /**
-   * Resolve a health alert
-   */
-  async resolveAlert(alertId: string, resolution?: string, config?: RequestConfig): Promise<void> {
-    return this.client['post']<void>(
-      `${ENDPOINTS.HEALTH.ALERTS}/${alertId}/resolve`,
-      { resolution },
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
 
   /**
    * Get historical health data for a provider.

@@ -119,12 +119,11 @@ export class AnalyticsService extends FetchBaseApiClient {
   }
 
   // Request logs export and analytics
+  /**
+   * @deprecated EXPORT_REQUEST_LOGS endpoint no longer exists
+   */
   async exportRequestLogs(params: ExportRequestLogsParams): Promise<ExportResult> {
-    const response = await this.post<ExportResult>(
-      ENDPOINTS.ANALYTICS.EXPORT_REQUEST_LOGS,
-      params
-    );
-    return response;
+    throw new Error('Export request logs endpoint no longer exists in the API');
   }
 
   getRequestLogStatistics(logs: RequestLog[]): RequestLogStatistics {
@@ -198,15 +197,18 @@ export class AnalyticsService extends FetchBaseApiClient {
 
 
 
+  /**
+   * @deprecated EXPORT_STATUS endpoint no longer exists
+   */
   async getExportStatus(exportId: string): Promise<ExportStatus> {
-    return this.get<ExportStatus>(ENDPOINTS.ANALYTICS.EXPORT_STATUS(exportId));
+    throw new Error('Export status endpoint no longer exists in the API');
   }
 
+  /**
+   * @deprecated EXPORT_DOWNLOAD endpoint no longer exists
+   */
   async downloadExport(exportId: string): Promise<Blob> {
-    const response = await this.get<Blob>(ENDPOINTS.ANALYTICS.EXPORT_DOWNLOAD(exportId), {
-      responseType: 'blob',
-    });
-    return response;
+    throw new Error('Export download endpoint no longer exists in the API');
   }
 
   // Stub methods

@@ -213,15 +213,7 @@ export class FetchModelCostService {
     updates: BulkUpdateRequest['updates'],
     config?: RequestConfig
   ): Promise<ModelCostDto[]> {
-    return this.client['post']<ModelCostDto[], BulkUpdateRequest>(
-      ENDPOINTS.MODEL_COSTS.BULK_UPDATE,
-      { updates },
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    throw new Error('Bulk update endpoint no longer exists. Update model costs individually.');
   }
 
   /**

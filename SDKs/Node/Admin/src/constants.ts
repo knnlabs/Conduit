@@ -48,7 +48,6 @@ export const ENDPOINTS = {
     RESET_SPEND: (id: number) => `/api/VirtualKeys/${id}/reset-spend`,
     VALIDATE: '/api/VirtualKeys/validate',
     SPEND: (id: number) => `/api/VirtualKeys/${id}/spend`,
-    REFUND: (id: number) => `/api/VirtualKeys/${id}/refund`,
     CHECK_BUDGET: (id: number) => `/api/VirtualKeys/${id}/check-budget`,
     VALIDATION_INFO: (id: number) => `/api/VirtualKeys/${id}/validation-info`,
     MAINTENANCE: '/api/VirtualKeys/maintenance',
@@ -57,56 +56,27 @@ export const ENDPOINTS = {
 
   // Providers - Provider ID is the canonical identifier
   PROVIDERS: {
-    BASE: '/api/Providers',
-    BY_ID: (id: number) => `/api/Providers/${id}`,
-    TEST_BY_ID: (id: number) => `/api/Providers/${id}/test`,
-    TEST: '/api/Providers/test',
-    // Deprecated endpoints
-    /** @deprecated Provider names are no longer unique identifiers */
-    BY_NAME: (name: string) => `/api/Providers/name/${name}`,
-    /** @deprecated Use GET /api/Providers and extract names from response */
-    NAMES: '/api/Providers/names',
+    BASE: '/api/ProviderCredentials',
+    BY_ID: (id: number) => `/api/ProviderCredentials/${id}`,
+    TEST_BY_ID: (id: number) => `/api/ProviderCredentials/test/${id}`,
+    TEST: '/api/ProviderCredentials/test',
   },
 
   // Provider Key Credentials - Manage multiple API keys per provider
   PROVIDER_KEYS: {
-    BASE: (providerId: number) => `/api/Providers/${providerId}/keys`,
-    BY_ID: (providerId: number, keyId: number) => `/api/Providers/${providerId}/keys/${keyId}`,
-    SET_PRIMARY: (providerId: number, keyId: number) => `/api/Providers/${providerId}/keys/${keyId}/set-primary`,
-    ROTATE: (providerId: number, keyId: number) => `/api/Providers/${providerId}/keys/${keyId}/rotate`,
-    TEST: (providerId: number, keyId: number) => `/api/Providers/${providerId}/keys/${keyId}/test`,
-    GET_PRIMARY: (providerId: number) => `/api/Providers/${providerId}/keys/primary`,
-  },
-
-  // Provider Models (Note: These endpoints don't exist in Admin API, use MODEL_MAPPINGS.DISCOVER_* instead)
-  // TODO: Remove this section once all references are updated
-  PROVIDER_MODELS: {
-    BY_PROVIDER: (providerName: string) => `/api/provider-models/${providerName}`,
-    CACHED: (providerName: string) => `/api/provider-models/${providerName}/cached`,
-    REFRESH: (providerName: string) => `/api/provider-models/${providerName}/refresh`,
-    TEST_CONNECTION: '/api/provider-models/test-connection',
-    SUMMARY: '/api/provider-models/summary',
-    DETAILS: (providerName: string, modelId: string) => `/api/provider-models/${providerName}/${modelId}`,
-    CAPABILITIES: (providerName: string, modelId: string) => `/api/provider-models/${providerName}/${modelId}/capabilities`,
-    SEARCH: '/api/provider-models/search',
+    BASE: (providerId: number) => `/api/ProviderCredentials/${providerId}/keys`,
+    BY_ID: (providerId: number, keyId: number) => `/api/ProviderCredentials/${providerId}/keys/${keyId}`,
+    SET_PRIMARY: (providerId: number, keyId: number) => `/api/ProviderCredentials/${providerId}/keys/${keyId}/set-primary`,
+    TEST: (providerId: number, keyId: number) => `/api/ProviderCredentials/${providerId}/keys/${keyId}/test`,
   },
 
   // Model Provider Mappings
-  // WARNING: Model routing is currently broken and being redesigned
   MODEL_MAPPINGS: {
     BASE: '/api/ModelProviderMapping',
     BY_ID: (id: number) => `/api/ModelProviderMapping/${id}`,
-    BY_MODEL: (modelId: string) => `/api/ModelProviderMapping/by-model/${modelId}`,
     PROVIDERS: '/api/ModelProviderMapping/providers',
     BULK: '/api/ModelProviderMapping/bulk',
-    DISCOVER_PROVIDER: (providerId: number) => `/api/ModelProviderMapping/discover/provider/${providerId}`,
-    DISCOVER_MODEL: (providerId: number, modelId: string) => `/api/ModelProviderMapping/discover/model/${providerId}/${modelId}`,
-    TEST_CAPABILITY: (modelAlias: string, capability: string) => `/api/ModelProviderMapping/discover/capability/${modelAlias}/${capability}`,
-    IMPORT: '/api/ModelProviderMapping/import',
-    EXPORT: '/api/ModelProviderMapping/export',
-    SUGGEST: '/api/ModelProviderMapping/suggest',
-    /** @deprecated Model routing is broken - this endpoint should not be used */
-    ROUTING: (modelId: string) => `/api/ModelProviderMapping/routing/${modelId}`,
+    DISCOVER: (providerId: number) => `/api/ModelProviderMapping/discover/${providerId}`,
   },
 
   // IP Filters
@@ -115,43 +85,27 @@ export const ENDPOINTS = {
     BY_ID: (id: number) => `/api/IpFilter/${id}`,
     ENABLED: '/api/IpFilter/enabled',
     SETTINGS: '/api/IpFilter/settings',
-    CHECK: (ipAddress: string) => `/api/IpFilter/check/${encodeURIComponent(ipAddress)}`,
-    BULK_CREATE: '/api/IpFilter/bulk',
-    BULK_UPDATE: '/api/IpFilter/bulk-update',
-    BULK_DELETE: '/api/IpFilter/bulk-delete',
-    CREATE_TEMPORARY: '/api/IpFilter/temporary',
-    EXPIRING: '/api/IpFilter/expiring',
-    IMPORT: '/api/IpFilter/import',
-    EXPORT: '/api/IpFilter/export',
-    BLOCKED_STATS: '/api/IpFilter/blocked-stats',
+    CHECK: (ipAddress: string) => `/api/IpFilter/check/${ipAddress}`,
   },
 
   // Model Costs
   MODEL_COSTS: {
     BASE: '/api/ModelCosts',
     BY_ID: (id: number) => `/api/ModelCosts/${id}`,
-    BY_MODEL: (modelId: string) => `/api/ModelCosts/model/${modelId}`,
-    BY_PROVIDER: (providerType: ProviderType) => `/api/ModelCosts/provider/${providerType}`,
-    BATCH: '/api/ModelCosts/batch',
+    BY_NAME: (costName: string) => `/api/ModelCosts/name/${costName}`,
+    BY_PROVIDER: (providerId: number) => `/api/ModelCosts/provider/${providerId}`,
     IMPORT: '/api/ModelCosts/import',
-    BULK_UPDATE: '/api/ModelCosts/bulk-update',
+    IMPORT_CSV: '/api/ModelCosts/import/csv',
+    IMPORT_JSON: '/api/ModelCosts/import/json',
+    EXPORT_CSV: '/api/ModelCosts/export/csv',
+    EXPORT_JSON: '/api/ModelCosts/export/json',
     OVERVIEW: '/api/ModelCosts/overview',
-    TRENDS: '/api/ModelCosts/trends',
   },
 
   // Analytics & Cost Dashboard
   ANALYTICS: {
-    COST_SUMMARY: '/api/CostDashboard/summary', // DEPRECATED: Use COSTS.SUMMARY instead
-    COST_BY_PERIOD: '/api/CostDashboard/by-period', // DEPRECATED: Use COSTS endpoints
-    COST_BY_MODEL: '/api/CostDashboard/by-model', // DEPRECATED: Use COSTS endpoints
-    COST_BY_KEY: '/api/CostDashboard/by-key', // DEPRECATED: Use COSTS endpoints
     REQUEST_LOGS: '/api/Logs',
     REQUEST_LOG_BY_ID: (id: string) => `/api/Logs/${id}`,
-    
-    // Export management
-    EXPORT_REQUEST_LOGS: '/api/analytics/export/request-logs',
-    EXPORT_STATUS: (exportId: string) => `/api/analytics/export/status/${exportId}`,
-    EXPORT_DOWNLOAD: (exportId: string) => `/api/analytics/export/download/${exportId}`,
   },
 
   // Cost Dashboard (actual endpoints)
@@ -162,18 +116,131 @@ export const ENDPOINTS = {
     VIRTUAL_KEYS: '/api/costs/virtualkeys',
   },
 
+  // Audio Provider Management
+  AUDIO: {
+    PROVIDERS: {
+      BASE: '/api/admin/audio/providers',
+      BY_ID: (id: string) => `/api/admin/audio/providers/${id}`,
+      BY_PROVIDER_ID: (providerId: string) => `/api/admin/audio/providers/by-id/${providerId}`,
+      ENABLED: (operationType: string) => `/api/admin/audio/providers/enabled/${operationType}`,
+      TEST: (id: string) => `/api/admin/audio/providers/${id}/test`,
+    },
+    COSTS: {
+      BASE: '/api/admin/audio/costs',
+      BY_ID: (id: string) => `/api/admin/audio/costs/${id}`,
+      BY_PROVIDER: (providerId: string) => `/api/admin/audio/costs/by-provider/${providerId}`,
+      CURRENT: '/api/admin/audio/costs/current',
+    },
+    USAGE: {
+      BASE: '/api/admin/audio/usage',
+      SUMMARY: '/api/admin/audio/usage/summary',
+      BY_KEY: (virtualKey: string) => `/api/admin/audio/usage/by-key/${virtualKey}`,
+      BY_PROVIDER: (providerId: string) => `/api/admin/audio/usage/by-provider/${providerId}`,
+    },
+    SESSIONS: {
+      BASE: '/api/admin/audio/sessions',
+      BY_ID: (sessionId: string) => `/api/admin/audio/sessions/${sessionId}`,
+      METRICS: '/api/admin/audio/sessions/metrics',
+    },
+  },
+
+  // Media Management
+  MEDIA: {
+    STATS: {
+      BASE: '/api/admin/Media/stats',
+      BY_VIRTUAL_KEY: (virtualKeyId: string) => `/api/admin/Media/stats/virtual-key/${virtualKeyId}`,
+      BY_PROVIDER: '/api/admin/Media/stats/by-provider',
+      BY_TYPE: '/api/admin/Media/stats/by-type',
+    },
+    BY_VIRTUAL_KEY: (virtualKeyId: string) => `/api/admin/Media/virtual-key/${virtualKeyId}`,
+    SEARCH: '/api/admin/Media/search',
+    BY_ID: (mediaId: string) => `/api/admin/Media/${mediaId}`,
+    CLEANUP: {
+      EXPIRED: '/api/admin/Media/cleanup/expired',
+      ORPHANED: '/api/admin/Media/cleanup/orphaned',
+      PRUNE: '/api/admin/Media/cleanup/prune',
+    },
+  },
+
+  // Cache Monitoring
+  CACHE_MONITORING: {
+    STATUS: '/api/cache/monitoring/status',
+    THRESHOLDS: '/api/cache/monitoring/thresholds',
+    ALERTS: '/api/cache/monitoring/alerts',
+    CHECK: '/api/cache/monitoring/check',
+    ALERT_DEFINITIONS: '/api/cache/monitoring/alert-definitions',
+    HEALTH: '/api/cache/monitoring/health',
+  },
+
+  // Database Management
+  DATABASE: {
+    BACKUP: '/api/database/backup',
+    BACKUPS: '/api/database/backups',
+    RESTORE: (backupId: string) => `/api/database/restore/${backupId}`,
+    DOWNLOAD: (backupId: string) => `/api/database/download/${backupId}`,
+  },
+
+  // Configuration endpoints
+  CONFIG: {
+    ROUTING: '/api/config/routing',
+    CACHING: {
+      BASE: '/api/config/caching',
+      CLEAR: (cacheId: string) => `/api/config/caching/${cacheId}/clear`,
+      STATISTICS: '/api/config/caching/statistics',
+      REGIONS: '/api/config/caching/regions',
+      ENTRIES: (regionId: string) => `/api/config/caching/${regionId}/entries`,
+      REFRESH: (regionId: string) => `/api/config/caching/${regionId}/refresh`,
+      POLICY: (regionId: string) => `/api/config/caching/${regionId}/policy`,
+    },
+  },
+
+  // Logs endpoints
+  LOGS: {
+    BASE: '/api/Logs',
+    BY_ID: (id: string) => `/api/Logs/${id}`,
+    MODELS: '/api/Logs/models',
+    SUMMARY: '/api/Logs/summary',
+  },
+
+  // Notifications endpoints
+  NOTIFICATIONS: {
+    BASE: '/api/Notifications',
+    BY_ID: (id: number) => `/api/Notifications/${id}`,
+    UNREAD: '/api/Notifications/unread',
+    MARK_READ: (id: number) => `/api/Notifications/${id}/read`,
+    MARK_ALL_READ: '/api/Notifications/mark-all-read',
+  },
+
+  // Router endpoints
+  ROUTER: {
+    CONFIG: '/api/Router/config',
+    DEPLOYMENTS: '/api/Router/deployments',
+    DEPLOYMENT_BY_NAME: (deploymentName: string) => `/api/Router/deployments/${deploymentName}`,
+    FALLBACKS: '/api/Router/fallbacks',
+    FALLBACK_BY_MODEL: (primaryModel: string) => `/api/Router/fallbacks/${primaryModel}`,
+  },
+
+  // Security endpoints
+  SECURITY: {
+    EVENTS: '/api/security/events',
+    THREATS: '/api/security/threats',
+    COMPLIANCE: '/api/security/compliance',
+  },
+
   // Provider Health
   HEALTH: {
     CONFIGURATIONS: '/api/ProviderHealth/configurations',
-    CONFIG_BY_PROVIDER: (providerType: ProviderType) => `/api/ProviderHealth/configurations/${providerType}`,
+    CONFIG_BY_PROVIDER: (providerId: number) => `/api/ProviderHealth/configurations/${providerId}`,
     STATUS: '/api/ProviderHealth/status',
-    STATUS_BY_PROVIDER: (providerType: ProviderType) => `/api/ProviderHealth/status/${providerType}`,
-    HISTORY: '/api/ProviderHealth/history',
-    HISTORY_BY_PROVIDER: (providerType: ProviderType) => `/api/ProviderHealth/history/${providerType}`,
-    CHECK: (providerType: ProviderType) => `/api/ProviderHealth/check/${providerType}`,
-    SUMMARY: '/api/health/providers',
-    ALERTS: '/api/health/alerts',
-    PERFORMANCE: (providerType: ProviderType) => `/api/health/providers/${providerType}/performance`,
+    STATUS_BY_ID: (providerId: number) => `/api/ProviderHealth/status/${providerId}`,
+    STATUSES: '/api/ProviderHealth/statuses',
+    STATUSES_BY_ID: (providerId: number) => `/api/ProviderHealth/statuses/${providerId}`,
+    HISTORY_BY_PROVIDER: (providerId: number) => `/api/ProviderHealth/history/${providerId}`,
+    CHECK: (providerId: number) => `/api/ProviderHealth/check/${providerId}`,
+    SUMMARY: '/api/ProviderHealth/summary',
+    STATISTICS: '/api/ProviderHealth/statistics',
+    PURGE: '/api/ProviderHealth/purge',
+    RECORDS: '/api/ProviderHealth/records',
   },
 
   // System
@@ -181,96 +248,40 @@ export const ENDPOINTS = {
     INFO: '/api/SystemInfo/info',
     HEALTH: '/api/SystemInfo/health',
     SERVICES: '/api/health/services',
-    METRICS: '/api/metrics',
-    HEALTH_EVENTS: '/api/health/events',
-    BACKUP: '/api/DatabaseBackup',
-    RESTORE: '/api/DatabaseBackup/restore',
     NOTIFICATIONS: '/api/Notifications',
     NOTIFICATION_BY_ID: (id: number) => `/api/Notifications/${id}`,
+    HEALTH_INCIDENTS: '/api/health/incidents',
+    HEALTH_HISTORY: '/api/health/history',
   },
 
-  // Comprehensive Metrics (Issue #434)
+  // Comprehensive Metrics
   METRICS: {
-    // Real Admin API metrics endpoints
-    ADMIN_BASIC: '/api/metrics',
-    ADMIN_DATABASE_POOL: '/metrics/database/pool',
+    BASE: '/metrics',
+    DATABASE_POOL: '/metrics/database/pool',
+  },
+
+  // Error Queue endpoints
+  ERROR_QUEUES: {
+    BASE: '/api/admin/error-queues',
+    MESSAGES: (queueName: string) => `/api/admin/error-queues/${queueName}/messages`,
+    MESSAGE_BY_ID: (queueName: string, messageId: string) => `/api/admin/error-queues/${queueName}/messages/${messageId}`,
+    STATISTICS: '/api/admin/error-queues/statistics',
+    HEALTH: '/api/admin/error-queues/health',
+    REPLAY: (queueName: string) => `/api/admin/error-queues/${queueName}/replay`,
   },
 
   // Settings
   SETTINGS: {
     GLOBAL: '/api/GlobalSettings',
+    GLOBAL_BY_ID: (id: number) => `/api/GlobalSettings/${id}`,
     GLOBAL_BY_KEY: (key: string) => `/api/GlobalSettings/by-key/${key}`,
-    BATCH_UPDATE: '/api/GlobalSettings/batch',
-    AUDIO: '/api/AudioConfiguration',
-    AUDIO_BY_PROVIDER: (providerType: ProviderType) => `/api/AudioConfiguration/${providerType}`,
-    ROUTER: '/api/Router',
+    GLOBAL_BY_KEY_SIMPLE: '/api/GlobalSettings/by-key',
+    ROUTER: '/api/Router/config',
   },
 
-  // Discovery moved to MODEL_MAPPINGS endpoints in Admin API
-
-  // Security
-  SECURITY: {
-    EVENTS: '/api/admin/security/events',
-    REPORT_EVENT: '/api/admin/security/events',
-    EXPORT_EVENTS: '/api/admin/security/events/export',
-    THREATS: '/api/admin/security/threats',
-    THREAT_BY_ID: (id: string) => `/api/admin/security/threats/${id}`,
-    THREAT_ANALYTICS: '/api/admin/security/threats/analytics',
-    COMPLIANCE_METRICS: '/api/admin/security/compliance/metrics',
-    COMPLIANCE_REPORT: '/api/admin/security/compliance/report',
-  },
-
-  // Error Queue Management
-  ERROR_QUEUES: {
-    BASE: '/api/admin/error-queues',
-    MESSAGES: (queueName: string) => `/api/admin/error-queues/${encodeURIComponent(queueName)}/messages`,
-    MESSAGE_BY_ID: (queueName: string, messageId: string) => `/api/admin/error-queues/${encodeURIComponent(queueName)}/messages/${encodeURIComponent(messageId)}`,
-    STATISTICS: '/api/admin/error-queues/statistics',
-    HEALTH: '/api/admin/error-queues/health',
-    REPLAY: (queueName: string) => `/api/admin/error-queues/${encodeURIComponent(queueName)}/replay`,
-    CLEAR: (queueName: string) => `/api/admin/error-queues/${encodeURIComponent(queueName)}/messages`,
-  },
-
-  // Configuration (Routing and Caching)
-  CONFIGURATION: {
-    // Routing
-    ROUTING: '/api/configuration/routing',
-    ROUTING_TEST: '/api/configuration/routing/test',
-    LOAD_BALANCER_HEALTH: '/api/configuration/routing/health',
-    ROUTING_RULES: '/api/config/routing/rules',
-    ROUTING_RULE_BY_ID: (id: string) => `/api/config/routing/rules/${id}`,
-    
-    // Caching
-    CACHING: '/api/configuration/caching',
-    CACHE_POLICIES: '/api/configuration/caching/policies',
-    CACHE_POLICY_BY_ID: (id: string) => `/api/configuration/caching/policies/${id}`,
-    CACHE_REGIONS: '/api/configuration/caching/regions',
-    CACHE_CLEAR: (regionId: string) => `/api/configuration/caching/regions/${regionId}/clear`,
-    CACHE_STATISTICS: '/api/configuration/caching/statistics',
-    CACHE_CONFIG: '/api/config/cache',
-    CACHE_STATS: '/api/config/cache/stats',
-    
-    // Load Balancer
-    LOAD_BALANCER: '/api/config/loadbalancer',
-    
-    // Performance
-    PERFORMANCE: '/api/config/performance',
-    PERFORMANCE_TEST: '/api/config/performance/test',
-    
-    // Feature Flags
-    FEATURES: '/api/config/features',
-    FEATURE_BY_KEY: (key: string) => `/api/config/features/${key}`,
-    
-    // Routing Health (Issue #437)
-    ROUTING_HEALTH: '/api/config/routing/health',
-    ROUTING_HEALTH_DETAILED: '/api/config/routing/health/detailed',
-    ROUTING_HEALTH_HISTORY: '/api/config/routing/health/history',
-    ROUTE_HEALTH_BY_ID: (routeId: string) => `/api/config/routing/health/routes/${routeId}`,
-    ROUTE_PERFORMANCE_TEST: '/api/config/routing/performance/test',
-    CIRCUIT_BREAKERS: '/api/config/routing/circuit-breakers',
-    CIRCUIT_BREAKER_BY_ID: (breakerId: string) => `/api/config/routing/circuit-breakers/${breakerId}`,
-    ROUTING_EVENTS: '/api/config/routing/events',
-    ROUTING_EVENTS_SUBSCRIBE: '/api/config/routing/events/subscribe',
+  // Admin tasks
+  ADMIN_TASKS: {
+    CLEANUP: '/v1/admin/tasks/cleanup',
   },
 } as const;
 

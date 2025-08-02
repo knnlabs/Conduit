@@ -30,7 +30,7 @@ interface CreateVirtualKeyModalProps {
 interface CreateVirtualKeyForm {
   keyName: string;
   description?: string;
-  maxBudget?: number;
+  virtualKeyGroupId?: number;
   rateLimitPerMinute?: number;
   isEnabled: boolean;
   allowedModels: string[];
@@ -70,7 +70,7 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
     initialValues: {
       keyName: '',
       description: '',
-      maxBudget: undefined,
+      virtualKeyGroupId: undefined,
       rateLimitPerMinute: undefined,
       isEnabled: true,
       allowedModels: ['*'], // Default to all models
@@ -91,7 +91,7 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
         
         return null;
       },
-      maxBudget: validators.positiveNumber('Budget'),
+      virtualKeyGroupId: validators.positiveNumber('Virtual Key Group'),
       rateLimitPerMinute: validators.minValue('Rate limit', 1),
       allowedModels: validators.arrayMinLength('model', 1),
       allowedEndpoints: validators.arrayMinLength('endpoint', 1),
@@ -105,7 +105,7 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
       const payload = {
         keyName: values.keyName.trim(),
         description: values.description?.trim() ?? undefined,
-        maxBudget: values.maxBudget ?? undefined,
+        virtualKeyGroupId: values.virtualKeyGroupId ?? undefined,
         rateLimitRpm: values.rateLimitPerMinute ?? undefined,
         allowedModels: values.allowedModels.length > 0 ? values.allowedModels.join(',') : undefined,
         metadata: values.metadata?.trim() ? values.metadata : undefined,
@@ -183,14 +183,12 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
       />
 
       <NumberInput
-        label="Maximum Budget"
-        description="Maximum amount this key can spend (in USD)"
-        placeholder="No limit"
-        min={0}
-        step={10}
-        decimalScale={2}
-        prefix="$"
-        {...form.getInputProps('maxBudget')}
+        label="Virtual Key Group"
+        description="Group ID this key belongs to (optional - creates new group if not specified)"
+        placeholder="Auto-create new group"
+        min={1}
+        step={1}
+        {...form.getInputProps('virtualKeyGroupId')}
       />
 
       <Button

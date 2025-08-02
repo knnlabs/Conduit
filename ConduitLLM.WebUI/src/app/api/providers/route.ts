@@ -54,6 +54,8 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json() as CreateProviderCredentialDto;
+    console.warn('[API Route] POST /api/providers received:', body);
+    
     const adminClient = getServerAdminClient();
     const providersService = adminClient.providers;
     if (!providersService || typeof providersService.create !== 'function') {
@@ -63,7 +65,7 @@ export async function POST(request: Request) {
     // Ensure isEnabled has a value (default to true if not provided)
     // Convert providerName to providerType if needed
     let providerType: number | undefined;
-    const bodyWithType = body as { providerType?: number; providerName?: string; isEnabled?: boolean };
+    const bodyWithType = body as { providerType?: number; providerName?: string; isEnabled?: boolean; apiKey?: string };
     
     if (bodyWithType.providerType !== undefined) {
       providerType = bodyWithType.providerType;
@@ -78,7 +80,9 @@ export async function POST(request: Request) {
       isEnabled: bodyWithType.isEnabled ?? true,
     };
     
+    console.warn('[API Route] Calling providersService.create with:', createData);
     const provider = await providersService.create(createData);
+    console.warn('[API Route] Provider created:', provider);
     return NextResponse.json(provider);
   } catch (error: unknown) {
     return handleSDKError(error);

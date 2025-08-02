@@ -108,11 +108,11 @@ export class FetchModelMappingsService {
    * Discover models from a specific provider
    */
   async discoverProviderModels(
-    providerType: ProviderType,
+    providerId: number,
     config?: RequestConfig
   ): Promise<DiscoveredModel[]> {
     return this.client['get']<DiscoveredModel[]>(
-      ENDPOINTS.MODEL_MAPPINGS.DISCOVER_PROVIDER(providerType),
+      ENDPOINTS.MODEL_MAPPINGS.DISCOVER(providerId),
       {
         signal: config?.signal,
         timeout: config?.timeout,
@@ -121,42 +121,6 @@ export class FetchModelMappingsService {
     );
   }
 
-  /**
-   * Test a specific capability for a model mapping
-   */
-  async testCapability(
-    id: number,
-    capability: string,
-    testParams?: Record<string, unknown>,
-    config?: RequestConfig
-  ): Promise<CapabilityTestResult> {
-    // Use the model alias endpoint instead of ID-based endpoint
-    const mapping = await this.getById(id, config);
-    return this.client['post']<CapabilityTestResult>(
-      ENDPOINTS.MODEL_MAPPINGS.TEST_CAPABILITY(mapping.modelId, capability),
-      testParams,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-
-  /**
-   * Get model mapping suggestions
-   */
-  async getSuggestions(config?: RequestConfig): Promise<ModelMappingSuggestion[]> {
-    return this.client['get']<ModelMappingSuggestion[]>(
-      ENDPOINTS.MODEL_MAPPINGS.SUGGEST,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
 
   /**
    * Bulk create model mappings

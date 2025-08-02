@@ -63,59 +63,6 @@ export class FetchAnalyticsService {
     );
   }
 
-  /**
-   * Export request logs
-   */
-  async exportRequestLogs(params: ExportParams, config?: RequestConfig): Promise<ExportResult> {
-    return this.client['post']<ExportResult, ExportParams>(
-      ENDPOINTS.ANALYTICS.EXPORT_REQUEST_LOGS,
-      params,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-
-
-
-
-
-
-
-
-  /**
-   * Helper method to get export status
-   */
-  async getExportStatus(exportId: string, config?: RequestConfig): Promise<ExportResult> {
-    return this.client['get']<ExportResult>(
-      ENDPOINTS.ANALYTICS.EXPORT_STATUS(exportId),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  /**
-   * Helper method to download export
-   */
-  async downloadExport(exportId: string, config?: RequestConfig): Promise<Blob> {
-    const response = await this.client['get']<Response>(
-      ENDPOINTS.ANALYTICS.EXPORT_DOWNLOAD(exportId),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-        responseType: 'raw',
-      }
-    );
-
-    return response.blob();
-  }
 
   /**
    * Helper method to format date range

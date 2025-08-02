@@ -23,6 +23,7 @@ import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
 // Extend VirtualKeyDto with UI-specific fields added by the API
 interface VirtualKeyWithUI extends VirtualKeyDto {
   displayKey: string;
+  virtualKeyGroupId?: number;
 }
 
 interface EditVirtualKeyModalProps {
@@ -35,7 +36,7 @@ interface EditVirtualKeyModalProps {
 interface EditVirtualKeyForm {
   keyName: string;
   description?: string;
-  maxBudget?: number;
+  virtualKeyGroupId?: number;
   isEnabled: boolean;
   allowedModels: string[];
 }
@@ -47,7 +48,7 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
     initialValues: {
       keyName: '',
       description: '',
-      maxBudget: undefined,
+      virtualKeyGroupId: undefined,
       isEnabled: true,
       allowedModels: [],
     },
@@ -64,7 +65,7 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
         
         return null;
       },
-      maxBudget: validators.positiveNumber('Budget'),
+      virtualKeyGroupId: validators.positiveNumber('Virtual Key Group'),
     },
   });
 
@@ -79,7 +80,7 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
       form.setValues({
         keyName: virtualKey.keyName,
         description: virtualKey.metadata ? JSON.stringify(virtualKey.metadata) : '',
-        maxBudget: virtualKey.maxBudget,
+        virtualKeyGroupId: virtualKey.virtualKeyGroupId ?? undefined,
         isEnabled: virtualKey.isEnabled,
         allowedModels: models,
       });
@@ -94,7 +95,7 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
       
       const payload = {
         keyName: values.keyName.trim(),
-        maxBudget: values.maxBudget ?? undefined,
+        virtualKeyGroupId: values.virtualKeyGroupId ?? undefined,
         isEnabled: values.isEnabled,
         allowedModels: values.allowedModels.length > 0 ? values.allowedModels.join(',') : undefined,
         // Note: description is stored in metadata for virtual keys
@@ -189,19 +190,17 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
         />
 
         <NumberInput
-          label="Maximum Budget"
-          description="Maximum amount this key can spend (in USD)"
-          placeholder="No limit"
-          min={0}
-          step={10}
-          decimalScale={2}
-          prefix="$"
-          {...form.getInputProps('maxBudget')}
+          label="Virtual Key Group"
+          description="Group ID this key belongs to"
+          placeholder="Group ID"
+          min={1}
+          step={1}
+          {...form.getInputProps('virtualKeyGroupId')}
         />
 
         <Alert icon={<IconAlertCircle size={16} />} color="gray">
           <Text size="sm">
-            Current spend: ${virtualKey.currentSpend.toFixed(2)} | 
+            Virtual Key Group ID: {virtualKey.virtualKeyGroupId ?? 'N/A'} | 
             Requests: {virtualKey.requestCount?.toLocaleString() ?? '0'}
           </Text>
         </Alert>

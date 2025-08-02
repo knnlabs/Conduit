@@ -6,7 +6,6 @@ import {
   Text,
   Badge,
   ActionIcon,
-  Progress,
   Tooltip,
   Stack,
   Box,
@@ -29,6 +28,7 @@ import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
 // Extend VirtualKeyDto with UI-specific fields added by the API
 interface VirtualKeyWithUI extends VirtualKeyDto {
   displayKey: string;
+  virtualKeyGroupId?: number;
 }
 
 interface VirtualKeysTableProps {
@@ -65,20 +65,7 @@ export function VirtualKeysTable({ onEdit, onView, data, onDelete }: VirtualKeys
     });
   };
 
-  const getBudgetUsagePercentage = (currentSpend: number, maxBudget?: number) => {
-    if (!maxBudget) return 0;
-    return Math.min((currentSpend / maxBudget) * 100, 100);
-  };
-
-  const getBudgetUsageColor = (percentage: number) => {
-    if (percentage >= 90) return 'red';
-    if (percentage >= 75) return 'yellow';
-    return 'green';
-  };
-
   const rows = virtualKeys.map((key) => {
-    const budgetUsagePercentage = getBudgetUsagePercentage(key.currentSpend, key.maxBudget);
-    const budgetUsageColor = key.maxBudget ? getBudgetUsageColor(budgetUsagePercentage) : 'blue';
 
     return (
       <Table.Tr key={key.id}>
@@ -111,21 +98,11 @@ export function VirtualKeysTable({ onEdit, onView, data, onDelete }: VirtualKeys
         <Table.Td>
           <Stack gap={4}>
             <Text size="sm" fw={500}>
-              ${key.currentSpend.toFixed(2)}
-              {key.maxBudget && (
-                <Text component="span" size="sm" c="dimmed">
-                  {' '}/ ${key.maxBudget.toFixed(2)}
-                </Text>
-              )}
+              Group ID: {key.virtualKeyGroupId ?? 'N/A'}
             </Text>
-            {key.maxBudget && (
-              <Progress
-                value={budgetUsagePercentage}
-                color={budgetUsageColor}
-                size="sm"
-                radius="md"
-              />
-            )}
+            <Text size="xs" c="dimmed">
+              Balance tracked at group level
+            </Text>
           </Stack>
         </Table.Td>
 
@@ -195,7 +172,7 @@ export function VirtualKeysTable({ onEdit, onView, data, onDelete }: VirtualKeys
               <Table.Tr>
                 <Table.Th>Name</Table.Th>
                 <Table.Th>Key Hash</Table.Th>
-                <Table.Th>Budget Usage</Table.Th>
+                <Table.Th>Virtual Key Group</Table.Th>
                 <Table.Th>Requests</Table.Th>
                 <Table.Th>Status</Table.Th>
                 <Table.Th>Last Used</Table.Th>

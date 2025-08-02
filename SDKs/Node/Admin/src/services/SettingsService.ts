@@ -93,55 +93,7 @@ export class SettingsService extends FetchBaseApiClient {
     await this.invalidateCache();
   }
 
-  // Audio Configuration
-  async getAudioConfigurations(): Promise<AudioConfigurationDto[]> {
-    const cacheKey = 'audio-configurations';
-    return this.withCache(
-      cacheKey,
-      () => super.get<AudioConfigurationDto[]>(ENDPOINTS.SETTINGS.AUDIO),
-      CACHE_TTL.MEDIUM
-    );
-  }
-
-  async getAudioConfiguration(providerType: ProviderType): Promise<AudioConfigurationDto> {
-    const cacheKey = this.getCacheKey('audio-config', providerType.toString());
-    return this.withCache(
-      cacheKey,
-      () => super.get<AudioConfigurationDto>(ENDPOINTS.SETTINGS.AUDIO_BY_PROVIDER(providerType)),
-      CACHE_TTL.MEDIUM
-    );
-  }
-
-  async createAudioConfiguration(
-    request: CreateAudioConfigurationDto
-  ): Promise<AudioConfigurationDto> {
-    try {
-      audioConfigSchema.parse(request);
-    } catch (error) {
-      throw new ValidationError('Invalid audio configuration request', { validationError: error });
-    }
-
-    const response = await this.post<AudioConfigurationDto>(
-      ENDPOINTS.SETTINGS.AUDIO,
-      request
-    );
-
-    await this.invalidateCache();
-    return response;
-  }
-
-  async updateAudioConfiguration(
-    providerType: ProviderType,
-    request: UpdateAudioConfigurationDto
-  ): Promise<void> {
-    await this.put(ENDPOINTS.SETTINGS.AUDIO_BY_PROVIDER(providerType), request);
-    await this.invalidateCache();
-  }
-
-  async deleteAudioConfiguration(providerType: ProviderType): Promise<void> {
-    await this.delete(ENDPOINTS.SETTINGS.AUDIO_BY_PROVIDER(providerType));
-    await this.invalidateCache();
-  }
+  // Audio Configuration - removed (use AUDIO.PROVIDERS endpoints instead)
 
   // Router Configuration
   async getRouterConfiguration(): Promise<RouterConfigurationDto> {

@@ -28,11 +28,9 @@ import {
   IconSearch,
 } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
-import { useDisclosure } from '@mantine/hooks';
 import { ProvidersTable } from '@/components/providers/ProvidersTable';
-import { CreateProviderModal } from '@/components/providers/CreateProviderModal';
-import { EditProviderModal } from '@/components/providers/EditProviderModal';
 import { notifications } from '@mantine/notifications';
+import { useRouter } from 'next/navigation';
 import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/export';
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
@@ -48,9 +46,7 @@ interface ProviderWithHealth extends ProviderCredentialDto {
 }
 
 export default function ProvidersPage() {
-  const [createModalOpened, { open: openCreateModal, close: closeCreateModal }] = useDisclosure(false);
-  const [editModalOpened, { open: openEditModal, close: closeEditModal }] = useDisclosure(false);
-  const [selectedProvider, setSelectedProvider] = useState<ProviderWithHealth | null>(null);
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [providers, setProviders] = useState<ProviderWithHealth[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -179,8 +175,7 @@ export default function ProvidersPage() {
   };
 
   const handleEdit = (provider: ProviderWithHealth) => {
-    setSelectedProvider(provider);
-    openEditModal();
+    router.push(`/llm-providers/edit/${provider.id}`);
   };
 
 
@@ -342,7 +337,7 @@ export default function ProvidersPage() {
 
           <Button
             leftSection={<IconPlus size={16} />}
-            onClick={openCreateModal}
+            onClick={() => router.push('/llm-providers/add')}
           >
             Add Provider
           </Button>
@@ -412,21 +407,6 @@ export default function ProvidersPage() {
           )}
         </Card.Section>
       </Card>
-
-      {/* Create Provider Modal */}
-      <CreateProviderModal
-        opened={createModalOpened}
-        onClose={closeCreateModal}
-        onSuccess={() => void fetchProviders()}
-      />
-
-      {/* Edit Provider Modal */}
-      <EditProviderModal
-        opened={editModalOpened}
-        onClose={closeEditModal}
-        provider={selectedProvider}
-        onSuccess={() => void fetchProviders()}
-      />
 
     </Stack>
   );

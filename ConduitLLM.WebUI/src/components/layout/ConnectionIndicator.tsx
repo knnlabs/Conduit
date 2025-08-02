@@ -1,6 +1,6 @@
 'use client';
 
-import { Group, Text } from '@mantine/core';
+import { Group } from '@mantine/core';
 import { useBackendHealth } from '@/hooks/useBackendHealth';
 import { CoreApiStatusIndicator } from './CoreApiStatusIndicator';
 import { AdminApiStatusIndicator } from './AdminApiStatusIndicator';
@@ -23,9 +23,6 @@ export function ConnectionIndicator() {
         lastChecked={healthStatus.lastChecked}
       />
       
-      <Text size="xs" c="dimmed" ml="xs">
-        Last check: {healthStatus.lastChecked.toLocaleTimeString()}
-      </Text>
     </Group>
   );
 }

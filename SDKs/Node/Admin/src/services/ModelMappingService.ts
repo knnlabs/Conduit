@@ -128,7 +128,7 @@ export class ModelMappingService extends FetchBaseApiClient {
     return this.withCache(
       cacheKey,
       () =>
-        super.get<ModelProviderMappingDto[]>(ENDPOINTS.MODEL_MAPPINGS.BY_MODEL(modelId)),
+        super.get<ModelProviderMappingDto[]>(ENDPOINTS.MODEL_MAPPINGS.BASE + `?modelId=${modelId}` /* BY_MODEL endpoint does not exist */),
       CACHE_TTL.MEDIUM
     );
   }
@@ -212,37 +212,11 @@ export class ModelMappingService extends FetchBaseApiClient {
   }
 
   async importMappings(file: File | Blob, format: 'csv' | 'json'): Promise<BulkMappingResponse> {
-    if (!['csv', 'json'].includes(format)) {
-      throw new ValidationError(`Unsupported format: ${format}. Supported formats: csv, json`);
-    }
-
-    const formData = new FormData();
-    formData.append('file', file, `mappings.${format}`);
-    formData.append('format', format);
-
-    const response = await this.post<BulkMappingResponse>(
-      ENDPOINTS.MODEL_MAPPINGS.IMPORT,
-      formData
-    );
-
-    await this.invalidateCache();
-    return response;
+    throw new Error('IMPORT endpoint no longer exists in the API.');
   }
 
   async exportMappings(format: 'csv' | 'json'): Promise<Blob> {
-    if (!['csv', 'json'].includes(format)) {
-      throw new ValidationError(`Unsupported format: ${format}. Supported formats: csv, json`);
-    }
-
-    const response = await this.get<Blob>(
-      ENDPOINTS.MODEL_MAPPINGS.EXPORT,
-      { format },
-      {
-        responseType: 'blob',
-      }
-    );
-
-    return response;
+    throw new Error('EXPORT endpoint no longer exists in the API.');
   }
 
   // Discovery Operations
@@ -250,63 +224,26 @@ export class ModelMappingService extends FetchBaseApiClient {
     const cacheKey = this.getCacheKey('discover-provider', providerId.toString());
     return this.withCache(
       cacheKey,
-      () => super.get<DiscoveredModel[]>(ENDPOINTS.MODEL_MAPPINGS.DISCOVER_PROVIDER(providerId)),
+      () => super.get<DiscoveredModel[]>(ENDPOINTS.MODEL_MAPPINGS.DISCOVER(providerId)),
       CACHE_TTL.SHORT
     );
   }
 
   async discoverModelCapabilities(providerId: number, modelId: string): Promise<DiscoveredModel> {
-    if (!modelId?.trim()) {
-      throw new ValidationError('Model ID is required');
-    }
-
-    const cacheKey = this.getCacheKey('discover-model', providerId.toString(), modelId);
-    return this.withCache(
-      cacheKey,
-      () => super.get<DiscoveredModel>(ENDPOINTS.MODEL_MAPPINGS.DISCOVER_MODEL(providerId, modelId)),
-      CACHE_TTL.MEDIUM
-    );
+    throw new Error('DISCOVER_MODEL endpoint no longer exists. Use DISCOVER with a specific provider ID instead.');
   }
 
   async testCapability(modelAlias: string, capability: string): Promise<CapabilityTestResult> {
-    if (!modelAlias?.trim()) {
-      throw new ValidationError('Model alias is required');
-    }
-    if (!capability?.trim()) {
-      throw new ValidationError('Capability is required');
-    }
-
-    const cacheKey = this.getCacheKey('test-capability', modelAlias, capability);
-    return this.withCache(
-      cacheKey,
-      () => super.get<CapabilityTestResult>(ENDPOINTS.MODEL_MAPPINGS.TEST_CAPABILITY(modelAlias, capability)),
-      CACHE_TTL.SHORT
-    );
+    throw new Error('TEST_CAPABILITY endpoint no longer exists in the API.');
   }
 
   // Advanced Operations
   async getRoutingInfo(modelId: string): Promise<ModelRoutingInfo> {
-    if (!modelId?.trim()) {
-      throw new ValidationError('Model ID is required');
-    }
-
-    const cacheKey = this.getCacheKey('model-routing-info', modelId);
-    return this.withCache(
-      cacheKey,
-      () => super.get<ModelRoutingInfo>(ENDPOINTS.MODEL_MAPPINGS.ROUTING(modelId)),
-      CACHE_TTL.MEDIUM
-    );
+    throw new Error('ROUTING endpoint no longer exists in the API.');
   }
 
   async suggestOptimalMapping(modelId: string): Promise<ModelMappingSuggestion> {
-    if (!modelId?.trim()) {
-      throw new ValidationError('Model ID is required');
-    }
-
-    return super.post<ModelMappingSuggestion>(
-      ENDPOINTS.MODEL_MAPPINGS.SUGGEST,
-      { modelId }
-    );
+    throw new Error('SUGGEST endpoint no longer exists in the API.');
   }
 
 

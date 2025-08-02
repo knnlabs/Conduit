@@ -13,7 +13,36 @@ export async function GET(req: NextRequest) {
     }
     
     const client = getServerAdminClient();
-    const blob = await client.ipFilters.export(format);
+    // Export endpoint no longer exists in the API
+    // Fetch all filters and format them manually
+    const filters = await client.ipFilters.list();
+    
+    let content: string;
+    let contentType: string;
+    
+    if (format === 'csv') {
+      // Create CSV content
+      const headers = ['ID', 'Name', 'IP/CIDR', 'Type', 'Enabled', 'Description', 'Created', 'Match Count'];
+      const rows = filters.map(f => [
+        f.id,
+        f.name,
+        f.ipAddressOrCidr,
+        f.filterType,
+        f.isEnabled,
+        f.description ?? '',
+        f.createdAt,
+        f.matchCount ?? 0
+      ]);
+      
+      content = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+      contentType = 'text/csv';
+    } else {
+      // Create JSON content
+      content = JSON.stringify(filters, null, 2);
+      contentType = 'application/json';
+    }
+    
+    const blob = new Blob([content], { type: contentType });
     
     // Convert blob to buffer for NextResponse
     const arrayBuffer = await blob.arrayBuffer();

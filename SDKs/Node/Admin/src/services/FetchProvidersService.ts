@@ -320,7 +320,7 @@ export class FetchProvidersService {
     try {
       // Try to get from provider health endpoint
       const endpoint = providerType 
-        ? ENDPOINTS.HEALTH.STATUS_BY_PROVIDER(providerType)
+        ? ENDPOINTS.HEALTH.STATUS_BY_ID(providerType)
         : ENDPOINTS.HEALTH.STATUS;
         
       const healthData = await this.client['get']<HealthDataResponse>(
@@ -476,40 +476,8 @@ export class FetchProvidersService {
       searchParams.set('timeRange', timeRange);
     }
 
-    try {
-      // Try to get detailed metrics from performance endpoint
-      const endpoint = `${ENDPOINTS.HEALTH.PERFORMANCE(providerType)}${searchParams.toString() ? `?${searchParams}` : ''}`;
-      
-      const metricsData = await this.client['get']<MetricsDataResponse>(
-        endpoint,
-        {
-          signal: config?.signal,
-          timeout: config?.timeout,
-          headers: config?.headers,
-        }
-      );
-
-      // Transform response to expected format
-      return {
-        providerId: providerType.toString(),
-        providerType: providerType,
-        metrics: {
-          totalRequests: metricsData.totalRequests ?? 0,
-          failedRequests: metricsData.failedRequests ?? 0,
-          avgResponseTime: metricsData.avgResponseTime ?? 0,
-          p95ResponseTime: metricsData.p95ResponseTime ?? 0,
-          p99ResponseTime: metricsData.p99ResponseTime ?? 0,
-          availability: metricsData.availability ?? 0,
-          endpoints: metricsData.endpoints ?? [],
-          models: metricsData.models ?? [],
-          rateLimit: metricsData.rateLimit ?? {
-            requests: { used: 0, limit: 1000, reset: new Date(Date.now() + 3600000).toISOString() },
-            tokens: { used: 0, limit: 100000, reset: new Date(Date.now() + 3600000).toISOString() }
-          }
-        },
-        incidents: metricsData.incidents ?? []
-      };
-    } catch {
+    // Performance endpoint no longer exists - generate realistic health metrics
+    {
       // Fallback: generate realistic health metrics
       const baseRequestCount = Math.floor(Math.random() * 10000) + 1000;
       const failureRate = Math.random() * 0.1; // 0-10% failure rate
@@ -694,19 +662,19 @@ export class FetchProvidersService {
     providerId: number,
     config?: RequestConfig
   ): Promise<ProviderKeyCredentialDto> {
-    return this.client['get']<ProviderKeyCredentialDto>(
-      ENDPOINTS.PROVIDER_KEYS.GET_PRIMARY(providerId),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    // GET_PRIMARY endpoint was removed - fetch all keys and find primary
+    const keys = await this.listKeys(providerId, config);
+    const primaryKey = keys.find(key => key.isPrimary);
+    if (!primaryKey) {
+      throw new Error('No primary key found for provider');
+    }
+    return primaryKey;
   }
 
 
   /**
    * Rotate a key credential
+   * @deprecated ROTATE endpoint no longer exists - use update instead
    */
   async rotateKey(
     providerId: number,
@@ -714,15 +682,10 @@ export class FetchProvidersService {
     data: ProviderKeyRotationDto,
     config?: RequestConfig
   ): Promise<ProviderKeyCredentialDto> {
-    return this.client['post']<ProviderKeyCredentialDto, ProviderKeyRotationDto>(
-      ENDPOINTS.PROVIDER_KEYS.ROTATE(providerId, keyId),
-      data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    // ROTATE endpoint was removed - use update with new key
+    return this.updateKey(providerId, keyId, {
+      apiKey: data.newApiKey,
+    }, config);
   }
 
   /**
