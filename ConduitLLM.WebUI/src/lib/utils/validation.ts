@@ -79,7 +79,8 @@ export function createValidator<T>(
 
     for (const [field, validator] of Object.entries(schema)) {
       const value = bodyObj[field];
-      if (!validator(value)) {
+      const validatorFn = validator as (value: unknown) => boolean;
+      if (!validatorFn(value)) {
         errors.push({
           field,
           message: `Invalid value for field: ${field}`
