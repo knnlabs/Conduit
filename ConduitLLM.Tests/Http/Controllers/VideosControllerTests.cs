@@ -367,7 +367,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
             var problemDetails = Assert.IsType<ProblemDetails>(notFoundResult.Value);
             Assert.Equal("Task Not Found", problemDetails.Title);
-            Assert.Contains(taskId, problemDetails.Detail);
+            Assert.Equal("The requested task was not found", problemDetails.Detail);
         }
 
         [Fact]

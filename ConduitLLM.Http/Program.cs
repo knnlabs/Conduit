@@ -6,6 +6,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Data; // Added for database initialization
 using ConduitLLM.Configuration.Extensions; // Added for DataProtectionExtensions and HealthCheckExtensions
 using ConduitLLM.Configuration.Repositories; // Added for repository interfaces
+using ConduitLLM.Configuration.Interfaces; // Added for IVirtualKeyGroupRepository
 using ConduitLLM.Core;
 using ConduitLLM.Core.Exceptions; // Add namespace for custom exceptions
 using ConduitLLM.Core.Extensions;
@@ -547,11 +548,12 @@ if (!string.IsNullOrEmpty(redisConnectionString))
     {
         var virtualKeyRepository = serviceProvider.GetRequiredService<IVirtualKeyRepository>();
         var spendHistoryRepository = serviceProvider.GetRequiredService<IVirtualKeySpendHistoryRepository>();
+        var groupRepository = serviceProvider.GetRequiredService<IVirtualKeyGroupRepository>();
         var cache = serviceProvider.GetRequiredService<ConduitLLM.Core.Interfaces.IVirtualKeyCache>();
         var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional
         var logger = serviceProvider.GetRequiredService<ILogger<CachedApiVirtualKeyService>>();
         
-        return new CachedApiVirtualKeyService(virtualKeyRepository, spendHistoryRepository, cache, publishEndpoint, logger);
+        return new CachedApiVirtualKeyService(virtualKeyRepository, spendHistoryRepository, groupRepository, cache, publishEndpoint, logger);
     });
     
     Console.WriteLine("[Conduit] Using Redis-cached services (high-performance mode) with distributed locking");
@@ -1239,7 +1241,8 @@ builder.Services.AddSingleton<ConduitLLM.Configuration.Services.BatchSpendUpdate
 {
     var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Configuration.Services.BatchSpendUpdateService>>();
     var serviceScopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
-    var batchService = new ConduitLLM.Configuration.Services.BatchSpendUpdateService(serviceScopeFactory, logger);
+    var redisConnectionFactory = serviceProvider.GetRequiredService<ConduitLLM.Configuration.Services.RedisConnectionFactory>();
+    var batchService = new ConduitLLM.Configuration.Services.BatchSpendUpdateService(serviceScopeFactory, redisConnectionFactory, logger);
     
     // Wire up cache invalidation event if Redis cache is available
     var cache = serviceProvider.GetService<ConduitLLM.Core.Interfaces.IVirtualKeyCache>();

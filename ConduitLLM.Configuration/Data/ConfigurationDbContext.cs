@@ -32,6 +32,11 @@ namespace ConduitLLM.Configuration
         public virtual DbSet<VirtualKey> VirtualKeys { get; set; } = null!;
 
         /// <summary>
+        /// Database set for virtual key groups
+        /// </summary>
+        public virtual DbSet<VirtualKeyGroup> VirtualKeyGroups { get; set; } = null!;
+
+        /// <summary>
         /// Database set for request logs
         /// </summary>
         public virtual DbSet<RequestLog> RequestLogs { get; set; } = null!;
@@ -45,6 +50,7 @@ namespace ConduitLLM.Configuration
         /// Database set for virtual key spend history (alias for backward compatibility)
         /// </summary>
         public virtual DbSet<VirtualKeySpendHistory> VirtualKeySpendHistories => VirtualKeySpendHistory;
+
 
         /// <summary>
         /// Database set for notifications
@@ -175,6 +181,20 @@ namespace ConduitLLM.Configuration
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // Configure VirtualKeyGroup entity
+            modelBuilder.Entity<VirtualKeyGroup>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.ExternalGroupId);
+                
+                // Configure relationships
+                entity.HasMany(e => e.VirtualKeys)
+                      .WithOne(e => e.VirtualKeyGroup)
+                      .HasForeignKey(e => e.VirtualKeyGroupId)
+                      .OnDelete(DeleteBehavior.Restrict);
+                
+            });
 
             // Configure VirtualKey entity
             modelBuilder.Entity<VirtualKey>(entity =>

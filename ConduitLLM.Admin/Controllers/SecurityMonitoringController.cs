@@ -289,7 +289,7 @@ namespace ConduitLLM.Admin.Controllers
                     AccessControl = new
                     {
                         ActiveKeys = await dbContext.VirtualKeys.CountAsync(k => k.IsEnabled, cancellationToken),
-                        KeysWithBudgets = await dbContext.VirtualKeys.CountAsync(k => k.MaxBudget > 0, cancellationToken),
+                        KeysWithBudgets = await dbContext.VirtualKeyGroups.CountAsync(g => g.Balance > 0, cancellationToken),
                         IpWhitelistEnabled = await dbContext.IpFilters.AnyAsync(f => f.FilterType == "whitelist", cancellationToken),
                         RateLimitingEnabled = true
                     },
@@ -335,7 +335,7 @@ namespace ConduitLLM.Admin.Controllers
             var score = 0.0;
 
             // Check various compliance factors
-            if (await context.VirtualKeys.AnyAsync(k => k.MaxBudget > 0, cancellationToken))
+            if (await context.VirtualKeyGroups.AnyAsync(g => g.Balance > 0, cancellationToken))
                 score += 20; // Budget controls
 
             if (await context.IpFilters.AnyAsync(cancellationToken))

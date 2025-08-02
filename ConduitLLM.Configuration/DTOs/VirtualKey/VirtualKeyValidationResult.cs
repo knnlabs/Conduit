@@ -26,16 +26,6 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         public string? AllowedModels { get; set; }
 
         /// <summary>
-        /// Maximum budget for this key
-        /// </summary>
-        public decimal? MaxBudget { get; set; }
-
-        /// <summary>
-        /// Current spend amount
-        /// </summary>
-        public decimal CurrentSpend { get; set; }
-
-        /// <summary>
         /// Error message if validation failed
         /// </summary>
         public string? ErrorMessage { get; set; }

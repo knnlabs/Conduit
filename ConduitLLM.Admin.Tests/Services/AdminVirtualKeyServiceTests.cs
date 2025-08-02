@@ -7,6 +7,7 @@ using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Events;
@@ -22,6 +23,7 @@ namespace ConduitLLM.Admin.Tests.Services
     {
         private readonly Mock<IVirtualKeyRepository> _mockVirtualKeyRepository;
         private readonly Mock<IVirtualKeySpendHistoryRepository> _mockSpendHistoryRepository;
+        private readonly Mock<IVirtualKeyGroupRepository> _mockGroupRepository;
         private readonly Mock<IVirtualKeyCache> _mockCache;
         private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
         private readonly Mock<ILogger<AdminVirtualKeyService>> _mockLogger;
@@ -34,6 +36,7 @@ namespace ConduitLLM.Admin.Tests.Services
         {
             _mockVirtualKeyRepository = new Mock<IVirtualKeyRepository>();
             _mockSpendHistoryRepository = new Mock<IVirtualKeySpendHistoryRepository>();
+            _mockGroupRepository = new Mock<IVirtualKeyGroupRepository>();
             _mockCache = new Mock<IVirtualKeyCache>();
             _mockPublishEndpoint = new Mock<IPublishEndpoint>();
             _mockLogger = new Mock<ILogger<AdminVirtualKeyService>>();
@@ -44,6 +47,7 @@ namespace ConduitLLM.Admin.Tests.Services
             _service = new AdminVirtualKeyService(
                 _mockVirtualKeyRepository.Object,
                 _mockSpendHistoryRepository.Object,
+                _mockGroupRepository.Object,
                 _mockCache.Object,
                 _mockPublishEndpoint.Object,
                 _mockLogger.Object,
@@ -172,7 +176,7 @@ namespace ConduitLLM.Admin.Tests.Services
         }
 
         [Fact]
-        public async Task ValidateVirtualKeyAsync_BudgetDepleted_ReturnsInvalidWithError()
+        public async Task ValidateVirtualKeyAsync_GroupBudgetDepleted_ReturnsInvalidWithError()
         {
             // Arrange
             var key = VirtualKeyConstants.KeyPrefix + "testkey123";
@@ -182,14 +186,24 @@ namespace ConduitLLM.Admin.Tests.Services
                 KeyName = "Test Key",
                 KeyHash = "hash123",
                 IsEnabled = true,
-                MaxBudget = 100m,
-                CurrentSpend = 100m, // Budget fully spent
+                VirtualKeyGroupId = 1,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
 
+            var group = new VirtualKeyGroup
+            {
+                Id = 1,
+                GroupName = "Test Group",
+                Balance = 0m, // No balance left
+                LifetimeCreditsAdded = 100m,
+                LifetimeSpent = 100m
+            };
+
             _mockVirtualKeyRepository.Setup(x => x.GetByKeyHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(virtualKey);
+            _mockGroupRepository.Setup(x => x.GetByKeyIdAsync(1))
+                .ReturnsAsync(group);
 
             // Act
             var result = await _service.ValidateVirtualKeyAsync(key);
@@ -200,34 +214,6 @@ namespace ConduitLLM.Admin.Tests.Services
             Assert.Null(result.VirtualKeyId);
         }
 
-        [Fact]
-        public async Task ValidateVirtualKeyAsync_BudgetExceeded_ReturnsInvalidWithError()
-        {
-            // Arrange
-            var key = VirtualKeyConstants.KeyPrefix + "testkey123";
-            var virtualKey = new VirtualKey
-            {
-                Id = 1,
-                KeyName = "Test Key",
-                KeyHash = "hash123",
-                IsEnabled = true,
-                MaxBudget = 100m,
-                CurrentSpend = 150m, // Over budget
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-
-            _mockVirtualKeyRepository.Setup(x => x.GetByKeyHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(virtualKey);
-
-            // Act
-            var result = await _service.ValidateVirtualKeyAsync(key);
-
-            // Assert
-            Assert.False(result.IsValid);
-            Assert.Equal("Budget depleted", result.ErrorMessage);
-            Assert.Null(result.VirtualKeyId);
-        }
 
         [Fact]
         public async Task ValidateVirtualKeyAsync_ModelNotAllowed_ReturnsInvalidWithError()
@@ -269,14 +255,24 @@ namespace ConduitLLM.Admin.Tests.Services
                 KeyHash = "hash123",
                 IsEnabled = true,
                 AllowedModels = "gpt-3.5-turbo,gpt-4,claude-3-opus",
-                MaxBudget = 100m,
-                CurrentSpend = 50m,
+                VirtualKeyGroupId = 1,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
 
             _mockVirtualKeyRepository.Setup(x => x.GetByKeyHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(virtualKey);
+            
+            var group = new VirtualKeyGroup
+            {
+                Id = 1,
+                GroupName = "Test Group",
+                Balance = 50m, // Has balance
+                LifetimeCreditsAdded = 100m,
+                LifetimeSpent = 50m
+            };
+            _mockGroupRepository.Setup(x => x.GetByKeyIdAsync(1))
+                .ReturnsAsync(group);
 
             // Act
             var result = await _service.ValidateVirtualKeyAsync(key, "gpt-4");
@@ -287,8 +283,6 @@ namespace ConduitLLM.Admin.Tests.Services
             Assert.Equal(1, result.VirtualKeyId);
             Assert.Equal("Test Key", result.KeyName);
             Assert.Equal("gpt-3.5-turbo,gpt-4,claude-3-opus", result.AllowedModels);
-            Assert.Equal(100m, result.MaxBudget);
-            Assert.Equal(50m, result.CurrentSpend);
         }
 
         [Fact]
@@ -303,14 +297,17 @@ namespace ConduitLLM.Admin.Tests.Services
                 KeyHash = "hash123",
                 IsEnabled = true,
                 AllowedModels = "gpt-4*,claude-*",
-                MaxBudget = 100m,
-                CurrentSpend = 25m,
+                VirtualKeyGroupId = 1,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
 
             _mockVirtualKeyRepository.Setup(x => x.GetByKeyHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(virtualKey);
+            
+            var group = new VirtualKeyGroup { Id = 1, Balance = 75m };
+            _mockGroupRepository.Setup(x => x.GetByKeyIdAsync(1))
+                .ReturnsAsync(group);
 
             // Act
             var result = await _service.ValidateVirtualKeyAsync(key, "gpt-4-turbo-preview");
@@ -333,12 +330,17 @@ namespace ConduitLLM.Admin.Tests.Services
                 KeyHash = "hash123",
                 IsEnabled = true,
                 AllowedModels = "", // No restrictions
+                VirtualKeyGroupId = 1,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
 
             _mockVirtualKeyRepository.Setup(x => x.GetByKeyHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(virtualKey);
+            
+            var group = new VirtualKeyGroup { Id = 1, Balance = 100m };
+            _mockGroupRepository.Setup(x => x.GetByKeyIdAsync(1))
+                .ReturnsAsync(group);
 
             // Act
             var result = await _service.ValidateVirtualKeyAsync(key, "any-model");
@@ -349,34 +351,6 @@ namespace ConduitLLM.Admin.Tests.Services
             Assert.Equal(1, result.VirtualKeyId);
         }
 
-        [Fact]
-        public async Task ValidateVirtualKeyAsync_ValidKeyNoBudgetLimit_ReturnsValid()
-        {
-            // Arrange
-            var key = VirtualKeyConstants.KeyPrefix + "testkey123";
-            var virtualKey = new VirtualKey
-            {
-                Id = 1,
-                KeyName = "Test Key",
-                KeyHash = "hash123",
-                IsEnabled = true,
-                MaxBudget = null, // No budget limit
-                CurrentSpend = 10000m, // High spend but no limit
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-
-            _mockVirtualKeyRepository.Setup(x => x.GetByKeyHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(virtualKey);
-
-            // Act
-            var result = await _service.ValidateVirtualKeyAsync(key);
-
-            // Assert
-            Assert.True(result.IsValid);
-            Assert.Null(result.ErrorMessage);
-            Assert.Equal(1, result.VirtualKeyId);
-        }
 
         [Fact]
         public async Task ValidateVirtualKeyAsync_ValidKeyNoExpiration_ReturnsValid()
@@ -390,12 +364,17 @@ namespace ConduitLLM.Admin.Tests.Services
                 KeyHash = "hash123",
                 IsEnabled = true,
                 ExpiresAt = null, // No expiration
+                VirtualKeyGroupId = 1,
                 CreatedAt = DateTime.UtcNow.AddYears(-1), // Old key but no expiration
                 UpdatedAt = DateTime.UtcNow
             };
 
             _mockVirtualKeyRepository.Setup(x => x.GetByKeyHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(virtualKey);
+            
+            var group = new VirtualKeyGroup { Id = 1, Balance = 1000m };
+            _mockGroupRepository.Setup(x => x.GetByKeyIdAsync(1))
+                .ReturnsAsync(group);
 
             // Act
             var result = await _service.ValidateVirtualKeyAsync(key);
@@ -418,12 +397,17 @@ namespace ConduitLLM.Admin.Tests.Services
                 KeyHash = "hash123",
                 IsEnabled = true,
                 AllowedModels = " GPT-4 , Claude-3-Opus , GPT-3.5-Turbo ", // Spaces and mixed case
+                VirtualKeyGroupId = 1,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
 
             _mockVirtualKeyRepository.Setup(x => x.GetByKeyHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(virtualKey);
+            
+            var group = new VirtualKeyGroup { Id = 1, Balance = 500m };
+            _mockGroupRepository.Setup(x => x.GetByKeyIdAsync(1))
+                .ReturnsAsync(group);
 
             // Act
             var result = await _service.ValidateVirtualKeyAsync(key, "gpt-4"); // lowercase
@@ -445,12 +429,17 @@ namespace ConduitLLM.Admin.Tests.Services
                 KeyHash = "hash123",
                 IsEnabled = true,
                 AllowedModels = "gpt-4*,claude-3-*,text-embedding-*",
+                VirtualKeyGroupId = 1,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
 
             _mockVirtualKeyRepository.Setup(x => x.GetByKeyHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(virtualKey);
+            
+            var group = new VirtualKeyGroup { Id = 1, Balance = 250m };
+            _mockGroupRepository.Setup(x => x.GetByKeyIdAsync(1))
+                .ReturnsAsync(group);
 
             // Act & Assert - Multiple model tests
             var result1 = await _service.ValidateVirtualKeyAsync(key, "claude-3-opus-20240229");
@@ -475,13 +464,16 @@ namespace ConduitLLM.Admin.Tests.Services
             var request = new CreateVirtualKeyRequestDto
             {
                 KeyName = "Test API Key",
-                MaxBudget = 100m,
                 AllowedModels = "gpt-4,claude-3",
                 ExpiresAt = DateTime.UtcNow.AddDays(30),
-                BudgetDuration = VirtualKeyConstants.BudgetPeriods.Monthly,
                 RateLimitRpm = 60,
-                RateLimitRpd = 1000
+                RateLimitRpd = 1000,
+                VirtualKeyGroupId = 1
             };
+            
+            // Mock the group exists
+            _mockGroupRepository.Setup(x => x.GetByIdAsync(1))
+                .ReturnsAsync(new VirtualKeyGroup { Id = 1, GroupName = "Test Group", Balance = 100m });
 
             _mockVirtualKeyRepository.Setup(x => x.CreateAsync(It.IsAny<VirtualKey>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(1);
@@ -493,8 +485,8 @@ namespace ConduitLLM.Admin.Tests.Services
                     KeyName = request.KeyName,
                     KeyHash = "someHash",
                     IsEnabled = true,
-                    MaxBudget = request.MaxBudget,
                     AllowedModels = request.AllowedModels,
+                    VirtualKeyGroupId = 1,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 });
@@ -682,149 +674,11 @@ namespace ConduitLLM.Admin.Tests.Services
 
         #endregion
 
-        #region Budget and Spend Tests
-
-        [Fact]
-        public async Task ResetSpendAsync_ValidKey_ResetsSpendAndInvalidatesCache()
-        {
-            // Arrange
-            var existingKey = new VirtualKey
-            {
-                Id = 1,
-                KeyHash = "hash123",
-                CurrentSpend = 50m,
-                BudgetDuration = VirtualKeyConstants.BudgetPeriods.Monthly
-            };
-
-            _mockVirtualKeyRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(existingKey);
-
-            _mockVirtualKeyRepository.Setup(x => x.UpdateAsync(It.IsAny<VirtualKey>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
-
-            // Act
-            var result = await _service.ResetSpendAsync(1);
-
-            // Assert
-            Assert.True(result);
-            Assert.Equal(0m, existingKey.CurrentSpend);
-            _mockSpendHistoryRepository.Verify(x => x.CreateAsync(It.IsAny<VirtualKeySpendHistory>(), It.IsAny<CancellationToken>()), Times.Once);
-            _mockCache.Verify(x => x.InvalidateVirtualKeyAsync("hash123"), Times.Once);
-        }
-
-        [Fact]
-        public async Task UpdateSpendAsync_ValidKey_UpdatesSpendAndInvalidatesCache()
-        {
-            // Arrange
-            var existingKey = new VirtualKey
-            {
-                Id = 1,
-                KeyHash = "hash123",
-                CurrentSpend = 50m
-            };
-
-            _mockVirtualKeyRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(existingKey);
-
-            _mockVirtualKeyRepository.Setup(x => x.UpdateAsync(It.IsAny<VirtualKey>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
-
-            // Act
-            var result = await _service.UpdateSpendAsync(1, 25m);
-
-            // Assert
-            Assert.True(result);
-            Assert.Equal(75m, existingKey.CurrentSpend);
-            _mockCache.Verify(x => x.InvalidateVirtualKeyAsync("hash123"), Times.Once);
-        }
-
-        [Fact]
-        public async Task CheckBudgetAsync_MonthlyBudgetExpired_ResetsSpend()
-        {
-            // Arrange
-            var lastMonth = DateTime.UtcNow.AddMonths(-1);
-            var existingKey = new VirtualKey
-            {
-                Id = 1,
-                CurrentSpend = 100m,
-                BudgetDuration = VirtualKeyConstants.BudgetPeriods.Monthly,
-                BudgetStartDate = new DateTime(lastMonth.Year, lastMonth.Month, 1, 0, 0, 0, DateTimeKind.Utc)
-            };
-
-            _mockVirtualKeyRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(existingKey);
-
-            _mockVirtualKeyRepository.Setup(x => x.UpdateAsync(It.IsAny<VirtualKey>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
-
-            // Act
-            var result = await _service.CheckBudgetAsync(1);
-
-            // Assert
-            Assert.True(result.WasReset);
-            Assert.NotNull(result.NewBudgetStartDate);
-            Assert.Equal(0m, existingKey.CurrentSpend);
-            _mockSpendHistoryRepository.Verify(x => x.CreateAsync(It.IsAny<VirtualKeySpendHistory>(), It.IsAny<CancellationToken>()), Times.Once);
-        }
-
-        [Fact]
-        public async Task CheckBudgetAsync_DailyBudgetExpired_ResetsSpend()
-        {
-            // Arrange
-            var existingKey = new VirtualKey
-            {
-                Id = 1,
-                CurrentSpend = 50m,
-                BudgetDuration = VirtualKeyConstants.BudgetPeriods.Daily,
-                BudgetStartDate = DateTime.UtcNow.AddDays(-1).Date
-            };
-
-            _mockVirtualKeyRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(existingKey);
-
-            _mockVirtualKeyRepository.Setup(x => x.UpdateAsync(It.IsAny<VirtualKey>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
-
-            // Act
-            var result = await _service.CheckBudgetAsync(1);
-
-            // Assert
-            Assert.True(result.WasReset);
-            Assert.NotNull(result.NewBudgetStartDate);
-            Assert.Equal(DateTime.UtcNow.Date, result.NewBudgetStartDate.Value.Date);
-            Assert.Equal(0m, existingKey.CurrentSpend);
-        }
-
-        [Fact]
-        public async Task CheckBudgetAsync_TotalBudget_NeverResets()
-        {
-            // Arrange
-            var existingKey = new VirtualKey
-            {
-                Id = 1,
-                CurrentSpend = 500m,
-                BudgetDuration = VirtualKeyConstants.BudgetPeriods.Total,
-                BudgetStartDate = DateTime.UtcNow.AddYears(-1)
-            };
-
-            _mockVirtualKeyRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(existingKey);
-
-            // Act
-            var result = await _service.CheckBudgetAsync(1);
-
-            // Assert
-            Assert.False(result.WasReset);
-            Assert.Null(result.NewBudgetStartDate);
-            _mockVirtualKeyRepository.Verify(x => x.UpdateAsync(It.IsAny<VirtualKey>(), It.IsAny<CancellationToken>()), Times.Never);
-        }
-
-        #endregion
 
         #region PerformMaintenanceAsync Tests
 
         [Fact]
-        public async Task PerformMaintenanceAsync_ProcessesExpiredKeysAndBudgets()
+        public async Task PerformMaintenanceAsync_ProcessesExpiredKeys()
         {
             // Arrange
             var keys = new List<VirtualKey>
@@ -835,25 +689,17 @@ namespace ConduitLLM.Admin.Tests.Services
                     Id = 1,
                     KeyName = "Expired Key",
                     IsEnabled = true,
-                    ExpiresAt = DateTime.UtcNow.AddDays(-1)
-                },
-                // Key with monthly budget that needs reset
-                new VirtualKey
-                {
-                    Id = 2,
-                    KeyName = "Monthly Budget Key",
-                    IsEnabled = true,
-                    CurrentSpend = 100m,
-                    BudgetDuration = VirtualKeyConstants.BudgetPeriods.Monthly,
-                    BudgetStartDate = DateTime.UtcNow.AddMonths(-1).Date
+                    ExpiresAt = DateTime.UtcNow.AddDays(-1),
+                    VirtualKeyGroupId = 1
                 },
                 // Valid key that shouldn't change
                 new VirtualKey
                 {
-                    Id = 3,
+                    Id = 2,
                     KeyName = "Valid Key",
                     IsEnabled = true,
-                    ExpiresAt = DateTime.UtcNow.AddDays(30)
+                    ExpiresAt = DateTime.UtcNow.AddDays(30),
+                    VirtualKeyGroupId = 1
                 }
             };
 
@@ -863,9 +709,6 @@ namespace ConduitLLM.Admin.Tests.Services
             _mockVirtualKeyRepository.Setup(x => x.UpdateAsync(It.IsAny<VirtualKey>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
-            _mockVirtualKeyRepository.Setup(x => x.GetByIdAsync(2, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(keys[1]);
-
             // Act
             await _service.PerformMaintenanceAsync();
 
@@ -873,11 +716,8 @@ namespace ConduitLLM.Admin.Tests.Services
             // Verify expired key was disabled
             Assert.False(keys[0].IsEnabled);
             
-            // Verify budget was reset
-            _mockSpendHistoryRepository.Verify(x => x.CreateAsync(It.IsAny<VirtualKeySpendHistory>(), It.IsAny<CancellationToken>()), Times.Once);
-            
-            // Verify updates were called
-            _mockVirtualKeyRepository.Verify(x => x.UpdateAsync(It.IsAny<VirtualKey>(), It.IsAny<CancellationToken>()), Times.AtLeast(2));
+            // Only the expired key should be updated
+            _mockVirtualKeyRepository.Verify(x => x.UpdateAsync(It.IsAny<VirtualKey>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         #endregion

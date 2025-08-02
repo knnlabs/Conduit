@@ -3,6 +3,7 @@ using ConduitLLM.Admin.Options;
 using ConduitLLM.Admin.Security;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Core.Interfaces; // For IVirtualKeyCache and ILLMClientFactory
+using ConduitLLM.Configuration.Interfaces; // For repository interfaces  
 using ConduitLLM.Configuration.Repositories; // For repository interfaces
 using ConduitLLM.Configuration.Options;
 
@@ -71,6 +72,7 @@ public static class ServiceCollectionExtensions
         {
             var virtualKeyRepository = serviceProvider.GetRequiredService<IVirtualKeyRepository>();
             var spendHistoryRepository = serviceProvider.GetRequiredService<IVirtualKeySpendHistoryRepository>();
+            var groupRepository = serviceProvider.GetRequiredService<IVirtualKeyGroupRepository>();
             var cache = serviceProvider.GetService<IVirtualKeyCache>(); // Optional - null if not registered
             var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
             var logger = serviceProvider.GetRequiredService<ILogger<AdminVirtualKeyService>>();
@@ -78,7 +80,7 @@ public static class ServiceCollectionExtensions
             var modelCapabilityService = serviceProvider.GetRequiredService<IModelCapabilityService>();
             var mediaLifecycleService = serviceProvider.GetService<IMediaLifecycleService>(); // Optional - null if not configured
             
-            return new AdminVirtualKeyService(virtualKeyRepository, spendHistoryRepository, cache, publishEndpoint, logger, modelProviderMappingRepository, modelCapabilityService, mediaLifecycleService);
+            return new AdminVirtualKeyService(virtualKeyRepository, spendHistoryRepository, groupRepository, cache, publishEndpoint, logger, modelProviderMappingRepository, modelCapabilityService, mediaLifecycleService);
         });
         // Register AdminModelProviderMappingService with optional event publishing dependency
         services.AddScoped<IAdminModelProviderMappingService>(serviceProvider =>

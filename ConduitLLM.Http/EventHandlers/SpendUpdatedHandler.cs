@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Http.Services;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Configuration.Interfaces;
 
 namespace ConduitLLM.Http.EventHandlers
 {
@@ -15,15 +16,18 @@ namespace ConduitLLM.Http.EventHandlers
     {
         private readonly ISpendNotificationService _notificationService;
         private readonly IVirtualKeyService _virtualKeyService;
+        private readonly IVirtualKeyGroupRepository _groupRepository;
         private readonly ILogger<SpendUpdatedHandler> _logger;
 
         public SpendUpdatedHandler(
             ISpendNotificationService notificationService,
             IVirtualKeyService virtualKeyService,
+            IVirtualKeyGroupRepository groupRepository,
             ILogger<SpendUpdatedHandler> logger)
         {
             _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
+            _groupRepository = groupRepository ?? throw new ArgumentNullException(nameof(groupRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -47,6 +51,10 @@ namespace ConduitLLM.Http.EventHandlers
                     return;
                 }
 
+                // Get the key's group for budget information
+                var group = await _groupRepository.GetByIdAsync(virtualKey.VirtualKeyGroupId);
+                decimal? maxBudget = group?.Balance;
+
                 // Extract model and provider from request context if available
                 // For now, use defaults - in production, this would come from request metadata
                 var model = "unknown";
@@ -67,7 +75,7 @@ namespace ConduitLLM.Http.EventHandlers
                     message.KeyId,
                     message.Amount,
                     message.NewTotalSpend,
-                    virtualKey.MaxBudget,
+                    maxBudget,
                     model,
                     provider);
 

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
 
 using Microsoft.Extensions.Logging;
@@ -17,6 +18,7 @@ namespace ConduitLLM.Configuration.Services
     {
         private readonly INotificationRepository _notificationRepository;
         private readonly IVirtualKeyRepository _virtualKeyRepository;
+        private readonly IVirtualKeyGroupRepository _groupRepository;
         private readonly ILogger<NotificationService> _logger;
 
         // Budget warning thresholds
@@ -32,14 +34,17 @@ namespace ConduitLLM.Configuration.Services
         /// </summary>
         /// <param name="notificationRepository">The notification repository</param>
         /// <param name="virtualKeyRepository">The virtual key repository</param>
+        /// <param name="groupRepository">The virtual key group repository</param>
         /// <param name="logger">The logger</param>
         public NotificationService(
             INotificationRepository notificationRepository,
             IVirtualKeyRepository virtualKeyRepository,
+            IVirtualKeyGroupRepository groupRepository,
             ILogger<NotificationService> logger)
         {
             _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
             _virtualKeyRepository = virtualKeyRepository ?? throw new ArgumentNullException(nameof(virtualKeyRepository));
+            _groupRepository = groupRepository ?? throw new ArgumentNullException(nameof(groupRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -48,33 +53,10 @@ namespace ConduitLLM.Configuration.Services
         /// </summary>
         public async Task CheckBudgetLimitsAsync()
         {
-            try
-            {
-                var keys = (await _virtualKeyRepository.GetAllAsync())
-                    .Where(k => k.IsEnabled && k.MaxBudget.HasValue && k.MaxBudget > 0)
-                    .ToList();
-
-                foreach (var key in keys)
-                {
-                    // Safely access MaxBudget since we've filtered for non-null values above
-                    decimal usagePercentage = key.CurrentSpend / key.MaxBudget!.Value;
-
-                    // Check if we should notify based on threshold
-                    if (usagePercentage >= CriticalThreshold)
-                    {
-                        await CreateBudgetNotificationAsync(key, usagePercentage, NotificationSeverity.Error);
-                    }
-                    else if (usagePercentage >= WarningThreshold)
-                    {
-                        await CreateBudgetNotificationAsync(key, usagePercentage, NotificationSeverity.Warning);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error checking budget limits for notifications");
-                throw;
-            }
+            // Budget tracking is now at the group level
+            // This method is deprecated but kept for interface compatibility
+            _logger.LogDebug("CheckBudgetLimitsAsync called but budget tracking is now at group level");
+            await Task.CompletedTask;
         }
 
         /// <summary>
@@ -138,7 +120,7 @@ namespace ConduitLLM.Configuration.Services
                     .Where(n => !n.IsRead)
                     .FirstOrDefault();
 
-                string message = $"Virtual key '{key.KeyName}' has reached {percentage:P0} of its budget ({key.CurrentSpend:C2} / {key.MaxBudget:C2})";
+                string message = $"Virtual key '{key.KeyName}' - budget notification (deprecated method)";
 
                 if (existingNotification != null)
                 {

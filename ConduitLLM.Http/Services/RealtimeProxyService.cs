@@ -65,11 +65,13 @@ namespace ConduitLLM.Http.Services
                 _connectionMetrics[connectionId] = new ConnectionMetrics();
             }
 
-            // Validate virtual key has permissions
-            if (!virtualKey.IsEnabled || (virtualKey.MaxBudget.HasValue && virtualKey.CurrentSpend >= virtualKey.MaxBudget.Value))
+            // Validate virtual key is enabled
+            if (!virtualKey.IsEnabled)
             {
-                throw new UnauthorizedAccessException("Virtual key is not active or has exceeded budget");
+                throw new UnauthorizedAccessException("Virtual key is not active");
             }
+            
+            // Note: Budget validation happens at the service layer during key validation
 
             // Get the provider client and establish connection
             var audioRouter = _connectionManager as IAudioRouter ??

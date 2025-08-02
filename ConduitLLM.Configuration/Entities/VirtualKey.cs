@@ -6,7 +6,7 @@ namespace ConduitLLM.Configuration.Entities;
 /// <summary>
 /// Represents a virtual API key for accessing LLM services
 /// </summary>
-public class VirtualKey
+public partial class VirtualKey
 {
     /// <summary>
     /// Unique identifier for the virtual key
@@ -40,27 +40,14 @@ public class VirtualKey
     public bool IsEnabled { get; set; } = true;
 
     /// <summary>
-    /// The maximum spending budget for this key
+    /// The ID of the virtual key group this key belongs to
     /// </summary>
-    [Column(TypeName = "decimal(18, 8)")]
-    public decimal? MaxBudget { get; set; }
+    public int VirtualKeyGroupId { get; set; }
 
     /// <summary>
-    /// The current accumulated spend for this key
+    /// Navigation property to the virtual key group
     /// </summary>
-    [Column(TypeName = "decimal(18, 8)")]
-    public decimal CurrentSpend { get; set; } = 0;
-
-    /// <summary>
-    /// The budget period for this key (daily, monthly, etc.)
-    /// </summary>
-    [MaxLength(20)]
-    public string? BudgetDuration { get; set; }
-
-    /// <summary>
-    /// The start date of the current budget period
-    /// </summary>
-    public DateTime? BudgetStartDate { get; set; } = DateTime.UtcNow;
+    public virtual VirtualKeyGroup VirtualKeyGroup { get; set; } = null!;
 
     /// <summary>
     /// Optional date when the key expires
@@ -111,6 +98,7 @@ public class VirtualKey
     /// Virtual collection of notifications
     /// </summary>
     public virtual ICollection<Notification>? Notifications { get; set; }
+
 
     /// <summary>
     /// Concurrency token for optimistic concurrency control

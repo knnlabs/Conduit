@@ -8,6 +8,7 @@ using ConduitLLM.Configuration.DTOs.SignalR;
 using ConduitLLM.Http.Metrics;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Interfaces;
 
 namespace ConduitLLM.Http.Hubs
 {
@@ -20,6 +21,7 @@ namespace ConduitLLM.Http.Hubs
         private readonly SignalRMetrics _metrics;
         private readonly ILogger<VirtualKeyManagementHub> _logger;
         private readonly IVirtualKeyService _virtualKeyService;
+        private readonly IVirtualKeyGroupRepository _groupRepository;
         
         /// <summary>
         /// Initializes a new instance of the <see cref="VirtualKeyManagementHub"/> class.
@@ -28,15 +30,18 @@ namespace ConduitLLM.Http.Hubs
         /// <param name="logger">Logger instance.</param>
         /// <param name="serviceProvider">Service provider for dependency injection.</param>
         /// <param name="virtualKeyService">Virtual key service for key operations.</param>
+        /// <param name="groupRepository">Virtual key group repository.</param>
         public VirtualKeyManagementHub(
             SignalRMetrics metrics,
             ILogger<VirtualKeyManagementHub> logger,
             IServiceProvider serviceProvider,
-            IVirtualKeyService virtualKeyService) : base(logger, serviceProvider)
+            IVirtualKeyService virtualKeyService,
+            IVirtualKeyGroupRepository groupRepository) : base(logger, serviceProvider)
         {
             _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
+            _groupRepository = groupRepository ?? throw new ArgumentNullException(nameof(groupRepository));
         }
 
         /// <summary>
@@ -402,16 +407,17 @@ namespace ConduitLLM.Http.Hubs
         /// </summary>
         private async Task SendKeyStatusToClient(VirtualKey virtualKey)
         {
+            // Get the key's group for balance information
+            var group = await _groupRepository.GetByIdAsync(virtualKey.VirtualKeyGroupId);
+            
             var status = new VirtualKeyStatusNotification
             {
                 KeyId = virtualKey.Id,
                 KeyName = virtualKey.KeyName,
                 IsEnabled = virtualKey.IsEnabled,
-                CurrentSpend = virtualKey.CurrentSpend,
-                MaxBudget = virtualKey.MaxBudget,
-                BudgetPercentage = virtualKey.MaxBudget.HasValue && virtualKey.MaxBudget.Value > 0
-                    ? (double)((virtualKey.CurrentSpend / virtualKey.MaxBudget.Value) * 100)
-                    : null,
+                CurrentSpend = group?.LifetimeSpent ?? 0,
+                MaxBudget = group?.Balance,
+                BudgetPercentage = null, // No longer applicable in bank account model
                 AllowedModels = virtualKey.AllowedModels,
                 RateLimitPerMinute = virtualKey.RateLimitRpm,
                 CreatedAt = virtualKey.CreatedAt,

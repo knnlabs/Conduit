@@ -77,9 +77,9 @@ namespace ConduitLLM.Core.Events
         public string? AllowedModels { get; init; }
         
         /// <summary>
-        /// Maximum budget at creation (if specified)
+        /// Virtual key group ID
         /// </summary>
-        public decimal? MaxBudget { get; init; }
+        public int VirtualKeyGroupId { get; init; }
         
         /// <summary>
         /// Partition key for ordered processing per virtual key

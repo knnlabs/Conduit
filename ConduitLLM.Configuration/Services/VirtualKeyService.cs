@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Interfaces;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -14,14 +15,17 @@ namespace ConduitLLM.Configuration.Services
     public class VirtualKeyService : IVirtualKeyService
     {
         private readonly ConfigurationDbContext _context;
+        private readonly IVirtualKeyGroupRepository _groupRepository;
 
         /// <summary>
         /// Initializes a new instance of the VirtualKeyService
         /// </summary>
         /// <param name="context">Database context</param>
-        public VirtualKeyService(ConfigurationDbContext context)
+        /// <param name="groupRepository">Virtual key group repository</param>
+        public VirtualKeyService(ConfigurationDbContext context, IVirtualKeyGroupRepository groupRepository)
         {
             _context = context;
+            _groupRepository = groupRepository;
         }
 
         /// <inheritdoc/>
@@ -42,16 +46,18 @@ namespace ConduitLLM.Configuration.Services
             // Set update date
             virtualKey.UpdatedAt = DateTime.UtcNow;
 
-            // Set initial spend to 0 if not provided
-            if (virtualKey.CurrentSpend == default)
+            // If no group is assigned, create a new single-key group
+            if (virtualKey.VirtualKeyGroupId == 0)
             {
-                virtualKey.CurrentSpend = 0;
-            }
-
-            // Set initial budget start date if not provided
-            if (virtualKey.BudgetStartDate == default)
-            {
-                virtualKey.BudgetStartDate = DateTime.UtcNow;
+                var group = new VirtualKeyGroup
+                {
+                    GroupName = virtualKey.KeyName,
+                    Balance = 0, // Start with zero balance, user needs to add credits
+                    LifetimeCreditsAdded = 0,
+                    LifetimeSpent = 0
+                };
+                
+                virtualKey.VirtualKeyGroupId = await _groupRepository.CreateAsync(group);
             }
 
             _context.VirtualKeys.Add(virtualKey);
@@ -93,25 +99,9 @@ namespace ConduitLLM.Configuration.Services
         /// <inheritdoc/>
         public async Task ResetSpendAsync(int id)
         {
-            var virtualKey = await _context.VirtualKeys.FindAsync(id);
-            if (virtualKey != null)
-            {
-                // Create a record in the spend history
-                _context.VirtualKeySpendHistory.Add(new VirtualKeySpendHistory
-                {
-                    VirtualKeyId = virtualKey.Id,
-                    Amount = virtualKey.CurrentSpend,
-                    Date = DateTime.UtcNow
-                });
-
-                // Reset the current spend
-                virtualKey.CurrentSpend = 0;
-                virtualKey.BudgetStartDate = DateTime.UtcNow;
-                virtualKey.UpdatedAt = DateTime.UtcNow;
-
-                _context.VirtualKeys.Update(virtualKey);
-                await _context.SaveChangesAsync();
-            }
+            // Budget tracking is now at the group level
+            // This method is deprecated but kept for interface compatibility
+            await Task.CompletedTask;
         }
 
         /// <inheritdoc/>
@@ -127,14 +117,12 @@ namespace ConduitLLM.Configuration.Services
         /// <inheritdoc/>
         public async Task UpdateSpendAsync(int id, decimal additionalSpend)
         {
-            var virtualKey = await _context.VirtualKeys.FindAsync(id);
-            if (virtualKey != null)
+            // Spending is now tracked at the group level
+            // This method is deprecated but kept for interface compatibility
+            var group = await _groupRepository.GetByKeyIdAsync(id);
+            if (group != null)
             {
-                virtualKey.CurrentSpend += additionalSpend;
-                virtualKey.UpdatedAt = DateTime.UtcNow;
-
-                _context.VirtualKeys.Update(virtualKey);
-                await _context.SaveChangesAsync();
+                await _groupRepository.AdjustBalanceAsync(group.Id, -additionalSpend);
             }
         }
 
@@ -142,6 +130,7 @@ namespace ConduitLLM.Configuration.Services
         public async Task<bool> ValidateVirtualKeyAsync(string keyValue)
         {
             var virtualKey = await _context.VirtualKeys
+                .Include(k => k.VirtualKeyGroup)
                 .FirstOrDefaultAsync(k => k.KeyHash == keyValue);
 
             if (virtualKey == null)
@@ -159,9 +148,10 @@ namespace ConduitLLM.Configuration.Services
                 return false; // Key is expired
             }
 
-            if (virtualKey.MaxBudget.HasValue && virtualKey.MaxBudget.Value > 0 && virtualKey.CurrentSpend >= virtualKey.MaxBudget)
+            // Check group balance
+            if (virtualKey.VirtualKeyGroup != null && virtualKey.VirtualKeyGroup.Balance <= 0)
             {
-                return false; // Budget exceeded
+                return false; // No balance available
             }
 
             return true; // Key is valid

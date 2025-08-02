@@ -281,20 +281,18 @@ namespace ConduitLLM.Http.Services
                 // Top virtual keys by spend
                 var virtualKeyRepo = scope.ServiceProvider.GetRequiredService<IVirtualKeyRepository>();
                 var allKeys = await virtualKeyRepo.GetAllAsync();
+                // Note: Spend tracking is now at the group level
                 snapshot.Business.TopVirtualKeys = allKeys
                     .Where(k => k.IsEnabled)
-                    .OrderByDescending(k => k.CurrentSpend)
                     .Take(5)
                     .Select(k => new VirtualKeyStats
                     {
                         KeyId = k.Id.ToString(),
                         KeyName = k.KeyName ?? "Unnamed",
                         RequestsPerMinute = (int)(GetMetricValue($"conduit_virtualkey_requests_total{{virtual_key_id=\"{k.Id}\"}}") / 60.0),
-                        TotalSpend = k.CurrentSpend,
-                        BudgetUtilization = k.MaxBudget.HasValue && k.MaxBudget > 0 
-                            ? (double)(k.CurrentSpend / k.MaxBudget.Value) * 100 
-                            : 0,
-                        IsOverBudget = k.MaxBudget.HasValue && k.CurrentSpend >= k.MaxBudget.Value
+                        TotalSpend = 0, // Spend is tracked at group level
+                        BudgetUtilization = 0, // Budget is tracked at group level
+                        IsOverBudget = false // Budget is tracked at group level
                     })
                     .ToList();
             }

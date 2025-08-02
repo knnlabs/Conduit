@@ -1,6 +1,7 @@
 using System;
 
 using ConduitLLM.Configuration.Data;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Configuration.Services;
@@ -33,6 +34,7 @@ namespace ConduitLLM.Configuration.Extensions
 
             // Register repositories
             services.AddScoped<IVirtualKeyRepository, VirtualKeyRepository>();
+            services.AddScoped<IVirtualKeyGroupRepository, VirtualKeyGroupRepository>();
             services.AddScoped<IProviderRepository, ProviderRepository>();
             services.AddScoped<IProviderKeyCredentialRepository, ProviderKeyCredentialRepository>();
             services.AddScoped<IGlobalSettingRepository, GlobalSettingRepository>();

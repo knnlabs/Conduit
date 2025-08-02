@@ -151,7 +151,6 @@ namespace ConduitLLM.Http.Controllers
             var keyUpdates = request.Updates.Select(u => new VirtualKeyUpdateItem
             {
                 VirtualKeyId = u.VirtualKeyId,
-                MaxBudget = u.MaxBudget,
                 AllowedModels = u.AllowedModels,
                 RateLimits = u.RateLimits,
                 IsEnabled = u.IsEnabled,

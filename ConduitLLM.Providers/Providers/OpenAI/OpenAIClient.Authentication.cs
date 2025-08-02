@@ -47,16 +47,17 @@ namespace ConduitLLM.Providers.Providers.OpenAI
                 }
 
                 string endpoint;
+                var effectiveBaseUrl = client.BaseAddress?.ToString() ?? GetDefaultBaseUrl();
                 if (_isAzure)
                 {
                     // For Azure, test with deployments endpoint
-                    var url = UrlBuilder.Combine(client.BaseAddress?.ToString() ?? "", "openai", "deployments");
+                    var url = UrlBuilder.Combine(effectiveBaseUrl, "openai", "deployments");
                     endpoint = UrlBuilder.AppendQueryString(url, ("api-version", Constants.AzureApiVersion));
                 }
                 else
                 {
                     // For OpenAI, test with models endpoint
-                    endpoint = UrlBuilder.Combine(client.BaseAddress?.ToString() ?? "", Constants.Endpoints.Models);
+                    endpoint = UrlBuilder.Combine(effectiveBaseUrl, Constants.Endpoints.Models);
                 }
 
                 Logger.LogDebug("Testing authentication with endpoint: {Endpoint}", endpoint);

@@ -300,7 +300,7 @@ public class ModelProviderMappingController : ControllerBase
     /// <param name="providerId">The provider ID to discover models from</param>
     /// <returns>List of discovered models</returns>
     [HttpGet("discover/{providerId}")]
-    [ProducesResponseType(typeof(IEnumerable<DiscoveredModel>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<DiscoveredModel>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DiscoverModels(int providerId)
@@ -315,7 +315,11 @@ public class ModelProviderMappingController : ControllerBase
 
             // Discover models for the provider
             var discoveredModels = await _discoveryService.DiscoverProviderModelsAsync(provider);
-            return Ok(discoveredModels);
+            
+            // Convert dictionary values to array for frontend compatibility
+            var modelsArray = discoveredModels.Values.ToList();
+            
+            return Ok(modelsArray);
         }
         catch (Exception ex)
         {

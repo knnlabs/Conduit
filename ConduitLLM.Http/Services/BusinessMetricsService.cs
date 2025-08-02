@@ -207,22 +207,8 @@ namespace ConduitLLM.Http.Services
                 var allKeys = await virtualKeyRepo.GetAllAsync();
                 var activeKeys = allKeys.Where(k => k.IsEnabled && (k.ExpiresAt == null || k.ExpiresAt > DateTime.UtcNow)).ToList();
 
-                foreach (var key in activeKeys)
-                {
-                    // Calculate budget utilization
-                    if (key.MaxBudget.HasValue && key.MaxBudget > 0)
-                    {
-                        var utilization = (key.CurrentSpend / key.MaxBudget.Value) * 100;
-                        VirtualKeyBudgetUtilization.WithLabels(key.Id.ToString()).Set((double)utilization);
-
-                        if (key.CurrentSpend >= key.MaxBudget.Value)
-                        {
-                            VirtualKeyBudgetExceeded.WithLabels(key.Id.ToString()).Inc();
-                        }
-                    }
-
-                    VirtualKeySpendTotal.WithLabels(key.Id.ToString()).Set((double)key.CurrentSpend);
-                }
+                // Note: Budget tracking is now at the group level
+                // Individual key metrics are no longer tracked for budget/spend
             }
             catch (Exception ex)
             {

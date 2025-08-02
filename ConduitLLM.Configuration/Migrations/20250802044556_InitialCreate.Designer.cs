@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ConduitLLM.Configuration.Migrations
 {
     [DbContext(typeof(ConfigurationDbContext))]
-    [Migration("20250731225429_InitialCreate")]
+    [Migration("20250802044556_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -1509,18 +1509,8 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<string>("AllowedModels")
                         .HasColumnType("text");
 
-                    b.Property<string>("BudgetDuration")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<DateTime?>("BudgetStartDate")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<decimal>("CurrentSpend")
-                        .HasColumnType("decimal(18, 8)");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
@@ -1542,9 +1532,6 @@ namespace ConduitLLM.Configuration.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<decimal?>("MaxBudget")
-                        .HasColumnType("decimal(18, 8)");
-
                     b.Property<string>("Metadata")
                         .HasColumnType("text");
 
@@ -1562,12 +1549,61 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("VirtualKeyGroupId")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("KeyHash")
                         .IsUnique();
 
+                    b.HasIndex("VirtualKeyGroupId");
+
                     b.ToTable("VirtualKeys");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.VirtualKeyGroup", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Balance")
+                        .HasColumnType("decimal(19, 8)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ExternalGroupId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("GroupName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<decimal>("LifetimeCreditsAdded")
+                        .HasColumnType("decimal(19, 8)");
+
+                    b.Property<decimal>("LifetimeSpent")
+                        .HasColumnType("decimal(19, 8)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExternalGroupId");
+
+                    b.ToTable("VirtualKeyGroups");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.VirtualKeySpendHistory", b =>
@@ -1799,6 +1835,17 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Navigation("VirtualKey");
                 });
 
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.VirtualKey", b =>
+                {
+                    b.HasOne("ConduitLLM.Configuration.Entities.VirtualKeyGroup", "VirtualKeyGroup")
+                        .WithMany("VirtualKeys")
+                        .HasForeignKey("VirtualKeyGroupId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("VirtualKeyGroup");
+                });
+
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.VirtualKeySpendHistory", b =>
                 {
                     b.HasOne("ConduitLLM.Configuration.Entities.VirtualKey", "VirtualKey")
@@ -1844,6 +1891,11 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Navigation("RequestLogs");
 
                     b.Navigation("SpendHistory");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.VirtualKeyGroup", b =>
+                {
+                    b.Navigation("VirtualKeys");
                 });
 #pragma warning restore 612, 618
         }

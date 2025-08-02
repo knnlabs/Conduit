@@ -100,7 +100,7 @@ namespace ConduitLLM.Tests.Repositories
                 KeyName = "New Key",
                 KeyHash = "new-hash-456",
                 IsEnabled = true,
-                MaxBudget = 100m,
+                VirtualKeyGroupId = 1,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -116,7 +116,7 @@ namespace ConduitLLM.Tests.Repositories
             dbKey.Should().NotBeNull();
             dbKey!.KeyName.Should().Be("New Key");
             dbKey.KeyHash.Should().Be("new-hash-456");
-            dbKey.MaxBudget.Should().Be(100m);
+            dbKey.VirtualKeyGroupId.Should().Be(1);
         }
 
         [Fact]
@@ -152,7 +152,7 @@ namespace ConduitLLM.Tests.Repositories
             // Modify the key
             key.KeyName = "Updated Name";
             key.IsEnabled = false;
-            key.MaxBudget = 500m;
+            key.RateLimitRpm = 100;
 
             // Act
             var result = await _repository.UpdateAsync(key);
@@ -164,7 +164,7 @@ namespace ConduitLLM.Tests.Repositories
             var dbKey = await _context.VirtualKeys.FindAsync(key.Id);
             dbKey!.KeyName.Should().Be("Updated Name");
             dbKey.IsEnabled.Should().BeFalse();
-            dbKey.MaxBudget.Should().Be(500m);
+            dbKey.RateLimitRpm.Should().Be(100);
         }
 
         [Fact]
@@ -233,45 +233,7 @@ namespace ConduitLLM.Tests.Repositories
 
         #endregion
 
-        #region BulkUpdateSpendAsync Tests
-
-        [Fact]
-        public async Task BulkUpdateSpendAsync_WithValidUpdates_ShouldUpdateAndReturnTrue()
-        {
-            // Arrange
-            var keys = new List<VirtualKey>
-            {
-                new VirtualKey { KeyName = "Key1", KeyHash = "hash1", IsEnabled = true, CurrentSpend = 0 },
-                new VirtualKey { KeyName = "Key2", KeyHash = "hash2", IsEnabled = true, CurrentSpend = 0 },
-                new VirtualKey { KeyName = "Key3", KeyHash = "hash3", IsEnabled = true, CurrentSpend = 0 }
-            };
-            _context.VirtualKeys.AddRange(keys);
-            await _context.SaveChangesAsync();
-
-            var updates = new Dictionary<string, decimal>
-            {
-                { "hash1", 10.5m },
-                { "hash2", 20.0m },
-                { "hash3", 30.25m }
-            };
-
-            // Act
-            var result = await _repository.BulkUpdateSpendAsync(updates);
-
-            // Assert
-            result.Should().BeTrue();
-            
-            // Verify updates using a new context
-            using (var verifyContext = new ConfigurationDbContext(_options))
-            {
-                var updatedKeys = await verifyContext.VirtualKeys.ToListAsync();
-                updatedKeys.First(k => k.KeyHash == "hash1").CurrentSpend.Should().Be(10.5m);
-                updatedKeys.First(k => k.KeyHash == "hash2").CurrentSpend.Should().Be(20.0m);
-                updatedKeys.First(k => k.KeyHash == "hash3").CurrentSpend.Should().Be(30.25m);
-            }
-        }
-
-        #endregion
+        // Note: BulkUpdateSpendAsync has been removed as spend tracking is now at the group level
 
         public void Dispose()
         {

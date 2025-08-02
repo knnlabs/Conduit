@@ -199,34 +199,5 @@ namespace ConduitLLM.Configuration.Repositories
         /// </remarks>
         Task<bool> DeleteAsync(string keyHash, CancellationToken cancellationToken = default);
 
-        /// <summary>
-        /// Gets the current spend amount for a virtual key (fresh from database).
-        /// </summary>
-        /// <param name="virtualKeyId">The unique identifier of the virtual key.</param>
-        /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
-        /// <returns>
-        /// A task that represents the asynchronous operation. The task result contains
-        /// the current spend amount for the virtual key.
-        /// </returns>
-        /// <remarks>
-        /// This method always queries the database directly to get the most up-to-date
-        /// spend information, which is critical for budget validation.
-        /// </remarks>
-        Task<decimal> GetCurrentSpendAsync(int virtualKeyId, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Bulk update spend amounts for multiple virtual keys efficiently.
-        /// </summary>
-        /// <param name="spendUpdates">Dictionary mapping key hash to spend amount to add.</param>
-        /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
-        /// <returns>
-        /// A task that represents the asynchronous operation. The task result is a boolean value
-        /// indicating whether all updates were successful.
-        /// </returns>
-        /// <remarks>
-        /// This method is used by the BatchSpendUpdateService to efficiently update
-        /// multiple virtual keys in a single database operation.
-        /// </remarks>
-        Task<bool> BulkUpdateSpendAsync(Dictionary<string, decimal> spendUpdates, CancellationToken cancellationToken = default);
     }
 }

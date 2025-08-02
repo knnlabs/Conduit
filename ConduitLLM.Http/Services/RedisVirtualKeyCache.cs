@@ -261,9 +261,10 @@ namespace ConduitLLM.Http.Services
         /// </summary>
         private static bool IsKeyValid(VirtualKey key)
         {
+            // Note: Group balance validation happens at the service layer
+            // The cache only validates basic key properties
             return key.IsEnabled && 
-                   (key.ExpiresAt == null || key.ExpiresAt > DateTime.UtcNow) &&
-                   (key.MaxBudget == null || key.CurrentSpend < key.MaxBudget);
+                   (key.ExpiresAt == null || key.ExpiresAt > DateTime.UtcNow);
         }
 
         /// <summary>
@@ -281,11 +282,8 @@ namespace ConduitLLM.Http.Services
                 }
             }
             
-            // If key is close to budget limit, shorter cache time
-            if (key.MaxBudget.HasValue && key.CurrentSpend > (key.MaxBudget * 0.9m))
-            {
-                return TimeSpan.FromMinutes(5); // Short cache for near-limit keys
-            }
+            // Note: Budget tracking is now at the group level, so we can't check it here
+            // The service layer will invalidate keys when group balance is depleted
             
             return _defaultExpiry;
         }

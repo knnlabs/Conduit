@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Http.EventHandlers;
@@ -23,6 +24,7 @@ namespace ConduitLLM.Http.Tests.EventHandlers
         private readonly Mock<IServiceProvider> _serviceProviderMock;
         private readonly Mock<IPublishEndpoint> _publishEndpointMock;
         private readonly Mock<IVirtualKeyRepository> _virtualKeyRepositoryMock;
+        private readonly Mock<IVirtualKeyGroupRepository> _groupRepositoryMock;
         private readonly SpendUpdateProcessor _processor;
 
         public SpendUpdateProcessorTests(ITestOutputHelper output) : base(output)
@@ -32,6 +34,7 @@ namespace ConduitLLM.Http.Tests.EventHandlers
             _serviceProviderMock = new Mock<IServiceProvider>();
             _publishEndpointMock = new Mock<IPublishEndpoint>();
             _virtualKeyRepositoryMock = new Mock<IVirtualKeyRepository>();
+            _groupRepositoryMock = new Mock<IVirtualKeyGroupRepository>();
             
             // Setup scope factory to return scope
             _serviceScopeFactoryMock.Setup(x => x.CreateScope())
@@ -56,22 +59,38 @@ namespace ConduitLLM.Http.Tests.EventHandlers
             _serviceProviderMock
                 .Setup(sp => sp.GetService(typeof(IVirtualKeyRepository)))
                 .Returns(_virtualKeyRepositoryMock.Object);
+            _serviceProviderMock
+                .Setup(sp => sp.GetService(typeof(IVirtualKeyGroupRepository)))
+                .Returns(_groupRepositoryMock.Object);
 
             var virtualKey = new VirtualKey
             {
                 Id = 123,
                 KeyHash = "test-hash",
-                CurrentSpend = 100m,
+                VirtualKeyGroupId = 1,
                 UpdatedAt = DateTime.UtcNow.AddHours(-1)
+            };
+            
+            var group = new VirtualKeyGroup
+            {
+                Id = 1,
+                GroupName = "Test Group",
+                Balance = 100m,
+                LifetimeCreditsAdded = 100m,
+                LifetimeSpent = 100m
             };
 
             _virtualKeyRepositoryMock
                 .Setup(r => r.GetByIdAsync(123, It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(virtualKey));
-
-            _virtualKeyRepositoryMock
-                .Setup(r => r.UpdateAsync(It.IsAny<VirtualKey>(), It.IsAny<CancellationToken>()))
-                .Returns(Task.FromResult(true));
+            
+            _groupRepositoryMock
+                .Setup(r => r.GetByIdAsync(1))
+                .Returns(Task.FromResult(group));
+            
+            _groupRepositoryMock
+                .Setup(r => r.AdjustBalanceAsync(1, -50m))
+                .Returns(Task.FromResult(50m)); // New balance
 
             var @event = new SpendUpdateRequested
             {
@@ -89,9 +108,8 @@ namespace ConduitLLM.Http.Tests.EventHandlers
             await _processor.Consume(context.Object);
 
             // Assert
-            _virtualKeyRepositoryMock.Verify(r => r.UpdateAsync(It.Is<VirtualKey>(vk => 
-                vk.CurrentSpend == 150m && 
-                vk.Id == 123), It.IsAny<CancellationToken>()), Times.Once);
+            // Verify group balance was adjusted
+            _groupRepositoryMock.Verify(r => r.AdjustBalanceAsync(1, -50m), Times.Once);
 
             _publishEndpointMock.Verify(p => p.Publish(It.Is<SpendUpdated>(su =>
                 su.KeyId == 123 &&
@@ -108,6 +126,9 @@ namespace ConduitLLM.Http.Tests.EventHandlers
             // Arrange
             _serviceProviderMock
                 .Setup(sp => sp.GetService(typeof(IVirtualKeyRepository)))
+                .Returns(null);
+            _serviceProviderMock
+                .Setup(sp => sp.GetService(typeof(IVirtualKeyGroupRepository)))
                 .Returns(null);
 
             var @event = new SpendUpdateRequested
@@ -190,6 +211,9 @@ namespace ConduitLLM.Http.Tests.EventHandlers
             _serviceProviderMock
                 .Setup(sp => sp.GetService(typeof(IVirtualKeyRepository)))
                 .Returns(_virtualKeyRepositoryMock.Object);
+            _serviceProviderMock
+                .Setup(sp => sp.GetService(typeof(IVirtualKeyGroupRepository)))
+                .Returns(_groupRepositoryMock.Object);
 
             _virtualKeyRepositoryMock
                 .Setup(r => r.GetByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
@@ -210,7 +234,8 @@ namespace ConduitLLM.Http.Tests.EventHandlers
             await _processor.Consume(context.Object);
 
             // Assert
-            _virtualKeyRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<VirtualKey>(), It.IsAny<CancellationToken>()), Times.Never);
+            _virtualKeyRepositoryMock.Verify(r => r.GetByIdAsync(111, It.IsAny<CancellationToken>()), Times.Once);
+            _groupRepositoryMock.Verify(r => r.GetByIdAsync(It.IsAny<int>()), Times.Never);
             _publishEndpointMock.Verify(p => p.Publish(It.IsAny<SpendUpdated>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
@@ -221,21 +246,36 @@ namespace ConduitLLM.Http.Tests.EventHandlers
             _serviceProviderMock
                 .Setup(sp => sp.GetService(typeof(IVirtualKeyRepository)))
                 .Returns(_virtualKeyRepositoryMock.Object);
+            _serviceProviderMock
+                .Setup(sp => sp.GetService(typeof(IVirtualKeyGroupRepository)))
+                .Returns(_groupRepositoryMock.Object);
 
             var virtualKey = new VirtualKey
             {
                 Id = 222,
                 KeyHash = "test-hash-222",
-                CurrentSpend = 200m
+                VirtualKeyGroupId = 1
+            };
+            
+            var group = new VirtualKeyGroup
+            {
+                Id = 1,
+                GroupName = "Test Group",
+                Balance = 100m
             };
 
             _virtualKeyRepositoryMock
                 .Setup(r => r.GetByIdAsync(222, It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(virtualKey));
-
-            _virtualKeyRepositoryMock
-                .Setup(r => r.UpdateAsync(It.IsAny<VirtualKey>(), It.IsAny<CancellationToken>()))
-                .Returns(Task.FromResult(false));
+            
+            _groupRepositoryMock
+                .Setup(r => r.GetByIdAsync(1))
+                .Returns(Task.FromResult(group));
+            
+            // AdjustBalanceAsync returns negative balance indicating failure
+            _groupRepositoryMock
+                .Setup(r => r.AdjustBalanceAsync(1, -30m))
+                .Returns(Task.FromResult(-1m));
 
             var @event = new SpendUpdateRequested
             {
@@ -253,7 +293,7 @@ namespace ConduitLLM.Http.Tests.EventHandlers
 
             // Assert
             await act.Should().ThrowAsync<InvalidOperationException>()
-                .WithMessage("Failed to update spend for virtual key 222");
+                .WithMessage("Failed to update spend for virtual key group 1");
         }
 
         [Fact]
@@ -263,6 +303,9 @@ namespace ConduitLLM.Http.Tests.EventHandlers
             _serviceProviderMock
                 .Setup(sp => sp.GetService(typeof(IVirtualKeyRepository)))
                 .Returns(_virtualKeyRepositoryMock.Object);
+            _serviceProviderMock
+                .Setup(sp => sp.GetService(typeof(IVirtualKeyGroupRepository)))
+                .Returns(_groupRepositoryMock.Object);
 
             _virtualKeyRepositoryMock
                 .Setup(r => r.GetByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))

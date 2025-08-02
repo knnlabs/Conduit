@@ -183,31 +183,23 @@ namespace ConduitLLM.Configuration.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "VirtualKeys",
+                name: "VirtualKeyGroups",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    KeyName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    KeyHash = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
-                    Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    IsEnabled = table.Column<bool>(type: "boolean", nullable: false),
-                    MaxBudget = table.Column<decimal>(type: "numeric(18,8)", nullable: true),
-                    CurrentSpend = table.Column<decimal>(type: "numeric(18,8)", nullable: false),
-                    BudgetDuration = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true),
-                    BudgetStartDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    ExpiresAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    ExternalGroupId = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    GroupName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Balance = table.Column<decimal>(type: "numeric(19,8)", nullable: false),
+                    LifetimeCreditsAdded = table.Column<decimal>(type: "numeric(19,8)", nullable: false),
+                    LifetimeSpent = table.Column<decimal>(type: "numeric(19,8)", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    Metadata = table.Column<string>(type: "text", nullable: true),
-                    AllowedModels = table.Column<string>(type: "text", nullable: true),
-                    RateLimitRpm = table.Column<int>(type: "integer", nullable: true),
-                    RateLimitRpd = table.Column<int>(type: "integer", nullable: true),
                     RowVersion = table.Column<byte[]>(type: "bytea", rowVersion: true, nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_VirtualKeys", x => x.Id);
+                    table.PrimaryKey("PK_VirtualKeyGroups", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -497,6 +489,89 @@ namespace ConduitLLM.Configuration.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "VirtualKeys",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    KeyName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    KeyHash = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    IsEnabled = table.Column<bool>(type: "boolean", nullable: false),
+                    VirtualKeyGroupId = table.Column<int>(type: "integer", nullable: false),
+                    ExpiresAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Metadata = table.Column<string>(type: "text", nullable: true),
+                    AllowedModels = table.Column<string>(type: "text", nullable: true),
+                    RateLimitRpm = table.Column<int>(type: "integer", nullable: true),
+                    RateLimitRpd = table.Column<int>(type: "integer", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "bytea", rowVersion: true, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_VirtualKeys", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_VirtualKeys_VirtualKeyGroups_VirtualKeyGroupId",
+                        column: x => x.VirtualKeyGroupId,
+                        principalTable: "VirtualKeyGroups",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ModelCostMappings",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    ModelCostId = table.Column<int>(type: "integer", nullable: false),
+                    ModelProviderMappingId = table.Column<int>(type: "integer", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ModelCostMappings", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ModelCostMappings_ModelCosts_ModelCostId",
+                        column: x => x.ModelCostId,
+                        principalTable: "ModelCosts",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ModelCostMappings_ModelProviderMappings_ModelProviderMappin~",
+                        column: x => x.ModelProviderMappingId,
+                        principalTable: "ModelProviderMappings",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "FallbackModelMappings",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    FallbackConfigurationId = table.Column<Guid>(type: "uuid", nullable: false),
+                    ModelDeploymentId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Order = table.Column<int>(type: "integer", nullable: false),
+                    SourceModelName = table.Column<string>(type: "text", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_FallbackModelMappings", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_FallbackModelMappings_FallbackConfigurations_FallbackConfig~",
+                        column: x => x.FallbackConfigurationId,
+                        principalTable: "FallbackConfigurations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "AsyncTasks",
                 columns: table => new
                 {
@@ -706,58 +781,6 @@ namespace ConduitLLM.Configuration.Migrations
                         name: "FK_VirtualKeySpendHistory_VirtualKeys_VirtualKeyId",
                         column: x => x.VirtualKeyId,
                         principalTable: "VirtualKeys",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "ModelCostMappings",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    ModelCostId = table.Column<int>(type: "integer", nullable: false),
-                    ModelProviderMappingId = table.Column<int>(type: "integer", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ModelCostMappings", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_ModelCostMappings_ModelCosts_ModelCostId",
-                        column: x => x.ModelCostId,
-                        principalTable: "ModelCosts",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_ModelCostMappings_ModelProviderMappings_ModelProviderMappin~",
-                        column: x => x.ModelProviderMappingId,
-                        principalTable: "ModelProviderMappings",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "FallbackModelMappings",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    FallbackConfigurationId = table.Column<Guid>(type: "uuid", nullable: false),
-                    ModelDeploymentId = table.Column<Guid>(type: "uuid", nullable: false),
-                    Order = table.Column<int>(type: "integer", nullable: false),
-                    SourceModelName = table.Column<string>(type: "text", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_FallbackModelMappings", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_FallbackModelMappings_FallbackConfigurations_FallbackConfig~",
-                        column: x => x.FallbackConfigurationId,
-                        principalTable: "FallbackConfigurations",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -1108,10 +1131,20 @@ namespace ConduitLLM.Configuration.Migrations
                 column: "LastUpdated");
 
             migrationBuilder.CreateIndex(
+                name: "IX_VirtualKeyGroups_ExternalGroupId",
+                table: "VirtualKeyGroups",
+                column: "ExternalGroupId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_VirtualKeys_KeyHash",
                 table: "VirtualKeys",
                 column: "KeyHash",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_VirtualKeys_VirtualKeyGroupId",
+                table: "VirtualKeys",
+                column: "VirtualKeyGroupId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_VirtualKeySpendHistory_VirtualKeyId",
@@ -1199,6 +1232,9 @@ namespace ConduitLLM.Configuration.Migrations
 
             migrationBuilder.DropTable(
                 name: "Providers");
+
+            migrationBuilder.DropTable(
+                name: "VirtualKeyGroups");
         }
     }
 }
