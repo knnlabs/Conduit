@@ -167,8 +167,7 @@ public partial class Program
         // Add performance metrics service
         builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IPerformanceMetricsService, ConduitLLM.Core.Services.PerformanceMetricsService>();
 
-        // Add image generation metrics service
-        // ImageGenerationMetricsService removed - metrics handled differently now
+        // Image generation metrics service removed - not needed
 
         // Add required services for the router components
         builder.Services.AddScoped<ConduitLLM.Core.Routing.Strategies.IModelSelectionStrategy, ConduitLLM.Core.Routing.Strategies.SimpleModelSelectionStrategy>();

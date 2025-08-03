@@ -33,7 +33,6 @@ namespace ConduitLLM.Http.Controllers
         private readonly IAsyncTaskService _taskService;
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly IMediaLifecycleService _mediaLifecycleService;
-        private readonly IImageGenerationMetricsService _metricsService;
         private readonly IHttpClientFactory _httpClientFactory;
 
         public ImagesController(
@@ -45,7 +44,6 @@ namespace ConduitLLM.Http.Controllers
             IPublishEndpoint publishEndpoint,
             IVirtualKeyService virtualKeyService,
             IMediaLifecycleService mediaLifecycleService,
-            IImageGenerationMetricsService metricsService,
             IHttpClientFactory httpClientFactory)
             : base(publishEndpoint, logger)
         {
@@ -56,7 +54,6 @@ namespace ConduitLLM.Http.Controllers
             _taskService = taskService;
             _virtualKeyService = virtualKeyService;
             _mediaLifecycleService = mediaLifecycleService;
-            _metricsService = metricsService;
             _httpClientFactory = httpClientFactory;
         }
 
@@ -76,50 +73,13 @@ namespace ConduitLLM.Http.Controllers
                     return BadRequest(new { error = new { message = "Prompt is required", type = "invalid_request_error" } });
                 }
 
-                var modelName = request.Model;
-                
-                // If no model specified, use smart provider selection
-                if (string.IsNullOrEmpty(modelName))
+                // Model parameter is required
+                if (string.IsNullOrWhiteSpace(request.Model))
                 {
-                    _logger.LogInformation("No model specified, using smart provider selection");
-                    
-                    // Get all image generation capable providers
-                    var allMappings = await _modelMappingService.GetAllMappingsAsync();
-                    var imageProviders = allMappings.Where(m => m.SupportsImageGeneration).ToList();
-                    if (imageProviders.Any())
-                    {
-                        var availableProviders = imageProviders
-                            .Select(m => (m.ProviderId.ToString(), m.ProviderModelId))
-                            .ToList();
-                        
-                        // Select optimal provider based on current metrics
-                        var optimal = await _metricsService.SelectOptimalProviderAsync(
-                            availableProviders,
-                            request.N,
-                            maxWaitTimeSeconds: null);
-                        
-                        if (optimal.HasValue)
-                        {
-                            var selectedMapping = imageProviders.FirstOrDefault(m => 
-                                m.ProviderId.ToString() == optimal.Value.Provider && 
-                                m.ProviderModelId == optimal.Value.Model);
-                            
-                            if (selectedMapping != null)
-                            {
-                                modelName = selectedMapping.ModelAlias;
-                                _logger.LogInformation("Smart selection chose {Provider}/{Model} (alias: {Alias})", 
-                                    optimal.Value.Provider, optimal.Value.Model, modelName);
-                            }
-                        }
-                    }
-                    
-                    // Fallback to default if smart selection fails
-                    if (string.IsNullOrEmpty(modelName))
-                    {
-                        modelName = "dall-e-3";
-                        _logger.LogInformation("Smart selection failed, falling back to default model: {Model}", modelName);
-                    }
+                    return BadRequest(new { error = new { message = "Model is required", type = "invalid_request_error" } });
                 }
+                
+                var modelName = request.Model;
                 
                 // First check model mappings for image generation capability
                 var mapping = await _modelMappingService.GetMappingByModelAliasAsync(modelName);
@@ -381,7 +341,13 @@ namespace ConduitLLM.Http.Controllers
                     return BadRequest(new { error = new { message = "Prompt is required", type = "invalid_request_error" } });
                 }
 
-                var modelName = request.Model ?? "dall-e-3";
+                // Model parameter is required
+                if (string.IsNullOrWhiteSpace(request.Model))
+                {
+                    return BadRequest(new { error = new { message = "Model is required", type = "invalid_request_error" } });
+                }
+                
+                var modelName = request.Model;
                 
                 // Check model capabilities
                 var mapping = await _modelMappingService.GetMappingByModelAliasAsync(modelName);
