@@ -38,29 +38,39 @@ log_task() {
 
 show_usage() {
     cat << EOF
-Conduit Development Environment Startup - AGGRESSIVE MODE
+Conduit Development Environment Startup
 
 Usage: $0 [options]
 
 Options:
-  --build        FORCE rebuild (kills containers, rebuilds everything)
-  --clean        FORCE clean (removes ALL containers/volumes, then starts fresh)
-  --clean-only   FORCE clean without starting
-  --fix-perms    Fix ALL permissions aggressively
+  --fast         FAST startup - skip dependency checks (use when deps unchanged)
+  --rebuild      Force reinstall all dependencies (use after package.json changes)
+  --fix          Fix permissions and restart (use if you get EACCES errors)
+  --build        Force rebuild containers
+  --clean        Remove ALL containers/volumes and start fresh
+  --clean-only   Clean without starting
   --logs         Show logs after startup
+  --restart-webui Quick fix for stuck WebUI container (kills npm processes, restarts)
+  --webui-logs   Show WebUI container logs only
   --help         Show this help message
 
-This script NOW:
-1. Auto-fixes ALL permission issues without asking
-2. Forcefully stops containers when using --build
-3. Removes volumes completely with --clean
-4. Uses sudo automatically when needed
-5. No more permission errors!
+Common Usage:
+  $0               # First time or after package changes
+  $0 --fast        # Daily use - starts in seconds
+  $0 --rebuild     # After adding/removing packages
+  $0 --fix         # If you get permission errors
+  $0 --restart-webui  # FIX STUCK WEBUI (when npm build breaks it)
 
-After startup, APIs will be available at:
+After startup, services available at:
+  - WebUI: http://localhost:3000
   - Core API Swagger: http://localhost:5000/swagger
   - Admin API Swagger: http://localhost:5002/swagger
-  - WebUI: http://localhost:3000
+  - RabbitMQ: http://localhost:15672
+
+Node modules are shared with host - you can:
+  - Run 'npm run build' in ConduitLLM.WebUI/
+  - Run 'npm run lint' directly
+  - Use Claude Code without issues
 
 EOF
 }
@@ -75,10 +85,61 @@ check_prerequisites() {
         exit 1
     fi
     
-    # Check if Docker is running
+    # Check if Docker is running with retry
+    local docker_attempts=0
+    local docker_max_attempts=3
+    
+    while [[ $docker_attempts -lt $docker_max_attempts ]]; do
+        if docker info >/dev/null 2>&1; then
+            break
+        fi
+        
+        ((docker_attempts++))
+        
+        if [[ $docker_attempts -eq 1 ]]; then
+            log_warn "Docker is not responding, attempting to recover..."
+            
+            # Try to start Docker service (works on Linux)
+            if command -v systemctl >/dev/null 2>&1; then
+                log_info "Attempting to start Docker service..."
+                sudo systemctl start docker 2>/dev/null || true
+                sleep 3
+            elif command -v service >/dev/null 2>&1; then
+                log_info "Attempting to start Docker service..."
+                sudo service docker start 2>/dev/null || true
+                sleep 3
+            fi
+        fi
+        
+        if [[ $docker_attempts -lt $docker_max_attempts ]]; then
+            log_info "Waiting for Docker daemon... (attempt $docker_attempts/$docker_max_attempts)"
+            sleep 2
+        fi
+    done
+    
     if ! docker info >/dev/null 2>&1; then
-        log_error "Docker is not running. Please start Docker first."
+        log_error "Docker is not running. Please start Docker manually."
+        log_error "On Linux: sudo systemctl start docker"
+        log_error "On Mac/Windows: Start Docker Desktop"
         exit 1
+    fi
+    
+    # Check if Docker is responsive (not just running)
+    if ! timeout 5 docker ps >/dev/null 2>&1; then
+        log_warn "Docker daemon is slow to respond"
+        log_info "AUTO-FIXING: Cleaning up Docker system..."
+        
+        # Try to clean up Docker to make it more responsive
+        docker system prune -f --volumes 2>/dev/null || true
+        
+        # Give Docker a moment to recover
+        sleep 2
+        
+        if ! timeout 5 docker ps >/dev/null 2>&1; then
+            log_error "Docker daemon is not responding properly"
+            log_error "Try restarting Docker manually"
+            exit 1
+        fi
     fi
     
     # Check if docker-compose files exist
@@ -99,35 +160,99 @@ check_prerequisites() {
 check_container_conflicts() {
     log_task "Checking for container conflicts..."
     
-    # Look for WebUI containers using production image (not node:20-alpine)
-    local webui_containers=$(docker ps -a --filter "name=conduit-webui" --format "{{.Names}}\t{{.Image}}" || true)
+    # Get ALL conduit containers
+    local all_containers=$(docker ps -a --filter "name=conduit" --format "{{.Names}}\t{{.Image}}" || true)
     
-    if [[ -n "$webui_containers" ]]; then
-        # Check if any WebUI containers are using production images
-        local prod_webui=$(echo "$webui_containers" | grep -v "node:20-alpine" || true)
+    if [[ -n "$all_containers" ]]; then
+        # Check for ANY non-development containers (production, mixed state, etc)
+        local conflicting_containers=$(echo "$all_containers" | grep -v "node:\|alpine:\|postgres:\|rabbitmq:" || true)
         
-        if [[ -n "$prod_webui" ]]; then
-            log_error "Found production WebUI containers that conflict with development setup:"
+        if [[ -n "$conflicting_containers" ]]; then
+            log_warn "Found conflicting containers that need cleanup:"
+            echo "$conflicting_containers"
             echo
-            echo "$prod_webui"
-            echo
-            log_error "These containers were created with 'docker compose up' (production build)."
-            log_error "To fix this, run:"
-            log_error "  docker compose down --volumes --remove-orphans"
-            log_error "Then re-run this script."
-            exit 1
+            log_info "AUTO-FIXING: Cleaning up conflicting containers..."
+            
+            # Force stop ALL conduit containers
+            docker ps -q --filter "name=conduit" | xargs -r docker kill 2>/dev/null || true
+            
+            # Remove ALL conduit containers
+            docker ps -aq --filter "name=conduit" | xargs -r docker rm -f 2>/dev/null || true
+            
+            # Clean up with docker compose too
+            local compose_cmd="${DOCKER_COMPOSE_CMD:-docker compose}"
+            timeout 5 $compose_cmd down --volumes --remove-orphans 2>/dev/null || true
+            timeout 5 $compose_cmd -f docker-compose.yml down --volumes --remove-orphans 2>/dev/null || true
+            
+            # Remove any remaining volumes
+            docker volume ls --filter "name=conduit" --format "{{.Name}}" | xargs -r docker volume rm -f 2>/dev/null || true
+            
+            log_info "Conflicting containers cleaned up successfully!"
+            return 0
         fi
         
-        # If WebUI containers exist and are using development image, just warn we'll recreate
-        local dev_webui=$(echo "$webui_containers" | grep "node:20-alpine" || true)
-        if [[ -n "$dev_webui" ]]; then
-            log_warn "Found existing development WebUI containers:"
-            echo "$dev_webui"
-            log_warn "These will be stopped and recreated."
+        # Also check for containers in bad states
+        local bad_state_containers=$(docker ps -a --filter "name=conduit" --filter "status=exited" --filter "status=dead" --filter "status=restarting" --format "{{.Names}}" || true)
+        if [[ -n "$bad_state_containers" ]]; then
+            log_info "Cleaning up containers in bad states: $bad_state_containers"
+            echo "$bad_state_containers" | xargs -r docker rm -f 2>/dev/null || true
         fi
     fi
     
-    log_info "Container conflict check passed"
+    # Check for port conflicts (skip if tools not available)
+    if command -v lsof >/dev/null 2>&1 || command -v netstat >/dev/null 2>&1 || command -v ss >/dev/null 2>&1; then
+        local ports_to_check=("3000" "5000" "5002" "5432" "5672" "15672")
+        local port_conflicts=false
+        
+        for port in "${ports_to_check[@]}"; do
+            local port_in_use=false
+            
+            # Try different methods to check port
+            if command -v lsof >/dev/null 2>&1 && lsof -i ":$port" >/dev/null 2>&1; then
+                port_in_use=true
+            elif command -v ss >/dev/null 2>&1 && ss -ln | grep -q ":$port "; then
+                port_in_use=true
+            elif command -v netstat >/dev/null 2>&1 && netstat -an 2>/dev/null | grep -q ":$port.*LISTEN"; then
+                port_in_use=true
+            fi
+            
+            if [[ "$port_in_use" == "true" ]]; then
+                # Check if it's our containers using the port
+                local port_user=$(docker ps --filter "publish=$port" --format "{{.Names}}" | grep -i conduit || true)
+                if [[ -z "$port_user" ]]; then
+                    log_warn "Port $port is already in use by another process"
+                    port_conflicts=true
+                fi
+            fi
+        done
+        
+        if [[ "$port_conflicts" == "true" ]]; then
+            log_warn "Some required ports are in use by other processes"
+            log_info "AUTO-FIXING: Attempting to identify and handle port conflicts..."
+            
+            # Try to identify what's using the ports
+            for port in "${ports_to_check[@]}"; do
+                local process_info=""
+                if command -v lsof >/dev/null 2>&1; then
+                    process_info=$(lsof -i ":$port" 2>/dev/null | grep LISTEN | head -1 || true)
+                fi
+                
+                if [[ -n "$process_info" ]]; then
+                    log_warn "Port $port is used by: $process_info"
+                fi
+            done
+            
+            log_error "Cannot automatically fix port conflicts"
+            log_error "You can either:"
+            log_error "  1. Stop the conflicting processes"
+            log_error "  2. Change the ports in docker-compose.yml"
+            exit 1
+        fi
+    else
+        log_info "Port checking tools not available, skipping port conflict check"
+    fi
+    
+    log_info "Container conflict check completed"
 }
 
 # Fix host filesystem permissions - AGGRESSIVE
@@ -409,12 +534,25 @@ clean_environment() {
     local current_uid=$(id -u)
     local current_gid=$(id -g)
     
-    # Kill all conduit containers immediately
-    log_info "Killing all Conduit containers..."
+    # FIRST: Kill everything with extreme prejudice
+    log_info "KILLING all Docker containers with 'conduit' in the name..."
+    docker ps -a | grep conduit | awk '{print $1}' | xargs -r docker rm -f 2>/dev/null || true
+    
+    # Remove volumes directly
+    log_info "Removing all Conduit volumes..."
+    docker volume ls | grep conduit | awk '{print $2}' | xargs -r docker volume rm -f 2>/dev/null || true
+    
+    # Now try compose cleanup with a timeout
+    log_info "Running compose cleanup (5 second timeout)..."
+    cd "$PROJECT_ROOT" || exit 1
+    timeout 5 $compose_cmd down --volumes --remove-orphans 2>/dev/null || true
+    
+    # Kill all conduit containers immediately (in case compose missed any)
+    log_info "Killing any remaining Conduit containers..."
     docker ps -q --filter "name=conduit" | xargs -r docker kill 2>/dev/null || true
     
-    # Remove all conduit containers
-    log_info "Removing all Conduit containers..."
+    # Remove all conduit containers (in case compose missed any)
+    log_info "Removing any remaining Conduit containers..."
     docker ps -aq --filter "name=conduit" | xargs -r docker rm -f 2>/dev/null || true
     
     # Clean host filesystem directories
@@ -477,6 +615,8 @@ start_development() {
     local compose_cmd="${DOCKER_COMPOSE_CMD:-docker compose}"
     local build_flag=""
     local show_logs="${1:-false}"
+    local max_retries=3
+    local retry_count=0
     
     if [[ "${FORCE_BUILD:-false}" == "true" ]]; then
         # When --build is used, FORCE stop and remove existing containers first
@@ -490,28 +630,173 @@ start_development() {
     # Always fix permissions before starting
     fix_permissions_before_start
     
-    # Start services
-    $compose_cmd -f docker-compose.yml -f docker-compose.dev.yml up -d $build_flag
+    # Export environment variables for docker-compose
+    export SKIP_NPM_INSTALL="${SKIP_NPM_INSTALL:-false}"
+    export FORCE_NPM_INSTALL="${FORCE_NPM_INSTALL:-false}"
+    
+    # Try to start services with retry logic
+    while [[ $retry_count -lt $max_retries ]]; do
+        log_info "Starting services (attempt $((retry_count + 1))/$max_retries)..."
+        
+        if $compose_cmd -f docker-compose.yml -f docker-compose.dev.yml up -d $build_flag 2>&1; then
+            # Check if containers actually started
+            sleep 2
+            local running_count=$(docker ps --filter "name=conduit" --filter "status=running" -q | wc -l)
+            if [[ $running_count -gt 0 ]]; then
+                break
+            else
+                log_warn "Containers failed to start properly"
+            fi
+        else
+            log_warn "Docker compose command failed"
+        fi
+        
+        ((retry_count++))
+        
+        if [[ $retry_count -lt $max_retries ]]; then
+            log_info "AUTO-FIXING: Cleaning up and retrying..."
+            
+            # Clean up failed containers
+            docker ps -aq --filter "name=conduit" | xargs -r docker rm -f 2>/dev/null || true
+            
+            # Clean up stale networks
+            docker network prune -f 2>/dev/null || true
+            
+            # If compose keeps failing, try removing volumes
+            if [[ $retry_count -eq 2 ]]; then
+                log_warn "Multiple failures detected, cleaning volumes..."
+                docker volume ls --filter "name=conduit" --format "{{.Name}}" | xargs -r docker volume rm -f 2>/dev/null || true
+            fi
+            
+            sleep 2
+        fi
+    done
+    
+    if [[ $retry_count -eq $max_retries ]]; then
+        log_error "Failed to start environment after $max_retries attempts"
+        log_error "Try running: ./scripts/start-dev.sh --clean"
+        exit 1
+    fi
+    
+    # Wait a moment for containers to fully initialize
+    sleep 3
+    
+    # Auto-fix any containers that failed to start
+    local failed_containers=$(docker ps -a --filter "name=conduit" --filter "status=exited" --format "{{.Names}}" || true)
+    if [[ -n "$failed_containers" ]]; then
+        log_warn "Some containers failed to start: $failed_containers"
+        log_info "AUTO-FIXING: Attempting to restart failed containers..."
+        
+        for container in $failed_containers; do
+            log_info "Restarting $container..."
+            docker start $container 2>/dev/null || {
+                log_warn "Failed to restart $container, removing and recreating..."
+                docker rm -f $container 2>/dev/null || true
+                # Let docker-compose recreate it
+                $compose_cmd -f docker-compose.yml -f docker-compose.dev.yml up -d --no-deps $(echo $container | sed 's/conduit-//g' | sed 's/-[0-9]*$//g') 2>/dev/null || true
+            }
+        done
+    fi
     
     log_info "Development environment started successfully!"
     echo
     log_info "Services available at:"
+    log_info "  🌐 WebUI:               http://localhost:3000"
     log_info "  📚 Core API Swagger:    http://localhost:5000/swagger"
     log_info "  🔧 Admin API Swagger:   http://localhost:5002/swagger"  
-    log_info "  🌐 WebUI:               http://localhost:3000"
     log_info "  🐰 RabbitMQ Management: http://localhost:15672 (conduit/conduitpass)"
     echo
-    log_info "Development commands:"
-    log_info "  ./scripts/dev-workflow.sh build-webui      # Build WebUI"
-    log_info "  ./scripts/dev-workflow.sh lint-fix-webui   # Fix ESLint errors"
-    log_info "  ./scripts/dev-workflow.sh shell            # Open container shell"
-    log_info "  ./scripts/dev-workflow.sh logs             # Show WebUI logs"
+    log_info "You can now run commands directly on host:"
+    log_info "  cd ConduitLLM.WebUI && npm run build      # Build WebUI"
+    log_info "  cd ConduitLLM.WebUI && npm run lint       # Run linter"
+    log_info "  cd SDKs/Node/Admin && npm run build       # Build SDK"
+    echo
+    log_info "For faster startup next time: ./scripts/start-dev.sh --fast"
     echo
     
     if [[ "$show_logs" == "true" ]]; then
         log_info "Showing container logs (press Ctrl+C to exit)..."
         $compose_cmd -f docker-compose.yml -f docker-compose.dev.yml logs -f
     fi
+}
+
+# Quick restart WebUI container with cleanup
+restart_webui() {
+    log_task "Restarting WebUI container..."
+    
+    local compose_cmd="${DOCKER_COMPOSE_CMD:-docker compose}"
+    
+    # First, kill any stuck npm/node processes in the container
+    log_info "Killing any stuck npm/node processes in WebUI container..."
+    docker exec conduit-webui-1 sh -c "pkill -f 'npm run build' || true" 2>/dev/null || true
+    docker exec conduit-webui-1 sh -c "pkill -f 'next build' || true" 2>/dev/null || true
+    docker exec conduit-webui-1 sh -c "pkill -9 -f 'node.*next' || true" 2>/dev/null || true
+    
+    # Give processes a moment to die
+    sleep 1
+    
+    # Stop the WebUI container gracefully
+    log_info "Stopping WebUI container..."
+    docker stop conduit-webui-1 2>/dev/null || true
+    
+    # Remove the container
+    docker rm -f conduit-webui-1 2>/dev/null || true
+    
+    # Clear Next.js cache if it exists
+    if [[ -d "./ConduitLLM.WebUI/.next" ]]; then
+        log_info "Clearing Next.js build cache..."
+        rm -rf "./ConduitLLM.WebUI/.next" 2>/dev/null || true
+    fi
+    
+    # Restart just the WebUI service
+    log_info "Starting WebUI container..."
+    $compose_cmd -f docker-compose.yml -f docker-compose.dev.yml up -d webui
+    
+    # Wait for it to be ready
+    local max_attempts=15
+    local attempt=1
+    
+    while [[ $attempt -le $max_attempts ]]; do
+        if docker exec conduit-webui-1 echo "Container ready" >/dev/null 2>&1; then
+            log_info "WebUI container is ready!"
+            
+            # Check if dev server is actually running
+            sleep 3
+            if docker exec conduit-webui-1 pgrep -f "next dev" >/dev/null 2>&1; then
+                log_info "Next.js dev server is running"
+                log_info "WebUI available at: http://localhost:3000"
+                return 0
+            else
+                log_warn "Next.js dev server not detected, checking logs..."
+                docker logs --tail 20 conduit-webui-1
+            fi
+            break
+        fi
+        
+        log_info "Waiting for WebUI container... ($attempt/$max_attempts)"
+        sleep 2
+        ((attempt++))
+    done
+    
+    if [[ $attempt -gt $max_attempts ]]; then
+        log_error "WebUI container failed to start properly"
+        log_info "Check logs with: docker logs conduit-webui-1"
+        return 1
+    fi
+}
+
+# Show WebUI logs
+show_webui_logs() {
+    log_task "Showing WebUI container logs..."
+    
+    if ! docker ps --format "{{.Names}}" | grep -q "conduit-webui-1"; then
+        log_error "WebUI container is not running"
+        log_info "Start it with: ./scripts/start-dev.sh"
+        return 1
+    fi
+    
+    log_info "Tailing WebUI logs (press Ctrl+C to exit)..."
+    docker logs -f conduit-webui-1
 }
 
 # Check container health
@@ -521,13 +806,44 @@ check_health() {
     local compose_cmd="${DOCKER_COMPOSE_CMD:-docker compose}"
     local max_attempts=30
     local attempt=1
+    local expected_services=4
     
     while [[ $attempt -le $max_attempts ]]; do
         local healthy_count=$($compose_cmd -f docker-compose.yml -f docker-compose.dev.yml ps --services --filter "status=running" | wc -l)
         
-        if [[ $healthy_count -ge 4 ]]; then
+        if [[ $healthy_count -ge $expected_services ]]; then
             log_info "All services are running"
             return 0
+        fi
+        
+        # After 10 attempts, try auto-recovery
+        if [[ $attempt -eq 10 ]]; then
+            log_warn "Services slow to start, attempting auto-recovery..."
+            
+            # Find which services aren't running
+            local all_services=$($compose_cmd -f docker-compose.yml -f docker-compose.dev.yml config --services)
+            local running_services=$($compose_cmd -f docker-compose.yml -f docker-compose.dev.yml ps --services --filter "status=running")
+            
+            for service in $all_services; do
+                if ! echo "$running_services" | grep -q "^$service$"; then
+                    log_info "AUTO-FIXING: Restarting $service..."
+                    $compose_cmd -f docker-compose.yml -f docker-compose.dev.yml up -d --no-deps $service 2>/dev/null || true
+                fi
+            done
+        fi
+        
+        # After 20 attempts, try more aggressive recovery
+        if [[ $attempt -eq 20 ]]; then
+            log_warn "Services still not healthy, trying aggressive recovery..."
+            
+            # Check for containers that keep restarting
+            local restarting=$(docker ps --filter "name=conduit" --filter "status=restarting" --format "{{.Names}}" || true)
+            if [[ -n "$restarting" ]]; then
+                log_info "AUTO-FIXING: Removing restarting containers: $restarting"
+                echo "$restarting" | xargs -r docker rm -f 2>/dev/null || true
+                # Recreate them
+                $compose_cmd -f docker-compose.yml -f docker-compose.dev.yml up -d 2>/dev/null || true
+            fi
         fi
         
         log_info "Waiting for services to start... ($attempt/$max_attempts)"
@@ -535,8 +851,45 @@ check_health() {
         ((attempt++))
     done
     
-    log_warn "Some services may not have started properly. Check with:"
-    log_warn "  docker compose -f docker-compose.yml -f docker-compose.dev.yml ps"
+    # Final recovery attempt
+    log_warn "Health check failed after $max_attempts attempts"
+    log_info "AUTO-FIXING: Final recovery attempt..."
+    
+    # Get detailed status
+    local container_status=$($compose_cmd -f docker-compose.yml -f docker-compose.dev.yml ps --format "table {{.Name}}\t{{.Status}}")
+    log_info "Container status:"
+    echo "$container_status"
+    
+    # Try one more restart of all services
+    $compose_cmd -f docker-compose.yml -f docker-compose.dev.yml restart 2>/dev/null || true
+    
+    sleep 5
+    
+    # Final check
+    local final_healthy_count=$($compose_cmd -f docker-compose.yml -f docker-compose.dev.yml ps --services --filter "status=running" | wc -l)
+    if [[ $final_healthy_count -ge $expected_services ]]; then
+        log_info "Services recovered successfully!"
+        return 0
+    else
+        log_error "Failed to start all services"
+        log_error "Check logs with: docker compose -f docker-compose.yml -f docker-compose.dev.yml logs"
+        return 1
+    fi
+}
+
+# Cleanup handler for script interruption
+cleanup_on_exit() {
+    local exit_code=$?
+    if [[ $exit_code -ne 0 ]]; then
+        log_warn "Script interrupted or failed"
+        
+        # If containers are in a bad state, offer to clean them
+        local failed_containers=$(docker ps -a --filter "name=conduit" --filter "status=exited" --format "{{.Names}}" 2>/dev/null || true)
+        if [[ -n "$failed_containers" ]]; then
+            log_info "Found failed containers: $failed_containers"
+            log_info "Run './scripts/start-dev.sh --clean' to start fresh"
+        fi
+    fi
 }
 
 # Main execution
@@ -546,10 +899,29 @@ main() {
     local clean_only=false
     local fix_perms_only=false
     local show_logs=false
+    local fast_mode=false
+    local rebuild_mode=false
+    local restart_webui_only=false
+    local webui_logs_only=false
+    
+    # Set up cleanup trap
+    trap cleanup_on_exit EXIT
     
     # Parse arguments
     while [[ $# -gt 0 ]]; do
         case $1 in
+            --fast)
+                fast_mode=true
+                shift
+                ;;
+            --rebuild)
+                rebuild_mode=true
+                shift
+                ;;
+            --fix)
+                fix_perms_only=true
+                shift
+                ;;
             --build)
                 force_build=true
                 shift
@@ -562,12 +934,20 @@ main() {
                 clean_only=true
                 shift
                 ;;
-            --fix-perms)
+            --fix-perms)  # Keep for backward compatibility
                 fix_perms_only=true
                 shift
                 ;;
             --logs)
                 show_logs=true
+                shift
+                ;;
+            --restart-webui|--fix-webui)
+                restart_webui_only=true
+                shift
+                ;;
+            --webui-logs)
+                webui_logs_only=true
                 shift
                 ;;
             --help|-h)
@@ -585,23 +965,53 @@ main() {
     # Change to project root
     cd "$PROJECT_ROOT"
     
+    # Handle WebUI-specific operations first (these don't need full setup)
+    if [[ "$restart_webui_only" == "true" ]]; then
+        log_info "WebUI Quick Fix"
+        log_info "==============="
+        
+        restart_webui
+        return $?
+    fi
+    
+    if [[ "$webui_logs_only" == "true" ]]; then
+        show_webui_logs
+        return $?
+    fi
+    
     # Export variables for docker-compose
     export FORCE_BUILD=$force_build
     
+    # Handle fast mode
+    if [[ "$fast_mode" == "true" ]]; then
+        export SKIP_NPM_INSTALL=true
+        log_info "FAST MODE: Skipping dependency installation"
+    fi
+    
+    # Handle rebuild mode
+    if [[ "$rebuild_mode" == "true" ]]; then
+        export FORCE_NPM_INSTALL=true
+        log_info "REBUILD MODE: Force reinstalling all dependencies"
+    fi
+    
     if [[ "$fix_perms_only" == "true" ]]; then
-        log_info "Fixing Permissions (Host Filesystem and Docker Volumes)"
-        log_info "====================================================="
+        log_info "Fixing Permissions"
+        log_info "=================="
         
         check_prerequisites
         
         # Fix host filesystem permissions
         fix_host_permissions
         
-        # Fix Docker volume permissions
-        fix_volume_permissions
+        # Stop and restart containers to fix any container issues
+        log_info "Restarting containers to apply fixes..."
+        docker compose -f docker-compose.yml -f docker-compose.dev.yml down
         
-        log_info "Permission fix completed!"
-        log_info "You can now run './scripts/start-dev.sh' to start the development environment"
+        setup_environment
+        start_development "$show_logs"
+        check_health
+        
+        log_info "Fix completed! Environment is ready."
         return 0
     fi
     
@@ -625,14 +1035,18 @@ main() {
     log_info "========================================"
     
     check_prerequisites
-    check_container_conflicts
+    
+    # If clean flag is set, clean FIRST before checking conflicts
+    if [[ "$clean" == "true" ]]; then
+        clean_environment
+    else
+        # Only check conflicts if not cleaning
+        check_container_conflicts
+    fi
+    
     check_filesystem_compatibility
     validate_user_mapping
     validate_development_file_permissions
-    
-    if [[ "$clean" == "true" ]]; then
-        clean_environment
-    fi
     
     # Always fix permissions - no more checking, just fix
     

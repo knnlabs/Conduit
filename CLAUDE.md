@@ -30,24 +30,39 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Development Workflow - CRITICAL
 **⚠️ CANONICAL DEVELOPMENT STARTUP: Always use `./scripts/start-dev.sh` for development**
 
-### Starting Development Environment
+### Starting Development Environment - UPDATED WORKFLOW
+
+#### Common Usage Patterns:
 ```bash
-# RECOMMENDED: Start development environment (hot reloading, user permission mapping)
+# First time setup or after package.json changes
 ./scripts/start-dev.sh
 
-# Clean and restart if you encounter permission issues
-./scripts/start-dev.sh --clean
+# Daily development (starts in seconds)
+./scripts/start-dev.sh --fast
 
-# Force rebuild containers
-./scripts/start-dev.sh --build
+# After adding/removing npm packages
+./scripts/start-dev.sh --rebuild
+
+# If you get permission errors
+./scripts/start-dev.sh --fix
+
+# Complete reset (removes everything)
+./scripts/start-dev.sh --clean
 ```
 
-**Why use start-dev.sh?**
-- ✅ Automatic permission conflict detection
-- ✅ Proper user ID mapping (no permission denied errors)
-- ✅ Hot reloading for WebUI development
-- ✅ Volume ownership validation
-- ✅ Comprehensive environment health checks
+#### What Each Flag Does:
+- **--fast**: Skips npm install checks, starts containers immediately (use daily)
+- **--rebuild**: Forces complete reinstall of all dependencies
+- **--fix**: Fixes permissions and restarts containers
+- **--clean**: Removes all containers/volumes and starts fresh
+- **--build**: Rebuilds container images (rarely needed)
+
+#### Key Improvements:
+- ✅ Node modules exist on HOST - Claude Code works perfectly
+- ✅ Run npm/build/lint commands directly on host
+- ✅ Fast startup with --fast flag (seconds not minutes)
+- ✅ No more anonymous volumes blocking access
+- ✅ Shared dependencies between host and container
 
 ### Alternative Build Commands
 - Build solution: `dotnet build`
@@ -125,18 +140,21 @@ docker ps
 #### Permission Denied Errors
 ```bash
 # Symptom: npm EACCES errors, cannot write to node_modules
-# Solution 1: Fix permissions without removing data (RECOMMENDED)
-./scripts/start-dev.sh --fix-perms
-
-# Solution 2: Clean and restart development environment (removes all data)
-./scripts/start-dev.sh --clean
+# Solution: Use the fix flag
+./scripts/start-dev.sh --fix
 ```
 
-**Note**: The `--fix-perms` flag now comprehensively fixes both:
-- Host filesystem permissions (directories like node_modules, .next)
-- Docker volume permissions (all Conduit-related volumes)
+#### After Adding New Packages
+```bash
+# When you add packages to package.json
+./scripts/start-dev.sh --rebuild
+```
 
-This is the recommended first approach as it preserves your data while fixing permission issues.
+#### Daily Development
+```bash
+# For fast startup when dependencies haven't changed
+./scripts/start-dev.sh --fast
+```
 
 #### Container Conflicts
 ```bash
@@ -304,11 +322,27 @@ The WebUI uses very strict ESLint rules that will cause build failures:
 
 ## Development Workflow
 - After implementing features, always run: `dotnet build` to check for compilation errors
-- **For WebUI changes**: ALWAYS run `cd ConduitLLM.WebUI && npm run build` 
+- **For WebUI changes**: Run `cd ConduitLLM.WebUI && npm run build` directly on host
+- **For ESLint**: Run `cd ConduitLLM.WebUI && npm run lint` directly on host
+- **For TypeScript checks**: Run `cd ConduitLLM.WebUI && npm run type-check` directly on host
 - Test your changes locally before committing
 - When working with API changes, test with curl or a REST client
 - For UI changes, verify in the browser with developer tools open
 - Clean up temporary test files and scripts after completing features
+
+### WebUI Development - NEW SIMPLIFIED WORKFLOW
+You can now run npm commands DIRECTLY on the host filesystem:
+- ✅ `cd ConduitLLM.WebUI && npm run lint` - Works directly!
+- ✅ `cd SDKs/Node/Admin && npm run build` - Works directly!
+
+The development environment now shares node_modules between host and container.
+
+⚠️ **CRITICAL WARNING: WebUI Build Commands**
+- **NEVER run `npm run build` in the ConduitLLM.WebUI directory during development**
+- The WebUI container runs Next.js dev server which hot-reloads automatically
+- Running `npm run build` will conflict with the dev server and break the container
+- If you accidentally break the WebUI: `./scripts/start-dev.sh --restart-webui`
+- Only run build to verify TypeScript compilation: `cd ConduitLLM.WebUI && npx tsc --noEmit`
 
 ## Git Branching Rules
 - **NEVER push to origin/master** - The master branch is protected

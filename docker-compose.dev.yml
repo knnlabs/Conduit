@@ -27,20 +27,14 @@ services:
       CacheInvalidation__EnableCoalescing: "true"
 
   webui:
-    # Use base node image for development instead of production build
-    image: node:20-alpine
+    # Use Node 22 to match host environment
+    image: node:22-alpine
     # Start as root to fix volume ownership, then switch to user
     user: root
     volumes:
-      # Mount source code for hot reloading
+      # Mount everything - no anonymous volumes so host can access node_modules
       - ./ConduitLLM.WebUI:/app/ConduitLLM.WebUI
       - ./SDKs:/app/SDKs
-      # Cache node_modules in named volumes for better performance
-      - webui_node_modules:/app/ConduitLLM.WebUI/node_modules
-      - webui_next:/app/ConduitLLM.WebUI/.next
-      - admin_sdk_node_modules:/app/SDKs/Node/Admin/node_modules
-      - core_sdk_node_modules:/app/SDKs/Node/Core/node_modules
-      - common_sdk_node_modules:/app/SDKs/Node/Common/node_modules
     environment:
       # Next.js development settings
       NODE_ENV: development
@@ -62,35 +56,41 @@ services:
       # Development authentication bypass
       DISABLE_CLERK_AUTH: "true"
     working_dir: /app/ConduitLLM.WebUI
-    # Install su-exec and setup development environment
+    # Smarter startup that handles both fresh installs and fast restarts
     command: |
       sh -c "
         echo 'Installing su-exec for user switching...'
         apk add --no-cache su-exec
         
-        echo 'Setting up development environment...'
-        # Ensure mounted volumes have correct ownership
-        mkdir -p /app/ConduitLLM.WebUI/node_modules /app/ConduitLLM.WebUI/.next
-        mkdir -p /app/SDKs/Node/Admin/node_modules /app/SDKs/Node/Core/node_modules /app/SDKs/Node/Common/node_modules
+        echo 'Fixing directory ownership...'
+        # Fix ownership of all mounted directories
+        chown -R ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} /app/ConduitLLM.WebUI || true
+        chown -R ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} /app/SDKs || true
         
-        # Only chown if directories are empty or owned by root
-        if [ -z \"$(ls -A /app/ConduitLLM.WebUI/node_modules 2>/dev/null)\" ] || [ \"$(stat -c %u /app/ConduitLLM.WebUI/node_modules 2>/dev/null)\" = \"0\" ]; then
-          chown ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} /app/ConduitLLM.WebUI/node_modules /app/ConduitLLM.WebUI/.next
+        # Check if we should skip dependency installation (fast mode)
+        if [ \"\${SKIP_NPM_INSTALL:-false}\" = \"true\" ]; then
+          echo 'FAST MODE: Skipping dependency installation'
+        else
+          # Check if node_modules exists
+          if [ ! -d /app/ConduitLLM.WebUI/node_modules ] || [ \"\${FORCE_NPM_INSTALL:-false}\" = \"true\" ]; then
+            echo 'Installing dependencies (this will be visible on host)...'
+            su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c '
+              cd /app/SDKs/Node/Common && npm install && npm run build
+              cd /app/SDKs/Node/Admin && npm install && npm run build
+              cd /app/SDKs/Node/Core && npm install && npm run build
+              cd /app/ConduitLLM.WebUI && npm install
+            '
+          else
+            echo 'Dependencies already installed, checking for updates...'
+            su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c '
+              cd /app/SDKs/Node/Common && npm install
+              cd /app/SDKs/Node/Admin && npm install
+              cd /app/SDKs/Node/Core && npm install
+              cd /app/ConduitLLM.WebUI && npm install
+            '
+          fi
         fi
         
-        # Check and fix ownership for SDK directories individually
-        for dir in /app/SDKs/Node/Admin/node_modules /app/SDKs/Node/Core/node_modules /app/SDKs/Node/Common/node_modules; do
-          if [ -z \"\$$(ls -A \$$dir 2>/dev/null)\" ] || [ \"\$$(stat -c %u \$$dir 2>/dev/null)\" = \"0\" ]; then
-            chown ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} \$$dir
-          fi
-        done
-        
-        echo 'Installing SDK dependencies as user ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000}...'
-        su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c 'cd /app/SDKs/Node/Common && npm install && npm run build'
-        su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c 'cd /app/SDKs/Node/Admin && npm install && npm run build'
-        su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c 'cd /app/SDKs/Node/Core && npm install && npm run build'
-        echo 'Installing WebUI dependencies...'
-        su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c 'cd /app/ConduitLLM.WebUI && npm install'
         echo 'Starting development server...'
         su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c 'cd /app/ConduitLLM.WebUI && npm run dev'
       "
@@ -102,9 +102,4 @@ services:
       api:
         condition: service_healthy
 
-volumes:
-  webui_node_modules:
-  webui_next:
-  admin_sdk_node_modules:
-  core_sdk_node_modules:
-  common_sdk_node_modules:
+# Named volumes removed - using anonymous volumes instead
