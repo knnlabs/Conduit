@@ -16,6 +16,13 @@ services:
       HealthMonitoring__ApiEndpoints__0__Url: http://admin:8080/health
       HealthMonitoring__ApiEndpoints__0__TimeoutMs: 5000
       HealthMonitoring__ApiEndpoints__0__WarningThresholdMs: 1000
+      # MinIO S3 configuration (optional - only used when ENABLE_MINIO=true)
+      CONDUIT_MEDIA_STORAGE_TYPE: "${CONDUIT_MEDIA_STORAGE_TYPE:-InMemory}"
+      CONDUIT_S3_ENDPOINT: "${CONDUIT_S3_ENDPOINT:-http://minio:9000}"
+      CONDUIT_S3_ACCESS_KEY: "${CONDUIT_S3_ACCESS_KEY:-minioadmin}"
+      CONDUIT_S3_SECRET_KEY: "${CONDUIT_S3_SECRET_KEY:-minioadmin123}"
+      CONDUIT_S3_BUCKET_NAME: "${CONDUIT_S3_BUCKET_NAME:-conduit-media}"
+      CONDUIT_S3_REGION: "${CONDUIT_S3_REGION:-us-east-1}"
 
   admin:
     environment:
@@ -25,6 +32,13 @@ services:
       CacheInvalidation__BatchWindow: "00:00:00.050"  # 50ms - Faster for development
       CacheInvalidation__MaxBatchSize: "50"   # Smaller batches for easier debugging
       CacheInvalidation__EnableCoalescing: "true"
+      # MinIO S3 configuration (optional - only used when ENABLE_MINIO=true)
+      CONDUIT_MEDIA_STORAGE_TYPE: "${CONDUIT_MEDIA_STORAGE_TYPE:-InMemory}"
+      CONDUIT_S3_ENDPOINT: "${CONDUIT_S3_ENDPOINT:-http://minio:9000}"
+      CONDUIT_S3_ACCESS_KEY: "${CONDUIT_S3_ACCESS_KEY:-minioadmin}"
+      CONDUIT_S3_SECRET_KEY: "${CONDUIT_S3_SECRET_KEY:-minioadmin123}"
+      CONDUIT_S3_BUCKET_NAME: "${CONDUIT_S3_BUCKET_NAME:-conduit-media}"
+      CONDUIT_S3_REGION: "${CONDUIT_S3_REGION:-us-east-1}"
 
   webui:
     # Use Node 22 to match host environment
@@ -102,4 +116,24 @@ services:
       api:
         condition: service_healthy
 
-# Named volumes removed - using anonymous volumes instead
+  minio:
+    image: minio/minio:latest
+    container_name: conduit-minio-dev
+    ports:
+      - "9000:9000"  # API port
+      - "9001:9001"  # Console port
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+      MINIO_BROWSER_REDIRECT_URL: http://localhost:9001
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_dev_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+volumes:
+  minio_dev_data:

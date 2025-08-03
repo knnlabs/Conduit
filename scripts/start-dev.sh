@@ -52,13 +52,16 @@ Options:
   --logs         Show logs after startup
   --restart-webui Quick fix for stuck WebUI container (kills npm processes, restarts)
   --webui-logs   Show WebUI container logs only
+  --with-minio   Enable MinIO S3-compatible storage for testing
   --help         Show this help message
 
 Common Usage:
-  $0               # First time or after package changes
-  $0 --fast        # Daily use - starts in seconds
+  $0               # Regular startup with cached volumes (RECOMMENDED)
+  $0 --fast        # Daily use - starts in seconds, skips dependency checks
   $0 --rebuild     # After adding/removing packages
+  $0 --build       # Force rebuild containers (slow)
   $0 --fix         # If you get permission errors
+  $0 --clean       # Nuclear option: delete everything and start fresh
   $0 --restart-webui  # FIX STUCK WEBUI (when npm build breaks it)
 
 After startup, services available at:
@@ -66,6 +69,7 @@ After startup, services available at:
   - Core API Swagger: http://localhost:5000/swagger
   - Admin API Swagger: http://localhost:5002/swagger
   - RabbitMQ: http://localhost:15672
+  - MinIO Console: http://localhost:9001 (minioadmin/minioadmin123, when --with-minio enabled)
 
 Node modules are shared with host - you can:
   - Run 'npm run build' in ConduitLLM.WebUI/
@@ -202,6 +206,10 @@ check_container_conflicts() {
     # Check for port conflicts (skip if tools not available)
     if command -v lsof >/dev/null 2>&1 || command -v netstat >/dev/null 2>&1 || command -v ss >/dev/null 2>&1; then
         local ports_to_check=("3000" "5000" "5002" "5432" "5672" "15672")
+        # Add MinIO ports if enabled
+        if [[ "${ENABLE_MINIO:-false}" == "true" ]]; then
+            ports_to_check+=("9000" "9001")
+        fi
         local port_conflicts=false
         
         for port in "${ports_to_check[@]}"; do
@@ -315,39 +323,56 @@ fix_volume_permissions() {
     return 0
 }
 
-# Auto-fix permissions before starting
-fix_permissions_before_start() {
-    log_task "Auto-fixing all permissions..."
+# Check and fix permissions only if needed
+check_and_fix_permissions_if_needed() {
+    log_task "Checking if permission fixes are needed..."
     
     local current_uid=$(id -u)
     local current_gid=$(id -g)
+    local needs_fix=false
     
-    # Fix host permissions silently
-    local dirs_to_fix=(
+    # Check host permissions
+    local dirs_to_check=(
         "./ConduitLLM.WebUI"
         "./SDKs/Node/Admin"
         "./SDKs/Node/Core"
         "./SDKs/Node/Common"
     )
     
-    for dir in "${dirs_to_fix[@]}"; do
+    for dir in "${dirs_to_check[@]}"; do
         if [[ -d "$dir" ]]; then
-            sudo chown -R "$current_uid:$current_gid" "$dir" 2>/dev/null || true
+            local dir_owner=$(stat -c "%u" "$dir" 2>/dev/null || echo "unknown")
+            if [[ "$dir_owner" != "$current_uid" ]]; then
+                log_info "Directory $dir needs permission fix (owner: $dir_owner, expected: $current_uid)"
+                needs_fix=true
+                break
+            fi
         fi
     done
     
-    # Fix volume permissions if any exist
-    local volumes=$(docker volume ls --filter "name=conduit" --format "{{.Name}}" || true)
-    if [[ -n "$volumes" ]]; then
-        for volume in $volumes; do
-            docker run --rm \
-                -v "$volume:/fix" \
-                alpine:latest \
-                sh -c "chown -R $current_uid:$current_gid /fix 2>/dev/null || true" 2>/dev/null || true
-        done
+    # Check if we can create a test file
+    local test_file="./ConduitLLM.WebUI/.perm-test-$$"
+    if ! touch "$test_file" 2>/dev/null; then
+        log_info "Cannot create files in WebUI directory - permission fix needed"
+        needs_fix=true
+    else
+        rm -f "$test_file" 2>/dev/null || true
     fi
     
-    log_info "Permissions auto-fixed"
+    if [[ "$needs_fix" == "true" ]]; then
+        log_info "Permission issues detected, applying fixes..."
+        
+        # Fix host permissions
+        for dir in "${dirs_to_check[@]}"; do
+            if [[ -d "$dir" ]]; then
+                sudo chown -R "$current_uid:$current_gid" "$dir" 2>/dev/null || true
+            fi
+        done
+        
+        log_info "Host permissions fixed"
+    else
+        log_info "Permissions look good, no fixes needed"
+    fi
 }
 
 # Check filesystem compatibility
@@ -627,8 +652,14 @@ start_development() {
         log_info "Force building containers..."
     fi
     
-    # Always fix permissions before starting
-    fix_permissions_before_start
+    # Only fix permissions if needed (unless forced by --build or --clean flags)
+    if [[ "${FORCE_BUILD:-false}" == "true" ]] || [[ "${FORCE_PERMISSION_FIX:-false}" == "true" ]]; then
+        log_info "Forced permission fix requested"
+        fix_host_permissions
+        fix_volume_permissions
+    else
+        check_and_fix_permissions_if_needed
+    fi
     
     # Export environment variables for docker-compose
     export SKIP_NPM_INSTALL="${SKIP_NPM_INSTALL:-false}"
@@ -705,6 +736,10 @@ start_development() {
     log_info "  📚 Core API Swagger:    http://localhost:5000/swagger"
     log_info "  🔧 Admin API Swagger:   http://localhost:5002/swagger"  
     log_info "  🐰 RabbitMQ Management: http://localhost:15672 (conduit/conduitpass)"
+    if [[ "$enable_minio" == "true" ]]; then
+        log_info "  📦 MinIO Console:       http://localhost:9001 (minioadmin/minioadmin123)"
+        log_info "  📦 MinIO API:           http://localhost:9000"
+    fi
     echo
     log_info "You can now run commands directly on host:"
     log_info "  cd ConduitLLM.WebUI && npm run build      # Build WebUI"
@@ -903,6 +938,7 @@ main() {
     local rebuild_mode=false
     local restart_webui_only=false
     local webui_logs_only=false
+    local enable_minio=false
     
     # Set up cleanup trap
     trap cleanup_on_exit EXIT
@@ -950,6 +986,10 @@ main() {
                 webui_logs_only=true
                 shift
                 ;;
+            --with-minio)
+                enable_minio=true
+                shift
+                ;;
             --help|-h)
                 show_usage
                 exit 0
@@ -981,6 +1021,23 @@ main() {
     
     # Export variables for docker-compose
     export FORCE_BUILD=$force_build
+    export ENABLE_MINIO=$enable_minio
+    
+    # Set MinIO environment variables if enabled
+    if [[ "$enable_minio" == "true" ]]; then
+        export CONDUIT_MEDIA_STORAGE_TYPE=S3
+        export CONDUIT_S3_ENDPOINT=http://minio:9000
+        export CONDUIT_S3_ACCESS_KEY=minioadmin
+        export CONDUIT_S3_SECRET_KEY=minioadmin123
+        export CONDUIT_S3_BUCKET_NAME=conduit-media
+        export CONDUIT_S3_REGION=us-east-1
+        log_info "MinIO S3 storage enabled"
+    fi
+    
+    # Set permission fix flag for --fix and --clean options
+    if [[ "$fix_perms_only" == "true" ]] || [[ "$clean" == "true" ]]; then
+        export FORCE_PERMISSION_FIX=true
+    fi
     
     # Handle fast mode
     if [[ "$fast_mode" == "true" ]]; then
