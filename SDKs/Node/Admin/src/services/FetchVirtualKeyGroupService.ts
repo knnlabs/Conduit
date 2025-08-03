@@ -6,8 +6,11 @@ import type {
   CreateVirtualKeyGroupRequestDto, 
   UpdateVirtualKeyGroupRequestDto,
   AdjustBalanceDto,
-  VirtualKeyDto 
+  VirtualKeyDto,
+  VirtualKeyGroupTransactionDto,
+  TransactionHistoryParams
 } from '../models/virtualKey';
+import type { PagedResult } from '../models/security';
 
 /**
  * Type-safe Virtual Key Group service using native fetch
@@ -108,6 +111,35 @@ export class FetchVirtualKeyGroupService {
   async getKeys(id: number, config?: RequestConfig): Promise<VirtualKeyDto[]> {
     return this.client['get']<VirtualKeyDto[]>(
       `${ENDPOINTS.VIRTUAL_KEY_GROUPS}/${id}/keys`,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Get transaction history for a virtual key group (paginated)
+   */
+  async getTransactionHistory(
+    id: number, 
+    params?: TransactionHistoryParams,
+    config?: RequestConfig
+  ): Promise<PagedResult<VirtualKeyGroupTransactionDto>> {
+    const queryParams = new URLSearchParams();
+    if (params?.page !== undefined) {
+      queryParams.append('page', params.page.toString());
+    }
+    if (params?.pageSize !== undefined) {
+      queryParams.append('pageSize', params.pageSize.toString());
+    }
+
+    const queryString = queryParams.toString();
+    const url = `${ENDPOINTS.VIRTUAL_KEY_GROUPS}/${id}/transactions${queryString ? `?${queryString}` : ''}`;
+
+    return this.client['get']<PagedResult<VirtualKeyGroupTransactionDto>>(
+      url,
       {
         signal: config?.signal,
         timeout: config?.timeout,

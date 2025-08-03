@@ -1,6 +1,20 @@
 import { FilterOptions } from './common';
 import { VirtualKeyMetadata } from './metadata';
 
+export enum TransactionType {
+  Credit = 1,
+  Debit = 2,
+  Refund = 3,
+  Adjustment = 4
+}
+
+export enum ReferenceType {
+  Manual = 1,
+  VirtualKey = 2,
+  System = 3,
+  Initial = 4
+}
+
 export interface VirtualKeyGroupDto {
   id: number;
   externalGroupId?: string;
@@ -26,6 +40,26 @@ export interface UpdateVirtualKeyGroupRequestDto {
 
 export interface AdjustBalanceDto {
   amount: number;
+  description?: string;
+}
+
+export interface VirtualKeyGroupTransactionDto {
+  id: number;
+  virtualKeyGroupId: number;
+  transactionType: TransactionType;
+  amount: number;
+  balanceAfter: number;
+  description?: string;
+  referenceId?: string;
+  referenceType: ReferenceType;
+  initiatedBy: string;
+  initiatedByUserId?: string;
+  createdAt: string;
+}
+
+export interface TransactionHistoryParams {
+  page?: number;
+  pageSize?: number;
 }
 
 export interface VirtualKeyDto {

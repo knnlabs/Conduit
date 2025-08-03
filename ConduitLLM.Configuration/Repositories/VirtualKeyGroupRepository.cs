@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -68,6 +69,22 @@ public class VirtualKeyGroupRepository : IVirtualKeyGroupRepository
         
         _context.VirtualKeyGroups.Add(group);
         await _context.SaveChangesAsync();
+
+        // If group was created with initial balance, create a transaction record
+        if (group.Balance > 0)
+        {
+            var transaction = CreateTransaction(
+                group.Id,
+                group.Balance,
+                group.Balance,
+                TransactionType.Credit,
+                ReferenceType.Initial,
+                "Initial balance"
+            );
+
+            _context.VirtualKeyGroupTransactions.Add(transaction);
+            await _context.SaveChangesAsync();
+        }
         
         _logger.LogInformation("Created virtual key group {GroupId} with name {GroupName}", 
             group.Id, group.GroupName);
@@ -114,12 +131,19 @@ public class VirtualKeyGroupRepository : IVirtualKeyGroupRepository
     /// <inheritdoc />
     public async Task<decimal> AdjustBalanceAsync(int groupId, decimal amount)
     {
+        return await AdjustBalanceAsync(groupId, amount, null, null);
+    }
+
+    /// <inheritdoc />
+    public async Task<decimal> AdjustBalanceAsync(int groupId, decimal amount, string? description, string? initiatedBy)
+    {
         var group = await GetByIdAsync(groupId);
         if (group == null)
         {
             throw new InvalidOperationException($"Virtual key group {groupId} not found");
         }
         
+        var previousBalance = group.Balance;
         group.Balance += amount;
         
         if (amount > 0)
@@ -132,11 +156,25 @@ public class VirtualKeyGroupRepository : IVirtualKeyGroupRepository
         }
         
         group.UpdatedAt = DateTime.UtcNow;
+
+        // Create transaction record
+        var transaction = CreateTransaction(
+            groupId,
+            amount,
+            group.Balance,
+            amount > 0 ? TransactionType.Credit : TransactionType.Debit,
+            ReferenceType.Manual,
+            description ?? (amount > 0 ? "Credits added" : "Usage deducted"),
+            null,
+            initiatedBy ?? "System"
+        );
+
+        _context.VirtualKeyGroupTransactions.Add(transaction);
         
         await _context.SaveChangesAsync();
         
-        _logger.LogInformation("Adjusted balance for group {GroupId} by {Amount}. New balance: {Balance}", 
-            groupId, amount, group.Balance);
+        _logger.LogInformation("Adjusted balance for group {GroupId} by {Amount}. Previous: {PreviousBalance}, New: {Balance}", 
+            groupId, amount, previousBalance, group.Balance);
         
         return group.Balance;
     }
@@ -148,5 +186,34 @@ public class VirtualKeyGroupRepository : IVirtualKeyGroupRepository
             .Where(g => g.Balance < threshold)
             .OrderBy(g => g.Balance)
             .ToListAsync();
+    }
+
+    /// <summary>
+    /// Creates a transaction record for a virtual key group
+    /// </summary>
+    private VirtualKeyGroupTransaction CreateTransaction(
+        int groupId,
+        decimal amount,
+        decimal balanceAfter,
+        TransactionType transactionType,
+        ReferenceType referenceType,
+        string? description = null,
+        string? referenceId = null,
+        string initiatedBy = "System",
+        string? initiatedByUserId = null)
+    {
+        return new VirtualKeyGroupTransaction
+        {
+            VirtualKeyGroupId = groupId,
+            TransactionType = transactionType,
+            Amount = Math.Abs(amount), // Always store positive
+            BalanceAfter = balanceAfter,
+            ReferenceType = referenceType,
+            ReferenceId = referenceId,
+            Description = description,
+            InitiatedBy = initiatedBy,
+            InitiatedByUserId = initiatedByUserId,
+            CreatedAt = DateTime.UtcNow
+        };
     }
 }

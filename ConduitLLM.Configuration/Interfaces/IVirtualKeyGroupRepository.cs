@@ -66,6 +66,16 @@ public interface IVirtualKeyGroupRepository
     Task<decimal> AdjustBalanceAsync(int groupId, decimal amount);
 
     /// <summary>
+    /// Adjusts the balance of a virtual key group with transaction details
+    /// </summary>
+    /// <param name="groupId">The group ID</param>
+    /// <param name="amount">The amount to adjust (positive for credit, negative for debit)</param>
+    /// <param name="description">Description of the transaction</param>
+    /// <param name="initiatedBy">User who initiated the transaction</param>
+    /// <returns>The new balance after adjustment</returns>
+    Task<decimal> AdjustBalanceAsync(int groupId, decimal amount, string? description, string? initiatedBy);
+
+    /// <summary>
     /// Gets groups with low balance (below threshold)
     /// </summary>
     /// <param name="threshold">The balance threshold</param>

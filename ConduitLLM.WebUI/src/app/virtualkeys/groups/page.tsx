@@ -27,6 +27,7 @@ import {
   IconDotsVertical,
   IconCash,
   IconLayersLinked,
+  IconHistory,
 } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { useDisclosure } from '@mantine/hooks';
@@ -38,6 +39,7 @@ import {
   LazyCreateVirtualKeyGroupModal as CreateVirtualKeyGroupModal,
   LazyViewVirtualKeyGroupModal as ViewVirtualKeyGroupModal,
   LazyAddCreditsModal as AddCreditsModal,
+  LazyTransactionHistoryModal as TransactionHistoryModal,
 } from '@/components/lazy/LazyModals';
 
 export default function VirtualKeyGroupsPage() {
@@ -51,6 +53,7 @@ export default function VirtualKeyGroupsPage() {
   const [createModalOpened, { open: openCreateModal, close: closeCreateModal }] = useDisclosure(false);
   const [viewModalOpened, { open: openViewModal, close: closeViewModal }] = useDisclosure(false);
   const [creditsModalOpened, { open: openCreditsModal, close: closeCreditsModal }] = useDisclosure(false);
+  const [transactionHistoryOpened, { open: openTransactionHistory, close: closeTransactionHistory }] = useDisclosure(false);
 
   // Fetch groups on mount
   useEffect(() => {
@@ -105,6 +108,11 @@ export default function VirtualKeyGroupsPage() {
   const handleAddCredits = (group: VirtualKeyGroupDto) => {
     setSelectedGroup(group);
     openCreditsModal();
+  };
+
+  const handleViewTransactionHistory = (group: VirtualKeyGroupDto) => {
+    setSelectedGroup(group);
+    openTransactionHistory();
   };
 
   const getBalanceColor = (balance: number) => {
@@ -266,6 +274,12 @@ export default function VirtualKeyGroupsPage() {
                               View Details
                             </Menu.Item>
                             <Menu.Item
+                              leftSection={<IconHistory style={{ width: rem(14), height: rem(14) }} />}
+                              onClick={() => handleViewTransactionHistory(group)}
+                            >
+                              Transaction History
+                            </Menu.Item>
+                            <Menu.Item
                               leftSection={<IconCash style={{ width: rem(14), height: rem(14) }} />}
                               onClick={() => handleAddCredits(group)}
                               color={group.balance <= 0 ? 'red' : undefined}
@@ -310,6 +324,12 @@ export default function VirtualKeyGroupsPage() {
         onClose={closeCreditsModal}
         group={selectedGroup}
         onSuccess={() => void fetchGroups()}
+      />
+
+      <TransactionHistoryModal
+        opened={transactionHistoryOpened}
+        onClose={closeTransactionHistory}
+        group={selectedGroup}
       />
     </Stack>
   );

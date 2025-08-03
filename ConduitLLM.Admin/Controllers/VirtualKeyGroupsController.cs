@@ -3,9 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
+using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Data;
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
@@ -22,6 +28,7 @@ namespace ConduitLLM.Admin.Controllers
     {
         private readonly IVirtualKeyGroupRepository _groupRepository;
         private readonly IVirtualKeyRepository _keyRepository;
+        private readonly IConfigurationDbContext _context;
         private readonly ILogger<VirtualKeyGroupsController> _logger;
 
         /// <summary>
@@ -30,10 +37,12 @@ namespace ConduitLLM.Admin.Controllers
         public VirtualKeyGroupsController(
             IVirtualKeyGroupRepository groupRepository,
             IVirtualKeyRepository keyRepository,
+            IConfigurationDbContext context,
             ILogger<VirtualKeyGroupsController> logger)
         {
             _groupRepository = groupRepository;
             _keyRepository = keyRepository;
+            _context = context;
             _logger = logger;
         }
 
@@ -188,7 +197,15 @@ namespace ConduitLLM.Admin.Controllers
         {
             try
             {
-                var newBalance = await _groupRepository.AdjustBalanceAsync(id, request.Amount);
+                // Get the authenticated user's identity
+                var initiatedBy = User.Identity?.Name ?? "System";
+                
+                var newBalance = await _groupRepository.AdjustBalanceAsync(
+                    id, 
+                    request.Amount,
+                    request.Description,
+                    initiatedBy
+                );
                 
                 var group = await _groupRepository.GetByIdAsync(id);
                 if (group == null)
@@ -253,6 +270,80 @@ namespace ConduitLLM.Admin.Controllers
         }
 
         /// <summary>
+        /// Get transaction history for a virtual key group
+        /// </summary>
+        [HttpGet("{id}/transactions")]
+        [ProducesResponseType(typeof(PagedResult<VirtualKeyGroupTransactionDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<PagedResult<VirtualKeyGroupTransactionDto>>> GetTransactionHistory(
+            int id, 
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 50)
+        {
+            try
+            {
+                var group = await _groupRepository.GetByIdAsync(id);
+                if (group == null)
+                {
+                    return NotFound(new { message = "Group not found" });
+                }
+
+                // Validate page parameters
+                if (page < 1) page = 1;
+                if (pageSize < 1) pageSize = 50;
+                if (pageSize > 100) pageSize = 100;
+
+                // Get total count
+                var totalCount = await _context.VirtualKeyGroupTransactions
+                    .Where(t => t.VirtualKeyGroupId == id && !t.IsDeleted)
+                    .CountAsync();
+
+                // Calculate pagination
+                var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+                var skip = (page - 1) * pageSize;
+
+                // Get paginated transactions
+                var transactions = await _context.VirtualKeyGroupTransactions
+                    .Where(t => t.VirtualKeyGroupId == id && !t.IsDeleted)
+                    .OrderByDescending(t => t.CreatedAt)
+                    .Skip(skip)
+                    .Take(pageSize)
+                    .Select(t => new VirtualKeyGroupTransactionDto
+                    {
+                        Id = t.Id,
+                        VirtualKeyGroupId = t.VirtualKeyGroupId,
+                        TransactionType = t.TransactionType,
+                        Amount = t.Amount,
+                        BalanceAfter = t.BalanceAfter,
+                        Description = t.Description,
+                        ReferenceId = t.ReferenceId,
+                        ReferenceType = t.ReferenceType,
+                        InitiatedBy = t.InitiatedBy,
+                        InitiatedByUserId = t.InitiatedByUserId,
+                        CreatedAt = t.CreatedAt
+                    })
+                    .ToListAsync();
+
+                var result = new PagedResult<VirtualKeyGroupTransactionDto>
+                {
+                    Items = transactions,
+                    TotalCount = totalCount,
+                    CurrentPage = page,
+                    PageSize = pageSize,
+                    TotalPages = totalPages
+                };
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving transaction history for virtual key group {GroupId}", id);
+                return StatusCode(500, new { message = "An error occurred while retrieving the transaction history" });
+            }
+        }
+
+        /// <summary>
         /// Get virtual keys in a group
         /// </summary>
         [HttpGet("{id}/keys")]
@@ -303,5 +394,10 @@ namespace ConduitLLM.Admin.Controllers
         /// Positive values add credits, negative values debit the account.
         /// </summary>
         public decimal Amount { get; set; }
+
+        /// <summary>
+        /// Optional description for the transaction
+        /// </summary>
+        public string? Description { get; set; }
     }
 }

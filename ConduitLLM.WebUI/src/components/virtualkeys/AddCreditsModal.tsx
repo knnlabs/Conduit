@@ -4,6 +4,7 @@ import {
   Modal,
   Stack,
   NumberInput,
+  TextInput,
   Button,
   Group,
   Text,
@@ -31,6 +32,7 @@ export function AddCreditsModal({ opened, onClose, group, onSuccess }: AddCredit
   const form = useForm<AdjustBalanceDto>({
     initialValues: {
       amount: 0,
+      description: '',
     },
     validate: {
       amount: (value) => {
@@ -134,6 +136,12 @@ export function AddCreditsModal({ opened, onClose, group, onSuccess }: AddCredit
             required
             autoFocus
             {...form.getInputProps('amount')}
+          />
+
+          <TextInput
+            label="Description"
+            placeholder="Reason for adding credits (optional)"
+            {...form.getInputProps('description')}
           />
 
           {form.values.amount > 0 && (

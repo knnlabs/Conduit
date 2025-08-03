@@ -50,6 +50,13 @@ export const LazyAddCreditsModal = (props: React.ComponentProps<typeof AddCredit
   </Suspense>
 );
 
+const TransactionHistoryModalLazy = lazy(() => import('../virtualkeys/TransactionHistoryModal').then(mod => ({ default: mod.TransactionHistoryModal })));
+export const LazyTransactionHistoryModal = (props: React.ComponentProps<typeof TransactionHistoryModalLazy>) => (
+  <Suspense fallback={<ModalSkeleton />}>
+    <TransactionHistoryModalLazy {...props} />
+  </Suspense>
+);
+
 // Provider Modals
 const CreateProviderModalLazy = lazy(() => import('../providers/CreateProviderModal').then(mod => ({ default: mod.CreateProviderModal })));
 export const LazyCreateProviderModal = (props: React.ComponentProps<typeof CreateProviderModalLazy>) => (

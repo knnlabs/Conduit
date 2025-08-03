@@ -26,6 +26,11 @@ namespace ConduitLLM.Configuration.Data
         DbSet<VirtualKeyGroup> VirtualKeyGroups { get; }
 
         /// <summary>
+        /// Database set for virtual key group transactions
+        /// </summary>
+        DbSet<VirtualKeyGroupTransaction> VirtualKeyGroupTransactions { get; }
+
+        /// <summary>
         /// Database set for request logs
         /// </summary>
         DbSet<RequestLog> RequestLogs { get; }

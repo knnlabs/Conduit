@@ -60,6 +60,10 @@ public class VirtualKeyGroup
     /// </summary>
     public virtual ICollection<VirtualKey> VirtualKeys { get; set; } = new List<VirtualKey>();
 
+    /// <summary>
+    /// Collection of transactions for this group
+    /// </summary>
+    public virtual ICollection<VirtualKeyGroupTransaction> Transactions { get; set; } = new List<VirtualKeyGroupTransaction>();
 
     /// <summary>
     /// Concurrency token for optimistic concurrency control

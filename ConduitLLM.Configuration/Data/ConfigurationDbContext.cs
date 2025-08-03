@@ -37,6 +37,11 @@ namespace ConduitLLM.Configuration
         public virtual DbSet<VirtualKeyGroup> VirtualKeyGroups { get; set; } = null!;
 
         /// <summary>
+        /// Database set for virtual key group transactions
+        /// </summary>
+        public virtual DbSet<VirtualKeyGroupTransaction> VirtualKeyGroupTransactions { get; set; } = null!;
+
+        /// <summary>
         /// Database set for request logs
         /// </summary>
         public virtual DbSet<RequestLog> RequestLogs { get; set; } = null!;
@@ -194,6 +199,10 @@ namespace ConduitLLM.Configuration
                       .HasForeignKey(e => e.VirtualKeyGroupId)
                       .OnDelete(DeleteBehavior.Restrict);
                 
+                entity.HasMany(e => e.Transactions)
+                      .WithOne(e => e.VirtualKeyGroup)
+                      .HasForeignKey(e => e.VirtualKeyGroupId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
             // Configure VirtualKey entity
@@ -481,6 +490,25 @@ namespace ConduitLLM.Configuration
                 entity.HasIndex(e => e.ChangedAt);
                 entity.HasIndex(e => new { e.Region, e.ChangedAt });
                 entity.HasIndex(e => e.ChangedBy);
+            });
+
+            // Configure VirtualKeyGroupTransaction entity
+            modelBuilder.Entity<VirtualKeyGroupTransaction>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.VirtualKeyGroupId);
+                entity.HasIndex(e => e.CreatedAt);
+                entity.HasIndex(e => new { e.VirtualKeyGroupId, e.CreatedAt });
+                entity.HasIndex(e => new { e.IsDeleted, e.CreatedAt });
+                entity.HasIndex(e => e.ReferenceType);
+                entity.HasIndex(e => e.TransactionType);
+                
+                // Store enums as integers
+                entity.Property(e => e.TransactionType)
+                      .HasConversion<int>();
+                      
+                entity.Property(e => e.ReferenceType)
+                      .HasConversion<int>();
             });
 
             modelBuilder.ApplyConfigurationEntityConfigurations(IsTestEnvironment);

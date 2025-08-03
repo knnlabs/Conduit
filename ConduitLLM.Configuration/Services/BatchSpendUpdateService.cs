@@ -9,6 +9,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
@@ -214,8 +215,54 @@ namespace ConduitLLM.Configuration.Services
 
                 foreach (var (groupId, totalCost) in groupUpdates)
                 {
-                    // Update group balance
-                    await groupRepository.AdjustBalanceAsync(groupId, -totalCost);
+                    // Create a description that includes which keys were used
+                    var description = "API usage";
+                    if (keyUsageByGroup.ContainsKey(groupId))
+                    {
+                        var keyIds = keyUsageByGroup[groupId].Keys.ToList();
+                        if (keyIds.Count == 1)
+                        {
+                            description = $"API usage by virtual key #{keyIds[0]}";
+                        }
+                        else
+                        {
+                            description = $"API usage by {keyIds.Count} virtual keys";
+                        }
+                    }
+
+                    // Update group balance with transaction details
+                    await groupRepository.AdjustBalanceAsync(
+                        groupId, 
+                        -totalCost,
+                        description,
+                        "System"  // Initiated by system batch process
+                    );
+                    
+                    // Create individual transaction records for each key if we have detailed usage
+                    if (keyUsageByGroup.ContainsKey(groupId))
+                    {
+                        foreach (var (keyId, keyCost) in keyUsageByGroup[groupId])
+                        {
+                            if (keyCost > 0)
+                            {
+                                // Create a transaction record for this specific key usage
+                                var transaction = new VirtualKeyGroupTransaction
+                                {
+                                    VirtualKeyGroupId = groupId,
+                                    TransactionType = TransactionType.Debit,
+                                    Amount = keyCost, // Store as positive
+                                    BalanceAfter = 0, // Will be set by the next balance check
+                                    Description = $"API usage by virtual key #{keyId}",
+                                    ReferenceId = keyId.ToString(),
+                                    ReferenceType = ReferenceType.VirtualKey,
+                                    InitiatedBy = "System",
+                                    CreatedAt = DateTime.UtcNow
+                                };
+                                
+                                context.VirtualKeyGroupTransactions.Add(transaction);
+                            }
+                        }
+                    }
                     
                     // Get keys in this group for cache invalidation
                     var groupKeys = await context.VirtualKeys
@@ -225,6 +272,9 @@ namespace ConduitLLM.Configuration.Services
                     
                     updatedKeyHashes.AddRange(groupKeys.Select(k => k.KeyHash));
                 }
+
+                // Save any additional transaction records
+                await context.SaveChangesAsync();
 
                 
                 _logger.LogInformation("Batch updated spend for {Count} groups", groupUpdates.Count);
