@@ -278,7 +278,7 @@ export class SystemService extends FetchBaseApiClient {
           // Since we can't easily search by hash, we'll test if the key is valid
           const validationResult = await virtualKeyService.validate(existingKey);
           
-          if (!validationResult || !validationResult.isValid) {
+          if (!validationResult?.isValid) {
             this.log('warn', 'WebUI virtual key from GlobalSettings is not valid');
             existingKey = null;
           } else {
