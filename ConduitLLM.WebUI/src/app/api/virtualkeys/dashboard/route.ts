@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 import type { 
-  VirtualKeyDto,
-  PaginatedResponse 
+  VirtualKeyListResponseDto
 } from '@knn_labs/conduit-admin-client';
 
 export async function GET(req: NextRequest) {
@@ -35,10 +34,10 @@ export async function GET(req: NextRequest) {
       // Try to get analytics data, but don't fail if unavailable
       
       // Analytics endpoints don't exist - just get virtual keys
-      const allKeys = await adminClient.virtualKeys.list(1, 100) as unknown as PaginatedResponse<VirtualKeyDto>;
+      const allKeysResponse: VirtualKeyListResponseDto = await adminClient.virtualKeys.list(1, 100);
       
       // Transform virtual keys data without analytics
-      const virtualKeysData = (allKeys?.items ?? []).map((key: VirtualKeyDto) => {
+      const virtualKeysData = allKeysResponse.items.map((key) => {
         return {
           id: key.id,
           name: key.keyName,
@@ -53,7 +52,7 @@ export async function GET(req: NextRequest) {
       // No analytics data available
       const totalRequests = 0;
       const totalCost = 0;
-      const activeKeys = virtualKeysData.filter(k => k.status === 'active').length;
+      const activeKeys = virtualKeysData.filter((k) => k.status === 'active').length;
       const averageBudgetUsed = 0;
       
       // Growth rates not available
@@ -85,9 +84,9 @@ export async function GET(req: NextRequest) {
       console.error('SDK Error in dashboard:', sdkError);
       
       // If analytics methods fail, provide fallback with just virtual keys data
-      const allKeys = await adminClient.virtualKeys.list(1, 100) as unknown as PaginatedResponse<VirtualKeyDto>;
+      const allKeysResponse: VirtualKeyListResponseDto = await adminClient.virtualKeys.list(1, 100);
       
-      const virtualKeysData = (allKeys?.items ?? []).map((key: VirtualKeyDto) => ({
+      const virtualKeysData = allKeysResponse.items.map((key) => ({
         id: key.id,
         name: key.keyName,
         status: key.isEnabled ? 'active' : 'inactive',
@@ -103,7 +102,7 @@ export async function GET(req: NextRequest) {
         summary: {
           totalRequests: 0,
           totalCost: 0,
-          activeKeys: virtualKeysData.filter(k => k.status === 'active').length,
+          activeKeys: virtualKeysData.filter((k) => k.status === 'active').length,
           averageBudgetUsed: 0,
           requestsGrowth: null,
           costGrowth: null,

@@ -245,6 +245,11 @@ export function ApiKeyField({
       <PasswordInput
         placeholder={placeholder}
         disabled={disabled}
+        autoComplete="off"
+        aria-autocomplete="none"
+        list="autocompleteOff"
+        data-form-type="other"
+        data-lpignore="true"
         {...form.getInputProps(fieldName)}
       />
     </FieldGroup>

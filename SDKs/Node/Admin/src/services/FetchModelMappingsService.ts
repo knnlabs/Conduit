@@ -126,15 +126,12 @@ export class FetchModelMappingsService {
     request: BulkMappingRequest,
     config?: RequestConfig
   ): Promise<BulkMappingResponse> {
-    const apiRequest = {
-      mappings: request.mappings,
-      replaceExisting: request.replaceExisting ?? false,
-      validateProviderModels: true,
-    };
+    // Backend expects a direct array of mappings, not a request object
+    const mappings = request.mappings;
 
-    return this.client['post']<BulkMappingResponse, typeof apiRequest>(
+    return this.client['post']<BulkMappingResponse, CreateModelProviderMappingDto[]>(
       ENDPOINTS.MODEL_MAPPINGS.BULK,
-      apiRequest,
+      mappings,
       {
         signal: config?.signal,
         timeout: config?.timeout,

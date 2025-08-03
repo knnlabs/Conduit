@@ -20,6 +20,7 @@ import {
   IconBolt,
 } from '@tabler/icons-react';
 import { EvaluationStep, MatchedRule } from '../../../types/routing';
+import { TimeDisplay } from '@/components/common/TimeDisplay';
 
 interface RuleEvaluationTraceProps {
   evaluationSteps: EvaluationStep[];
@@ -188,7 +189,7 @@ export function RuleEvaluationTrace({
                   </Text>
                   {step.timestamp && (
                     <Text size="xs" c="dimmed" mt="xs">
-                      Timestamp: {new Date(step.timestamp).toLocaleTimeString()}
+                      Timestamp: <TimeDisplay date={new Date(step.timestamp)} />
                     </Text>
                   )}
                 </Timeline.Item>

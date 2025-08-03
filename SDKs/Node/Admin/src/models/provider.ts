@@ -232,3 +232,33 @@ export interface ProviderKeyRotationDto {
   organization?: string;
   keyName?: string;
 }
+
+// API Key Test Response Types
+export enum ApiKeyTestResult {
+  SUCCESS = 'success',
+  INVALID_KEY = 'invalid_key',
+  IGNORED = 'ignored',
+  PROVIDER_DOWN = 'provider_down',
+  RATE_LIMITED = 'rate_limited',
+  UNKNOWN_ERROR = 'unknown_error'
+}
+
+export interface StandardApiKeyTestResponse {
+  result: ApiKeyTestResult;
+  message: string;
+  details?: {
+    responseTimeMs?: number;
+    modelsAvailable?: string[];
+    providerMessage?: string; // Raw provider message for debugging
+    errorCode?: string;
+    statusCode?: number;
+  };
+}
+
+// Lightweight DTO for referencing providers without exposing sensitive data
+export interface ProviderReferenceDto {
+  id: number;
+  providerType: ProviderType;
+  displayName: string;
+  isEnabled: boolean;
+}

@@ -25,6 +25,7 @@ import {
 } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { StatusHoverCard } from '@/components/common/StatusHoverCard';
+import { TimeDisplay } from '@/components/common/TimeDisplay';
 import type { HealthCheckDetail } from '@/types/health';
 
 interface HealthData {
@@ -253,7 +254,9 @@ export function HomePageClient({ initialHealthData }: HomePageClientProps) {
           </Group>
           <Text size="sm" c="dimmed">
             Real-time features {healthData.signalr === 'healthy' ? 'are active' : 'will be available once connection is established'}.
-            {healthData.lastChecked && ` Last checked: ${new Date(healthData.lastChecked).toLocaleTimeString()}`}
+            {healthData.lastChecked && (
+              <> Last checked: <TimeDisplay date={healthData.lastChecked} /></>
+            )}
           </Text>
         </Stack>
       </Card>

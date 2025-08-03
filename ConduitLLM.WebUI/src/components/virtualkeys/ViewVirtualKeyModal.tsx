@@ -26,6 +26,7 @@ import {
   IconAlertCircle,
 } from '@tabler/icons-react';
 import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
+import { TimeDisplay } from '@/components/common/TimeDisplay';
 
 // Extend VirtualKeyDto with UI-specific fields added by the API
 interface VirtualKeyWithUI extends VirtualKeyDto {
@@ -47,9 +48,7 @@ export function ViewVirtualKeyModal({ opened, onClose, virtualKey }: ViewVirtual
     ? (virtualKey.currentSpend / virtualKey.maxBudget) * 100 
     : 0;
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleString();
-  };
+  // Removed formatDate function - using TimeDisplay component instead
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -124,13 +123,13 @@ export function ViewVirtualKeyModal({ opened, onClose, virtualKey }: ViewVirtual
 
             <Group justify="space-between">
               <Text size="sm" c="dimmed">Created</Text>
-              <Text size="sm">{formatDate(virtualKey.createdAt)}</Text>
+              <Text size="sm"><TimeDisplay date={virtualKey.createdAt} format="datetime" /></Text>
             </Group>
 
             {virtualKey.lastUsedAt && (
               <Group justify="space-between">
                 <Text size="sm" c="dimmed">Last Used</Text>
-                <Text size="sm">{formatDate(virtualKey.lastUsedAt)}</Text>
+                <Text size="sm"><TimeDisplay date={virtualKey.lastUsedAt} format="datetime" /></Text>
               </Group>
             )}
           </Stack>

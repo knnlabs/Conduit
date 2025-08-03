@@ -43,6 +43,7 @@ interface ProviderWithHealth extends ProviderCredentialDto {
   lastHealthCheck?: string;
   models?: string[];
   endpoint?: string;
+  keyCount?: number;
 }
 
 export default function ProvidersPage() {
@@ -70,14 +71,34 @@ export default function ProvidersPage() {
       // Check if data is an array or if it's wrapped in a response object
       const providersList = Array.isArray(data) ? data : (data.items ?? data.providers ?? []);
       
-      // Use SDK types directly and add health status (would need separate health fetch in real app)
-      const providersWithHealth: ProviderWithHealth[] = providersList.map((p: ProviderCredentialDto): ProviderWithHealth => ({
-        ...p,
-        healthStatus: 'unknown' as const,
-        models: []
-      }));
+      // Fetch key counts for each provider
+      const providersWithKeyCount = await Promise.all(
+        providersList.map(async (provider: ProviderCredentialDto) => {
+          let keyCount = 0;
+          if (provider.id) {
+            try {
+              const keysResponse = await fetch(`/api/providers/${provider.id}/keys`);
+              if (keysResponse.ok) {
+                const keys = await keysResponse.json() as unknown[];
+                keyCount = Array.isArray(keys) ? keys.length : 0;
+              }
+            } catch {
+              // Silently fail, keyCount remains 0
+            }
+          }
+          
+          const providerWithHealth: ProviderWithHealth = {
+            ...provider,
+            healthStatus: 'unknown' as const,
+            models: [],
+            keyCount
+          };
+          
+          return providerWithHealth;
+        })
+      );
       
-      setProviders(providersWithHealth);
+      setProviders(providersWithKeyCount);
     } catch (error) {
       setError(error instanceof Error ? error : new Error('Unknown error'));
     } finally {

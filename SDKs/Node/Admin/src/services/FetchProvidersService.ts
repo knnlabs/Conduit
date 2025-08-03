@@ -17,10 +17,12 @@ import type {
   ProviderKeyCredentialDto,
   CreateProviderKeyCredentialDto,
   UpdateProviderKeyCredentialDto,
-  ProviderKeyRotationDto
+  ProviderKeyRotationDto,
+  StandardApiKeyTestResponse
 } from '../models/provider';
 import { ENDPOINTS } from '../constants';
 import { ProviderType } from '../models/providerType';
+import { classifyApiKeyTestError, createSuccessResponse } from '../utils/error-classification';
 
 // Type aliases for API compatibility - using existing DTO types since generated schemas are missing
 type ApiProviderDto = ProviderDto;
@@ -187,16 +189,45 @@ export class FetchProvidersService {
   async testConnectionById(
     id: number,
     config?: RequestConfig
-  ): Promise<TestConnectionResult> {
-    return this.client['post']<TestConnectionResult>(
-      ENDPOINTS.PROVIDERS.TEST_BY_ID(id),
-      undefined,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
+  ): Promise<StandardApiKeyTestResponse> {
+    try {
+      const startTime = Date.now();
+      const result = await this.client['post']<TestConnectionResult>(
+        ENDPOINTS.PROVIDERS.TEST_BY_ID(id),
+        undefined,
+        {
+          signal: config?.signal,
+          timeout: config?.timeout,
+          headers: config?.headers,
+        }
+      );
+      
+      const responseTimeMs = Date.now() - startTime;
+      
+      // Convert old response format to new standardized format
+      if (result.success) {
+        return createSuccessResponse(
+          responseTimeMs,
+          (result.details as Record<string, unknown>)?.modelsAvailable as string[] | undefined
+        );
+      } else {
+        // Get provider info to determine type
+        const provider = await this.getById(id, config);
+        return classifyApiKeyTestError(
+          { message: result.message, status: 400 },
+          provider.providerType
+        );
       }
-    );
+    } catch (error) {
+      // Get provider info to determine type for error classification
+      try {
+        const provider = await this.getById(id, config);
+        return classifyApiKeyTestError(error, provider.providerType);
+      } catch {
+        // If we can't get provider info, classify without it
+        return classifyApiKeyTestError(error);
+      }
+    }
   }
 
   /**
@@ -205,16 +236,36 @@ export class FetchProvidersService {
   async testConfig(
     providerConfig: ProviderConfig,
     config?: RequestConfig
-  ): Promise<TestConnectionResult> {
-    return this.client['post']<TestConnectionResult, ProviderConfig>(
-      `${ENDPOINTS.PROVIDERS.BASE}/test`,
-      providerConfig,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
+  ): Promise<StandardApiKeyTestResponse> {
+    try {
+      const startTime = Date.now();
+      const result = await this.client['post']<TestConnectionResult, ProviderConfig>(
+        `${ENDPOINTS.PROVIDERS.BASE}/test`,
+        providerConfig,
+        {
+          signal: config?.signal,
+          timeout: config?.timeout,
+          headers: config?.headers,
+        }
+      );
+      
+      const responseTimeMs = Date.now() - startTime;
+      
+      // Convert old response format to new standardized format
+      if (result.success) {
+        return createSuccessResponse(
+          responseTimeMs,
+          (result.details as Record<string, unknown>)?.modelsAvailable as string[] | undefined
+        );
+      } else {
+        return classifyApiKeyTestError(
+          { message: result.message, status: 400 },
+          providerConfig.providerType
+        );
       }
-    );
+    } catch (error) {
+      return classifyApiKeyTestError(error, providerConfig.providerType);
+    }
   }
 
   /**
@@ -693,16 +744,45 @@ export class FetchProvidersService {
     providerId: number,
     keyId: number,
     config?: RequestConfig
-  ): Promise<TestConnectionResult> {
-    return this.client['post']<TestConnectionResult>(
-      ENDPOINTS.PROVIDER_KEYS.TEST(providerId, keyId),
-      undefined,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
+  ): Promise<StandardApiKeyTestResponse> {
+    try {
+      const startTime = Date.now();
+      const result = await this.client['post']<TestConnectionResult>(
+        ENDPOINTS.PROVIDER_KEYS.TEST(providerId, keyId),
+        undefined,
+        {
+          signal: config?.signal,
+          timeout: config?.timeout,
+          headers: config?.headers,
+        }
+      );
+      
+      const responseTimeMs = Date.now() - startTime;
+      
+      // Convert old response format to new standardized format
+      if (result.success) {
+        return createSuccessResponse(
+          responseTimeMs,
+          (result.details as Record<string, unknown>)?.modelsAvailable as string[] | undefined
+        );
+      } else {
+        // Get provider info to determine type
+        const provider = await this.getById(providerId, config);
+        return classifyApiKeyTestError(
+          { message: result.message, status: 400 },
+          provider.providerType
+        );
       }
-    );
+    } catch (error) {
+      // Get provider info to determine type for error classification
+      try {
+        const provider = await this.getById(providerId, config);
+        return classifyApiKeyTestError(error, provider.providerType);
+      } catch {
+        // If we can't get provider info, classify without it
+        return classifyApiKeyTestError(error);
+      }
+    }
   }
 
   /**

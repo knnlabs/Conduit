@@ -22,6 +22,7 @@ import {
   IconTrash,
   IconDotsVertical,
   IconKey,
+  IconAlertCircle,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
 import { formatters } from '@/lib/utils/formatters';
@@ -34,6 +35,7 @@ interface Provider extends ProviderCredentialDto {
   healthStatus: 'healthy' | 'unhealthy' | 'unknown';
   lastHealthCheck?: string;
   models?: string[];
+  keyCount?: number;
 }
 
 interface ProvidersTableProps {
@@ -115,6 +117,32 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
       </Table.Td>
 
       <Table.Td>
+        <Group gap="xs">
+          {provider.keyCount === 0 ? (
+            <Tooltip label="No API keys configured">
+              <Badge
+                color="orange"
+                variant="light"
+                size="sm"
+                leftSection={<IconAlertCircle size={14} />}
+              >
+                No Keys
+              </Badge>
+            </Tooltip>
+          ) : (
+            <Badge
+              color="blue"
+              variant="light"
+              size="sm"
+              leftSection={<IconKey size={14} />}
+            >
+              {provider.keyCount} {provider.keyCount === 1 ? 'Key' : 'Keys'}
+            </Badge>
+          )}
+        </Group>
+      </Table.Td>
+
+      <Table.Td>
         <Group gap={4}>
           {provider.models?.slice(0, 2).map((model) => (
             <Badge key={`model-${model}`} size="xs" variant="light">
@@ -188,6 +216,7 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
                 <Table.Th>Provider</Table.Th>
                 <Table.Th>Status</Table.Th>
                 <Table.Th>Health</Table.Th>
+                <Table.Th>API Keys</Table.Th>
                 <Table.Th>Models</Table.Th>
                 <Table.Th>Created</Table.Th>
                 <Table.Th />

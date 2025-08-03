@@ -24,6 +24,7 @@ import {
 } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useBackendHealth } from '@/hooks/useBackendHealth';
+import { TimeDisplay } from '@/components/common/TimeDisplay';
 
 interface BackendStatusIndicatorProps {
   compact?: boolean;
@@ -186,7 +187,7 @@ export function BackendStatusIndicator({
                   <Text size="xs" fw={500} mb="xs">Admin API</Text>
                   <Text size="xs" c="dimmed">
                     Status: {(healthStatus.adminApiDetails as { status?: string })?.status ?? 'Unknown'}<br/>
-                    Last checked: {healthStatus.lastChecked.toLocaleTimeString()}
+                    Last checked: <TimeDisplay date={healthStatus.lastChecked} />
                   </Text>
                 </Card>
               )}
@@ -196,7 +197,7 @@ export function BackendStatusIndicator({
                   <Text size="xs" fw={500} mb="xs">Core API</Text>
                   <Text size="xs" c="dimmed">
                     Status: {(healthStatus.coreApiDetails as { status?: string })?.status ?? 'Unknown'}<br/>
-                    Last checked: {healthStatus.lastChecked.toLocaleTimeString()}
+                    Last checked: <TimeDisplay date={healthStatus.lastChecked} />
                   </Text>
                 </Card>
               )}
@@ -205,7 +206,7 @@ export function BackendStatusIndicator({
         )}
 
         <Text size="xs" c="dimmed" ta="center">
-          Last updated: {healthStatus.lastChecked.toLocaleTimeString()}
+          Last updated: <TimeDisplay date={healthStatus.lastChecked} />
         </Text>
       </Stack>
     </Card>

@@ -23,6 +23,7 @@ import {
 } from '@tabler/icons-react';
 import { useSystemStatus } from '@/hooks/useSystemStatus';
 import { StatusIndicator, CompositeStatusIndicator } from '@/components/common/StatusIndicator';
+import { TimeDisplay } from '@/components/common/TimeDisplay';
 
 export interface SystemStatusDisplayProps {
   variant?: 'compact' | 'detailed' | 'dashboard';
@@ -101,7 +102,7 @@ export function SystemStatusDisplay({
         )}
         {systemStatus?.lastUpdate && (
           <Text size="xs" c="dimmed">
-            Updated {systemStatus.lastUpdate.toLocaleTimeString()}
+            Updated <TimeDisplay date={systemStatus.lastUpdate} />
           </Text>
         )}
       </Group>
@@ -205,7 +206,7 @@ export function SystemStatusDisplay({
                   />
                 </Box>
                 <Text size="xs" c="dimmed">
-                  Last updated: {systemStatus.lastUpdate.toLocaleString()}
+                  Last updated: <TimeDisplay date={systemStatus.lastUpdate} format="datetime" />
                 </Text>
               </Stack>
             </Card>

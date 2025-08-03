@@ -190,6 +190,8 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
             placeholder="Enter a friendly name for this provider"
             description="A friendly name to identify this provider instance"
             autoComplete="off"
+            aria-autocomplete="none"
+            list="autocompleteOff"
             data-form-type="other"
             {...form.getInputProps('providerName')}
             autoFocus
@@ -199,8 +201,11 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
             label="API Key"
             placeholder="Leave empty to keep existing key"
             description="Only enter if you want to update the API key"
-            autoComplete="new-password"
+            autoComplete="off"
+            aria-autocomplete="none"
+            list="autocompleteOff"
             data-form-type="other"
+            data-lpignore="true"
             {...form.getInputProps('apiKey')}
           />
 
@@ -216,6 +221,8 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
                     label={config.requiresEndpoint ? "API Endpoint" : "Custom API Endpoint"}
                     placeholder={config.requiresEndpoint ? "API endpoint URL" : "Custom API endpoint URL (optional)"}
                     autoComplete="off"
+                    aria-autocomplete="none"
+                    list="autocompleteOff"
                     data-form-type="other"
                     {...form.getInputProps('apiEndpoint')}
                   />
@@ -226,6 +233,8 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
                     label="Organization ID"
                     placeholder={getProviderTypeFromDto(provider) === ProviderType.OpenAI ? "Optional OpenAI organization ID" : "Organization ID"}
                     autoComplete="off"
+                    aria-autocomplete="none"
+                    list="autocompleteOff"
                     data-form-type="other"
                     {...form.getInputProps('organizationId')}
                   />

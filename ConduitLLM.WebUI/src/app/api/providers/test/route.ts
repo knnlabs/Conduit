@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import type { ProviderSettings } from '@knn_labs/conduit-admin-client';
+import { ApiKeyTestResult, type ProviderSettings } from '@knn_labs/conduit-admin-client';
 import { providerNameToType } from '@/lib/utils/providerTypeUtils';
 
 interface TestProviderRequest {
@@ -45,9 +45,12 @@ export async function POST(request: NextRequest) {
       additionalConfig: body.additionalConfig
     });
     
+    // Convert new response format to legacy format for backward compatibility
+    const isSuccess = testResult.result === ApiKeyTestResult.SUCCESS;
+    
     return NextResponse.json({
-      success: testResult.success ?? false,
-      message: testResult.message ?? (testResult.success ? 'Connection successful' : 'Connection failed'),
+      success: isSuccess,
+      message: testResult.message,
       details: testResult,
       tested: true,
       timestamp: new Date().toISOString(),

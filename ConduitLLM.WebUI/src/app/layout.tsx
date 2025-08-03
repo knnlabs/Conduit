@@ -51,11 +51,11 @@ export default function RootLayout({
   );
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <ColorSchemeScript defaultColorScheme="auto" />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         {isAuthDisabled ? content : <ClerkProvider>{content}</ClerkProvider>}
       </body>
     </html>

@@ -35,7 +35,12 @@ interface ModelMapping {
   modelId: string;
   providerId: string;
   providerType?: ProviderType;
-  providerName?: string;
+  provider?: {
+    id: number;
+    providerType: ProviderType;
+    displayName: string;
+    isEnabled: boolean;
+  };
   maxContextLength?: number;
   supportsVideoGeneration?: boolean;
   isEnabled?: boolean;
@@ -55,7 +60,7 @@ async function fetchVideoModels(): Promise<VideoModel[]> {
   );
   
   return videoModels.map((mapping: ModelMapping) => {
-    const providerDisplayName = mapping.providerName ?? 
+    const providerDisplayName = mapping.provider?.displayName ?? 
       (mapping.providerType !== undefined ? getProviderName(mapping.providerType) : 'Unknown');
     return {
       id: mapping.modelId,

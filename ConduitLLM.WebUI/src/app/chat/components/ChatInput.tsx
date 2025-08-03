@@ -124,14 +124,14 @@ export function ChatInput({
         </Collapse>
       )}
       
-      {supportsVision && images.length > 0 && (
+      {supportsVision && (
         <>
           <ImageUpload
             images={images}
             onImagesChange={setImages}
             disabled={disabled ?? isStreaming}
           />
-          <Divider />
+          {images.length > 0 && <Divider />}
         </>
       )}
       
@@ -190,14 +190,6 @@ export function ChatInput({
           )}
         </Group>
       </Group>
-      
-      {supportsVision && images.length === 0 && (
-        <ImageUpload
-          images={images}
-          onImagesChange={setImages}
-          disabled={disabled ?? isStreaming}
-        />
-      )}
       
       <Modal
         opened={functionModalOpened}

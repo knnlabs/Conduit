@@ -296,10 +296,26 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
           message: errorData.error ?? errorData.message ?? `Connection failed: ${response.status}`,
         });
       } else {
-        const result = await response.json() as { success?: boolean; message?: string };
+        const result = await response.json() as { 
+          result?: 'success' | 'invalid_key' | 'ignored' | 'provider_down' | 'rate_limited' | 'unknown_error';
+          message?: string;
+          details?: {
+            responseTimeMs?: number;
+            modelsAvailable?: string[];
+            providerMessage?: string;
+            errorCode?: string;
+            statusCode?: number;
+          };
+          // Legacy fields for backward compatibility
+          success?: boolean; 
+        };
+        
+        // Handle new response format with backward compatibility
+        const isSuccess = result.result === 'success' || result.success === true;
+        
         setTestResult({
-          success: result.success ?? false,
-          message: result.message ?? 'Connection successful',
+          success: isSuccess,
+          message: result.message ?? (isSuccess ? 'Connection successful' : 'Connection failed'),
         });
       }
     } catch (error) {
@@ -423,6 +439,8 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
                     placeholder={mode === 'add' ? "Leave empty to use provider type name" : "Enter a friendly name for this provider"}
                     description="A friendly name to identify this provider (e.g., 'Production OpenAI', 'Dev Ollama')"
                     autoComplete="off"
+                    aria-autocomplete="none"
+                    list="autocompleteOff"
                     data-form-type="other"
                     {...form.getInputProps('providerName')}
                     size="md"
@@ -450,8 +468,11 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
                       label="API Key"
                       placeholder="Enter API key"
                       required
-                      autoComplete="new-password"
+                      autoComplete="off"
+                      aria-autocomplete="none"
+                      list="autocompleteOff"
                       data-form-type="other"
+                      data-lpignore="true"
                       {...form.getInputProps('apiKey')}
                       size="md"
                     />
@@ -465,6 +486,8 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
                           placeholder={providerTypeNum === ProviderType.OpenAI ? "Optional OpenAI organization ID" : "Enter organization ID"}
                           required={config.requiresOrganizationId}
                           autoComplete="off"
+                          aria-autocomplete="none"
+                          list="autocompleteOff"
                           data-form-type="other"
                           {...form.getInputProps('organizationId')}
                           size="md"
@@ -477,6 +500,8 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
                           placeholder={config.requiresEndpoint ? "https://api.example.com" : "https://api.example.com (optional)"}
                           required={config.requiresEndpoint}
                           autoComplete="off"
+                          aria-autocomplete="none"
+                          list="autocompleteOff"
                           data-form-type="other"
                           {...form.getInputProps('apiEndpoint')}
                           size="md"

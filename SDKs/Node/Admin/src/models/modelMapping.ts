@@ -1,11 +1,13 @@
 import { FilterOptions } from './common';
 import { ProviderType } from './providerType';
+import { ProviderReferenceDto } from './provider';
 
 export interface ModelProviderMappingDto {
   id: number;
   modelId: string;
   providerId: number;
   providerType: ProviderType; // Added to match backend DTO
+  provider?: ProviderReferenceDto; // Provider reference information (populated when retrieving mappings)
   providerModelId: string;
   isEnabled: boolean;
   priority: number;
@@ -188,12 +190,10 @@ export interface BulkMappingRequest {
 
 export interface BulkMappingResponse {
   created: ModelProviderMappingDto[];
-  updated: ModelProviderMappingDto[];
-  failed: {
-    index: number;
-    error: string;
-    mapping: CreateModelProviderMappingDto;
-  }[];
+  errors: string[];
+  totalProcessed: number;
+  successCount: number;
+  failureCount: number;
 }
 
 export interface ModelMappingSuggestion {

@@ -16,7 +16,12 @@ export function useModels() {
         modelId: string;
         providerId: string;
         providerType?: ProviderType;
-        providerName?: string;
+        provider?: {
+          id: number;
+          providerType: ProviderType;
+          displayName: string;
+          isEnabled: boolean;
+        };
         maxContextLength?: number;
         supportsVision?: boolean;
         supportsChat?: boolean;
@@ -28,11 +33,12 @@ export function useModels() {
       const chatModels = mappings.filter((mapping: ModelMapping) => mapping.supportsChat === true);
       
       const models: ModelWithCapabilities[] = chatModels.map((mapping: ModelMapping) => {
+        const providerName = mapping.provider?.displayName ?? 'unknown';
         return {
           id: mapping.modelId,
           providerId: mapping.providerType?.toString() ?? 'unknown',
-          providerName: mapping.providerName ?? 'unknown',
-          displayName: `${mapping.modelId} (${mapping.providerName ?? 'unknown'})`,
+          providerName: providerName,
+          displayName: `${mapping.modelId} (${providerName})`,
           maxContextTokens: mapping.maxContextLength,
           supportsVision: mapping.supportsVision ?? false,
           // Function calling support will need to be detected at runtime

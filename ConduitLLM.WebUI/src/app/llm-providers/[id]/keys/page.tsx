@@ -221,12 +221,37 @@ export default function ProviderKeysPage() {
         throw new Error('Failed to test key');
       }
       
-      const result = await response.json() as { success?: boolean; message?: string };
+      const result = await response.json() as { 
+        result?: 'success' | 'invalid_key' | 'ignored' | 'provider_down' | 'rate_limited' | 'unknown_error';
+        message?: string; 
+        details?: {
+          responseTimeMs?: number;
+          modelsAvailable?: string[];
+          providerMessage?: string;
+          errorCode?: string;
+          statusCode?: number;
+        };
+        // Legacy fields for backward compatibility
+        success?: boolean; 
+      };
+      
+      // Handle new response format with backward compatibility
+      const isSuccess = result.result === 'success' || result.success === true;
+      const testResult = result.result ?? (result.success ? 'success' : 'invalid_key');
+      
+      const colors: Record<string, string> = {
+        'success': 'green',
+        'invalid_key': 'red',
+        'ignored': 'yellow',
+        'provider_down': 'orange',
+        'rate_limited': 'orange',
+        'unknown_error': 'red'
+      };
       
       notifications.show({
-        title: result.success ? 'Key Test Successful' : 'Key Test Failed',
-        message: result.message ?? (result.success ? 'The API key is valid and working' : 'The API key is invalid or not working'),
-        color: result.success ? 'green' : 'red',
+        title: isSuccess ? 'Key Test Successful' : 'Key Test Failed',
+        message: result.message ?? (isSuccess ? 'The API key is valid and working' : 'The API key is invalid or not working'),
+        color: colors[testResult] ?? 'red',
       });
     } catch (error) {
       console.error('Error testing key:', error);
