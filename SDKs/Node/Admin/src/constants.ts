@@ -53,6 +53,9 @@ export const ENDPOINTS = {
     DISCOVERY_PREVIEW: (id: number) => `/api/VirtualKeys/${id}/discovery-preview`,
   },
 
+  // Virtual Key Groups
+  VIRTUAL_KEY_GROUPS: '/api/VirtualKeyGroups',
+
   // Providers - Provider ID is the canonical identifier
   PROVIDERS: {
     BASE: '/api/ProviderCredentials',

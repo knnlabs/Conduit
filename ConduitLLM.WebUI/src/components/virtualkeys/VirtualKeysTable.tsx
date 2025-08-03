@@ -6,7 +6,6 @@ import {
   Text,
   Badge,
   ActionIcon,
-  Tooltip,
   Stack,
   Box,
   Paper,
@@ -15,42 +14,33 @@ import {
 } from '@mantine/core';
 import {
   IconEye,
-  IconCopy,
   IconEdit,
   IconTrash,
   IconDotsVertical,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
-import { notifications } from '@mantine/notifications';
 import { formatters } from '@/lib/utils/formatters';
-import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
-
-// Extend VirtualKeyDto with UI-specific fields added by the API
-interface VirtualKeyWithUI extends VirtualKeyDto {
-  displayKey: string;
-  virtualKeyGroupId?: number;
-}
+import type { VirtualKeyDto, VirtualKeyGroupDto } from '@knn_labs/conduit-admin-client';
 
 interface VirtualKeysTableProps {
-  onEdit?: (key: VirtualKeyWithUI) => void;
-  onView?: (key: VirtualKeyWithUI) => void;
-  data?: VirtualKeyWithUI[];
+  onEdit?: (key: VirtualKeyDto) => void;
+  onView?: (key: VirtualKeyDto) => void;
+  data?: VirtualKeyDto[];
+  groups?: VirtualKeyGroupDto[];
   onDelete?: (keyId: string) => void;
 }
 
-export function VirtualKeysTable({ onEdit, onView, data, onDelete }: VirtualKeysTableProps) {
+export function VirtualKeysTable({ onEdit, onView, data, groups, onDelete }: VirtualKeysTableProps) {
   const virtualKeys = data ?? [];
+  
+  // Create a map of group ID to group name for quick lookup
+  const groupMap = new Map<number, string>();
+  groups?.forEach(group => {
+    groupMap.set(group.id, group.groupName);
+  });
 
-  const handleCopyKey = (keyHash: string) => {
-    void navigator.clipboard.writeText(keyHash);
-    notifications.show({
-      title: 'Copied',
-      message: 'Key hash copied to clipboard',
-      color: 'green',
-    });
-  };
 
-  const handleDelete = (key: VirtualKeyWithUI) => {
+  const handleDelete = (key: VirtualKeyDto) => {
     modals.openConfirmModal({
       title: 'Delete Virtual Key',
       children: (
@@ -79,26 +69,15 @@ export function VirtualKeysTable({ onEdit, onView, data, onDelete }: VirtualKeys
         </Table.Td>
 
         <Table.Td>
-          <Group gap="xs">
-            <Text size="sm" style={{ fontFamily: 'monospace' }}>
-              {key.displayKey.substring(0, 12)}...
-            </Text>
-            <Tooltip label="Copy full key">
-              <ActionIcon
-                variant="subtle"
-                size="xs"
-                onClick={() => handleCopyKey(key.displayKey)}
-              >
-                <IconCopy size={14} />
-              </ActionIcon>
-            </Tooltip>
-          </Group>
+          <Text size="sm" style={{ fontFamily: 'monospace' }}>
+            {key.keyPrefix ?? 'N/A'}
+          </Text>
         </Table.Td>
 
         <Table.Td>
           <Stack gap={4}>
             <Text size="sm" fw={500}>
-              Group ID: {key.virtualKeyGroupId ?? 'N/A'}
+              {groupMap.get(key.virtualKeyGroupId) ?? `Group ID: ${key.virtualKeyGroupId}`}
             </Text>
             <Text size="xs" c="dimmed">
               Balance tracked at group level
@@ -106,9 +85,6 @@ export function VirtualKeysTable({ onEdit, onView, data, onDelete }: VirtualKeys
           </Stack>
         </Table.Td>
 
-        <Table.Td>
-          <Text size="sm">{key.requestCount?.toLocaleString() ?? '0'}</Text>
-        </Table.Td>
 
         <Table.Td>
           <Badge
@@ -122,7 +98,7 @@ export function VirtualKeysTable({ onEdit, onView, data, onDelete }: VirtualKeys
 
         <Table.Td>
           <Text size="sm" c="dimmed">
-            {key.lastUsedAt ? formatters.date(key.lastUsedAt) : 'Never'}
+            {key.expiresAt ? formatters.date(key.expiresAt) : 'No expiration'}
           </Text>
         </Table.Td>
 
@@ -171,11 +147,10 @@ export function VirtualKeysTable({ onEdit, onView, data, onDelete }: VirtualKeys
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Name</Table.Th>
-                <Table.Th>Key Hash</Table.Th>
+                <Table.Th>Key Prefix</Table.Th>
                 <Table.Th>Virtual Key Group</Table.Th>
-                <Table.Th>Requests</Table.Th>
                 <Table.Th>Status</Table.Th>
-                <Table.Th>Last Used</Table.Th>
+                <Table.Th>Expires</Table.Th>
                 <Table.Th />
               </Table.Tr>
             </Table.Thead>

@@ -4,24 +4,6 @@ import { useState, useCallback } from 'react';
 import { notifications } from '@mantine/notifications';
 import type { ErrorResponse } from '@knn_labs/conduit-common';
 
-interface SecurityEvent {
-  id: string;
-  timestamp: string;
-  eventType: string;
-  severity: 'info' | 'warning' | 'critical';
-  description: string;
-  metadata?: Record<string, unknown>;
-}
-
-interface Threat {
-  id: string;
-  threatType: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  description: string;
-  detectedAt: string;
-  status: 'active' | 'mitigated' | 'resolved';
-}
-
 export interface IpRule {
   id?: string;
   ipAddress: string;
@@ -52,7 +34,7 @@ export function useSecurityApi() {
     severity?: string;
     startDate?: string;
     endDate?: string;
-  }): Promise<{ events: SecurityEvent[]; total: number }> => {
+  }): Promise<{ events: Record<string, unknown>[]; total: number }> => {
     setIsLoading(true);
     setError(null);
     
@@ -68,13 +50,13 @@ export function useSecurityApi() {
         method: 'GET',
       });
 
-      const result = await response.json() as { events: SecurityEvent[]; total: number } | ErrorResponse;
+      const result = await response.json() as { events: Record<string, unknown>[]; total: number } | ErrorResponse;
 
       if (!response.ok) {
         throw new Error((result as ErrorResponse).error ?? 'Failed to fetch security events');
       }
 
-      return result as { events: SecurityEvent[]; total: number };
+      return result as { events: Record<string, unknown>[]; total: number };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch security events';
       setError(message);
@@ -87,7 +69,7 @@ export function useSecurityApi() {
   const getThreats = useCallback(async (params?: {
     status?: 'active' | 'mitigated' | 'resolved';
     severity?: string;
-  }): Promise<Threat[]> => {
+  }): Promise<Record<string, unknown>[]> => {
     setIsLoading(true);
     setError(null);
     
@@ -100,13 +82,13 @@ export function useSecurityApi() {
         method: 'GET',
       });
 
-      const result = await response.json() as Threat[] | ErrorResponse;
+      const result = await response.json() as Record<string, unknown>[] | ErrorResponse;
 
       if (!response.ok) {
         throw new Error((result as ErrorResponse).error ?? 'Failed to fetch threats');
       }
 
-      return result as Threat[];
+      return result as Record<string, unknown>[];
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch threats';
       setError(message);

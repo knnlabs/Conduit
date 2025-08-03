@@ -8,61 +8,25 @@ import {
   Badge,
   Alert,
   Button,
-  CopyButton,
-  Tooltip,
-  ActionIcon,
   Card,
-  SimpleGrid,
-  Progress,
-  // Removed unused Title import
 } from '@mantine/core';
 import {
   IconKey,
-  // Removed unused IconClock import
-  IconActivity,
-  IconCreditCard,
-  IconCopy,
-  IconCheck,
   IconAlertCircle,
 } from '@tabler/icons-react';
 import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
 import { TimeDisplay } from '@/components/common/TimeDisplay';
 
-// Extend VirtualKeyDto with UI-specific fields added by the API
-interface VirtualKeyWithUI extends VirtualKeyDto {
-  displayKey: string;
-}
-
 interface ViewVirtualKeyModalProps {
   opened: boolean;
   onClose: () => void;
-  virtualKey: VirtualKeyWithUI | null;
+  virtualKey: VirtualKeyDto | null;
 }
 
 export function ViewVirtualKeyModal({ opened, onClose, virtualKey }: ViewVirtualKeyModalProps) {
   if (!virtualKey) {
     return null;
   }
-
-  const spendPercentage = virtualKey.maxBudget 
-    ? (virtualKey.currentSpend / virtualKey.maxBudget) * 100 
-    : 0;
-
-  // Removed formatDate function - using TimeDisplay component instead
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(amount);
-  };
-
-  const getSpendColor = (percentage: number) => {
-    if (percentage > 90) return 'red';
-    if (percentage > 75) return 'orange';
-    return 'blue';
-  };
 
   return (
     <Modal
@@ -94,24 +58,13 @@ export function ViewVirtualKeyModal({ opened, onClose, virtualKey }: ViewVirtual
             )}
 
             <Group justify="space-between">
-              <Text size="sm" c="dimmed">Key Hash</Text>
-              <Group gap="xs">
-                <Text size="sm" ff="monospace">{virtualKey.displayKey}</Text>
-                <CopyButton value={virtualKey.displayKey}>
-                  {({ copied, copy }) => (
-                    <Tooltip label={copied ? 'Copied' : 'Copy'}>
-                      <ActionIcon 
-                        size="sm" 
-                        variant="subtle" 
-                        onClick={copy}
-                        color={copied ? 'green' : 'gray'}
-                      >
-                        {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
-                      </ActionIcon>
-                    </Tooltip>
-                  )}
-                </CopyButton>
-              </Group>
+              <Text size="sm" c="dimmed">Key Prefix</Text>
+              <Text size="sm" ff="monospace">{virtualKey.keyPrefix ?? 'N/A'}</Text>
+            </Group>
+
+            <Group justify="space-between">
+              <Text size="sm" c="dimmed">Virtual Key Group</Text>
+              <Text size="sm">ID: {virtualKey.virtualKeyGroupId}</Text>
             </Group>
 
             <Group justify="space-between">
@@ -126,56 +79,32 @@ export function ViewVirtualKeyModal({ opened, onClose, virtualKey }: ViewVirtual
               <Text size="sm"><TimeDisplay date={virtualKey.createdAt} format="datetime" /></Text>
             </Group>
 
-            {virtualKey.lastUsedAt && (
+            {virtualKey.expiresAt && (
               <Group justify="space-between">
-                <Text size="sm" c="dimmed">Last Used</Text>
-                <Text size="sm"><TimeDisplay date={virtualKey.lastUsedAt} format="datetime" /></Text>
+                <Text size="sm" c="dimmed">Expires</Text>
+                <Text size="sm"><TimeDisplay date={virtualKey.expiresAt} format="datetime" /></Text>
               </Group>
             )}
           </Stack>
         </Card>
 
-        {/* Usage Statistics */}
-        <SimpleGrid cols={2} spacing="md">
-          <Card withBorder>
-            <Stack gap="xs">
-              <Group justify="space-between">
-                <IconActivity size={20} color="var(--mantine-color-blue-6)" />
-                <Text size="xs" c="dimmed">Requests</Text>
-              </Group>
-              <Text size="xl" fw={700}>{virtualKey.requestCount?.toLocaleString() ?? '0'}</Text>
-            </Stack>
-          </Card>
-
-          <Card withBorder>
-            <Stack gap="xs">
-              <Group justify="space-between">
-                <IconCreditCard size={20} color="var(--mantine-color-green-6)" />
-                <Text size="xs" c="dimmed">Spend</Text>
-              </Group>
-              <Text size="xl" fw={700}>{formatCurrency(virtualKey.currentSpend)}</Text>
-            </Stack>
-          </Card>
-        </SimpleGrid>
-
-        {/* Budget Progress */}
-        {virtualKey.maxBudget && (
+        {/* Rate Limits */}
+        {(virtualKey.rateLimitRpm ?? virtualKey.rateLimitRpd) && (
           <Card withBorder>
             <Stack gap="sm">
-              <Group justify="space-between">
-                <Text size="sm" fw={500}>Budget Usage</Text>
-                <Text size="sm" c="dimmed">
-                  {formatCurrency(virtualKey.currentSpend)} / {formatCurrency(virtualKey.maxBudget)}
-                </Text>
-              </Group>
-              <Progress 
-                value={spendPercentage} 
-                color={getSpendColor(spendPercentage)}
-                size="lg"
-              />
-              <Text size="xs" c="dimmed" ta="center">
-                {spendPercentage.toFixed(1)}% of budget used
-              </Text>
+              <Text size="sm" fw={500}>Rate Limits</Text>
+              {virtualKey.rateLimitRpm && (
+                <Group justify="space-between">
+                  <Text size="sm" c="dimmed">Requests per minute</Text>
+                  <Text size="sm">{virtualKey.rateLimitRpm}</Text>
+                </Group>
+              )}
+              {virtualKey.rateLimitRpd && (
+                <Group justify="space-between">
+                  <Text size="sm" c="dimmed">Requests per day</Text>
+                  <Text size="sm">{virtualKey.rateLimitRpd}</Text>
+                </Group>
+              )}
             </Stack>
           </Card>
         )}
@@ -190,14 +119,13 @@ export function ViewVirtualKeyModal({ opened, onClose, virtualKey }: ViewVirtual
           </Card>
         )}
 
-        {/* Warning for no budget limit */}
-        {!virtualKey.maxBudget && (
-          <Alert icon={<IconAlertCircle size={16} />} color="yellow" variant="light">
-            <Text size="sm">
-              This key has no budget limit. Usage is unrestricted and may incur unexpected costs.
-            </Text>
-          </Alert>
-        )}
+        {/* Info about group-based billing */}
+        <Alert icon={<IconAlertCircle size={16} />} color="blue" variant="light">
+          <Text size="sm">
+            This key belongs to Virtual Key Group #{virtualKey.virtualKeyGroupId}. 
+            Balance and usage are tracked at the group level.
+          </Text>
+        </Alert>
 
         <Group justify="flex-end">
           <Button onClick={onClose}>Close</Button>

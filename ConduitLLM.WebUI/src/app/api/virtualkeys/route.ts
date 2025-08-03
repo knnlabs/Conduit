@@ -39,10 +39,10 @@ export async function POST(req: NextRequest) {
       );
     }
     
-    // Validate optional fields
-    if (body.maxBudget !== undefined && (typeof body.maxBudget !== 'number' || body.maxBudget < 0)) {
+    // Validate required virtualKeyGroupId
+    if (!body.virtualKeyGroupId || typeof body.virtualKeyGroupId !== 'number') {
       return NextResponse.json(
-        { error: 'Max budget must be a positive number' },
+        { error: 'Virtual key group ID is required and must be a number' },
         { status: 400 }
       );
     }

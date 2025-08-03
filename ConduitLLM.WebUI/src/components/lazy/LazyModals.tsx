@@ -28,6 +28,28 @@ export const LazyViewVirtualKeyModal = (props: React.ComponentProps<typeof ViewV
   </Suspense>
 );
 
+// Virtual Key Group Modals
+const CreateVirtualKeyGroupModalLazy = lazy(() => import('../virtualkeys/CreateVirtualKeyGroupModal').then(mod => ({ default: mod.CreateVirtualKeyGroupModal })));
+export const LazyCreateVirtualKeyGroupModal = (props: React.ComponentProps<typeof CreateVirtualKeyGroupModalLazy>) => (
+  <Suspense fallback={<ModalSkeleton />}>
+    <CreateVirtualKeyGroupModalLazy {...props} />
+  </Suspense>
+);
+
+const ViewVirtualKeyGroupModalLazy = lazy(() => import('../virtualkeys/ViewVirtualKeyGroupModal').then(mod => ({ default: mod.ViewVirtualKeyGroupModal })));
+export const LazyViewVirtualKeyGroupModal = (props: React.ComponentProps<typeof ViewVirtualKeyGroupModalLazy>) => (
+  <Suspense fallback={<ModalSkeleton />}>
+    <ViewVirtualKeyGroupModalLazy {...props} />
+  </Suspense>
+);
+
+const AddCreditsModalLazy = lazy(() => import('../virtualkeys/AddCreditsModal').then(mod => ({ default: mod.AddCreditsModal })));
+export const LazyAddCreditsModal = (props: React.ComponentProps<typeof AddCreditsModalLazy>) => (
+  <Suspense fallback={<ModalSkeleton />}>
+    <AddCreditsModalLazy {...props} />
+  </Suspense>
+);
+
 // Provider Modals
 const CreateProviderModalLazy = lazy(() => import('../providers/CreateProviderModal').then(mod => ({ default: mod.CreateProviderModal })));
 export const LazyCreateProviderModal = (props: React.ComponentProps<typeof CreateProviderModalLazy>) => (

@@ -20,16 +20,10 @@ import { useState, useEffect } from 'react';
 
 import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
 
-// Extend VirtualKeyDto with UI-specific fields added by the API
-interface VirtualKeyWithUI extends VirtualKeyDto {
-  displayKey: string;
-  virtualKeyGroupId?: number;
-}
-
 interface EditVirtualKeyModalProps {
   opened: boolean;
   onClose: () => void;
-  virtualKey: VirtualKeyWithUI | null;
+  virtualKey: VirtualKeyDto | null;
   onSuccess?: () => void;
 }
 
@@ -163,9 +157,9 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="md">
         <Alert icon={<IconAlertCircle size={16} />} color="blue">
-          <Text size="sm" fw={500}>Key Hash</Text>
+          <Text size="sm" fw={500}>Key Prefix</Text>
           <Text size="xs" style={{ fontFamily: 'monospace' }}>
-            {virtualKey.displayKey}
+            {virtualKey.keyPrefix ?? 'N/A'}
           </Text>
         </Alert>
 
@@ -200,8 +194,7 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
 
         <Alert icon={<IconAlertCircle size={16} />} color="gray">
           <Text size="sm">
-            Virtual Key Group ID: {virtualKey.virtualKeyGroupId ?? 'N/A'} | 
-            Requests: {virtualKey.requestCount?.toLocaleString() ?? '0'}
+            Virtual Key Group ID: {virtualKey.virtualKeyGroupId}
           </Text>
         </Alert>
         

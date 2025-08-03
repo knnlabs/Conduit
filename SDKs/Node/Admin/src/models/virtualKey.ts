@@ -1,18 +1,39 @@
 import { FilterOptions } from './common';
 import { VirtualKeyMetadata } from './metadata';
 
-export type BudgetDuration = 'Total' | 'Daily' | 'Weekly' | 'Monthly';
+export interface VirtualKeyGroupDto {
+  id: number;
+  externalGroupId?: string;
+  groupName: string;
+  balance: number;
+  lifetimeCreditsAdded: number;
+  lifetimeSpent: number;
+  createdAt: string;
+  updatedAt: string;
+  virtualKeyCount: number;
+}
+
+export interface CreateVirtualKeyGroupRequestDto {
+  groupName: string;
+  externalGroupId?: string;
+  initialBalance?: number;
+}
+
+export interface UpdateVirtualKeyGroupRequestDto {
+  groupName?: string;
+  externalGroupId?: string;
+}
+
+export interface AdjustBalanceDto {
+  amount: number;
+}
 
 export interface VirtualKeyDto {
   id: number;
   keyName: string;
-  apiKey?: string;
   keyPrefix?: string;
-  allowedModels: string;
-  maxBudget: number;
-  currentSpend: number;
-  budgetDuration: BudgetDuration;
-  budgetStartDate: string;
+  allowedModels?: string;
+  virtualKeyGroupId: number;
   isEnabled: boolean;
   expiresAt?: string;
   createdAt: string;
@@ -20,19 +41,22 @@ export interface VirtualKeyDto {
   metadata?: string;
   rateLimitRpm?: number;
   rateLimitRpd?: number;
-  lastUsedAt?: string;
-  requestCount?: number;
+  description?: string;
+  // Compatibility properties
+  name?: string;
+  isActive?: boolean;
+  rateLimit?: number;
 }
 
 export interface CreateVirtualKeyRequest {
   keyName: string;
+  virtualKeyGroupId: number;
   allowedModels?: string;
-  maxBudget?: number;
-  budgetDuration?: BudgetDuration;
   expiresAt?: string;
   metadata?: string;
   rateLimitRpm?: number;
   rateLimitRpd?: number;
+  description?: string;
 }
 
 export interface CreateVirtualKeyResponse {
@@ -43,13 +67,12 @@ export interface CreateVirtualKeyResponse {
 export interface UpdateVirtualKeyRequest {
   keyName?: string;
   allowedModels?: string;
-  maxBudget?: number;
-  budgetDuration?: BudgetDuration;
   isEnabled?: boolean;
   expiresAt?: string;
   metadata?: string;
   rateLimitRpm?: number;
   rateLimitRpd?: number;
+  description?: string;
 }
 
 export interface VirtualKeyValidationRequest {
@@ -62,36 +85,13 @@ export interface VirtualKeyValidationResult {
   keyName?: string;
   reason?: string;
   allowedModels?: string[];
-  maxBudget?: number;
-  currentSpend?: number;
-  budgetRemaining?: number;
   expiresAt?: string;
   rateLimitRpm?: number;
   rateLimitRpd?: number;
+  virtualKeyGroupId?: number;
 }
 
-export interface UpdateSpendRequest {
-  amount: number;
-  description?: string;
-}
-
-export interface RefundSpendRequest {
-  amount: number;
-  reason: string;
-  originalTransactionId?: string;
-}
-
-export interface CheckBudgetRequest {
-  estimatedCost: number;
-}
-
-export interface CheckBudgetResponse {
-  hasAvailableBudget: boolean;
-  availableBudget: number;
-  estimatedCost: number;
-  currentSpend: number;
-  maxBudget: number;
-}
+// Note: Spend tracking is now handled at the VirtualKeyGroup level
 
 export interface VirtualKeyValidationInfo {
   keyId: number;
@@ -99,12 +99,7 @@ export interface VirtualKeyValidationInfo {
   isValid: boolean;
   validationErrors: string[];
   allowedModels: string[];
-  budgetInfo: {
-    maxBudget: number;
-    currentSpend: number;
-    remaining: number;
-    duration: BudgetDuration;
-  };
+  virtualKeyGroupId: number;
   rateLimits?: {
     rpm?: number;
     rpd?: number;
@@ -114,38 +109,26 @@ export interface VirtualKeyValidationInfo {
 
 export interface VirtualKeyMaintenanceRequest {
   cleanupExpiredKeys?: boolean;
-  resetDailyBudgets?: boolean;
-  resetWeeklyBudgets?: boolean;
-  resetMonthlyBudgets?: boolean;
 }
 
 export interface VirtualKeyMaintenanceResponse {
   expiredKeysDeleted?: number;
-  dailyBudgetsReset?: number;
-  weeklyBudgetsReset?: number;
-  monthlyBudgetsReset?: number;
   errors?: string[];
 }
 
 export interface VirtualKeyFilters extends FilterOptions {
   isEnabled?: boolean;
   hasExpired?: boolean;
-  budgetDuration?: BudgetDuration;
-  minBudget?: number;
-  maxBudget?: number;
   allowedModels?: string[];
   createdAfter?: string;
   createdBefore?: string;
-  lastUsedAfter?: string;
-  lastUsedBefore?: string;
+  virtualKeyGroupId?: number;
 }
 
 export interface VirtualKeyStatistics {
   totalKeys: number;
   activeKeys: number;
   expiredKeys: number;
-  totalSpend: number;
-  averageSpendPerKey: number;
-  keysNearBudgetLimit: number;
-  keysByDuration: Record<BudgetDuration, number>;
+  totalGroups: number;
+  keysByGroup: Record<number, number>;
 }

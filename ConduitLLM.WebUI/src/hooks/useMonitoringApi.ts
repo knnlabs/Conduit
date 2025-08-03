@@ -2,28 +2,15 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { 
-  SystemMetrics
+  SystemMetrics,
+  ServiceHealthStatus,
+  AlertDto
 } from '@knn_labs/conduit-admin-client';
 import type { ErrorResponse } from '@knn_labs/conduit-common';
 
-// Define ServiceHealth interface based on the available SDK types
-interface ServiceHealth {
-  service: string;
-  status: 'healthy' | 'degraded' | 'unhealthy';
-  lastCheck: string;
-  responseTime: number;
-  error?: string;
-}
-
-// Define Alert interface based on the available SDK types
-interface Alert {
-  id: string;
-  type: 'error' | 'warning' | 'info';
-  title: string;
-  message: string;
-  timestamp: string;
-  resolved: boolean;
-}
+// Use SDK types
+type ServiceHealth = ServiceHealthStatus;
+type Alert = AlertDto;
 
 interface MonitoringConfig {
   refreshInterval?: number; // milliseconds

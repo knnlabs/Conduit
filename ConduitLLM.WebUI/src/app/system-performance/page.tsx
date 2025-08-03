@@ -79,23 +79,22 @@ interface PerformanceHistory {
   cpu: number;
   memory: number;
   disk: number;
-  network: number;
-  responseTime: number;
+  network: { in: number; out: number; };
 }
 
 interface ServiceStatus {
   name: string;
-  status: 'healthy' | 'degraded' | 'down';
+  status: string;
   uptime: number;
   memory: number;
   cpu: number;
   lastCheck: string;
 }
 
-interface PerformanceAlert {
+interface Alert {
   id: string;
-  type: 'cpu' | 'memory' | 'disk' | 'network' | 'service';
-  severity: 'warning' | 'error' | 'critical';
+  type: string;
+  severity: string;
   message: string;
   timestamp: string;
   resolved: boolean;
@@ -105,7 +104,7 @@ interface SystemPerformanceResponse {
   metrics: SystemMetrics;
   history: PerformanceHistory[];
   services: ServiceStatus[];
-  alerts: PerformanceAlert[];
+  alerts: Alert[];
 }
 
 export default function SystemPerformancePage() {
@@ -115,7 +114,7 @@ export default function SystemPerformancePage() {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [history, setHistory] = useState<PerformanceHistory[]>([]);
   const [services, setServices] = useState<ServiceStatus[]>([]);
-  const [alerts, setAlerts] = useState<PerformanceAlert[]>([]);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
 
   const fetchPerformanceData = useCallback(async () => {
     try {

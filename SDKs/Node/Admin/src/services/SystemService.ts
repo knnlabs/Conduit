@@ -261,18 +261,43 @@ export class SystemService extends FetchBaseApiClient {
     };
     
     const settingsService = new SettingsService(baseConfig);
+    const virtualKeyService = new VirtualKeyService(this);
+    
+    let existingKey: string | null = null;
     
     try {
       // First try to get existing key from GlobalSettings
       const setting = await settingsService.getGlobalSetting('WebUI_VirtualKey');
       if (setting?.value) {
-        return setting.value;
+        existingKey = setting.value;
+        this.log('debug', 'Found WebUI virtual key in GlobalSettings, validating...');
+        
+        // Validate that the key exists in VirtualKeys table
+        try {
+          // Try to validate the key by checking if it works
+          // Since we can't easily search by hash, we'll test if the key is valid
+          const validationResult = await virtualKeyService.validate(existingKey);
+          
+          if (!validationResult || !validationResult.isValid) {
+            this.log('warn', 'WebUI virtual key from GlobalSettings is not valid');
+            existingKey = null;
+          } else {
+            this.log('info', 'WebUI virtual key validated successfully');
+            return existingKey;
+          }
+        } catch (validationError) {
+          this.log('error', 'Failed to validate WebUI virtual key', validationError);
+          existingKey = null;
+        }
       }
     } catch {
-      // Key doesn't exist, we'll create it
-      this.log('debug', 'WebUI virtual key not found in GlobalSettings, creating new one');
+      // Key doesn't exist in GlobalSettings
+      this.log('debug', 'WebUI virtual key not found in GlobalSettings');
     }
 
+    // If we don't have a valid key, create a new one
+    this.log('info', 'Creating new WebUI virtual key');
+    
     // Create metadata
     const metadata = {
       visibility: 'hidden',
@@ -280,8 +305,7 @@ export class SystemService extends FetchBaseApiClient {
       originator: `Admin SDK ${SDK_VERSION}`
     };
 
-    // Create the virtual key via VirtualKeyService
-    const virtualKeyService = new VirtualKeyService(this);
+    // Create the virtual key - use only the fields that exist in the DTO
     const response = await virtualKeyService.create({
       keyName: 'WebUI Internal Key',
       metadata: JSON.stringify(metadata)
@@ -300,7 +324,7 @@ export class SystemService extends FetchBaseApiClient {
       description: 'Virtual key for WebUI Core API access'
     });
     
-    this.log('info', 'Created new WebUI virtual key');
+    this.log('info', 'Created new WebUI virtual key and stored in GlobalSettings');
     return response.virtualKey;
   }
 
