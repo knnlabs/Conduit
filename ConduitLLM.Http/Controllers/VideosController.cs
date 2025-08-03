@@ -18,8 +18,9 @@ namespace ConduitLLM.Http.Controllers
     /// </summary>
     [ApiController]
     [Route("v1/videos")]
-    [Authorize]
+    [Authorize(Policy = "RequireVirtualKey")]
     [EnableRateLimiting("VirtualKeyPolicy")]
+    [Tags("Videos")]
     public class VideosController : ControllerBase
     {
         private readonly IVideoGenerationService _videoService;

@@ -22,7 +22,8 @@ namespace ConduitLLM.Http.Controllers
     /// </summary>
     [ApiController]
     [Route("v1/images")]
-    [Authorize]
+    [Authorize(Policy = "RequireVirtualKey")]
+    [Tags("Images")]
     public class ImagesController : EventPublishingControllerBase
     {
         private readonly ILLMClientFactory _clientFactory;
@@ -403,14 +404,15 @@ namespace ConduitLLM.Http.Controllers
                     return BadRequest(new { error = new { message = $"Model {modelName} does not support image generation", type = "invalid_request_error" } });
                 }
 
-                // Get virtual key information
-                var virtualKeyHash = HttpContext.User.FindFirst("VirtualKey")?.Value;
-                if (string.IsNullOrEmpty(virtualKeyHash))
+                // Get virtual key ID from authenticated user claims
+                var virtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
+                if (string.IsNullOrEmpty(virtualKeyIdClaim) || !int.TryParse(virtualKeyIdClaim, out var virtualKeyId))
                 {
                     return Unauthorized(new { error = new { message = "Invalid authentication", type = "authentication_error" } });
                 }
 
-                var virtualKey = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKeyHash);
+                // Get virtual key information from service
+                var virtualKey = await _virtualKeyService.GetVirtualKeyInfoForValidationAsync(virtualKeyId);
                 if (virtualKey == null)
                 {
                     return Unauthorized(new { error = new { message = "Virtual key not found", type = "authentication_error" } });
@@ -423,8 +425,8 @@ namespace ConduitLLM.Http.Controllers
                 var generationRequest = new ImageGenerationRequested
                 {
                     TaskId = "", // Will be filled in after task creation
-                    VirtualKeyId = virtualKey.Id,
-                    VirtualKeyHash = virtualKeyHash,
+                    VirtualKeyId = virtualKeyId,
+                    VirtualKeyHash = virtualKey.KeyHash,
                     Request = new ConduitLLM.Core.Events.ImageGenerationRequest
                     {
                         Prompt = request.Prompt,
@@ -443,7 +445,7 @@ namespace ConduitLLM.Http.Controllers
                 };
 
                 // Create metadata for the task including the serialized request
-                var metadata = new TaskMetadata(virtualKey.Id)
+                var metadata = new TaskMetadata(virtualKeyId)
                 {
                     Model = modelName,
                     Prompt = request.Prompt,
@@ -454,7 +456,7 @@ namespace ConduitLLM.Http.Controllers
                 // Create the task using the correct method signature
                 var taskId = await _taskService.CreateTaskAsync(
                     taskType: "image_generation",
-                    virtualKeyId: virtualKey.Id,
+                    virtualKeyId: virtualKeyId,
                     metadata: metadata);
 
                 // Update the request with the actual task ID
@@ -507,54 +509,23 @@ namespace ConduitLLM.Http.Controllers
                 _logger.LogInformation("Task {TaskId} retrieved, State: {State}, HasMetadata: {HasMetadata}", 
                     taskId, task.State, task.Metadata != null);
 
-                // Verify user owns this task
-                var virtualKeyFromClaim = HttpContext.User.FindFirst("VirtualKey")?.Value;
-                if (task.Metadata != null && !string.IsNullOrEmpty(virtualKeyFromClaim))
+                // Verify user owns this task by comparing virtual key IDs
+                var userVirtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
+                if (task.Metadata != null && !string.IsNullOrEmpty(userVirtualKeyIdClaim) && int.TryParse(userVirtualKeyIdClaim, out var userVirtualKeyId))
                 {
                     var metadataJson = System.Text.Json.JsonSerializer.Serialize(task.Metadata);
                     var metadataDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(metadataJson);
                     if (metadataDict != null && metadataDict.TryGetValue("virtualKeyId", out var keyIdObj))
                     {
-                        var virtualKeyId = Convert.ToInt32(keyIdObj.ToString());
-                        _logger.LogInformation("Validating task ownership - VirtualKeyId: {VirtualKeyId}, UserKey: {UserKey}", 
-                            virtualKeyId, virtualKeyFromClaim?.Substring(0, Math.Min(10, virtualKeyFromClaim?.Length ?? 0)) + "...");
+                        var taskVirtualKeyId = Convert.ToInt32(keyIdObj.ToString());
+                        _logger.LogInformation("Validating task ownership - Task VirtualKeyId: {TaskKeyId}, User VirtualKeyId: {UserKeyId}", 
+                            taskVirtualKeyId, userVirtualKeyId);
                         
-                        // The database stores SHA256 hash of the full key (including "condt_" prefix)
-                        string userKeyHash;
-                        try
+                        // Compare the virtual key IDs
+                        if (taskVirtualKeyId != userVirtualKeyId)
                         {
-                            using (var sha256 = System.Security.Cryptography.SHA256.Create())
-                            {
-                                var keyBytes = System.Text.Encoding.UTF8.GetBytes(virtualKeyFromClaim!);
-                                var hashBytes = sha256.ComputeHash(keyBytes);
-                                userKeyHash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
-                                _logger.LogInformation("Computed SHA256 hash of virtual key: {Hash}", 
-                                    userKeyHash?.Substring(0, Math.Min(10, userKeyHash?.Length ?? 0)) + "...");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Failed to compute hash from virtual key");
-                            return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
-                        }
-                        
-                        var taskVirtualKey = await _virtualKeyService.GetVirtualKeyInfoForValidationAsync(virtualKeyId);
-                        if (taskVirtualKey == null)
-                        {
-                            _logger.LogWarning("Virtual key {VirtualKeyId} not found for task {TaskId}", virtualKeyId, taskId);
-                            return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
-                        }
-                        
-                        _logger.LogInformation("Task virtual key hash from DB: {TaskKeyHash}", 
-                            taskVirtualKey.KeyHash?.Substring(0, Math.Min(10, taskVirtualKey.KeyHash?.Length ?? 0)) + "...");
-                        
-                        // Compare the extracted hash with the database hash
-                        if (!string.Equals(taskVirtualKey.KeyHash, userKeyHash, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _logger.LogWarning("Virtual key mismatch for task {TaskId} - DB hash: {Expected}, User hash: {Got}", 
-                                taskId, 
-                                taskVirtualKey.KeyHash?.Substring(0, Math.Min(10, taskVirtualKey.KeyHash?.Length ?? 0)) + "...",
-                                userKeyHash?.Substring(0, Math.Min(10, userKeyHash?.Length ?? 0)) + "...");
+                            _logger.LogWarning("Virtual key ID mismatch for task {TaskId} - Expected: {Expected}, Got: {Got}", 
+                                taskId, taskVirtualKeyId, userVirtualKeyId);
                             return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
                         }
                         
@@ -600,54 +571,23 @@ namespace ConduitLLM.Http.Controllers
                     return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
                 }
 
-                // Verify user owns this task
-                var virtualKeyFromClaim = HttpContext.User.FindFirst("VirtualKey")?.Value;
-                if (task.Metadata != null && !string.IsNullOrEmpty(virtualKeyFromClaim))
+                // Verify user owns this task by comparing virtual key IDs
+                var userVirtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
+                if (task.Metadata != null && !string.IsNullOrEmpty(userVirtualKeyIdClaim) && int.TryParse(userVirtualKeyIdClaim, out var userVirtualKeyId))
                 {
                     var metadataJson = System.Text.Json.JsonSerializer.Serialize(task.Metadata);
                     var metadataDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(metadataJson);
                     if (metadataDict != null && metadataDict.TryGetValue("virtualKeyId", out var keyIdObj))
                     {
-                        var virtualKeyId = Convert.ToInt32(keyIdObj.ToString());
-                        _logger.LogInformation("Validating task ownership - VirtualKeyId: {VirtualKeyId}, UserKey: {UserKey}", 
-                            virtualKeyId, virtualKeyFromClaim?.Substring(0, Math.Min(10, virtualKeyFromClaim?.Length ?? 0)) + "...");
+                        var taskVirtualKeyId = Convert.ToInt32(keyIdObj.ToString());
+                        _logger.LogInformation("Validating task ownership - Task VirtualKeyId: {TaskKeyId}, User VirtualKeyId: {UserKeyId}", 
+                            taskVirtualKeyId, userVirtualKeyId);
                         
-                        // The database stores SHA256 hash of the full key (including "condt_" prefix)
-                        string userKeyHash;
-                        try
+                        // Compare the virtual key IDs
+                        if (taskVirtualKeyId != userVirtualKeyId)
                         {
-                            using (var sha256 = System.Security.Cryptography.SHA256.Create())
-                            {
-                                var keyBytes = System.Text.Encoding.UTF8.GetBytes(virtualKeyFromClaim!);
-                                var hashBytes = sha256.ComputeHash(keyBytes);
-                                userKeyHash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
-                                _logger.LogInformation("Computed SHA256 hash of virtual key: {Hash}", 
-                                    userKeyHash?.Substring(0, Math.Min(10, userKeyHash?.Length ?? 0)) + "...");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Failed to compute hash from virtual key");
-                            return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
-                        }
-                        
-                        var taskVirtualKey = await _virtualKeyService.GetVirtualKeyInfoForValidationAsync(virtualKeyId);
-                        if (taskVirtualKey == null)
-                        {
-                            _logger.LogWarning("Virtual key {VirtualKeyId} not found for task {TaskId}", virtualKeyId, taskId);
-                            return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
-                        }
-                        
-                        _logger.LogInformation("Task virtual key hash from DB: {TaskKeyHash}", 
-                            taskVirtualKey.KeyHash?.Substring(0, Math.Min(10, taskVirtualKey.KeyHash?.Length ?? 0)) + "...");
-                        
-                        // Compare the extracted hash with the database hash
-                        if (!string.Equals(taskVirtualKey.KeyHash, userKeyHash, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _logger.LogWarning("Virtual key mismatch for task {TaskId} - DB hash: {Expected}, User hash: {Got}", 
-                                taskId, 
-                                taskVirtualKey.KeyHash?.Substring(0, Math.Min(10, taskVirtualKey.KeyHash?.Length ?? 0)) + "...",
-                                userKeyHash?.Substring(0, Math.Min(10, userKeyHash?.Length ?? 0)) + "...");
+                            _logger.LogWarning("Virtual key ID mismatch for task {TaskId} - Expected: {Expected}, Got: {Got}", 
+                                taskId, taskVirtualKeyId, userVirtualKeyId);
                             return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
                         }
                         
@@ -661,15 +601,15 @@ namespace ConduitLLM.Http.Controllers
                     return BadRequest(new { error = new { message = "Task has already completed", type = "invalid_request_error" } });
                 }
 
-                // Get virtual key ID from metadata
-                var taskVirtualKeyId = 0;
+                // Get virtual key ID from metadata for event publishing
+                var cancelVirtualKeyId = 0;
                 if (task.Metadata != null)
                 {
                     var metadataJson = System.Text.Json.JsonSerializer.Serialize(task.Metadata);
                     var metadataDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(metadataJson);
                     if (metadataDict != null && metadataDict.TryGetValue("virtualKeyId", out var keyIdObj))
                     {
-                        taskVirtualKeyId = Convert.ToInt32(keyIdObj.ToString());
+                        cancelVirtualKeyId = Convert.ToInt32(keyIdObj.ToString());
                     }
                 }
 
@@ -677,7 +617,7 @@ namespace ConduitLLM.Http.Controllers
                 PublishEventFireAndForget(new ImageGenerationCancelled
                 {
                     TaskId = taskId,
-                    VirtualKeyId = taskVirtualKeyId,
+                    VirtualKeyId = cancelVirtualKeyId,
                     Reason = "Cancelled by user request",
                     CancelledAt = DateTime.UtcNow,
                     CorrelationId = Guid.NewGuid().ToString()

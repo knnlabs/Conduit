@@ -24,7 +24,8 @@ namespace ConduitLLM.Http.Controllers
     /// </summary>
     [ApiController]
     [Route("v1/audio")]
-    [Authorize]
+    [Authorize(Policy = "RequireVirtualKey")]
+    [Tags("Audio")]
     public class AudioController : ControllerBase
     {
         private readonly IAudioRouter _audioRouter;
