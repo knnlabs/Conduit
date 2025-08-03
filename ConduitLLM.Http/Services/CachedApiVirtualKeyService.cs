@@ -101,6 +101,19 @@ namespace ConduitLLM.Http.Services
                     
                     // Immediately invalidate over-budget keys
                     await _cache.InvalidateVirtualKeyAsync(keyHash);
+                    
+                    // Set 402 status code for insufficient balance
+                    // Note: This violates clean architecture but is pragmatic
+                    // TODO: Find a better way to handle this
+                    try 
+                    {
+                        var httpContext = new Microsoft.AspNetCore.Http.HttpContextAccessor().HttpContext;
+                        if (httpContext != null)
+                        {
+                            httpContext.Response.StatusCode = 402;
+                        }
+                    }
+                    catch { /* Ignore if no HTTP context */ }
                     return null;
                 }
 
