@@ -16,13 +16,13 @@ namespace ConduitLLM.Configuration
     /// <summary>
     /// Database context for ConduitLLM configuration
     /// </summary>
-    public class ConfigurationDbContext : DbContext, IConfigurationDbContext
+    public class ConduitDbContext : DbContext, IConfigurationDbContext
     {
         /// <summary>
         /// Initializes a new instance of the ConfigurationDbContext
         /// </summary>
         /// <param name="options">The options to be used by the context</param>
-        public ConfigurationDbContext(DbContextOptions<ConfigurationDbContext> options) : base(options)
+        public ConduitDbContext(DbContextOptions<ConduitDbContext> options) : base(options)
         {
         }
 

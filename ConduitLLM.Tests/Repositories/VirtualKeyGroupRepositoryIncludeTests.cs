@@ -18,18 +18,18 @@ namespace ConduitLLM.Tests.Repositories
     /// </summary>
     public class VirtualKeyGroupRepositoryIncludeTests : IDisposable
     {
-        private readonly ConfigurationDbContext _context;
+        private readonly ConduitDbContext _context;
         private readonly VirtualKeyGroupRepository _repository;
         private readonly Mock<ILogger<VirtualKeyGroupRepository>> _loggerMock;
 
         public VirtualKeyGroupRepositoryIncludeTests()
         {
             // Use in-memory database for testing
-            var options = new DbContextOptionsBuilder<ConfigurationDbContext>()
+            var options = new DbContextOptionsBuilder<ConduitDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
                 .Options;
 
-            _context = new ConfigurationDbContext(options);
+            _context = new ConduitDbContext(options);
             _loggerMock = new Mock<ILogger<VirtualKeyGroupRepository>>();
             _repository = new VirtualKeyGroupRepository(_context, _loggerMock.Object);
 

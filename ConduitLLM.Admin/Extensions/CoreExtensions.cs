@@ -25,7 +25,7 @@ namespace ConduitLLM.Admin.Extensions
         public static IServiceCollection AddCoreServices(this IServiceCollection services, IConfiguration configuration)
         {
             // Add database services - use ConfigurationDbContext
-            services.AddDatabaseServices<ConduitLLM.Configuration.ConfigurationDbContext>();
+            services.AddDatabaseServices<ConduitLLM.Configuration.ConduitDbContext>();
 
             // Register DbContext Factory (using connection string from environment variables)
             var connectionStringManager = new ConnectionStringManager();
@@ -50,7 +50,7 @@ namespace ConduitLLM.Admin.Extensions
                 throw new InvalidOperationException($"Only PostgreSQL is supported. Invalid provider: {dbProvider}");
             }
 
-            services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
+            services.AddDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>(options =>
             {
                 options.UseNpgsql(dbConnectionString);
                 // Suppress PendingModelChangesWarning in production
@@ -63,9 +63,9 @@ namespace ConduitLLM.Admin.Extensions
             
             // Also add scoped registration from factory for services that need direct injection
             // Note: This creates contexts from the factory on demand
-            services.AddScoped<ConduitLLM.Configuration.ConfigurationDbContext>(provider =>
+            services.AddScoped<ConduitLLM.Configuration.ConduitDbContext>(provider =>
             {
-                var factory = provider.GetService<IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>>();
+                var factory = provider.GetService<IDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>>();
                 if (factory == null)
                 {
                     throw new InvalidOperationException("IDbContextFactory<ConfigurationDbContext> is not registered");

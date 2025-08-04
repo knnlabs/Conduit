@@ -19,7 +19,7 @@ namespace ConduitLLM.Configuration.Repositories
     /// </summary>
     public class ModelProviderMappingRepository : IModelProviderMappingRepository
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly ILogger<ModelProviderMappingRepository> _logger;
 
         /// <summary>
@@ -28,7 +28,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="dbContextFactory">The database context factory</param>
         /// <param name="logger">The logger</param>
         public ModelProviderMappingRepository(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<ModelProviderMappingRepository> logger)
         {
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));

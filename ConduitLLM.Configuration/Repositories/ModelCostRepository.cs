@@ -42,7 +42,7 @@ namespace ConduitLLM.Configuration.Repositories
     /// </remarks>
     public class ModelCostRepository : IModelCostRepository
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly ILogger<ModelCostRepository> _logger;
 
         /// <summary>
@@ -70,7 +70,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// </list>
         /// </remarks>
         public ModelCostRepository(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<ModelCostRepository> logger)
         {
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));

@@ -21,14 +21,14 @@ namespace ConduitLLM.Tests.Http.Controllers
     [Trait("Phase", "2")]
     public class ProviderModelsControllerTests : ControllerTestBase
     {
-        private readonly Mock<IDbContextFactory<ConfigurationDbContext>> _mockDbContextFactory;
+        private readonly Mock<IDbContextFactory<ConduitDbContext>> _mockDbContextFactory;
         private readonly Mock<IModelListService> _mockModelListService;
         private readonly Mock<ILogger<ProviderModelsController>> _mockLogger;
         private readonly ProviderModelsController _controller;
 
         public ProviderModelsControllerTests(ITestOutputHelper output) : base(output)
         {
-            _mockDbContextFactory = new Mock<IDbContextFactory<ConfigurationDbContext>>();
+            _mockDbContextFactory = new Mock<IDbContextFactory<ConduitDbContext>>();
             _mockModelListService = new Mock<IModelListService>();
             _mockLogger = CreateLogger<ProviderModelsController>();
 
@@ -333,15 +333,15 @@ namespace ConduitLLM.Tests.Http.Controllers
         #endregion
 
         // Helper class for in-memory database context
-        private class InMemoryDbContext : ConfigurationDbContext
+        private class InMemoryDbContext : ConduitDbContext
         {
             public InMemoryDbContext() : base(CreateInMemoryOptions())
             {
             }
 
-            private static DbContextOptions<ConfigurationDbContext> CreateInMemoryOptions()
+            private static DbContextOptions<ConduitDbContext> CreateInMemoryOptions()
             {
-                return new DbContextOptionsBuilder<ConfigurationDbContext>()
+                return new DbContextOptionsBuilder<ConduitDbContext>()
                     .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
                     .Options;
             }

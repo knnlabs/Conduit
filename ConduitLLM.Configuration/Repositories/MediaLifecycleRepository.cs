@@ -13,9 +13,9 @@ namespace ConduitLLM.Configuration.Repositories
     /// </summary>
     public class MediaLifecycleRepository : IMediaLifecycleRepository
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _contextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _contextFactory;
 
-        public MediaLifecycleRepository(IDbContextFactory<ConfigurationDbContext> contextFactory)
+        public MediaLifecycleRepository(IDbContextFactory<ConduitDbContext> contextFactory)
         {
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
         }

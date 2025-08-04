@@ -17,7 +17,7 @@ namespace ConduitLLM.Configuration.HealthChecks
     /// </summary>
     public class DatabaseConnectionPoolHealthCheck : IHealthCheck
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _contextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _contextFactory;
         private readonly ILogger<DatabaseConnectionPoolHealthCheck> _logger;
         private const double WARNING_THRESHOLD_PERCENT = 80.0;
         private const double CRITICAL_THRESHOLD_PERCENT = 90.0;
@@ -29,7 +29,7 @@ namespace ConduitLLM.Configuration.HealthChecks
         /// <param name="contextFactory">Database context factory.</param>
         /// <param name="logger">Logger instance.</param>
         public DatabaseConnectionPoolHealthCheck(
-            IDbContextFactory<ConfigurationDbContext> contextFactory,
+            IDbContextFactory<ConduitDbContext> contextFactory,
             ILogger<DatabaseConnectionPoolHealthCheck> logger)
         {
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));

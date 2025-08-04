@@ -19,7 +19,7 @@ namespace ConduitLLM.Tests.Configuration.Services
 {
     public class CacheConfigurationServiceTests : IDisposable
     {
-        private readonly ConfigurationDbContext _dbContext;
+        private readonly ConduitDbContext _dbContext;
         private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
         private readonly Mock<IConfiguration> _mockConfiguration;
         private readonly Mock<ILogger<CacheConfigurationService>> _mockLogger;
@@ -27,11 +27,11 @@ namespace ConduitLLM.Tests.Configuration.Services
 
         public CacheConfigurationServiceTests()
         {
-            var options = new DbContextOptionsBuilder<ConfigurationDbContext>()
+            var options = new DbContextOptionsBuilder<ConduitDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
                 .Options;
 
-            _dbContext = new ConfigurationDbContext(options);
+            _dbContext = new ConduitDbContext(options);
             _mockPublishEndpoint = new Mock<IPublishEndpoint>();
             _mockConfiguration = new Mock<IConfiguration>();
             _mockLogger = new Mock<ILogger<CacheConfigurationService>>();

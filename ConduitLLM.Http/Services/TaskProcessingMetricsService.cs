@@ -181,7 +181,7 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>>();
+                var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>>();
                 await using var context = await dbContextFactory.CreateDbContextAsync();
 
                 // Get image generation task statistics from AsyncTasks
@@ -227,7 +227,7 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>>();
+                var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>>();
                 await using var context = await dbContextFactory.CreateDbContextAsync();
 
                 // Get video generation task statistics from AsyncTasks

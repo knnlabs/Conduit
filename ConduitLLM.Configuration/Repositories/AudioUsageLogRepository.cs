@@ -17,12 +17,12 @@ namespace ConduitLLM.Configuration.Repositories
     /// </summary>
     public class AudioUsageLogRepository : IAudioUsageLogRepository
     {
-        private readonly ConfigurationDbContext _context;
+        private readonly ConduitDbContext _context;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AudioUsageLogRepository"/> class.
         /// </summary>
-        public AudioUsageLogRepository(ConfigurationDbContext context)
+        public AudioUsageLogRepository(ConduitDbContext context)
         {
             _context = context;
         }

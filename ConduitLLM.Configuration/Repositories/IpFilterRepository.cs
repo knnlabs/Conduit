@@ -14,7 +14,7 @@ namespace ConduitLLM.Configuration.Repositories;
 /// </summary>
 public class IpFilterRepository : IIpFilterRepository
 {
-    private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+    private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
     private readonly ILogger<IpFilterRepository> _logger;
 
     /// <summary>
@@ -23,7 +23,7 @@ public class IpFilterRepository : IIpFilterRepository
     /// <param name="dbContextFactory">Database context factory</param>
     /// <param name="logger">Logger</param>
     public IpFilterRepository(
-        IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+        IDbContextFactory<ConduitDbContext> dbContextFactory,
         ILogger<IpFilterRepository> logger)
     {
         _dbContextFactory = dbContextFactory;

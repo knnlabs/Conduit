@@ -14,7 +14,7 @@ namespace ConduitLLM.Configuration.Services
     /// </summary>
     public class VirtualKeyService : IVirtualKeyService
     {
-        private readonly ConfigurationDbContext _context;
+        private readonly ConduitDbContext _context;
         private readonly IVirtualKeyGroupRepository _groupRepository;
 
         /// <summary>
@@ -22,7 +22,7 @@ namespace ConduitLLM.Configuration.Services
         /// </summary>
         /// <param name="context">Database context</param>
         /// <param name="groupRepository">Virtual key group repository</param>
-        public VirtualKeyService(ConfigurationDbContext context, IVirtualKeyGroupRepository groupRepository)
+        public VirtualKeyService(ConduitDbContext context, IVirtualKeyGroupRepository groupRepository)
         {
             _context = context;
             _groupRepository = groupRepository;

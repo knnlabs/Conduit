@@ -220,7 +220,7 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>>();
+                var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>>();
                 await using var context = await dbContextFactory.CreateDbContextAsync();
 
                 // Get model usage statistics for the last hour
@@ -275,7 +275,7 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>>();
+                var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>>();
                 await using var context = await dbContextFactory.CreateDbContextAsync();
 
                 // Calculate cost rate per provider

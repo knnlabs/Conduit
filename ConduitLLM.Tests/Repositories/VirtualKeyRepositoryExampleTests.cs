@@ -22,9 +22,9 @@ namespace ConduitLLM.Tests.Repositories
     [Trait("Component", "Repository")]
     public class VirtualKeyRepositoryExampleTests : IDisposable
     {
-        private readonly ConfigurationDbContext _context;
-        private readonly DbContextOptions<ConfigurationDbContext> _options;
-        private readonly Mock<IDbContextFactory<ConfigurationDbContext>> _mockContextFactory;
+        private readonly ConduitDbContext _context;
+        private readonly DbContextOptions<ConduitDbContext> _options;
+        private readonly Mock<IDbContextFactory<ConduitDbContext>> _mockContextFactory;
         private readonly Mock<ILogger<VirtualKeyRepository>> _mockLogger;
         private readonly VirtualKeyRepository _repository;
         private readonly ITestOutputHelper _output;
@@ -34,16 +34,16 @@ namespace ConduitLLM.Tests.Repositories
             _output = output;
             
             // Setup in-memory database for testing
-            _options = new DbContextOptionsBuilder<ConfigurationDbContext>()
+            _options = new DbContextOptionsBuilder<ConduitDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
                 .Options;
             
-            _context = new ConfigurationDbContext(_options);
-            _mockContextFactory = new Mock<IDbContextFactory<ConfigurationDbContext>>();
+            _context = new ConduitDbContext(_options);
+            _mockContextFactory = new Mock<IDbContextFactory<ConduitDbContext>>();
             // The factory must return a new context each time to simulate production behavior
             // where each operation gets its own context that will be disposed
             _mockContextFactory.Setup(x => x.CreateDbContextAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(() => new ConfigurationDbContext(_options));
+                .ReturnsAsync(() => new ConduitDbContext(_options));
             
             _mockLogger = new Mock<ILogger<VirtualKeyRepository>>();
             
@@ -214,7 +214,7 @@ namespace ConduitLLM.Tests.Repositories
             result.Should().BeTrue();
             
             // Verify deletion using a new context
-            using (var verifyContext = new ConfigurationDbContext(_options))
+            using (var verifyContext = new ConduitDbContext(_options))
             {
                 var deletedKey = await verifyContext.VirtualKeys.FindAsync(key.Id);
                 deletedKey.Should().BeNull();

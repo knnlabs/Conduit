@@ -21,7 +21,7 @@ namespace ConduitLLM.Admin.Controllers
     [Authorize(Policy = "MasterKeyPolicy")]
     public class HealthMonitoringController : ControllerBase
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly ILogger<HealthMonitoringController> _logger;
         private readonly IMemoryCache _cache;
 
@@ -32,7 +32,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="logger">Logger instance.</param>
         /// <param name="cache">Memory cache.</param>
         public HealthMonitoringController(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<HealthMonitoringController> logger,
             IMemoryCache cache)
         {
@@ -359,7 +359,7 @@ namespace ConduitLLM.Admin.Controllers
         }
 
         private async Task<(bool IsHealthy, int ResponseTime)> CheckDatabaseHealth(
-            ConfigurationDbContext dbContext, 
+            ConduitDbContext dbContext, 
             CancellationToken cancellationToken)
         {
             try
@@ -375,7 +375,7 @@ namespace ConduitLLM.Admin.Controllers
             }
         }
 
-        private async Task<string> GetDatabaseSize(ConfigurationDbContext dbContext, CancellationToken cancellationToken)
+        private async Task<string> GetDatabaseSize(ConduitDbContext dbContext, CancellationToken cancellationToken)
         {
             try
             {

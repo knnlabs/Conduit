@@ -23,7 +23,7 @@ namespace ConduitLLM.Http.Controllers
     [Route("api/provider-models")]
     public class ProviderModelsController : ControllerBase
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly IModelListService _modelListService;
         private readonly ILogger<ProviderModelsController> _logger;
 
@@ -34,7 +34,7 @@ namespace ConduitLLM.Http.Controllers
         /// <param name="modelListService">Service for retrieving model lists from providers.</param>
         /// <param name="logger">Logger for diagnostic information.</param>
         public ProviderModelsController(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             IModelListService modelListService,
             ILogger<ProviderModelsController> logger)
         {

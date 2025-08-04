@@ -21,7 +21,7 @@ namespace ConduitLLM.Http.Controllers
     [Authorize]
     public class DiscoveryController : ControllerBase
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly IModelCapabilityService _modelCapabilityService;
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly ILogger<DiscoveryController> _logger;
@@ -30,7 +30,7 @@ namespace ConduitLLM.Http.Controllers
         /// Initializes a new instance of the <see cref="DiscoveryController"/> class.
         /// </summary>
         public DiscoveryController(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             IModelCapabilityService modelCapabilityService,
             IVirtualKeyService virtualKeyService,
             ILogger<DiscoveryController> logger)

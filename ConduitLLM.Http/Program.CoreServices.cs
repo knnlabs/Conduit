@@ -125,7 +125,7 @@ public partial class Program
             throw new InvalidOperationException($"Only PostgreSQL is supported. Invalid provider: {dbProvider}");
         }
 
-        builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
+        builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>(options =>
         {
             options.UseNpgsql(dbConnectionString);
             // Suppress PendingModelChangesWarning in production
@@ -137,9 +137,9 @@ public partial class Program
         
         // Also add scoped registration from factory for services that need direct injection
         // Note: This creates contexts from the factory on demand
-        builder.Services.AddScoped<ConduitLLM.Configuration.ConfigurationDbContext>(provider =>
+        builder.Services.AddScoped<ConduitLLM.Configuration.ConduitDbContext>(provider =>
         {
-            var factory = provider.GetService<IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>>();
+            var factory = provider.GetService<IDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>>();
             if (factory == null)
             {
                 throw new InvalidOperationException("IDbContextFactory<ConfigurationDbContext> is not registered");

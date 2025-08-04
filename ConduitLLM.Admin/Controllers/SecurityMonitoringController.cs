@@ -20,7 +20,7 @@ namespace ConduitLLM.Admin.Controllers
     [Authorize(Policy = "MasterKeyPolicy")]
     public class SecurityMonitoringController : ControllerBase
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly ILogger<SecurityMonitoringController> _logger;
         private readonly IMemoryCache _cache;
 
@@ -31,7 +31,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="logger">Logger instance.</param>
         /// <param name="cache">Memory cache.</param>
         public SecurityMonitoringController(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<SecurityMonitoringController> logger,
             IMemoryCache cache)
         {
@@ -330,7 +330,7 @@ namespace ConduitLLM.Admin.Controllers
             return (double)totalFailures / Math.Max(1, daysActive);
         }
 
-        private async Task<double> CalculateDetailedComplianceScore(ConfigurationDbContext context, CancellationToken cancellationToken)
+        private async Task<double> CalculateDetailedComplianceScore(ConduitDbContext context, CancellationToken cancellationToken)
         {
             var score = 0.0;
 

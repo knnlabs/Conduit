@@ -23,7 +23,7 @@ namespace ConduitLLM.Admin.Controllers
     [Authorize(Policy = "MasterKeyPolicy")]
     public class ConfigurationController : ControllerBase
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly ILogger<ConfigurationController> _logger;
         private readonly IMemoryCache _cache;
         private readonly IConfiguration _configuration;
@@ -38,7 +38,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="configuration">Application configuration.</param>
         /// <param name="cacheManagementService">Service for cache maintenance operations.</param>
         public ConfigurationController(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<ConfigurationController> logger,
             IMemoryCache cache,
             IConfiguration configuration,
@@ -373,7 +373,7 @@ namespace ConduitLLM.Admin.Controllers
             }
         }
 
-        private async Task<List<object>> GetProviderEndpoints(ConfigurationDbContext dbContext, CancellationToken cancellationToken)
+        private async Task<List<object>> GetProviderEndpoints(ConduitDbContext dbContext, CancellationToken cancellationToken)
         {
             var providers = await dbContext.Providers
                 .Where(p => p.IsEnabled)
@@ -403,7 +403,7 @@ namespace ConduitLLM.Admin.Controllers
             }).ToList();
         }
 
-        private async Task<object> GetRoutingStatistics(ConfigurationDbContext dbContext, CancellationToken cancellationToken)
+        private async Task<object> GetRoutingStatistics(ConduitDbContext dbContext, CancellationToken cancellationToken)
         {
             var oneDayAgo = DateTime.UtcNow.AddDays(-1);
 
@@ -428,7 +428,7 @@ namespace ConduitLLM.Admin.Controllers
             };
         }
 
-        private async Task<object> GetCacheStatistics(ConfigurationDbContext dbContext, CancellationToken cancellationToken)
+        private async Task<object> GetCacheStatistics(ConduitDbContext dbContext, CancellationToken cancellationToken)
         {
             // In a real implementation, these would come from actual cache metrics
         // Added to ensure the method remains asynchronous and to avoid CS1998 warning

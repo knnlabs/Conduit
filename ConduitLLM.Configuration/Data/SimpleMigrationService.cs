@@ -13,7 +13,7 @@ namespace ConduitLLM.Configuration.Data
     /// </summary>
     public class SimpleMigrationService
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _contextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _contextFactory;
         private readonly ILogger<SimpleMigrationService> _logger;
         
         // PostgreSQL advisory lock ID for migrations
@@ -21,7 +21,7 @@ namespace ConduitLLM.Configuration.Data
         private const long MIGRATION_LOCK_ID = 7891011;
 
         public SimpleMigrationService(
-            IDbContextFactory<ConfigurationDbContext> contextFactory,
+            IDbContextFactory<ConduitDbContext> contextFactory,
             ILogger<SimpleMigrationService> logger)
         {
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
@@ -83,7 +83,7 @@ namespace ConduitLLM.Configuration.Data
         }
 
         private async Task<bool> TryAcquireMigrationLockAsync(
-            ConfigurationDbContext context, 
+            ConduitDbContext context, 
             string instanceId,
             CancellationToken cancellationToken)
         {
@@ -126,7 +126,7 @@ namespace ConduitLLM.Configuration.Data
             }
         }
 
-        private async Task ReleaseMigrationLockAsync(ConfigurationDbContext context, string instanceId)
+        private async Task ReleaseMigrationLockAsync(ConduitDbContext context, string instanceId)
         {
             try
             {
@@ -149,7 +149,7 @@ namespace ConduitLLM.Configuration.Data
         }
 
         private async Task WaitForMigrationsToCompleteAsync(
-            ConfigurationDbContext context,
+            ConduitDbContext context,
             string instanceId,
             CancellationToken cancellationToken)
         {

@@ -31,7 +31,7 @@ namespace ConduitLLM.Configuration.Extensions
         {
             // Register DbContext interface
             services.AddScoped<IConfigurationDbContext>(provider =>
-                provider.GetRequiredService<ConfigurationDbContext>());
+                provider.GetRequiredService<ConduitDbContext>());
 
             // Register repositories
             services.AddScoped<IVirtualKeyRepository, VirtualKeyRepository>();

@@ -59,7 +59,7 @@ namespace ConduitLLM.Core.Services
                 var tasks = Enumerable.Range(0, _connectionsToWarm).Select(async i =>
                 {
                     using var scope = _serviceProvider.CreateScope();
-                    var dbContextFactory = scope.ServiceProvider.GetService<IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>>();
+                    var dbContextFactory = scope.ServiceProvider.GetService<IDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>>();
                     
                     if (dbContextFactory != null)
                     {

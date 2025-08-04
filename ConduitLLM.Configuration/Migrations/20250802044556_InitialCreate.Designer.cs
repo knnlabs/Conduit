@@ -11,7 +11,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace ConduitLLM.Configuration.Migrations
 {
-    [DbContext(typeof(ConfigurationDbContext))]
+    [DbContext(typeof(ConduitDbContext))]
     [Migration("20250802044556_InitialCreate")]
     partial class InitialCreate
     {

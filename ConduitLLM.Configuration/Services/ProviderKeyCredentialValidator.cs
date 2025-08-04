@@ -12,10 +12,10 @@ namespace ConduitLLM.Configuration.Services
     /// </summary>
     public class ProviderKeyCredentialValidator
     {
-        private readonly ConfigurationDbContext _context;
+        private readonly ConduitDbContext _context;
         private const int MaxKeysPerProvider = 32;
 
-        public ProviderKeyCredentialValidator(ConfigurationDbContext context)
+        public ProviderKeyCredentialValidator(ConduitDbContext context)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }

@@ -10,7 +10,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace ConduitLLM.Configuration.Migrations
 {
-    [DbContext(typeof(ConfigurationDbContext))]
+    [DbContext(typeof(ConduitDbContext))]
     partial class ConfigurationDbContextModelSnapshot : ModelSnapshot
     {
         protected override void BuildModel(ModelBuilder modelBuilder)

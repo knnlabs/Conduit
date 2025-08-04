@@ -39,7 +39,7 @@ namespace ConduitLLM.Configuration.Repositories
     /// </remarks>
     public class VirtualKeyRepository : IVirtualKeyRepository
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly ILogger<VirtualKeyRepository> _logger;
 
         /// <summary>
@@ -67,7 +67,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// </list>
         /// </remarks>
         public VirtualKeyRepository(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<VirtualKeyRepository> logger)
         {
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));

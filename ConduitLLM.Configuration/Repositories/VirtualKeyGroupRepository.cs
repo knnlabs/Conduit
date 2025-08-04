@@ -16,13 +16,13 @@ namespace ConduitLLM.Configuration.Repositories;
 /// </summary>
 public class VirtualKeyGroupRepository : IVirtualKeyGroupRepository
 {
-    private readonly ConfigurationDbContext _context;
+    private readonly ConduitDbContext _context;
     private readonly ILogger<VirtualKeyGroupRepository> _logger;
 
     /// <summary>
     /// Initializes a new instance of the VirtualKeyGroupRepository
     /// </summary>
-    public VirtualKeyGroupRepository(ConfigurationDbContext context, ILogger<VirtualKeyGroupRepository> logger)
+    public VirtualKeyGroupRepository(ConduitDbContext context, ILogger<VirtualKeyGroupRepository> logger)
     {
         _context = context;
         _logger = logger;
