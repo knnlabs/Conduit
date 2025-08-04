@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -18,7 +17,6 @@ namespace ConduitLLM.Admin.Controllers
     /// </summary>
     [ApiController]
     [Route("api/health")]
-    [Authorize(Policy = "MasterKeyPolicy")]
     public class HealthMonitoringController : ControllerBase
     {
         private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;

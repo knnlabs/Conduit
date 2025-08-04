@@ -81,7 +81,11 @@ public partial class Program
         Console.WriteLine("[Conduit API] SignalR EnhancedVideoGenerationHub registered at /hubs/enhanced-video-generation (requires authentication)");
 
         // Map health check endpoints
-        app.MapHealthChecks("/health");
+        app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+        {
+            // Exclude monitoring and performance checks from basic health endpoint
+            Predicate = check => !check.Tags.Contains("monitoring") && !check.Tags.Contains("performance")
+        });
         app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
         {
             Predicate = check => check.Tags.Contains("live")

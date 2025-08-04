@@ -99,11 +99,7 @@ public partial class Program
                     tags: new[] { "messaging", "rabbitmq", "performance", "monitoring" });
             }
 
-            // Add audio-specific health checks if audio services are configured
-            if (builder.Configuration.GetSection("AudioService:Providers").Exists())
-            {
-                healthChecksBuilder.AddAudioHealthChecks(builder.Configuration);
-            }
+            // Audio health checks removed per YAGNI principle
             
             // Add advanced health monitoring checks (includes SignalR and HTTP connection pool checks)
             healthChecksBuilder.AddAdvancedHealthMonitoring(builder.Configuration);

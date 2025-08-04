@@ -12,7 +12,6 @@ using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
-using ConduitLLM.Core.HealthChecks;
 using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Core.Extensions
@@ -52,12 +51,7 @@ namespace ConduitLLM.Core.Extensions
             // Register the cache manager as singleton
             services.AddSingleton<ICacheManager, CacheManager>();
 
-            // Register health checks
-            services.AddHealthChecks()
-                .AddTypeActivatedCheck<CacheManagerHealthCheck>(
-                    "cache_manager",
-                    failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded,
-                    tags: new[] { "cache", "infrastructure", "monitoring" });
+            // Health checks removed per YAGNI principle
 
             return services;
         }
@@ -82,12 +76,7 @@ namespace ConduitLLM.Core.Extensions
             // Register the cache manager as singleton
             services.AddSingleton<ICacheManager, CacheManager>();
 
-            // Register health checks
-            services.AddHealthChecks()
-                .AddTypeActivatedCheck<CacheManagerHealthCheck>(
-                    "cache_manager",
-                    failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded,
-                    tags: new[] { "cache", "infrastructure", "monitoring" });
+            // Health checks removed per YAGNI principle
 
             return services;
         }
@@ -151,13 +140,7 @@ namespace ConduitLLM.Core.Extensions
             // Register distributed statistics collector
             services.AddSingleton<IDistributedCacheStatisticsCollector, RedisCacheStatisticsCollector>();
             
-            // Register statistics health check
-            services.AddSingleton<IStatisticsHealthCheck, CacheStatisticsHealthCheck>();
-            services.AddHostedService(sp => 
-            {
-                var healthCheck = sp.GetRequiredService<IStatisticsHealthCheck>() as CacheStatisticsHealthCheck;
-                return healthCheck ?? throw new InvalidOperationException("IStatisticsHealthCheck must be implemented by CacheStatisticsHealthCheck");
-            });
+            // Statistics health check removed per YAGNI principle
 
             // Register hybrid collector as the main statistics collector
             services.AddSingleton<ICacheStatisticsCollector>(sp =>
@@ -180,21 +163,7 @@ namespace ConduitLLM.Core.Extensions
             // Register the cache manager as singleton
             services.AddSingleton<ICacheManager, CacheManager>();
 
-            // Register health checks
-            services.AddHealthChecks()
-                .AddTypeActivatedCheck<CacheManagerHealthCheck>(
-                    "cache_manager",
-                    failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded,
-                    tags: new[] { "cache", "infrastructure", "monitoring" })
-                .AddRedis(
-                    redisConnectionString, 
-                    name: "redis_cache",
-                    failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded,
-                    tags: new[] { "cache", "redis", "monitoring" })
-                .AddCheck<CacheStatisticsHealthCheckAdapter>(
-                    "cache_statistics",
-                    failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded,
-                    tags: new[] { "cache", "statistics", "monitoring" });
+            // Health checks removed per YAGNI principle
 
             return services;
         }
@@ -357,12 +326,7 @@ namespace ConduitLLM.Core.Extensions
                 return cacheManager;
             });
 
-            // Register health checks
-            services.AddHealthChecks()
-                .AddTypeActivatedCheck<CacheManagerHealthCheck>(
-                    "cache_manager",
-                    failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded,
-                    tags: new[] { "cache", "infrastructure", "monitoring" });
+            // Health checks removed per YAGNI principle
 
             return services;
         }

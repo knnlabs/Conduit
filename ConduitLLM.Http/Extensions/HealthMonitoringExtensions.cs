@@ -2,9 +2,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Configuration;
 using ConduitLLM.Http.Services;
-using ConduitLLM.Http.Hubs;
-using ConduitLLM.Http.HealthChecks;
-using ConduitLLM.Core.HealthChecks;
 using ConduitLLM.Security.Interfaces;
 using ConduitLLM.Security.Models;
 
@@ -44,15 +41,7 @@ namespace ConduitLLM.Http.Extensions
                 provider.GetRequiredService<ISecurityEventMonitoringService>() as ConduitLLM.Security.Services.SecurityEventMonitoringService
                 ?? throw new InvalidOperationException("SecurityEventMonitoringService not registered correctly"));
 
-            // Configure system resources health check options
-            services.Configure<SystemResourcesHealthCheckOptions>(options =>
-            {
-                var section = configuration.GetSection("HealthMonitoring:SystemResources");
-                if (section.Exists())
-                {
-                    section.Bind(options);
-                }
-            });
+            // System resources health check removed per YAGNI principle
 
             // Register notification services
             services.Configure<AlertNotificationOptions>(configuration.GetSection("HealthMonitoring:Notifications"));
@@ -80,32 +69,14 @@ namespace ConduitLLM.Http.Extensions
         }
 
         /// <summary>
-        /// Adds advanced health monitoring checks for system resources and API endpoints
+        /// Adds advanced health monitoring checks (currently empty - removed unnecessary checks)
         /// </summary>
         public static IHealthChecksBuilder AddAdvancedHealthMonitoring(
             this IHealthChecksBuilder healthChecksBuilder,
             IConfiguration configuration)
         {
-            // Add system resources health check (excluded from main /health endpoint)
-            healthChecksBuilder.AddCheck<SystemResourcesHealthCheck>(
-                "system_resources",
-                failureStatus: HealthStatus.Degraded,
-                tags: new[] { "system", "resources", "performance", "monitoring" });
-
-            // Add HTTP connection pool health check (excluded from main /health endpoint)
-            healthChecksBuilder.AddCheck<ConduitLLM.Core.HealthChecks.HttpConnectionPoolHealthCheck>(
-                "http_connection_pool",
-                failureStatus: HealthStatus.Degraded,
-                tags: new[] { "http", "pool", "performance", "monitoring" });
-
-            // Add SignalR health check if available
-            healthChecksBuilder.AddCheck<SignalRHealthCheck>(
-                "signalr",
-                failureStatus: HealthStatus.Degraded,
-                tags: new[] { "signalr", "realtime", "ready", "monitoring" });
-
-            // API endpoint health checks removed - causes circular dependencies
-
+            // All advanced health checks have been removed per YAGNI principle
+            // Basic health checks are sufficient for monitoring service health
             return healthChecksBuilder;
         }
     }

@@ -1,11 +1,7 @@
 using System;
-using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Services;
-using ConduitLLM.Core.HealthChecks;
 using ConduitLLM.Core.Interfaces;
 
 namespace ConduitLLM.Core.Caching
@@ -31,25 +27,7 @@ namespace ConduitLLM.Core.Caching
             // Configure alert thresholds from configuration
             services.Configure<ConduitLLM.Core.Services.MonitoringAlertThresholds>(configuration.GetSection("CacheMonitoring:AlertThresholds"));
 
-            // Replace the existing cache health check with the enhanced version
-            services.Configure<HealthCheckServiceOptions>(options =>
-            {
-                // Remove existing cache manager health check if present
-                var existingCheck = options.Registrations.FirstOrDefault(r => r.Name == "cache_manager");
-                if (existingCheck != null)
-                {
-                    options.Registrations.Remove(existingCheck);
-                }
-
-                // Add the enhanced cache health check
-                options.Registrations.Add(new HealthCheckRegistration(
-                    "cache",
-                    provider => new CacheHealthCheck(
-                        provider.GetRequiredService<IServiceScopeFactory>(),
-                        provider.GetRequiredService<ILogger<CacheHealthCheck>>()),
-                    Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
-                    new[] { "cache", "infrastructure", "monitoring" }));
-            });
+            // Health checks removed per YAGNI principle
 
             return services;
         }
@@ -72,24 +50,7 @@ namespace ConduitLLM.Core.Caching
             // Configure alert thresholds
             services.Configure<ConduitLLM.Core.Services.MonitoringAlertThresholds>(configureThresholds);
 
-            // Add the enhanced cache health check
-            services.Configure<HealthCheckServiceOptions>(options =>
-            {
-                // Remove existing cache manager health check if present
-                var existingCheck = options.Registrations.FirstOrDefault(r => r.Name == "cache_manager");
-                if (existingCheck != null)
-                {
-                    options.Registrations.Remove(existingCheck);
-                }
-
-                options.Registrations.Add(new HealthCheckRegistration(
-                    "cache",
-                    provider => new CacheHealthCheck(
-                        provider.GetRequiredService<IServiceScopeFactory>(),
-                        provider.GetRequiredService<ILogger<CacheHealthCheck>>()),
-                    Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
-                    new[] { "cache", "infrastructure", "monitoring" }));
-            });
+            // Health checks removed per YAGNI principle
 
             return services;
         }

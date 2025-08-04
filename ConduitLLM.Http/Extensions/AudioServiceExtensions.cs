@@ -2,14 +2,12 @@ using System;
 
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
-using ConduitLLM.Http.HealthChecks;
 using ConduitLLM.Http.Middleware;
 using ConduitLLM.Http.Services;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace ConduitLLM.Http.Extensions
 {
@@ -50,34 +48,6 @@ namespace ConduitLLM.Http.Extensions
             return services;
         }
 
-        /// <summary>
-        /// Adds audio service health checks.
-        /// </summary>
-        public static IHealthChecksBuilder AddAudioHealthChecks(
-            this IHealthChecksBuilder builder,
-            IConfiguration configuration)
-        {
-            // Add main audio service health check
-            builder.AddTypeActivatedCheck<AudioServiceHealthCheck>(
-                "audio-service",
-                failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
-                tags: new[] { "audio", "live", "ready" });
-            
-            // Provider health checks removed
-            
-            // Add dependency health checks
-            var redisConnectionString = configuration.GetConnectionString("Redis");
-            if (!string.IsNullOrEmpty(redisConnectionString))
-            {
-                builder.AddRedis(
-                    redisConnectionString,
-                    name: "audio-cache-redis",
-                    failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded,
-                    tags: new[] { "audio", "cache", "redis" });
-            }
-            
-            return builder;
-        }
 
         /// <summary>
         /// Configures the audio service middleware pipeline.
