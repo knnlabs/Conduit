@@ -250,6 +250,11 @@ namespace ConduitLLM.Admin.Services
                         return new List<DiscoveredModel>();
                 }
             }
+            catch (NotSupportedException)
+            {
+                // Rethrow NotSupportedException so it can be handled by the controller
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error discovering models for provider '{ProviderName}' (Type: {ProviderType})", 

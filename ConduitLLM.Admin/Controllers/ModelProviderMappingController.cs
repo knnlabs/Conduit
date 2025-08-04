@@ -321,6 +321,11 @@ public class ModelProviderMappingController : ControllerBase
             
             return Ok(modelsArray);
         }
+        catch (NotSupportedException ex)
+        {
+            _logger.LogWarning(ex, "Provider {ProviderId} does not support model discovery", providerId);
+            return BadRequest(new { error = ex.Message });
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error discovering models for provider {ProviderId}", providerId);

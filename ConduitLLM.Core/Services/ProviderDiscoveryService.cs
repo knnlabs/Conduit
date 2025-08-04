@@ -383,12 +383,21 @@ namespace ConduitLLM.Core.Services
                         // Continue to cache and event publishing logic below
                     }
                 }
+                catch (NotSupportedException)
+                {
+                    // Rethrow NotSupportedException to be handled by caller
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Provider-specific discovery failed for provider '{ProviderName}' (Type: {ProviderType})", 
                         Provider.ProviderName, Provider.ProviderType);
                     // Continue to other discovery methods
                 }
+            }
+            else
+            {
+                _logger.LogDebug("No provider-specific discovery available for provider type {ProviderType}", Provider.ProviderType);
             }
 
             // Legacy discovery removed - rely only on provider-specific discovery
