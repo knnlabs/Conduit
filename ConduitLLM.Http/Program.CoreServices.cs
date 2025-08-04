@@ -134,6 +134,18 @@ public partial class Program
                 options.ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
             }
         });
+        
+        // Also add scoped registration from factory for services that need direct injection
+        // Note: This creates contexts from the factory on demand
+        builder.Services.AddScoped<ConduitLLM.Configuration.ConfigurationDbContext>(provider =>
+        {
+            var factory = provider.GetService<IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>>();
+            if (factory == null)
+            {
+                throw new InvalidOperationException("IDbContextFactory<ConfigurationDbContext> is not registered");
+            }
+            return factory.CreateDbContext();
+        });
 
         // Authentication and authorization are configured later with policies
 

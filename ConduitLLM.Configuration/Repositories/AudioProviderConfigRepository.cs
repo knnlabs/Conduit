@@ -1,9 +1,11 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Enums;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -14,12 +16,12 @@ namespace ConduitLLM.Configuration.Repositories
     /// </summary>
     public class AudioProviderConfigRepository : IAudioProviderConfigRepository
     {
-        private readonly IConfigurationDbContext _context;
+        private readonly ConfigurationDbContext _context;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AudioProviderConfigRepository"/> class.
         /// </summary>
-        public AudioProviderConfigRepository(IConfigurationDbContext context)
+        public AudioProviderConfigRepository(ConfigurationDbContext context)
         {
             _context = context;
         }

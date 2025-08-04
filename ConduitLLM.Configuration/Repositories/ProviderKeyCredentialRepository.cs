@@ -14,11 +14,11 @@ namespace ConduitLLM.Configuration.Repositories
     /// </summary>
     public class ProviderKeyCredentialRepository : IProviderKeyCredentialRepository
     {
-        private readonly IConfigurationDbContext _context;
+        private readonly ConfigurationDbContext _context;
         private readonly ILogger<ProviderKeyCredentialRepository> _logger;
 
         public ProviderKeyCredentialRepository(
-            IConfigurationDbContext context,
+            ConfigurationDbContext context,
             ILogger<ProviderKeyCredentialRepository> logger)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
