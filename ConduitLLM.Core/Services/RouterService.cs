@@ -430,37 +430,6 @@ namespace ConduitLLM.Core.Services
             return fallbacks;
         }
 
-        /// <summary>
-        /// Updates the health status of a model deployment in the runtime router state.
-        /// </summary>
-        /// <param name="deploymentName">The name of the deployment to update.</param>
-        /// <param name="isHealthy">Whether the model is healthy and available.</param>
-        /// <exception cref="ArgumentException">Thrown when the deploymentName parameter is null or empty.</exception>
-        /// <remarks>
-        /// <para>
-        /// This method updates only the runtime health status in the router, not the
-        /// persisted configuration. The health status is used by the router when making
-        /// routing decisions.
-        /// </para>
-        /// <para>
-        /// When a model is marked as unhealthy, the router will avoid routing requests to it
-        /// and may use fallback models instead if configured.
-        /// </para>
-        /// <para>
-        /// Note that health status changes are not persisted across application restarts.
-        /// </para>
-        /// </remarks>
-        public void UpdateModelHealth(string deploymentName, bool isHealthy)
-        {
-            if (string.IsNullOrEmpty(deploymentName))
-            {
-                throw new ArgumentException("Deployment name cannot be null or empty", nameof(deploymentName));
-            }
-
-            _router.UpdateModelHealth(deploymentName, isHealthy);
-            _logger.LogInformation("Updated model {DeploymentName} health status to {IsHealthy}",
-                deploymentName, isHealthy);
-        }
 
         /// <summary>
         /// Creates a default router configuration with sensible defaults.

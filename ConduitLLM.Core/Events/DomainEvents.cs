@@ -555,41 +555,6 @@ namespace ConduitLLM.Core.Events
         public string PartitionKey => SettingId.ToString();
     }
 
-    // ===============================
-    // Health Monitoring Domain Events
-    // ===============================
-
-    /// <summary>
-    /// Raised when provider health status changes
-    /// Enables real-time health propagation across services
-    /// </summary>
-    public record ProviderHealthChanged : DomainEvent
-    {
-        /// <summary>
-        /// Provider credential database ID
-        /// </summary>
-        public int ProviderId { get; init; }
-        
-        /// <summary>
-        /// Whether the provider is currently healthy
-        /// </summary>
-        public bool IsHealthy { get; init; }
-        
-        /// <summary>
-        /// Health status details
-        /// </summary>
-        public string Status { get; init; } = string.Empty;
-        
-        /// <summary>
-        /// Additional health check data
-        /// </summary>
-        public Dictionary<string, object> HealthData { get; init; } = new();
-        
-        /// <summary>
-        /// Partition key for ordered processing per provider
-        /// </summary>
-        public string PartitionKey => ProviderId.ToString();
-    }
 
     // ===============================
     // Model Mapping Domain Events

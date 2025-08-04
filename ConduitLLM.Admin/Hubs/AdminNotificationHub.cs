@@ -20,7 +20,6 @@ namespace ConduitLLM.Admin.Hubs
     public class AdminNotificationHub : Hub, IAdminNotificationHub
     {
         private readonly ILogger<AdminNotificationHub> _logger;
-        private readonly IAdminProviderHealthService _providerHealthService;
         private readonly IAdminVirtualKeyService _virtualKeyService;
         private readonly IAdminNotificationService _notificationService;
 
@@ -28,17 +27,14 @@ namespace ConduitLLM.Admin.Hubs
         /// Initializes a new instance of the <see cref="AdminNotificationHub"/> class.
         /// </summary>
         /// <param name="logger">Logger instance.</param>
-        /// <param name="providerHealthService">Provider health service for status queries.</param>
         /// <param name="virtualKeyService">Virtual key service for key management notifications.</param>
         /// <param name="notificationService">Notification service for administrative alerts.</param>
         public AdminNotificationHub(
             ILogger<AdminNotificationHub> logger,
-            IAdminProviderHealthService providerHealthService,
             IAdminVirtualKeyService virtualKeyService,
             IAdminNotificationService notificationService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _providerHealthService = providerHealthService ?? throw new ArgumentNullException(nameof(providerHealthService));
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
             _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
         }
@@ -54,8 +50,6 @@ namespace ConduitLLM.Admin.Hubs
             // Add to admin group for receiving broadcast notifications
             await Groups.AddToGroupAsync(Context.ConnectionId, "admin");
             
-            // Send initial provider health status
-            await SendInitialProviderHealthStatus();
             
             await base.OnConnectedAsync();
         }
@@ -160,12 +154,7 @@ namespace ConduitLLM.Admin.Hubs
                 
                 _logger.LogInformation("Admin subscribed to provider {ProviderId} notifications", providerId);
                 
-                // Send current provider health status
-                var healthStatus = await _providerHealthService.GetLatestStatusAsync(providerId);
-                if (healthStatus != null)
-                {
-                    await Clients.Caller.SendAsync("ProviderHealthStatus", healthStatus);
-                }
+                // Provider health tracking has been removed
                 
                 await Clients.Caller.SendAsync("SubscribedToProvider", providerId);
             }
@@ -212,42 +201,16 @@ namespace ConduitLLM.Admin.Hubs
         }
 
         /// <summary>
-        /// Requests a refresh of provider health status.
+        /// Requests a refresh of provider health status (deprecated).
         /// </summary>
         /// <returns>A task representing the asynchronous operation.</returns>
+        [Obsolete("Provider health monitoring has been removed")]
         public async Task RefreshProviderHealth()
         {
-            try
-            {
-                _logger.LogInformation("Admin requested provider health refresh");
-                
-                // Get all provider health statuses
-                var healthStatuses = await _providerHealthService.GetAllLatestStatusesAsync();
-                
-                await Clients.Caller.SendAsync("ProviderHealthRefreshed", healthStatuses);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error refreshing provider health");
-                await Clients.Caller.SendAsync("Error", new { message = "Failed to refresh provider health" });
-            }
+            _logger.LogWarning("RefreshProviderHealth called but provider health monitoring has been removed");
+            await Clients.Caller.SendAsync("Error", new { message = "Provider health monitoring has been removed" });
         }
 
-        /// <summary>
-        /// Sends the initial provider health status to the connected client.
-        /// </summary>
-        private async Task SendInitialProviderHealthStatus()
-        {
-            try
-            {
-                var healthStatuses = await _providerHealthService.GetAllLatestStatusesAsync();
-                await Clients.Caller.SendAsync("InitialProviderHealth", healthStatuses);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending initial provider health status");
-            }
-        }
     }
 
     /// <summary>
@@ -275,9 +238,5 @@ namespace ConduitLLM.Admin.Hubs
         /// </summary>
         Task UnsubscribeFromProvider(int providerId);
 
-        /// <summary>
-        /// Requests a refresh of provider health status.
-        /// </summary>
-        Task RefreshProviderHealth();
     }
 }

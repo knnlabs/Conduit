@@ -177,17 +177,6 @@ export {
 
 export { BatchOperationsService } from './services/BatchOperationsService';
 
-export type {
-  HealthCheckResponse,
-  HealthCheckItem,
-  HealthStatus,
-  HealthCheckOptions,
-  SimpleHealthStatus,
-  HealthSummary,
-  WaitForHealthOptions,
-} from './models/health';
-
-// export { HealthService } from './services/HealthService'; // Removed - using HealthService from FetchConduitCoreClient
 
 export type {
   MetricsSnapshot,

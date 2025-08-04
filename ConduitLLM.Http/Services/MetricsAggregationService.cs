@@ -589,23 +589,20 @@ namespace ConduitLLM.Http.Services
         /// Checks provider health status.
         /// </summary>
         /// <remarks>
-        /// This method aggregates health status for all providers of a given type.
-        /// Since we now support multiple providers of the same type, this returns
-        /// aggregated health information when filtering by ProviderType.
+        /// Provider health monitoring has been removed. This method now returns
+        /// all enabled providers as healthy.
         /// </remarks>
         public async Task<List<ProviderHealthStatus>> CheckProviderHealthAsync(ProviderType? providerType)
         {
             using var scope = _serviceProvider.CreateScope();
-            var providerHealthRepository = scope.ServiceProvider.GetRequiredService<IProviderHealthRepository>();
             var providerRepository = scope.ServiceProvider.GetRequiredService<IProviderRepository>();
             
             var healthStatuses = new List<ProviderHealthStatus>();
             
             // Get all providers
             var providers = await providerRepository.GetAllAsync();
-            var allHealthStatuses = await providerHealthRepository.GetAllLatestStatusesAsync();
             
-            // Group providers by type for aggregation
+            // Group providers by type
             var providersByType = providers
                 .Where(p => p.IsEnabled)
                 .GroupBy(p => p.ProviderType)
@@ -617,43 +614,16 @@ namespace ConduitLLM.Http.Services
                 if (providerType.HasValue && typeGroup.Key != providerType.Value)
                     continue;
                 
-                // Aggregate health status for all providers of this type
-                var healthyCount = 0;
-                var totalLatency = 0.0;
-                var latencyCount = 0;
-                DateTime? lastSuccessful = null;
-                
-                foreach (var provider in typeGroup.Value)
-                {
-                    if (allHealthStatuses.TryGetValue(provider.Id, out var health))
-                    {
-                        if (health.IsOnline)
-                        {
-                            healthyCount++;
-                            if (!lastSuccessful.HasValue || health.TimestampUtc > lastSuccessful)
-                                lastSuccessful = health.TimestampUtc;
-                        }
-                        
-                        totalLatency += health.ResponseTimeMs;
-                        latencyCount++;
-                    }
-                }
-                
-                // Determine aggregate status
-                var percentHealthy = typeGroup.Value.Count > 0 ? (double)healthyCount / typeGroup.Value.Count : 0;
-                var status = percentHealthy >= 1.0 ? "healthy" : 
-                            percentHealthy >= 0.5 ? "degraded" : 
-                            "unhealthy";
-                
+                // All enabled providers are considered healthy
                 healthStatuses.Add(new ProviderHealthStatus
                 {
                     ProviderType = typeGroup.Key,
-                    Status = status,
-                    AverageLatency = latencyCount > 0 ? totalLatency / latencyCount : 0,
-                    LastSuccessfulRequest = lastSuccessful,
-                    ErrorRate = 0, // TODO: Calculate from recent health records if needed
+                    Status = "healthy",
+                    AverageLatency = 0,
+                    LastSuccessfulRequest = DateTime.UtcNow,
+                    ErrorRate = 0,
                     IsEnabled = true,
-                    AvailableModels = 0 // TODO: Get from model service
+                    AvailableModels = 0
                 });
             }
             

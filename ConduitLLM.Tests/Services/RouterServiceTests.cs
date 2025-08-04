@@ -542,19 +542,7 @@ namespace ConduitLLM.Tests.Services
 
         #region UpdateModelHealth Tests
 
-        [Fact]
-        public void UpdateModelHealth_CallsRouterUpdateModelHealth()
-        {
-            // Arrange
-            const string deploymentName = "test-deployment";
-            const bool isHealthy = false;
-
-            // Act
-            _service.UpdateModelHealth(deploymentName, isHealthy);
-
-            // Assert
-            _routerMock.Verify(r => r.UpdateModelHealth(deploymentName, isHealthy), Times.Once);
-        }
+        // UpdateModelHealth test removed - provider health monitoring has been removed
 
         #endregion
     }

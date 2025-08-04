@@ -73,38 +73,10 @@ namespace ConduitLLM.Configuration.Data
                 });
             });
 
-            // Configure Provider Health entities
-            modelBuilder.ApplyProviderHealthConfigurations();
 
             // Note: Previously ignored entities are now included in test environments
             // as they are required by the application code during tests
         }
 
-        /// <summary>
-        /// Applies configurations specific to provider health entities
-        /// </summary>
-        /// <param name="modelBuilder">The model builder to configure</param>
-        public static void ApplyProviderHealthConfigurations(this Microsoft.EntityFrameworkCore.ModelBuilder modelBuilder)
-        {
-            // Configure ProviderHealthRecord entity
-            modelBuilder.Entity<ProviderHealthRecord>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.HasIndex(e => new { e.ProviderId, e.TimestampUtc });
-                entity.HasIndex(e => e.IsOnline);
-                entity.Property(e => e.StatusMessage).HasMaxLength(500);
-                entity.Property(e => e.ErrorCategory).HasMaxLength(50);
-                entity.Property(e => e.ErrorDetails).HasMaxLength(2000);
-                entity.Property(e => e.EndpointUrl).HasMaxLength(1000);
-            });
-
-            // Configure ProviderHealthConfiguration entity
-            modelBuilder.Entity<ProviderHealthConfiguration>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.HasIndex(e => e.ProviderId).IsUnique();
-                entity.Property(e => e.CustomEndpointUrl).HasMaxLength(1000);
-            });
-        }
     }
 }

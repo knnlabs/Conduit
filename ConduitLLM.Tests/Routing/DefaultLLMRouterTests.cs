@@ -478,27 +478,7 @@ namespace ConduitLLM.Tests.Routing
 
         #region Health Management Tests
 
-        [Fact]
-        public void UpdateModelHealth_WithValidModel_UpdatesHealthStatus()
-        {
-            // Arrange
-            InitializeRouterWithModels();
-
-            // Act
-            _router.UpdateModelHealth("gpt-4", false);
-
-            // Assert
-            // The model should be marked as unhealthy and not selected by routing strategies
-            // This is verified indirectly by testing that the model is not selected in subsequent requests
-        }
-
-        [Fact]
-        public void UpdateModelHealth_WithEmptyModelName_DoesNotThrow()
-        {
-            // Act & Assert - Should not throw
-            _router.UpdateModelHealth("", true);
-            _router.UpdateModelHealth(null!, false);
-        }
+        // UpdateModelHealth tests removed - provider health monitoring has been removed
 
         #endregion
 

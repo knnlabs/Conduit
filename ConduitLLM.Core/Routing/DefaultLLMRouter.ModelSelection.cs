@@ -199,15 +199,14 @@ namespace ConduitLLM.Core.Routing
         }
 
         /// <summary>
-        /// Filters a list of candidate models to include only healthy ones.
+        /// Filters a list of candidate models (currently no filtering applied).
         /// </summary>
         /// <param name="candidateModels">The list of candidate model names.</param>
-        /// <returns>A filtered list containing only healthy models.</returns>
+        /// <returns>The same list of candidate models.</returns>
         private List<string> FilterHealthyModels(List<string> candidateModels)
         {
-            return candidateModels
-                .Where(m => !_modelHealthStatus.TryGetValue(m, out var healthy) || healthy)
-                .ToList();
+            // Health filtering has been removed - all models are considered available
+            return candidateModels;
         }
 
         /// <summary>

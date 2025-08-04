@@ -14,8 +14,6 @@ export interface MetricsSnapshot {
   system: SystemMetrics;
   /** Infrastructure component metrics */
   infrastructure: InfrastructureMetrics;
-  /** Provider health status for all providers */
-  providerHealth: ProviderHealthStatus[];
 }
 
 /**
@@ -206,21 +204,6 @@ export interface RabbitMQMetrics {
   memoryUsageMB: number;
 }
 
-/**
- * Provider health status
- */
-export interface ProviderHealthStatus {
-  /** Provider type */
-  providerType: ProviderType;
-  /** Whether the provider is healthy */
-  isHealthy: boolean;
-  /** Last check time */
-  lastCheckTime?: Date;
-  /** Response time in milliseconds */
-  responseTimeMs?: number;
-  /** Error message if unhealthy */
-  errorMessage?: string;
-}
 
 /**
  * Historical metrics request

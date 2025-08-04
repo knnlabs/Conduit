@@ -24,7 +24,6 @@ public class AdminSystemInfoService : IAdminSystemInfoService
 {
     private readonly IConfigurationDbContext _dbContext;
     private readonly ILogger<AdminSystemInfoService> _logger;
-    private readonly IAdminProviderHealthService _providerHealthService;
     private readonly IProviderRepository _providerRepository;
     private readonly DateTime _startTime;
 
@@ -33,17 +32,14 @@ public class AdminSystemInfoService : IAdminSystemInfoService
     /// </summary>
     /// <param name="dbContext">The configuration database context</param>
     /// <param name="logger">The logger</param>
-    /// <param name="providerHealthService">The provider health service</param>
     /// <param name="providerRepository">The provider repository</param>
     public AdminSystemInfoService(
         IConfigurationDbContext dbContext,
         ILogger<AdminSystemInfoService> logger,
-        IAdminProviderHealthService providerHealthService,
         IProviderRepository providerRepository)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _providerHealthService = providerHealthService ?? throw new ArgumentNullException(nameof(providerHealthService));
         _providerRepository = providerRepository ?? throw new ArgumentNullException(nameof(providerRepository));
         _startTime = Process.GetCurrentProcess().StartTime;
     }

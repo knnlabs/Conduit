@@ -80,9 +80,8 @@ public partial class Program
             .RequireAuthorization();
         Console.WriteLine("[Conduit API] SignalR EnhancedVideoGenerationHub registered at /hubs/enhanced-video-generation (requires authentication)");
 
-        // Map health check endpoints without authentication requirement
-        // Health endpoints should be accessible without authentication for monitoring tools
-        app.MapSecureConduitHealthChecks(requireAuthorization: false);
+        // Map health check endpoint
+        app.MapHealthChecks("/health");
 
         // Map Prometheus metrics endpoint for scraping
         app.UseOpenTelemetryPrometheusScrapingEndpoint("/metrics");

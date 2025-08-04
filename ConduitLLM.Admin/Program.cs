@@ -167,7 +167,7 @@ public partial class Program
         builder.Services.AddMassTransit(x =>
         {
             // Register consumers for Admin API SignalR notifications
-            x.AddConsumer<ConduitLLM.Admin.Consumers.ProviderHealthChangedConsumer>();
+            // Provider health consumer removed
             
             if (useRabbitMq)
             {
@@ -230,9 +230,8 @@ public partial class Program
             }
         });
 
-        // Add standardized health checks
-        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-        builder.Services.AddConduitHealthChecks(connectionString, redisConnectionString, false, rabbitMqConfig);
+        // Add basic health checks
+        builder.Services.AddHealthChecks();
         
         // Add connection pool warmer for better startup performance
         builder.Services.AddHostedService<ConduitLLM.Core.Services.ConnectionPoolWarmer>(serviceProvider =>
@@ -317,9 +316,8 @@ public partial class Program
         // Map SignalR hub with master key authentication (filter applied globally in AddSignalR)
         app.MapHub<ConduitLLM.Admin.Hubs.AdminNotificationHub>("/hubs/admin-notifications");
 
-        // Map health check endpoints without authentication requirement
-        // Health endpoints should be accessible without authentication for monitoring tools
-        app.MapSecureConduitHealthChecks(requireAuthorization: false);
+        // Map health check endpoint
+        app.MapHealthChecks("/health");
 
         // Map Prometheus metrics endpoint - requires authentication
         app.UseOpenTelemetryPrometheusScrapingEndpoint(

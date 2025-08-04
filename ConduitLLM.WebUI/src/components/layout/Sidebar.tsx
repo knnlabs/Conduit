@@ -37,7 +37,6 @@ const navigationSections = [
     title: 'Provider & Model Management',
     items: [
       { id: 'llm-providers', label: 'LLM Providers', href: '/llm-providers', icon: IconServer },
-      { id: 'provider-health', label: 'Provider Health', href: '/provider-health', icon: IconActivity },
       { id: 'model-mappings', label: 'Model Mappings', href: '/model-mappings', icon: IconRoute },
       { id: 'routing-settings', label: 'Routing Settings', href: '/routing-settings', icon: IconSettings },
     ]
