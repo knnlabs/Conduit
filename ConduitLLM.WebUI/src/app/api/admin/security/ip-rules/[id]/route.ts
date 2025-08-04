@@ -80,7 +80,7 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }
     
-    const filter = await client.ipFilters.getById(id);
+    const filter = await client.ipFilters.getById(id) as IpFilterDto;
     const transformedFilter = transformIpFilter(filter);
     
     return NextResponse.json(transformedFilter);
@@ -134,7 +134,7 @@ export async function PATCH(
     await client.ipFilters.update(id, updateRequest);
     
     // Get the updated filter to return
-    const updatedFilter = await client.ipFilters.getById(id);
+    const updatedFilter = await client.ipFilters.getById(id) as IpFilterDto;
     const transformedFilter = transformIpFilter(updatedFilter);
     
     return NextResponse.json(transformedFilter);

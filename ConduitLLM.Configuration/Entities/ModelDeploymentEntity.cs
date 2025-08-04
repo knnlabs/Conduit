@@ -23,10 +23,16 @@ namespace ConduitLLM.Configuration.Entities
         public string ModelName { get; set; } = string.Empty;
 
         /// <summary>
-        /// The provider type for this model
+        /// The provider ID for this model
         /// </summary>
         [Required]
-        public ProviderType ProviderType { get; set; } = ProviderType.OpenAI;
+        public int ProviderId { get; set; }
+
+        /// <summary>
+        /// The provider for this model
+        /// </summary>
+        [Required]
+        public required Provider Provider { get; set; }
 
         /// <summary>
         /// Weight for random selection strategy (higher values increase selection probability)

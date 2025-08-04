@@ -54,6 +54,15 @@ public class ChatCompletionChunk
     [JsonIgnore]
     public string? OriginalModelAlias { get; set; }
 
+    /// <summary>
+    /// Token usage information. Only present in the final chunk of streaming responses
+    /// when stream_options.include_usage is true (OpenAI) or for providers that include
+    /// usage data in their streaming responses.
+    /// </summary>
+    [JsonPropertyName("usage")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Usage? Usage { get; set; }
+
     // Note: Usage information is typically not included in chunks,
     // but might appear in the final chunk from some providers or need
     // to be requested separately after the stream finishes.

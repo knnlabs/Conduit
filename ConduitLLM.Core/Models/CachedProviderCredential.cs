@@ -8,12 +8,12 @@ namespace ConduitLLM.Core.Models
     /// <summary>
     /// Represents a cached provider credential with all associated keys
     /// </summary>
-    public class CachedProviderCredential
+    public class CachedProvider
     {
         /// <summary>
         /// The provider credential entity
         /// </summary>
-        public ProviderCredential Provider { get; set; } = null!;
+        public Provider Provider { get; set; } = null!;
 
         /// <summary>
         /// All key credentials associated with this provider

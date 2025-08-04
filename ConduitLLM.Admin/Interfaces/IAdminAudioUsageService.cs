@@ -19,7 +19,7 @@ namespace ConduitLLM.Admin.Interfaces
         /// <summary>
         /// Gets audio usage summary statistics.
         /// </summary>
-        Task<AudioUsageSummaryDto> GetUsageSummaryAsync(DateTime startDate, DateTime endDate, string? virtualKey = null, string? provider = null);
+        Task<AudioUsageSummaryDto> GetUsageSummaryAsync(DateTime startDate, DateTime endDate, string? virtualKey = null, int? providerId = null);
 
         /// <summary>
         /// Gets audio usage by virtual key.
@@ -29,7 +29,7 @@ namespace ConduitLLM.Admin.Interfaces
         /// <summary>
         /// Gets audio usage by provider.
         /// </summary>
-        Task<AudioProviderUsageDto> GetUsageByProviderAsync(string provider, DateTime? startDate = null, DateTime? endDate = null);
+        Task<AudioProviderUsageDto> GetUsageByProviderAsync(int providerId, DateTime? startDate = null, DateTime? endDate = null);
 
         /// <summary>
         /// Gets real-time session metrics.

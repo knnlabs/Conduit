@@ -272,6 +272,8 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
             placeholder="Leave empty to use provider type name"
             description="A friendly name to identify this provider (e.g., 'Production OpenAI', 'Dev Ollama')"
             autoComplete="off"
+            aria-autocomplete="none"
+            list="autocompleteOff"
             data-form-type="other"
             {...form.getInputProps('providerName')}
           />
@@ -280,8 +282,11 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
             label="API Key"
             placeholder="Enter API key"
             required
-            autoComplete="new-password"
+            autoComplete="off"
+            aria-autocomplete="none"
+            list="autocompleteOff"
             data-form-type="other"
+            data-lpignore="true"
             {...form.getInputProps('apiKey')}
           />
 
@@ -298,6 +303,8 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
                     placeholder="Enter organization ID"
                     required={config.requiresOrganizationId}
                     autoComplete="off"
+                    aria-autocomplete="none"
+                    list="autocompleteOff"
                     data-form-type="other"
                     {...form.getInputProps('organizationId')}
                   />
@@ -309,6 +316,8 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
                     placeholder={config.requiresEndpoint ? "https://api.example.com" : "https://api.example.com (optional)"}
                     required={config.requiresEndpoint}
                     autoComplete="off"
+                    aria-autocomplete="none"
+                    list="autocompleteOff"
                     data-form-type="other"
                     {...form.getInputProps('apiEndpoint')}
                   />

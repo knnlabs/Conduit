@@ -95,6 +95,9 @@ namespace ConduitLLM.Core.Services
                 _logger.LogInformation("Processing async video generation task {RequestId} for model {Model}", 
                     request.RequestId, request.Model);
                 
+                // Declare originalModelAlias at the beginning for proper scope
+                string originalModelAlias = request.Model;
+                
                 // Update task status to processing
                 await _taskService.UpdateTaskStatusAsync(request.RequestId, TaskState.Processing, cancellationToken: context.CancellationToken);
                 
@@ -323,6 +326,9 @@ namespace ConduitLLM.Core.Services
                     throw new InvalidOperationException($"Task {request.RequestId} not found");
                 }
 
+                // Declare originalModelAlias for proper scope
+                string originalModelAlias = request.Model;
+
                 // Extract the virtual key and request from metadata
                 string? virtualKey;
                 VideoGenerationRequest? videoRequest;
@@ -413,11 +419,17 @@ namespace ConduitLLM.Core.Services
                     throw new InvalidOperationException("Invalid task metadata format", ex);
                 }
 
-                // Get the appropriate client for the model
-                var client = _clientFactory.GetClient(request.Model);
+                // Update the original model alias to the video request model
+                originalModelAlias = videoRequest.Model;
+                
+                // Update request to use the provider's model ID (already retrieved in modelInfo)
+                videoRequest.Model = modelInfo.ModelId;
+
+                // Get the appropriate client for the model using the alias
+                var client = _clientFactory.GetClient(originalModelAlias);
                 if (client == null)
                 {
-                    throw new NotSupportedException($"No provider available for model {request.Model}");
+                    throw new NotSupportedException($"No provider available for model {originalModelAlias}");
                 }
 
                 // Check if the client supports video generation using reflection
@@ -504,7 +516,7 @@ namespace ConduitLLM.Core.Services
                             response = await task;
                             
                             // Process the response when it completes
-                            await ProcessVideoResponseAsync(request, response, modelInfo, virtualKeyInfo, stopwatch, taskCts.Token);
+                            await ProcessVideoResponseAsync(request, response, modelInfo, virtualKeyInfo, stopwatch, originalModelAlias, taskCts.Token);
                         }
                         else
                         {
@@ -575,7 +587,7 @@ namespace ConduitLLM.Core.Services
                 return new ModelInfo
                 {
                     ModelId = mapping.ProviderModelId,
-                    Provider = mapping.ProviderType.ToString(),
+                    Provider = mapping.ProviderId.ToString(),
                     ModelAlias = mapping.ModelAlias
                 };
             }
@@ -667,6 +679,7 @@ namespace ConduitLLM.Core.Services
             ModelInfo modelInfo,
             ConduitLLM.Configuration.Entities.VirtualKey virtualKeyInfo,
             Stopwatch stopwatch,
+            string originalModelAlias,
             CancellationToken cancellationToken = default)
         {
             try
@@ -924,12 +937,18 @@ namespace ConduitLLM.Core.Services
                 // Update spend
                 await _virtualKeyService.UpdateSpendAsync(virtualKeyInfo.Id, cost);
                 
+                // Restore the original model alias in the response
+                if (response.Model != null)
+                {
+                    response.Model = originalModelAlias;
+                }
+
                 // Update task status to completed
                 var result = new 
                 {
                     videoUrl = videoUrl,
                     usage = response.Usage,
-                    model = response.Model ?? request.Model,
+                    model = response.Model ?? originalModelAlias,
                     created = response.Created,
                     duration = stopwatch.Elapsed.TotalSeconds
                 };
@@ -978,14 +997,13 @@ namespace ConduitLLM.Core.Services
                 }
                 
                 // Cancel progress tracking since task is complete
-                // NOTE: Not needed when using real progress from MiniMax
-                // await _publishEndpoint.Publish(new VideoProgressTrackingCancelled
-                // {
-                //     RequestId = request.RequestId,
-                //     VirtualKeyId = request.VirtualKeyId,
-                //     Reason = "Video generation completed successfully",
-                //     CorrelationId = request.CorrelationId
-                // });
+                await _publishEndpoint.Publish(new VideoProgressTrackingCancelled
+                {
+                    RequestId = request.RequestId,
+                    VirtualKeyId = request.VirtualKeyId,
+                    Reason = "Video generation completed successfully",
+                    CorrelationId = request.CorrelationId ?? Guid.NewGuid().ToString()
+                });
                 
                 _logger.LogInformation("Successfully completed video generation task {RequestId} in {Duration}ms",
                     request.RequestId, stopwatch.ElapsedMilliseconds);
@@ -1054,14 +1072,13 @@ namespace ConduitLLM.Core.Services
             });
             
             // Cancel progress tracking since task has failed
-            // NOTE: Not needed when using real progress from MiniMax
-            // await _publishEndpoint.Publish(new VideoProgressTrackingCancelled
-            // {
-            //     RequestId = request.RequestId,
-            //     VirtualKeyId = request.VirtualKeyId,
-            //     Reason = $"Video generation failed: {errorMessage}",
-            //     CorrelationId = request.CorrelationId
-            // });
+            await _publishEndpoint.Publish(new VideoProgressTrackingCancelled
+            {
+                RequestId = request.RequestId,
+                VirtualKeyId = request.VirtualKeyId,
+                Reason = $"Video generation failed: {errorMessage}",
+                CorrelationId = request.CorrelationId
+            });
 
             // Send webhook notification if configured
             if (!string.IsNullOrEmpty(request.WebhookUrl))
@@ -1116,14 +1133,13 @@ namespace ConduitLLM.Core.Services
             });
             
             // Cancel progress tracking since task is cancelled
-            // NOTE: Not needed when using real progress from MiniMax
-            // await _publishEndpoint.Publish(new VideoProgressTrackingCancelled
-            // {
-            //     RequestId = request.RequestId,
-            //     VirtualKeyId = request.VirtualKeyId,
-            //     Reason = "Video generation cancelled by user",
-            //     CorrelationId = request.CorrelationId
-            // });
+            await _publishEndpoint.Publish(new VideoProgressTrackingCancelled
+            {
+                RequestId = request.RequestId,
+                VirtualKeyId = request.VirtualKeyId,
+                Reason = "Video generation cancelled by user",
+                CorrelationId = request.CorrelationId
+            });
 
             // Send webhook notification if configured
             if (!string.IsNullOrEmpty(request.WebhookUrl))

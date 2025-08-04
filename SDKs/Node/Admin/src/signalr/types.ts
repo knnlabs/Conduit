@@ -52,6 +52,7 @@ export interface VirtualKeyManagementHubEvents {
 
 /**
  * Admin notification hub methods
+ * @deprecated AdminNotificationHub has been removed from the backend
  */
 export interface AdminNotificationHubMethods {
   Subscribe(): Promise<void>;
@@ -62,6 +63,7 @@ export interface AdminNotificationHubMethods {
 
 /**
  * Admin notification hub events
+ * @deprecated AdminNotificationHub has been removed from the backend
  */
 export interface AdminNotificationHubEvents {
   ProviderHealthChanged: (provider: string, isHealthy: boolean, message?: string) => void;

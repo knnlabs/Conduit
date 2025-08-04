@@ -16,7 +16,7 @@ namespace ConduitLLM.Configuration.Services
     /// </summary>
     public class RequestLogService : IRequestLogService
     {
-        private readonly ConfigurationDbContext _context;
+        private readonly ConduitDbContext _context;
         private readonly ILogger<RequestLogService> _logger;
 
         /// <summary>
@@ -24,7 +24,7 @@ namespace ConduitLLM.Configuration.Services
         /// </summary>
         /// <param name="context">Database context</param>
         /// <param name="logger">Logger instance</param>
-        public RequestLogService(ConfigurationDbContext context, ILogger<RequestLogService> logger)
+        public RequestLogService(ConduitDbContext context, ILogger<RequestLogService> logger)
         {
             _context = context;
             _logger = logger;

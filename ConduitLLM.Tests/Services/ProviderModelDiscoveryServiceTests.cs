@@ -4,6 +4,8 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Admin.Services;
+using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using Microsoft.Extensions.Logging;
@@ -33,51 +35,47 @@ namespace ConduitLLM.Tests.Services
         #region SupportsDiscovery Tests
 
         [Theory]
-        [InlineData("openai", true)]
-        [InlineData("groq", true)]
-        [InlineData("anthropic", true)]
-        [InlineData("openrouter", true)]
-        [InlineData("cerebras", true)]
-        [InlineData("google", true)]
-        [InlineData("gemini", true)]
-        [InlineData("minimax", true)]
-        [InlineData("replicate", true)]
-        [InlineData("mistral", true)]
-        [InlineData("cohere", true)]
-        [InlineData("azureopenai", true)]
-        [InlineData("bedrock", true)]
-        [InlineData("vertexai", true)]
-        [InlineData("ollama", true)]
-        [InlineData("fireworks", true)]
-        [InlineData("huggingface", true)]
-        [InlineData("sagemaker", true)]
-        [InlineData("openaicompatible", true)]
-        [InlineData("unknown-provider", false)]
-        [InlineData("custom", false)]
-        [InlineData("", false)]
-        public void SupportsDiscovery_ReturnsCorrectValue(string providerName, bool expected)
+        [InlineData(ProviderType.OpenAI, true)]
+        [InlineData(ProviderType.Groq, true)]
+        [InlineData(ProviderType.Anthropic, true)]
+        [InlineData(ProviderType.OpenRouter, true)]
+        [InlineData(ProviderType.Cerebras, true)]
+        [InlineData(ProviderType.Gemini, true)]
+        [InlineData(ProviderType.MiniMax, true)]
+        [InlineData(ProviderType.Replicate, true)]
+        [InlineData(ProviderType.Mistral, true)]
+        [InlineData(ProviderType.Cohere, true)]
+        [InlineData(ProviderType.AzureOpenAI, true)]
+        [InlineData(ProviderType.Bedrock, true)]
+        [InlineData(ProviderType.VertexAI, true)]
+        [InlineData(ProviderType.Ollama, true)]
+        [InlineData(ProviderType.Fireworks, true)]
+        [InlineData(ProviderType.HuggingFace, true)]
+        [InlineData(ProviderType.SageMaker, true)]
+        [InlineData(ProviderType.OpenAICompatible, true)]
+        public void SupportsDiscovery_ReturnsCorrectValue(ProviderType providerType, bool expected)
         {
             // Arrange
             var service = new ProviderModelDiscoveryService(_mockLogger.Object);
 
             // Act
-            var result = service.SupportsDiscovery(providerName);
+            var result = service.SupportsDiscovery(providerType);
 
             // Assert
             Assert.Equal(expected, result);
         }
 
         [Fact]
-        public void SupportsDiscovery_IsCaseInsensitive()
+        public void SupportsDiscovery_ForKnownProviders_ReturnsTrue()
         {
             // Arrange
             var service = new ProviderModelDiscoveryService(_mockLogger.Object);
 
             // Act & Assert
-            Assert.True(service.SupportsDiscovery("OpenAI"));
-            Assert.True(service.SupportsDiscovery("OPENAI"));
-            Assert.True(service.SupportsDiscovery("openai"));
-            Assert.True(service.SupportsDiscovery("OpEnAi"));
+            Assert.True(service.SupportsDiscovery(ProviderType.OpenAI));
+            Assert.True(service.SupportsDiscovery(ProviderType.Anthropic));
+            Assert.True(service.SupportsDiscovery(ProviderType.Groq));
+            Assert.True(service.SupportsDiscovery(ProviderType.MiniMax));
         }
 
         #endregion
@@ -85,25 +83,31 @@ namespace ConduitLLM.Tests.Services
         #region DiscoverModelsAsync Tests
 
         [Theory]
-        [InlineData("openai")]
-        [InlineData("anthropic")]
-        [InlineData("google")]
-        [InlineData("groq")]
-        [InlineData("minimax")]
-        public async Task DiscoverModelsAsync_WithValidProvider_CallsCorrectDiscoveryClass(string providerName)
+        [InlineData(ProviderType.OpenAI)]
+        [InlineData(ProviderType.Anthropic)]
+        [InlineData(ProviderType.Gemini)]
+        [InlineData(ProviderType.Groq)]
+        [InlineData(ProviderType.MiniMax)]
+        public async Task DiscoverModelsAsync_WithValidProvider_CallsCorrectDiscoveryClass(ProviderType providerType)
         {
             // Arrange
             var service = new ProviderModelDiscoveryService(_mockLogger.Object);
+            var Provider = new Provider
+            {
+                Id = 1,
+                ProviderType = providerType,
+                ProviderName = providerType.ToString().ToLower()
+            };
 
             // Act
-            var models = await service.DiscoverModelsAsync(providerName, _httpClient, null);
+            var models = await service.DiscoverModelsAsync(Provider, _httpClient, null);
 
             // Assert
             Assert.NotNull(models);
             Assert.IsType<System.Collections.Generic.List<DiscoveredModel>>(models);
             
             // Even without API key, some providers return known models
-            if (providerName == "anthropic" || providerName == "openai")
+            if (providerType == ProviderType.Anthropic || providerType == ProviderType.OpenAI)
             {
                 Assert.Empty(models); // These require API key
             }
@@ -114,9 +118,15 @@ namespace ConduitLLM.Tests.Services
         {
             // Arrange
             var service = new ProviderModelDiscoveryService(_mockLogger.Object);
+            var Provider = new Provider
+            {
+                Id = 1,
+                ProviderType = (ProviderType)999, // Invalid provider type
+                ProviderName = "unsupported-provider"
+            };
 
             // Act
-            var models = await service.DiscoverModelsAsync("unsupported-provider", _httpClient, "api-key");
+            var models = await service.DiscoverModelsAsync(Provider, _httpClient, "api-key");
 
             // Assert
             Assert.Empty(models);
@@ -135,9 +145,15 @@ namespace ConduitLLM.Tests.Services
         {
             // Arrange
             var service = new ProviderModelDiscoveryService(_mockLogger.Object);
+            var Provider = new Provider
+            {
+                Id = 1,
+                ProviderType = ProviderType.Anthropic,
+                ProviderName = "anthropic"
+            };
 
             // Act - use anthropic which returns static models when API key is provided
-            var models = await service.DiscoverModelsAsync("anthropic", _httpClient, "test-key");
+            var models = await service.DiscoverModelsAsync(Provider, _httpClient, "test-key");
 
             // Assert
             Assert.NotEmpty(models);
@@ -149,9 +165,15 @@ namespace ConduitLLM.Tests.Services
         {
             // Arrange
             var service = new ProviderModelDiscoveryService(_mockLogger.Object);
+            var Provider = new Provider
+            {
+                Id = 1,
+                ProviderType = (ProviderType)999, // Invalid provider type
+                ProviderName = "unsupported-provider"
+            };
             
             // Act - Use an unsupported provider
-            var models = await service.DiscoverModelsAsync("unsupported-provider", _httpClient, "test-key");
+            var models = await service.DiscoverModelsAsync(Provider, _httpClient, "test-key");
 
             // Assert
             Assert.NotNull(models);
@@ -173,20 +195,33 @@ namespace ConduitLLM.Tests.Services
         #region Provider Alias Tests
 
         [Theory]
-        [InlineData("google", "gemini")] // Both should work
-        [InlineData("gemini", "google")]
-        public async Task DiscoverModelsAsync_HandlesProviderAliases(string provider1, string provider2)
+        [InlineData(ProviderType.GoogleCloud, ProviderType.Gemini)] // Both should work
+        public async Task DiscoverModelsAsync_HandlesProviderAliases(ProviderType provider1, ProviderType provider2)
         {
             // Arrange
             var service = new ProviderModelDiscoveryService(_mockLogger.Object);
+            var Provider1 = new Provider
+            {
+                Id = 1,
+                ProviderType = provider1,
+                ProviderName = provider1.ToString().ToLower()
+            };
+            var Provider2 = new Provider
+            {
+                Id = 2,
+                ProviderType = provider2,
+                ProviderName = provider2.ToString().ToLower()
+            };
 
             // Act
-            var models1 = await service.DiscoverModelsAsync(provider1, _httpClient, "key");
-            var models2 = await service.DiscoverModelsAsync(provider2, _httpClient, "key");
+            var models1 = await service.DiscoverModelsAsync(Provider1, _httpClient, "key");
+            var models2 = await service.DiscoverModelsAsync(Provider2, _httpClient, "key");
 
             // Assert
-            Assert.Equal(models1.Count, models2.Count);
-            // Both aliases should return the same models
+            // Note: Google and Gemini are now distinct provider types, so they may return different models
+            // This test just verifies that both providers are supported
+            Assert.NotNull(models1);
+            Assert.NotNull(models2);
         }
 
         #endregion
@@ -198,9 +233,15 @@ namespace ConduitLLM.Tests.Services
         {
             // Arrange
             var service = new ProviderModelDiscoveryService(_mockLogger.Object);
+            var Provider = new Provider
+            {
+                Id = 1,
+                ProviderType = ProviderType.OpenAI,
+                ProviderName = "openai"
+            };
 
             // Act
-            await service.DiscoverModelsAsync("openai", _httpClient, "test-key");
+            await service.DiscoverModelsAsync(Provider, _httpClient, "test-key");
 
             // Assert
             // Should log the start of discovery

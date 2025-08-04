@@ -14,18 +14,18 @@ namespace ConduitLLM.Configuration.Repositories
         /// <summary>
         /// Gets the latest health status for a provider
         /// </summary>
-        /// <param name="providerType">The provider type</param>
+        /// <param name="providerId">The provider ID</param>
         /// <returns>The latest health record, or null if none exists</returns>
-        Task<ProviderHealthRecord?> GetLatestStatusAsync(ProviderType providerType);
+        Task<ProviderHealthRecord?> GetLatestStatusAsync(int providerId);
 
         /// <summary>
         /// Gets status history for a provider within a specified time range
         /// </summary>
-        /// <param name="providerType">The provider type</param>
+        /// <param name="providerId">The provider ID</param>
         /// <param name="since">The start time (UTC) for the history</param>
         /// <param name="limit">Maximum number of records to return</param>
         /// <returns>A list of health records, ordered by timestamp descending</returns>
-        Task<List<ProviderHealthRecord>> GetStatusHistoryAsync(ProviderType providerType, DateTime since, int limit = 100);
+        Task<List<ProviderHealthRecord>> GetStatusHistoryAsync(int providerId, DateTime since, int limit = 100);
 
         /// <summary>
         /// Saves a new health status record
@@ -37,15 +37,15 @@ namespace ConduitLLM.Configuration.Repositories
         /// <summary>
         /// Gets the latest health status for all providers
         /// </summary>
-        /// <returns>A dictionary mapping provider types to their latest health records</returns>
-        Task<Dictionary<ProviderType, ProviderHealthRecord>> GetAllLatestStatusesAsync();
+        /// <returns>A dictionary mapping provider IDs to their latest health records</returns>
+        Task<Dictionary<int, ProviderHealthRecord>> GetAllLatestStatusesAsync();
 
         /// <summary>
         /// Gets health configuration for a provider
         /// </summary>
-        /// <param name="providerType">The provider type</param>
+        /// <param name="providerId">The provider ID</param>
         /// <returns>The provider health configuration, or null if none exists</returns>
-        Task<ProviderHealthConfiguration?> GetConfigurationAsync(ProviderType providerType);
+        Task<ProviderHealthConfiguration?> GetConfigurationAsync(int providerId);
 
         /// <summary>
         /// Saves a provider health configuration
@@ -64,29 +64,29 @@ namespace ConduitLLM.Configuration.Repositories
         /// Gets provider uptime percentages since the specified time
         /// </summary>
         /// <param name="since">The start time (UTC) for calculating uptime</param>
-        /// <returns>A dictionary mapping provider types to their uptime percentages (0-100)</returns>
-        Task<Dictionary<ProviderType, double>> GetProviderUptimeAsync(DateTime since);
+        /// <returns>A dictionary mapping provider IDs to their uptime percentages (0-100)</returns>
+        Task<Dictionary<int, double>> GetProviderUptimeAsync(DateTime since);
 
         /// <summary>
         /// Gets average response times for providers since the specified time
         /// </summary>
         /// <param name="since">The start time (UTC) for calculating average response times</param>
-        /// <returns>A dictionary mapping provider types to their average response times in milliseconds</returns>
-        Task<Dictionary<ProviderType, double>> GetAverageResponseTimesAsync(DateTime since);
+        /// <returns>A dictionary mapping provider IDs to their average response times in milliseconds</returns>
+        Task<Dictionary<int, double>> GetAverageResponseTimesAsync(DateTime since);
 
         /// <summary>
         /// Gets error counts by provider since the specified time
         /// </summary>
         /// <param name="since">The start time (UTC) for counting errors</param>
-        /// <returns>A dictionary mapping provider types to their error counts</returns>
-        Task<Dictionary<ProviderType, int>> GetErrorCountByProviderAsync(DateTime since);
+        /// <returns>A dictionary mapping provider IDs to their error counts</returns>
+        Task<Dictionary<int, int>> GetErrorCountByProviderAsync(DateTime since);
 
         /// <summary>
         /// Gets error category distribution by provider since the specified time
         /// </summary>
         /// <param name="since">The start time (UTC) for categorizing errors</param>
-        /// <returns>A nested dictionary mapping provider types to dictionaries of error categories and their counts</returns>
-        Task<Dictionary<ProviderType, Dictionary<string, int>>> GetErrorCategoriesByProviderAsync(DateTime since);
+        /// <returns>A nested dictionary mapping provider IDs to dictionaries of error categories and their counts</returns>
+        Task<Dictionary<int, Dictionary<string, int>>> GetErrorCategoriesByProviderAsync(DateTime since);
 
         /// <summary>
         /// Purges health records older than the specified time
@@ -98,24 +98,24 @@ namespace ConduitLLM.Configuration.Repositories
         /// <summary>
         /// Creates a default configuration for a provider if one doesn't exist
         /// </summary>
-        /// <param name="providerType">The provider type</param>
+        /// <param name="providerId">The provider ID</param>
         /// <returns>The new or existing configuration</returns>
-        Task<ProviderHealthConfiguration> EnsureConfigurationExistsAsync(ProviderType providerType);
+        Task<ProviderHealthConfiguration> EnsureConfigurationExistsAsync(int providerId);
 
         /// <summary>
         /// Updates the LastCheckedUtc timestamp for a provider configuration
         /// </summary>
-        /// <param name="providerType">The provider type</param>
+        /// <param name="providerId">The provider ID</param>
         /// <returns>An async task</returns>
-        Task UpdateLastCheckedTimeAsync(ProviderType providerType);
+        Task UpdateLastCheckedTimeAsync(int providerId);
 
         /// <summary>
         /// Gets the count of consecutive failures for a provider
         /// </summary>
-        /// <param name="providerType">The provider type</param>
+        /// <param name="providerId">The provider ID</param>
         /// <param name="since">The start time (UTC) for counting failures</param>
         /// <returns>The count of consecutive failures</returns>
-        Task<int> GetConsecutiveFailuresAsync(ProviderType providerType, DateTime since);
+        Task<int> GetConsecutiveFailuresAsync(int providerId, DateTime since);
 
         /// <summary>
         /// Gets all health records for all providers - efficient bulk operation

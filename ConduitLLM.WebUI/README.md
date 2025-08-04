@@ -161,6 +161,77 @@ SignalR connections are managed centrally and provide real-time updates for:
 - Task progress (image/video generation)
 - Navigation state updates
 
+## Video Generation
+
+The WebUI provides a comprehensive video generation interface with real-time progress tracking through the SDK's unified interface.
+
+### Features
+- ✨ Real-time progress updates via SignalR
+- 🔄 Automatic fallback to polling if connection fails
+- 📊 Smooth progress bar animations
+- 💬 Descriptive status messages
+- 🎯 Queue management for multiple videos
+- 🎨 Visual preview of generated videos
+
+### Usage
+
+```typescript
+import { useVideoGeneration } from '@/app/videos/hooks/useVideoGeneration';
+
+function VideoGenerator() {
+  const { generateVideo, isGenerating, error } = useVideoGeneration();
+  
+  const handleGenerate = async () => {
+    await generateVideo({
+      prompt: "A serene lake at sunset",
+      settings: { 
+        model: "minimax-video-01",
+        duration: 6,
+        size: "1280x720",
+        fps: 30
+      }
+    });
+  };
+
+  return (
+    <div>
+      <button onClick={handleGenerate} disabled={isGenerating}>
+        Generate Video
+      </button>
+      {error && <div>Error: {error}</div>}
+    </div>
+  );
+}
+```
+
+### Progress Tracking
+
+The video generation hook automatically handles:
+1. **SignalR Connection**: Establishes real-time connection for updates
+2. **Progress Events**: Receives percentage, status, and messages
+3. **Fallback Logic**: Switches to polling if SignalR fails
+4. **State Management**: Updates UI with progress information
+
+### Configuration
+
+Enable/disable progress tracking features:
+
+```typescript
+// Use the enhanced video generation with progress tracking
+const { generateVideo } = useVideoGeneration({
+  useProgressTracking: true,  // Enable SDK progress tracking
+  fallbackToPolling: true,    // Enable polling fallback
+});
+```
+
+### Video Queue
+
+The WebUI maintains a queue of video generation tasks:
+- View all pending, running, and completed videos
+- Cancel in-progress generations
+- Download completed videos
+- Retry failed generations
+
 ## Migration from Blazor WebUI
 
 This project is a complete rewrite of the Blazor WebUI with enhanced features:

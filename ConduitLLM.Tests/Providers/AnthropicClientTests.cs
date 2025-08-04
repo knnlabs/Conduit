@@ -9,10 +9,12 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers;
-using ConduitLLM.Providers.InternalModels;
+using ConduitLLM.Providers.Providers.Anthropic;
+using ConduitLLM.Providers.Providers.Anthropic.Models;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
@@ -50,16 +52,24 @@ namespace ConduitLLM.Tests.Providers
         public void Constructor_WithValidCredentials_InitializesCorrectly()
         {
             // Arrange
-            var credentials = new ProviderCredentials
+            var provider = new Provider
             {
-                ApiKey = "test-api-key",
+                Id = 1,
                 ProviderType = ProviderType.Anthropic
             };
+            
+            var keyCredential = new ProviderKeyCredential
+            {
+                Id = 1,
+                ProviderId = 1,
+                ApiKey = "test-api-key"
+            };
+            
             var modelId = "claude-3-opus-20240229";
             var logger = CreateLogger<AnthropicClient>();
 
             // Act
-            var client = new AnthropicClient(credentials, modelId, logger.Object, _httpClientFactoryMock.Object);
+            var client = new AnthropicClient(provider, keyCredential, modelId, logger.Object, _httpClientFactoryMock.Object);
 
             // Assert
             Assert.NotNull(client);
@@ -69,17 +79,23 @@ namespace ConduitLLM.Tests.Providers
         public void Constructor_WithMissingApiKey_ThrowsConfigurationException()
         {
             // Arrange
-            var credentials = new ProviderCredentials
+            var provider = new Provider
             {
-                ApiKey = "", // Empty API key
                 ProviderType = ProviderType.Anthropic
             };
+
+            var keyCredential = new ProviderKeyCredential
+            {
+                ApiKey = "", // Empty API key
+                ProviderId = 1
+            };
+
             var modelId = "claude-3-opus-20240229";
             var logger = CreateLogger<AnthropicClient>();
 
             // Act & Assert
             var exception = Assert.Throws<ConfigurationException>(() =>
-                new AnthropicClient(credentials, modelId, logger.Object, _httpClientFactoryMock.Object));
+                new AnthropicClient(provider, keyCredential, modelId, logger.Object, _httpClientFactoryMock.Object));
 
             Assert.Contains("API key (x-api-key) is missing", exception.Message);
         }
@@ -93,23 +109,29 @@ namespace ConduitLLM.Tests.Providers
 
             // Act & Assert
             Assert.ThrowsAny<Exception>(() =>
-                new AnthropicClient(null!, modelId, logger.Object, _httpClientFactoryMock.Object));
+                new AnthropicClient(null!, null!, modelId, logger.Object, _httpClientFactoryMock.Object));
         }
 
         [Fact]
         public void Constructor_WithNullLogger_ThrowsArgumentNullException()
         {
             // Arrange
-            var credentials = new ProviderCredentials
+            var provider = new Provider
             {
-                ApiKey = "test-key",
                 ProviderType = ProviderType.Anthropic
             };
+
+            var keyCredential = new ProviderKeyCredential
+            {
+                ApiKey = "test-key",
+                ProviderId = 1
+            };
+
             var modelId = "claude-3-opus-20240229";
 
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() =>
-                new AnthropicClient(credentials, modelId, null!, _httpClientFactoryMock.Object));
+                new AnthropicClient(provider, keyCredential, modelId, null!, _httpClientFactoryMock.Object));
         }
 
         [Fact]
@@ -117,12 +139,18 @@ namespace ConduitLLM.Tests.Providers
         {
             // Arrange
             var customBaseUrl = "https://custom.anthropic.api/v1";
-            var credentials = new ProviderCredentials
+            var provider = new Provider
             {
-                ApiKey = "test-key",
                 BaseUrl = customBaseUrl,
                 ProviderType = ProviderType.Anthropic
             };
+
+            var keyCredential = new ProviderKeyCredential
+            {
+                ApiKey = "test-key",
+                ProviderId = 1
+            };
+
             var modelId = "claude-3-opus-20240229";
             var logger = CreateLogger<AnthropicClient>();
 
@@ -134,7 +162,7 @@ namespace ConduitLLM.Tests.Providers
             _httpClientFactoryMock.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(customHttpClient);
 
             // Act
-            var client = new AnthropicClient(credentials, modelId, logger.Object, _httpClientFactoryMock.Object);
+            var client = new AnthropicClient(provider, keyCredential, modelId, logger.Object, _httpClientFactoryMock.Object);
 
             // Assert
             Assert.NotNull(client);
@@ -475,39 +503,16 @@ namespace ConduitLLM.Tests.Providers
         #region Model Discovery Tests
 
         [Fact]
-        public async Task GetModelsAsync_ReturnsStaticModelList()
+        public async Task GetModelsAsync_ThrowsNotSupportedException()
         {
             // Arrange
             var client = CreateAnthropicClient();
 
-            // Act
-            var models = await client.GetModelsAsync();
-
-            // Assert
-            Assert.NotNull(models);
-            Assert.NotEmpty(models);
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<NotSupportedException>(
+                () => client.GetModelsAsync());
             
-            // Check for expected Claude models
-            Assert.Contains(models, m => m.Id == "claude-3-opus-20240229");
-            Assert.Contains(models, m => m.Id == "claude-3-sonnet-20240229");
-            Assert.Contains(models, m => m.Id == "claude-3-haiku-20240307");
-            Assert.Contains(models, m => m.Id == "claude-2.1");
-            Assert.Contains(models, m => m.Id == "claude-2.0");
-            Assert.Contains(models, m => m.Id == "claude-instant-1.2");
-
-            // Check vision capabilities for Claude 3 models
-            var opus = models.First(m => m.Id == "claude-3-opus-20240229");
-            Assert.True(opus.Capabilities?.Vision);
-
-            var sonnet = models.First(m => m.Id == "claude-3-sonnet-20240229");
-            Assert.True(sonnet.Capabilities?.Vision);
-
-            var haiku = models.First(m => m.Id == "claude-3-haiku-20240307");
-            Assert.True(haiku.Capabilities?.Vision);
-
-            // Check non-vision models
-            var claude2 = models.First(m => m.Id == "claude-2.1");
-            Assert.False(claude2.Capabilities?.Vision ?? false);
+            Assert.Contains("Anthropic does not provide a models listing endpoint", exception.Message);
         }
 
         #endregion
@@ -778,15 +783,22 @@ namespace ConduitLLM.Tests.Providers
 
         private AnthropicClient CreateAnthropicClient(string modelId = "claude-3-opus-20240229")
         {
-            var credentials = new ProviderCredentials
+            var provider = new Provider
             {
-                ApiKey = "test-api-key",
                 ProviderType = ProviderType.Anthropic
             };
+
+            var keyCredential = new ProviderKeyCredential
+            {
+                ApiKey = "test-api-key",
+                ProviderId = 1
+            };
+
             var logger = CreateLogger<AnthropicClient>();
 
             return new AnthropicClient(
-                credentials,
+                provider,
+                keyCredential,
                 modelId,
                 logger.Object,
                 _httpClientFactoryMock.Object);

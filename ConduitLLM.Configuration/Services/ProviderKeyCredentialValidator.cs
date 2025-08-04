@@ -12,10 +12,10 @@ namespace ConduitLLM.Configuration.Services
     /// </summary>
     public class ProviderKeyCredentialValidator
     {
-        private readonly IConfigurationDbContext _context;
+        private readonly ConduitDbContext _context;
         private const int MaxKeysPerProvider = 32;
 
-        public ProviderKeyCredentialValidator(IConfigurationDbContext context)
+        public ProviderKeyCredentialValidator(ConduitDbContext context)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }
@@ -23,10 +23,10 @@ namespace ConduitLLM.Configuration.Services
         /// <summary>
         /// Validates if a new key can be added to a provider
         /// </summary>
-        public async Task<KeyValidationResult> ValidateAddKeyAsync(int providerCredentialId)
+        public async Task<KeyValidationResult> ValidateAddKeyAsync(int ProviderId)
         {
             var currentKeyCount = await _context.ProviderKeyCredentials
-                .CountAsync(k => k.ProviderCredentialId == providerCredentialId);
+                .CountAsync(k => k.ProviderId == ProviderId);
 
             if (currentKeyCount >= MaxKeysPerProvider)
             {
@@ -81,10 +81,10 @@ namespace ConduitLLM.Configuration.Services
         /// <summary>
         /// Ensures at least one key is enabled for a provider
         /// </summary>
-        public async Task<KeyValidationResult> ValidateProviderHasEnabledKeyAsync(int providerCredentialId)
+        public async Task<KeyValidationResult> ValidateProviderHasEnabledKeyAsync(int ProviderId)
         {
             var hasEnabledKey = await _context.ProviderKeyCredentials
-                .AnyAsync(k => k.ProviderCredentialId == providerCredentialId && k.IsEnabled);
+                .AnyAsync(k => k.ProviderId == ProviderId && k.IsEnabled);
 
             if (!hasEnabledKey)
             {

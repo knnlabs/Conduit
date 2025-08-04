@@ -57,10 +57,8 @@ export default function ImageGallery() {
 
   const getImageSrc = (image: GeneratedImage): string => {
     if (image.url) {
-      console.warn('Image URL:', image.url);
       return image.url;
     } else if (image.b64_json) {
-      console.warn('Using base64 image');
       return `data:image/png;base64,${image.b64_json}`;
     }
     console.warn('No image data available');
@@ -114,8 +112,16 @@ export default function ImageGallery() {
                   loading="lazy"
                   unoptimized={true}
                   onError={(e) => {
-                    console.error('Image failed to load:', e);
-                    console.error('Failed URL:', getImageSrc(image));
+                    const failedUrl = getImageSrc(image);
+                    console.error('Image failed to load');
+                    console.error('Failed URL:', failedUrl);
+                    console.error('URL length:', failedUrl.length);
+                    console.error('Full URL:', JSON.stringify(failedUrl));
+                    // Log the event details separately to avoid React property contamination
+                    console.error('Error event:', {
+                      type: e.type,
+                      target: e.currentTarget?.src
+                    });
                   }}
                 />
                 <div 

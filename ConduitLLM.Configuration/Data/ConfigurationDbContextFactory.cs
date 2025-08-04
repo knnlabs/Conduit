@@ -10,12 +10,12 @@ namespace ConduitLLM.Configuration.Data
     /// <summary>
     /// Factory to create ConfigurationDbContext instances at design time for EF Core tools
     /// </summary>
-    public class ConfigurationDbContextFactory : IDesignTimeDbContextFactory<ConfigurationDbContext>
+    public class ConfigurationDbContextFactory : IDesignTimeDbContextFactory<ConduitDbContext>
     {
         /// <summary>
         /// Creates a new ConfigurationDbContext for design-time operations
         /// </summary>
-        public ConfigurationDbContext CreateDbContext(string[] args)
+        public ConduitDbContext CreateDbContext(string[] args)
         {
             // Read connection string from environment variable
             var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
@@ -45,18 +45,18 @@ namespace ConduitLLM.Configuration.Data
 
                 var npgsqlConnectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password}";
 
-                var optionsBuilder = new DbContextOptionsBuilder<ConfigurationDbContext>();
+                var optionsBuilder = new DbContextOptionsBuilder<ConduitDbContext>();
                 optionsBuilder.UseNpgsql(npgsqlConnectionString);
 
-                return new ConfigurationDbContext(optionsBuilder.Options);
+                return new ConduitDbContext(optionsBuilder.Options);
             }
             else if (connectionString.Contains("Host=") || connectionString.Contains("Server="))
             {
                 // Already in Npgsql format
-                var optionsBuilder = new DbContextOptionsBuilder<ConfigurationDbContext>();
+                var optionsBuilder = new DbContextOptionsBuilder<ConduitDbContext>();
                 optionsBuilder.UseNpgsql(connectionString);
 
-                return new ConfigurationDbContext(optionsBuilder.Options);
+                return new ConduitDbContext(optionsBuilder.Options);
             }
             else
             {

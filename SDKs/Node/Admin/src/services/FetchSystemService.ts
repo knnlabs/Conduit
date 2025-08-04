@@ -366,7 +366,7 @@ export class FetchSystemService {
     try {
       // Try to get from dedicated metrics endpoint first
       return await this.client['get']<SystemMetricsDto>(
-        ENDPOINTS.SYSTEM.METRICS,
+        ENDPOINTS.METRICS.BASE,
         {
           signal: config?.signal,
           timeout: config?.timeout,
@@ -517,7 +517,7 @@ export class FetchSystemService {
     try {
       // Try to get from metrics endpoint
       const metrics = await this.client['get']<Record<string, unknown>>(
-        ENDPOINTS.SYSTEM.METRICS,
+        ENDPOINTS.METRICS.BASE,
         {
           signal: config?.signal,
           timeout: config?.timeout,
@@ -563,17 +563,7 @@ export class FetchSystemService {
     }
 
     try {
-      // Try to get from dedicated health events endpoint
-      return await this.client['get']<HealthEventsResponseDto>(
-        `${ENDPOINTS.SYSTEM.HEALTH_EVENTS}${searchParams.toString() ? `?${searchParams}` : ''}`,
-        {
-          signal: config?.signal,
-          timeout: config?.timeout,
-          headers: config?.headers,
-        }
-      );
-    } catch {
-      // Fallback: construct from available health data
+      // Health events endpoint no longer exists - construct from available health data
       const healthStatus = await this.getHealth(config);
       const systemInfo = await this.getSystemInfo(config);
       
@@ -621,6 +611,9 @@ export class FetchSystemService {
       return {
         events: events.slice(0, limit ?? 50),
       };
+    } catch {
+      // If all else fails, return empty events
+      return { events: [] };
     }
   }
 

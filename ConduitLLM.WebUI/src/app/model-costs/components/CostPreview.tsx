@@ -25,10 +25,10 @@ export const CostPreview: React.FC<CostPreviewProps> = ({ modelCost }) => {
     const examples: CostExample[] = [];
 
     // Token-based examples
-    if (modelCost.inputCostPerMillionTokens || modelCost.outputCostPerMillionTokens) {
-      // Basic token example
-      const inputCost = (modelCost.inputCostPerMillionTokens ?? 0) * 1000 / 1000000;
-      const outputCost = (modelCost.outputCostPerMillionTokens ?? 0) * 500 / 1000000;
+    if (modelCost.inputTokenCost || modelCost.outputTokenCost) {
+      // Basic token example (costs are already per token)
+      const inputCost = (modelCost.inputTokenCost ?? 0) * 1000;
+      const outputCost = (modelCost.outputTokenCost ?? 0) * 500;
       examples.push({
         label: '1K input + 500 output tokens',
         cost: inputCost + outputCost,
@@ -36,10 +36,10 @@ export const CostPreview: React.FC<CostPreviewProps> = ({ modelCost }) => {
       });
 
       // Cached token example
-      if (modelCost.cachedInputCostPerMillionTokens) {
-        const cachedCost = (modelCost.cachedInputCostPerMillionTokens * 800 / 1000000);
-        const regularCost = (modelCost.inputCostPerMillionTokens ?? 0) * 200 / 1000000;
-        const outputCostCached = (modelCost.outputCostPerMillionTokens ?? 0) * 500 / 1000000;
+      if (modelCost.cachedInputTokenCost) {
+        const cachedCost = (modelCost.cachedInputTokenCost * 800);
+        const regularCost = (modelCost.inputTokenCost ?? 0) * 200;
+        const outputCostCached = (modelCost.outputTokenCost ?? 0) * 500;
         examples.push({
           label: '1K tokens (80% cached)',
           description: '800 cached + 200 new input + 500 output',

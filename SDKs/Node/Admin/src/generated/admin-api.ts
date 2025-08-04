@@ -209,21 +209,21 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/audio/providers/by-type/{providerType}": {
+  "/api/admin/audio/providers/by-id/{providerId}": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Gets audio provider configurations by provider type. */
+    /** Gets audio provider configurations by provider ID. */
     get: {
       parameters: {
         query?: never;
         header?: never;
         path: {
-          /** @description The provider type */
-          providerType: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
+          /** @description The provider ID */
+          providerId: number;
         };
         cookie?: never;
       };
@@ -551,7 +551,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/audio/costs/by-provider/{provider}": {
+  "/api/admin/audio/costs/by-provider/{providerId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -564,8 +564,8 @@ export interface paths {
         query?: never;
         header?: never;
         path: {
-          /** @description The provider name */
-          provider: string;
+          /** @description The provider ID */
+          providerId: number;
         };
         cookie?: never;
       };
@@ -603,8 +603,8 @@ export interface paths {
     get: {
       parameters: {
         query?: {
-          /** @description The provider name */
-          provider?: string;
+          /** @description The provider ID */
+          providerId?: number;
           /** @description The operation type */
           operationType?: string;
           /** @description The model name (optional) */
@@ -660,7 +660,7 @@ export interface paths {
       parameters: {
         query?: {
           VirtualKey?: string;
-          ProviderType?: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
+          ProviderId?: number;
           OperationType?: string;
           StartDate?: string;
           EndDate?: string;
@@ -712,8 +712,8 @@ export interface paths {
           endDate?: string;
           /** @description Filter by virtual key (optional) */
           virtualKey?: string;
-          /** @description Filter by provider (optional) */
-          provider?: string;
+          /** @description Filter by provider ID (optional) */
+          providerId?: number;
         };
         header?: never;
         path?: never;
@@ -788,7 +788,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/audio/usage/by-provider/{provider}": {
+  "/api/admin/audio/usage/by-provider/{providerId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -806,8 +806,8 @@ export interface paths {
         };
         header?: never;
         path: {
-          /** @description The provider name */
-          provider: string;
+          /** @description The provider ID */
+          providerId: number;
         };
         cookie?: never;
       };
@@ -1837,111 +1837,6 @@ export interface paths {
         };
         /** @description Internal Server Error */
         500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/dashboard/metrics/realtime": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets real-time metrics for the metrics dashboard. */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/dashboard/metrics/timeseries": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets time-series data for dashboard charts. */
-    get: {
-      parameters: {
-        query?: {
-          /** @description Time period (hour, day, week, month). */
-          period?: string;
-        };
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/dashboard/metrics/providers": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets provider-specific performance metrics. */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
           headers: {
             [name: string]: unknown;
           };
@@ -4438,21 +4333,21 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelCosts/provider/{providerName}": {
+  "/api/ModelCosts/provider/{providerId}": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Gets model costs by provider name */
+    /** Gets model costs by provider ID */
     get: {
       parameters: {
         query?: never;
         header?: never;
         path: {
-          /** @description The name of the provider */
-          providerName: string;
+          /** @description The ID of the provider */
+          providerId: number;
         };
         cookie?: never;
       };
@@ -4486,21 +4381,21 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelCosts/pattern/{pattern}": {
+  "/api/ModelCosts/name/{costName}": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Gets a model cost by pattern */
+    /** Gets a model cost by cost name */
     get: {
       parameters: {
         query?: never;
         header?: never;
         path: {
-          /** @description The model ID pattern */
-          pattern: string;
+          /** @description The cost name */
+          costName: string;
         };
         cookie?: never;
       };
@@ -4680,8 +4575,8 @@ export interface paths {
     get: {
       parameters: {
         query?: {
-          /** @description Optional provider name to filter by */
-          provider?: string;
+          /** @description Optional provider ID to filter by */
+          providerId?: number;
         };
         header?: never;
         path?: never;
@@ -4728,8 +4623,8 @@ export interface paths {
     get: {
       parameters: {
         query?: {
-          /** @description Optional provider name to filter by */
-          provider?: string;
+          /** @description Optional provider ID to filter by */
+          providerId?: number;
         };
         header?: never;
         path?: never;
@@ -4920,9 +4815,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"][];
+            "text/plain": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"][];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"][];
+            "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"][];
           };
         };
         /** @description Internal Server Error */
@@ -4946,9 +4841,9 @@ export interface paths {
       /** @description The mapping to create */
       requestBody?: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
+          "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"];
+          "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"];
+          "application/*+json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"];
         };
       };
       responses: {
@@ -4958,9 +4853,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
+            "text/plain": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"];
+            "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"];
           };
         };
         /** @description Bad Request */
@@ -4974,19 +4869,8 @@ export interface paths {
             "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
           };
         };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Forbidden */
-        403: {
+        /** @description Conflict */
+        409: {
           headers: {
             [name: string]: unknown;
           };
@@ -5037,9 +4921,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
+            "text/plain": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"];
+            "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"];
           };
         };
         /** @description Not Found */
@@ -5076,9 +4960,9 @@ export interface paths {
       /** @description The updated mapping data */
       requestBody?: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
+          "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"];
+          "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"];
+          "application/*+json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"];
         };
       };
       responses: {
@@ -5091,28 +4975,6 @@ export interface paths {
         };
         /** @description Bad Request */
         400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Forbidden */
-        403: {
           headers: {
             [name: string]: unknown;
           };
@@ -5163,28 +5025,6 @@ export interface paths {
           };
           content?: never;
         };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Forbidden */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
         /** @description Not Found */
         404: {
           headers: {
@@ -5205,65 +5045,6 @@ export interface paths {
         };
       };
     };
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ModelProviderMapping/by-model/{modelId}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets a model provider mapping by model ID */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The model ID to look up */
-          modelId: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -5276,7 +5057,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Gets a list of all available providers */
+    /** Gets all available providers */
     get: {
       parameters: {
         query?: never;
@@ -5292,9 +5073,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderDataDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderDataDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderDataDto"][];
+            "text/plain": components["schemas"]["ConduitLLM.Configuration.Entities.Provider"][];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.Provider"][];
+            "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.Provider"][];
           };
         };
         /** @description Internal Server Error */
@@ -5331,12 +5112,12 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      /** @description The bulk mapping request containing mappings to create */
+      /** @description The mappings to create */
       requestBody?: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.BulkModelMappingRequest"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.BulkModelMappingRequest"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.BulkModelMappingRequest"];
+          "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"][];
+          "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"][];
+          "application/*+json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"][];
         };
       };
       responses: {
@@ -5346,35 +5127,13 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.BulkModelMappingResponse"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.BulkModelMappingResponse"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.BulkModelMappingResponse"];
+            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.BulkMappingResult"];
+            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.BulkMappingResult"];
+            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.BulkMappingResult"];
           };
         };
         /** @description Bad Request */
         400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Forbidden */
-        403: {
           headers: {
             [name: string]: unknown;
           };
@@ -5399,20 +5158,20 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelProviderMapping/discover/provider/{providerId}": {
+  "/api/ModelProviderMapping/discover/{providerId}": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Discovers available models for a specific provider */
+    /** Discovers available models from a specific provider */
     get: {
       parameters: {
         query?: never;
         header?: never;
         path: {
-          /** @description The ID of the provider to discover models for */
+          /** @description The provider ID to discover models from */
           providerId: number;
         };
         cookie?: never;
@@ -5430,152 +5189,8 @@ export interface paths {
             "text/json": components["schemas"]["ConduitLLM.Core.Interfaces.DiscoveredModel"][];
           };
         };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
         /** @description Not Found */
         404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ModelProviderMapping/discover/model/{providerId}/{modelId}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Discovers capabilities for a specific model */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The ID of the provider */
-          providerId: number;
-          /** @description The model ID to check capabilities for */
-          modelId: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Core.Interfaces.DiscoveredModel"];
-            "application/json": components["schemas"]["ConduitLLM.Core.Interfaces.DiscoveredModel"];
-            "text/json": components["schemas"]["ConduitLLM.Core.Interfaces.DiscoveredModel"];
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ModelProviderMapping/discover/capability/{modelAlias}/{capability}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Tests a specific capability for a model */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The model alias to test */
-          modelAlias: string;
-          /** @description The capability to test (e.g., "ImageGeneration", "Vision", "ChatStream") */
-          capability: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": boolean;
-            "application/json": boolean;
-            "text/json": boolean;
-          };
-        };
-        /** @description Bad Request */
-        400: {
           headers: {
             [name: string]: unknown;
           };
@@ -5994,785 +5609,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ProviderCredentials": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets all provider credentials */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderCredentialDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderCredentialDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderCredentialDto"][];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    /** Creates a new provider credential */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      /** @description The provider credential to create */
-      requestBody?: {
-        content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.CreateProviderCredentialDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.CreateProviderCredentialDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.CreateProviderCredentialDto"];
-        };
-      };
-      responses: {
-        /** @description Created */
-        201: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderCredentialDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderCredentialDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderCredentialDto"];
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ProviderCredentials/{id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets a provider credential by ID */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The ID of the provider credential */
-          id: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderCredentialDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderCredentialDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderCredentialDto"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    /** Updates a provider credential */
-    put: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The ID of the provider credential to update */
-          id: number;
-        };
-        cookie?: never;
-      };
-      /** @description The updated provider credential data */
-      requestBody?: {
-        content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.UpdateProviderCredentialDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.UpdateProviderCredentialDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.UpdateProviderCredentialDto"];
-        };
-      };
-      responses: {
-        /** @description No Content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    post?: never;
-    /** Deletes a provider credential */
-    delete: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The ID of the provider credential to delete */
-          id: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description No Content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ProviderCredentials/test/{id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Tests the connection to a provider */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The ID of the provider credential to test */
-          id: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ProviderCredentials/test": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Tests a provider connection without saving credentials */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      /** @description The provider credentials to test */
-      requestBody?: {
-        content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.TestProviderConnectionDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.TestProviderConnectionDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.TestProviderConnectionDto"];
-        };
-      };
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto"];
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ProviderCredentials/{providerId}/keys": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets all key credentials for a specific provider */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The ID of the provider */
-          providerId: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderKeyCredentialDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderKeyCredentialDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderKeyCredentialDto"][];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    /** Creates a new key credential for a provider */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The ID of the provider */
-          providerId: number;
-        };
-        cookie?: never;
-      };
-      /** @description The key credential to create */
-      requestBody?: {
-        content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.CreateProviderKeyCredentialDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.CreateProviderKeyCredentialDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.CreateProviderKeyCredentialDto"];
-        };
-      };
-      responses: {
-        /** @description Created */
-        201: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderKeyCredentialDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderKeyCredentialDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderKeyCredentialDto"];
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ProviderCredentials/{providerId}/keys/{keyId}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets a specific key credential */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The ID of the provider */
-          providerId: number;
-          /** @description The ID of the key */
-          keyId: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderKeyCredentialDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderKeyCredentialDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderKeyCredentialDto"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    /** Updates a key credential */
-    put: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The ID of the provider */
-          providerId: number;
-          /** @description The ID of the key */
-          keyId: number;
-        };
-        cookie?: never;
-      };
-      /** @description The updated key credential data */
-      requestBody?: {
-        content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.UpdateProviderKeyCredentialDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.UpdateProviderKeyCredentialDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.UpdateProviderKeyCredentialDto"];
-        };
-      };
-      responses: {
-        /** @description No Content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    post?: never;
-    /** Deletes a key credential */
-    delete: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The ID of the provider */
-          providerId: number;
-          /** @description The ID of the key to delete */
-          keyId: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description No Content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ProviderCredentials/{providerId}/keys/{keyId}/set-primary": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Sets a key as the primary key for a provider */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The ID of the provider */
-          providerId: number;
-          /** @description The ID of the key to set as primary */
-          keyId: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description No Content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ProviderCredentials/{providerId}/keys/{keyId}/test": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Tests a specific key credential */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The ID of the provider */
-          providerId: number;
-          /** @description The ID of the key to test */
-          keyId: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/api/ProviderHealth/configurations": {
     parameters: {
       query?: never;
@@ -6796,9 +5632,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthConfigurationDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthConfigurationDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthConfigurationDto"][];
+            "text/plain": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"][];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"][];
+            "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"][];
           };
         };
         /** @description Internal Server Error */
@@ -6821,9 +5657,9 @@ export interface paths {
       /** @description The configuration to update */
       requestBody?: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.UpdateProviderHealthConfigurationDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.UpdateProviderHealthConfigurationDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.UpdateProviderHealthConfigurationDto"];
+          "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"];
+          "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"];
+          "application/*+json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"];
         };
       };
       responses: {
@@ -6876,9 +5712,9 @@ export interface paths {
       /** @description The configuration to create */
       requestBody?: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.CreateProviderHealthConfigurationDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.CreateProviderHealthConfigurationDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.CreateProviderHealthConfigurationDto"];
+          "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"];
+          "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"];
+          "application/*+json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"];
         };
       };
       responses: {
@@ -6888,9 +5724,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthConfigurationDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthConfigurationDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthConfigurationDto"];
+            "text/plain": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"];
+            "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"];
           };
         };
         /** @description Bad Request */
@@ -6919,7 +5755,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ProviderHealth/configurations/{providerType}": {
+  "/api/ProviderHealth/configurations/{providerId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -6932,8 +5768,8 @@ export interface paths {
         query?: never;
         header?: never;
         path: {
-          /** @description The provider type */
-          providerType: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
+          /** @description The provider ID */
+          providerId: number;
         };
         cookie?: never;
       };
@@ -6945,9 +5781,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthConfigurationDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthConfigurationDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthConfigurationDto"];
+            "text/plain": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"];
+            "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"];
           };
         };
         /** @description Not Found */
@@ -7004,17 +5840,17 @@ export interface paths {
             "text/plain": {
               [
                 key: string
-              ]: components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"];
+              ]: components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"];
             };
             "application/json": {
               [
                 key: string
-              ]: components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"];
+              ]: components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"];
             };
             "text/json": {
               [
                 key: string
-              ]: components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"];
+              ]: components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"];
             };
           };
         };
@@ -7035,7 +5871,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ProviderHealth/statuses/{providerName}": {
+  "/api/ProviderHealth/statuses/{providerId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -7048,8 +5884,8 @@ export interface paths {
         query?: never;
         header?: never;
         path: {
-          /** @description The name of the provider */
-          providerName: string;
+          /** @description The ID of the provider */
+          providerId: number;
         };
         cookie?: never;
       };
@@ -7061,9 +5897,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"];
+            "text/plain": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"];
+            "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"];
           };
         };
         /** @description Not Found */
@@ -7094,7 +5930,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ProviderHealth/history/{providerName}": {
+  "/api/ProviderHealth/history/{providerId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -7112,8 +5948,8 @@ export interface paths {
         };
         header?: never;
         path: {
-          /** @description The name of the provider */
-          providerName: string;
+          /** @description The ID of the provider */
+          providerId: number;
         };
         cookie?: never;
       };
@@ -7125,9 +5961,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"][];
+            "text/plain": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"][];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"][];
+            "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"][];
           };
         };
         /** @description Bad Request */
@@ -7276,7 +6112,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ProviderHealth/check/{providerName}": {
+  "/api/ProviderHealth/check/{providerId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -7291,8 +6127,8 @@ export interface paths {
         query?: never;
         header?: never;
         path: {
-          /** @description The name of the provider to check */
-          providerName: string;
+          /** @description The ID of the provider to check */
+          providerId: number;
         };
         cookie?: never;
       };
@@ -7304,9 +6140,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"];
+            "text/plain": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"];
+            "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"];
           };
         };
         /** @description Bad Request */
@@ -7405,8 +6241,8 @@ export interface paths {
     get: {
       parameters: {
         query?: {
-          /** @description Optional provider name to filter records */
-          providerName?: string;
+          /** @description Optional provider ID to filter records */
+          providerId?: number;
         };
         header?: never;
         path?: never;
@@ -7420,9 +6256,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"][];
+            "text/plain": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"][];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"][];
+            "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"][];
           };
         };
         /** @description Internal Server Error */
@@ -7499,7 +6335,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ProviderHealth/status/{providerName}": {
+  "/api/ProviderHealth/status/{providerId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -7512,8 +6348,8 @@ export interface paths {
         query?: never;
         header?: never;
         path: {
-          /** @description The name of the provider */
-          providerName: string;
+          /** @description The ID of the provider */
+          providerId: number;
         };
         cookie?: never;
       };
@@ -7558,14 +6394,14 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/ProviderTypes": {
+  "/api/Providers": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Gets all available provider types with their metadata. */
+    /** Gets all provider configurations */
     get: {
       parameters: {
         query?: never;
@@ -7575,215 +6411,55 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Returns the list of provider types */
+        /** @description OK */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.ProviderTypeInfo"][];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.ProviderTypeInfo"][];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.ProviderTypeInfo"][];
+            "text/plain": unknown[];
+            "application/json": unknown[];
+            "text/json": unknown[];
           };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
     put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/admin/ProviderTypes/{providerType}/capabilities": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets detailed capabilities for a specific provider type. */
-    get: {
+    /** Creates a new provider */
+    post: {
       parameters: {
         query?: never;
         header?: never;
-        path: {
-          /** @description The provider type to get capabilities for */
-          providerType: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
-        };
+        path?: never;
         cookie?: never;
       };
-      requestBody?: never;
+      requestBody?: {
+        content: {
+          "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateProviderRequest"];
+          "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateProviderRequest"];
+          "application/*+json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateProviderRequest"];
+        };
+      };
       responses: {
-        /** @description Returns the provider capabilities */
-        200: {
+        /** @description Created */
+        201: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Core.Models.ProviderCapabilities"];
-            "application/json": components["schemas"]["ConduitLLM.Core.Models.ProviderCapabilities"];
-            "text/json": components["schemas"]["ConduitLLM.Core.Models.ProviderCapabilities"];
+            "text/plain": unknown;
+            "application/json": unknown;
+            "text/json": unknown;
           };
         };
-        /** @description Provider type not found in registry */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/admin/ProviderTypes/{providerType}/auth-requirements": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets authentication requirements for a specific provider type. */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The provider type to get auth requirements for */
-          providerType: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Returns the authentication requirements */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Core.Interfaces.AuthenticationRequirements"];
-            "application/json": components["schemas"]["ConduitLLM.Core.Interfaces.AuthenticationRequirements"];
-            "text/json": components["schemas"]["ConduitLLM.Core.Interfaces.AuthenticationRequirements"];
-          };
-        };
-        /** @description Provider type not found in registry */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/admin/ProviderTypes/{providerType}/configuration-hints": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets configuration hints for a specific provider type. */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The provider type to get configuration hints for */
-          providerType: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Returns the configuration hints */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Core.Interfaces.ProviderConfigurationHints"];
-            "application/json": components["schemas"]["ConduitLLM.Core.Interfaces.ProviderConfigurationHints"];
-            "text/json": components["schemas"]["ConduitLLM.Core.Interfaces.ProviderConfigurationHints"];
-          };
-        };
-        /** @description Provider type not found in registry */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/admin/ProviderTypes/by-feature/{feature}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets providers that support specific features. */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The feature to filter by (e.g., "streaming", "embeddings", "imageGeneration") */
-          feature: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Returns the list of providers */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.ProviderTypeInfo"][];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.ProviderTypeInfo"][];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.ProviderTypeInfo"][];
-          };
-        };
-        /** @description Invalid feature name */
+        /** @description Bad Request */
         400: {
           headers: {
             [name: string]: unknown;
@@ -7794,48 +6470,701 @@ export interface paths {
             "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
           };
         };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
       };
     };
-    put?: never;
-    post?: never;
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  "/api/admin/ProviderTypes/diagnostics": {
+  "/api/Providers/{id}": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Gets diagnostic information about the provider registry. */
+    /** Gets a provider by ID */
     get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The ID of the provider */
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": unknown;
+            "application/json": unknown;
+            "text/json": unknown;
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    /** Updates a provider */
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The ID of the provider to update */
+          id: number;
+        };
+        cookie?: never;
+      };
+      /** @description The update request containing new provider values */
+      requestBody?: {
+        content: {
+          "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateProviderRequest"];
+          "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateProviderRequest"];
+          "application/*+json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateProviderRequest"];
+        };
+      };
+      responses: {
+        /** @description No Content */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    post?: never;
+    /** Deletes a provider */
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The ID of the provider to delete */
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description No Content */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/Providers/test/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Tests the connection to a provider */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The ID of the provider to test */
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": unknown;
+            "application/json": unknown;
+            "text/json": unknown;
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/Providers/test": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Tests a provider connection without saving */
+    post: {
       parameters: {
         query?: never;
         header?: never;
         path?: never;
         cookie?: never;
       };
-      requestBody?: never;
+      requestBody?: {
+        content: {
+          "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.TestProviderRequest"];
+          "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.TestProviderRequest"];
+          "application/*+json": components["schemas"]["ConduitLLM.Admin.Controllers.TestProviderRequest"];
+        };
+      };
       responses: {
-        /** @description Returns the diagnostics */
+        /** @description OK */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Core.Interfaces.ProviderRegistryDiagnostics"];
-            "application/json": components["schemas"]["ConduitLLM.Core.Interfaces.ProviderRegistryDiagnostics"];
-            "text/json": components["schemas"]["ConduitLLM.Core.Interfaces.ProviderRegistryDiagnostics"];
+            "text/plain": unknown;
+            "application/json": unknown;
+            "text/json": unknown;
           };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/Providers/{providerId}/keys": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets all key credentials for a specific provider */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The ID of the provider */
+          providerId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": unknown[];
+            "application/json": unknown[];
+            "text/json": unknown[];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
         };
       };
     };
     put?: never;
+    /** Creates a new key credential for a provider */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The ID of the provider */
+          providerId: number;
+        };
+        cookie?: never;
+      };
+      /** @description The request containing key credential details */
+      requestBody?: {
+        content: {
+          "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateKeyRequest"];
+          "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateKeyRequest"];
+          "application/*+json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateKeyRequest"];
+        };
+      };
+      responses: {
+        /** @description Created */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": unknown;
+            "application/json": unknown;
+            "text/json": unknown;
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/Providers/{providerId}/keys/{keyId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets a specific key credential */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The ID of the provider */
+          providerId: number;
+          /** @description The ID of the key */
+          keyId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": unknown;
+            "application/json": unknown;
+            "text/json": unknown;
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    /** Updates a key credential */
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The ID of the provider */
+          providerId: number;
+          /** @description The ID of the key */
+          keyId: number;
+        };
+        cookie?: never;
+      };
+      /** @description The update request containing new key credential values */
+      requestBody?: {
+        content: {
+          "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateKeyRequest"];
+          "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateKeyRequest"];
+          "application/*+json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateKeyRequest"];
+        };
+      };
+      responses: {
+        /** @description No Content */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
     post?: never;
+    /** Deletes a key credential */
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The ID of the provider */
+          providerId: number;
+          /** @description The ID of the key to delete */
+          keyId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description No Content */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/Providers/{providerId}/keys/{keyId}/set-primary": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Sets a key as the primary key for a provider */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The ID of the provider */
+          providerId: number;
+          /** @description The ID of the key to set as primary */
+          keyId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description No Content */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/Providers/{providerId}/keys/{keyId}/test": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Tests a specific key credential */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The ID of the provider */
+          providerId: number;
+          /** @description The ID of the key to test */
+          keyId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": unknown;
+            "application/json": unknown;
+            "text/json": unknown;
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
     delete?: never;
     options?: never;
     head?: never;
@@ -9372,6 +8701,30 @@ export interface components {
        */
       cooldownPeriodMinutes?: number;
     };
+    /** @description Result of a bulk mapping operation */
+    "ConduitLLM.Admin.Controllers.BulkMappingResult": {
+      /** @description Successfully created mappings */
+      created?:
+        | components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"][]
+        | null;
+      /** @description Error messages for failed mappings */
+      errors?: string[] | null;
+      /**
+       * Format: int32
+       * @description Total number of mappings processed
+       */
+      totalProcessed?: number;
+      /**
+       * Format: int32
+       * @description Number of successful mappings
+       */
+      successCount?: number;
+      /**
+       * Format: int32
+       * @description Number of failed mappings
+       */
+      failureCount?: number;
+    };
     /** @description Cache alert DTO */
     "ConduitLLM.Admin.Controllers.CacheAlertDto": {
       /** @description Machine-readable alert identifier (e.g., `cache_high_memory`). */
@@ -9508,6 +8861,36 @@ export interface components {
         [key: string]: unknown;
       } | null;
     };
+    /** @description Request model for creating a key credential */
+    "ConduitLLM.Admin.Controllers.CreateKeyRequest": {
+      /** @description The API key to create */
+      apiKey?: string | null;
+      /** @description The name for the key credential */
+      keyName?: string | null;
+      /** @description The organization for the key (optional) */
+      organization?: string | null;
+      /** @description The base URL for the key (optional) */
+      baseUrl?: string | null;
+      /** @description Whether this is the primary key for the provider */
+      isPrimary?: boolean;
+      /** @description Whether the key is enabled */
+      isEnabled?: boolean;
+      /**
+       * Format: int32
+       * @description The provider account group (optional)
+       */
+      providerAccountGroup?: number | null;
+    };
+    /** @description Request model for creating a provider */
+    "ConduitLLM.Admin.Controllers.CreateProviderRequest": {
+      providerType?: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
+      /** @description The name of the provider */
+      providerName?: string | null;
+      /** @description The base URL for the provider (optional) */
+      baseUrl?: string | null;
+      /** @description Whether the provider is enabled */
+      isEnabled?: boolean;
+    };
     /** @description Request model for replay operations. */
     "ConduitLLM.Admin.Controllers.ErrorQueueController.ReplayRequest": {
       /** @description Gets or sets the list of message IDs to replay.
@@ -9538,22 +8921,6 @@ export interface components {
      * @enum {integer}
      */
     "ConduitLLM.Admin.Controllers.Models.ProviderStatus.StatusType": 0 | 1 | 2;
-    /** @description Information about a provider type */
-    "ConduitLLM.Admin.Controllers.ProviderTypeInfo": {
-      /** @description The enum name (e.g., "OpenAI") */
-      name?: string | null;
-      /**
-       * Format: int32
-       * @description The numeric value of the enum
-       */
-      value?: number;
-      /** @description A friendly display name (e.g., "OpenAI" or "Azure OpenAI") */
-      displayName?: string | null;
-      /** @description Indicates whether this provider is registered in the provider registry */
-      isRegistered?: boolean;
-      /** @description The default base URL for this provider's API */
-      defaultBaseUrl?: string | null;
-    };
     /** @description Request model for pruning old media. */
     "ConduitLLM.Admin.Controllers.PruneMediaRequest": {
       /**
@@ -9561,6 +8928,45 @@ export interface components {
        * @description Gets or sets the number of days to keep media files.
        */
       daysToKeep?: number | null;
+    };
+    /** @description Request model for testing a provider connection */
+    "ConduitLLM.Admin.Controllers.TestProviderRequest": {
+      providerType?: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
+      /** @description The API key to test */
+      apiKey?: string | null;
+      /** @description The base URL to test (optional) */
+      baseUrl?: string | null;
+      /** @description The organization to test (optional) */
+      organization?: string | null;
+    };
+    /** @description Request model for updating a key credential */
+    "ConduitLLM.Admin.Controllers.UpdateKeyRequest": {
+      /** @description The new name for the key (optional) */
+      keyName?: string | null;
+      /** @description The new API key (optional) */
+      apiKey?: string | null;
+      /** @description The new organization (optional) */
+      organization?: string | null;
+      /** @description The new base URL (optional) */
+      baseUrl?: string | null;
+      /** @description Whether this should be the primary key (optional) */
+      isPrimary?: boolean | null;
+      /** @description Whether the key is enabled (optional) */
+      isEnabled?: boolean | null;
+      /**
+       * Format: int32
+       * @description The provider account group (optional)
+       */
+      providerAccountGroup?: number | null;
+    };
+    /** @description Request model for updating a provider */
+    "ConduitLLM.Admin.Controllers.UpdateProviderRequest": {
+      /** @description The new name for the provider (optional) */
+      providerName?: string | null;
+      /** @description The new base URL for the provider (optional) */
+      baseUrl?: string | null;
+      /** @description Whether the provider is enabled */
+      isEnabled?: boolean;
     };
     /** @description DTO for updating routing configuration. */
     "ConduitLLM.Admin.Controllers.UpdateRoutingConfigDto": {
@@ -9903,7 +9309,7 @@ export interface components {
     };
     /** @description Information about a single error queue. */
     "ConduitLLM.Admin.Models.ErrorQueue.ErrorQueueInfo": {
-      /** @description Full name of the error queue (e.g., "ProviderCredentialEventHandler_error"). */
+      /** @description Full name of the error queue (e.g., "ProviderEventHandler_error"). */
       queueName?: string | null;
       /** @description Original queue name derived from error queue name. */
       originalQueue?: string | null;
@@ -10135,7 +9541,9 @@ export interface components {
     "ConduitLLM.Configuration.DTOs.Audio.AudioCostDto": {
       /** Format: int32 */
       id?: number;
-      providerType: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
+      /** Format: int32 */
+      providerId: number;
+      providerName?: string | null;
       operationType: string;
       model?: string | null;
       costUnit: string;
@@ -10172,7 +9580,7 @@ export interface components {
       /** Format: int32 */
       id?: number;
       /** Format: int32 */
-      providerCredentialId?: number;
+      providerId?: number;
       providerType?: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
       transcriptionEnabled?: boolean;
       defaultTranscriptionModel?: string | null;
@@ -10191,7 +9599,9 @@ export interface components {
       updatedAt?: string;
     };
     "ConduitLLM.Configuration.DTOs.Audio.AudioProviderUsageDto": {
-      providerType?: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
+      /** Format: int32 */
+      providerId?: number;
+      providerName?: string | null;
       /** Format: int32 */
       totalOperations?: number;
       /** Format: int32 */
@@ -10212,7 +9622,8 @@ export interface components {
       /** Format: int64 */
       id?: number;
       virtualKey?: string | null;
-      providerType?: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
+      /** Format: int32 */
+      providerId?: number;
       operationType?: string | null;
       model?: string | null;
       requestId?: string | null;
@@ -10234,6 +9645,7 @@ export interface components {
       errorMessage?: string | null;
       ipAddress?: string | null;
       userAgent?: string | null;
+      metadata?: string | null;
       /** Format: date-time */
       timestamp?: string;
     };
@@ -10269,7 +9681,8 @@ export interface components {
         | null;
     };
     "ConduitLLM.Configuration.DTOs.Audio.CreateAudioCostDto": {
-      providerType: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
+      /** Format: int32 */
+      providerId: number;
       operationType: string;
       model?: string | null;
       costUnit: string;
@@ -10286,7 +9699,7 @@ export interface components {
     };
     "ConduitLLM.Configuration.DTOs.Audio.CreateAudioProviderConfigDto": {
       /** Format: int32 */
-      providerCredentialId: number;
+      providerId: number;
       transcriptionEnabled?: boolean;
       defaultTranscriptionModel?: string | null;
       textToSpeechEnabled?: boolean;
@@ -10309,7 +9722,9 @@ export interface components {
       averageCost?: number;
     };
     "ConduitLLM.Configuration.DTOs.Audio.ProviderBreakdown": {
-      providerType?: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
+      /** Format: int32 */
+      providerId?: number;
+      providerName?: string | null;
       /** Format: int32 */
       count?: number;
       /** Format: double */
@@ -10320,7 +9735,9 @@ export interface components {
     "ConduitLLM.Configuration.DTOs.Audio.RealtimeSessionDto": {
       sessionId?: string | null;
       virtualKey?: string | null;
-      providerType?: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
+      /** Format: int32 */
+      providerId?: number;
+      providerName?: string | null;
       model?: string | null;
       state?: string | null;
       /** Format: date-time */
@@ -10367,7 +9784,8 @@ export interface components {
       averageTurnsPerSession?: number;
     };
     "ConduitLLM.Configuration.DTOs.Audio.UpdateAudioCostDto": {
-      providerType: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
+      /** Format: int32 */
+      providerId: number;
       operationType: string;
       model?: string | null;
       costUnit: string;
@@ -10384,7 +9802,7 @@ export interface components {
     };
     "ConduitLLM.Configuration.DTOs.Audio.UpdateAudioProviderConfigDto": {
       /** Format: int32 */
-      providerCredentialId: number;
+      providerId: number;
       transcriptionEnabled?: boolean;
       defaultTranscriptionModel?: string | null;
       textToSpeechEnabled?: boolean;
@@ -10404,42 +9822,6 @@ export interface components {
       count?: number;
       /** Format: double */
       totalCost?: number;
-    };
-    "ConduitLLM.Configuration.DTOs.BulkMappingError": {
-      /** Format: int32 */
-      index?: number;
-      mapping?: components["schemas"]["ConduitLLM.Configuration.DTOs.CreateModelProviderMappingDto"];
-      errorMessage?: string | null;
-      details?: string | null;
-      errorType?: components["schemas"]["ConduitLLM.Configuration.DTOs.BulkMappingErrorType"];
-    };
-    /**
-     * Format: int32
-     * @enum {integer}
-     */
-    "ConduitLLM.Configuration.DTOs.BulkMappingErrorType": 0 | 1 | 2 | 3 | 4;
-    "ConduitLLM.Configuration.DTOs.BulkModelMappingRequest": {
-      mappings: components["schemas"]["ConduitLLM.Configuration.DTOs.CreateModelProviderMappingDto"][];
-      replaceExisting?: boolean;
-      validateProviderModels?: boolean;
-    };
-    "ConduitLLM.Configuration.DTOs.BulkModelMappingResponse": {
-      created?:
-        | components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"][]
-        | null;
-      updated?:
-        | components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"][]
-        | null;
-      failed?:
-        | components["schemas"]["ConduitLLM.Configuration.DTOs.BulkMappingError"][]
-        | null;
-      /** Format: int32 */
-      totalProcessed?: number;
-      /** Format: int32 */
-      readonly successCount?: number;
-      /** Format: int32 */
-      readonly failureCount?: number;
-      readonly isSuccess?: boolean;
     };
     "ConduitLLM.Configuration.DTOs.Costs.CostDashboardDto": {
       timeFrame?: string | null;
@@ -10518,7 +9900,12 @@ export interface components {
       description?: string | null;
     };
     "ConduitLLM.Configuration.DTOs.CreateModelCostDto": {
-      modelIdPattern: string;
+      costName: string;
+      modelProviderMappingIds?: number[] | null;
+      modelType: string;
+      /** Format: int32 */
+      priority?: number;
+      description?: string | null;
       /** Format: double */
       inputTokenCost?: number;
       /** Format: double */
@@ -10553,72 +9940,12 @@ export interface components {
       /** Format: int32 */
       defaultInferenceSteps?: number | null;
     };
-    "ConduitLLM.Configuration.DTOs.CreateModelProviderMappingDto": {
-      modelId: string;
-      providerModelId: string;
-      /** Format: int32 */
-      providerId: number;
-      /** Format: int32 */
-      priority?: number;
-      isEnabled?: boolean;
-      capabilities?: string | null;
-      /** Format: int32 */
-      maxContextLength?: number | null;
-      supportsVision?: boolean;
-      supportsAudioTranscription?: boolean;
-      supportsTextToSpeech?: boolean;
-      supportsRealtimeAudio?: boolean;
-      supportsImageGeneration?: boolean;
-      supportsVideoGeneration?: boolean;
-      supportsEmbeddings?: boolean;
-      supportsChat?: boolean;
-      supportsFunctionCalling?: boolean;
-      supportsStreaming?: boolean;
-      tokenizerType?: string | null;
-      supportedVoices?: string | null;
-      supportedLanguages?: string | null;
-      supportedFormats?: string | null;
-      isDefault?: boolean;
-      defaultCapabilityType?: string | null;
-      notes?: string | null;
-    };
     "ConduitLLM.Configuration.DTOs.CreateNotificationDto": {
       /** Format: int32 */
       virtualKeyId?: number | null;
       type?: components["schemas"]["ConduitLLM.Configuration.Entities.NotificationType"];
       severity?: components["schemas"]["ConduitLLM.Configuration.Entities.NotificationSeverity"];
       message?: string | null;
-    };
-    "ConduitLLM.Configuration.DTOs.CreateProviderCredentialDto": {
-      providerType: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
-      providerName: string;
-      baseUrl?: string | null;
-      isEnabled?: boolean;
-      organization?: string | null;
-      apiKey?: string | null;
-    };
-    "ConduitLLM.Configuration.DTOs.CreateProviderHealthConfigurationDto": {
-      providerType: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
-      monitoringEnabled?: boolean;
-      /** Format: int32 */
-      checkIntervalMinutes?: number;
-      /** Format: int32 */
-      timeoutSeconds?: number;
-      /** Format: int32 */
-      consecutiveFailuresThreshold?: number;
-      notificationsEnabled?: boolean;
-      customEndpointUrl?: string | null;
-    };
-    "ConduitLLM.Configuration.DTOs.CreateProviderKeyCredentialDto": {
-      /** Format: int32 */
-      providerAccountGroup?: number;
-      apiKey?: string | null;
-      baseUrl?: string | null;
-      apiVersion?: string | null;
-      organization?: string | null;
-      isPrimary?: boolean;
-      isEnabled?: boolean;
-      keyName?: string | null;
     };
     "ConduitLLM.Configuration.DTOs.DailyUsageStatsDto": {
       /** Format: date-time */
@@ -10772,7 +10099,8 @@ export interface components {
     "ConduitLLM.Configuration.DTOs.ModelCostDto": {
       /** Format: int32 */
       id?: number;
-      modelIdPattern: string;
+      costName: string;
+      associatedModelAliases?: string[] | null;
       /** Format: double */
       inputTokenCost?: number;
       /** Format: double */
@@ -10785,6 +10113,12 @@ export interface components {
       createdAt?: string;
       /** Format: date-time */
       updatedAt?: string;
+      modelType: string;
+      isActive?: boolean;
+      /** Format: date-time */
+      effectiveDate?: string;
+      /** Format: date-time */
+      expiryDate?: string | null;
       description?: string | null;
       /** Format: int32 */
       priority?: number;
@@ -10824,43 +10158,6 @@ export interface components {
       inputTokens?: number;
       /** Format: int64 */
       outputTokens?: number;
-    };
-    "ConduitLLM.Configuration.DTOs.ModelProviderMappingDto": {
-      /** Format: int32 */
-      id?: number;
-      modelId: string;
-      providerModelId: string;
-      /** Format: int32 */
-      providerId: number;
-      providerType?: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
-      providerName?: string | null;
-      /** Format: int32 */
-      priority?: number;
-      isEnabled?: boolean;
-      capabilities?: string | null;
-      /** Format: int32 */
-      maxContextLength?: number | null;
-      supportsVision?: boolean;
-      supportsAudioTranscription?: boolean;
-      supportsTextToSpeech?: boolean;
-      supportsRealtimeAudio?: boolean;
-      supportsImageGeneration?: boolean;
-      supportsVideoGeneration?: boolean;
-      supportsEmbeddings?: boolean;
-      supportsChat?: boolean;
-      supportsFunctionCalling?: boolean;
-      supportsStreaming?: boolean;
-      tokenizerType?: string | null;
-      supportedVoices?: string | null;
-      supportedLanguages?: string | null;
-      supportedFormats?: string | null;
-      isDefault?: boolean;
-      defaultCapabilityType?: string | null;
-      /** Format: date-time */
-      createdAt?: string;
-      /** Format: date-time */
-      updatedAt?: string;
-      notes?: string | null;
     };
     "ConduitLLM.Configuration.DTOs.NotificationDto": {
       /** Format: int32 */
@@ -10913,65 +10210,6 @@ export interface components {
       /** Format: int32 */
       totalItems?: number;
     };
-    "ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto": {
-      success?: boolean;
-      message?: string | null;
-      errorDetails?: string | null;
-      providerType?: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
-      /** Format: date-time */
-      timestamp?: string;
-      /** Format: double */
-      responseTimeMs?: number | null;
-    };
-    "ConduitLLM.Configuration.DTOs.ProviderCredentialDto": {
-      /** Format: int32 */
-      id?: number;
-      providerType?: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
-      providerName?: string | null;
-      baseUrl?: string | null;
-      isEnabled?: boolean;
-      organization?: string | null;
-      /** Format: date-time */
-      createdAt?: string;
-      /** Format: date-time */
-      updatedAt?: string;
-    };
-    "ConduitLLM.Configuration.DTOs.ProviderDataDto": {
-      /** Format: int32 */
-      id?: number;
-      providerType?: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
-    };
-    "ConduitLLM.Configuration.DTOs.ProviderHealthConfigurationDto": {
-      /** Format: int32 */
-      id?: number;
-      providerType: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
-      monitoringEnabled?: boolean;
-      /** Format: int32 */
-      checkIntervalMinutes?: number;
-      /** Format: int32 */
-      timeoutSeconds?: number;
-      /** Format: int32 */
-      consecutiveFailuresThreshold?: number;
-      notificationsEnabled?: boolean;
-      customEndpointUrl?: string | null;
-      /** Format: date-time */
-      lastCheckedUtc?: string | null;
-    };
-    "ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto": {
-      /** Format: int32 */
-      id?: number;
-      providerType?: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
-      status?: components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord.StatusType"];
-      readonly isOnline?: boolean;
-      statusMessage?: string | null;
-      /** Format: date-time */
-      timestampUtc?: string;
-      /** Format: double */
-      responseTimeMs?: number;
-      errorCategory?: string | null;
-      errorDetails?: string | null;
-      endpointUrl?: string | null;
-    };
     "ConduitLLM.Configuration.DTOs.ProviderHealthStatisticsDto": {
       /** Format: int32 */
       totalProviders?: number;
@@ -10992,7 +10230,8 @@ export interface components {
       timePeriodHours?: number;
     };
     "ConduitLLM.Configuration.DTOs.ProviderHealthSummaryDto": {
-      providerType?: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
+      /** Format: int32 */
+      providerId?: number;
       status?: components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord.StatusType"];
       statusMessage?: string | null;
       /** Format: double */
@@ -11008,34 +10247,6 @@ export interface components {
       lastCheckedUtc?: string | null;
       monitoringEnabled?: boolean;
     };
-    "ConduitLLM.Configuration.DTOs.ProviderKeyCredentialDto": {
-      /** Format: int32 */
-      id?: number;
-      /** Format: int32 */
-      providerCredentialId?: number;
-      /** Format: int32 */
-      providerAccountGroup?: number;
-      apiKey?: string | null;
-      baseUrl?: string | null;
-      apiVersion?: string | null;
-      organization?: string | null;
-      isPrimary?: boolean;
-      isEnabled?: boolean;
-      keyName?: string | null;
-      /** Format: date-time */
-      createdAt?: string;
-      /** Format: date-time */
-      updatedAt?: string | null;
-    };
-    "ConduitLLM.Configuration.DTOs.TestProviderConnectionDto": {
-      providerType?: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
-      apiKey?: string | null;
-      baseUrl?: string | null;
-      organizationId?: string | null;
-      additionalConfig?: {
-        [key: string]: unknown;
-      } | null;
-    };
     "ConduitLLM.Configuration.DTOs.UpdateGlobalSettingByKeyDto": {
       key: string;
       value: string;
@@ -11050,7 +10261,13 @@ export interface components {
     "ConduitLLM.Configuration.DTOs.UpdateModelCostDto": {
       /** Format: int32 */
       id?: number;
-      modelIdPattern: string;
+      costName: string;
+      modelProviderMappingIds?: number[] | null;
+      modelType: string;
+      /** Format: int32 */
+      priority?: number;
+      description?: string | null;
+      isActive?: boolean;
       /** Format: double */
       inputTokenCost?: number;
       /** Format: double */
@@ -11090,37 +10307,6 @@ export interface components {
       id?: number;
       isRead?: boolean;
       message?: string | null;
-    };
-    "ConduitLLM.Configuration.DTOs.UpdateProviderCredentialDto": {
-      /** Format: int32 */
-      id: number;
-      providerName?: string | null;
-      baseUrl?: string | null;
-      isEnabled?: boolean;
-      organization?: string | null;
-    };
-    "ConduitLLM.Configuration.DTOs.UpdateProviderHealthConfigurationDto": {
-      /** Format: int32 */
-      id?: number;
-      monitoringEnabled?: boolean;
-      /** Format: int32 */
-      checkIntervalMinutes?: number;
-      /** Format: int32 */
-      timeoutSeconds?: number;
-      /** Format: int32 */
-      consecutiveFailuresThreshold?: number;
-      notificationsEnabled?: boolean;
-      customEndpointUrl?: string | null;
-    };
-    "ConduitLLM.Configuration.DTOs.UpdateProviderKeyCredentialDto": {
-      /** Format: int32 */
-      id?: number;
-      apiKey?: string | null;
-      baseUrl?: string | null;
-      apiVersion?: string | null;
-      organization?: string | null;
-      isEnabled?: boolean;
-      keyName?: string | null;
     };
     "ConduitLLM.Configuration.DTOs.VirtualKey.BudgetCheckResult": {
       wasReset?: boolean;
@@ -11240,6 +10426,108 @@ export interface components {
       /** Format: int32 */
       count?: number;
     };
+    "ConduitLLM.Configuration.Entities.ModelCost": {
+      /** Format: int32 */
+      id?: number;
+      costName: string;
+      /** Format: double */
+      inputTokenCost?: number;
+      /** Format: double */
+      outputTokenCost?: number;
+      /** Format: double */
+      embeddingTokenCost?: number | null;
+      /** Format: double */
+      imageCostPerImage?: number | null;
+      /** Format: date-time */
+      createdAt?: string;
+      /** Format: date-time */
+      updatedAt?: string;
+      modelType: string;
+      isActive?: boolean;
+      /** Format: date-time */
+      effectiveDate?: string;
+      /** Format: date-time */
+      expiryDate?: string | null;
+      description?: string | null;
+      /** Format: int32 */
+      priority?: number;
+      /** Format: double */
+      audioCostPerMinute?: number | null;
+      /** Format: double */
+      audioCostPerKCharacters?: number | null;
+      /** Format: double */
+      audioInputCostPerMinute?: number | null;
+      /** Format: double */
+      audioOutputCostPerMinute?: number | null;
+      /** Format: double */
+      videoCostPerSecond?: number | null;
+      videoResolutionMultipliers?: string | null;
+      /** Format: double */
+      batchProcessingMultiplier?: number | null;
+      supportsBatchProcessing?: boolean;
+      imageQualityMultipliers?: string | null;
+      /** Format: double */
+      cachedInputTokenCost?: number | null;
+      /** Format: double */
+      cachedInputWriteCost?: number | null;
+      /** Format: double */
+      costPerSearchUnit?: number | null;
+      /** Format: double */
+      costPerInferenceStep?: number | null;
+      /** Format: int32 */
+      defaultInferenceSteps?: number | null;
+      modelCostMappings?:
+        | components["schemas"]["ConduitLLM.Configuration.Entities.ModelCostMapping"][]
+        | null;
+    };
+    "ConduitLLM.Configuration.Entities.ModelCostMapping": {
+      /** Format: int32 */
+      id?: number;
+      /** Format: int32 */
+      modelCostId?: number;
+      modelCost?: components["schemas"]["ConduitLLM.Configuration.Entities.ModelCost"];
+      /** Format: int32 */
+      modelProviderMappingId?: number;
+      modelProviderMapping?: components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"];
+      /** Format: date-time */
+      createdAt?: string;
+      isActive?: boolean;
+    };
+    "ConduitLLM.Configuration.Entities.ModelProviderMapping": {
+      /** Format: int32 */
+      id?: number;
+      modelAlias: string;
+      providerModelId: string;
+      /** Format: int32 */
+      providerId?: number;
+      provider?: components["schemas"]["ConduitLLM.Configuration.Entities.Provider"];
+      isEnabled?: boolean;
+      /** Format: int32 */
+      maxContextTokens?: number | null;
+      /** Format: date-time */
+      createdAt?: string;
+      /** Format: date-time */
+      updatedAt?: string;
+      supportsVision?: boolean;
+      supportsAudioTranscription?: boolean;
+      supportsTextToSpeech?: boolean;
+      supportsRealtimeAudio?: boolean;
+      supportsImageGeneration?: boolean;
+      supportsVideoGeneration?: boolean;
+      supportsEmbeddings?: boolean;
+      supportsChat?: boolean;
+      supportsFunctionCalling?: boolean;
+      supportsStreaming?: boolean;
+      tokenizerType?: string | null;
+      supportedVoices?: string | null;
+      supportedLanguages?: string | null;
+      supportedFormats?: string | null;
+      isDefault?: boolean;
+      defaultCapabilityType?: string | null;
+      modelCostMappings?:
+        | components["schemas"]["ConduitLLM.Configuration.Entities.ModelCostMapping"][]
+        | null;
+    };
     /**
      * Format: int32
      * @enum {integer}
@@ -11250,6 +10538,56 @@ export interface components {
      * @enum {integer}
      */
     "ConduitLLM.Configuration.Entities.NotificationType": 0 | 1 | 2;
+    "ConduitLLM.Configuration.Entities.Provider": {
+      /** Format: int32 */
+      id?: number;
+      providerType: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
+      providerName: string;
+      baseUrl?: string | null;
+      isEnabled?: boolean;
+      /** Format: date-time */
+      createdAt?: string;
+      /** Format: date-time */
+      updatedAt?: string;
+      providerKeyCredentials?:
+        | components["schemas"]["ConduitLLM.Configuration.Entities.ProviderKeyCredential"][]
+        | null;
+    };
+    "ConduitLLM.Configuration.Entities.ProviderHealthConfiguration": {
+      /** Format: int32 */
+      id?: number;
+      /** Format: int32 */
+      providerId?: number;
+      provider?: components["schemas"]["ConduitLLM.Configuration.Entities.Provider"];
+      monitoringEnabled?: boolean;
+      /** Format: int32 */
+      checkIntervalMinutes?: number;
+      /** Format: int32 */
+      timeoutSeconds?: number;
+      /** Format: int32 */
+      consecutiveFailuresThreshold?: number;
+      notificationsEnabled?: boolean;
+      customEndpointUrl?: string | null;
+      /** Format: date-time */
+      lastCheckedUtc?: string | null;
+    };
+    "ConduitLLM.Configuration.Entities.ProviderHealthRecord": {
+      /** Format: int32 */
+      id?: number;
+      /** Format: int32 */
+      providerId?: number;
+      provider?: components["schemas"]["ConduitLLM.Configuration.Entities.Provider"];
+      status?: components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord.StatusType"];
+      isOnline?: boolean;
+      statusMessage?: string | null;
+      /** Format: date-time */
+      timestampUtc?: string;
+      /** Format: double */
+      responseTimeMs?: number;
+      errorCategory?: string | null;
+      errorDetails?: string | null;
+      endpointUrl?: string | null;
+    };
     /**
      * Format: int32
      * @enum {integer}
@@ -11258,6 +10596,25 @@ export interface components {
       | 0
       | 1
       | 2;
+    "ConduitLLM.Configuration.Entities.ProviderKeyCredential": {
+      /** Format: int32 */
+      id?: number;
+      /** Format: int32 */
+      providerId: number;
+      provider?: components["schemas"]["ConduitLLM.Configuration.Entities.Provider"];
+      /** Format: int32 */
+      providerAccountGroup?: number;
+      apiKey?: string | null;
+      baseUrl?: string | null;
+      organization?: string | null;
+      keyName?: string | null;
+      isPrimary?: boolean;
+      isEnabled?: boolean;
+      /** Format: date-time */
+      createdAt?: string;
+      /** Format: date-time */
+      updatedAt?: string;
+    };
     /**
      * Format: int32
      * @enum {integer}
@@ -11285,32 +10642,6 @@ export interface components {
       | 20
       | 21
       | 22;
-    "ConduitLLM.Core.Interfaces.AuthField": {
-      name?: string | null;
-      displayName?: string | null;
-      required?: boolean;
-      type?: components["schemas"]["ConduitLLM.Core.Interfaces.AuthFieldType"];
-      validationPattern?: string | null;
-      helpText?: string | null;
-    };
-    /**
-     * Format: int32
-     * @enum {integer}
-     */
-    "ConduitLLM.Core.Interfaces.AuthFieldType": 0 | 1 | 2 | 3;
-    "ConduitLLM.Core.Interfaces.AuthenticationRequirements": {
-      requiresApiKey?: boolean;
-      supportsOAuth?: boolean;
-      customFields?:
-        | components["schemas"]["ConduitLLM.Core.Interfaces.AuthField"][]
-        | null;
-      apiKeyHeaderName?: string | null;
-    };
-    "ConduitLLM.Core.Interfaces.ConfigurationTip": {
-      title?: string | null;
-      description?: string | null;
-      severity?: components["schemas"]["ConduitLLM.Core.Interfaces.TipSeverity"];
-    };
     "ConduitLLM.Core.Interfaces.DiscoveredModel": {
       modelId: string | null;
       provider: string | null;
@@ -11341,85 +10672,6 @@ export interface components {
       supportedVideoResolutions?: string[] | null;
       /** Format: int32 */
       maxVideoDurationSeconds?: number | null;
-    };
-    "ConduitLLM.Core.Interfaces.ProviderConfigurationHints": {
-      documentationUrl?: string | null;
-      exampleValues?: {
-        [key: string]: string;
-      } | null;
-      tips?:
-        | components["schemas"]["ConduitLLM.Core.Interfaces.ConfigurationTip"][]
-        | null;
-      requiresSpecialSetup?: boolean;
-      setupInstructions?: string | null;
-    };
-    "ConduitLLM.Core.Interfaces.ProviderRegistryDiagnostics": {
-      /** Format: int32 */
-      totalProviders?: number;
-      registeredProviders?: string[] | null;
-      providersByCapability?: {
-        [key: string]: string[];
-      } | null;
-      registrationErrors?: string[] | null;
-      /** Format: date-time */
-      generatedAt?: string;
-    };
-    /**
-     * Format: int32
-     * @enum {integer}
-     */
-    "ConduitLLM.Core.Interfaces.TipSeverity": 0 | 1 | 2;
-    "ConduitLLM.Core.Models.ChatParameterSupport": {
-      temperature?: boolean;
-      maxTokens?: boolean;
-      topP?: boolean;
-      topK?: boolean;
-      stop?: boolean;
-      presencePenalty?: boolean;
-      frequencyPenalty?: boolean;
-      logitBias?: boolean;
-      n?: boolean;
-      user?: boolean;
-      seed?: boolean;
-      responseFormat?: boolean;
-      tools?: boolean;
-      constraints?: components["schemas"]["ConduitLLM.Core.Models.ParameterConstraints"];
-    };
-    "ConduitLLM.Core.Models.FeatureSupport": {
-      streaming?: boolean;
-      embeddings?: boolean;
-      imageGeneration?: boolean;
-      visionInput?: boolean;
-      functionCalling?: boolean;
-      audioTranscription?: boolean;
-      textToSpeech?: boolean;
-    };
-    "ConduitLLM.Core.Models.ParameterConstraints": {
-      temperatureRange?: components["schemas"]["ConduitLLM.Core.Models.Range`1[[System.Double, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]"];
-      topPRange?: components["schemas"]["ConduitLLM.Core.Models.Range`1[[System.Double, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]"];
-      topKRange?: components["schemas"]["ConduitLLM.Core.Models.Range`1[[System.Int32, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]"];
-      /** Format: int32 */
-      maxStopSequences?: number | null;
-      /** Format: int32 */
-      maxTokenLimit?: number | null;
-    };
-    "ConduitLLM.Core.Models.ProviderCapabilities": {
-      provider?: string | null;
-      modelId?: string | null;
-      chatParameters?: components["schemas"]["ConduitLLM.Core.Models.ChatParameterSupport"];
-      features?: components["schemas"]["ConduitLLM.Core.Models.FeatureSupport"];
-    };
-    "ConduitLLM.Core.Models.Range`1[[System.Double, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]": {
-      /** Format: double */
-      min?: number;
-      /** Format: double */
-      max?: number;
-    };
-    "ConduitLLM.Core.Models.Range`1[[System.Int32, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]": {
-      /** Format: int32 */
-      min?: number;
-      /** Format: int32 */
-      max?: number;
     };
     "ConduitLLM.Core.Models.Routing.FallbackConfiguration": {
       /** Format: uuid */

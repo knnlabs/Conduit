@@ -14,28 +14,23 @@ namespace ConduitLLM.Core.Routing
 {
     /// <summary>
     /// Default implementation of the audio router for routing audio requests to appropriate providers.
+    /// Uses Provider IDs and database queries instead of hardcoded provider lists.
     /// </summary>
     public class AudioRouter : IAudioRouter
     {
         private readonly ILLMClientFactory _clientFactory;
-        private readonly IAudioCapabilityDetector _capabilityDetector;
-        private readonly IVirtualKeyService _virtualKeyService;
-        private readonly IProviderCredentialService _providerCredentialService;
         private readonly ILogger<AudioRouter> _logger;
-        private readonly Dictionary<string, AudioRoutingStatistics> _statistics = new();
+        private readonly IModelProviderMappingService _modelMappingService;
+        private readonly Dictionary<int, AudioRoutingStatistics> _statistics = new();
 
         public AudioRouter(
             ILLMClientFactory clientFactory,
-            IAudioCapabilityDetector capabilityDetector,
-            IVirtualKeyService virtualKeyService,
-            IProviderCredentialService providerCredentialService,
-            ILogger<AudioRouter> logger)
+            ILogger<AudioRouter> logger,
+            IModelProviderMappingService modelMappingService)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
-            _capabilityDetector = capabilityDetector ?? throw new ArgumentNullException(nameof(capabilityDetector));
-            _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
-            _providerCredentialService = providerCredentialService ?? throw new ArgumentNullException(nameof(providerCredentialService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _modelMappingService = modelMappingService ?? throw new ArgumentNullException(nameof(modelMappingService));
         }
 
         public async Task<IAudioTranscriptionClient?> GetTranscriptionClientAsync(
@@ -45,69 +40,45 @@ namespace ConduitLLM.Core.Routing
         {
             try
             {
-                // Validate virtual key
-                var keyEntity = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKey);
-                if (keyEntity == null)
+                if (string.IsNullOrEmpty(request.Model))
                 {
-                    _logger.LogWarning("Invalid virtual key provided for audio transcription");
+                    _logger.LogWarning("No model specified in transcription request");
                     return null;
                 }
 
-                // Get available providers
-                var providers = GetAvailableProviders();
-
-                // Find providers that support transcription
-                var transcriptionProviders = providers
-                    .Where(p => _capabilityDetector.SupportsTranscription(p))
-                    .ToList();
-
-                if (!transcriptionProviders.Any())
+                // Use the canonical model mapping approach
+                var modelMapping = await _modelMappingService.GetMappingByModelAliasAsync(request.Model);
+                if (modelMapping == null)
                 {
-                    _logger.LogWarning("No transcription providers available");
+                    _logger.LogWarning("No model mapping found for transcription model: {Model}", request.Model);
                     return null;
                 }
 
-                // Use capability detector to recommend best provider
-                var selectedProvider = _capabilityDetector.RecommendProvider(request, transcriptionProviders);
-                if (selectedProvider == null)
-                {
-                    selectedProvider = transcriptionProviders.First();
-                }
-
-                // Map provider name to ID - temporary solution
-                var providerId = GetProviderIdFromName(selectedProvider);
-                if (providerId == null)
-                {
-                    _logger.LogWarning("Unknown provider name: {Provider}", selectedProvider);
-                    return null;
-                }
-
-                // Get credentials by ID
-                var credentials = await _providerCredentialService.GetCredentialByIdAsync(providerId.Value);
-                if (credentials == null || !credentials.IsEnabled)
-                {
-                    _logger.LogWarning("Provider {Provider} credentials not found or disabled", selectedProvider);
-                    return null;
-                }
-
-                // Get the client by provider ID
-                var client = _clientFactory.GetClientByProviderId(providerId.Value);
-
-                // Verify it implements audio interface
+                // Get the client using the standard factory method (which uses model alias)
+                var client = _clientFactory.GetClient(request.Model);
+                
                 if (client is IAudioTranscriptionClient audioClient)
                 {
-                    _logger.LogInformation("Routed transcription request to provider: {Provider} (ID: {ProviderId})", 
-                        selectedProvider, credentials.ProviderId);
+                    // Update the request to use the provider's model ID
+                    request.Model = modelMapping.ProviderModelId;
+                    
+                    _logger.LogInformation(
+                        "Routed transcription request to provider: {ProviderId} for model: {Model}", 
+                        modelMapping.ProviderId, 
+                        modelMapping.ModelAlias);
+
+                    UpdateStatistics(modelMapping.ProviderId);
                     return audioClient;
                 }
 
-                _logger.LogWarning("Provider {Provider} does not implement IAudioTranscriptionClient", selectedProvider);
+                _logger.LogWarning("Client for model {Model} does not implement IAudioTranscriptionClient", 
+                    modelMapping.ModelAlias);
                 return null;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error routing transcription request");
-                throw;
+                return null;
             }
         }
 
@@ -118,70 +89,45 @@ namespace ConduitLLM.Core.Routing
         {
             try
             {
-                // Validate virtual key
-                var keyEntity = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKey);
-                if (keyEntity == null)
+                if (string.IsNullOrEmpty(request.Model))
                 {
-                    _logger.LogWarning("Invalid virtual key provided for TTS");
+                    _logger.LogWarning("No model specified in TTS request");
                     return null;
                 }
 
-                // Get available providers
-                var providers = GetAvailableProviders();
-
-                // Find providers that support TTS and the requested voice
-                var ttsProviders = providers
-                    .Where(p => _capabilityDetector.SupportsTextToSpeech(p))
-                    .Where(p => _capabilityDetector.SupportsVoice(p, request.Voice))
-                    .ToList();
-
-                if (!ttsProviders.Any())
+                // Use the canonical model mapping approach
+                var modelMapping = await _modelMappingService.GetMappingByModelAliasAsync(request.Model);
+                if (modelMapping == null)
                 {
-_logger.LogWarning("No TTS providers available for voice: {Voice}", request.Voice.Replace(Environment.NewLine, ""));
+                    _logger.LogWarning("No model mapping found for TTS model: {Model}", request.Model);
                     return null;
                 }
 
-                // Use capability detector to recommend best provider
-                var selectedProvider = _capabilityDetector.RecommendProvider(request, ttsProviders);
-                if (selectedProvider == null)
-                {
-                    selectedProvider = ttsProviders.First();
-                }
-
-                // Map provider name to ID - temporary solution
-                var providerId = GetProviderIdFromName(selectedProvider);
-                if (providerId == null)
-                {
-                    _logger.LogWarning("Unknown provider name: {Provider}", selectedProvider);
-                    return null;
-                }
-
-                // Get credentials by ID
-                var credentials = await _providerCredentialService.GetCredentialByIdAsync(providerId.Value);
-                if (credentials == null || !credentials.IsEnabled)
-                {
-                    _logger.LogWarning("Provider {Provider} credentials not found or disabled", selectedProvider);
-                    return null;
-                }
-
-                // Get the client by provider ID
-                var client = _clientFactory.GetClientByProviderId(providerId.Value);
-
-                // Verify it implements audio interface
+                // Get the client using the standard factory method (which uses model alias)
+                var client = _clientFactory.GetClient(request.Model);
+                
                 if (client is ITextToSpeechClient ttsClient)
                 {
-                    _logger.LogInformation("Routed TTS request to provider: {Provider} (ID: {ProviderId})", 
-                        selectedProvider, credentials.ProviderId);
+                    // Update the request to use the provider's model ID
+                    request.Model = modelMapping.ProviderModelId;
+                    
+                    _logger.LogInformation(
+                        "Routed TTS request to provider: {ProviderId} for model: {Model}", 
+                        modelMapping.ProviderId, 
+                        modelMapping.ModelAlias);
+
+                    UpdateStatistics(modelMapping.ProviderId);
                     return ttsClient;
                 }
 
-                _logger.LogWarning("Provider {Provider} does not implement ITextToSpeechClient", selectedProvider);
+                _logger.LogWarning("Client for model {Model} does not implement ITextToSpeechClient", 
+                    modelMapping.ModelAlias);
                 return null;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error routing TTS request");
-                throw;
+                return null;
             }
         }
 
@@ -192,99 +138,91 @@ _logger.LogWarning("No TTS providers available for voice: {Voice}", request.Voic
         {
             try
             {
-                // Validate virtual key
-                var keyEntity = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKey);
-                if (keyEntity == null)
+                if (string.IsNullOrEmpty(config.Model))
                 {
-                    _logger.LogWarning("Invalid virtual key provided for real-time audio");
+                    _logger.LogWarning("No model specified in real-time config");
                     return null;
                 }
 
-                // Get available providers
-                var providers = GetAvailableProviders();
-
-                // Find providers that support real-time
-                var realtimeProviders = providers
-                    .Where(p => _capabilityDetector.SupportsRealtime(p))
-                    .Where(p => _capabilityDetector.SupportsVoice(p, config.Voice))
-                    .ToList();
-
-                if (!realtimeProviders.Any())
+                // Use the canonical model mapping approach
+                var modelMapping = await _modelMappingService.GetMappingByModelAliasAsync(config.Model);
+                if (modelMapping == null)
                 {
-                    _logger.LogWarning("No real-time providers available");
+                    _logger.LogWarning("No model mapping found for real-time model: {Model}", config.Model);
                     return null;
                 }
 
-                var selectedProvider = realtimeProviders.First();
-
-                // Map provider name to ID - temporary solution
-                var providerId = GetProviderIdFromName(selectedProvider);
-                if (providerId == null)
-                {
-                    _logger.LogWarning("Unknown provider name: {Provider}", selectedProvider);
-                    return null;
-                }
-
-                // Get credentials by ID
-                var credentials = await _providerCredentialService.GetCredentialByIdAsync(providerId.Value);
-                if (credentials == null || !credentials.IsEnabled)
-                {
-                    _logger.LogWarning("Provider {Provider} credentials not found or disabled", selectedProvider);
-                    return null;
-                }
-
-                // Get the client by provider ID
-                var client = _clientFactory.GetClientByProviderId(providerId.Value);
-
-                // Verify it implements real-time interface
+                // Get the client using the standard factory method (which uses model alias)
+                var client = _clientFactory.GetClient(config.Model);
+                
                 if (client is IRealtimeAudioClient realtimeClient)
                 {
-                    _logger.LogInformation("Routed real-time session to provider: {Provider} (ID: {ProviderId})", 
-                        selectedProvider, credentials.ProviderId);
+                    // Update the config to use the provider's model ID
+                    config.Model = modelMapping.ProviderModelId;
+                    
+                    _logger.LogInformation(
+                        "Routed real-time session to provider: {ProviderId} for model: {Model}", 
+                        modelMapping.ProviderId, 
+                        modelMapping.ModelAlias);
+
+                    UpdateStatistics(modelMapping.ProviderId);
                     return realtimeClient;
                 }
 
-                _logger.LogWarning("Provider {Provider} does not implement IRealtimeAudioClient", selectedProvider);
+                _logger.LogWarning("Client for model {Model} does not implement IRealtimeAudioClient", 
+                    modelMapping.ModelAlias);
                 return null;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error routing real-time request");
-                throw;
+                return null;
             }
         }
 
-        public Task<List<string>> GetAvailableTranscriptionProvidersAsync(
+        public async Task<List<string>> GetAvailableTranscriptionProvidersAsync(
             string virtualKey,
             CancellationToken cancellationToken = default)
         {
-            var providers = GetAvailableProviders()
-                .Where(p => _capabilityDetector.SupportsTranscription(p))
+            // Get all model mappings that support transcription
+            var allMappings = await _modelMappingService.GetAllMappingsAsync();
+            var transcriptionModels = allMappings
+                .Where(m => m.SupportsAudioTranscription)
+                .Select(m => m.ModelAlias)
+                .Distinct()
                 .ToList();
 
-            return Task.FromResult(providers);
+            return transcriptionModels;
         }
 
-        public Task<List<string>> GetAvailableTextToSpeechProvidersAsync(
+        public async Task<List<string>> GetAvailableTextToSpeechProvidersAsync(
             string virtualKey,
             CancellationToken cancellationToken = default)
         {
-            var providers = GetAvailableProviders()
-                .Where(p => _capabilityDetector.SupportsTextToSpeech(p))
+            // Get all model mappings that support TTS
+            var allMappings = await _modelMappingService.GetAllMappingsAsync();
+            var ttsModels = allMappings
+                .Where(m => m.SupportsTextToSpeech)
+                .Select(m => m.ModelAlias)
+                .Distinct()
                 .ToList();
 
-            return Task.FromResult(providers);
+            return ttsModels;
         }
 
-        public Task<List<string>> GetAvailableRealtimeProvidersAsync(
+        public async Task<List<string>> GetAvailableRealtimeProvidersAsync(
             string virtualKey,
             CancellationToken cancellationToken = default)
         {
-            var providers = GetAvailableProviders()
-                .Where(p => _capabilityDetector.SupportsRealtime(p))
+            // Get all model mappings that support real-time audio
+            var allMappings = await _modelMappingService.GetAllMappingsAsync();
+            var realtimeModels = allMappings
+                .Where(m => m.SupportsRealtimeAudio)
+                .Select(m => m.ModelAlias)
+                .Distinct()
                 .ToList();
 
-            return Task.FromResult(providers);
+            return realtimeModels;
         }
 
         public bool ValidateAudioOperation(
@@ -293,7 +231,8 @@ _logger.LogWarning("No TTS providers available for voice: {Voice}", request.Voic
             AudioRequestBase request,
             out string errorMessage)
         {
-            return _capabilityDetector.ValidateAudioRequest(request, provider, out errorMessage);
+            errorMessage = "Provider-based validation not implemented in refactored AudioRouter";
+            return false;
         }
 
         public Task<AudioRoutingStatistics> GetRoutingStatisticsAsync(
@@ -302,49 +241,40 @@ _logger.LogWarning("No TTS providers available for voice: {Voice}", request.Voic
         {
             lock (_statistics)
             {
-                if (_statistics.TryGetValue(virtualKey, out var stats))
+                var combinedStats = new AudioRoutingStatistics();
+                if (_statistics.Any())
                 {
-                    return Task.FromResult(stats);
+                    combinedStats.TranscriptionRequests = _statistics.Values.Sum(s => s.TranscriptionRequests);
+                    combinedStats.TextToSpeechRequests = _statistics.Values.Sum(s => s.TextToSpeechRequests);
+                    combinedStats.RealtimeSessions = _statistics.Values.Sum(s => s.RealtimeSessions);
+                    combinedStats.TotalRequests = _statistics.Values.Sum(s => s.TotalRequests);
+                    combinedStats.FailedRoutingAttempts = _statistics.Values.Sum(s => s.FailedRoutingAttempts);
+                    combinedStats.LastUpdated = DateTime.UtcNow;
                 }
 
-                return Task.FromResult(new AudioRoutingStatistics());
+                return Task.FromResult(combinedStats);
             }
         }
 
-        private List<string> GetAvailableProviders()
-        {
-            // Hardcoded for now - in reality this would come from configuration
-            return new List<string> { "openai", "azure" };
-        }
 
-        private int? GetProviderIdFromName(string providerName)
+        /// <summary>
+        /// Updates routing statistics for a provider.
+        /// </summary>
+        private void UpdateStatistics(int providerId)
         {
-            // Map provider names to IDs based on ProviderType enum
-            return providerName?.ToLowerInvariant() switch
+            lock (_statistics)
             {
-                "openai" => 1,
-                "anthropic" => 2,
-                "azure" or "azureopenai" => 3,
-                "gemini" => 4,
-                "vertexai" => 5,
-                "cohere" => 6,
-                "mistral" => 7,
-                "groq" => 8,
-                "ollama" => 9,
-                "replicate" => 10,
-                "fireworks" => 11,
-                "bedrock" => 12,
-                "huggingface" => 13,
-                "sagemaker" => 14,
-                "openrouter" => 15,
-                "openaicompatible" => 16,
-                "minimax" => 17,
-                "ultravox" => 18,
-                "elevenlabs" => 19,
-                "google" or "googlecloud" => 20,
-                "cerebras" => 21,
-                _ => null
-            };
+                if (!_statistics.ContainsKey(providerId))
+                {
+                    _statistics[providerId] = new AudioRoutingStatistics
+                    {
+                        LastUpdated = DateTime.UtcNow
+                    };
+                }
+
+                _statistics[providerId].TotalRequests++;
+                _statistics[providerId].LastUpdated = DateTime.UtcNow;
+            }
         }
     }
 }

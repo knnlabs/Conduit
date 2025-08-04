@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useVideoStore } from '../hooks/useVideoStore';
 import { useVideoGeneration } from '../hooks/useVideoGeneration';
 import { canRetry, type VideoTask } from '../types';
+import { TimeDisplay } from '@/components/common/TimeDisplay';
 
 // Retry button component
 function RetryButton({ task, onRetry }: { task: VideoTask; onRetry: (task: VideoTask) => Promise<void> }) {
@@ -107,7 +108,7 @@ export default function VideoQueue() {
                   {currentTask.retryHistory.map((retry) => (
                     <li key={`${retry.attemptNumber}-${retry.timestamp}`}>
                       Attempt {retry.attemptNumber}: {retry.error} 
-                      <span className="retry-timestamp"> ({new Date(retry.timestamp).toLocaleTimeString()})</span>
+                      <span className="retry-timestamp"> (<TimeDisplay date={retry.timestamp} />)</span>
                     </li>
                   ))}
                 </ul>

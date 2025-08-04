@@ -220,7 +220,7 @@ This guide helps diagnose and resolve common routing system issues.
 - Circuit breaker activations
 
 **Possible Causes:**
-1. **Provider Overload**: Providers at capacity limits
+1. **Provider Overload**: Provider at capacity limits
 2. **Network Problems**: Connectivity issues
 3. **Configuration Errors**: Incorrect provider settings
 4. **Rate Limiting**: Hitting provider rate limits

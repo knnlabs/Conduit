@@ -100,8 +100,7 @@ namespace ConduitLLM.Core.Services.BatchOperations
                     Data = new
                     {
                         VirtualKeyId = item.VirtualKeyId,
-                        Amount = item.Amount,
-                        NewTotal = virtualKey.CurrentSpend + item.Amount
+                        Amount = item.Amount
                     }
                 };
             }

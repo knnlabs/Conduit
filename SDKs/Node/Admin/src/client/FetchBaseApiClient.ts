@@ -239,7 +239,7 @@ export abstract class FetchBaseApiClient {
   private buildHeaders(additionalHeaders?: Record<string, string>): Record<string, string> {
     return {
       [HTTP_HEADERS.CONTENT_TYPE]: CONTENT_TYPES.JSON,
-      [HTTP_HEADERS.X_API_KEY]: this.masterKey,
+      'X-Master-Key': this.masterKey,
       [HTTP_HEADERS.USER_AGENT]: CLIENT_INFO.USER_AGENT,
       ...this.defaultHeaders,
       ...additionalHeaders,

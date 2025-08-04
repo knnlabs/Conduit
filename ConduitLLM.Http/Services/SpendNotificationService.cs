@@ -93,7 +93,7 @@ namespace ConduitLLM.Http.Services
                     Budget = budget,
                     BudgetPercentage = budgetPercentage,
                     Model = model,
-                    ProviderType = Enum.TryParse<ProviderType>(provider, true, out var providerType) ? providerType : ProviderType.OpenAI,
+                    Provider = provider, // Use provider name directly instead of ProviderType
                     Metadata = new RequestMetadata
                     {
                         RequestId = Guid.NewGuid().ToString(),

@@ -6,7 +6,7 @@ interface BulkCreateRequest {
   models: Array<{
     modelId: string;
     displayName: string;
-    providerId: string;
+    providerId: string | number;
     capabilities: {
       supportsVision: boolean;
       supportsImageGeneration: boolean;
@@ -33,8 +33,6 @@ export async function POST(req: NextRequest) {
     const adminClient = getServerAdminClient();
     const body = await req.json() as BulkCreateRequest;
     
-    console.warn('[Bulk Create] Request received with', body.models?.length || 0, 'models');
-    console.warn('[Bulk Create] First model data:', JSON.stringify(body.models?.[0], null, 2));
     
     if (!body.models || body.models.length === 0) {
       return NextResponse.json(
@@ -43,11 +41,21 @@ export async function POST(req: NextRequest) {
       );
     }
     
+    // Validate provider IDs
+    for (const model of body.models) {
+      const providerId = typeof model.providerId === 'number' ? model.providerId : parseInt(model.providerId, 10);
+      if (isNaN(providerId) || providerId <= 0) {
+        return NextResponse.json(
+          { error: `Invalid provider ID for model ${model.modelId}: ${model.providerId}` },
+          { status: 400 }
+        );
+      }
+    }
     
     // Use the SDK's bulkCreate method for better performance and proper error handling
     const mappings = body.models.map(model => ({
       modelId: model.modelId,
-      providerId: parseInt(model.providerId, 10), // Convert to number as SDK now expects number
+      providerId: typeof model.providerId === 'number' ? model.providerId : parseInt(model.providerId, 10),
       providerModelId: model.modelId,
       isEnabled: body.enableByDefault ?? true,
       priority: body.defaultPriority ?? 50,
@@ -80,27 +88,21 @@ export async function POST(req: NextRequest) {
       replaceExisting: false
     };
     
-    console.warn('[Bulk Create] Calling SDK bulkCreate with', mappings.length, 'mappings');
-    console.warn('[Bulk Create] First mapping:', JSON.stringify(mappings[0], null, 2));
-    
     const bulkResponse = await adminClient.modelMappings.bulkCreate(bulkRequest);
     
-    console.warn('[Bulk Create] Response received:', {
-      created: bulkResponse.created.length,
-      failed: bulkResponse.failed.length,
-      failedDetails: bulkResponse.failed
-    });
+    // Response summary available for debugging if needed
     
     // Return detailed results matching the expected format
     return NextResponse.json({
       success: true,
-      created: bulkResponse.created.length,
-      failed: bulkResponse.failed.length,
+      created: bulkResponse.successCount,
+      failed: bulkResponse.failureCount,
       details: {
         created: bulkResponse.created,
-        failed: bulkResponse.failed.map(f => ({
-          modelId: f.mapping.modelId,
-          error: f.error || 'Unknown error'
+        failed: bulkResponse.errors.map((error, index) => ({
+          modelId: body.models[index]?.modelId || 'unknown',
+          error: error,
+          providerId: body.models[index]?.providerId || 0
         }))
       }
     });

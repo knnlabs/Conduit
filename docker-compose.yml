@@ -75,6 +75,13 @@ services:
       Logging__LogLevel__ConduitLLM__Providers__MiniMaxClient: "Debug"
       # Configure the public base URL for media storage
       CONDUITLLM__MEDIA_BASE_URL: http://localhost:5000
+      # MinIO S3 configuration (optional - use environment variables to enable)
+      CONDUIT_MEDIA_STORAGE_TYPE: "${CONDUIT_MEDIA_STORAGE_TYPE:-InMemory}"
+      CONDUIT_S3_ENDPOINT: "${CONDUIT_S3_ENDPOINT:-http://minio:9000}"
+      CONDUIT_S3_ACCESS_KEY: "${CONDUIT_S3_ACCESS_KEY:-minioadmin}"
+      CONDUIT_S3_SECRET_KEY: "${CONDUIT_S3_SECRET_KEY:-minioadmin123}"
+      CONDUIT_S3_BUCKET_NAME: "${CONDUIT_S3_BUCKET_NAME:-conduit-media}"
+      CONDUIT_S3_REGION: "${CONDUIT_S3_REGION:-us-east-1}"
       # RabbitMQ configuration
       CONDUITLLM__RABBITMQ__HOST: rabbitmq
       CONDUITLLM__RABBITMQ__PORT: 5672
@@ -83,6 +90,11 @@ services:
       CONDUITLLM__RABBITMQ__VHOST: /
       CONDUITLLM__RABBITMQ__PREFETCHCOUNT: 10
       CONDUITLLM__RABBITMQ__PARTITIONCOUNT: 10
+      # Batch Cache Invalidation configuration
+      CacheInvalidation__BatchingEnabled: "true"
+      CacheInvalidation__BatchWindow: "00:00:00.100"  # 100ms
+      CacheInvalidation__MaxBatchSize: "100"
+      CacheInvalidation__EnableCoalescing: "true"
       # Health monitoring configuration - API endpoint checks
       HealthMonitoring__ApiEndpoints__0__Name: AdminAPI
       HealthMonitoring__ApiEndpoints__0__Url: http://admin:8080/health
@@ -124,6 +136,18 @@ services:
       CONDUITLLM__RABBITMQ__USERNAME: conduit
       CONDUITLLM__RABBITMQ__PASSWORD: conduitpass
       CONDUITLLM__RABBITMQ__VHOST: /
+      # Batch Cache Invalidation configuration
+      CacheInvalidation__BatchingEnabled: "true"
+      CacheInvalidation__BatchWindow: "00:00:00.100"  # 100ms
+      CacheInvalidation__MaxBatchSize: "100"
+      CacheInvalidation__EnableCoalescing: "true"
+      # MinIO S3 configuration (optional - use environment variables to enable)
+      CONDUIT_MEDIA_STORAGE_TYPE: "${CONDUIT_MEDIA_STORAGE_TYPE:-InMemory}"
+      CONDUIT_S3_ENDPOINT: "${CONDUIT_S3_ENDPOINT:-http://minio:9000}"
+      CONDUIT_S3_ACCESS_KEY: "${CONDUIT_S3_ACCESS_KEY:-minioadmin}"
+      CONDUIT_S3_SECRET_KEY: "${CONDUIT_S3_SECRET_KEY:-minioadmin123}"
+      CONDUIT_S3_BUCKET_NAME: "${CONDUIT_S3_BUCKET_NAME:-conduit-media}"
+      CONDUIT_S3_REGION: "${CONDUIT_S3_REGION:-us-east-1}"
       # Disable IP banning for development
       CONDUIT_ADMIN_IP_BANNING_ENABLED: "false"
     ports:
@@ -176,7 +200,28 @@ services:
       retries: 3
       start_period: 40s
 
+  minio:
+    image: minio/minio:latest
+    container_name: conduit-minio
+    ports:
+      - "9000:9000"  # API port
+      - "9001:9001"  # Console port
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+      MINIO_BROWSER_REDIRECT_URL: http://localhost:9001
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
 volumes:
   pgdata:
   redis-data:
   rabbitmq-data:
+  minio_data:

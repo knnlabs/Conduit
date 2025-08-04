@@ -52,7 +52,12 @@ export function useImageModels() {
         modelId: string;
         providerId: number;
         providerType?: ProviderType;
-        providerName?: string;
+        provider?: {
+          id: number;
+          providerType: ProviderType;
+          displayName: string;
+          isEnabled: boolean;
+        };
         supportsImageGeneration?: boolean;
         maxContextLength?: number;
         isEnabled?: boolean;
@@ -66,14 +71,14 @@ export function useImageModels() {
           mapping.supportsImageGeneration === true && mapping.isEnabled !== false
         )
         .map((mapping: ModelMapping) => {
-          const providerDisplayName = mapping.providerName ?? 
+          const providerDisplayName = mapping.provider?.displayName ?? 
             (mapping.providerType !== undefined 
               ? getProviderDisplayName(mapping.providerType) 
               : 'Unknown');
           return {
             id: mapping.modelId,
             providerId: mapping.providerType?.toString() ?? 'unknown',
-            providerName: mapping.providerName,
+            providerName: providerDisplayName,
             displayName: `${mapping.modelId} (${providerDisplayName})`,
             maxContextTokens: mapping.maxContextLength,
             supportsImageGeneration: true,

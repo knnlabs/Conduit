@@ -18,8 +18,9 @@ namespace ConduitLLM.Http.Controllers
     /// </summary>
     [ApiController]
     [Route("v1/videos")]
-    [Authorize]
+    [Authorize(Policy = "RequireVirtualKey")]
     [EnableRateLimiting("VirtualKeyPolicy")]
+    [Tags("Videos")]
     public class VideosController : ControllerBase
     {
         private readonly IVideoGenerationService _videoService;
@@ -27,6 +28,7 @@ namespace ConduitLLM.Http.Controllers
         private readonly IOperationTimeoutProvider _timeoutProvider;
         private readonly ICancellableTaskRegistry _taskRegistry;
         private readonly ILogger<VideosController> _logger;
+        private readonly ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService _modelMappingService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="VideosController"/> class.
@@ -36,13 +38,15 @@ namespace ConduitLLM.Http.Controllers
             IAsyncTaskService taskService,
             IOperationTimeoutProvider timeoutProvider,
             ICancellableTaskRegistry taskRegistry,
-            ILogger<VideosController> logger)
+            ILogger<VideosController> logger,
+            ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService modelMappingService)
         {
             _videoService = videoService ?? throw new ArgumentNullException(nameof(videoService));
             _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
             _timeoutProvider = timeoutProvider ?? throw new ArgumentNullException(nameof(timeoutProvider));
             _taskRegistry = taskRegistry ?? throw new ArgumentNullException(nameof(taskRegistry));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _modelMappingService = modelMappingService ?? throw new ArgumentNullException(nameof(modelMappingService));
         }
 
         /// <summary>
@@ -76,15 +80,32 @@ namespace ConduitLLM.Http.Controllers
                     return BadRequest(ModelState);
                 }
 
-                // Get virtual key from HttpContext.Items (set by VirtualKeyAuthenticationMiddleware)
-                var virtualKey = HttpContext.User.FindFirst("VirtualKey")?.Value;
-                if (string.IsNullOrEmpty(virtualKey))
+                // Get virtual key and ID from HttpContext (set by VirtualKeyAuthenticationMiddleware)
+                var virtualKey = HttpContext.Items["VirtualKey"]?.ToString();
+                var virtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
+                
+                if (string.IsNullOrEmpty(virtualKey) || string.IsNullOrEmpty(virtualKeyIdClaim) || !int.TryParse(virtualKeyIdClaim, out int virtualKeyId))
                 {
                     return Unauthorized(new ProblemDetails
                     {
                         Title = "Unauthorized",
                         Detail = "Virtual key not found in request context"
                     });
+                }
+
+                // Get provider info for usage tracking
+                try
+                {
+                    var modelMapping = await _modelMappingService.GetMappingByModelAliasAsync(request.Model);
+                    if (modelMapping != null)
+                    {
+                        HttpContext.Items["ProviderId"] = modelMapping.ProviderId;
+                        HttpContext.Items["ProviderType"] = modelMapping.Provider?.ProviderType;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to get provider info for model {Model}", request.Model);
                 }
 
                 // Create a linked cancellation token that can be controlled independently
@@ -164,7 +185,7 @@ namespace ConduitLLM.Http.Controllers
         /// <returns>Current status of the video generation task.</returns>
         /// <response code="200">Task status retrieved successfully.</response>
         /// <response code="401">Authentication failed.</response>
-        /// <response code="404">Task not found.</response>
+        /// <response code="404">Task not found or access denied.</response>
         /// <response code="500">Internal server error.</response>
         [HttpGet("generations/tasks/{taskId}")]
         [ProducesResponseType(typeof(VideoGenerationTaskStatus), 200)]
@@ -177,9 +198,9 @@ namespace ConduitLLM.Http.Controllers
         {
             try
             {
-                // Get virtual key from HttpContext.Items (set by VirtualKeyAuthenticationMiddleware)
-                var virtualKey = HttpContext.User.FindFirst("VirtualKey")?.Value;
-                if (string.IsNullOrEmpty(virtualKey))
+                // Get virtual key ID from claims (set by VirtualKeyAuthenticationMiddleware)
+                var virtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
+                if (string.IsNullOrEmpty(virtualKeyIdClaim) || !int.TryParse(virtualKeyIdClaim, out int virtualKeyId))
                 {
                     return Unauthorized(new ProblemDetails
                     {
@@ -194,7 +215,23 @@ namespace ConduitLLM.Http.Controllers
                     return NotFound(new ProblemDetails
                     {
                         Title = "Task Not Found",
-                        Detail = $"No task found with ID: {taskId}"
+                        Detail = "The requested task was not found"
+                    });
+                }
+
+                // TODO: Consolidate security validation with ImagesController
+                // Video uses simple VirtualKeyId comparison, Images uses hash-based validation
+                // Both approaches are secure but inconsistent - should standardize on one approach
+                // Validate task ownership for security
+                if (taskStatus.Metadata?.VirtualKeyId != virtualKeyId)
+                {
+                    // Return 404 instead of 403 to prevent information disclosure
+                    _logger.LogWarning("Virtual key {VirtualKeyId} attempted to access task {TaskId} owned by {OwnerKeyId}", 
+                        virtualKeyId, taskId, taskStatus.Metadata?.VirtualKeyId);
+                    return NotFound(new ProblemDetails
+                    {
+                        Title = "Task Not Found",
+                        Detail = "The requested task was not found"
                     });
                 }
 
@@ -216,11 +253,16 @@ namespace ConduitLLM.Http.Controllers
                 {
                     try
                     {
-                        var videoResponse = await _videoService.GetVideoGenerationStatusAsync(
-                            taskId,
-                            virtualKey,
-                            cancellationToken);
-                        response.VideoResponse = videoResponse;
+                        // Get virtual key string for the video service call
+                        var virtualKey = HttpContext.Items["VirtualKey"]?.ToString();
+                        if (!string.IsNullOrEmpty(virtualKey))
+                        {
+                            var videoResponse = await _videoService.GetVideoGenerationStatusAsync(
+                                taskId,
+                                virtualKey,
+                                cancellationToken);
+                            response.VideoResponse = videoResponse;
+                        }
                     }
                     catch (NotImplementedException)
                     {
@@ -250,7 +292,7 @@ namespace ConduitLLM.Http.Controllers
         /// <response code="200">Task queued for retry.</response>
         /// <response code="400">Task cannot be retried (not failed or exceeded max retries).</response>
         /// <response code="401">Authentication failed.</response>
-        /// <response code="404">Task not found.</response>
+        /// <response code="404">Task not found or access denied.</response>
         /// <response code="500">Internal server error.</response>
         [HttpPost("generations/tasks/{taskId}/retry")]
         [ProducesResponseType(typeof(VideoGenerationTaskStatus), 200)]
@@ -264,9 +306,9 @@ namespace ConduitLLM.Http.Controllers
         {
             try
             {
-                // Get virtual key from HttpContext.Items (set by VirtualKeyAuthenticationMiddleware)
-                var virtualKey = HttpContext.User.FindFirst("VirtualKey")?.Value;
-                if (string.IsNullOrEmpty(virtualKey))
+                // Get virtual key ID from claims (set by VirtualKeyAuthenticationMiddleware)
+                var virtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
+                if (string.IsNullOrEmpty(virtualKeyIdClaim) || !int.TryParse(virtualKeyIdClaim, out int virtualKeyId))
                 {
                     return Unauthorized(new ProblemDetails
                     {
@@ -282,7 +324,23 @@ namespace ConduitLLM.Http.Controllers
                     return NotFound(new ProblemDetails
                     {
                         Title = "Task Not Found",
-                        Detail = $"No task found with ID: {taskId}"
+                        Detail = "The requested task was not found"
+                    });
+                }
+
+                // TODO: Consolidate security validation with ImagesController
+                // Video uses simple VirtualKeyId comparison, Images uses hash-based validation
+                // Both approaches are secure but inconsistent - should standardize on one approach
+                // Validate task ownership for security
+                if (taskStatus.Metadata?.VirtualKeyId != virtualKeyId)
+                {
+                    // Return 404 instead of 403 to prevent information disclosure
+                    _logger.LogWarning("Virtual key {VirtualKeyId} attempted to retry task {TaskId} owned by {OwnerKeyId}", 
+                        virtualKeyId, taskId, taskStatus.Metadata?.VirtualKeyId);
+                    return NotFound(new ProblemDetails
+                    {
+                        Title = "Task Not Found",
+                        Detail = "The requested task was not found"
                     });
                 }
 
@@ -321,8 +379,8 @@ namespace ConduitLLM.Http.Controllers
                     error: $"Manual retry requested (attempt {taskStatus.RetryCount + 1}/{taskStatus.MaxRetries})",
                     cancellationToken: cancellationToken);
 
-                _logger.LogInformation("Manual retry requested for task {TaskId} by virtual key {VirtualKey}", 
-                    taskId, virtualKey);
+                _logger.LogInformation("Manual retry requested for task {TaskId} by virtual key {VirtualKeyId}", 
+                    taskId, virtualKeyId);
 
                 // Return updated status
                 var updatedStatus = await _taskService.GetTaskStatusAsync(taskId, cancellationToken);
@@ -357,7 +415,7 @@ namespace ConduitLLM.Http.Controllers
         /// <returns>Cancellation result.</returns>
         /// <response code="204">Task cancelled successfully.</response>
         /// <response code="401">Authentication failed.</response>
-        /// <response code="404">Task not found.</response>
+        /// <response code="404">Task not found or access denied.</response>
         /// <response code="409">Task cannot be cancelled (already completed or failed).</response>
         /// <response code="500">Internal server error.</response>
         [HttpDelete("generations/{taskId}")]
@@ -372,9 +430,9 @@ namespace ConduitLLM.Http.Controllers
         {
             try
             {
-                // Get virtual key from HttpContext.Items (set by VirtualKeyAuthenticationMiddleware)
-                var virtualKey = HttpContext.User.FindFirst("VirtualKey")?.Value;
-                if (string.IsNullOrEmpty(virtualKey))
+                // Get virtual key ID from claims (set by VirtualKeyAuthenticationMiddleware)
+                var virtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
+                if (string.IsNullOrEmpty(virtualKeyIdClaim) || !int.TryParse(virtualKeyIdClaim, out int virtualKeyId))
                 {
                     return Unauthorized(new ProblemDetails
                     {
@@ -390,7 +448,23 @@ namespace ConduitLLM.Http.Controllers
                     return NotFound(new ProblemDetails
                     {
                         Title = "Task Not Found",
-                        Detail = $"No task found with ID: {taskId}"
+                        Detail = "The requested task was not found"
+                    });
+                }
+
+                // TODO: Consolidate security validation with ImagesController
+                // Video uses simple VirtualKeyId comparison, Images uses hash-based validation
+                // Both approaches are secure but inconsistent - should standardize on one approach
+                // Validate task ownership for security
+                if (taskStatus.Metadata?.VirtualKeyId != virtualKeyId)
+                {
+                    // Return 404 instead of 403 to prevent information disclosure
+                    _logger.LogWarning("Virtual key {VirtualKeyId} attempted to cancel task {TaskId} owned by {OwnerKeyId}", 
+                        virtualKeyId, taskId, taskStatus.Metadata?.VirtualKeyId);
+                    return NotFound(new ProblemDetails
+                    {
+                        Title = "Task Not Found",
+                        Detail = "The requested task was not found"
                     });
                 }
 
@@ -412,9 +486,10 @@ namespace ConduitLLM.Http.Controllers
                 }
                 
                 // Also notify the video service
+                var virtualKey = HttpContext.Items["VirtualKey"]?.ToString();
                 var cancelled = await _videoService.CancelVideoGenerationAsync(
                     taskId,
-                    virtualKey,
+                    virtualKey ?? string.Empty,
                     cancellationToken);
 
                 if (cancelled || registryCancelled)

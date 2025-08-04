@@ -90,7 +90,6 @@ namespace ConduitLLM.Core.Services.BatchOperations
                     KeyName = virtualKeyInfo.KeyName,
                     IsEnabled = item.IsEnabled ?? virtualKeyInfo.IsEnabled,
                     ExpiresAt = item.ExpiresAt ?? virtualKeyInfo.ExpiresAt,
-                    MaxBudget = item.MaxBudget ?? virtualKeyInfo.MaxBudget,
                     // Convert List<string> to comma-separated string
                     AllowedModels = item.AllowedModels != null 
                         ? string.Join(",", item.AllowedModels) 
@@ -104,11 +103,7 @@ namespace ConduitLLM.Core.Services.BatchOperations
                         : virtualKeyInfo.RateLimitRpd
                 };
 
-                // Track changes
-                if (item.MaxBudget.HasValue && virtualKeyInfo.MaxBudget != item.MaxBudget.Value)
-                {
-                    changedProperties.Add($"MaxBudget: {item.MaxBudget.Value}");
-                }
+                // Track changes - MaxBudget removed as it's now at group level
 
                 if (item.AllowedModels != null)
                 {

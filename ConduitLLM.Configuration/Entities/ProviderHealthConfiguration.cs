@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ConduitLLM.Configuration.Entities
 {
@@ -13,9 +14,15 @@ namespace ConduitLLM.Configuration.Entities
         public int Id { get; set; }
 
         /// <summary>
-        /// The provider type that this configuration applies to.
+        /// The ID of the provider that this configuration applies to.
         /// </summary>
-        public ProviderType ProviderType { get; set; }
+        public int ProviderId { get; set; }
+
+        /// <summary>
+        /// Navigation property to the provider.
+        /// </summary>
+        [ForeignKey("ProviderId")]
+        public virtual Provider Provider { get; set; } = null!;
 
         /// <summary>
         /// Indicates whether health monitoring is enabled for this provider.

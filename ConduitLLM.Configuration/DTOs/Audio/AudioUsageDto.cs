@@ -20,9 +20,9 @@ namespace ConduitLLM.Configuration.DTOs.Audio
         public string VirtualKey { get; set; } = string.Empty;
 
         /// <summary>
-        /// Provider type that handled the request.
+        /// Provider ID that handled the request.
         /// </summary>
-        public ProviderType ProviderType { get; set; }
+        public int ProviderId { get; set; }
 
         /// <summary>
         /// Type of audio operation.
@@ -98,6 +98,11 @@ namespace ConduitLLM.Configuration.DTOs.Audio
         /// User agent string.
         /// </summary>
         public string? UserAgent { get; set; }
+
+        /// <summary>
+        /// Additional metadata as JSON.
+        /// </summary>
+        public string? Metadata { get; set; }
 
         /// <summary>
         /// When the usage occurred.
@@ -208,9 +213,14 @@ namespace ConduitLLM.Configuration.DTOs.Audio
     public class ProviderBreakdown
     {
         /// <summary>
-        /// Provider type.
+        /// Provider ID.
         /// </summary>
-        public ProviderType ProviderType { get; set; }
+        public int ProviderId { get; set; }
+
+        /// <summary>
+        /// Provider name.
+        /// </summary>
+        public string ProviderName { get; set; } = string.Empty;
 
         /// <summary>
         /// Number of operations.
@@ -265,9 +275,9 @@ namespace ConduitLLM.Configuration.DTOs.Audio
         public string? VirtualKey { get; set; }
 
         /// <summary>
-        /// Filter by provider type.
+        /// Filter by provider ID.
         /// </summary>
-        public ProviderType? ProviderType { get; set; }
+        public int? ProviderId { get; set; }
 
         /// <summary>
         /// Filter by operation type.
@@ -349,9 +359,14 @@ namespace ConduitLLM.Configuration.DTOs.Audio
     public class AudioProviderUsageDto
     {
         /// <summary>
-        /// Provider type.
+        /// Provider ID.
         /// </summary>
-        public ProviderType ProviderType { get; set; }
+        public int ProviderId { get; set; }
+
+        /// <summary>
+        /// Provider name.
+        /// </summary>
+        public string ProviderName { get; set; } = string.Empty;
 
         /// <summary>
         /// Total number of operations.

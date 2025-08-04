@@ -1,29 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { handleSDKError } from '@/lib/errors/sdk-errors';
-import { getServerAdminClient } from '@/lib/server/adminClient';
-import { getProviderTypeFromDto } from '@/lib/utils/providerTypeUtils';
+import { NextResponse } from 'next/server';
 
 // POST /api/providers/[id]/models/refresh - Refresh models for a provider
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-
-  try {
-    const { id } = await params;
-    const adminClient = getServerAdminClient();
-    
-    // Get provider details first
-    const provider = await adminClient.providers.getById(parseInt(id, 10));
-    
-    // Get the provider type
-    const providerType = getProviderTypeFromDto(provider);
-    
-    // Refresh models for this provider
-    const models = await adminClient.providerModels.refreshProviderModels(providerType);
-    
-    return NextResponse.json(models);
-  } catch (error) {
-    return handleSDKError(error);
-  }
+export async function POST() {
+  // Provider model endpoints no longer exist in the API
+  // Return error response
+  return NextResponse.json(
+    { error: 'Model refresh endpoint is no longer supported in the API' },
+    { status: 501 }
+  );
 }

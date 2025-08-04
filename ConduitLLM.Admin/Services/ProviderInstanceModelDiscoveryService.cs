@@ -18,22 +18,22 @@ namespace ConduitLLM.Admin.Services
     public class ProviderInstanceModelDiscoveryService : IProviderInstanceModelDiscovery
     {
         private readonly ILogger<ProviderInstanceModelDiscoveryService> _logger;
-        private readonly IProviderCredentialRepository _providerCredentialRepository;
+        private readonly IProviderRepository _ProviderRepository;
         private readonly IProviderModelDiscovery _providerModelDiscovery;
         
         /// <summary>
         /// Initializes a new instance of the <see cref="ProviderInstanceModelDiscoveryService"/> class.
         /// </summary>
         /// <param name="logger">The logger for diagnostics.</param>
-        /// <param name="providerCredentialRepository">Repository for provider credentials.</param>
+        /// <param name="ProviderRepository">Repository for provider credentials.</param>
         /// <param name="providerModelDiscovery">The legacy provider model discovery service.</param>
         public ProviderInstanceModelDiscoveryService(
             ILogger<ProviderInstanceModelDiscoveryService> logger,
-            IProviderCredentialRepository providerCredentialRepository,
+            IProviderRepository ProviderRepository,
             IProviderModelDiscovery providerModelDiscovery)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _providerCredentialRepository = providerCredentialRepository ?? throw new ArgumentNullException(nameof(providerCredentialRepository));
+            _ProviderRepository = ProviderRepository ?? throw new ArgumentNullException(nameof(ProviderRepository));
             _providerModelDiscovery = providerModelDiscovery ?? throw new ArgumentNullException(nameof(providerModelDiscovery));
         }
         
@@ -48,13 +48,13 @@ namespace ConduitLLM.Admin.Services
             _logger.LogDebug("Discovering models for provider instance {ProviderId} of type {ProviderType}", providerId, providerType);
             
             // Get provider instance to access its name
-            var providerInstance = await _providerCredentialRepository.GetByIdAsync(providerId);
+            var providerInstance = await _ProviderRepository.GetByIdAsync(providerId);
             var providerName = providerInstance?.ProviderName ?? providerType.ToString();
             
             try
             {
                 // Use the provider-specific discovery with full credential
-                var providerCredential = providerInstance ?? new Configuration.Entities.ProviderCredential
+                var Provider = providerInstance ?? new Configuration.Entities.Provider
                 {
                     Id = providerId,
                     ProviderType = providerType,
@@ -63,7 +63,7 @@ namespace ConduitLLM.Admin.Services
                 };
                 
                 var models = await _providerModelDiscovery.DiscoverModelsAsync(
-                    providerCredential, 
+                    Provider, 
                     httpClient, 
                     apiKey, 
                     cancellationToken);

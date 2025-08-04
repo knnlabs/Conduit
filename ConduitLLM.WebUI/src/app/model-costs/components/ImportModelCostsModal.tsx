@@ -18,7 +18,7 @@ import {
 import { IconFileTypeCsv, IconAlertCircle, IconCheck } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useModelCostsApi } from '../hooks/useModelCostsApi';
-import { parseCSVContent, convertParsedToDto, ParsedModelCost } from '../utils/csvHelpers';
+import { parseCSVContent, ParsedModelCost } from '../utils/csvHelpers';
 
 interface ImportModelCostsModalProps {
   isOpen: boolean;
@@ -28,7 +28,7 @@ interface ImportModelCostsModalProps {
 
 
 export function ImportModelCostsModal({ isOpen, onClose, onSuccess }: ImportModelCostsModalProps) {
-  const { importModelCosts } = useModelCostsApi();
+  const { importModelCostsWithAliases } = useModelCostsApi();
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<ParsedModelCost[]>([]);
   const [isParsing, setIsParsing] = useState(false);
@@ -76,13 +76,41 @@ export function ImportModelCostsModal({ isOpen, onClose, onSuccess }: ImportMode
     setIsImporting(true);
     
     try {
-      const modelCosts = convertParsedToDto(validData);
-      await importModelCosts(modelCosts);
+      // Convert parsed data to the format expected by the import-with-aliases endpoint
+      const costsWithAliases = validData.map(cost => ({
+        costName: cost.costName,
+        modelAliases: cost.modelAliases,
+        modelType: cost.modelType,
+        inputTokenCost: cost.inputCostPer1K / 1000, // Convert to per token
+        outputTokenCost: cost.outputCostPer1K / 1000,
+        cachedInputTokenCost: cost.cachedInputCostPer1K ? cost.cachedInputCostPer1K / 1000 : undefined,
+        cachedInputWriteCost: cost.cachedInputWriteCostPer1K ? cost.cachedInputWriteCostPer1K / 1000 : undefined,
+        embeddingTokenCost: cost.embeddingCostPer1K ? cost.embeddingCostPer1K / 1000 : undefined,
+        imageCostPerImage: cost.imageCostPerImage,
+        audioCostPerMinute: cost.audioCostPerMinute,
+        audioCostPerKCharacters: cost.audioCostPerKCharacters,
+        audioInputCostPerMinute: cost.audioInputCostPerMinute,
+        audioOutputCostPerMinute: cost.audioOutputCostPerMinute,
+        videoCostPerSecond: cost.videoCostPerSecond,
+        videoResolutionMultipliers: cost.videoResolutionMultipliers,
+        supportsBatchProcessing: cost.supportsBatchProcessing,
+        batchProcessingMultiplier: cost.batchProcessingMultiplier,
+        imageQualityMultipliers: cost.imageQualityMultipliers,
+        costPerSearchUnit: cost.searchUnitCostPer1K,
+        costPerInferenceStep: cost.costPerInferenceStep,
+        defaultInferenceSteps: cost.defaultInferenceSteps,
+        priority: cost.priority,
+        description: cost.description,
+      }));
+
+      const result = await importModelCostsWithAliases(costsWithAliases);
       
-      onSuccess?.();
-      onClose();
-      setFile(null);
-      setParsedData([]);
+      if (result.success > 0) {
+        onSuccess?.();
+        onClose();
+        setFile(null);
+        setParsedData([]);
+      }
     } catch {
       // Error handling is done in the hook
     } finally {
@@ -104,8 +132,11 @@ export function ImportModelCostsModal({ isOpen, onClose, onSuccess }: ImportMode
       <Stack gap="md">
         <Alert icon={<IconAlertCircle size={16} />} color="blue">
           Upload a CSV file with model pricing data. The file should include columns for:
-          Model Pattern, Provider, Model Type, and relevant cost fields.
+          Cost Name, Associated Model Aliases (comma-separated), Model Type, and relevant cost fields.
           Download the current data as CSV to see the expected format.
+          <Text size="xs" mt="xs" c="dimmed">
+            Note: Model aliases will be matched to existing model mappings during import.
+          </Text>
         </Alert>
 
         <FileInput
@@ -155,8 +186,8 @@ export function ImportModelCostsModal({ isOpen, onClose, onSuccess }: ImportMode
                   <Table.Tr>
                     <Table.Th w={40}></Table.Th>
                     <Table.Th>Row #</Table.Th>
-                    <Table.Th>Model Pattern</Table.Th>
-                    <Table.Th>Provider</Table.Th>
+                    <Table.Th>Cost Name</Table.Th>
+                    <Table.Th>Model Aliases</Table.Th>
                     <Table.Th>Type</Table.Th>
                     <Table.Th>Input/Output Cost</Table.Th>
                     <Table.Th>Priority</Table.Th>
@@ -166,7 +197,7 @@ export function ImportModelCostsModal({ isOpen, onClose, onSuccess }: ImportMode
                 <Table.Tbody>
                   {parsedData.map((cost) => (
                     <Table.Tr 
-                      key={`${cost.rowNumber}-${cost.modelPattern}-${cost.provider}`} 
+                      key={`${cost.rowNumber}-${cost.costName}`} 
                       style={{ 
                         backgroundColor: (() => {
                           if (cost.isValid) return undefined;
@@ -185,7 +216,7 @@ export function ImportModelCostsModal({ isOpen, onClose, onSuccess }: ImportMode
                         <Text size="sm">{cost.rowNumber}</Text>
                       </Table.Td>
                       <Table.Td>
-                        <Text size="sm">{cost.modelPattern || '(empty)'}</Text>
+                        <Text size="sm">{cost.costName || '(empty)'}</Text>
                         {!cost.isValid && (
                           <Text size="xs" c={cost.isSkipped ? "orange" : "red"}>
                             {cost.isSkipped ? cost.skipReason : cost.errors.join(', ')}
@@ -193,7 +224,7 @@ export function ImportModelCostsModal({ isOpen, onClose, onSuccess }: ImportMode
                         )}
                       </Table.Td>
                       <Table.Td>
-                        <Badge variant="light" size="sm">{cost.provider}</Badge>
+                        <Text size="xs">{cost.modelAliases.join(', ') || '(none)'}</Text>
                       </Table.Td>
                       <Table.Td>
                         <Badge variant="outline" size="sm">{cost.modelType}</Badge>
@@ -232,7 +263,7 @@ export function ImportModelCostsModal({ isOpen, onClose, onSuccess }: ImportMode
             {validCount > 0 ? (
               <Alert icon={<IconCheck size={16} />} color="green">
                 Ready to import {validCount} valid pricing configuration{validCount !== 1 ? 's' : ''}.
-                This will create new entries or update existing ones based on model pattern.
+                This will create new entries and link them to the specified model aliases.
               </Alert>
             ) : (
               <Alert icon={<IconAlertCircle size={16} />} color="orange">
@@ -247,7 +278,7 @@ export function ImportModelCostsModal({ isOpen, onClose, onSuccess }: ImportMode
                   if (skippedCount > 0) {
                     return ` All ${skippedCount} rows were skipped due to formatting issues. Please check your CSV format.`;
                   }
-                  return ' Please check that your CSV file has the correct format with required columns: Model Pattern, Provider, Model Type, and cost fields.';
+                  return ' Please check that your CSV file has the correct format with required columns: Cost Name, Associated Model Aliases, Model Type, and cost fields.';
                 })()}
               </Alert>
             )}

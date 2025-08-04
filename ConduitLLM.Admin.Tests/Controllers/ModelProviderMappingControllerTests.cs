@@ -7,6 +7,8 @@ using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Tests.TestHelpers;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Interfaces;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
@@ -27,6 +29,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
     {
         private readonly Mock<IAdminModelProviderMappingService> _mockService;
         private readonly Mock<IProviderDiscoveryService> _mockDiscoveryService;
+        private readonly Mock<IProviderService> _mockCredentialService;
         private readonly Mock<ILogger<ModelProviderMappingController>> _mockLogger;
         private readonly ModelProviderMappingController _controller;
         private readonly ITestOutputHelper _output;
@@ -36,8 +39,9 @@ namespace ConduitLLM.Admin.Tests.Controllers
             _output = output;
             _mockService = new Mock<IAdminModelProviderMappingService>();
             _mockDiscoveryService = new Mock<IProviderDiscoveryService>();
+            _mockCredentialService = new Mock<IProviderService>();
             _mockLogger = new Mock<ILogger<ModelProviderMappingController>>();
-            _controller = new ModelProviderMappingController(_mockService.Object, _mockDiscoveryService.Object, _mockLogger.Object);
+            _controller = new ModelProviderMappingController(_mockService.Object, _mockDiscoveryService.Object, _mockCredentialService.Object, _mockLogger.Object);
         }
 
         #region Constructor Tests
@@ -47,7 +51,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
         {
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new ModelProviderMappingController(null!, _mockDiscoveryService.Object, _mockLogger.Object));
+                new ModelProviderMappingController(null!, _mockDiscoveryService.Object, _mockCredentialService.Object, _mockLogger.Object));
         }
 
         [Fact]
@@ -55,7 +59,15 @@ namespace ConduitLLM.Admin.Tests.Controllers
         {
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new ModelProviderMappingController(_mockService.Object, null!, _mockLogger.Object));
+                new ModelProviderMappingController(_mockService.Object, null!, _mockCredentialService.Object, _mockLogger.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullCredentialService_ShouldThrowArgumentNullException()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => 
+                new ModelProviderMappingController(_mockService.Object, _mockDiscoveryService.Object, null!, _mockLogger.Object));
         }
 
         [Fact]
@@ -63,7 +75,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
         {
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new ModelProviderMappingController(_mockService.Object, _mockDiscoveryService.Object, null!));
+                new ModelProviderMappingController(_mockService.Object, _mockDiscoveryService.Object, _mockCredentialService.Object, null!));
         }
 
         #endregion
@@ -74,14 +86,13 @@ namespace ConduitLLM.Admin.Tests.Controllers
         public async Task GetAllMappings_WithMappings_ShouldReturnOkWithList()
         {
             // Arrange
-            var mappings = new List<ModelProviderMappingDto>
+            var mappings = new List<ModelProviderMapping>
             {
                 new() 
                 { 
                     Id = 1,
-                    ModelId = "gpt-4",
+                    ModelAlias = "gpt-4",
                     ProviderId = 1,
-                    ProviderType = ProviderType.OpenAI,
                     ProviderModelId = "gpt-4-turbo",
                     SupportsVision = true,
                     IsEnabled = true
@@ -89,9 +100,8 @@ namespace ConduitLLM.Admin.Tests.Controllers
                 new() 
                 { 
                     Id = 2,
-                    ModelId = "claude-3",
+                    ModelAlias = "claude-3",
                     ProviderId = 2,
-                    ProviderType = ProviderType.Anthropic,
                     ProviderModelId = "claude-3-opus",
                     SupportsVision = true,
                     IsEnabled = true
@@ -136,12 +146,11 @@ namespace ConduitLLM.Admin.Tests.Controllers
         public async Task GetMappingById_WithExistingId_ShouldReturnOkWithMapping()
         {
             // Arrange
-            var mapping = new ModelProviderMappingDto
+            var mapping = new ModelProviderMapping
             {
                 Id = 1,
-                ModelId = "gpt-4",
+                ModelAlias = "gpt-4",
                 ProviderId = 1,
-                ProviderType = ProviderType.OpenAI,
                 ProviderModelId = "gpt-4-turbo"
             };
 
@@ -162,7 +171,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
         {
             // Arrange
             _mockService.Setup(x => x.GetMappingByIdAsync(999))
-                .ReturnsAsync((ModelProviderMappingDto?)null);
+                .ReturnsAsync((ModelProviderMapping?)null);
 
             // Act
             var result = await _controller.GetMappingById(999);
@@ -175,48 +184,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
 
         #endregion
 
-        #region GetMappingByModelId Tests
-
-        [Fact]
-        public async Task GetMappingByModelId_WithExistingAlias_ShouldReturnOkWithMapping()
-        {
-            // Arrange
-            var mapping = new ModelProviderMappingDto
-            {
-                Id = 1,
-                ModelId = "gpt-4",
-                ProviderId = 1,
-                ProviderType = ProviderType.OpenAI,
-                ProviderModelId = "gpt-4-turbo"
-            };
-
-            _mockService.Setup(x => x.GetMappingByModelIdAsync("gpt-4"))
-                .ReturnsAsync(mapping);
-
-            // Act
-            var result = await _controller.GetMappingByModelId("gpt-4");
-
-            // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedMapping = Assert.IsType<ModelProviderMappingDto>(okResult.Value);
-            returnedMapping.ModelId.Should().Be("gpt-4");
-        }
-
-        [DynamicObjectIssue("Test expects error.error property but controller may return different format")]
-        public async Task GetMappingByModelId_WithNonExistingAlias_ShouldReturnNotFound()
-        {
-            // Arrange
-            _mockService.Setup(x => x.GetMappingByModelIdAsync("non-existing"))
-                .ReturnsAsync((ModelProviderMappingDto?)null);
-
-            // Act
-            var result = await _controller.GetMappingByModelId("non-existing");
-
-            // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            dynamic error = notFoundResult.Value!;
-            ((string)error.error).Should().Be("Model provider mapping not found");
-        }
+        #region GetMappingByModelId Tests - REMOVED: Method doesn't exist in controller
 
         #endregion
 
@@ -226,44 +194,60 @@ namespace ConduitLLM.Admin.Tests.Controllers
         public async Task AddMapping_WithValidMapping_ShouldReturnCreated()
         {
             // Arrange
-            var mapping = new ModelProviderMappingDto
+            var mapping = new ModelProviderMapping
             {
-                ModelId = "new-model",
+                ModelAlias = "new-model",
                 ProviderId = 1,
-                ProviderType = ProviderType.OpenAI,
                 ProviderModelId = "gpt-4-new",
                 SupportsStreaming = true
             };
 
-            _mockService.Setup(x => x.AddMappingAsync(It.IsAny<ModelProviderMappingDto>()))
+            var createdMapping = new ModelProviderMapping
+            {
+                Id = 123,
+                ModelAlias = "new-model",
+                ProviderId = 1,
+                ProviderModelId = "gpt-4-new",
+                SupportsStreaming = true
+            };
+
+            // First call should return null (no existing mapping)
+            _mockService.Setup(x => x.GetMappingByModelIdAsync("new-model"))
+                .ReturnsAsync((ModelProviderMapping?)null);
+            
+            _mockService.Setup(x => x.AddMappingAsync(It.IsAny<ModelProviderMapping>()))
                 .ReturnsAsync(true);
 
+            // Second call should return the created mapping
+            _mockService.SetupSequence(x => x.GetMappingByModelIdAsync("new-model"))
+                .ReturnsAsync((ModelProviderMapping?)null)  // First call (check existence)
+                .ReturnsAsync(createdMapping);              // Second call (get created)
+
             // Act
-            var actionResult = await _controller.CreateMapping(mapping);
+            var actionResult = await _controller.CreateMapping(mapping.ToDto());
 
             // Assert
             var createdResult = Assert.IsType<CreatedAtActionResult>(actionResult);
-            createdResult.ActionName.Should().Be(nameof(ModelProviderMappingController.GetMappingByModelId));
-            createdResult.RouteValues!["modelId"].Should().Be("new-model");
+            createdResult.ActionName.Should().Be(nameof(ModelProviderMappingController.GetMappingById));
+            createdResult.RouteValues!["id"].Should().Be(123);
         }
 
         [ArchitecturalMismatch("Test expects Conflict but controller returns BadRequest for duplicate mappings")]
         public async Task AddMapping_WithDuplicateAlias_ShouldReturnConflict()
         {
             // Arrange
-            var mapping = new ModelProviderMappingDto
+            var mapping = new ModelProviderMapping
             {
-                ModelId = "existing-model",
+                ModelAlias = "existing-model",
                 ProviderId = 1,
-                ProviderType = ProviderType.OpenAI,
                 ProviderModelId = "gpt-4"
             };
 
-            _mockService.Setup(x => x.AddMappingAsync(It.IsAny<ModelProviderMappingDto>()))
+            _mockService.Setup(x => x.AddMappingAsync(It.IsAny<ModelProviderMapping>()))
                 .ReturnsAsync(false);
 
             // Act
-            var actionResult = await _controller.CreateMapping(mapping);
+            var actionResult = await _controller.CreateMapping(mapping.ToDto());
 
             // Assert
             var conflictResult = Assert.IsType<ConflictObjectResult>(actionResult);
@@ -279,21 +263,20 @@ namespace ConduitLLM.Admin.Tests.Controllers
         public async Task UpdateMapping_WithValidMapping_ShouldReturnOk()
         {
             // Arrange
-            var mapping = new ModelProviderMappingDto
+            var mapping = new ModelProviderMapping
             {
                 Id = 1,
-                ModelId = "gpt-4",
+                ModelAlias = "gpt-4",
                 ProviderId = 1,
-                ProviderType = ProviderType.OpenAI,
                 ProviderModelId = "gpt-4-turbo-updated",
                 SupportsVision = true
             };
 
-            _mockService.Setup(x => x.UpdateMappingAsync(It.IsAny<ModelProviderMappingDto>()))
+            _mockService.Setup(x => x.UpdateMappingAsync(It.IsAny<ModelProviderMapping>()))
                 .ReturnsAsync(true);
 
             // Act
-            var actionResult = await _controller.UpdateMapping(1, mapping);
+            var actionResult = await _controller.UpdateMapping(1, mapping.ToDto());
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(actionResult);
@@ -305,20 +288,19 @@ namespace ConduitLLM.Admin.Tests.Controllers
         public async Task UpdateMapping_WithNonExistingId_ShouldReturnNotFound()
         {
             // Arrange
-            var mapping = new ModelProviderMappingDto
+            var mapping = new ModelProviderMapping
             {
                 Id = 999,
-                ModelId = "gpt-4",
+                ModelAlias = "gpt-4",
                 ProviderId = 1,
-                ProviderType = ProviderType.OpenAI,
                 ProviderModelId = "gpt-4"
             };
 
-            _mockService.Setup(x => x.UpdateMappingAsync(It.IsAny<ModelProviderMappingDto>()))
+            _mockService.Setup(x => x.UpdateMappingAsync(It.IsAny<ModelProviderMapping>()))
                 .ReturnsAsync(false);
 
             // Act
-            var actionResult = await _controller.UpdateMapping(999, mapping);
+            var actionResult = await _controller.UpdateMapping(999, mapping.ToDto());
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(actionResult);
@@ -334,6 +316,9 @@ namespace ConduitLLM.Admin.Tests.Controllers
         public async Task DeleteMapping_WithExistingId_ShouldReturnNoContent()
         {
             // Arrange
+            var existingMapping = new ModelProviderMapping { Id = 1, ModelAlias = "test-model" };
+            _mockService.Setup(x => x.GetMappingByIdAsync(1))
+                .ReturnsAsync(existingMapping);
             _mockService.Setup(x => x.DeleteMappingAsync(1))
                 .ReturnsAsync(true);
 
@@ -368,7 +353,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
         public async Task GetProviders_ShouldReturnProviderList()
         {
             // Arrange
-            var providers = new List<ProviderDataDto>
+            var providers = new List<Provider>
             {
                 new() { Id = 1, ProviderType = ProviderType.OpenAI },
                 new() { Id = 2, ProviderType = ProviderType.Anthropic },
@@ -383,7 +368,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedProviders = Assert.IsAssignableFrom<IEnumerable<ProviderDataDto>>(okResult.Value);
+            var returnedProviders = Assert.IsAssignableFrom<IEnumerable<Provider>>(okResult.Value);
             returnedProviders.Should().HaveCount(3);
         }
 
@@ -395,117 +380,86 @@ namespace ConduitLLM.Admin.Tests.Controllers
         public async Task BulkCreateMappings_WithValidMappings_ShouldReturnSuccess()
         {
             // Arrange
-            var request = new BulkModelMappingRequest
+            var mappings = new List<ModelProviderMapping>
             {
-                ReplaceExisting = false,
-                ValidateProviderModels = true,
-                Mappings = new List<CreateModelProviderMappingDto>
-                {
-                    new() 
-                    { 
-                        ModelId = "model1", 
-                        ProviderId = 1, 
-                        ProviderModelId = "gpt-4"
-                    },
-                    new() 
-                    { 
-                        ModelId = "model2", 
-                        ProviderId = 2, 
-                        ProviderModelId = "claude-3",
-                        SupportsVision = true 
-                    }
+                new() 
+                { 
+                    ModelAlias = "model1", 
+                    ProviderId = 1, 
+                    ProviderModelId = "gpt-4"
+                },
+                new() 
+                { 
+                    ModelAlias = "model2", 
+                    ProviderId = 2, 
+                    ProviderModelId = "claude-3",
+                    SupportsVision = true 
                 }
             };
 
-            var response = new BulkModelMappingResponse
+            var created = new List<ModelProviderMapping>
             {
-                TotalProcessed = 2,
-                Created = new List<ModelProviderMappingDto>
-                {
-                    new() { Id = 1, ModelId = "model1", ProviderId = 1, ProviderType = ProviderType.OpenAI },
-                    new() { Id = 2, ModelId = "model2", ProviderId = 2, ProviderType = ProviderType.Anthropic }
-                }
+                new() { Id = 1, ModelAlias = "model1", ProviderId = 1, ProviderModelId = "gpt-4" },
+                new() { Id = 2, ModelAlias = "model2", ProviderId = 2, ProviderModelId = "claude-3" }
             };
+            var errors = new List<string>();
 
-            _mockService.Setup(x => x.CreateBulkMappingsAsync(It.IsAny<BulkModelMappingRequest>()))
-                .ReturnsAsync(response);
+            _mockService.Setup(x => x.CreateBulkMappingsAsync(It.IsAny<IEnumerable<ModelProviderMapping>>()))
+                .ReturnsAsync((created, errors));
 
             // Act
-            var result = await _controller.CreateBulkMappings(request);
+            var result = await _controller.CreateBulkMappings(mappings.Select(m => m.ToDto()).ToList());
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedResponse = Assert.IsType<BulkModelMappingResponse>(okResult.Value);
+            var returnedResponse = Assert.IsType<BulkMappingResult>(okResult.Value);
             returnedResponse.TotalProcessed.Should().Be(2);
             returnedResponse.Created.Should().HaveCount(2);
-            returnedResponse.IsSuccess.Should().BeTrue();
+            returnedResponse.SuccessCount.Should().Be(2);
         }
 
         [Fact]
         public async Task BulkCreateMappings_WithSomeFailures_ShouldReturnPartialSuccess()
         {
             // Arrange
-            var request = new BulkModelMappingRequest
+            var mappings = new List<ModelProviderMapping>
             {
-                Mappings = new List<CreateModelProviderMappingDto>
-                {
-                    new() { ModelId = "model1", ProviderId = 1, ProviderModelId = "gpt-4" },
-                    new() { ModelId = "duplicate", ProviderId = 1, ProviderModelId = "gpt-4" },
-                    new() { ModelId = "model3", ProviderId = 1, ProviderModelId = "model" }
-                }
+                new() { ModelAlias = "model1", ProviderId = 1, ProviderModelId = "gpt-4" },
+                new() { ModelAlias = "duplicate", ProviderId = 1, ProviderModelId = "gpt-4" },
+                new() { ModelAlias = "model3", ProviderId = 1, ProviderModelId = "model" }
             };
 
-            var response = new BulkModelMappingResponse
+            var created = new List<ModelProviderMapping>
             {
-                TotalProcessed = 3,
-                Created = new List<ModelProviderMappingDto>
-                {
-                    new() { Id = 1, ModelId = "model1", ProviderId = 1 }
-                },
-                Failed = new List<BulkMappingError>
-                {
-                    new() 
-                    { 
-                        Index = 1, 
-                        ErrorMessage = "Model ID already exists",
-                        ErrorType = BulkMappingErrorType.Duplicate,
-                        Mapping = request.Mappings[1]
-                    },
-                    new() 
-                    { 
-                        Index = 2, 
-                        ErrorMessage = "Provider not found",
-                        ErrorType = BulkMappingErrorType.ProviderNotFound,
-                        Mapping = request.Mappings[2]
-                    }
-                }
+                new() { Id = 1, ModelAlias = "model1", ProviderId = 1 }
+            };
+            var errors = new List<string>
+            {
+                "Model ID already exists",
+                "Provider not found"
             };
 
-            _mockService.Setup(x => x.CreateBulkMappingsAsync(It.IsAny<BulkModelMappingRequest>()))
-                .ReturnsAsync(response);
+            _mockService.Setup(x => x.CreateBulkMappingsAsync(It.IsAny<IEnumerable<ModelProviderMapping>>()))
+                .ReturnsAsync((created, errors));
 
             // Act
-            var result = await _controller.CreateBulkMappings(request);
+            var result = await _controller.CreateBulkMappings(mappings.Select(m => m.ToDto()).ToList());
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedResponse = Assert.IsType<BulkModelMappingResponse>(okResult.Value);
+            var returnedResponse = Assert.IsType<BulkMappingResult>(okResult.Value);
             returnedResponse.SuccessCount.Should().Be(1);
             returnedResponse.FailureCount.Should().Be(2);
-            returnedResponse.IsSuccess.Should().BeFalse();
         }
 
         [DynamicObjectIssue("Test expects error.error property but controller may return different format")]
         public async Task BulkCreateMappings_WithEmptyRequest_ShouldReturnBadRequest()
         {
             // Arrange
-            var request = new BulkModelMappingRequest
-            {
-                Mappings = new List<CreateModelProviderMappingDto>()
-            };
+            var mappings = new List<ModelProviderMapping>();
 
             // Act
-            var result = await _controller.CreateBulkMappings(request);
+            var result = await _controller.CreateBulkMappings(mappings.Select(m => m.ToDto()).ToList());
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
@@ -514,37 +468,27 @@ namespace ConduitLLM.Admin.Tests.Controllers
         }
 
         [Fact]
-        public async Task BulkCreateMappings_WithReplaceExisting_ShouldUpdateExisting()
+        public async Task BulkCreateMappings_WithExistingModels_ShouldReturnErrors()
         {
             // Arrange
-            var request = new BulkModelMappingRequest
+            var mappings = new List<ModelProviderMapping>
             {
-                ReplaceExisting = true,
-                Mappings = new List<CreateModelProviderMappingDto>
-                {
-                    new() { ModelId = "existing", ProviderId = 1, ProviderModelId = "gpt-4-updated" }
-                }
+                new() { ModelAlias = "existing", ProviderId = 1, ProviderModelId = "gpt-4-updated" }
             };
 
-            var response = new BulkModelMappingResponse
-            {
-                TotalProcessed = 1,
-                Updated = new List<ModelProviderMappingDto>
-                {
-                    new() { Id = 1, ModelId = "existing", ProviderId = 1, ProviderModelId = "gpt-4-updated" }
-                }
-            };
+            var created = new List<ModelProviderMapping>();
+            var errors = new List<string> { "Model 'existing' already exists" };
 
-            _mockService.Setup(x => x.CreateBulkMappingsAsync(It.IsAny<BulkModelMappingRequest>()))
-                .ReturnsAsync(response);
+            _mockService.Setup(x => x.CreateBulkMappingsAsync(It.IsAny<IEnumerable<ModelProviderMapping>>()))
+                .ReturnsAsync((created, errors));
 
             // Act
-            var result = await _controller.CreateBulkMappings(request);
+            var result = await _controller.CreateBulkMappings(mappings.Select(m => m.ToDto()).ToList());
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedResponse = Assert.IsType<BulkModelMappingResponse>(okResult.Value);
-            returnedResponse.Updated.Should().HaveCount(1);
+            var returnedResponse = Assert.IsType<BulkMappingResult>(okResult.Value);
+            returnedResponse.Errors.Should().HaveCount(1);
             returnedResponse.Created.Should().BeEmpty();
         }
 

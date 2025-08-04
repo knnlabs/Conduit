@@ -21,9 +21,9 @@ namespace ConduitLLM.Configuration.DTOs
         public string? BaseUrl { get; set; }
 
         /// <summary>
-        /// Optional organization ID for providers that support it
+        /// Optional organization or project ID for providers that support it
         /// </summary>
-        public string? OrganizationId { get; set; }
+        public string? Organization { get; set; }
 
         /// <summary>
         /// Additional provider-specific configuration

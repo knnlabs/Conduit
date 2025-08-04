@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
+using ModelProviderMappingEntity = ConduitLLM.Configuration.Entities.ModelProviderMapping;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -15,13 +16,13 @@ namespace ConduitLLM.Configuration
     /// <summary>
     /// Database context for ConduitLLM configuration
     /// </summary>
-    public class ConfigurationDbContext : DbContext, IConfigurationDbContext
+    public class ConduitDbContext : DbContext, IConfigurationDbContext
     {
         /// <summary>
         /// Initializes a new instance of the ConfigurationDbContext
         /// </summary>
         /// <param name="options">The options to be used by the context</param>
-        public ConfigurationDbContext(DbContextOptions<ConfigurationDbContext> options) : base(options)
+        public ConduitDbContext(DbContextOptions<ConduitDbContext> options) : base(options)
         {
         }
 
@@ -29,6 +30,16 @@ namespace ConduitLLM.Configuration
         /// Database set for virtual keys
         /// </summary>
         public virtual DbSet<VirtualKey> VirtualKeys { get; set; } = null!;
+
+        /// <summary>
+        /// Database set for virtual key groups
+        /// </summary>
+        public virtual DbSet<VirtualKeyGroup> VirtualKeyGroups { get; set; } = null!;
+
+        /// <summary>
+        /// Database set for virtual key group transactions
+        /// </summary>
+        public virtual DbSet<VirtualKeyGroupTransaction> VirtualKeyGroupTransactions { get; set; } = null!;
 
         /// <summary>
         /// Database set for request logs
@@ -44,6 +55,7 @@ namespace ConduitLLM.Configuration
         /// Database set for virtual key spend history (alias for backward compatibility)
         /// </summary>
         public virtual DbSet<VirtualKeySpendHistory> VirtualKeySpendHistories => VirtualKeySpendHistory;
+
 
         /// <summary>
         /// Database set for notifications
@@ -63,7 +75,7 @@ namespace ConduitLLM.Configuration
         /// <summary>
         /// Database set for model provider mappings
         /// </summary>
-        public virtual DbSet<ConduitLLM.Configuration.Entities.ModelProviderMapping> ModelProviderMappings { get; set; } = null!;
+        public virtual DbSet<ModelProviderMappingEntity> ModelProviderMappings { get; set; } = null!;
 
         /// <summary>
         /// Database set for media records
@@ -71,14 +83,14 @@ namespace ConduitLLM.Configuration
         public virtual DbSet<MediaRecord> MediaRecords { get; set; } = null!;
 
         /// <summary>
-        /// Database set for provider credentials
+        /// Database set for providers
         /// </summary>
-        public virtual DbSet<ConduitLLM.Configuration.Entities.ProviderCredential> ProviderCredentials { get; set; } = null!;
+        public virtual DbSet<Provider> Providers { get; set; } = null!;
 
         /// <summary>
         /// Database set for provider key credentials
         /// </summary>
-        public virtual DbSet<ConduitLLM.Configuration.Entities.ProviderKeyCredential> ProviderKeyCredentials { get; set; } = null!;
+        public virtual DbSet<ProviderKeyCredential> ProviderKeyCredentials { get; set; } = null!;
 
         /// <summary>
         /// Database set for router configurations
@@ -136,6 +148,11 @@ namespace ConduitLLM.Configuration
         public virtual DbSet<AudioUsageLog> AudioUsageLogs { get; set; } = null!;
 
         /// <summary>
+        /// Database set for model cost mappings
+        /// </summary>
+        public virtual DbSet<ModelCostMapping> ModelCostMappings { get; set; } = null!;
+
+        /// <summary>
         /// Database set for async tasks
         /// </summary>
         public virtual DbSet<AsyncTask> AsyncTasks { get; set; } = null!;
@@ -169,6 +186,24 @@ namespace ConduitLLM.Configuration
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // Configure VirtualKeyGroup entity
+            modelBuilder.Entity<VirtualKeyGroup>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.ExternalGroupId);
+                
+                // Configure relationships
+                entity.HasMany(e => e.VirtualKeys)
+                      .WithOne(e => e.VirtualKeyGroup)
+                      .HasForeignKey(e => e.VirtualKeyGroupId)
+                      .OnDelete(DeleteBehavior.Restrict);
+                
+                entity.HasMany(e => e.Transactions)
+                      .WithOne(e => e.VirtualKeyGroup)
+                      .HasForeignKey(e => e.VirtualKeyGroupId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
 
             // Configure VirtualKey entity
             modelBuilder.Entity<VirtualKey>(entity =>
@@ -212,8 +247,30 @@ namespace ConduitLLM.Configuration
             // Configure ModelCost entity
             modelBuilder.Entity<ModelCost>(entity =>
             {
-                entity.HasIndex(e => e.ModelIdPattern)
-                      .IsUnique(false); // Patterns might not be unique if we allow overlaps
+                entity.HasIndex(e => e.CostName);
+                
+                // Configure many-to-many relationship through ModelCostMapping
+                entity.HasMany(e => e.ModelCostMappings)
+                      .WithOne(e => e.ModelCost)
+                      .HasForeignKey(e => e.ModelCostId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure ModelCostMapping entity (junction table)
+            modelBuilder.Entity<ModelCostMapping>(entity =>
+            {
+                entity.HasIndex(e => new { e.ModelCostId, e.ModelProviderMappingId })
+                      .IsUnique(); // Each model-cost combination should be unique
+                
+                entity.HasOne(e => e.ModelCost)
+                      .WithMany(e => e.ModelCostMappings)
+                      .HasForeignKey(e => e.ModelCostId)
+                      .OnDelete(DeleteBehavior.Cascade);
+                
+                entity.HasOne(e => e.ModelProviderMapping)
+                      .WithMany(e => e.ModelCostMappings)
+                      .HasForeignKey(e => e.ModelProviderMappingId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
             // Configure VirtualKeySpendHistory entity
@@ -250,9 +307,15 @@ namespace ConduitLLM.Configuration
             modelBuilder.Entity<ModelDeploymentEntity>(entity =>
             {
                 entity.HasIndex(e => e.ModelName);
-                entity.HasIndex(e => e.ProviderType);
+                entity.HasIndex(e => e.ProviderId);
                 entity.HasIndex(e => e.IsEnabled);
                 entity.HasIndex(e => e.IsHealthy);
+                
+                // Configure relationship with Provider
+                entity.HasOne(e => e.Provider)
+                      .WithMany()
+                      .HasForeignKey(e => e.ProviderId)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<FallbackConfigurationEntity>(entity =>
@@ -276,14 +339,14 @@ namespace ConduitLLM.Configuration
             modelBuilder.Entity<ProviderHealthRecord>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.HasIndex(e => new { e.ProviderType, e.TimestampUtc });
+                entity.HasIndex(e => new { e.ProviderId, e.TimestampUtc });
                 entity.HasIndex(e => e.IsOnline);
             });
 
             modelBuilder.Entity<ProviderHealthConfiguration>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.HasIndex(e => e.ProviderType).IsUnique();
+                entity.HasIndex(e => e.ProviderId).IsUnique();
             });
 
             // Configure IP Filter entity
@@ -300,11 +363,11 @@ namespace ConduitLLM.Configuration
             modelBuilder.Entity<AudioProviderConfig>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.HasIndex(e => e.ProviderCredentialId);
+                entity.HasIndex(e => e.ProviderId);
 
-                entity.HasOne(e => e.ProviderCredential)
+                entity.HasOne(e => e.Provider)
                       .WithOne()
-                      .HasForeignKey<AudioProviderConfig>(e => e.ProviderCredentialId)
+                      .HasForeignKey<AudioProviderConfig>(e => e.ProviderId)
                       .OnDelete(DeleteBehavior.Cascade);
             });
 
@@ -312,7 +375,7 @@ namespace ConduitLLM.Configuration
             modelBuilder.Entity<AudioCost>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.HasIndex(e => new { e.Provider, e.OperationType, e.Model, e.IsActive });
+                entity.HasIndex(e => new { e.ProviderId, e.OperationType, e.Model, e.IsActive });
                 entity.HasIndex(e => new { e.EffectiveFrom, e.EffectiveTo });
             });
 
@@ -322,7 +385,7 @@ namespace ConduitLLM.Configuration
                 entity.HasKey(e => e.Id);
                 entity.HasIndex(e => e.VirtualKey);
                 entity.HasIndex(e => e.Timestamp);
-                entity.HasIndex(e => new { e.Provider, e.OperationType });
+                entity.HasIndex(e => new { e.ProviderId, e.OperationType });
                 entity.HasIndex(e => e.SessionId);
             });
 
@@ -429,9 +492,28 @@ namespace ConduitLLM.Configuration
                 entity.HasIndex(e => e.ChangedBy);
             });
 
+            // Configure VirtualKeyGroupTransaction entity
+            modelBuilder.Entity<VirtualKeyGroupTransaction>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.VirtualKeyGroupId);
+                entity.HasIndex(e => e.CreatedAt);
+                entity.HasIndex(e => new { e.VirtualKeyGroupId, e.CreatedAt });
+                entity.HasIndex(e => new { e.IsDeleted, e.CreatedAt });
+                entity.HasIndex(e => e.ReferenceType);
+                entity.HasIndex(e => e.TransactionType);
+                
+                // Store enums as integers
+                entity.Property(e => e.TransactionType)
+                      .HasConversion<int>();
+                      
+                entity.Property(e => e.ReferenceType)
+                      .HasConversion<int>();
+            });
+
             modelBuilder.ApplyConfigurationEntityConfigurations(IsTestEnvironment);
 
-            // Note: ModelProviderMapping and ProviderCredential are now included in test environments
+            // Note: ModelProviderMapping and Provider are now included in test environments
             // as they are required by the application code during tests
         }
     }

@@ -45,14 +45,15 @@ public interface ILLMClientFactory
 
     /// <summary>
     /// Creates a lightweight ILLMClient instance for testing provider credentials.
-    /// This method bypasses the normal configuration lookup and creates a client directly with the provided credentials.
+    /// This method bypasses the normal configuration lookup and creates a client directly with the provided provider and key.
     /// </summary>
-    /// <param name="credentials">The provider credentials to test, including API key and provider type.</param>
+    /// <param name="provider">The provider entity with configuration.</param>
+    /// <param name="keyCredential">The key credential to test.</param>
     /// <returns>An instance of ILLMClient configured with the test credentials.</returns>
     /// <exception cref="UnsupportedProviderException">Thrown if the specified provider type is not supported by this factory.</exception>
     /// <remarks>
     /// This method is specifically designed for credential validation and should not be used for normal operations.
     /// The created client is configured with minimal settings suitable for authentication testing only.
     /// </remarks>
-    ILLMClient CreateTestClient(ConduitLLM.Configuration.ProviderCredentials credentials);
+    ILLMClient CreateTestClient(ConduitLLM.Configuration.Entities.Provider provider, ConduitLLM.Configuration.Entities.ProviderKeyCredential keyCredential);
 }

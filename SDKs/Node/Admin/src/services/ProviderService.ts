@@ -1,5 +1,5 @@
 import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
-import { ENDPOINTS, CACHE_TTL, DEFAULT_PAGE_SIZE } from '../constants';
+import { ENDPOINTS, CACHE_TTL } from '../constants';
 import { ProviderType } from '../models/providerType';
 import {
   ProviderCredentialDto,
@@ -14,7 +14,6 @@ import {
   ProviderHealthStatusDto,
   ProviderHealthSummaryDto,
   ProviderFilters,
-  ProviderHealthFilters,
   ProviderUsageStatistics,
 } from '../models/provider';
 import { PaginatedResponse } from '../models/common';
@@ -47,13 +46,42 @@ export class ProviderService extends FetchBaseApiClient {
       throw new ValidationError('Invalid provider credential request', { validationError: error });
     }
 
-    const response = await this.post<ProviderCredentialDto>(
+    // Extract the API key from the request
+    const { apiKey, ...providerData } = request;
+
+    console.warn('[SDK ProviderService] create called with:', { hasApiKey: !!apiKey, providerData });
+
+    // First, create the provider without the API key
+    const provider = await this.post<ProviderCredentialDto>(
       ENDPOINTS.PROVIDERS.BASE,
-      request
+      providerData
     );
 
+    console.warn('[SDK ProviderService] Provider created:', provider);
+
+    // If an API key was provided, create it as a separate call
+    if (apiKey && provider.id) {
+      console.warn('[SDK ProviderService] Creating API key for provider:', provider.id);
+      try {
+        const keyResponse = await this.post(
+          ENDPOINTS.PROVIDER_KEYS.BASE(provider.id),
+          {
+            apiKey,
+            keyName: 'Primary',
+            isPrimary: true,
+            isEnabled: true,
+            providerAccountGroup: 0
+          }
+        );
+        console.warn('[SDK ProviderService] API key created successfully:', keyResponse);
+      } catch (keyError) {
+        console.error('[SDK ProviderService] Failed to create API key:', keyError);
+        // Don't throw - return the provider even if key creation fails
+      }
+    }
+
     await this.invalidateCache();
-    return response;
+    return provider;
   }
 
   async list(filters?: ProviderFilters): Promise<ProviderCredentialDto[]> {
@@ -74,22 +102,24 @@ export class ProviderService extends FetchBaseApiClient {
     );
   }
 
+  /**
+   * @deprecated BY_NAME endpoint no longer exists - use list() and filter
+   */
   async getByName(providerName: string): Promise<ProviderCredentialDto> {
-    const cacheKey = this.getCacheKey('provider-name', providerName);
-    return this.withCache(
-      cacheKey,
-      () => super.get<ProviderCredentialDto>(ENDPOINTS.PROVIDERS.BY_NAME(providerName)),
-      CACHE_TTL.MEDIUM
-    );
+    const providers = await this.list();
+    const provider = providers.find(p => p.providerName === providerName);
+    if (!provider) {
+      throw new Error(`Provider with name '${providerName}' not found`);
+    }
+    return provider;
   }
 
+  /**
+   * @deprecated NAMES endpoint no longer exists - use list() and extract names
+   */
   async getProviderNames(): Promise<string[]> {
-    const cacheKey = 'provider-names';
-    return this.withCache(
-      cacheKey,
-      () => super.get<string[]>(ENDPOINTS.PROVIDERS.NAMES),
-      CACHE_TTL.LONG
-    );
+    const providers = await this.list();
+    return providers.map(p => p.providerName).filter((name): name is string => !!name);
   }
 
   async update(id: number, request: UpdateProviderCredentialDto): Promise<void> {
@@ -159,30 +189,12 @@ export class ProviderService extends FetchBaseApiClient {
 
   async getProviderHealthStatus(providerType: ProviderType): Promise<ProviderHealthStatusDto> {
     return super.get<ProviderHealthStatusDto>(
-      ENDPOINTS.HEALTH.STATUS_BY_PROVIDER(providerType)
+      ENDPOINTS.HEALTH.STATUS_BY_ID(providerType)
     );
   }
 
-  async getHealthHistory(
-    filters?: ProviderHealthFilters
-  ): Promise<PaginatedResponse<ProviderHealthRecordDto>> {
-    const params = {
-      pageNumber: filters?.pageNumber ?? 1,
-      pageSize: filters?.pageSize ?? DEFAULT_PAGE_SIZE,
-      providerType: filters?.providerType,
-      isHealthy: filters?.isHealthy,
-      startDate: filters?.startDate,
-      endDate: filters?.endDate,
-      minResponseTime: filters?.minResponseTime,
-      maxResponseTime: filters?.maxResponseTime,
-      sortBy: filters?.sortBy?.field,
-      sortDirection: filters?.sortBy?.direction,
-    };
-
-    return super.get<PaginatedResponse<ProviderHealthRecordDto>>(
-      ENDPOINTS.HEALTH.HISTORY,
-      params
-    );
+  async getHealthHistory(): Promise<PaginatedResponse<ProviderHealthRecordDto>> {
+    throw new Error('Health history endpoint no longer exists. Use getHealthRecords instead.');
   }
 
   async checkHealth(providerType: ProviderType): Promise<ProviderConnectionTestResultDto> {

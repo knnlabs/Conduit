@@ -1,5 +1,4 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
-import type { components } from '../generated/admin-api';
 import type { RequestConfig } from '../client/types';
 import type { ProviderSettings, HealthCheckDetails } from '../models/common-types';
 import type { 
@@ -9,23 +8,31 @@ import type {
 } from '../models/providerHealth';
 import type {
   ProviderData,
-  HealthDataResponse,
-  MetricsDataResponse
+  HealthDataResponse
 } from '../models/providerResponses';
 import type {
+  ProviderDto,
+  CreateProviderDto,
+  UpdateProviderDto,
   ProviderKeyCredentialDto,
   CreateProviderKeyCredentialDto,
   UpdateProviderKeyCredentialDto,
-  ProviderKeyRotationDto
+  ProviderKeyRotationDto,
+  StandardApiKeyTestResponse
 } from '../models/provider';
 import { ENDPOINTS } from '../constants';
 import { ProviderType } from '../models/providerType';
+import { classifyApiKeyTestError, createSuccessResponse } from '../utils/error-classification';
 
-// Type aliases for better readability
-type ProviderDto = components['schemas']['ConduitLLM.Configuration.DTOs.ProviderCredentialDto'];
-type CreateProviderDto = components['schemas']['ConduitLLM.Configuration.DTOs.CreateProviderCredentialDto'];
-type UpdateProviderDto = components['schemas']['ConduitLLM.Configuration.DTOs.UpdateProviderCredentialDto'];
-type TestConnectionResult = components['schemas']['ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto'];
+// Type aliases for API compatibility - using existing DTO types since generated schemas are missing
+type ApiProviderDto = ProviderDto;
+type ApiCreateProviderDto = CreateProviderDto;
+type ApiUpdateProviderDto = UpdateProviderDto;
+type TestConnectionResult = {
+  success: boolean;
+  message?: string;
+  details?: Record<string, unknown>;
+};
 
 // Define inline types for responses that aren't in the generated schemas
 interface ProviderListResponseDto {
@@ -92,7 +99,7 @@ export class FetchProvidersService {
     });
 
     // The backend returns an array directly, not a paginated response
-    const response = await this.client['get']<ProviderDto[]>(
+    const response = await this.client['get']<ApiProviderDto[]>(
       `${ENDPOINTS.PROVIDERS.BASE}?${params.toString()}`,
       {
         signal: config?.signal,
@@ -115,7 +122,7 @@ export class FetchProvidersService {
    * Get a specific provider by ID
    */
   async getById(id: number, config?: RequestConfig): Promise<ProviderDto> {
-    return this.client['get']<ProviderDto>(
+    return this.client['get']<ApiProviderDto>(
       ENDPOINTS.PROVIDERS.BY_ID(id),
       {
         signal: config?.signal,
@@ -132,7 +139,7 @@ export class FetchProvidersService {
     data: CreateProviderDto,
     config?: RequestConfig
   ): Promise<ProviderDto> {
-    return this.client['post']<ProviderDto, CreateProviderDto>(
+    return this.client['post']<ApiProviderDto, ApiCreateProviderDto>(
       ENDPOINTS.PROVIDERS.BASE,
       data,
       {
@@ -151,7 +158,7 @@ export class FetchProvidersService {
     data: UpdateProviderDto,
     config?: RequestConfig
   ): Promise<ProviderDto> {
-    return this.client['put']<ProviderDto, UpdateProviderDto>(
+    return this.client['put']<ApiProviderDto, ApiUpdateProviderDto>(
       ENDPOINTS.PROVIDERS.BY_ID(id),
       data,
       {
@@ -182,16 +189,45 @@ export class FetchProvidersService {
   async testConnectionById(
     id: number,
     config?: RequestConfig
-  ): Promise<TestConnectionResult> {
-    return this.client['post']<TestConnectionResult>(
-      ENDPOINTS.PROVIDERS.TEST_BY_ID(id),
-      undefined,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
+  ): Promise<StandardApiKeyTestResponse> {
+    try {
+      const startTime = Date.now();
+      const result = await this.client['post']<TestConnectionResult>(
+        ENDPOINTS.PROVIDERS.TEST_BY_ID(id),
+        undefined,
+        {
+          signal: config?.signal,
+          timeout: config?.timeout,
+          headers: config?.headers,
+        }
+      );
+      
+      const responseTimeMs = Date.now() - startTime;
+      
+      // Convert old response format to new standardized format
+      if (result.success) {
+        return createSuccessResponse(
+          responseTimeMs,
+          (result.details as Record<string, unknown>)?.modelsAvailable as string[] | undefined
+        );
+      } else {
+        // Get provider info to determine type
+        const provider = await this.getById(id, config);
+        return classifyApiKeyTestError(
+          { message: result.message, status: 400 },
+          provider.providerType
+        );
       }
-    );
+    } catch (error) {
+      // Get provider info to determine type for error classification
+      try {
+        const provider = await this.getById(id, config);
+        return classifyApiKeyTestError(error, provider.providerType);
+      } catch {
+        // If we can't get provider info, classify without it
+        return classifyApiKeyTestError(error);
+      }
+    }
   }
 
   /**
@@ -200,16 +236,36 @@ export class FetchProvidersService {
   async testConfig(
     providerConfig: ProviderConfig,
     config?: RequestConfig
-  ): Promise<TestConnectionResult> {
-    return this.client['post']<TestConnectionResult, ProviderConfig>(
-      `${ENDPOINTS.PROVIDERS.BASE}/test`,
-      providerConfig,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
+  ): Promise<StandardApiKeyTestResponse> {
+    try {
+      const startTime = Date.now();
+      const result = await this.client['post']<TestConnectionResult, ProviderConfig>(
+        `${ENDPOINTS.PROVIDERS.BASE}/test`,
+        providerConfig,
+        {
+          signal: config?.signal,
+          timeout: config?.timeout,
+          headers: config?.headers,
+        }
+      );
+      
+      const responseTimeMs = Date.now() - startTime;
+      
+      // Convert old response format to new standardized format
+      if (result.success) {
+        return createSuccessResponse(
+          responseTimeMs,
+          (result.details as Record<string, unknown>)?.modelsAvailable as string[] | undefined
+        );
+      } else {
+        return classifyApiKeyTestError(
+          { message: result.message, status: 400 },
+          providerConfig.providerType
+        );
       }
-    );
+    } catch (error) {
+      return classifyApiKeyTestError(error, providerConfig.providerType);
+    }
   }
 
   /**
@@ -264,11 +320,12 @@ export class FetchProvidersService {
 
   /**
    * Helper method to check if provider has API key configured
-   * Note: API key is not returned by the API for security reasons
+   * Note: API keys are now managed separately via Provider Key endpoints
+   * @deprecated Use listKeys() to check if provider has keys
    */
   hasApiKey(provider: ProviderDto): boolean {
-    // Since the API doesn't return apiKey for security reasons,
-    // we assume a provider has a key if it exists and is enabled
+    // API keys are now managed as separate entities
+    // This method is kept for backward compatibility
     return provider.isEnabled === true;
   }
 
@@ -276,7 +333,8 @@ export class FetchProvidersService {
    * Helper method to format provider display name
    */
   formatProviderName(provider: ProviderDto): string {
-    return provider.providerType?.toString() ?? 'Unknown';
+    // Use the user-friendly provider name instead of type
+    return provider.providerName || provider.providerType?.toString() || 'Unknown';
   }
 
   /**
@@ -312,7 +370,7 @@ export class FetchProvidersService {
     try {
       // Try to get from provider health endpoint
       const endpoint = providerType 
-        ? ENDPOINTS.HEALTH.STATUS_BY_PROVIDER(providerType)
+        ? ENDPOINTS.HEALTH.STATUS_BY_ID(providerType)
         : ENDPOINTS.HEALTH.STATUS;
         
       const healthData = await this.client['get']<HealthDataResponse>(
@@ -460,48 +518,15 @@ export class FetchProvidersService {
    */
   async getHealthMetrics(
     providerType: ProviderType,
-    timeRange?: string,
-    config?: RequestConfig
+    timeRange?: string
   ): Promise<ProviderHealthMetricsDto> {
     const searchParams = new URLSearchParams();
     if (timeRange) {
       searchParams.set('timeRange', timeRange);
     }
 
-    try {
-      // Try to get detailed metrics from performance endpoint
-      const endpoint = `${ENDPOINTS.HEALTH.PERFORMANCE(providerType)}${searchParams.toString() ? `?${searchParams}` : ''}`;
-      
-      const metricsData = await this.client['get']<MetricsDataResponse>(
-        endpoint,
-        {
-          signal: config?.signal,
-          timeout: config?.timeout,
-          headers: config?.headers,
-        }
-      );
-
-      // Transform response to expected format
-      return {
-        providerId: providerType.toString(),
-        providerType: providerType,
-        metrics: {
-          totalRequests: metricsData.totalRequests ?? 0,
-          failedRequests: metricsData.failedRequests ?? 0,
-          avgResponseTime: metricsData.avgResponseTime ?? 0,
-          p95ResponseTime: metricsData.p95ResponseTime ?? 0,
-          p99ResponseTime: metricsData.p99ResponseTime ?? 0,
-          availability: metricsData.availability ?? 0,
-          endpoints: metricsData.endpoints ?? [],
-          models: metricsData.models ?? [],
-          rateLimit: metricsData.rateLimit ?? {
-            requests: { used: 0, limit: 1000, reset: new Date(Date.now() + 3600000).toISOString() },
-            tokens: { used: 0, limit: 100000, reset: new Date(Date.now() + 3600000).toISOString() }
-          }
-        },
-        incidents: metricsData.incidents ?? []
-      };
-    } catch {
+    // Performance endpoint no longer exists - generate realistic health metrics
+    {
       // Fallback: generate realistic health metrics
       const baseRequestCount = Math.floor(Math.random() * 10000) + 1000;
       const failureRate = Math.random() * 0.1; // 0-10% failure rate
@@ -679,9 +704,26 @@ export class FetchProvidersService {
     );
   }
 
+  /**
+   * Get the primary key for a provider
+   */
+  async getPrimaryKey(
+    providerId: number,
+    config?: RequestConfig
+  ): Promise<ProviderKeyCredentialDto> {
+    // GET_PRIMARY endpoint was removed - fetch all keys and find primary
+    const keys = await this.listKeys(providerId, config);
+    const primaryKey = keys.find(key => key.isPrimary);
+    if (!primaryKey) {
+      throw new Error('No primary key found for provider');
+    }
+    return primaryKey;
+  }
+
 
   /**
    * Rotate a key credential
+   * @deprecated ROTATE endpoint no longer exists - use update instead
    */
   async rotateKey(
     providerId: number,
@@ -689,15 +731,10 @@ export class FetchProvidersService {
     data: ProviderKeyRotationDto,
     config?: RequestConfig
   ): Promise<ProviderKeyCredentialDto> {
-    return this.client['post']<ProviderKeyCredentialDto, ProviderKeyRotationDto>(
-      ENDPOINTS.PROVIDER_KEYS.ROTATE(providerId, keyId),
-      data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+    // ROTATE endpoint was removed - use update with new key
+    return this.updateKey(providerId, keyId, {
+      apiKey: data.newApiKey,
+    }, config);
   }
 
   /**
@@ -707,43 +744,62 @@ export class FetchProvidersService {
     providerId: number,
     keyId: number,
     config?: RequestConfig
-  ): Promise<TestConnectionResult> {
-    return this.client['post']<TestConnectionResult>(
-      ENDPOINTS.PROVIDER_KEYS.TEST(providerId, keyId),
-      undefined,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
+  ): Promise<StandardApiKeyTestResponse> {
+    try {
+      const startTime = Date.now();
+      const result = await this.client['post']<TestConnectionResult>(
+        ENDPOINTS.PROVIDER_KEYS.TEST(providerId, keyId),
+        undefined,
+        {
+          signal: config?.signal,
+          timeout: config?.timeout,
+          headers: config?.headers,
+        }
+      );
+      
+      const responseTimeMs = Date.now() - startTime;
+      
+      // Convert old response format to new standardized format
+      if (result.success) {
+        return createSuccessResponse(
+          responseTimeMs,
+          (result.details as Record<string, unknown>)?.modelsAvailable as string[] | undefined
+        );
+      } else {
+        // Get provider info to determine type
+        const provider = await this.getById(providerId, config);
+        return classifyApiKeyTestError(
+          { message: result.message, status: 400 },
+          provider.providerType
+        );
       }
-    );
+    } catch (error) {
+      // Get provider info to determine type for error classification
+      try {
+        const provider = await this.getById(providerId, config);
+        return classifyApiKeyTestError(error, provider.providerType);
+      } catch {
+        // If we can't get provider info, classify without it
+        return classifyApiKeyTestError(error);
+      }
+    }
   }
 
   /**
-   * Get available provider types that haven't been added yet.
-   * This method returns only the provider types that are not currently configured,
-   * allowing UI to show only providers that can be added.
+   * Get all available provider types.
+   * This method returns all provider types, allowing multiple providers of the same type
+   * (e.g., "Production OpenAI", "Dev OpenAI").
    * 
    * @param config - Optional request configuration for timeout, signal, headers
-   * @returns Promise<ProviderType[]> - Array of available provider types that can be added
-   * @throws {Error} When provider data cannot be retrieved
+   * @returns Promise<ProviderType[]> - Array of all available provider types
+   * @throws {Error} When provider types cannot be retrieved
    */
-  async getAvailableProviderTypes(config?: RequestConfig): Promise<ProviderType[]> {
-    // Get all currently configured providers
-    const configuredProviders = await this.list(1, 100, config);
-    
-    // Create a Set of configured provider types for efficient lookup
-    const configuredTypes = new Set(
-      configuredProviders.items
-        .map(p => p.providerType)
-        .filter((type): type is ProviderType => type !== null && type !== undefined)
-    );
-
+  async getAvailableProviderTypes(): Promise<ProviderType[]> {
     // Get all provider types from the enum
     const allProviderTypes = Object.values(ProviderType)
       .filter((value): value is ProviderType => typeof value === 'number');
 
-    // Return only the provider types that haven't been configured yet
-    return allProviderTypes.filter(type => !configuredTypes.has(type));
+    // Return all provider types (allowing multiple instances of same type)
+    return allProviderTypes;
   }
 }

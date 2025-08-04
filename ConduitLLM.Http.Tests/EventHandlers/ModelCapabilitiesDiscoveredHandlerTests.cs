@@ -45,7 +45,6 @@ namespace ConduitLLM.Http.Tests.EventHandlers
             {
                 EventId = Guid.NewGuid().ToString(),
                 ProviderId = 1,
-                ProviderType = ProviderType.OpenAI,
                 ModelCapabilities = new Dictionary<string, ModelCapabilities>
                 {
                     ["gpt-4"] = new ModelCapabilities
@@ -69,7 +68,7 @@ namespace ConduitLLM.Http.Tests.EventHandlers
             await _handler.Consume(context.Object);
 
             // Assert
-            var cacheKey = "provider_capabilities_openai";
+            var cacheKey = "provider_capabilities_provider_1";
             _cacheMock.Verify(c => c.CreateEntry(cacheKey), Times.Once);
         }
 
@@ -86,7 +85,6 @@ namespace ConduitLLM.Http.Tests.EventHandlers
             {
                 EventId = Guid.NewGuid().ToString(),
                 ProviderId = 1,
-                ProviderType = ProviderType.OpenAI,
                 ModelCapabilities = new Dictionary<string, ModelCapabilities>(),
                 DiscoveredAt = DateTime.UtcNow
             };
@@ -114,7 +112,6 @@ namespace ConduitLLM.Http.Tests.EventHandlers
             {
                 EventId = Guid.NewGuid().ToString(),
                 ProviderId = 2,
-                ProviderType = ProviderType.Anthropic,
                 ModelCapabilities = new Dictionary<string, ModelCapabilities>
                 {
                     ["claude-3-opus"] = new ModelCapabilities
@@ -150,7 +147,6 @@ namespace ConduitLLM.Http.Tests.EventHandlers
             {
                 EventId = Guid.NewGuid().ToString(),
                 ProviderId = 3,
-                ProviderType = ProviderType.OpenAI,
                 ModelCapabilities = new Dictionary<string, ModelCapabilities>(),
                 DiscoveredAt = DateTime.UtcNow
             };
@@ -222,7 +218,6 @@ namespace ConduitLLM.Http.Tests.EventHandlers
             {
                 EventId = Guid.NewGuid().ToString(),
                 ProviderId = 4,
-                ProviderType = ProviderType.OpenAI,
                 ModelCapabilities = new Dictionary<string, ModelCapabilities>
                 {
                     ["model-1"] = new ModelCapabilities
@@ -251,7 +246,7 @@ namespace ConduitLLM.Http.Tests.EventHandlers
             await _handler.Consume(context.Object);
 
             // Assert
-            var cacheKey = "provider_capabilities_openai";
+            var cacheKey = "provider_capabilities_provider_4";
             _cacheMock.Verify(c => c.CreateEntry(cacheKey), Times.Once);
         }
     }

@@ -22,6 +22,7 @@ using Xunit;
 using Xunit.Abstractions;
 using ConduitLLM.Tests.TestHelpers;
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Tests.Providers
 {
@@ -56,15 +57,23 @@ namespace ConduitLLM.Tests.Providers
             // Setup default token counting
             _mockTokenCounter.SetupDefaultTokenCounting(10, 20);
 
-            var credentials = new ProviderCredentials
+            var provider = new Provider
             {
+                Id = 1,
                 ProviderType = ProviderType.AzureOpenAI,
-                ApiKey = "test-key",
                 BaseUrl = "https://test.openai.azure.com"
+            };
+            
+            var keyCredential = new ProviderKeyCredential
+            {
+                Id = 1,
+                ProviderId = 1,
+                ApiKey = "test-key"
             };
 
             _client = new AzureOpenAIClient(
-                credentials,
+                provider,
+                keyCredential,
                 "test-deployment",
                 _mockLogger.Object,
                 _mockHttpClientFactory.Object);
@@ -76,17 +85,25 @@ namespace ConduitLLM.Tests.Providers
         public void SetAuthentication_WithValidCredentials_ShouldSetApiKey()
         {
             // Arrange
-            var credentials = new ProviderCredentials
+            var provider = new Provider
             {
+                Id = 1,
                 ProviderType = ProviderType.AzureOpenAI,
-                ApiKey = "test-azure-key",
                 BaseUrl = "https://myresource.openai.azure.com"
+            };
+            
+            var keyCredential = new ProviderKeyCredential
+            {
+                Id = 1,
+                ProviderId = 1,
+                ApiKey = "test-azure-key"
             };
 
             // Act
             // Authentication is set in constructor, so we need to create a new client
             var client = new AzureOpenAIClient(
-                credentials,
+                provider,
+                keyCredential,
                 "gpt-4-deployment",
                 _mockLogger.Object,
                 _mockHttpClientFactory.Object);
@@ -102,6 +119,7 @@ namespace ConduitLLM.Tests.Providers
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => new AzureOpenAIClient(
                 null!,
+                null!,
                 "test-deployment",
                 _mockLogger.Object,
                 _mockHttpClientFactory.Object));
@@ -111,16 +129,24 @@ namespace ConduitLLM.Tests.Providers
         public void SetAuthentication_WithEmptyApiKey_ShouldThrowArgumentException()
         {
             // Arrange
-            var credentials = new ProviderCredentials
+            var provider = new Provider
             {
+                Id = 1,
                 ProviderType = ProviderType.AzureOpenAI,
-                ApiKey = "",
                 BaseUrl = "https://test.openai.azure.com"
+            };
+            
+            var keyCredential = new ProviderKeyCredential
+            {
+                Id = 1,
+                ProviderId = 1,
+                ApiKey = ""
             };
 
             // Act & Assert
             Assert.Throws<ConfigurationException>(() => new AzureOpenAIClient(
-                credentials,
+                provider,
+                keyCredential,
                 "test-deployment",
                 _mockLogger.Object,
                 _mockHttpClientFactory.Object));
@@ -693,15 +719,23 @@ data: [DONE]
         public async Task CreateChatCompletionAsync_WithDeploymentId_ShouldUseDeploymentInUrl()
         {
             // Arrange
-            var credentials = new ProviderCredentials
+            var provider = new Provider
             {
+                Id = 1,
                 ProviderType = ProviderType.AzureOpenAI,
-                ApiKey = "test-key",
                 BaseUrl = "https://myresource.openai.azure.com"
             };
             
+            var keyCredential = new ProviderKeyCredential
+            {
+                Id = 1,
+                ProviderId = 1,
+                ApiKey = "test-key"
+            };
+            
             var client = new AzureOpenAIClient(
-                credentials,
+                provider,
+                keyCredential,
                 "my-gpt4-deployment",
                 _mockLogger.Object,
                 _mockHttpClientFactory.Object);

@@ -34,8 +34,8 @@ namespace ConduitLLM.Tests.Core.Services
         private readonly Mock<IVirtualKeyService> _mockVirtualKeyService;
         private readonly Mock<IHttpClientFactory> _mockHttpClientFactory;
         private readonly Mock<ICancellableTaskRegistry> _mockTaskRegistry;
-        private readonly Mock<IImageGenerationMetricsService> _mockMetricsService;
         private readonly Mock<ICostCalculationService> _mockCostCalculationService;
+        private readonly Mock<ConduitLLM.Configuration.IProviderService> _mockProviderService;
         private readonly Mock<ILogger<ImageGenerationOrchestrator>> _mockLogger;
         private readonly Mock<IOptions<ImageGenerationPerformanceConfiguration>> _mockPerformanceOptions;
         private readonly ImageGenerationPerformanceConfiguration _performanceConfig;
@@ -52,8 +52,8 @@ namespace ConduitLLM.Tests.Core.Services
             _mockVirtualKeyService = new Mock<IVirtualKeyService>();
             _mockHttpClientFactory = new Mock<IHttpClientFactory>();
             _mockTaskRegistry = new Mock<ICancellableTaskRegistry>();
-            _mockMetricsService = new Mock<IImageGenerationMetricsService>();
             _mockCostCalculationService = new Mock<ICostCalculationService>();
+            _mockProviderService = new Mock<ConduitLLM.Configuration.IProviderService>();
             _mockLogger = new Mock<ILogger<ImageGenerationOrchestrator>>();
             _mockPerformanceOptions = new Mock<IOptions<ImageGenerationPerformanceConfiguration>>();
 
@@ -84,8 +84,8 @@ namespace ConduitLLM.Tests.Core.Services
                 _mockVirtualKeyService.Object,
                 _mockHttpClientFactory.Object,
                 _mockTaskRegistry.Object,
-                _mockMetricsService.Object,
                 _mockCostCalculationService.Object,
+                _mockProviderService.Object,
                 _mockPerformanceOptions.Object,
                 _mockLogger.Object);
         }
@@ -145,10 +145,6 @@ namespace ConduitLLM.Tests.Core.Services
             _mockPublishEndpoint.Verify(x => x.Publish(
                 It.Is<ImageGenerationCompleted>(e => e.TaskId == "test-task-id"),
                 It.IsAny<CancellationToken>()), Times.Once);
-
-            _mockMetricsService.Verify(x => x.RecordMetricAsync(
-                It.Is<ImageGenerationMetrics>(m => m.Success == true),
-                It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -188,17 +184,27 @@ namespace ConduitLLM.Tests.Core.Services
                 .ReturnsAsync(virtualKey);
 
             // Setup model mapping
-            var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
+            var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = "dall-e-3",
                 ProviderId = 1,
-                ProviderType = ProviderType.OpenAI,
                 ProviderModelId = "dall-e-3",
+                Provider = new Provider { ProviderType = ProviderType.OpenAI },
                 SupportsImageGeneration = true
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("dall-e-3"))
                 .Returns(Task.FromResult(modelMapping));
+
+            // Setup provider service to return the provider
+            var providerEntity = new Provider 
+            { 
+                Id = 1,
+                ProviderType = ProviderType.OpenAI
+            };
+
+            _mockProviderService.Setup(x => x.GetProviderByIdAsync(1))
+                .ReturnsAsync(providerEntity);
 
             // Setup client response with base64 data
             var mockClient = new Mock<ILLMClient>();
@@ -293,7 +299,7 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Setup model mapping to return null (invalid model)
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("invalid-model"))
-                .Returns(Task.FromResult((ConduitLLM.Configuration.ModelProviderMapping?)null));
+                .Returns(Task.FromResult((ModelProviderMapping?)null));
 
             // Act
             await Assert.ThrowsAsync<InvalidOperationException>(() => 
@@ -388,11 +394,10 @@ namespace ConduitLLM.Tests.Core.Services
                 .ReturnsAsync(virtualKey);
 
             // Setup model mapping for a text model
-            var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
+            var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = "gpt-4",
                 ProviderId = 1,
-                ProviderType = ProviderType.OpenAI,
                 ProviderModelId = "gpt-4"
             };
 
@@ -449,17 +454,27 @@ namespace ConduitLLM.Tests.Core.Services
                 .ReturnsAsync(virtualKey);
 
             // Setup model mapping
-            var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
+            var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = "dall-e-3",
                 ProviderId = 1,
-                ProviderType = ProviderType.OpenAI,
                 ProviderModelId = "dall-e-3",
+                Provider = new Provider { ProviderType = ProviderType.OpenAI },
                 SupportsImageGeneration = true
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("dall-e-3"))
                 .Returns(Task.FromResult(modelMapping));
+
+            // Setup provider service to return the provider
+            var providerEntity = new Provider 
+            { 
+                Id = 1,
+                ProviderType = ProviderType.OpenAI
+            };
+
+            _mockProviderService.Setup(x => x.GetProviderByIdAsync(1))
+                .ReturnsAsync(providerEntity);
 
             // Setup client to throw cancellation exception
             var mockClient = new Mock<ILLMClient>();
@@ -860,23 +875,39 @@ namespace ConduitLLM.Tests.Core.Services
                 .ReturnsAsync(virtualKey);
 
             // Setup model mapping
-            var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
+            var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = request.Request.Model,
                 ProviderId = 1,
-                ProviderType = provider switch
+                Provider = new Provider { ProviderType = provider switch
                 {
                     "openai" => ProviderType.OpenAI,
                     "minimax" => ProviderType.MiniMax,
                     "replicate" => ProviderType.Replicate,
                     _ => ProviderType.Replicate
-                },
+                } },
                 ProviderModelId = model,
                 SupportsImageGeneration = true
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync(request.Request.Model))
                 .Returns(Task.FromResult(modelMapping));
+
+            // Setup provider service to return the provider
+            var providerEntity = new Provider 
+            { 
+                Id = 1,
+                ProviderType = provider switch
+                {
+                    "openai" => ProviderType.OpenAI,
+                    "minimax" => ProviderType.MiniMax,
+                    "replicate" => ProviderType.Replicate,
+                    _ => ProviderType.Replicate
+                }
+            };
+
+            _mockProviderService.Setup(x => x.GetProviderByIdAsync(1))
+                .ReturnsAsync(providerEntity);
 
             // Setup client response
             var mockClient = new Mock<ILLMClient>();
@@ -974,23 +1005,39 @@ namespace ConduitLLM.Tests.Core.Services
                 .ReturnsAsync(virtualKey);
 
             // Setup model mapping
-            var modelMapping = new ConduitLLM.Configuration.ModelProviderMapping
+            var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = request.Request.Model,
                 ProviderId = 1,
-                ProviderType = provider switch
+                Provider = new Provider { ProviderType = provider switch
                 {
                     "openai" => ProviderType.OpenAI,
                     "minimax" => ProviderType.MiniMax,
                     "replicate" => ProviderType.Replicate,
                     _ => ProviderType.Replicate
-                },
+                } },
                 ProviderModelId = model,
                 SupportsImageGeneration = true
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync(request.Request.Model))
                 .Returns(Task.FromResult(modelMapping));
+
+            // Setup provider service to return the provider
+            var providerEntity = new Provider 
+            { 
+                Id = 1,
+                ProviderType = provider switch
+                {
+                    "openai" => ProviderType.OpenAI,
+                    "minimax" => ProviderType.MiniMax,
+                    "replicate" => ProviderType.Replicate,
+                    _ => ProviderType.Replicate
+                }
+            };
+
+            _mockProviderService.Setup(x => x.GetProviderByIdAsync(1))
+                .ReturnsAsync(providerEntity);
 
             // Setup client response with URLs
             var mockClient = new Mock<ILLMClient>();

@@ -1,31 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
-import { getServerAdminClient } from '@/lib/server/adminClient';
-import { getProviderTypeFromDto } from '@/lib/utils/providerTypeUtils';
+import { getServerCoreClient } from '@/lib/server/coreClient';
+
 // GET /api/provider-models/[providerId] - Get available models for a specific provider
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ providerId: string }> }
 ) {
-
   try {
     const { providerId } = await params;
-    const adminClient = getServerAdminClient();
+    const providerIdNum = parseInt(providerId, 10);
     
-    console.error('[Provider Models] Fetching models for provider ID:', providerId);
+    if (isNaN(providerIdNum)) {
+      return NextResponse.json({ error: 'Invalid provider ID' }, { status: 400 });
+    }
     
-    // First get the provider details to get the provider type
-    const provider = await adminClient.providers.getById(parseInt(providerId, 10));
-    console.error('[Provider Models] Provider details:', provider);
+    console.error('[Provider Models] Fetching models for provider ID:', providerIdNum);
     
-    // Get the provider type - handle null providerName
-    const providerType = getProviderTypeFromDto({
-      providerType: provider.providerType,
-      providerName: provider.providerName ?? undefined
-    });
+    // Use the Core client to get provider models (this is a Core API function)
+    const coreClient = await getServerCoreClient();
     
-    // Get models for this provider using the provider type
-    const models = await adminClient.providerModels.getProviderModels(providerType);
+    if (!coreClient.providerModels || typeof coreClient.providerModels.getProviderModels !== 'function') {
+      throw new Error('Provider models service not available');
+    }
+    
+    // Get models for this provider using the provider ID
+    const models = await coreClient.providerModels.getProviderModels(providerIdNum);
     console.error('[Provider Models] Found models:', models?.length || 0);
     
     return NextResponse.json(models);

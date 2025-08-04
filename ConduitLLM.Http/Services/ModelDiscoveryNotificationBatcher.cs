@@ -139,7 +139,7 @@ namespace ConduitLLM.Http.Services
 
         private void AddNewModelsToBatch(NotificationBatch batch, NewModelsDiscoveredNotification notification)
         {
-            var providerName = notification.ProviderType.ToString();
+            var providerName = $"provider_{notification.ProviderId}";
             if (!batch.NewModelsByProvider.ContainsKey(providerName))
             {
                 batch.NewModelsByProvider[providerName] = new List<DiscoveredModelInfo>();
@@ -155,12 +155,12 @@ namespace ConduitLLM.Http.Services
                 batch.CapabilityChanges[severity] = new List<ModelCapabilitiesChangedNotification>();
             }
             batch.CapabilityChanges[severity].Add(notification);
-            batch.AffectedProviders.Add(notification.ProviderType.ToString());
+            batch.AffectedProviders.Add($"provider_{notification.ProviderId}");
         }
 
         private void AddPriceUpdateToBatch(NotificationBatch batch, ModelPricingUpdatedNotification notification)
         {
-            var providerName = notification.ProviderType.ToString();
+            var providerName = $"provider_{notification.ProviderId}";
             if (!batch.PriceUpdatesByProvider.ContainsKey(providerName))
             {
                 batch.PriceUpdatesByProvider[providerName] = new List<ModelPricingUpdatedNotification>();

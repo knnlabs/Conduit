@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
+import type { PagedResponse, AlertDto } from '@knn_labs/conduit-admin-client';
 
 export async function GET() {
   try {
@@ -114,16 +115,16 @@ export async function GET() {
 
     try {
       // Try to get alerts
-      const alerts = await adminClient.monitoring.listAlerts({
-        status: 'active',
+      const alertsResponse: PagedResponse<AlertDto> = await adminClient.monitoring.listAlerts({
+        status: 'active' as const,
       });
       
-      if (alerts?.data) {
-        transformedAlerts = alerts.data.map((alert) => ({
+      if (alertsResponse?.data && Array.isArray(alertsResponse.data)) {
+        transformedAlerts = alertsResponse.data.map((alert) => ({
           id: alert.id,
           type: alert.condition?.type ?? 'system',
           severity: alert.severity,
-          message: alert.name || 'System alert',
+          message: alert.name ?? 'System alert',
           timestamp: alert.createdAt,
           resolved: alert.status === 'resolved',
         }));

@@ -11,7 +11,7 @@ type UpdateVirtualKeyRequestDto = components['schemas']['ConduitLLM.Configuratio
 type VirtualKeyValidationResponseDto = components['schemas']['ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyValidationResult'];
 
 // Define inline types for responses that aren't in the generated schemas
-interface VirtualKeyListResponseDto {
+export interface VirtualKeyListResponseDto {
   items: VirtualKeyDto[];
   totalCount: number;
   page: number;

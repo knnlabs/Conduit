@@ -2,6 +2,26 @@ using System;
 using System.Net.Http;
 
 using ConduitLLM.Providers.Configuration;
+using ConduitLLM.Providers.Providers.OpenAI;
+using ConduitLLM.Providers.Providers.Anthropic;
+using ConduitLLM.Providers.Providers.Mistral;
+using ConduitLLM.Providers.Providers.Groq;
+using ConduitLLM.Providers.Providers.Cohere;
+using ConduitLLM.Providers.Providers.Gemini;
+using ConduitLLM.Providers.Providers.VertexAI;
+using ConduitLLM.Providers.Providers.Ollama;
+using ConduitLLM.Providers.Providers.Replicate;
+using ConduitLLM.Providers.Providers.Fireworks;
+using ConduitLLM.Providers.Providers.Bedrock;
+using ConduitLLM.Providers.Providers.HuggingFace;
+using ConduitLLM.Providers.Providers.SageMaker;
+using ConduitLLM.Providers.Providers.OpenRouter;
+using ConduitLLM.Providers.Providers.OpenAICompatible;
+using ConduitLLM.Providers.Providers.MiniMax;
+using ConduitLLM.Providers.Providers.Ultravox;
+using ConduitLLM.Providers.Providers.ElevenLabs;
+using ConduitLLM.Providers.Providers.GoogleCloud;
+using ConduitLLM.Providers.Providers.Cerebras;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;

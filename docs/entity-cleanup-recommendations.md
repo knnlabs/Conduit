@@ -11,12 +11,13 @@ Based on my analysis of the Conduit codebase, here are recommendations for clean
   - Action: Add `[Obsolete]` attribute with migration message, plan removal in next major version
 
 ### Fields to Refactor:
-- **`ProviderName` vs `ProviderType`**:
-  - Currently using both string `ProviderName` and enum `ProviderType`
-  - `ProviderName` is marked with TODO to use ID instead
-  - `ProviderType` enum exists but is minimally used (only one query found)
-  - Recommendation: Standardize on `ProviderType` enum, remove `ProviderName` string field
-  - Benefits: Type safety, prevents typos, easier validation
+- **Provider Identification Architecture**:
+  - **Primary Identifier**: `Provider.Id` (int) - canonical identifier for all Provider records
+  - **Categorization**: `ProviderType` enum - categorizes providers by API type (OpenAI, Anthropic, etc.)
+  - **Display Name**: `ProviderName` string - user-facing name, can change, should not be used for identification
+  - **Current Issue**: `ProviderName` is marked with TODO to use ID instead - this is correct
+  - **Recommendation**: Use `Provider.Id` for identification, `ProviderType` for categorization only
+  - **Benefits**: Supports multiple providers of same type, prevents identification confusion
 
 - **`BaseUrl` inconsistency**:
   - Entity uses `BaseUrl` property
@@ -74,7 +75,7 @@ public string? ApiKey { get; set; }
 - `Organization` vs `OrganizationId` - Standardize naming
 
 ### Type Safety:
-- Replace `ProviderName` string with `ProviderType` enum usage
+- Use `Provider.Id` for identification, `ProviderType` enum for categorization
 - Consider enum for `BudgetDuration` in VirtualKey instead of string
 
 ### Documentation:
@@ -93,7 +94,7 @@ public string? ApiKey { get; set; }
 
 ### High Risk Changes:
 - Removing ApiKey field - requires careful migration and testing
-- Changing from ProviderName to ProviderType - requires data migration
+- Clarifying Provider.Id vs ProviderType usage patterns - architectural change
 
 ## Recommended Approach
 
@@ -109,5 +110,5 @@ public string? ApiKey { get; set; }
 
 3. **Future Major Version** (Breaking changes):
    - Drop deprecated database columns
-   - Enforce ProviderType enum usage
+   - Enforce Provider.Id for identification, ProviderType for categorization
    - Full architectural cleanup

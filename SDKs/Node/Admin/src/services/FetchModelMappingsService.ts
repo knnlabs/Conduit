@@ -1,22 +1,15 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
-import type { components } from '../generated/admin-api';
 import type { RequestConfig } from '../client/types';
 import { ENDPOINTS } from '../constants';
-import { ProviderType } from '../models/providerType';
 import type {
   ModelProviderMappingDto,
   CreateModelProviderMappingDto,
   UpdateModelProviderMappingDto,
   DiscoveredModel,
-  CapabilityTestResult,
-  ModelMappingSuggestion,
-  ModelRoutingInfo,
   BulkMappingRequest,
   BulkMappingResponse,
 } from '../models/modelMapping';
 
-// Type aliases for better readability - using generated types where available
-type BulkModelMappingRequest = components['schemas']['ConduitLLM.Configuration.DTOs.BulkModelMappingRequest'];
 
 /**
  * Type-safe Model Mappings service using native fetch
@@ -112,11 +105,11 @@ export class FetchModelMappingsService {
    * Discover models from a specific provider
    */
   async discoverProviderModels(
-    providerType: ProviderType,
+    providerId: number,
     config?: RequestConfig
   ): Promise<DiscoveredModel[]> {
     return this.client['get']<DiscoveredModel[]>(
-      ENDPOINTS.MODEL_MAPPINGS.DISCOVER_PROVIDER(providerType),
+      ENDPOINTS.MODEL_MAPPINGS.DISCOVER(providerId),
       {
         signal: config?.signal,
         timeout: config?.timeout,
@@ -125,55 +118,6 @@ export class FetchModelMappingsService {
     );
   }
 
-  /**
-   * Test a specific capability for a model mapping
-   */
-  async testCapability(
-    id: number,
-    capability: string,
-    testParams?: Record<string, unknown>,
-    config?: RequestConfig
-  ): Promise<CapabilityTestResult> {
-    // Use the model alias endpoint instead of ID-based endpoint
-    const mapping = await this.getById(id, config);
-    return this.client['post']<CapabilityTestResult>(
-      ENDPOINTS.MODEL_MAPPINGS.TEST_CAPABILITY(mapping.modelId, capability),
-      testParams,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  /**
-   * Get routing information for a model
-   */
-  async getRouting(modelId: string, config?: RequestConfig): Promise<ModelRoutingInfo> {
-    return this.client['get']<ModelRoutingInfo>(
-      ENDPOINTS.MODEL_MAPPINGS.ROUTING(modelId),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  /**
-   * Get model mapping suggestions
-   */
-  async getSuggestions(config?: RequestConfig): Promise<ModelMappingSuggestion[]> {
-    return this.client['get']<ModelMappingSuggestion[]>(
-      ENDPOINTS.MODEL_MAPPINGS.SUGGEST,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
 
   /**
    * Bulk create model mappings
@@ -182,15 +126,12 @@ export class FetchModelMappingsService {
     request: BulkMappingRequest,
     config?: RequestConfig
   ): Promise<BulkMappingResponse> {
-    const apiRequest: BulkModelMappingRequest = {
-      mappings: request.mappings as unknown as BulkModelMappingRequest['mappings'], // Type compatibility
-      replaceExisting: request.replaceExisting ?? false,
-      validateProviderModels: true,
-    };
+    // Backend expects a direct array of mappings, not a request object
+    const mappings = request.mappings;
 
-    return this.client['post']<BulkMappingResponse, BulkModelMappingRequest>(
+    return this.client['post']<BulkMappingResponse, CreateModelProviderMappingDto[]>(
       ENDPOINTS.MODEL_MAPPINGS.BULK,
-      apiRequest,
+      mappings,
       {
         signal: config?.signal,
         timeout: config?.timeout,

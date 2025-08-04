@@ -59,11 +59,11 @@ namespace ConduitLLM.Admin.Services
 
             try
             {
-                // Check if a model cost with the same pattern already exists
-                var existingModelCost = await _modelCostRepository.GetByModelIdPatternAsync(modelCost.ModelIdPattern);
+                // Check if a model cost with the same name already exists
+                var existingModelCost = await _modelCostRepository.GetByCostNameAsync(modelCost.CostName);
                 if (existingModelCost != null)
                 {
-                    throw new InvalidOperationException($"A model cost with pattern '{modelCost.ModelIdPattern}' already exists");
+                    throw new InvalidOperationException($"A model cost with name '{modelCost.CostName}' already exists");
                 }
 
                 // Convert DTO to entity
@@ -84,19 +84,19 @@ namespace ConduitLLM.Admin.Services
                     new ModelCostChanged
                     {
                         ModelCostId = createdModelCost.Id,
-                        ModelIdPattern = createdModelCost.ModelIdPattern,
+                        CostName = createdModelCost.CostName,
                         ChangeType = "Created",
                         ChangedProperties = new[] { "Created" },
                         CorrelationId = Guid.NewGuid().ToString()
                     },
                     "CreateModelCost");
 
-                _logger.LogInformation("Created model cost with pattern '{Pattern}'", modelCost.ModelIdPattern.Replace(Environment.NewLine, ""));
+                _logger.LogInformation("Created model cost with name '{CostName}'", modelCost.CostName.Replace(Environment.NewLine, ""));
                 return createdModelCost.ToDto();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating model cost with pattern '{Pattern}'", modelCost.ModelIdPattern.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error creating model cost with name '{CostName}'", modelCost.CostName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -120,7 +120,7 @@ namespace ConduitLLM.Admin.Services
                             new ModelCostChanged
                             {
                                 ModelCostId = id,
-                                ModelIdPattern = modelCostToDelete.ModelIdPattern,
+                                CostName = modelCostToDelete.CostName,
                                 ChangeType = "Deleted",
                                 ChangedProperties = new[] { "Deleted" },
                                 CorrelationId = Guid.NewGuid().ToString()
@@ -182,21 +182,21 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <inheritdoc />
-        public async Task<ModelCostDto?> GetModelCostByPatternAsync(string modelIdPattern)
+        public async Task<ModelCostDto?> GetModelCostByCostNameAsync(string costName)
         {
-            if (string.IsNullOrWhiteSpace(modelIdPattern))
+            if (string.IsNullOrWhiteSpace(costName))
             {
-                throw new ArgumentException("Model ID pattern cannot be null or empty", nameof(modelIdPattern));
+                throw new ArgumentException("Cost name cannot be null or empty", nameof(costName));
             }
 
             try
             {
-                var modelCost = await _modelCostRepository.GetByModelIdPatternAsync(modelIdPattern);
+                var modelCost = await _modelCostRepository.GetByCostNameAsync(costName);
                 return modelCost?.ToDto();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost with pattern '{Pattern}'", modelIdPattern.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error getting model cost with name '{CostName}'", costName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -246,28 +246,16 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <inheritdoc />
-        public async Task<IEnumerable<ModelCostDto>> GetModelCostsByProviderAsync(string providerName)
+        public async Task<IEnumerable<ModelCostDto>> GetModelCostsByProviderAsync(int providerId)
         {
-            if (string.IsNullOrWhiteSpace(providerName))
-            {
-                throw new ArgumentException("Provider name cannot be null or empty", nameof(providerName));
-            }
-
             try
             {
-                // Parse provider name to ProviderType
-                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
-                {
-                    _logger.LogWarning("Unknown provider type: {Provider}", providerName);
-                    return Enumerable.Empty<ModelCostDto>();
-                }
-                
-                var modelCosts = await _modelCostRepository.GetByProviderAsync(providerType);
+                var modelCosts = await _modelCostRepository.GetByProviderAsync(providerId);
                 return modelCosts.Select(mc => mc.ToDto()).ToList();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model costs for provider '{ProviderName}'", providerName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error getting model costs for provider {ProviderId}", providerId);
                 throw;
             }
         }
@@ -294,8 +282,8 @@ namespace ConduitLLM.Admin.Services
                 {
                     try
                     {
-                        // Check if a model cost with the same pattern already exists
-                        var existingModelCost = await _modelCostRepository.GetByModelIdPatternAsync(modelCost.ModelIdPattern);
+                        // Check if a model cost with the same name already exists
+                        var existingModelCost = await _modelCostRepository.GetByCostNameAsync(modelCost.CostName);
 
                         if (existingModelCost != null)
                         {
@@ -303,7 +291,7 @@ namespace ConduitLLM.Admin.Services
                             var updateDto = new UpdateModelCostDto
                             {
                                 Id = existingModelCost.Id,
-                                ModelIdPattern = modelCost.ModelIdPattern,
+                                CostName = modelCost.CostName,
                                 InputTokenCost = modelCost.InputTokenCost,
                                 OutputTokenCost = modelCost.OutputTokenCost,
                                 EmbeddingTokenCost = modelCost.EmbeddingTokenCost,
@@ -329,7 +317,7 @@ namespace ConduitLLM.Admin.Services
                                 new ModelCostChanged
                                 {
                                     ModelCostId = existingModelCost.Id,
-                                    ModelIdPattern = existingModelCost.ModelIdPattern,
+                                    CostName = existingModelCost.CostName,
                                     ChangeType = "Updated",
                                     ChangedProperties = new[] { "ImportUpdated" },
                                     CorrelationId = Guid.NewGuid().ToString()
@@ -347,7 +335,7 @@ namespace ConduitLLM.Admin.Services
                                 new ModelCostChanged
                                 {
                                     ModelCostId = newId,
-                                    ModelIdPattern = modelCost.ModelIdPattern,
+                                    CostName = modelCost.CostName,
                                     ChangeType = "Created",
                                     ChangedProperties = new[] { "ImportCreated" },
                                     CorrelationId = Guid.NewGuid().ToString()
@@ -360,8 +348,8 @@ namespace ConduitLLM.Admin.Services
                     catch (Exception ex)
                     {
                         _logger.LogWarning(ex,
-                "Error importing model cost with pattern '{Pattern}'",
-                modelCost.ModelIdPattern.Replace(Environment.NewLine, ""));
+                "Error importing model cost with name '{CostName}'",
+                modelCost.CostName.Replace(Environment.NewLine, ""));
                         // Continue with next model cost
                     }
                 }
@@ -397,20 +385,20 @@ namespace ConduitLLM.Admin.Services
                     return false;
                 }
 
-                // Check if the pattern is being changed and a model cost with the new pattern already exists
-                if (existingModelCost.ModelIdPattern != modelCost.ModelIdPattern)
+                // Check if the cost name is being changed and a model cost with the new name already exists
+                if (existingModelCost.CostName != modelCost.CostName)
                 {
-                    var patternExists = await _modelCostRepository.GetByModelIdPatternAsync(modelCost.ModelIdPattern);
-                    if (patternExists != null && patternExists.Id != modelCost.Id)
+                    var nameExists = await _modelCostRepository.GetByCostNameAsync(modelCost.CostName);
+                    if (nameExists != null && nameExists.Id != modelCost.Id)
                     {
-                        throw new InvalidOperationException($"Another model cost with pattern '{modelCost.ModelIdPattern}' already exists");
+                        throw new InvalidOperationException($"Another model cost with name '{modelCost.CostName}' already exists");
                     }
                 }
 
                 // Track changes for event publishing
                 var changedProperties = new List<string>();
-                if (existingModelCost.ModelIdPattern != modelCost.ModelIdPattern)
-                    changedProperties.Add(nameof(modelCost.ModelIdPattern));
+                if (existingModelCost.CostName != modelCost.CostName)
+                    changedProperties.Add(nameof(modelCost.CostName));
                 if (existingModelCost.InputTokenCost != modelCost.InputTokenCost)
                     changedProperties.Add(nameof(modelCost.InputTokenCost));
                 if (existingModelCost.OutputTokenCost != modelCost.OutputTokenCost)
@@ -435,7 +423,7 @@ namespace ConduitLLM.Admin.Services
                             new ModelCostChanged
                             {
                                 ModelCostId = modelCost.Id,
-                                ModelIdPattern = existingModelCost.ModelIdPattern,
+                                CostName = existingModelCost.CostName,
                                 ChangeType = "Updated",
                                 ChangedProperties = changedProperties.ToArray(),
                                 CorrelationId = Guid.NewGuid().ToString()
@@ -464,21 +452,12 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <inheritdoc />
-        public async Task<string> ExportModelCostsAsync(string format, string? providerName = null)
+        public async Task<string> ExportModelCostsAsync(string format, int? providerId = null)
         {
             IEnumerable<ModelCost> modelCosts;
-            if (providerName != null)
+            if (providerId != null)
             {
-                // Parse provider name to ProviderType
-                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
-                {
-                    _logger.LogWarning("Unknown provider type: {Provider}", providerName);
-                    modelCosts = Enumerable.Empty<ModelCost>();
-                }
-                else
-                {
-                    modelCosts = await _modelCostRepository.GetByProviderAsync(providerType);
-                }
+                modelCosts = await _modelCostRepository.GetByProviderAsync(providerId.Value);
             }
             else
             {
@@ -519,8 +498,8 @@ namespace ConduitLLM.Admin.Services
                 {
                     try
                     {
-                        // Check if model cost with the same pattern already exists
-                        var existingModelCost = await _modelCostRepository.GetByModelIdPatternAsync(modelCost.ModelIdPattern);
+                        // Check if model cost with the same name already exists
+                        var existingModelCost = await _modelCostRepository.GetByCostNameAsync(modelCost.CostName);
 
                         if (existingModelCost != null)
                         {
@@ -528,7 +507,7 @@ namespace ConduitLLM.Admin.Services
                             var updateDto = new UpdateModelCostDto
                             {
                                 Id = existingModelCost.Id,
-                                ModelIdPattern = modelCost.ModelIdPattern,
+                                CostName = modelCost.CostName,
                                 InputTokenCost = modelCost.InputTokenCost,
                                 OutputTokenCost = modelCost.OutputTokenCost,
                                 EmbeddingTokenCost = modelCost.EmbeddingTokenCost,
@@ -561,7 +540,7 @@ namespace ConduitLLM.Admin.Services
                     catch (Exception ex)
                     {
                         result.FailureCount++;
-                        result.Errors.Add($"Failed to import model cost for pattern '{modelCost.ModelIdPattern}': {ex.Message}");
+                        result.Errors.Add($"Failed to import model cost '{modelCost.CostName}': {ex.Message}");
                     }
                 }
             }
@@ -578,7 +557,7 @@ namespace ConduitLLM.Admin.Services
         {
             var exportData = modelCosts.Select(mc => new ModelCostExportDto
             {
-                ModelIdPattern = mc.ModelIdPattern,
+                CostName = mc.CostName,
                 InputTokenCost = mc.InputTokenCost,
                 OutputTokenCost = mc.OutputTokenCost,
                 EmbeddingTokenCost = mc.EmbeddingTokenCost,
@@ -605,11 +584,11 @@ namespace ConduitLLM.Admin.Services
         private string GenerateCsvExport(List<ModelCost> modelCosts)
         {
             var csv = new StringBuilder();
-            csv.AppendLine("Model Pattern,Input Cost (per 1K tokens),Output Cost (per 1K tokens),Embedding Cost (per 1K tokens),Image Cost (per image),Audio Cost (per minute),Audio Cost (per 1K chars),Audio Input Cost (per minute),Audio Output Cost (per minute),Video Cost (per second),Video Resolution Multipliers,Batch Processing Multiplier,Supports Batch Processing,Search Unit Cost (per 1K units),Inference Step Cost,Default Inference Steps");
+            csv.AppendLine("Cost Name,Input Cost (per 1K tokens),Output Cost (per 1K tokens),Embedding Cost (per 1K tokens),Image Cost (per image),Audio Cost (per minute),Audio Cost (per 1K chars),Audio Input Cost (per minute),Audio Output Cost (per minute),Video Cost (per second),Video Resolution Multipliers,Batch Processing Multiplier,Supports Batch Processing,Search Unit Cost (per 1K units),Inference Step Cost,Default Inference Steps");
 
-            foreach (var modelCost in modelCosts.OrderBy(mc => mc.ModelIdPattern))
+            foreach (var modelCost in modelCosts.OrderBy(mc => mc.CostName))
             {
-                csv.AppendLine($"{EscapeCsvValue(modelCost.ModelIdPattern)}," +
+                csv.AppendLine($"{EscapeCsvValue(modelCost.CostName)}," +
                     $"{(modelCost.InputTokenCost * 1000):F6}," +
                     $"{(modelCost.OutputTokenCost * 1000):F6}," +
                     $"{(modelCost.EmbeddingTokenCost.HasValue ? (modelCost.EmbeddingTokenCost.Value * 1000).ToString("F6") : "")}," +
@@ -639,7 +618,7 @@ namespace ConduitLLM.Admin.Services
 
                 return importData.Select(d => new CreateModelCostDto
                 {
-                    ModelIdPattern = d.ModelIdPattern,
+                    CostName = d.CostName,
                     InputTokenCost = d.InputTokenCost,
                     OutputTokenCost = d.OutputTokenCost,
                     EmbeddingTokenCost = d.EmbeddingTokenCost,
@@ -688,7 +667,7 @@ namespace ConduitLLM.Admin.Services
                 {
                     var modelCost = new CreateModelCostDto
                     {
-                        ModelIdPattern = UnescapeCsvValue(parts[0]),
+                        CostName = UnescapeCsvValue(parts[0]),
                         InputTokenCost = decimal.TryParse(parts[1], out var inputCost) ? inputCost / 1000 : 0,
                         OutputTokenCost = decimal.TryParse(parts[2], out var outputCost) ? outputCost / 1000 : 0,
                         EmbeddingTokenCost = decimal.TryParse(parts[3], out var embeddingCost) ? embeddingCost / 1000 : null,
@@ -751,7 +730,7 @@ namespace ConduitLLM.Admin.Services
     /// </summary>
     internal class ModelCostExportDto
     {
-        public string ModelIdPattern { get; set; } = string.Empty;
+        public string CostName { get; set; } = string.Empty;
         public decimal InputTokenCost { get; set; }
         public decimal OutputTokenCost { get; set; }
         public decimal? EmbeddingTokenCost { get; set; }

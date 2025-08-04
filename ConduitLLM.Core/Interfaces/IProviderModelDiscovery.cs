@@ -16,13 +16,13 @@ namespace ConduitLLM.Core.Interfaces
         /// <summary>
         /// Discovers models for a specific provider instance.
         /// </summary>
-        /// <param name="providerCredential">The provider credential containing configuration.</param>
+        /// <param name="Provider">The provider credential containing configuration.</param>
         /// <param name="httpClient">HTTP client for API calls.</param>
         /// <param name="apiKey">API key for the provider (optional, can be retrieved from credential).</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>List of discovered models.</returns>
         Task<List<DiscoveredModel>> DiscoverModelsAsync(
-            ProviderCredential providerCredential, 
+            Provider Provider, 
             HttpClient httpClient,
             string? apiKey = null, 
             CancellationToken cancellationToken = default);

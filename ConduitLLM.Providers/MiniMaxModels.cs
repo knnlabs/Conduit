@@ -44,6 +44,15 @@ namespace ConduitLLM.Providers
 
                 var response = await httpClient.SendAsync(request, cancellationToken);
                 
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    // MiniMax doesn't provide a models endpoint
+                    throw new NotSupportedException(
+                        "MiniMax does not provide a models listing endpoint. " +
+                        "Model availability must be confirmed through MiniMax's documentation. " +
+                        "Configure specific model IDs directly in your application settings.");
+                }
+                
                 if (!response.IsSuccessStatusCode)
                 {
                     // API call failed, return empty list
@@ -67,9 +76,14 @@ namespace ConduitLLM.Providers
                     .Select(ConvertToDiscoveredModel)
                     .ToList();
             }
+            catch (NotSupportedException)
+            {
+                // Rethrow NotSupportedException so it can be handled properly
+                throw;
+            }
             catch (Exception)
             {
-                // Any error during discovery returns empty list
+                // Any other error during discovery returns empty list
                 return new List<DiscoveredModel>();
             }
         }

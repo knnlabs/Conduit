@@ -9,10 +9,12 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers;
+using ConduitLLM.Providers.Providers.Bedrock;
 using ConduitLLM.Tests.TestHelpers;
 using FluentAssertions;
 using Microsoft.Extensions.Caching.Memory;
@@ -55,16 +57,23 @@ namespace ConduitLLM.Tests.Providers
             // Setup default token counting
             _mockTokenCounter.SetupDefaultTokenCounting(10, 20);
 
-            var credentials = new ProviderCredentials
+            var provider = new Provider
             {
-                ProviderType = ProviderType.Bedrock,
-                ApiKey = "AKIAIOSFODNN7EXAMPLE",
-                ApiSecret = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+                Id = 1,
+                ProviderType = ProviderType.Bedrock
+            };
+            
+            var keyCredential = new ProviderKeyCredential
+            {
+                Id = 1,
+                ProviderId = 1,
+                ApiKey = "AKIAIOSFODNN7EXAMPLE:wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
                 BaseUrl = "us-east-1"
             };
 
             _client = new BedrockClient(
-                credentials,
+                provider,
+                keyCredential,
                 "anthropic.claude-3-sonnet-20240229-v1:0",
                 _mockLogger.Object,
                 _mockHttpClientFactory.Object);
@@ -76,17 +85,24 @@ namespace ConduitLLM.Tests.Providers
         public void Constructor_WithValidCredentials_ShouldConfigureClient()
         {
             // Arrange
-            var credentials = new ProviderCredentials
+            var provider = new Provider
             {
-                ProviderType = ProviderType.Bedrock,
-                ApiKey = "AKIAIOSFODNN7EXAMPLE",
-                ApiSecret = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+                Id = 1,
+                ProviderType = ProviderType.Bedrock
+            };
+            
+            var keyCredential = new ProviderKeyCredential
+            {
+                Id = 1,
+                ProviderId = 1,
+                ApiKey = "AKIAIOSFODNN7EXAMPLE:wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
                 BaseUrl = "us-east-1"
             };
 
             // Act
             var client = new BedrockClient(
-                credentials,
+                provider,
+                keyCredential,
                 "anthropic.claude-3-sonnet-20240229-v1:0",
                 _mockLogger.Object,
                 _mockHttpClientFactory.Object);
@@ -102,6 +118,7 @@ namespace ConduitLLM.Tests.Providers
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => new BedrockClient(
                 null!,
+                null!,
                 "model",
                 _mockLogger.Object,
                 _mockHttpClientFactory.Object));
@@ -111,17 +128,24 @@ namespace ConduitLLM.Tests.Providers
         public void Constructor_WithMissingApiKey_ShouldThrowConfigurationException()
         {
             // Arrange
-            var credentials = new ProviderCredentials
+            var provider = new Provider
             {
-                ProviderType = ProviderType.Bedrock,
+                Id = 1,
+                ProviderType = ProviderType.Bedrock
+            };
+            
+            var keyCredential = new ProviderKeyCredential
+            {
+                Id = 1,
+                ProviderId = 1,
                 ApiKey = "",
-                ApiSecret = "secret",
                 BaseUrl = "us-east-1"
             };
 
             // Act & Assert
             Assert.Throws<ConfigurationException>(() => new BedrockClient(
-                credentials,
+                provider,
+                keyCredential,
                 "model",
                 _mockLogger.Object,
                 _mockHttpClientFactory.Object));
@@ -709,17 +733,25 @@ namespace ConduitLLM.Tests.Providers
             foreach (var region in regions)
             {
                 // Arrange
-                var credentials = new ProviderCredentials
+                var provider = new Provider
                 {
-                    ProviderType = ProviderType.Bedrock,
+                    Id = 1,
+                    ProviderType = ProviderType.Bedrock
+                };
+                
+                var keyCredential = new ProviderKeyCredential
+                {
+                    Id = 1,
+                    ProviderId = 1,
                     ApiKey = "AKIAIOSFODNN7EXAMPLE",
-                    ApiSecret = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+                    // ApiSecret = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", // TODO: ApiSecret property doesn't exist in new model
                     BaseUrl = region
                 };
 
                 // Act
                 var client = new BedrockClient(
-                    credentials,
+                    provider,
+                    keyCredential,
                     "anthropic.claude-3-sonnet-20240229-v1:0",
                     _mockLogger.Object,
                     _mockHttpClientFactory.Object);

@@ -130,7 +130,7 @@ check_development_environment() {
     
     if [[ -n "$webui_containers" ]]; then
         # Check if using development image
-        if echo "$webui_containers" | grep -q "node:20-alpine"; then
+        if echo "$webui_containers" | grep -q "node:22-alpine"; then
             log_info "Development containers detected and running"
         else
             log_error "Production containers detected (not development setup)"

@@ -84,13 +84,25 @@ namespace ConduitLLM.Core.Services
             _s3Client = new AmazonS3Client(_options.AccessKey, _options.SecretKey, config);
             _transferUtility = new TransferUtility(_s3Client);
 
-            // Initialize bucket if needed
-            Task.Run(async () => await EnsureBucketExistsAsync());
+            // Initialize bucket synchronously to ensure it's ready before first use
+            try
+            {
+                // Use GetAwaiter().GetResult() to run synchronously during startup
+                EnsureBucketExistsAsync().GetAwaiter().GetResult();
+                _logger.LogInformation("S3 bucket initialization completed successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to initialize S3 bucket. Service will continue but may fail on first upload.");
+            }
         }
 
         /// <inheritdoc/>
         public async Task<MediaStorageResult> StoreAsync(Stream content, MediaMetadata metadata, IProgress<long>? progress = null)
         {
+            // Track if we created a memory stream that needs disposal
+            MemoryStream? memoryStream = null;
+            
             try
             {
                 // For streaming, we can't compute hash beforehand, so generate a unique key
@@ -98,13 +110,28 @@ namespace ConduitLLM.Core.Services
                 var extension = GetExtensionFromContentType(metadata.ContentType);
                 var storageKey = GenerateStorageKey(temporaryKey, metadata.MediaType, extension);
 
+                // If the stream doesn't support seeking, we need to buffer it
+                Stream uploadStream = content;
+                if (!content.CanSeek)
+                {
+                    _logger.LogDebug("Stream does not support seeking, buffering to memory");
+                    memoryStream = new MemoryStream();
+                    await content.CopyToAsync(memoryStream);
+                    memoryStream.Position = 0;
+                    uploadStream = memoryStream;
+                }
+
                 // Wrap stream with progress reporting if needed
-                var uploadStream = progress != null ? new ProgressReportingStream(content, progress) : content;
+                if (progress != null)
+                {
+                    uploadStream = new ProgressReportingStream(uploadStream, progress);
+                }
 
                 // Check if we need to use multipart upload based on stream length
-                bool useTransferUtility = content.CanSeek && content.Length > _options.MultipartThresholdBytes;
+                bool useTransferUtility = uploadStream.Length > _options.MultipartThresholdBytes;
 
-                long contentLength = 0;
+                // Store content length before upload (stream may be disposed after)
+                long contentLength = uploadStream.Length;
                 string? etag = null;
 
                 if (useTransferUtility)
@@ -116,7 +143,6 @@ namespace ConduitLLM.Core.Services
                         Key = storageKey,
                         InputStream = uploadStream,
                         ContentType = metadata.ContentType,
-                        ServerSideEncryptionMethod = ServerSideEncryptionMethod.AES256,
                         PartSize = _options.MultipartChunkSizeBytes,
                         CannedACL = S3CannedACL.Private
                     };
@@ -147,7 +173,6 @@ namespace ConduitLLM.Core.Services
                     };
 
                     await _transferUtility.UploadAsync(uploadRequest);
-                    contentLength = content.CanSeek ? content.Length : 0;
                 }
                 else
                 {
@@ -157,8 +182,7 @@ namespace ConduitLLM.Core.Services
                         BucketName = _bucketName,
                         Key = storageKey,
                         InputStream = uploadStream,
-                        ContentType = metadata.ContentType,
-                        ServerSideEncryptionMethod = ServerSideEncryptionMethod.AES256
+                        ContentType = metadata.ContentType
                     };
 
                     // Add metadata
@@ -180,7 +204,6 @@ namespace ConduitLLM.Core.Services
 
                     var response = await _s3Client.PutObjectAsync(putRequest);
                     etag = response.ETag;
-                    contentLength = content.CanSeek ? content.Length : 0;
                 }
 
                 _logger.LogInformation("Stored media with key {StorageKey} to S3", storageKey);
@@ -222,6 +245,11 @@ namespace ConduitLLM.Core.Services
             {
                 _logger.LogError(ex, "Failed to store media to S3");
                 throw;
+            }
+            finally
+            {
+                // Dispose of the memory stream if we created one
+                memoryStream?.Dispose();
             }
         }
 
@@ -403,7 +431,7 @@ namespace ConduitLLM.Core.Services
                     Key = storageKey,
                     Verb = HttpVerb.GET,
                     Expires = DateTime.UtcNow.Add(expiration ?? _options.DefaultUrlExpiration),
-                    Protocol = Protocol.HTTPS
+                    Protocol = Protocol.HTTP
                 };
 
                 return await _s3Client.GetPreSignedURLAsync(urlRequest);
@@ -439,6 +467,7 @@ namespace ConduitLLM.Core.Services
         {
             if (!_options.AutoCreateBucket)
             {
+                _logger.LogInformation("AutoCreateBucket is disabled. Skipping bucket creation check.");
                 // Even if we don't auto-create, we should still configure CORS if the bucket exists
                 await ConfigureBucketCorsAsync();
                 return;
@@ -446,6 +475,7 @@ namespace ConduitLLM.Core.Services
 
             try
             {
+                _logger.LogInformation("Checking if bucket {BucketName} exists at {ServiceUrl}", _bucketName, _options.ServiceUrl ?? "default endpoint");
                 await _s3Client.HeadBucketAsync(new HeadBucketRequest { BucketName = _bucketName });
                 _logger.LogInformation("Bucket {BucketName} exists", _bucketName);
             }
@@ -453,14 +483,20 @@ namespace ConduitLLM.Core.Services
             {
                 try
                 {
-                    _logger.LogInformation("Creating S3 bucket {BucketName}", _bucketName);
+                    _logger.LogInformation("Bucket {BucketName} not found. Creating new bucket...", _bucketName);
                     await _s3Client.PutBucketAsync(new PutBucketRequest { BucketName = _bucketName });
+                    _logger.LogInformation("Successfully created bucket {BucketName}", _bucketName);
                 }
                 catch (Exception createEx)
                 {
-                    _logger.LogError(createEx, "Failed to create bucket {BucketName}", _bucketName);
-                    return; // Don't try to configure CORS if bucket creation failed
+                    _logger.LogError(createEx, "Failed to create bucket {BucketName}. Error: {ErrorMessage}", _bucketName, createEx.Message);
+                    throw; // Re-throw to fail fast during startup
                 }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking bucket {BucketName} existence. Error: {ErrorMessage}", _bucketName, ex.Message);
+                throw; // Re-throw to fail fast during startup
             }
 
             // Configure CORS after ensuring bucket exists
@@ -794,7 +830,7 @@ namespace ConduitLLM.Core.Services
                 };
 
                 // Add headers that must be included in the upload
-                presignRequest.Headers["x-amz-server-side-encryption"] = ServerSideEncryptionMethod.AES256.Value;
+                // Note: Server-side encryption removed for MinIO compatibility
                 
                 // Add metadata as headers
                 presignRequest.Headers["x-amz-meta-media-type"] = MediaType.Video.ToString();
@@ -935,6 +971,8 @@ namespace ConduitLLM.Core.Services
             private readonly Stream _innerStream;
             private readonly IProgress<long> _progress;
             private long _totalBytesRead;
+
+            public Stream InnerStream => _innerStream;
 
             public ProgressReportingStream(Stream innerStream, IProgress<long> progress)
             {

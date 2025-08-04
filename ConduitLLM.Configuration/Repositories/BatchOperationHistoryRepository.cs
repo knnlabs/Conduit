@@ -14,11 +14,11 @@ namespace ConduitLLM.Configuration.Repositories
     /// </summary>
     public class BatchOperationHistoryRepository : IBatchOperationHistoryRepository
     {
-        private readonly ConfigurationDbContext _context;
+        private readonly ConduitDbContext _context;
         private readonly ILogger<BatchOperationHistoryRepository> _logger;
 
         public BatchOperationHistoryRepository(
-            ConfigurationDbContext context,
+            ConduitDbContext context,
             ILogger<BatchOperationHistoryRepository> logger)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));

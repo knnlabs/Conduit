@@ -1,10 +1,12 @@
 using System;
 
 using ConduitLLM.Configuration.Data;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Configuration.Services;
 
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
@@ -29,11 +31,12 @@ namespace ConduitLLM.Configuration.Extensions
         {
             // Register DbContext interface
             services.AddScoped<IConfigurationDbContext>(provider =>
-                provider.GetRequiredService<ConfigurationDbContext>());
+                provider.GetRequiredService<ConduitDbContext>());
 
             // Register repositories
             services.AddScoped<IVirtualKeyRepository, VirtualKeyRepository>();
-            services.AddScoped<IProviderCredentialRepository, ProviderCredentialRepository>();
+            services.AddScoped<IVirtualKeyGroupRepository, VirtualKeyGroupRepository>();
+            services.AddScoped<IProviderRepository, ProviderRepository>();
             services.AddScoped<IProviderKeyCredentialRepository, ProviderKeyCredentialRepository>();
             services.AddScoped<IGlobalSettingRepository, GlobalSettingRepository>();
             services.AddScoped<IModelProviderMappingRepository, ModelProviderMappingRepository>();

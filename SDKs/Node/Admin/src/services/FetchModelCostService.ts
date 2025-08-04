@@ -3,11 +3,14 @@ import type { RequestConfig } from '../client/types';
 import { ENDPOINTS } from '../constants';
 import { ProviderType } from '../models/providerType';
 import {
-  ModelCost,
+  ModelCostDto,
   CreateModelCostDto,
   UpdateModelCostDto,
   ModelCostOverview,
   ImportResult,
+  CreateModelCostMappingDto,
+  UpdateModelCostMappingDto,
+  ModelCostMappingDto,
 } from '../models/modelCost';
 import { PagedResult } from '../models/security';
 import { ValidationError } from '../utils/errors';
@@ -27,32 +30,12 @@ interface ModelCostOverviewParams {
   groupBy?: 'provider' | 'model';
 }
 
-interface BulkUpdateRequest {
-  updates: Array<{
-    id: number;
-    changes: Partial<UpdateModelCostDto>;
-  }>;
-}
 
-// Create DTO matching C# backend structure
-export interface CreateModelCostDtoBackend {
-  modelIdPattern: string;
-  inputTokenCost: number;
-  outputTokenCost: number;
-  embeddingTokenCost?: number;
-  imageCostPerImage?: number;
-  audioCostPerMinute?: number;
-  audioCostPerKCharacters?: number;
-  audioInputCostPerMinute?: number;
-  audioOutputCostPerMinute?: number;
-  videoCostPerSecond?: number;
-  videoResolutionMultipliers?: string; // JSON string
-  description?: string;
-  priority?: number;
-}
-
+// Validation schemas
 const createCostSchema = z.object({
-  modelIdPattern: z.string().min(1),
+  costName: z.string().min(1).max(255),
+  modelProviderMappingIds: z.array(z.number()),
+  modelType: z.string().default('chat'),
   inputTokenCost: z.number().min(0),
   outputTokenCost: z.number().min(0),
   embeddingTokenCost: z.number().min(0).optional(),
@@ -63,8 +46,16 @@ const createCostSchema = z.object({
   audioOutputCostPerMinute: z.number().min(0).optional(),
   videoCostPerSecond: z.number().min(0).optional(),
   videoResolutionMultipliers: z.string().optional(), // JSON string
+  imageQualityMultipliers: z.string().optional(), // JSON string
   description: z.string().optional(),
   priority: z.number().optional(),
+  batchProcessingMultiplier: z.number().min(0).max(1).optional(),
+  supportsBatchProcessing: z.boolean().optional(),
+  cachedInputTokenCost: z.number().min(0).optional(),
+  cachedInputWriteCost: z.number().min(0).optional(),
+  costPerSearchUnit: z.number().min(0).optional(),
+  costPerInferenceStep: z.number().min(0).optional(),
+  defaultInferenceSteps: z.number().min(1).optional(),
 });
 
 /**
@@ -79,7 +70,7 @@ export class FetchModelCostService {
   async list(
     params?: ModelCostListParams,
     config?: RequestConfig
-  ): Promise<PagedResult<ModelCost>> {
+  ): Promise<PagedResult<ModelCostDto>> {
     const queryParams = new URLSearchParams();
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -93,7 +84,7 @@ export class FetchModelCostService {
       ? `${ENDPOINTS.MODEL_COSTS.BASE}?${queryParams.toString()}`
       : ENDPOINTS.MODEL_COSTS.BASE;
 
-    return this.client['get']<PagedResult<ModelCost>>(url, {
+    return this.client['get']<PagedResult<ModelCostDto>>(url, {
       signal: config?.signal,
       timeout: config?.timeout,
       headers: config?.headers,
@@ -103,8 +94,8 @@ export class FetchModelCostService {
   /**
    * Get a specific model cost by ID
    */
-  async getById(id: number, config?: RequestConfig): Promise<ModelCost> {
-    return this.client['get']<ModelCost>(
+  async getById(id: number, config?: RequestConfig): Promise<ModelCostDto> {
+    return this.client['get']<ModelCostDto>(
       ENDPOINTS.MODEL_COSTS.BY_ID(id),
       {
         signal: config?.signal,
@@ -116,12 +107,14 @@ export class FetchModelCostService {
 
   /**
    * Get model costs by provider type
+   * @deprecated Provider type is no longer used for cost lookups - costs are mapped to specific models
    */
   async getByProvider(
     providerType: ProviderType,
     config?: RequestConfig
-  ): Promise<ModelCost[]> {
-    return this.client['get']<ModelCost[]>(
+  ): Promise<ModelCostDto[]> {
+    // This endpoint may not work as expected with the new model
+    return this.client['get']<ModelCostDto[]>(
       ENDPOINTS.MODEL_COSTS.BY_PROVIDER(providerType),
       {
         signal: config?.signal,
@@ -131,50 +124,23 @@ export class FetchModelCostService {
     );
   }
 
-  /**
-   * Get model cost by pattern
-   */
-  async getByPattern(
-    pattern: string,
-    config?: RequestConfig
-  ): Promise<ModelCost | null> {
-    return this.client['get']<ModelCost | null>(
-      `/api/modelcosts/pattern/${encodeURIComponent(pattern)}`,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
 
   /**
    * Create a new model cost configuration
    */
   async create(
-    data: CreateModelCostDto | CreateModelCostDtoBackend,
+    data: CreateModelCostDto,
     config?: RequestConfig
-  ): Promise<ModelCost> {
-    // Transform from old format to new format if needed
-    const backendData: CreateModelCostDtoBackend = 'modelIdPattern' in data
-      ? data
-      : {
-          modelIdPattern: data.modelId,
-          inputTokenCost: data.inputTokenCost,
-          outputTokenCost: data.outputTokenCost,
-          description: data.description,
-          priority: 0,
-        };
-
+  ): Promise<ModelCostDto> {
     try {
-      createCostSchema.parse(backendData);
+      createCostSchema.parse(data);
     } catch (error) {
       throw new ValidationError('Invalid model cost data', { validationError: error });
     }
 
-    return this.client['post']<ModelCost, CreateModelCostDtoBackend>(
+    return this.client['post']<ModelCostDto, CreateModelCostDto>(
       ENDPOINTS.MODEL_COSTS.BASE,
-      backendData,
+      data,
       {
         signal: config?.signal,
         timeout: config?.timeout,
@@ -190,8 +156,8 @@ export class FetchModelCostService {
     id: number,
     data: UpdateModelCostDto,
     config?: RequestConfig
-  ): Promise<ModelCost> {
-    return this.client['put']<ModelCost, UpdateModelCostDto>(
+  ): Promise<ModelCostDto> {
+    return this.client['put']<ModelCostDto, UpdateModelCostDto>(
       ENDPOINTS.MODEL_COSTS.BY_ID(id),
       data,
       {
@@ -220,26 +186,12 @@ export class FetchModelCostService {
    * Import multiple model costs at once
    */
   async import(
-    modelCosts: (CreateModelCostDto | CreateModelCostDtoBackend)[],
+    modelCosts: CreateModelCostDto[],
     config?: RequestConfig
   ): Promise<ImportResult> {
-    // Transform to backend format if needed
-    const backendData = modelCosts.map(cost => {
-      if ('modelIdPattern' in cost) {
-        return cost;
-      }
-      return {
-        modelIdPattern: cost.modelId,
-        inputTokenCost: cost.inputTokenCost,
-        outputTokenCost: cost.outputTokenCost,
-        description: cost.description,
-        priority: 0,
-      } as CreateModelCostDtoBackend;
-    });
-
-    return this.client['post']<ImportResult, CreateModelCostDtoBackend[]>(
+    return this.client['post']<ImportResult, CreateModelCostDto[]>(
       ENDPOINTS.MODEL_COSTS.IMPORT,
-      backendData,
+      modelCosts,
       {
         signal: config?.signal,
         timeout: config?.timeout,
@@ -251,19 +203,8 @@ export class FetchModelCostService {
   /**
    * Bulk update multiple model costs
    */
-  async bulkUpdate(
-    updates: BulkUpdateRequest['updates'],
-    config?: RequestConfig
-  ): Promise<ModelCost[]> {
-    return this.client['post']<ModelCost[], BulkUpdateRequest>(
-      ENDPOINTS.MODEL_COSTS.BULK_UPDATE,
-      { updates },
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+  async bulkUpdate(): Promise<ModelCostDto[]> {
+    throw new Error('Bulk update endpoint no longer exists. Update model costs individually.');
   }
 
   /**
@@ -293,49 +234,19 @@ export class FetchModelCostService {
     });
   }
 
-  /**
-   * Helper method to check if a model matches a pattern
-   */
-  doesModelMatchPattern(modelId: string, pattern: string): boolean {
-    if (pattern.endsWith('*')) {
-      const prefix = pattern.slice(0, -1);
-      return modelId.startsWith(prefix);
-    }
-    return modelId === pattern;
-  }
 
-  /**
-   * Helper method to find the best matching cost for a model
-   */
-  async findBestMatch(
-    modelId: string,
-    costs: ModelCost[]
-  ): Promise<ModelCost | null> {
-    // First try exact match
-    const exactMatch = costs.find(c => c.modelIdPattern === modelId);
-    if (exactMatch) return exactMatch;
-
-    // Then try pattern matches, sorted by specificity (longest prefix)
-    const patternMatches = costs
-      .filter(c => c.modelIdPattern.endsWith('*') && this.doesModelMatchPattern(modelId, c.modelIdPattern))
-      .sort((a, b) => b.modelIdPattern.length - a.modelIdPattern.length);
-
-    return patternMatches[0] ?? null;
-  }
 
   /**
    * Helper method to calculate cost for given token usage
    */
   calculateTokenCost(
-    cost: ModelCost,
+    cost: ModelCostDto,
     inputTokens: number,
     outputTokens: number
   ): { inputCost: number; outputCost: number; totalCost: number } {
-    const inputCostPerMillion = cost.inputCostPerMillionTokens ?? 0;
-    const outputCostPerMillion = cost.outputCostPerMillionTokens ?? 0;
-    
-    const inputCost = (inputTokens / 1000000) * inputCostPerMillion;
-    const outputCost = (outputTokens / 1000000) * outputCostPerMillion;
+    // Costs are now stored as cost per token (not per million)
+    const inputCost = inputTokens * cost.inputTokenCost;
+    const outputCost = outputTokens * cost.outputTokenCost;
     
     return {
       inputCost,
@@ -344,14 +255,76 @@ export class FetchModelCostService {
     };
   }
 
+
+  // Model Cost Mapping Methods
+
   /**
-   * Helper method to get cost type from model ID
+   * Create model cost mappings - link a cost to specific models
    */
-  getCostType(modelId: string): 'text' | 'embedding' | 'image' | 'audio' | 'video' {
-    if (modelId.includes('embed')) return 'embedding';
-    if (modelId.includes('dall-e') || modelId.includes('stable-diffusion')) return 'image';
-    if (modelId.includes('whisper') || modelId.includes('tts')) return 'audio';
-    if (modelId.includes('video')) return 'video';
-    return 'text';
+  async createMappings(
+    data: CreateModelCostMappingDto,
+    config?: RequestConfig
+  ): Promise<ModelCostMappingDto[]> {
+    return this.client['post']<ModelCostMappingDto[], CreateModelCostMappingDto>(
+      `/api/ModelCostMappings`,
+      data,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Update model cost mappings - replaces all mappings for a cost
+   */
+  async updateMappings(
+    data: UpdateModelCostMappingDto,
+    config?: RequestConfig
+  ): Promise<ModelCostMappingDto[]> {
+    return this.client['put']<ModelCostMappingDto[], UpdateModelCostMappingDto>(
+      `/api/ModelCostMappings`,
+      data,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Get all mappings for a specific model cost
+   */
+  async getMappingsByCostId(
+    modelCostId: number,
+    config?: RequestConfig
+  ): Promise<ModelCostMappingDto[]> {
+    return this.client['get']<ModelCostMappingDto[]>(
+      `/api/ModelCostMappings/by-cost/${modelCostId}`,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Delete a specific model cost mapping
+   */
+  async deleteMapping(
+    mappingId: number,
+    config?: RequestConfig
+  ): Promise<void> {
+    return this.client['delete']<void>(
+      `/api/ModelCostMappings/${mappingId}`,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
   }
 }

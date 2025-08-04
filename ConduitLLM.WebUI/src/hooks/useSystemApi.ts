@@ -9,15 +9,6 @@ import type {
 } from '@knn_labs/conduit-admin-client';
 import type { ErrorResponse } from '@knn_labs/conduit-common';
 
-interface SystemSettings {
-  maintenanceMode: boolean;
-  debugMode: boolean;
-  logLevel: 'debug' | 'info' | 'warn' | 'error';
-  maxRequestSize: number;
-  requestTimeout: number;
-  corsOrigins: string[];
-}
-
 export function useSystemApi() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +39,7 @@ export function useSystemApi() {
     }
   }, []);
 
-  const getSystemSettings = useCallback(async (): Promise<SystemSettings> => {
+  const getSystemSettings = useCallback(async (): Promise<Record<string, unknown>> => {
     setIsLoading(true);
     setError(null);
     
@@ -57,14 +48,14 @@ export function useSystemApi() {
         method: 'GET',
       });
 
-      const result = await response.json() as SystemSettings | ErrorResponse;
+      const result = await response.json() as Record<string, unknown> | ErrorResponse;
 
       if (!response.ok) {
         const errorResult = result as ErrorResponse;
         throw new Error(errorResult.error ?? 'Failed to fetch system settings');
       }
 
-      return result as SystemSettings;
+      return result as Record<string, unknown>;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch system settings';
       setError(message);
@@ -74,7 +65,7 @@ export function useSystemApi() {
     }
   }, []);
 
-  const updateSystemSettings = useCallback(async (settings: Partial<SystemSettings>): Promise<SystemSettings> => {
+  const updateSystemSettings = useCallback(async (settings: Record<string, unknown>): Promise<Record<string, unknown>> => {
     setIsLoading(true);
     setError(null);
     
@@ -87,7 +78,7 @@ export function useSystemApi() {
         body: JSON.stringify(settings),
       });
 
-      const result = await response.json() as SystemSettings | ErrorResponse;
+      const result = await response.json() as Record<string, unknown> | ErrorResponse;
 
       if (!response.ok) {
         const errorResult = result as ErrorResponse;
@@ -100,7 +91,7 @@ export function useSystemApi() {
         color: 'green',
       });
 
-      return result as SystemSettings;
+      return result as Record<string, unknown>;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update system settings';
       setError(message);

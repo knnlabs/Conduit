@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 // Import the model provider mapping from the root namespace
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
+using ModelProviderMappingEntity = ConduitLLM.Configuration.Entities.ModelProviderMapping;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -20,6 +21,16 @@ namespace ConduitLLM.Configuration.Data
         DbSet<VirtualKey> VirtualKeys { get; }
 
         /// <summary>
+        /// Database set for virtual key groups
+        /// </summary>
+        DbSet<VirtualKeyGroup> VirtualKeyGroups { get; }
+
+        /// <summary>
+        /// Database set for virtual key group transactions
+        /// </summary>
+        DbSet<VirtualKeyGroupTransaction> VirtualKeyGroupTransactions { get; }
+
+        /// <summary>
         /// Database set for request logs
         /// </summary>
         DbSet<RequestLog> RequestLogs { get; }
@@ -28,6 +39,7 @@ namespace ConduitLLM.Configuration.Data
         /// Database set for virtual key spend history
         /// </summary>
         DbSet<VirtualKeySpendHistory> VirtualKeySpendHistory { get; }
+
 
         /// <summary>
         /// Database set for notifications
@@ -47,7 +59,7 @@ namespace ConduitLLM.Configuration.Data
         /// <summary>
         /// Database set for model provider mappings
         /// </summary>
-        DbSet<ConduitLLM.Configuration.Entities.ModelProviderMapping> ModelProviderMappings { get; }
+        DbSet<ModelProviderMappingEntity> ModelProviderMappings { get; }
 
         /// <summary>
         /// Database set for media records
@@ -55,9 +67,9 @@ namespace ConduitLLM.Configuration.Data
         DbSet<MediaRecord> MediaRecords { get; }
 
         /// <summary>
-        /// Database set for provider credentials
+        /// Database set for providers
         /// </summary>
-        DbSet<ProviderCredential> ProviderCredentials { get; }
+        DbSet<Provider> Providers { get; }
 
         /// <summary>
         /// Database set for provider key credentials

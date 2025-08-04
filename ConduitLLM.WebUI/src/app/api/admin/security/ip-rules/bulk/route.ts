@@ -12,28 +12,38 @@ export async function POST(req: NextRequest) {
     
     const client = getServerAdminClient();
     
-    if (body.operation === 'delete') {
-      const result = await client.ipFilters.bulkDelete(body.ruleIds);
-      return NextResponse.json(result);
-    } else if (body.operation === 'enable' || body.operation === 'disable') {
-      const updatedFilters = await client.ipFilters.bulkUpdate(body.operation, body.ruleIds);
-      
-      // Transform the response to match UI expectations
-      const transformedFilters = updatedFilters.map(filter => ({
-        id: filter.id.toString(),
-        ipAddress: filter.ipAddressOrCidr,
-        action: filter.filterType === 'whitelist' ? 'allow' : 'block',
-        description: filter.description,
-        createdAt: filter.createdAt,
-        isEnabled: filter.isEnabled,
-        lastMatchedAt: filter.lastMatchedAt,
-        matchCount: filter.matchCount ?? 0,
-      }));
-      
-      return NextResponse.json(transformedFilters);
-    } else {
-      return NextResponse.json({ error: 'Invalid operation' }, { status: 400 });
-    }
+    // Bulk operations no longer exist in the API
+    // Process each rule individually
+    const results = await Promise.all(
+      body.ruleIds.map(async (ruleId) => {
+        try {
+          const numericId = parseInt(ruleId, 10);
+          if (body.operation === 'delete') {
+            await client.ipFilters.deleteById(numericId);
+            return { id: ruleId, success: true };
+          } else if (body.operation === 'enable') {
+            await client.ipFilters.enableFilter(numericId);
+            return { id: ruleId, success: true };
+          } else if (body.operation === 'disable') {
+            await client.ipFilters.disableFilter(numericId);
+            return { id: ruleId, success: true };
+          }
+        } catch (error) {
+          console.error(`Failed to ${body.operation} rule ${ruleId}:`, error);
+          return { id: ruleId, success: false, error: String(error) };
+        }
+      })
+    );
+    
+    // Return result summary
+    const successCount = results.filter(r => r?.success).length;
+    return NextResponse.json({
+      success: successCount === results.length,
+      processed: results.length,
+      succeeded: successCount,
+      failed: results.length - successCount,
+      results
+    });
   } catch (error) {
     return handleSDKError(error);
   }

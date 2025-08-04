@@ -24,7 +24,7 @@ namespace ConduitLLM.Admin.Controllers
     [Authorize(Policy = "MasterKeyPolicy")]
     public class MetricsController : ControllerBase
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly ILogger<MetricsController> _logger;
 
         /// <summary>
@@ -33,7 +33,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="dbContextFactory">Database context factory.</param>
         /// <param name="logger">Logger instance.</param>
         public MetricsController(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<MetricsController> logger)
         {
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));

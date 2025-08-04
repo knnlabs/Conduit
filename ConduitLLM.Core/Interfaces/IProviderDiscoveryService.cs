@@ -21,11 +21,11 @@ namespace ConduitLLM.Core.Interfaces
         /// <summary>
         /// Discovers capabilities for a specific provider instance.
         /// </summary>
-        /// <param name="providerCredential">The provider credential containing configuration.</param>
+        /// <param name="Provider">The provider credential containing configuration.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>A dictionary mapping model names to their capabilities for the specified provider.</returns>
         Task<Dictionary<string, DiscoveredModel>> DiscoverProviderModelsAsync(
-            ProviderCredential providerCredential, 
+            Provider Provider, 
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -51,10 +51,10 @@ namespace ConduitLLM.Core.Interfaces
         /// Updates the cached capabilities for a specific provider.
         /// This method is called when provider credentials are updated to refresh the cached model capabilities.
         /// </summary>
-        /// <param name="providerName">The name of the provider to refresh.</param>
+        /// <param name="providerId">The ID of the provider to refresh.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Task representing the async operation.</returns>
-        Task RefreshProviderCapabilitiesAsync(string providerName, CancellationToken cancellationToken = default);
+        Task RefreshProviderCapabilitiesAsync(int providerId, CancellationToken cancellationToken = default);
     }
 
     /// <summary>

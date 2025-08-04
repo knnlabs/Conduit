@@ -23,24 +23,9 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         public string? AllowedModels { get; set; }
 
         /// <summary>
-        /// Maximum budget for this key
+        /// Virtual key group ID
         /// </summary>
-        public decimal? MaxBudget { get; set; }
-
-        /// <summary>
-        /// Current spend amount
-        /// </summary>
-        public decimal CurrentSpend { get; set; }
-
-        /// <summary>
-        /// Budget duration ("Total", "Monthly", "Daily")
-        /// </summary>
-        public string? BudgetDuration { get; set; }
-
-        /// <summary>
-        /// Start date of the current budget period
-        /// </summary>
-        public DateTime? BudgetStartDate { get; set; }
+        public int VirtualKeyGroupId { get; set; }
 
         /// <summary>
         /// Whether the key is enabled

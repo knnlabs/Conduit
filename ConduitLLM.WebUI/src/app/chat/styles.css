@@ -255,3 +255,57 @@
   background: var(--conduit-bg-elevated);
   border-color: var(--conduit-border-secondary);
 }
+
+/* Thinking block styling */
+.thinking-block {
+  background: var(--mantine-color-blue-0) !important;
+  border-color: var(--mantine-color-blue-2) !important;
+}
+
+.thinking-block:hover {
+  background: var(--mantine-color-blue-1) !important;
+  border-color: var(--mantine-color-blue-4) !important;
+  transform: translateY(-1px);
+  box-shadow: var(--mantine-shadow-sm);
+}
+
+[data-mantine-color-scheme="dark"] .thinking-block {
+  background: rgba(33, 150, 243, 0.05) !important;
+  border-color: rgba(33, 150, 243, 0.2) !important;
+}
+
+[data-mantine-color-scheme="dark"] .thinking-block:hover {
+  background: rgba(33, 150, 243, 0.1) !important;
+  border-color: rgba(33, 150, 243, 0.4) !important;
+}
+
+/* Scrollbar styling for chat messages */
+.mantine-ScrollArea-scrollbar {
+  background-color: transparent !important;
+}
+
+.mantine-ScrollArea-thumb {
+  background-color: var(--mantine-color-gray-4) !important;
+  border-radius: 4px !important;
+}
+
+.mantine-ScrollArea-thumb:hover {
+  background-color: var(--mantine-color-gray-5) !important;
+}
+
+[data-mantine-color-scheme="dark"] .mantine-ScrollArea-thumb {
+  background-color: var(--conduit-border-secondary) !important;
+}
+
+[data-mantine-color-scheme="dark"] .mantine-ScrollArea-thumb:hover {
+  background-color: var(--conduit-border-primary) !important;
+}
+
+/* Copy button animation */
+.mantine-ActionIcon-root {
+  transition: all 0.2s ease;
+}
+
+.mantine-ActionIcon-root:active {
+  transform: scale(0.95);
+}

@@ -1,0 +1,182 @@
+#!/bin/bash
+
+# SDK Endpoint Validation Script
+# Validates SDK endpoints against API Swagger specifications
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VALIDATOR_DIR="$SCRIPT_DIR/endpoint-validator"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Configuration
+ADMIN_API_URL="${ADMIN_API_URL:-http://localhost:5002}"
+CORE_API_URL="${CORE_API_URL:-http://localhost:5000}"
+
+# Function to print colored output
+print_color() {
+    color=$1
+    shift
+    echo -e "${color}$@${NC}"
+}
+
+# Function to check if services are running
+check_services() {
+    print_color $BLUE "🔍 Checking if API services are running..."
+    
+    if ! curl -s -f "$ADMIN_API_URL/swagger/v1/swagger.json" > /dev/null 2>&1; then
+        print_color $RED "❌ Admin API not accessible at $ADMIN_API_URL"
+        print_color $YELLOW "   Make sure to run: ./scripts/start-dev.sh"
+        exit 1
+    fi
+    
+    if ! curl -s -f "$CORE_API_URL/swagger/v1/swagger.json" > /dev/null 2>&1; then
+        print_color $YELLOW "⚠️  Core API not accessible at $CORE_API_URL (optional)"
+    fi
+    
+    print_color $GREEN "✓ Services are running"
+}
+
+# Function to ensure dependencies
+ensure_dependencies() {
+    print_color $BLUE "📦 Checking dependencies..."
+    
+    # Check if node is installed
+    if ! command -v node &> /dev/null; then
+        print_color $RED "❌ Node.js is required but not installed"
+        exit 1
+    fi
+    
+    # Check if TypeScript is available
+    if ! command -v npx &> /dev/null; then
+        print_color $RED "❌ npx is required but not installed"
+        exit 1
+    fi
+    
+    # Install TypeScript dependencies if needed
+    if [ ! -f "$PROJECT_ROOT/node_modules/.bin/tsx" ]; then
+        print_color $YELLOW "📥 Installing TypeScript dependencies..."
+        cd "$PROJECT_ROOT"
+        npm install -D tsx typescript @types/node --silent
+    fi
+    
+    print_color $GREEN "✓ Dependencies ready"
+}
+
+# Function to run validation
+run_validation() {
+    print_color $BLUE "\n🚀 Running endpoint validation..."
+    
+    cd "$VALIDATOR_DIR"
+    
+    # Set environment variables
+    export ADMIN_API_URL
+    export CORE_API_URL
+    
+    # Run TypeScript validator
+    npx tsx validator.ts
+}
+
+# Function to apply fixes
+apply_fixes() {
+    if [ -f "$VALIDATOR_DIR/apply-fixes.sh" ]; then
+        echo ""
+        read -p "Do you want to apply the high-confidence fixes? (y/N) " -n 1 -r
+        echo ""
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            print_color $BLUE "🔧 Applying fixes..."
+            
+            # Apply to Admin SDK
+            if [ -f "$PROJECT_ROOT/SDKs/Node/Admin/src/constants.ts" ]; then
+                "$VALIDATOR_DIR/apply-fixes.sh" "$PROJECT_ROOT/SDKs/Node/Admin/src/constants.ts"
+                print_color $GREEN "✓ Applied fixes to Admin SDK"
+            fi
+            
+            # Apply to Core SDK if exists
+            if [ -f "$PROJECT_ROOT/SDKs/Node/Core/src/constants.ts" ]; then
+                "$VALIDATOR_DIR/apply-fixes.sh" "$PROJECT_ROOT/SDKs/Node/Core/src/constants.ts"
+                print_color $GREEN "✓ Applied fixes to Core SDK"
+            fi
+            
+            print_color $YELLOW "\n📝 Next steps:"
+            print_color $YELLOW "1. Review changes: git diff SDKs/"
+            print_color $YELLOW "2. Rebuild SDKs: cd SDKs/Node/Admin && npm run build"
+            print_color $YELLOW "3. Run validation again to verify"
+        fi
+    fi
+}
+
+# Main execution
+main() {
+    print_color $BLUE "======================================"
+    print_color $BLUE "   SDK Endpoint Validation Tool"
+    print_color $BLUE "======================================"
+    
+    # Parse command line arguments
+    while [[ $# -gt 0 ]]; do
+        case "${1}" in
+            --help|-h)
+                echo "Usage: $0 [options]"
+                echo ""
+                echo "Options:"
+                echo "  --help, -h     Show this help message"
+                echo "  --fix          Automatically apply high-confidence fixes"
+                echo "  --no-check     Skip service availability check"
+                echo ""
+                echo "Environment variables:"
+                echo "  ADMIN_API_URL  Admin API URL (default: http://localhost:5002)"
+                echo "  CORE_API_URL   Core API URL (default: http://localhost:5000)"
+                exit 0
+                ;;
+            --fix)
+                AUTO_FIX=true
+                shift
+                ;;
+            --no-check)
+                SKIP_CHECK=true
+                shift
+                ;;
+            *)
+                print_color $RED "Unknown option: $1"
+                echo "Use --help for usage information"
+                exit 1
+                ;;
+        esac
+    done
+    
+    # Check services unless skipped
+    if [ "${SKIP_CHECK:-}" != "true" ]; then
+        check_services
+    fi
+    
+    # Ensure dependencies
+    ensure_dependencies
+    
+    # Run validation
+    run_validation
+    
+    # Apply fixes if requested
+    if [ "${AUTO_FIX:-}" = "true" ] && [ -f "$VALIDATOR_DIR/apply-fixes.sh" ]; then
+        print_color $BLUE "\n🔧 Auto-applying fixes..."
+        if [ -f "$PROJECT_ROOT/SDKs/Node/Admin/src/constants.ts" ]; then
+            "$VALIDATOR_DIR/apply-fixes.sh" "$PROJECT_ROOT/SDKs/Node/Admin/src/constants.ts"
+        fi
+        if [ -f "$PROJECT_ROOT/SDKs/Node/Core/src/constants.ts" ]; then
+            "$VALIDATOR_DIR/apply-fixes.sh" "$PROJECT_ROOT/SDKs/Node/Core/src/constants.ts"
+        fi
+        print_color $GREEN "✓ Fixes applied"
+    else
+        # Prompt for fixes
+        apply_fixes
+    fi
+}
+
+# Run main function
+main "$@"

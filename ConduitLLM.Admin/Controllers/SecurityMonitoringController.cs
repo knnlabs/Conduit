@@ -20,7 +20,7 @@ namespace ConduitLLM.Admin.Controllers
     [Authorize(Policy = "MasterKeyPolicy")]
     public class SecurityMonitoringController : ControllerBase
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly ILogger<SecurityMonitoringController> _logger;
         private readonly IMemoryCache _cache;
 
@@ -31,7 +31,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="logger">Logger instance.</param>
         /// <param name="cache">Memory cache.</param>
         public SecurityMonitoringController(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<SecurityMonitoringController> logger,
             IMemoryCache cache)
         {
@@ -289,7 +289,7 @@ namespace ConduitLLM.Admin.Controllers
                     AccessControl = new
                     {
                         ActiveKeys = await dbContext.VirtualKeys.CountAsync(k => k.IsEnabled, cancellationToken),
-                        KeysWithBudgets = await dbContext.VirtualKeys.CountAsync(k => k.MaxBudget > 0, cancellationToken),
+                        KeysWithBudgets = await dbContext.VirtualKeyGroups.CountAsync(g => g.Balance > 0, cancellationToken),
                         IpWhitelistEnabled = await dbContext.IpFilters.AnyAsync(f => f.FilterType == "whitelist", cancellationToken),
                         RateLimitingEnabled = true
                     },
@@ -330,12 +330,12 @@ namespace ConduitLLM.Admin.Controllers
             return (double)totalFailures / Math.Max(1, daysActive);
         }
 
-        private async Task<double> CalculateDetailedComplianceScore(ConfigurationDbContext context, CancellationToken cancellationToken)
+        private async Task<double> CalculateDetailedComplianceScore(ConduitDbContext context, CancellationToken cancellationToken)
         {
             var score = 0.0;
 
             // Check various compliance factors
-            if (await context.VirtualKeys.AnyAsync(k => k.MaxBudget > 0, cancellationToken))
+            if (await context.VirtualKeyGroups.AnyAsync(g => g.Balance > 0, cancellationToken))
                 score += 20; // Budget controls
 
             if (await context.IpFilters.AnyAsync(cancellationToken))
@@ -344,7 +344,7 @@ namespace ConduitLLM.Admin.Controllers
             if (await context.RequestLogs.AnyAsync(cancellationToken))
                 score += 20; // Logging enabled
 
-            if (await context.ProviderCredentials.AllAsync(p => p.ProviderKeyCredentials.Any(k => k.IsEnabled && !string.IsNullOrEmpty(k.ApiKey)), cancellationToken))
+            if (await context.Providers.AllAsync(p => p.ProviderKeyCredentials.Any(k => k.IsEnabled && !string.IsNullOrEmpty(k.ApiKey)), cancellationToken))
                 score += 25; // All keys configured
 
             score += 20; // Base score for having security monitoring

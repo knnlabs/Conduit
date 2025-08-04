@@ -120,6 +120,11 @@ export type {
 export { AudioService, AudioUtils } from './services/AudioService';
 export { ImagesService } from './services/ImagesService';
 export { VideosService } from './services/VideosService';
+export type {
+  VideoProgress,
+  VideoProgressCallbacks,
+  GenerateWithProgressResult
+} from './services/VideosService';
 
 export type {
   Usage,

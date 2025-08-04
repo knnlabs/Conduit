@@ -22,9 +22,9 @@ namespace ConduitLLM.Admin.Interfaces
         Task<AudioProviderConfigDto?> GetByIdAsync(int id);
 
         /// <summary>
-        /// Gets audio provider configurations by provider type.
+        /// Gets audio provider configurations by provider ID.
         /// </summary>
-        Task<List<AudioProviderConfigDto>> GetByProviderAsync(ProviderType providerType);
+        Task<List<AudioProviderConfigDto>> GetByProviderAsync(int providerId);
 
         /// <summary>
         /// Gets enabled audio provider configurations for a specific operation.

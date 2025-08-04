@@ -71,7 +71,7 @@ namespace ConduitLLM.Admin.Tests.Services
             {
                 Page = 1,
                 PageSize = 10,
-                ProviderType = ProviderType.OpenAI
+                ProviderId = 1
             };
 
             var logs = CreateSampleAudioUsageLogs(15);
@@ -95,7 +95,7 @@ namespace ConduitLLM.Admin.Tests.Services
             result.Items.Should().HaveCount(10);
             result.TotalCount.Should().Be(15);
             result.TotalPages.Should().Be(2);
-            result.Items.First().ProviderType.Should().Be(ProviderType.OpenAI);
+            result.Items.First().ProviderId.Should().Be(1);
         }
 
         [Fact]
@@ -158,7 +158,7 @@ namespace ConduitLLM.Admin.Tests.Services
                 TotalOutputTokens = 4000
             };
 
-            _mockRepository.Setup(x => x.GetUsageSummaryAsync(startDate, endDate, It.IsAny<string?>(), It.IsAny<ProviderType?>()))
+            _mockRepository.Setup(x => x.GetUsageSummaryAsync(startDate, endDate, It.IsAny<string?>(), It.IsAny<int?>()))
                 .ReturnsAsync(expectedSummary);
 
             // Act
@@ -184,7 +184,7 @@ namespace ConduitLLM.Admin.Tests.Services
                 FailedOperations = 0
             };
 
-            _mockRepository.Setup(x => x.GetUsageSummaryAsync(startDate, endDate, virtualKey, It.IsAny<ProviderType?>()))
+            _mockRepository.Setup(x => x.GetUsageSummaryAsync(startDate, endDate, virtualKey, It.IsAny<int?>()))
                 .ReturnsAsync(expectedSummary);
 
             // Act
@@ -224,7 +224,7 @@ namespace ConduitLLM.Admin.Tests.Services
             _mockRepository.Setup(x => x.GetProviderBreakdownAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), virtualKey))
                 .ReturnsAsync(new List<ProviderBreakdown> 
                 { 
-                    new() { ProviderType = ProviderType.OpenAI, Count = 10, TotalCost = 5.0m, SuccessRate = 100 } 
+                    new() { ProviderId = 1, ProviderName = "OpenAI Test", Count = 10, TotalCost = 5.0m, SuccessRate = 100 } 
                 });
 
             // Act
@@ -269,7 +269,7 @@ namespace ConduitLLM.Admin.Tests.Services
         public async Task GetUsageByProviderAsync_WithValidProvider_ShouldReturnProviderUsage()
         {
             // Arrange
-            var provider = "openai";
+            var providerId = 1;
             var logs = new List<AudioUsageLog>
             {
                 CreateAudioUsageLog("transcription", "whisper-1", 200),
@@ -278,15 +278,15 @@ namespace ConduitLLM.Admin.Tests.Services
                 CreateAudioUsageLog("transcription", "whisper-1", 500) // Failed request
             };
 
-            _mockRepository.Setup(x => x.GetByProviderAsync(ProviderType.OpenAI, It.IsAny<DateTime?>(), It.IsAny<DateTime?>()))
+            _mockRepository.Setup(x => x.GetByProviderAsync(providerId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>()))
                 .ReturnsAsync(logs);
 
             // Act
-            var result = await _service.GetUsageByProviderAsync(provider);
+            var result = await _service.GetUsageByProviderAsync(providerId);
 
             // Assert
             result.Should().NotBeNull();
-            result.ProviderType.Should().Be(ProviderType.OpenAI);
+            result.ProviderId.Should().Be(providerId);
             result.TotalOperations.Should().Be(4);
             result.TranscriptionCount.Should().Be(2);
             result.TextToSpeechCount.Should().Be(1);
@@ -299,12 +299,12 @@ namespace ConduitLLM.Admin.Tests.Services
         public async Task GetUsageByProviderAsync_WithNoLogs_ShouldReturnZeroMetrics()
         {
             // Arrange
-            var provider = "AzureOpenAI";
-            _mockRepository.Setup(x => x.GetByProviderAsync(ProviderType.AzureOpenAI, It.IsAny<DateTime?>(), It.IsAny<DateTime?>()))
+            var providerId = 2;
+            _mockRepository.Setup(x => x.GetByProviderAsync(providerId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>()))
                 .ReturnsAsync(new List<AudioUsageLog>());
 
             // Act
-            var result = await _service.GetUsageByProviderAsync(provider);
+            var result = await _service.GetUsageByProviderAsync(providerId);
 
             // Assert
             result.TotalOperations.Should().Be(0);
@@ -377,7 +377,7 @@ namespace ConduitLLM.Admin.Tests.Services
             // Assert
             result.Should().HaveCount(3);
             result.First().SessionId.Should().Be("session-1");
-            result.First().ProviderType.Should().Be(ProviderType.Ultravox); // First session (i=0) is ultravox based on CreateSampleRealtimeSessions logic
+            result.First().ProviderId.Should().Be(18); // First session (i=0) uses provider ID 18 based on CreateSampleRealtimeSessions logic
             result.First().State.Should().Be(SessionState.Connected.ToString());
         }
 
@@ -397,7 +397,7 @@ namespace ConduitLLM.Admin.Tests.Services
             // Assert
             result.Should().NotBeNull();
             result!.SessionId.Should().Be(sessionId);
-            result.ProviderType.Should().Be(ProviderType.OpenAI);
+            result.ProviderId.Should().Be(1); // Provider ID 1 for OpenAI
         }
 
         [Fact]
@@ -484,8 +484,8 @@ namespace ConduitLLM.Admin.Tests.Services
             result.Should().NotBeNullOrEmpty();
             result.Should().Contain("Timestamp");
             result.Should().Contain("VirtualKey");
-            result.Should().Contain("Provider");
-            result.Should().Contain("OpenAI"); // ProviderType enum outputs PascalCase names
+            result.Should().Contain("ProviderId");
+            result.Should().Contain("1"); // Provider ID 1 in CSV
         }
 
         [Fact]
@@ -512,8 +512,8 @@ namespace ConduitLLM.Admin.Tests.Services
             // Assert
             result.Should().NotBeNullOrEmpty();
             result.Should().Contain("\"virtualKey\"");
-            result.Should().Contain("\"provider\"");
-            result.Should().Contain("\"provider\": 1"); // ProviderType.OpenAI = 1 in JSON (with space)
+            result.Should().Contain("\"providerId\"");
+            result.Should().Contain("\"providerId\": 1"); // Provider ID 1 in JSON (with space)
             
             // Should be valid JSON
             var json = System.Text.Json.JsonDocument.Parse(result);
@@ -580,7 +580,7 @@ namespace ConduitLLM.Admin.Tests.Services
                 {
                     Id = i + 1,
                     VirtualKey = $"key-{i % 3}",
-                    Provider = i % 2 == 0 ? ProviderType.OpenAI : ProviderType.AzureOpenAI,
+                    ProviderId = i % 2 == 0 ? 1 : 2, // Alternate between provider 1 and 2
                     OperationType = i % 3 == 0 ? "transcription" : i % 3 == 1 ? "tts" : "realtime",
                     Model = i % 2 == 0 ? "whisper-1" : "tts-1",
                     RequestId = Guid.NewGuid().ToString(),
@@ -599,7 +599,7 @@ namespace ConduitLLM.Admin.Tests.Services
             {
                 Id = 1,
                 VirtualKey = "test-key",
-                Provider = ProviderType.OpenAI,
+                ProviderId = 1, // Provider ID 1 for OpenAI
                 OperationType = operationType,
                 Model = model,
                 RequestId = Guid.NewGuid().ToString(),
@@ -629,6 +629,14 @@ namespace ConduitLLM.Admin.Tests.Services
                 Language = "en-US"
             };
 
+            // Map provider names to ProviderType IDs
+            var providerId = provider.ToLowerInvariant() switch
+            {
+                "openai" => 1,      // ProviderType.OpenAI
+                "ultravox" => 18,   // ProviderType.Ultravox
+                _ => 1              // Default to OpenAI
+            };
+
             var session = new RealtimeSession
             {
                 Id = sessionId,
@@ -640,7 +648,8 @@ namespace ConduitLLM.Admin.Tests.Services
                 {
                     { "VirtualKey", "test-key-hash" },
                     { "IpAddress", "192.168.1.1" },
-                    { "UserAgent", "Mozilla/5.0" }
+                    { "UserAgent", "Mozilla/5.0" },
+                    { "ProviderId", providerId }
                 }
             };
 

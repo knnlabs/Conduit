@@ -9,18 +9,6 @@ namespace ConduitLLM.Admin.Extensions
     /// </summary>
     public static class ProviderHealthExtensions
     {
-        /// <summary>
-        /// Gets the provider type from an existing configuration
-        /// </summary>
-        /// <param name="dto">The update DTO</param>
-        /// <param name="existingConfig">The existing configuration</param>
-        /// <returns>The provider type from the existing configuration</returns>
-        public static ProviderType GetProviderType(
-            this UpdateProviderHealthConfigurationDto dto,
-            ProviderHealthConfiguration existingConfig)
-        {
-            return existingConfig.ProviderType;
-        }
 
         /// <summary>
         /// Updates a ProviderHealthConfiguration entity from an UpdateProviderHealthConfigurationDto

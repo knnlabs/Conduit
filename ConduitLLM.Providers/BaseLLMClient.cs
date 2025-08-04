@@ -8,11 +8,12 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Utilities;
-using ConduitLLM.Providers.InternalModels;
+using ConduitLLM.Providers.Common.Models;
 
 using Microsoft.Extensions.Logging;
 
@@ -24,7 +25,8 @@ namespace ConduitLLM.Providers
     /// </summary>
     public abstract class BaseLLMClient : ILLMClient, IAuthenticationVerifiable
     {
-        protected readonly ProviderCredentials Credentials;
+        protected readonly Provider Provider;
+        protected readonly ProviderKeyCredential PrimaryKeyCredential;
         protected readonly string ProviderModelId;
         protected readonly ILogger Logger;
         protected readonly string ProviderName;
@@ -40,25 +42,28 @@ namespace ConduitLLM.Providers
         /// <summary>
         /// Initializes a new instance of the <see cref="BaseLLMClient"/> class.
         /// </summary>
-        /// <param name="credentials">The provider credentials to use for requests.</param>
+        /// <param name="provider">The provider entity containing configuration.</param>
+        /// <param name="primaryKeyCredential">The primary key credential to use for requests.</param>
         /// <param name="providerModelId">The provider's model identifier.</param>
         /// <param name="logger">The logger to use for logging.</param>
         /// <param name="httpClientFactory">Optional HTTP client factory for creating HttpClient instances.</param>
         /// <param name="providerName">The name of this LLM provider.</param>
         /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         protected BaseLLMClient(
-            ProviderCredentials credentials,
+            Provider provider,
+            ProviderKeyCredential primaryKeyCredential,
             string providerModelId,
             ILogger logger,
             IHttpClientFactory? httpClientFactory = null,
             string? providerName = null,
             ProviderDefaultModels? defaultModels = null)
         {
-            Credentials = credentials ?? throw new ArgumentNullException(nameof(credentials));
+            Provider = provider ?? throw new ArgumentNullException(nameof(provider));
+            PrimaryKeyCredential = primaryKeyCredential ?? throw new ArgumentNullException(nameof(primaryKeyCredential));
             ProviderModelId = providerModelId ?? throw new ArgumentNullException(nameof(providerModelId));
             Logger = logger ?? throw new ArgumentNullException(nameof(logger));
             HttpClientFactory = httpClientFactory;
-            ProviderName = providerName ?? GetType().Name.Replace("Client", string.Empty);
+            ProviderName = providerName ?? provider.ProviderName ?? GetType().Name.Replace("Client", string.Empty);
             DefaultModels = defaultModels;
 
             ValidateCredentials();
@@ -70,7 +75,7 @@ namespace ConduitLLM.Providers
         /// </summary>
         protected virtual void ValidateCredentials()
         {
-            if (string.IsNullOrWhiteSpace(Credentials.ApiKey))
+            if (string.IsNullOrWhiteSpace(PrimaryKeyCredential.ApiKey))
             {
                 throw new ConfigurationException($"API key is missing for provider '{ProviderName}'");
             }
@@ -94,7 +99,7 @@ namespace ConduitLLM.Providers
                 client = new HttpClient();
             }
 
-            string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
+            string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey!;
             if (string.IsNullOrWhiteSpace(effectiveApiKey))
             {
                 throw new ConfigurationException($"API key is missing for provider '{ProviderName}'");
@@ -324,7 +329,7 @@ namespace ConduitLLM.Providers
         /// <returns>A dictionary of headers.</returns>
         protected virtual Dictionary<string, string> CreateStandardHeaders(string? apiKey = null)
         {
-            string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
+            string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey!;
 
             var headers = new Dictionary<string, string>
             {
@@ -358,7 +363,7 @@ namespace ConduitLLM.Providers
             try
             {
                 // Use provided API key or fall back to configured one
-                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey;
                 
                 // Basic validation
                 if (string.IsNullOrWhiteSpace(effectiveApiKey))
@@ -399,7 +404,7 @@ namespace ConduitLLM.Providers
         {
             var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) 
                 ? baseUrl.TrimEnd('/') 
-                : (Credentials.BaseUrl ?? GetDefaultBaseUrl()).TrimEnd('/');
+                : (Provider.BaseUrl ?? GetDefaultBaseUrl()).TrimEnd('/');
             
             return $"{effectiveBaseUrl}/health";
         }

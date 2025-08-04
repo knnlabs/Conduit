@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.Audio;
@@ -31,9 +32,11 @@ namespace ConduitLLM.Configuration.Tests.Repositories
             
             var options = new DbContextOptionsBuilder<ConfigurationDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+                .ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.CoreEventId.TransactionIgnoredWarning))
                 .Options;
 
             _context = new ConfigurationDbContext(options);
+            _context.IsTestEnvironment = true;
             _repository = new AudioUsageLogRepository(_context);
         }
 
@@ -43,10 +46,14 @@ namespace ConduitLLM.Configuration.Tests.Repositories
         public async Task CreateAsync_WithValidLog_ShouldPersistLog()
         {
             // Arrange
+            var provider = new Provider { ProviderType = ProviderType.OpenAI, ProviderName = "OpenAI" };
+            _context.Providers.Add(provider);
+            await _context.SaveChangesAsync();
+
             var log = new AudioUsageLog
             {
                 VirtualKey = "test-key-hash",
-                Provider = "openai",
+                ProviderId = provider.Id,
                 OperationType = "transcription",
                 Model = "whisper-1",
                 RequestId = Guid.NewGuid().ToString(),
@@ -68,17 +75,21 @@ namespace ConduitLLM.Configuration.Tests.Repositories
             var savedLog = await _context.AudioUsageLogs.FindAsync(result.Id);
             savedLog.Should().NotBeNull();
             savedLog!.VirtualKey.Should().Be("test-key-hash");
-            savedLog.Provider.Should().Be("openai");
+            savedLog.ProviderId.Should().Be(provider.Id);
         }
 
         [Fact]
         public async Task CreateAsync_WithErrorLog_ShouldPersistWithError()
         {
             // Arrange
+            var provider = new Provider { ProviderType = ProviderType.AzureOpenAI, ProviderName = "Azure OpenAI" };
+            _context.Providers.Add(provider);
+            await _context.SaveChangesAsync();
+
             var log = new AudioUsageLog
             {
                 VirtualKey = "test-key-hash",
-                Provider = "azure",
+                ProviderId = provider.Id,
                 OperationType = "tts",
                 Model = "tts-1",
                 RequestId = Guid.NewGuid().ToString(),
@@ -147,19 +158,23 @@ namespace ConduitLLM.Configuration.Tests.Repositories
         public async Task GetPagedAsync_WithProviderFilter_ShouldReturnFilteredResults()
         {
             // Arrange
+            var provider = new Provider { ProviderType = ProviderType.OpenAI, ProviderName = "OpenAI" };
+            _context.Providers.Add(provider);
+            await _context.SaveChangesAsync();
+            
             await SeedTestDataAsync(10);
             var query = new AudioUsageQueryDto
             {
                 Page = 1,
                 PageSize = 10,
-                Provider = "OpenAI" // Test case insensitive
+                ProviderId = provider.Id
             };
 
             // Act
             var result = await _repository.GetPagedAsync(query);
 
             // Assert
-            result.Items.Should().OnlyContain(log => log.Provider.ToLower() == "openai");
+            result.Items.Should().OnlyContain(log => log.ProviderId == provider.Id);
         }
 
         [Fact]
@@ -210,12 +225,16 @@ namespace ConduitLLM.Configuration.Tests.Repositories
         public async Task GetPagedAsync_WithMultipleFilters_ShouldApplyAllFilters()
         {
             // Arrange
+            var provider = new Provider { ProviderType = ProviderType.OpenAI, ProviderName = "OpenAI" };
+            _context.Providers.Add(provider);
+            await _context.SaveChangesAsync();
+            
             await SeedTestDataAsync(20);
             var query = new AudioUsageQueryDto
             {
                 Page = 1,
                 PageSize = 10,
-                Provider = "openai",
+                ProviderId = provider.Id,
                 OperationType = "transcription",
                 StartDate = DateTime.UtcNow.AddDays(-5)
             };
@@ -225,7 +244,7 @@ namespace ConduitLLM.Configuration.Tests.Repositories
 
             // Assert
             result.Items.Should().OnlyContain(log => 
-                log.Provider.ToLower() == "openai" &&
+                log.ProviderId == provider.Id &&
                 log.OperationType.ToLower() == "transcription" &&
                 log.Timestamp >= query.StartDate);
         }
@@ -286,10 +305,10 @@ namespace ConduitLLM.Configuration.Tests.Repositories
             result.Should().NotBeNull();
             result.TotalOperations.Should().BeGreaterThan(0);
             result.TotalCost.Should().BeGreaterThan(0);
-            result.TranscriptionCount.Should().BeGreaterThan(0);
-            result.TextToSpeechCount.Should().BeGreaterThan(0);
-            result.SuccessRate.Should().BeGreaterThan(0);
-            result.UniqueVirtualKeys.Should().BeGreaterThan(0);
+            result.SuccessfulOperations.Should().BeGreaterThan(0);
+            result.OperationBreakdown.Should().NotBeEmpty();
+            result.ProviderBreakdown.Should().NotBeEmpty();
+            result.VirtualKeyBreakdown.Should().NotBeEmpty();
         }
 
         [Fact]
@@ -334,14 +353,18 @@ namespace ConduitLLM.Configuration.Tests.Repositories
         public async Task GetByProviderAsync_ShouldReturnLogsForProvider()
         {
             // Arrange
+            var provider = new Provider { ProviderType = ProviderType.OpenAI, ProviderName = "OpenAI" };
+            _context.Providers.Add(provider);
+            await _context.SaveChangesAsync();
+            
             await SeedTestDataAsync(10);
 
             // Act
-            var result = await _repository.GetByProviderAsync("openai");
+            var result = await _repository.GetByProviderAsync(provider.Id);
 
             // Assert
             result.Should().NotBeEmpty();
-            result.Should().OnlyContain(log => log.Provider == "openai");
+            result.Should().OnlyContain(log => log.ProviderId == provider.Id);
         }
 
         [Fact]
@@ -357,10 +380,10 @@ namespace ConduitLLM.Configuration.Tests.Repositories
 
             // Assert
             result.Should().NotBeEmpty();
-            result.Should().ContainKey("transcription");
-            result.Should().ContainKey("tts");
-            result.Should().ContainKey("realtime");
-            result.Values.Sum().Should().BeGreaterThan(0);
+            result.Should().Contain(b => b.OperationType == "transcription");
+            result.Should().Contain(b => b.OperationType == "tts");
+            result.Should().Contain(b => b.OperationType == "realtime");
+            result.Sum(b => b.Count).Should().BeGreaterThan(0);
         }
 
         [Fact]
@@ -376,15 +399,19 @@ namespace ConduitLLM.Configuration.Tests.Repositories
 
             // Assert
             result.Should().NotBeEmpty();
-            result.Should().ContainKey("openai");
-            result.Should().ContainKey("azure");
-            result.Values.Sum().Should().BeGreaterThan(0);
+            result.Should().Contain(b => b.ProviderName.ToLower().Contains("openai"));
+            result.Should().Contain(b => b.ProviderName.ToLower().Contains("azure"));
+            result.Sum(b => b.Count).Should().BeGreaterThan(0);
         }
 
         [Fact]
         public async Task DeleteOldLogsAsync_ShouldDeleteLogsBeforeCutoff()
         {
             // Arrange
+            var provider = new Provider { ProviderType = ProviderType.OpenAI, ProviderName = "OpenAI" };
+            _context.Providers.Add(provider);
+            await _context.SaveChangesAsync();
+
             // Add some old logs
             var oldLogs = new List<AudioUsageLog>();
             for (int i = 0; i < 10; i++)
@@ -392,7 +419,7 @@ namespace ConduitLLM.Configuration.Tests.Repositories
                 oldLogs.Add(new AudioUsageLog
                 {
                     VirtualKey = "old-key",
-                    Provider = "openai",
+                    ProviderId = provider.Id,
                     OperationType = "transcription",
                     Model = "whisper-1",
                     Timestamp = DateTime.UtcNow.AddDays(-60),
@@ -408,7 +435,7 @@ namespace ConduitLLM.Configuration.Tests.Repositories
                 recentLogs.Add(new AudioUsageLog
                 {
                     VirtualKey = "recent-key",
-                    Provider = "openai",
+                    ProviderId = provider.Id,
                     OperationType = "transcription",
                     Model = "whisper-1",
                     Timestamp = DateTime.UtcNow.AddDays(-5),
@@ -436,21 +463,27 @@ namespace ConduitLLM.Configuration.Tests.Repositories
 
         private async Task SeedTestDataAsync(int count)
         {
+            // Create test providers
+            var openAiProvider = new Provider { ProviderType = ProviderType.OpenAI, ProviderName = "OpenAI" };
+            var azureProvider = new Provider { ProviderType = ProviderType.AzureOpenAI, ProviderName = "Azure OpenAI" };
+            _context.Providers.AddRange(openAiProvider, azureProvider);
+            await _context.SaveChangesAsync();
+
             var logs = new List<AudioUsageLog>();
             var random = new Random();
             
             for (int i = 0; i < count; i++)
             {
                 var operationType = i % 3 == 0 ? "transcription" : i % 3 == 1 ? "tts" : "realtime";
-                var provider = i % 2 == 0 ? "openai" : "azure";
+                var provider = i % 2 == 0 ? openAiProvider : azureProvider;
                 var statusCode = i % 10 == 0 ? 500 : 200;
                 
                 logs.Add(new AudioUsageLog
                 {
                     VirtualKey = $"key-{i % 3}",
-                    Provider = provider,
+                    ProviderId = provider.Id,
                     OperationType = operationType,
-                    Model = provider == "openai" ? "whisper-1" : "azure-tts",
+                    Model = provider.ProviderType == ProviderType.OpenAI ? "whisper-1" : "azure-tts",
                     RequestId = Guid.NewGuid().ToString(),
                     SessionId = operationType == "realtime" ? Guid.NewGuid().ToString() : null,
                     DurationSeconds = random.Next(1, 60),

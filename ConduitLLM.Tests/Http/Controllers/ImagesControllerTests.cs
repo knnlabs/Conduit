@@ -33,7 +33,6 @@ namespace ConduitLLM.Tests.Http.Controllers
         private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
         private readonly Mock<IVirtualKeyService> _mockVirtualKeyService;
         private readonly Mock<IMediaLifecycleService> _mockMediaLifecycleService;
-        private readonly Mock<IImageGenerationMetricsService> _mockMetricsService;
         private readonly Mock<IHttpClientFactory> _mockHttpClientFactory;
         private readonly Mock<ILLMClient> _mockLLMClient;
         private readonly Mock<IUrlHelper> _mockUrlHelper;
@@ -49,7 +48,6 @@ namespace ConduitLLM.Tests.Http.Controllers
             _mockPublishEndpoint = new Mock<IPublishEndpoint>();
             _mockVirtualKeyService = new Mock<IVirtualKeyService>();
             _mockMediaLifecycleService = new Mock<IMediaLifecycleService>();
-            _mockMetricsService = new Mock<IImageGenerationMetricsService>();
             _mockHttpClientFactory = new Mock<IHttpClientFactory>();
             _mockLLMClient = new Mock<ILLMClient>();
             _mockUrlHelper = new Mock<IUrlHelper>();
@@ -63,7 +61,6 @@ namespace ConduitLLM.Tests.Http.Controllers
                 _mockPublishEndpoint.Object,
                 _mockVirtualKeyService.Object,
                 _mockMediaLifecycleService.Object,
-                _mockMetricsService.Object,
                 _mockHttpClientFactory.Object);
 
             // Setup default controller context
@@ -105,12 +102,12 @@ namespace ConduitLLM.Tests.Http.Controllers
             };
 
             // Create a simple mapping with no image generation support
-            var mapping = new ConduitLLM.Configuration.ModelProviderMapping
+            var mapping = new ModelProviderMapping
             {
                 ModelAlias = "gpt-4",
-                ProviderType = ProviderType.OpenAI,
                 ProviderModelId = "gpt-4",
-                SupportsImageGeneration = false
+                SupportsImageGeneration = false,
+                Provider = new Provider { ProviderType = ProviderType.OpenAI }
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("gpt-4"))
@@ -187,12 +184,12 @@ namespace ConduitLLM.Tests.Http.Controllers
             };
 
             // Create a mapping that doesn't support image generation
-            var mapping = new ConduitLLM.Configuration.ModelProviderMapping
+            var mapping = new ModelProviderMapping
             {
                 ModelAlias = "gpt-4",
-                ProviderType = ProviderType.OpenAI,
                 ProviderModelId = "gpt-4",
-                SupportsImageGeneration = false
+                SupportsImageGeneration = false,
+                Provider = new Provider { ProviderType = ProviderType.OpenAI }
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("gpt-4"))

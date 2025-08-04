@@ -23,6 +23,7 @@ import {
   IconLoader,
 } from '@tabler/icons-react';
 import { useStatusIndicator, type SystemStatusType } from '@/hooks/useSystemStatus';
+import { TimeDisplay } from '@/components/common/TimeDisplay';
 
 // Icon mapping for status types
 const STATUS_ICONS_MAP = new Map([
@@ -328,7 +329,7 @@ export function RefreshableStatusIndicator({
       )}
       {lastUpdate && (
         <Text size="xs" c="dimmed">
-          {lastUpdate.toLocaleTimeString()}
+          <TimeDisplay date={lastUpdate} />
         </Text>
       )}
     </Group>

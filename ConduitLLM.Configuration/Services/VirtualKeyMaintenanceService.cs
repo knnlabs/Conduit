@@ -40,91 +40,10 @@ namespace ConduitLLM.Configuration.Services
         /// </summary>
         public async Task ProcessBudgetResetsAsync()
         {
-            try
-            {
-                var now = DateTime.UtcNow;
-
-                // Get all active keys with budget durations
-                var allKeys = await _virtualKeyRepository.GetAllAsync();
-                var keysToCheck = allKeys
-                    .Where(k => k.IsEnabled)
-                    .Where(k => !string.IsNullOrEmpty(k.BudgetDuration))
-                    .ToList();
-
-                if (!keysToCheck.Any())
-                {
-                    return;
-                }
-
-                var keysToReset = new List<VirtualKey>();
-                var spendHistory = new List<VirtualKeySpendHistory>();
-
-                // Determine which keys need resetting
-                foreach (var key in keysToCheck)
-                {
-                    bool shouldReset = false;
-
-                    switch (key.BudgetDuration?.ToLower())
-                    {
-                        case "daily":
-                            // Reset if the day has changed
-                            shouldReset = key.BudgetStartDate?.Date < now.Date;
-                            break;
-
-                        case "monthly":
-                            // Reset if the month or year has changed
-                            shouldReset = key.BudgetStartDate?.Month != now.Month ||
-                                        key.BudgetStartDate?.Year != now.Year;
-                            break;
-
-                            // Add more budget periods as needed
-                    }
-
-                    if (shouldReset)
-                    {
-                        keysToReset.Add(key);
-
-                        // Create history record
-                        spendHistory.Add(new VirtualKeySpendHistory
-                        {
-                            VirtualKeyId = key.Id,
-                            Amount = key.CurrentSpend,
-                            Timestamp = key.BudgetStartDate ?? now
-                        });
-                    }
-                }
-
-                if (!keysToReset.Any())
-                {
-                    return;
-                }
-
-                _logger.LogInformation("Processing budget resets for {Count} virtual keys", keysToReset.Count);
-
-                // Add spend history records
-                foreach (var history in spendHistory)
-                {
-                    await _spendHistoryRepository.CreateAsync(history);
-                }
-
-                // Update keys to reset spending
-                foreach (var key in keysToReset)
-                {
-                    // Reset the spending
-                    key.CurrentSpend = 0;
-                    key.BudgetStartDate = now;
-                    key.UpdatedAt = now;
-
-                    await _virtualKeyRepository.UpdateAsync(key);
-                }
-
-                _logger.LogInformation("Successfully processed budget resets for {Count} virtual keys", keysToReset.Count);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing budget resets for virtual keys");
-                throw;
-            }
+            // Budget tracking is now at the group level
+            // This method is deprecated but kept for interface compatibility
+            _logger.LogDebug("ProcessBudgetResetsAsync called but budget tracking is now at group level");
+            await Task.CompletedTask;
         }
 
         /// <summary>
@@ -175,25 +94,11 @@ namespace ConduitLLM.Configuration.Services
         /// <returns>List of key IDs approaching budget limits</returns>
         public async Task<List<int>> GetKeysApproachingBudgetLimitAsync(int thresholdPercentage = 90)
         {
-            try
-            {
-                // Convert percentage to decimal (e.g., 90% -> 0.9)
-                decimal thresholdDecimal = thresholdPercentage / 100m;
-
-                // Get all active keys with budget limits
-                var allKeys = await _virtualKeyRepository.GetAllAsync();
-                return allKeys
-                    .Where(k => k.IsEnabled)
-                    .Where(k => k.MaxBudget.HasValue && k.MaxBudget.Value > 0)
-                    .Where(k => (k.CurrentSpend / k.MaxBudget!.Value) >= thresholdDecimal)
-                    .Select(k => k.Id)
-                    .ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error checking keys approaching budget limit of {ThresholdPercentage}%", thresholdPercentage);
-                throw;
-            }
+            // Budget tracking is now at the group level
+            // This method is deprecated but kept for interface compatibility
+            _logger.LogDebug("GetKeysApproachingBudgetLimitAsync called but budget tracking is now at group level");
+            await Task.CompletedTask;
+            return new List<int>();
         }
     }
 }

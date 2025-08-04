@@ -55,6 +55,7 @@ Development Commands:
   logs                 - Show WebUI container logs
   restart-webui        - Restart WebUI container
   status               - Show container status
+  exec <cmd>           - Execute any command in WebUI container
 
 Utility Commands:
   fix-permissions      - Fix file permissions if needed (legacy)
@@ -67,6 +68,8 @@ Examples:
   $0 lint-fix-webui           # Fix ESLint errors in WebUI
   $0 shell                     # Open shell in WebUI container
   $0 npm-install-webui         # Install WebUI dependencies
+  $0 exec npm install axios    # Install a package
+  $0 exec npm run test:unit   # Run specific test suite
 
 Environment Variables:
   DOCKER_COMPOSE_CMD   - Docker compose command (default: docker compose)
@@ -309,6 +312,16 @@ main() {
             ;;
         clean)
             clean
+            ;;
+        exec)
+            shift  # Remove 'exec' from arguments
+            if [[ $# -eq 0 ]]; then
+                log_error "No command provided to exec"
+                log_info "Usage: $0 exec <command>"
+                exit 1
+            fi
+            check_containers
+            exec_in_webui "$@"
             ;;
         help|--help|-h)
             show_usage

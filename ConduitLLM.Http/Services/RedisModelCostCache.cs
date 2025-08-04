@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using StackExchange.Redis;
 using Microsoft.Extensions.Logging;
@@ -13,7 +14,7 @@ namespace ConduitLLM.Http.Services
     /// <summary>
     /// Redis-based Model Cost cache with event-driven invalidation
     /// </summary>
-    public class RedisModelCostCache : IModelCostCache
+    public class RedisModelCostCache : IModelCostCache, IBatchInvalidatable
     {
         private readonly IDatabase _database;
         private readonly ILogger<RedisModelCostCache> _logger;
@@ -28,6 +29,10 @@ namespace ConduitLLM.Http.Services
         private const string STATS_INVALIDATION_KEY = "conduit:cache:modelcost:stats:invalidations";
         private const string STATS_RESET_TIME_KEY = "conduit:cache:modelcost:stats:reset_time";
         private const string STATS_PATTERN_MATCH_KEY = "conduit:cache:modelcost:stats:pattern_matches";
+        
+        private const string InvalidationChannel = "mcost_invalidated";
+        private const string BatchInvalidationChannel = "mcost_batch_invalidated";
+        private readonly ISubscriber _subscriber;
 
         private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
         {
@@ -39,10 +44,15 @@ namespace ConduitLLM.Http.Services
             ILogger<RedisModelCostCache> logger)
         {
             _database = redis.GetDatabase();
+            _subscriber = redis.GetSubscriber();
             _logger = logger;
             
             // Initialize stats reset time if not exists
             _database.StringSetAsync(STATS_RESET_TIME_KEY, DateTime.UtcNow.ToString("O"), when: When.NotExists).GetAwaiter().GetResult();
+            
+            // Subscribe to invalidation messages
+            _subscriber.Subscribe(RedisChannel.Literal(InvalidationChannel), OnCostInvalidated);
+            _subscriber.Subscribe(RedisChannel.Literal(BatchInvalidationChannel), OnBatchInvalidated);
         }
 
         /// <summary>
@@ -403,12 +413,12 @@ namespace ConduitLLM.Http.Services
 
         private async Task SetModelCostAsync(ModelCost cost)
         {
-            var patternKey = PatternKeyPrefix + cost.ModelIdPattern.ToLowerInvariant();
+            var patternKey = PatternKeyPrefix + cost.CostName.ToLowerInvariant();
             var serialized = JsonSerializer.Serialize(cost, _jsonOptions);
             
             await _database.StringSetAsync(patternKey, serialized, _defaultExpiry);
             
-            _logger.LogDebug("Model cost cached for pattern: {Pattern}", cost.ModelIdPattern);
+            _logger.LogDebug("Model cost cached for cost name: {CostName}", cost.CostName);
         }
 
         /*
@@ -422,5 +432,189 @@ namespace ConduitLLM.Http.Services
             _logger.LogDebug("Model costs cached for provider: {Provider} ({Count} costs)", providerName, costs.Count);
         }
         */
+
+        /// <summary>
+        /// Batch invalidate multiple model costs
+        /// </summary>
+        public async Task<BatchInvalidationResult> InvalidateBatchAsync(
+            IEnumerable<InvalidationRequest> requests, 
+            CancellationToken cancellationToken = default)
+        {
+            var costIds = requests
+                .Where(r => r.EntityType == CacheType.ModelCost.ToString())
+                .Select(r => r.EntityId)
+                .ToArray();
+            
+            if (costIds.Length == 0)
+            {
+                return new BatchInvalidationResult 
+                { 
+                    Success = true,
+                    ProcessedCount = 0,
+                    Duration = TimeSpan.Zero
+                };
+            }
+
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            
+            try
+            {
+                // Use Redis pipeline for batch delete
+                var batch = _database.CreateBatch();
+                var deleteTasks = new List<Task<bool>>();
+                var keysToDelete = new List<string>();
+                
+                // For each cost ID, we need to find all related keys
+                foreach (var costId in costIds)
+                {
+                    // Since we're working with pattern-based cache, we need to scan for keys
+                    // This is less efficient than direct key deletion but necessary for pattern matching
+                    if (int.TryParse(costId, out var id))
+                    {
+                        // Direct invalidation by ID
+                        var server = _database.Multiplexer.GetServer(_database.Multiplexer.GetEndPoints()[0]);
+                        var keys = server.Keys(pattern: KeyPrefix + "*");
+                        
+                        foreach (var key in keys)
+                        {
+                            var value = await _database.StringGetAsync(key);
+                            if (value.HasValue)
+                            {
+                                try
+                                {
+                                    var jsonString = (string?)value;
+                                    if (jsonString != null)
+                                    {
+                                        var cost = JsonSerializer.Deserialize<ModelCost>(jsonString, _jsonOptions);
+                                        if (cost?.Id == id)
+                                        {
+                                            keysToDelete.Add(key.ToString()!);
+                                        }
+                                    }
+                                }
+                                catch
+                                {
+                                    // Skip malformed entries
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Pattern-based invalidation
+                        keysToDelete.Add(PatternKeyPrefix + costId.ToLowerInvariant());
+                    }
+                }
+                
+                // Delete all found keys in batch
+                foreach (var key in keysToDelete)
+                {
+                    deleteTasks.Add(batch.KeyDeleteAsync(key));
+                }
+                
+                // Execute batch
+                batch.Execute();
+                await Task.WhenAll(deleteTasks);
+                
+                // Update invalidation statistics
+                await _database.StringIncrementAsync(STATS_INVALIDATION_KEY, keysToDelete.Count);
+                
+                // Publish batch invalidation message to other instances
+                var batchMessage = new ModelCostBatchInvalidation
+                {
+                    CostIds = costIds,
+                    Timestamp = DateTime.UtcNow
+                };
+                
+                await _subscriber.PublishAsync(
+                    RedisChannel.Literal(BatchInvalidationChannel), 
+                    JsonSerializer.Serialize(batchMessage));
+                
+                stopwatch.Stop();
+                
+                _logger.LogInformation(
+                    "Batch invalidated {Count} model costs in {Duration}ms",
+                    costIds.Length, 
+                    stopwatch.ElapsedMilliseconds);
+                
+                return new BatchInvalidationResult
+                {
+                    Success = true,
+                    ProcessedCount = keysToDelete.Count,
+                    Duration = stopwatch.Elapsed
+                };
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                _logger.LogError(ex, "Failed to batch invalidate model costs");
+                
+                return new BatchInvalidationResult
+                {
+                    Success = false,
+                    ProcessedCount = 0,
+                    Duration = stopwatch.Elapsed,
+                    Error = ex.Message
+                };
+            }
+        }
+
+        /// <summary>
+        /// Handle single invalidation messages from other instances
+        /// </summary>
+        private async void OnCostInvalidated(RedisChannel channel, RedisValue costId)
+        {
+            try
+            {
+                if (int.TryParse(costId, out var id))
+                {
+                    await InvalidateModelCostAsync(id);
+                    _logger.LogDebug("Invalidated model cost from pub/sub: {CostId}", id);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling cost invalidation: {CostId}", costId.ToString());
+            }
+        }
+
+        /// <summary>
+        /// Handle batch invalidation messages from other instances
+        /// </summary>
+        private async void OnBatchInvalidated(RedisChannel channel, RedisValue message)
+        {
+            try
+            {
+                var batchMessage = JsonSerializer.Deserialize<ModelCostBatchInvalidation>(message!);
+                if (batchMessage?.CostIds != null)
+                {
+                    var requests = batchMessage.CostIds.Select(id => new InvalidationRequest
+                    {
+                        EntityType = CacheType.ModelCost.ToString(),
+                        EntityId = id,
+                        Reason = "Batch invalidation from pub/sub"
+                    });
+                    
+                    await InvalidateBatchAsync(requests);
+                    
+                    _logger.LogDebug(
+                        "Batch invalidated {Count} model costs from pub/sub",
+                        batchMessage.CostIds.Length);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling batch cost invalidation");
+            }
+        }
+
+        /// <summary>
+        /// Message for batch invalidation pub/sub
+        /// </summary>
+        private class ModelCostBatchInvalidation
+        {
+            public string[] CostIds { get; set; } = Array.Empty<string>();
+            public DateTime Timestamp { get; set; }
+        }
     }
 }

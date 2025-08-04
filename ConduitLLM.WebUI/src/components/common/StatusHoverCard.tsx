@@ -24,6 +24,7 @@ import {
   IconClock,
   IconActivity
 } from '@tabler/icons-react';
+import { TimeDisplay } from '@/components/common/TimeDisplay';
 import type { HealthCheckDetail } from '@/types/health';
 
 interface StatusHoverCardProps {
@@ -217,7 +218,7 @@ export function StatusHoverCard({
               <Group gap="xs">
                 <IconClock size={14} />
                 <Text size="xs" c="dimmed">
-                  Last checked: {lastChecked.toLocaleTimeString()}
+                  Last checked: <TimeDisplay date={lastChecked} />
                 </Text>
               </Group>
             </>

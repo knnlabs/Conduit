@@ -1,13 +1,17 @@
-// Health check types for the UI
-export interface HealthCheckData {
-  // Flexible structure for additional health check data
-  [key: string]: string | number | boolean | HealthCheckData | HealthCheckData[];
-}
+// Import health check types from Admin SDK (WebUI uses Admin API for health checks)
+export type {
+  HealthStatusDto,
+  HealthCheckDetail,
+  HealthCheckData
+} from '@knn_labs/conduit-admin-client';
 
-export interface HealthCheckDetail {
-  status: 'healthy' | 'degraded' | 'unhealthy';
-  description?: string;
-  duration?: number;
-  error?: string;
-  data?: HealthCheckData;
-}
+// Also import Core SDK health types for completeness
+export type {
+  HealthCheckResponse,
+  HealthCheckItem,
+  HealthSummary,
+  HealthStatus,
+  HealthCheckOptions,
+  SimpleHealthStatus,
+  WaitForHealthOptions
+} from '@knn_labs/conduit-core-client';

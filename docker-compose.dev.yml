@@ -6,31 +6,55 @@ services:
   api:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      # Batch Cache Invalidation configuration (development settings)
+      CacheInvalidation__BatchingEnabled: "true"
+      CacheInvalidation__BatchWindow: "00:00:00.050"  # 50ms - Faster for development
+      CacheInvalidation__MaxBatchSize: "50"   # Smaller batches for easier debugging
+      CacheInvalidation__EnableCoalescing: "true"
       # Health monitoring configuration - API endpoint checks
       HealthMonitoring__ApiEndpoints__0__Name: AdminAPI
       HealthMonitoring__ApiEndpoints__0__Url: http://admin:8080/health
       HealthMonitoring__ApiEndpoints__0__TimeoutMs: 5000
       HealthMonitoring__ApiEndpoints__0__WarningThresholdMs: 1000
+      # MinIO S3 configuration (optional - only used when ENABLE_MINIO=true)
+      CONDUIT_MEDIA_STORAGE_TYPE: "${CONDUIT_MEDIA_STORAGE_TYPE:-S3}"
+      CONDUIT_S3_ENDPOINT: "${CONDUIT_S3_ENDPOINT:-http://minio:9000}"
+      CONDUIT_S3_ACCESS_KEY: "${CONDUIT_S3_ACCESS_KEY:-minioadmin}"
+      CONDUIT_S3_SECRET_KEY: "${CONDUIT_S3_SECRET_KEY:-minioadmin123}"
+      CONDUIT_S3_BUCKET_NAME: "${CONDUIT_S3_BUCKET_NAME:-conduit-media}"
+      CONDUIT_S3_REGION: "${CONDUIT_S3_REGION:-us-east-1}"
+      # Public URL for accessing media from outside Docker network (browser/host)
+      # This URL is returned to clients instead of internal MinIO URL
+      CONDUIT_S3_PUBLIC_BASE_URL: "${CONDUIT_S3_PUBLIC_BASE_URL:-http://localhost:9000/conduit-media}"
 
   admin:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      # Batch Cache Invalidation configuration (development settings)
+      CacheInvalidation__BatchingEnabled: "true"
+      CacheInvalidation__BatchWindow: "00:00:00.050"  # 50ms - Faster for development
+      CacheInvalidation__MaxBatchSize: "50"   # Smaller batches for easier debugging
+      CacheInvalidation__EnableCoalescing: "true"
+      # MinIO S3 configuration (optional - only used when ENABLE_MINIO=true)
+      CONDUIT_MEDIA_STORAGE_TYPE: "${CONDUIT_MEDIA_STORAGE_TYPE:-S3}"
+      CONDUIT_S3_ENDPOINT: "${CONDUIT_S3_ENDPOINT:-http://minio:9000}"
+      CONDUIT_S3_ACCESS_KEY: "${CONDUIT_S3_ACCESS_KEY:-minioadmin}"
+      CONDUIT_S3_SECRET_KEY: "${CONDUIT_S3_SECRET_KEY:-minioadmin123}"
+      CONDUIT_S3_BUCKET_NAME: "${CONDUIT_S3_BUCKET_NAME:-conduit-media}"
+      CONDUIT_S3_REGION: "${CONDUIT_S3_REGION:-us-east-1}"
+      # Public URL for accessing media from outside Docker network (browser/host)
+      # This URL is returned to clients instead of internal MinIO URL
+      CONDUIT_S3_PUBLIC_BASE_URL: "${CONDUIT_S3_PUBLIC_BASE_URL:-http://localhost:9000/conduit-media}"
 
   webui:
-    # Use base node image for development instead of production build
-    image: node:20-alpine
+    # Use Node 22 to match host environment
+    image: node:22-alpine
     # Start as root to fix volume ownership, then switch to user
     user: root
     volumes:
-      # Mount source code for hot reloading
+      # Mount everything - no anonymous volumes so host can access node_modules
       - ./ConduitLLM.WebUI:/app/ConduitLLM.WebUI
       - ./SDKs:/app/SDKs
-      # Cache node_modules in named volumes for better performance
-      - webui_node_modules:/app/ConduitLLM.WebUI/node_modules
-      - webui_next:/app/ConduitLLM.WebUI/.next
-      - admin_sdk_node_modules:/app/SDKs/Node/Admin/node_modules
-      - core_sdk_node_modules:/app/SDKs/Node/Core/node_modules
-      - common_sdk_node_modules:/app/SDKs/Node/Common/node_modules
     environment:
       # Next.js development settings
       NODE_ENV: development
@@ -49,36 +73,44 @@ services:
       # Clerk authentication (using the test keys from docker-compose.yml)
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_cHJlY2lzZS1yaW5ndGFpbC0zMy5jbGVyay5hY2NvdW50cy5kZXYk"
       CLERK_SECRET_KEY: "sk_test_oOI6FRt1EhRGaCVUc1zJVyWCNyqf3w1DSJnLZlxEQK"
+      # Development authentication bypass
+      DISABLE_CLERK_AUTH: "true"
     working_dir: /app/ConduitLLM.WebUI
-    # Install su-exec and setup development environment
+    # Smarter startup that handles both fresh installs and fast restarts
     command: |
       sh -c "
         echo 'Installing su-exec for user switching...'
         apk add --no-cache su-exec
         
-        echo 'Setting up development environment...'
-        # Ensure mounted volumes have correct ownership
-        mkdir -p /app/ConduitLLM.WebUI/node_modules /app/ConduitLLM.WebUI/.next
-        mkdir -p /app/SDKs/Node/Admin/node_modules /app/SDKs/Node/Core/node_modules /app/SDKs/Node/Common/node_modules
+        echo 'Fixing directory ownership...'
+        # Fix ownership of all mounted directories
+        chown -R ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} /app/ConduitLLM.WebUI || true
+        chown -R ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} /app/SDKs || true
         
-        # Only chown if directories are empty or owned by root
-        if [ -z \"$(ls -A /app/ConduitLLM.WebUI/node_modules 2>/dev/null)\" ] || [ \"$(stat -c %u /app/ConduitLLM.WebUI/node_modules 2>/dev/null)\" = \"0\" ]; then
-          chown ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} /app/ConduitLLM.WebUI/node_modules /app/ConduitLLM.WebUI/.next
+        # Check if we should skip dependency installation (fast mode)
+        if [ \"\${SKIP_NPM_INSTALL:-false}\" = \"true\" ]; then
+          echo 'FAST MODE: Skipping dependency installation'
+        else
+          # Check if node_modules exists
+          if [ ! -d /app/ConduitLLM.WebUI/node_modules ] || [ \"\${FORCE_NPM_INSTALL:-false}\" = \"true\" ]; then
+            echo 'Installing dependencies (this will be visible on host)...'
+            su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c '
+              cd /app/SDKs/Node/Common && npm install && npm run build
+              cd /app/SDKs/Node/Admin && npm install && npm run build
+              cd /app/SDKs/Node/Core && npm install && npm run build
+              cd /app/ConduitLLM.WebUI && npm install
+            '
+          else
+            echo 'Dependencies already installed, checking for updates...'
+            su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c '
+              cd /app/SDKs/Node/Common && npm install
+              cd /app/SDKs/Node/Admin && npm install
+              cd /app/SDKs/Node/Core && npm install
+              cd /app/ConduitLLM.WebUI && npm install
+            '
+          fi
         fi
         
-        # Check and fix ownership for SDK directories individually
-        for dir in /app/SDKs/Node/Admin/node_modules /app/SDKs/Node/Core/node_modules /app/SDKs/Node/Common/node_modules; do
-          if [ -z \"\$$(ls -A \$$dir 2>/dev/null)\" ] || [ \"\$$(stat -c %u \$$dir 2>/dev/null)\" = \"0\" ]; then
-            chown ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} \$$dir
-          fi
-        done
-        
-        echo 'Installing SDK dependencies as user ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000}...'
-        su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c 'cd /app/SDKs/Node/Common && npm install && npm run build'
-        su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c 'cd /app/SDKs/Node/Admin && npm install && npm run build'
-        su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c 'cd /app/SDKs/Node/Core && npm install && npm run build'
-        echo 'Installing WebUI dependencies...'
-        su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c 'cd /app/ConduitLLM.WebUI && npm install'
         echo 'Starting development server...'
         su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c 'cd /app/ConduitLLM.WebUI && npm run dev'
       "
@@ -90,9 +122,36 @@ services:
       api:
         condition: service_healthy
 
+  minio:
+    image: minio/minio:latest
+    container_name: conduit-minio-dev
+    ports:
+      - "9000:9000"  # API port
+      - "9001:9001"  # Console port
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+      MINIO_BROWSER_REDIRECT_URL: http://localhost:9001
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_dev_data:/data
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: conduit-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./scripts/init-minio.sh:/init-minio.sh:ro
+    entrypoint: ["/bin/sh", "/init-minio.sh"]
+    restart: "no"
+
 volumes:
-  webui_node_modules:
-  webui_next:
-  admin_sdk_node_modules:
-  core_sdk_node_modules:
-  common_sdk_node_modules:
+  minio_dev_data:

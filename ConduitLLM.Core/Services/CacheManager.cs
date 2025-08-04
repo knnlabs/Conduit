@@ -544,7 +544,7 @@ namespace ConduitLLM.Core.Services
                 { CacheRegion.ProviderResponses, (TimeSpan.FromMinutes(60), 60, true) },
                 { CacheRegion.Embeddings, (TimeSpan.FromDays(7), 70, true) },
                 { CacheRegion.GlobalSettings, (TimeSpan.FromMinutes(30), 75, true) },
-                { CacheRegion.ProviderCredentials, (TimeSpan.FromHours(4), 80, true) },
+                { CacheRegion.Providers, (TimeSpan.FromHours(4), 80, true) },
                 { CacheRegion.ModelCosts, (TimeSpan.FromHours(12), 55, true) },
                 { CacheRegion.AudioStreams, (TimeSpan.FromMinutes(10), 30, false) },
                 { CacheRegion.Monitoring, (TimeSpan.FromMinutes(5), 45, false) },

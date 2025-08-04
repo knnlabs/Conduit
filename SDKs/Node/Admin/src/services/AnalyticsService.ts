@@ -13,7 +13,6 @@ import {
 } from '../models/analytics';
 import {
   ExportResult,
-  ExportRequestLogsParams,
   RequestLogStatistics,
   RequestLog,
   ExportStatus,
@@ -119,12 +118,11 @@ export class AnalyticsService extends FetchBaseApiClient {
   }
 
   // Request logs export and analytics
-  async exportRequestLogs(params: ExportRequestLogsParams): Promise<ExportResult> {
-    const response = await this.post<ExportResult>(
-      ENDPOINTS.ANALYTICS.EXPORT_REQUEST_LOGS,
-      params
-    );
-    return response;
+  /**
+   * @deprecated EXPORT_REQUEST_LOGS endpoint no longer exists
+   */
+  async exportRequestLogs(): Promise<ExportResult> {
+    throw new Error('Export request logs endpoint no longer exists in the API');
   }
 
   getRequestLogStatistics(logs: RequestLog[]): RequestLogStatistics {
@@ -198,15 +196,18 @@ export class AnalyticsService extends FetchBaseApiClient {
 
 
 
-  async getExportStatus(exportId: string): Promise<ExportStatus> {
-    return this.get<ExportStatus>(ENDPOINTS.ANALYTICS.EXPORT_STATUS(exportId));
+  /**
+   * @deprecated EXPORT_STATUS endpoint no longer exists
+   */
+  async getExportStatus(): Promise<ExportStatus> {
+    throw new Error('Export status endpoint no longer exists in the API');
   }
 
-  async downloadExport(exportId: string): Promise<Blob> {
-    const response = await this.get<Blob>(ENDPOINTS.ANALYTICS.EXPORT_DOWNLOAD(exportId), {
-      responseType: 'blob',
-    });
-    return response;
+  /**
+   * @deprecated EXPORT_DOWNLOAD endpoint no longer exists
+   */
+  async downloadExport(): Promise<Blob> {
+    throw new Error('Export download endpoint no longer exists in the API');
   }
 
   // Stub methods

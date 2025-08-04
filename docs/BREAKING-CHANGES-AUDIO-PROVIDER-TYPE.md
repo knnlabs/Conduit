@@ -9,6 +9,8 @@
 
 The `AudioCost` and `AudioUsageLog` entities have been migrated from string-based provider names to the strongly-typed `ProviderType` enum. This is a database schema change that requires migration.
 
+**Important Note**: ProviderType is used for categorization only. Provider.Id remains the canonical identifier for Provider records, supporting multiple providers of the same type.
+
 ## Impact Assessment
 
 ### ⚠️ Breaking Changes

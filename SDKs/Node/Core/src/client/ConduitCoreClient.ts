@@ -18,6 +18,7 @@ import { ConnectionService } from '../services/ConnectionService';
 import { ConversationService } from '../services/ConversationService';
 import { MessageService } from '../services/MessageService';
 import { UsageService } from '../services/UsageService';
+import type { VideoGenerationHubClient } from '../signalr/VideoGenerationHubClient';
 
 export class ConduitCoreClient extends FetchBasedClient {
   public readonly chat: ChatService;
@@ -46,7 +47,37 @@ export class ConduitCoreClient extends FetchBasedClient {
 
     this.audio = new AudioService(this);
     this.images = new ImagesService(this);
-    this.videos = new VideosService(this);
+    
+    // Initialize SignalR with configuration first
+    const signalRConfig = config.signalR ?? {};
+    this.signalr = new SignalRService(
+      config.baseURL ?? 'http://localhost:5000', 
+      config.apiKey
+    );
+    
+    // Import VideoGenerationHubClient dynamically to avoid circular dependencies
+    import('../signalr/VideoGenerationHubClient').then(({ VideoGenerationHubClient }) => {
+      const videoHubClient = new VideoGenerationHubClient(
+        config.baseURL ?? 'http://localhost:5000',
+        config.apiKey
+      );
+      // Update videos service with SignalR connections
+      if (this.videos instanceof VideosService) {
+        // TypeScript doesn't know about these internal properties, but they exist
+        const videosService = this.videos as VideosService & {
+          signalRService?: SignalRService;
+          videoHubClient?: VideoGenerationHubClient;
+        };
+        videosService.signalRService = this.signalr;
+        videosService.videoHubClient = videoHubClient;
+      }
+    }).catch(error => {
+      if (config.debug) {
+        console.error('Failed to initialize VideoGenerationHubClient:', error);
+      }
+    });
+    
+    this.videos = new VideosService(this, this.signalr);
     this.models = new ModelsService(this);
     this.tasks = new TasksService(this);
     this.batchOperations = new BatchOperationsService(this);
@@ -54,13 +85,6 @@ export class ConduitCoreClient extends FetchBasedClient {
     this.metrics = new MetricsService(this);
     this.discovery = new DiscoveryService(this);
     this.providerModels = new ProviderModelsService(this);
-    
-    // Initialize SignalR with configuration
-    const signalRConfig = config.signalR ?? {};
-    this.signalr = new SignalRService(
-      config.baseURL ?? 'http://localhost:5000', 
-      config.apiKey
-    );
     
     this.embeddings = new EmbeddingsService(this);
     this.notifications = new NotificationsService(this.signalr);

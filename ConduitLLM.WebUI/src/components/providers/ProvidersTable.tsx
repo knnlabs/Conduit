@@ -22,27 +22,28 @@ import {
   IconTrash,
   IconDotsVertical,
   IconKey,
+  IconAlertCircle,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
 import { formatters } from '@/lib/utils/formatters';
 import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
 import { useRouter } from 'next/navigation';
-import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
+import { getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 
 // Use SDK types directly with health extensions  
 interface Provider extends ProviderCredentialDto {
   healthStatus: 'healthy' | 'unhealthy' | 'unknown';
   lastHealthCheck?: string;
   models?: string[];
-  providerName?: string;
+  keyCount?: number;
 }
 
 interface ProvidersTableProps {
   onEdit?: (provider: Provider) => void;
-  onTest?: (providerId: string) => void;
-  onDelete?: (providerId: string) => void;
+  onTest?: (providerId: number) => void;
+  onDelete?: (providerId: number) => void;
   data?: Provider[];
-  testingProviders?: Set<string>;
+  testingProviders?: Set<number>;
 }
 
 export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProviders = new Set() }: ProvidersTableProps) {
@@ -54,19 +55,12 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
       title: 'Delete Provider',
       children: (
         <Text size="sm">
-          Are you sure you want to delete {provider.providerName ?? (() => {
-            try {
-              const providerType = getProviderTypeFromDto(provider as { providerType?: number; providerName?: string });
-              return getProviderDisplayName(providerType);
-            } catch {
-              return 'this provider';
-            }
-          })()}? This action cannot be undone.
+          Are you sure you want to delete {provider.providerName ?? (provider.providerType ? getProviderDisplayName(provider.providerType) : 'Unknown Provider')}? This action cannot be undone.
         </Text>
       ),
       labels: { confirm: 'Delete', cancel: 'Cancel' },
       confirmProps: { color: 'red' },
-      onConfirm: () => provider.id && onDelete?.(provider.id.toString()),
+      onConfirm: () => provider.id && onDelete?.(provider.id),
     });
   };
 
@@ -96,14 +90,7 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
     <Table.Tr key={`provider-${provider.id}`}>
       <Table.Td>
         <Stack gap={4}>
-          <Text fw={500}>{provider.providerName ?? (() => {
-            try {
-              const providerType = getProviderTypeFromDto(provider as { providerType?: number; providerName?: string });
-              return getProviderDisplayName(providerType);
-            } catch {
-              return 'Unknown Provider';
-            }
-          })()}</Text>
+          <Text fw={500}>{provider.providerName ?? (provider.providerType ? getProviderDisplayName(provider.providerType) : 'Unknown Provider')}</Text>
           <Text size="xs" c="dimmed">ID: {provider.id}</Text>
         </Stack>
       </Table.Td>
@@ -127,6 +114,32 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
             </Text>
           </Group>
         </Tooltip>
+      </Table.Td>
+
+      <Table.Td>
+        <Group gap="xs">
+          {provider.keyCount === 0 ? (
+            <Tooltip label="No API keys configured">
+              <Badge
+                color="orange"
+                variant="light"
+                size="sm"
+                leftSection={<IconAlertCircle size={14} />}
+              >
+                No Keys
+              </Badge>
+            </Tooltip>
+          ) : (
+            <Badge
+              color="blue"
+              variant="light"
+              size="sm"
+              leftSection={<IconKey size={14} />}
+            >
+              {provider.keyCount} {provider.keyCount === 1 ? 'Key' : 'Keys'}
+            </Badge>
+          )}
+        </Group>
       </Table.Td>
 
       <Table.Td>
@@ -173,10 +186,10 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
               </Menu.Item>
               <Menu.Item
                 leftSection={<IconTestPipe style={{ width: rem(14), height: rem(14) }} />}
-                onClick={() => provider.id && onTest?.(provider.id.toString())}
-                disabled={provider.id ? testingProviders.has(provider.id.toString()) : true}
+                onClick={() => provider.id && onTest?.(provider.id)}
+                disabled={provider.id ? testingProviders.has(provider.id) : true}
               >
-                {provider.id && testingProviders.has(provider.id.toString()) ? 'Testing...' : 'Test Connection'}
+                {provider.id && testingProviders.has(provider.id) ? 'Testing...' : 'Test Connection'}
               </Menu.Item>
               <Menu.Divider />
               <Menu.Item
@@ -203,6 +216,7 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
                 <Table.Th>Provider</Table.Th>
                 <Table.Th>Status</Table.Th>
                 <Table.Th>Health</Table.Th>
+                <Table.Th>API Keys</Table.Th>
                 <Table.Th>Models</Table.Th>
                 <Table.Th>Created</Table.Th>
                 <Table.Th />

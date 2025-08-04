@@ -187,35 +187,6 @@ public class VirtualKeysController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Resets the spend for a virtual key
-    /// </summary>
-    /// <param name="id">The ID of the key to reset</param>
-    /// <returns>No content if successful</returns>
-    [HttpPost("{id}/reset-spend")]
-    [Authorize(Policy = "MasterKeyPolicy")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> ResetKeySpend(int id)
-    {
-        try
-        {
-            var success = await _virtualKeyService.ResetSpendAsync(id);
-            if (!success)
-            {
-                return NotFound();
-            }
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error resetting spend for virtual key with ID {KeyId}.", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
-    }
 
     /// <summary>
     /// Validates a virtual key
@@ -246,70 +217,8 @@ public class VirtualKeysController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Updates the spend amount for a virtual key
-    /// </summary>
-    /// <param name="id">The ID of the virtual key</param>
-    /// <param name="request">The request containing the cost to add</param>
-    /// <returns>No content if successful</returns>
-    [HttpPost("{id}/spend")]
-    [Authorize(Policy = "MasterKeyPolicy")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> UpdateSpend(int id, [FromBody] UpdateSpendRequest request)
-    {
-        if (!ModelState.IsValid)
-        {
-            return BadRequest(ModelState);
-        }
 
-        try
-        {
-            var success = await _virtualKeyService.UpdateSpendAsync(id, request.Cost);
-            if (!success)
-            {
-                return NotFound();
-            }
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating spend for virtual key with ID {KeyId}.", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
-    }
 
-    /// <summary>
-    /// Checks if the budget period has expired and resets if needed
-    /// </summary>
-    /// <param name="id">The ID of the virtual key</param>
-    /// <returns>The result of the budget check</returns>
-    [HttpPost("{id}/check-budget")]
-    [Authorize(Policy = "MasterKeyPolicy")]
-    [ProducesResponseType(typeof(BudgetCheckResult), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> CheckBudget(int id)
-    {
-        try
-        {
-            var key = await _virtualKeyService.GetVirtualKeyInfoAsync(id);
-            if (key == null)
-            {
-                return NotFound();
-            }
-
-            var result = await _virtualKeyService.CheckBudgetAsync(id);
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error checking budget for virtual key with ID {KeyId}.", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
-        }
-    }
 
     /// <summary>
     /// Gets detailed information about a virtual key for validation purposes
@@ -344,8 +253,8 @@ public class VirtualKeysController : ControllerBase
     /// </summary>
     /// <remarks>
     /// This endpoint performs the following maintenance tasks:
-    /// - Resets budgets for keys with expired budget periods (daily/monthly)
     /// - Disables keys that have passed their expiration date
+    /// Budget resets are no longer performed in the bank account model.
     /// This is typically called by a background service.
     /// </remarks>
     /// <returns>No content if successful</returns>
@@ -394,6 +303,41 @@ public class VirtualKeysController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error previewing discovery for virtual key with ID {KeyId}.", id);
+            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+        }
+    }
+
+    /// <summary>
+    /// Get the virtual key group for a specific key
+    /// </summary>
+    /// <param name="id">The ID of the virtual key</param>
+    /// <returns>The virtual key group information</returns>
+    [HttpGet("{id}/group")]
+    [Authorize(Policy = "MasterKeyPolicy")]
+    [ProducesResponseType(typeof(VirtualKeyGroupDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetKeyGroup(int id)
+    {
+        try
+        {
+            var key = await _virtualKeyService.GetVirtualKeyByIdAsync(id);
+            if (key == null)
+            {
+                return NotFound(new { message = "Virtual key not found" });
+            }
+
+            var groupInfo = await _virtualKeyService.GetKeyGroupAsync(id);
+            if (groupInfo == null)
+            {
+                return NotFound(new { message = "Virtual key group not found" });
+            }
+
+            return Ok(groupInfo);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting group for virtual key with ID {KeyId}.", id);
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }

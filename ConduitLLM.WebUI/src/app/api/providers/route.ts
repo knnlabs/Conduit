@@ -54,6 +54,14 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json() as CreateProviderCredentialDto;
+    // Validate request body
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json(
+        { error: 'Invalid request body' },
+        { status: 400 }
+      );
+    }
+    
     const adminClient = getServerAdminClient();
     const providersService = adminClient.providers;
     if (!providersService || typeof providersService.create !== 'function') {
@@ -63,7 +71,7 @@ export async function POST(request: Request) {
     // Ensure isEnabled has a value (default to true if not provided)
     // Convert providerName to providerType if needed
     let providerType: number | undefined;
-    const bodyWithType = body as { providerType?: number; providerName?: string; isEnabled?: boolean };
+    const bodyWithType = body as { providerType?: number; providerName?: string; isEnabled?: boolean; apiKey?: string; apiEndpoint?: string; organizationId?: string };
     
     if (bodyWithType.providerType !== undefined) {
       providerType = bodyWithType.providerType;
@@ -72,13 +80,40 @@ export async function POST(request: Request) {
       providerType = providerNameToType(bodyWithType.providerName);
     }
     
+    // Extract API key from request (it's not part of provider creation)
+    const apiKey = bodyWithType.apiKey;
+    const apiEndpoint = bodyWithType.apiEndpoint;
+    const organizationId = bodyWithType.organizationId;
+    
+    // Create provider data without API key
     const createData = {
-      ...body,
-      providerType: (providerType ?? ProviderType.OpenAI) as ProviderType, // Default to OpenAI if no type provided
+      providerType: (providerType ?? ProviderType.OpenAI) as ProviderType,
+      providerName: bodyWithType.providerName ?? '',
+      baseUrl: apiEndpoint,
       isEnabled: bodyWithType.isEnabled ?? true,
     };
     
     const provider = await providersService.create(createData);
+    
+    // If API key was provided, add it to the provider
+    if (apiKey && provider.id) {
+      try {
+        const keyData = {
+          apiKey: apiKey,
+          keyName: 'Primary Key',
+          organization: organizationId,
+          baseUrl: apiEndpoint,
+        };
+        
+        // Create the API key for the provider
+        await adminClient.providers.createKey(provider.id, keyData);
+      } catch (keyError) {
+        console.error('[API Route] Failed to add API key:', keyError);
+        // Note: Provider was created successfully, but key addition failed
+        // We'll return the provider anyway and let the user know
+      }
+    }
+    
     return NextResponse.json(provider);
   } catch (error: unknown) {
     return handleSDKError(error);

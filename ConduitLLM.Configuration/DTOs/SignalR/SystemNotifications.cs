@@ -39,9 +39,14 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         public override string Type => "provider_health";
 
         /// <summary>
-        /// Gets or sets the provider type.
+        /// Gets or sets the provider ID.
         /// </summary>
-        public ProviderType ProviderType { get; set; }
+        public int ProviderId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the provider name.
+        /// </summary>
+        public string ProviderName { get; set; } = string.Empty;
 
 
         /// <summary>
@@ -196,9 +201,14 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         public override string Type => "model_capabilities_discovered";
 
         /// <summary>
-        /// Gets or sets the provider type.
+        /// Gets or sets the provider ID.
         /// </summary>
-        public ProviderType ProviderType { get; set; }
+        public int ProviderId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the provider name.
+        /// </summary>
+        public string ProviderName { get; set; } = string.Empty;
 
 
         /// <summary>

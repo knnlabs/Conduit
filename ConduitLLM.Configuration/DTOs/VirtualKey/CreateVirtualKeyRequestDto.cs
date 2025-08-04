@@ -13,11 +13,11 @@ public class CreateVirtualKeyRequestDto
 
     public string? AllowedModels { get; set; } // Comma-separated
 
-    [Range(0, 1000000, ErrorMessage = "Max budget must be between 0 and 1,000,000. Set to 0 for no budget limit.")]
-    public decimal? MaxBudget { get; set; }
-
-    [MaxLength(20)]
-    public string? BudgetDuration { get; set; } // e.g., "Total", "Monthly"
+    /// <summary>
+    /// Optional ID of an existing virtual key group to add this key to.
+    /// If not provided, a new single-key group will be created.
+    /// </summary>
+    public int? VirtualKeyGroupId { get; set; }
 
     public DateTime? ExpiresAt { get; set; }
 

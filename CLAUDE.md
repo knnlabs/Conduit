@@ -30,24 +30,39 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Development Workflow - CRITICAL
 **⚠️ CANONICAL DEVELOPMENT STARTUP: Always use `./scripts/start-dev.sh` for development**
 
-### Starting Development Environment
+### Starting Development Environment - UPDATED WORKFLOW
+
+#### Common Usage Patterns:
 ```bash
-# RECOMMENDED: Start development environment (hot reloading, user permission mapping)
+# First time setup or after package.json changes
 ./scripts/start-dev.sh
 
-# Clean and restart if you encounter permission issues
-./scripts/start-dev.sh --clean
+# Daily development (starts in seconds)
+./scripts/start-dev.sh --fast
 
-# Force rebuild containers
-./scripts/start-dev.sh --build
+# After adding/removing npm packages
+./scripts/start-dev.sh --rebuild
+
+# If you get permission errors
+./scripts/start-dev.sh --fix
+
+# Complete reset (removes everything)
+./scripts/start-dev.sh --clean
 ```
 
-**Why use start-dev.sh?**
-- ✅ Automatic permission conflict detection
-- ✅ Proper user ID mapping (no permission denied errors)
-- ✅ Hot reloading for WebUI development
-- ✅ Volume ownership validation
-- ✅ Comprehensive environment health checks
+#### What Each Flag Does:
+- **--fast**: Skips npm install checks, starts containers immediately (use daily)
+- **--rebuild**: Forces complete reinstall of all dependencies
+- **--fix**: Fixes permissions and restarts containers
+- **--clean**: Removes all containers/volumes and starts fresh
+- **--build**: Rebuilds container images (rarely needed)
+
+#### Key Improvements:
+- ✅ Node modules exist on HOST - Claude Code works perfectly
+- ✅ Run npm/build/lint commands directly on host
+- ✅ Fast startup with --fast flag (seconds not minutes)
+- ✅ No more anonymous volumes blocking access
+- ✅ Shared dependencies between host and container
 
 ### Alternative Build Commands
 - Build solution: `dotnet build`
@@ -125,8 +140,20 @@ docker ps
 #### Permission Denied Errors
 ```bash
 # Symptom: npm EACCES errors, cannot write to node_modules
-# Solution: Clean and restart development environment
-./scripts/start-dev.sh --clean
+# Solution: Use the fix flag
+./scripts/start-dev.sh --fix
+```
+
+#### After Adding New Packages
+```bash
+# When you add packages to package.json
+./scripts/start-dev.sh --rebuild
+```
+
+#### Daily Development
+```bash
+# For fast startup when dependencies haven't changed
+./scripts/start-dev.sh --fast
 ```
 
 #### Container Conflicts
@@ -140,7 +167,10 @@ docker compose down --volumes --remove-orphans
 #### Volume Permission Issues
 ```bash
 # Symptom: "Volume permission mismatch detected"
-# Solution: Use the clean flag to remove problematic volumes
+# Solution 1: Fix permissions without removing volumes (RECOMMENDED)
+./scripts/start-dev.sh --fix-perms
+
+# Solution 2: Use the clean flag to remove and recreate volumes
 ./scripts/start-dev.sh --clean
 ```
 
@@ -292,11 +322,27 @@ The WebUI uses very strict ESLint rules that will cause build failures:
 
 ## Development Workflow
 - After implementing features, always run: `dotnet build` to check for compilation errors
-- **For WebUI changes**: ALWAYS run `cd ConduitLLM.WebUI && npm run build` 
+- **For WebUI changes**: Run `cd ConduitLLM.WebUI && npm run build` directly on host
+- **For ESLint**: Run `cd ConduitLLM.WebUI && npm run lint` directly on host
+- **For TypeScript checks**: Run `cd ConduitLLM.WebUI && npm run type-check` directly on host
 - Test your changes locally before committing
 - When working with API changes, test with curl or a REST client
 - For UI changes, verify in the browser with developer tools open
 - Clean up temporary test files and scripts after completing features
+
+### WebUI Development - NEW SIMPLIFIED WORKFLOW
+You can now run npm commands DIRECTLY on the host filesystem:
+- ✅ `cd ConduitLLM.WebUI && npm run lint` - Works directly!
+- ✅ `cd SDKs/Node/Admin && npm run build` - Works directly!
+
+The development environment now shares node_modules between host and container.
+
+⚠️ **CRITICAL WARNING: WebUI Build Commands**
+- **NEVER run `npm run build` in the ConduitLLM.WebUI directory during development**
+- The WebUI container runs Next.js dev server which hot-reloads automatically
+- Running `npm run build` will conflict with the dev server and break the container
+- If you accidentally break the WebUI: `./scripts/start-dev.sh --restart-webui`
+- Only run build to verify TypeScript compilation: `cd ConduitLLM.WebUI && npx tsc --noEmit`
 
 ## Git Branching Rules
 - **NEVER push to origin/master** - The master branch is protected
@@ -324,15 +370,29 @@ The WebUI uses very strict ESLint rules that will cause build failures:
   - One assertion per test is preferred
   - Use Moq for mocking dependencies
 
-## Provider Type Migration - CRITICAL
-**⚠️ IMPORTANT**: As of Phase 3f (#628), the codebase uses strongly-typed `ProviderType` enum instead of string-based provider names.
+## Provider Architecture - CRITICAL
+**⚠️ IMPORTANT**: The codebase supports multiple providers of the same type (e.g., multiple OpenAI configurations). Provider ID is the canonical identifier, not ProviderType.
 
-### Key Changes:
-- **Use `ProviderType` enum**: Always use `ProviderType.OpenAI`, `ProviderType.Anthropic`, etc. instead of string "openai", "anthropic"
-- **Database stores integers**: Provider types are stored as integers in the database (e.g., OpenAI=1, Anthropic=2)
+### Key Concepts:
+- **Provider ID**: The canonical identifier for Provider records. Use this for lookups, relationships, and identification.
+- **ProviderType**: Categorizes providers by their API type (OpenAI, Anthropic, etc.). Multiple providers can share the same ProviderType.
+- **Provider Name**: User-facing display name. Can be changed and should not be used for identification.
+- **ProviderKeyCredential**: Individual API keys for a provider. Supports multiple keys per provider for load balancing and failover.
+
+### Architecture:
+- **Provider Entity**: Represents a provider instance (e.g., "Production OpenAI", "Dev Azure OpenAI")
+- **ProviderKeyCredential Entity**: Individual API keys with ProviderAccountGroup for external account separation
+- **ModelProviderMapping**: Links model aliases to Provider.Id (NOT ProviderType!)
+- **ModelCost**: Flexible cost configurations that can apply to multiple models via ModelCostMapping
+
+### Migration Notes:
+- **ProviderType enum**: Used for categorization, stored as integers in database (OpenAI=1, Anthropic=2, etc.)
 - **Backward compatibility**: Read-only `ProviderName` properties exist for compatibility but are marked `[Obsolete]`
-- **Breaking change**: This is a major breaking change in the API - existing installations must drop and recreate their databases
-- **Audio Migration (Issue #654)**: AudioCost and AudioUsageLog entities now use ProviderType enum instead of string providers
+- **Audio Migration (Issue #654)**: AudioCost and AudioUsageLog entities now use ProviderType enum for categorization
+
+### Documentation:
+- See `/docs/architecture/provider-multi-instance.md` for detailed provider architecture
+- See `/docs/architecture/model-cost-mapping.md` for cost configuration details
 
 ### Available Provider Types:
 ```csharp

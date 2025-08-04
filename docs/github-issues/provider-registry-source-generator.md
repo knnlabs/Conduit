@@ -34,9 +34,9 @@ namespace ConduitLLM.Core.Services
         private void RegisterGeneratedProviders()
         {
             // Generated at compile time
-            _providers.TryAdd(ProviderType.OpenAI, new Providers.Metadata.OpenAIProviderMetadata());
-            _providers.TryAdd(ProviderType.Anthropic, new Providers.Metadata.AnthropicProviderMetadata());
-            _providers.TryAdd(ProviderType.AzureOpenAI, new Providers.Metadata.AzureOpenAIProviderMetadata());
+            _providers.TryAdd(ProviderType.OpenAI, new Provider.Metadata.OpenAIProviderMetadata());
+            _providers.TryAdd(ProviderType.Anthropic, new Provider.Metadata.AnthropicProviderMetadata());
+            _providers.TryAdd(ProviderType.AzureOpenAI, new Provider.Metadata.AzureOpenAIProviderMetadata());
             // ... all other providers ...
         }
         

@@ -6,9 +6,10 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
-using ConduitLLM.Providers.InternalModels;
+using ConduitLLM.Providers.Common.Models;
 
 using Microsoft.Extensions.Logging;
 
@@ -37,7 +38,7 @@ namespace ConduitLLM.Providers
     /// - Different model listing behavior (deployments instead of models)
     /// </para>
     /// </remarks>
-    public class AzureOpenAIClient : OpenAICompatibleClient
+    public class AzureOpenAIClient : ConduitLLM.Providers.Providers.OpenAICompatible.OpenAICompatibleClient
     {
         private const string ApiVersion = "2024-02-01";
         private readonly string _deploymentName;
@@ -53,20 +54,24 @@ namespace ConduitLLM.Providers
         /// <exception cref="ArgumentNullException">Thrown when required parameters are null.</exception>
         /// <exception cref="ConfigurationException">Thrown when required Azure-specific configuration is missing.</exception>
         public AzureOpenAIClient(
-            ProviderCredentials credentials,
+            Provider provider,
+            ProviderKeyCredential keyCredential,
             string deploymentName,
             ILogger logger,
             IHttpClientFactory? httpClientFactory = null,
             ProviderDefaultModels? defaultModels = null)
-            : base(credentials ?? throw new ArgumentNullException(nameof(credentials)), 
-                  deploymentName, logger, httpClientFactory, providerName: "azure",
-                  baseUrl: credentials?.BaseUrl?.TrimEnd('/'), defaultModels)
+            : base(provider ?? throw new ArgumentNullException(nameof(provider)), 
+                  keyCredential ?? throw new ArgumentNullException(nameof(keyCredential)),
+                  deploymentName, logger, httpClientFactory, 
+                  providerName: "azure",
+                  baseUrl: null,
+                  defaultModels: defaultModels)
         {
             // Deployment name is equivalent to provider model ID in Azure
             _deploymentName = deploymentName ?? throw new ArgumentNullException(nameof(deploymentName), "Deployment name is required for Azure OpenAI.");
 
             // Validate Azure-specific required fields
-            if (string.IsNullOrWhiteSpace(credentials!.BaseUrl))
+            if (string.IsNullOrWhiteSpace(provider.BaseUrl))
             {
                 throw new ConfigurationException("BaseUrl (Azure resource endpoint) is required for Azure OpenAI. Format: https://{resource-name}.openai.azure.com");
             }
@@ -131,12 +136,12 @@ namespace ConduitLLM.Providers
         /// In a real-world scenario, listing Azure OpenAI deployments requires Azure SDK 
         /// and RBAC permissions, which is beyond the scope of simple API key interaction.
         /// </remarks>
-        public override Task<List<InternalModels.ExtendedModelInfo>> GetModelsAsync(
+        public override Task<List<ConduitLLM.Providers.Common.Models.ExtendedModelInfo>> GetModelsAsync(
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
             Logger.LogWarning("Listing models is not supported for Azure OpenAI provider via API key authentication.");
-            return Task.FromResult(new List<InternalModels.ExtendedModelInfo>());
+            return Task.FromResult(new List<ConduitLLM.Providers.Common.Models.ExtendedModelInfo>());
         }
 
         /// <summary>
@@ -160,19 +165,6 @@ namespace ConduitLLM.Providers
             client.DefaultRequestHeaders.Add("api-key", apiKey);
         }
 
-        /// <summary>
-        /// Gets a fallback list of models for Azure OpenAI.
-        /// </summary>
-        /// <returns>An empty list since Azure OpenAI deployments can't be predicted.</returns>
-        /// <remarks>
-        /// Azure OpenAI deployments are specific to each customer's resource,
-        /// so it's not possible to provide a meaningful fallback list.
-        /// </remarks>
-        protected override List<InternalModels.ExtendedModelInfo> GetFallbackModels()
-        {
-            // Return an empty list since Azure OpenAI deployments are specific to each customer
-            return new List<InternalModels.ExtendedModelInfo>();
-        }
 
         /// <summary>
         /// Gets the capabilities for Azure OpenAI.
@@ -229,7 +221,7 @@ namespace ConduitLLM.Providers
             try
             {
                 var startTime = DateTime.UtcNow;
-                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey;
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey;
                 
                 if (string.IsNullOrWhiteSpace(effectiveApiKey))
                 {
@@ -244,7 +236,7 @@ namespace ConduitLLM.Providers
                 // Azure requires the base URL to be set
                 var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) 
                     ? baseUrl.TrimEnd('/') 
-                    : Credentials.BaseUrl?.TrimEnd('/');
+                    : Provider.BaseUrl?.TrimEnd('/');
                     
                 if (string.IsNullOrWhiteSpace(effectiveBaseUrl))
                 {
@@ -322,7 +314,7 @@ namespace ConduitLLM.Providers
         {
             var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) 
                 ? baseUrl.TrimEnd('/') 
-                : Credentials.BaseUrl?.TrimEnd('/');
+                : Provider.BaseUrl?.TrimEnd('/');
                 
             if (string.IsNullOrWhiteSpace(effectiveBaseUrl))
             {

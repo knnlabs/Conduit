@@ -301,20 +301,21 @@
         }
       }
     },
-    "/api/admin/audio/providers/by-type/{providerType}": {
+    "/api/admin/audio/providers/by-id/{providerId}": {
       "get": {
         "tags": [
           "AudioConfiguration"
         ],
-        "summary": "Gets audio provider configurations by provider type.",
+        "summary": "Gets audio provider configurations by provider ID.",
         "parameters": [
           {
-            "name": "providerType",
+            "name": "providerId",
             "in": "path",
-            "description": "The provider type",
+            "description": "The provider ID",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
+              "type": "integer",
+              "format": "int32"
             }
           }
         ],
@@ -764,7 +765,7 @@
         }
       }
     },
-    "/api/admin/audio/costs/by-provider/{provider}": {
+    "/api/admin/audio/costs/by-provider/{providerId}": {
       "get": {
         "tags": [
           "AudioConfiguration"
@@ -772,12 +773,13 @@
         "summary": "Gets audio costs by provider.",
         "parameters": [
           {
-            "name": "provider",
+            "name": "providerId",
             "in": "path",
-            "description": "The provider name",
+            "description": "The provider ID",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int32"
             }
           }
         ],
@@ -822,11 +824,12 @@
         "summary": "Gets the current cost for a specific operation.",
         "parameters": [
           {
-            "name": "provider",
+            "name": "providerId",
             "in": "query",
-            "description": "The provider name",
+            "description": "The provider ID",
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int32"
             }
           },
           {
@@ -905,10 +908,11 @@
             }
           },
           {
-            "name": "ProviderType",
+            "name": "ProviderId",
             "in": "query",
             "schema": {
-              "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
+              "type": "integer",
+              "format": "int32"
             }
           },
           {
@@ -1020,11 +1024,12 @@
             }
           },
           {
-            "name": "provider",
+            "name": "providerId",
             "in": "query",
-            "description": "Filter by provider (optional)",
+            "description": "Filter by provider ID (optional)",
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int32"
             }
           }
         ],
@@ -1111,7 +1116,7 @@
         }
       }
     },
-    "/api/admin/audio/usage/by-provider/{provider}": {
+    "/api/admin/audio/usage/by-provider/{providerId}": {
       "get": {
         "tags": [
           "AudioConfiguration"
@@ -1119,12 +1124,13 @@
         "summary": "Gets audio usage by provider.",
         "parameters": [
           {
-            "name": "provider",
+            "name": "providerId",
             "in": "path",
-            "description": "The provider name",
+            "description": "The provider ID",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int32"
             }
           },
           {
@@ -2094,56 +2100,6 @@
           },
           "500": {
             "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/dashboard/metrics/realtime": {
-      "get": {
-        "tags": [
-          "Dashboard"
-        ],
-        "summary": "Gets real-time metrics for the metrics dashboard.",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/dashboard/metrics/timeseries": {
-      "get": {
-        "tags": [
-          "Dashboard"
-        ],
-        "summary": "Gets time-series data for dashboard charts.",
-        "parameters": [
-          {
-            "name": "period",
-            "in": "query",
-            "description": "Time period (hour, day, week, month).",
-            "schema": {
-              "type": "string",
-              "default": "hour"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/dashboard/metrics/providers": {
-      "get": {
-        "tags": [
-          "Dashboard"
-        ],
-        "summary": "Gets provider-specific performance metrics.",
-        "responses": {
-          "200": {
-            "description": "OK"
           }
         }
       }
@@ -4780,20 +4736,21 @@
         }
       }
     },
-    "/api/ModelCosts/provider/{providerName}": {
+    "/api/ModelCosts/provider/{providerId}": {
       "get": {
         "tags": [
           "ModelCosts"
         ],
-        "summary": "Gets model costs by provider name",
+        "summary": "Gets model costs by provider ID",
         "parameters": [
           {
-            "name": "providerName",
+            "name": "providerId",
             "in": "path",
-            "description": "The name of the provider",
+            "description": "The ID of the provider",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int32"
             }
           }
         ],
@@ -4833,17 +4790,17 @@
         }
       }
     },
-    "/api/ModelCosts/pattern/{pattern}": {
+    "/api/ModelCosts/name/{costName}": {
       "get": {
         "tags": [
           "ModelCosts"
         ],
-        "summary": "Gets a model cost by pattern",
+        "summary": "Gets a model cost by cost name",
         "parameters": [
           {
-            "name": "pattern",
+            "name": "costName",
             "in": "path",
-            "description": "The model ID pattern",
+            "description": "The cost name",
             "required": true,
             "schema": {
               "type": "string"
@@ -5072,11 +5029,12 @@
         "summary": "Exports model costs in CSV format",
         "parameters": [
           {
-            "name": "provider",
+            "name": "providerId",
             "in": "query",
-            "description": "Optional provider name to filter by",
+            "description": "Optional provider ID to filter by",
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int32"
             }
           }
         ],
@@ -5118,11 +5076,12 @@
         "summary": "Exports model costs in JSON format",
         "parameters": [
           {
-            "name": "provider",
+            "name": "providerId",
             "in": "query",
-            "description": "Optional provider name to filter by",
+            "description": "Optional provider ID to filter by",
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int32"
             }
           }
         ],
@@ -5318,7 +5277,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
                   }
                 }
               },
@@ -5326,7 +5285,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
                   }
                 }
               },
@@ -5334,7 +5293,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
                   }
                 }
               }
@@ -5355,17 +5314,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
               }
             }
           }
@@ -5376,17 +5335,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
                 }
               }
             }
@@ -5411,28 +5370,8 @@
               }
             }
           },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
+          "409": {
+            "description": "Conflict",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5481,17 +5420,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
                 }
               }
             }
@@ -5543,17 +5482,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
               }
             }
           }
@@ -5564,46 +5503,6 @@
           },
           "400": {
             "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
             "content": {
               "text/plain": {
                 "schema": {
@@ -5668,110 +5567,6 @@
           "204": {
             "description": "No Content"
           },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/ModelProviderMapping/by-model/{modelId}": {
-      "get": {
-        "tags": [
-          "ModelProviderMapping"
-        ],
-        "summary": "Gets a model provider mapping by model ID",
-        "parameters": [
-          {
-            "name": "modelId",
-            "in": "path",
-            "description": "The model ID to look up",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
-                }
-              }
-            }
-          },
           "404": {
             "description": "Not Found",
             "content": {
@@ -5803,7 +5598,7 @@
         "tags": [
           "ModelProviderMapping"
         ],
-        "summary": "Gets a list of all available providers",
+        "summary": "Gets all available providers",
         "responses": {
           "200": {
             "description": "OK",
@@ -5812,7 +5607,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderDataDto"
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.Provider"
                   }
                 }
               },
@@ -5820,7 +5615,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderDataDto"
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.Provider"
                   }
                 }
               },
@@ -5828,7 +5623,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderDataDto"
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.Provider"
                   }
                 }
               }
@@ -5847,21 +5642,30 @@
         ],
         "summary": "Creates multiple model provider mappings in a single operation",
         "requestBody": {
-          "description": "The bulk mapping request containing mappings to create",
+          "description": "The mappings to create",
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.BulkModelMappingRequest"
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
+                }
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.BulkModelMappingRequest"
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
+                }
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.BulkModelMappingRequest"
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
+                }
               }
             }
           }
@@ -5872,17 +5676,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.BulkModelMappingResponse"
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.BulkMappingResult"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.BulkModelMappingResponse"
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.BulkMappingResult"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.BulkModelMappingResponse"
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.BulkMappingResult"
                 }
               }
             }
@@ -5907,63 +5711,23 @@
               }
             }
           },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
           "500": {
             "description": "Internal Server Error"
           }
         }
       }
     },
-    "/api/ModelProviderMapping/discover/provider/{providerId}": {
+    "/api/ModelProviderMapping/discover/{providerId}": {
       "get": {
         "tags": [
           "ModelProviderMapping"
         ],
-        "summary": "Discovers available models for a specific provider",
+        "summary": "Discovers available models from a specific provider",
         "parameters": [
           {
             "name": "providerId",
             "in": "path",
-            "description": "The ID of the provider to discover models for",
+            "description": "The provider ID to discover models from",
             "required": true,
             "schema": {
               "type": "integer",
@@ -6001,195 +5765,8 @@
               }
             }
           },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
           "404": {
             "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/ModelProviderMapping/discover/model/{providerId}/{modelId}": {
-      "get": {
-        "tags": [
-          "ModelProviderMapping"
-        ],
-        "summary": "Discovers capabilities for a specific model",
-        "parameters": [
-          {
-            "name": "providerId",
-            "in": "path",
-            "description": "The ID of the provider",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "modelId",
-            "in": "path",
-            "description": "The model ID to check capabilities for",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Core.Interfaces.DiscoveredModel"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Core.Interfaces.DiscoveredModel"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Core.Interfaces.DiscoveredModel"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/ModelProviderMapping/discover/capability/{modelAlias}/{capability}": {
-      "get": {
-        "tags": [
-          "ModelProviderMapping"
-        ],
-        "summary": "Tests a specific capability for a model",
-        "parameters": [
-          {
-            "name": "modelAlias",
-            "in": "path",
-            "description": "The model alias to test",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "capability",
-            "in": "path",
-            "description": "The capability to test (e.g., \"ImageGeneration\", \"Vision\", \"ChatStream\")",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "boolean"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "boolean"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "boolean"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
             "content": {
               "text/plain": {
                 "schema": {
@@ -6650,1011 +6227,6 @@
         }
       }
     },
-    "/api/ProviderCredentials": {
-      "get": {
-        "tags": [
-          "ProviderCredentials"
-        ],
-        "summary": "Gets all provider credentials",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderCredentialDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderCredentialDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderCredentialDto"
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "ProviderCredentials"
-        ],
-        "summary": "Creates a new provider credential",
-        "requestBody": {
-          "description": "The provider credential to create",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.CreateProviderCredentialDto"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.CreateProviderCredentialDto"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.CreateProviderCredentialDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderCredentialDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderCredentialDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderCredentialDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/ProviderCredentials/{id}": {
-      "get": {
-        "tags": [
-          "ProviderCredentials"
-        ],
-        "summary": "Gets a provider credential by ID",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The ID of the provider credential",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderCredentialDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderCredentialDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderCredentialDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "ProviderCredentials"
-        ],
-        "summary": "Updates a provider credential",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The ID of the provider credential to update",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "requestBody": {
-          "description": "The updated provider credential data",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.UpdateProviderCredentialDto"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.UpdateProviderCredentialDto"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.UpdateProviderCredentialDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "ProviderCredentials"
-        ],
-        "summary": "Deletes a provider credential",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The ID of the provider credential to delete",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/ProviderCredentials/test/{id}": {
-      "post": {
-        "tags": [
-          "ProviderCredentials"
-        ],
-        "summary": "Tests the connection to a provider",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The ID of the provider credential to test",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/ProviderCredentials/test": {
-      "post": {
-        "tags": [
-          "ProviderCredentials"
-        ],
-        "summary": "Tests a provider connection without saving credentials",
-        "requestBody": {
-          "description": "The provider credentials to test",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.TestProviderConnectionDto"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.TestProviderConnectionDto"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.TestProviderConnectionDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/ProviderCredentials/{providerId}/keys": {
-      "get": {
-        "tags": [
-          "ProviderCredentials"
-        ],
-        "summary": "Gets all key credentials for a specific provider",
-        "parameters": [
-          {
-            "name": "providerId",
-            "in": "path",
-            "description": "The ID of the provider",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderKeyCredentialDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderKeyCredentialDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderKeyCredentialDto"
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "ProviderCredentials"
-        ],
-        "summary": "Creates a new key credential for a provider",
-        "parameters": [
-          {
-            "name": "providerId",
-            "in": "path",
-            "description": "The ID of the provider",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "requestBody": {
-          "description": "The key credential to create",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.CreateProviderKeyCredentialDto"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.CreateProviderKeyCredentialDto"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.CreateProviderKeyCredentialDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderKeyCredentialDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderKeyCredentialDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderKeyCredentialDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/ProviderCredentials/{providerId}/keys/{keyId}": {
-      "get": {
-        "tags": [
-          "ProviderCredentials"
-        ],
-        "summary": "Gets a specific key credential",
-        "parameters": [
-          {
-            "name": "providerId",
-            "in": "path",
-            "description": "The ID of the provider",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "keyId",
-            "in": "path",
-            "description": "The ID of the key",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderKeyCredentialDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderKeyCredentialDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderKeyCredentialDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "ProviderCredentials"
-        ],
-        "summary": "Updates a key credential",
-        "parameters": [
-          {
-            "name": "providerId",
-            "in": "path",
-            "description": "The ID of the provider",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "keyId",
-            "in": "path",
-            "description": "The ID of the key",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "requestBody": {
-          "description": "The updated key credential data",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.UpdateProviderKeyCredentialDto"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.UpdateProviderKeyCredentialDto"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.UpdateProviderKeyCredentialDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "ProviderCredentials"
-        ],
-        "summary": "Deletes a key credential",
-        "parameters": [
-          {
-            "name": "providerId",
-            "in": "path",
-            "description": "The ID of the provider",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "keyId",
-            "in": "path",
-            "description": "The ID of the key to delete",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/ProviderCredentials/{providerId}/keys/{keyId}/set-primary": {
-      "post": {
-        "tags": [
-          "ProviderCredentials"
-        ],
-        "summary": "Sets a key as the primary key for a provider",
-        "parameters": [
-          {
-            "name": "providerId",
-            "in": "path",
-            "description": "The ID of the provider",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "keyId",
-            "in": "path",
-            "description": "The ID of the key to set as primary",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/ProviderCredentials/{providerId}/keys/{keyId}/test": {
-      "post": {
-        "tags": [
-          "ProviderCredentials"
-        ],
-        "summary": "Tests a specific key credential",
-        "parameters": [
-          {
-            "name": "providerId",
-            "in": "path",
-            "description": "The ID of the provider",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "keyId",
-            "in": "path",
-            "description": "The ID of the key to test",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
     "/api/ProviderHealth/configurations": {
       "get": {
         "tags": [
@@ -7669,7 +6241,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthConfigurationDto"
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
                   }
                 }
               },
@@ -7677,7 +6249,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthConfigurationDto"
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
                   }
                 }
               },
@@ -7685,7 +6257,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthConfigurationDto"
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
                   }
                 }
               }
@@ -7706,17 +6278,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.CreateProviderHealthConfigurationDto"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.CreateProviderHealthConfigurationDto"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.CreateProviderHealthConfigurationDto"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
               }
             }
           }
@@ -7727,17 +6299,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthConfigurationDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthConfigurationDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthConfigurationDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
                 }
               }
             }
@@ -7777,17 +6349,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.UpdateProviderHealthConfigurationDto"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.UpdateProviderHealthConfigurationDto"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.UpdateProviderHealthConfigurationDto"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
               }
             }
           }
@@ -7842,7 +6414,7 @@
         }
       }
     },
-    "/api/ProviderHealth/configurations/{providerType}": {
+    "/api/ProviderHealth/configurations/{providerId}": {
       "get": {
         "tags": [
           "ProviderHealth"
@@ -7850,12 +6422,13 @@
         "summary": "Gets health configuration for a specific provider",
         "parameters": [
           {
-            "name": "providerType",
+            "name": "providerId",
             "in": "path",
-            "description": "The provider type",
+            "description": "The provider ID",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
+              "type": "integer",
+              "format": "int32"
             }
           }
         ],
@@ -7865,17 +6438,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthConfigurationDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthConfigurationDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthConfigurationDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
                 }
               }
             }
@@ -7920,7 +6493,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
                   }
                 }
               },
@@ -7928,7 +6501,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
                   }
                 }
               },
@@ -7936,7 +6509,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
                   }
                 }
               }
@@ -7948,7 +6521,7 @@
         }
       }
     },
-    "/api/ProviderHealth/statuses/{providerName}": {
+    "/api/ProviderHealth/statuses/{providerId}": {
       "get": {
         "tags": [
           "ProviderHealth"
@@ -7956,12 +6529,13 @@
         "summary": "Gets the latest health status for a specific provider",
         "parameters": [
           {
-            "name": "providerName",
+            "name": "providerId",
             "in": "path",
-            "description": "The name of the provider",
+            "description": "The ID of the provider",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int32"
             }
           }
         ],
@@ -7971,17 +6545,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
                 }
               }
             }
@@ -8012,7 +6586,7 @@
         }
       }
     },
-    "/api/ProviderHealth/history/{providerName}": {
+    "/api/ProviderHealth/history/{providerId}": {
       "get": {
         "tags": [
           "ProviderHealth"
@@ -8020,12 +6594,13 @@
         "summary": "Gets health status history for a provider",
         "parameters": [
           {
-            "name": "providerName",
+            "name": "providerId",
             "in": "path",
-            "description": "The name of the provider",
+            "description": "The ID of the provider",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int32"
             }
           },
           {
@@ -8057,7 +6632,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
                   }
                 }
               },
@@ -8065,7 +6640,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
                   }
                 }
               },
@@ -8073,7 +6648,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
                   }
                 }
               }
@@ -8244,7 +6819,7 @@
         }
       }
     },
-    "/api/ProviderHealth/check/{providerName}": {
+    "/api/ProviderHealth/check/{providerId}": {
       "post": {
         "tags": [
           "ProviderHealth"
@@ -8252,12 +6827,13 @@
         "summary": "Triggers an immediate health check for a provider",
         "parameters": [
           {
-            "name": "providerName",
+            "name": "providerId",
             "in": "path",
-            "description": "The name of the provider to check",
+            "description": "The ID of the provider to check",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int32"
             }
           }
         ],
@@ -8267,17 +6843,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
                 }
               }
             }
@@ -8384,11 +6960,12 @@
         "summary": "Gets all provider health records",
         "parameters": [
           {
-            "name": "providerName",
+            "name": "providerId",
             "in": "query",
-            "description": "Optional provider name to filter records",
+            "description": "Optional provider ID to filter records",
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int32"
             }
           }
         ],
@@ -8400,7 +6977,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
                   }
                 }
               },
@@ -8408,7 +6985,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
                   }
                 }
               },
@@ -8416,7 +6993,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto"
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
                   }
                 }
               }
@@ -8470,7 +7047,7 @@
         }
       }
     },
-    "/api/ProviderHealth/status/{providerName}": {
+    "/api/ProviderHealth/status/{providerId}": {
       "get": {
         "tags": [
           "ProviderHealth"
@@ -8478,12 +7055,13 @@
         "summary": "Gets provider status for a specific provider",
         "parameters": [
           {
-            "name": "providerName",
+            "name": "providerId",
             "in": "path",
-            "description": "The name of the provider",
+            "description": "The ID of the provider",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int32"
             }
           }
         ],
@@ -8534,277 +7112,82 @@
         }
       }
     },
-    "/api/admin/ProviderTypes": {
+    "/api/Providers": {
       "get": {
         "tags": [
-          "ProviderTypes"
+          "Providers"
         ],
-        "summary": "Gets all available provider types with their metadata.",
+        "summary": "Gets all provider configurations",
         "responses": {
           "200": {
-            "description": "Returns the list of provider types",
+            "description": "OK",
             "content": {
               "text/plain": {
                 "schema": {
                   "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ProviderTypeInfo"
-                  }
+                  "items": { }
                 }
               },
               "application/json": {
                 "schema": {
                   "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ProviderTypeInfo"
-                  }
+                  "items": { }
                 }
               },
               "text/json": {
                 "schema": {
                   "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ProviderTypeInfo"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/ProviderTypes/{providerType}/capabilities": {
-      "get": {
-        "tags": [
-          "ProviderTypes"
-        ],
-        "summary": "Gets detailed capabilities for a specific provider type.",
-        "parameters": [
-          {
-            "name": "providerType",
-            "in": "path",
-            "description": "The provider type to get capabilities for",
-            "required": true,
-            "schema": {
-              "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Returns the provider capabilities",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Core.Models.ProviderCapabilities"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Core.Models.ProviderCapabilities"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Core.Models.ProviderCapabilities"
+                  "items": { }
                 }
               }
             }
           },
-          "404": {
-            "description": "Provider type not found in registry",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
+          "500": {
+            "description": "Internal Server Error"
           }
         }
-      }
-    },
-    "/api/admin/ProviderTypes/{providerType}/auth-requirements": {
-      "get": {
+      },
+      "post": {
         "tags": [
-          "ProviderTypes"
+          "Providers"
         ],
-        "summary": "Gets authentication requirements for a specific provider type.",
-        "parameters": [
-          {
-            "name": "providerType",
-            "in": "path",
-            "description": "The provider type to get auth requirements for",
-            "required": true,
-            "schema": {
-              "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
+        "summary": "Creates a new provider",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CreateProviderRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CreateProviderRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CreateProviderRequest"
+              }
             }
           }
-        ],
+        },
         "responses": {
-          "200": {
-            "description": "Returns the authentication requirements",
+          "201": {
+            "description": "Created",
             "content": {
               "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Core.Interfaces.AuthenticationRequirements"
-                }
+                "schema": { }
               },
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Core.Interfaces.AuthenticationRequirements"
-                }
+                "schema": { }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Core.Interfaces.AuthenticationRequirements"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Provider type not found in registry",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/ProviderTypes/{providerType}/configuration-hints": {
-      "get": {
-        "tags": [
-          "ProviderTypes"
-        ],
-        "summary": "Gets configuration hints for a specific provider type.",
-        "parameters": [
-          {
-            "name": "providerType",
-            "in": "path",
-            "description": "The provider type to get configuration hints for",
-            "required": true,
-            "schema": {
-              "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Returns the configuration hints",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Core.Interfaces.ProviderConfigurationHints"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Core.Interfaces.ProviderConfigurationHints"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Core.Interfaces.ProviderConfigurationHints"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Provider type not found in registry",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/ProviderTypes/by-feature/{feature}": {
-      "get": {
-        "tags": [
-          "ProviderTypes"
-        ],
-        "summary": "Gets providers that support specific features.",
-        "parameters": [
-          {
-            "name": "feature",
-            "in": "path",
-            "description": "The feature to filter by (e.g., \"streaming\", \"embeddings\", \"imageGeneration\")",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Returns the list of providers",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ProviderTypeInfo"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ProviderTypeInfo"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ProviderTypeInfo"
-                  }
-                }
+                "schema": { }
               }
             }
           },
           "400": {
-            "description": "Invalid feature name",
+            "description": "Bad Request",
             "content": {
               "text/plain": {
                 "schema": {
@@ -8822,36 +7205,858 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal Server Error"
           }
         }
       }
     },
-    "/api/admin/ProviderTypes/diagnostics": {
+    "/api/Providers/{id}": {
       "get": {
         "tags": [
-          "ProviderTypes"
+          "Providers"
         ],
-        "summary": "Gets diagnostic information about the provider registry.",
+        "summary": "Gets a provider by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The ID of the provider",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Returns the diagnostics",
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Core.Interfaces.ProviderRegistryDiagnostics"
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Core.Interfaces.ProviderRegistryDiagnostics"
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Core.Interfaces.ProviderRegistryDiagnostics"
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Providers"
+        ],
+        "summary": "Updates a provider",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The ID of the provider to update",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The update request containing new provider values",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateProviderRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateProviderRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateProviderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Providers"
+        ],
+        "summary": "Deletes a provider",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The ID of the provider to delete",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/Providers/test/{id}": {
+      "post": {
+        "tags": [
+          "Providers"
+        ],
+        "summary": "Tests the connection to a provider",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The ID of the provider to test",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/Providers/test": {
+      "post": {
+        "tags": [
+          "Providers"
+        ],
+        "summary": "Tests a provider connection without saving",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.TestProviderRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.TestProviderRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.TestProviderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/Providers/{providerId}/keys": {
+      "get": {
+        "tags": [
+          "Providers"
+        ],
+        "summary": "Gets all key credentials for a specific provider",
+        "parameters": [
+          {
+            "name": "providerId",
+            "in": "path",
+            "description": "The ID of the provider",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": { }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Providers"
+        ],
+        "summary": "Creates a new key credential for a provider",
+        "parameters": [
+          {
+            "name": "providerId",
+            "in": "path",
+            "description": "The ID of the provider",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The request containing key credential details",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CreateKeyRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CreateKeyRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CreateKeyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/Providers/{providerId}/keys/{keyId}": {
+      "get": {
+        "tags": [
+          "Providers"
+        ],
+        "summary": "Gets a specific key credential",
+        "parameters": [
+          {
+            "name": "providerId",
+            "in": "path",
+            "description": "The ID of the provider",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "keyId",
+            "in": "path",
+            "description": "The ID of the key",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Providers"
+        ],
+        "summary": "Updates a key credential",
+        "parameters": [
+          {
+            "name": "providerId",
+            "in": "path",
+            "description": "The ID of the provider",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "keyId",
+            "in": "path",
+            "description": "The ID of the key",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The update request containing new key credential values",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateKeyRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateKeyRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateKeyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Providers"
+        ],
+        "summary": "Deletes a key credential",
+        "parameters": [
+          {
+            "name": "providerId",
+            "in": "path",
+            "description": "The ID of the provider",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "keyId",
+            "in": "path",
+            "description": "The ID of the key to delete",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/Providers/{providerId}/keys/{keyId}/set-primary": {
+      "post": {
+        "tags": [
+          "Providers"
+        ],
+        "summary": "Sets a key as the primary key for a provider",
+        "parameters": [
+          {
+            "name": "providerId",
+            "in": "path",
+            "description": "The ID of the provider",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "keyId",
+            "in": "path",
+            "description": "The ID of the key to set as primary",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/Providers/{providerId}/keys/{keyId}/test": {
+      "post": {
+        "tags": [
+          "Providers"
+        ],
+        "summary": "Tests a specific key credential",
+        "parameters": [
+          {
+            "name": "providerId",
+            "in": "path",
+            "description": "The ID of the provider",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "keyId",
+            "in": "path",
+            "description": "The ID of the key to test",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
           }
         }
       }
@@ -10650,6 +9855,44 @@
         "additionalProperties": false,
         "description": "Alert definition DTO"
       },
+      "ConduitLLM.Admin.Controllers.BulkMappingResult": {
+        "type": "object",
+        "properties": {
+          "created": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
+            },
+            "description": "Successfully created mappings",
+            "nullable": true
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Error messages for failed mappings",
+            "nullable": true
+          },
+          "totalProcessed": {
+            "type": "integer",
+            "description": "Total number of mappings processed",
+            "format": "int32"
+          },
+          "successCount": {
+            "type": "integer",
+            "description": "Number of successful mappings",
+            "format": "int32"
+          },
+          "failureCount": {
+            "type": "integer",
+            "description": "Number of failed mappings",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Result of a bulk mapping operation"
+      },
       "ConduitLLM.Admin.Controllers.CacheAlertDto": {
         "type": "object",
         "properties": {
@@ -10827,6 +10070,71 @@
         "additionalProperties": false,
         "description": "Cache monitoring status DTO"
       },
+      "ConduitLLM.Admin.Controllers.CreateKeyRequest": {
+        "type": "object",
+        "properties": {
+          "apiKey": {
+            "type": "string",
+            "description": "The API key to create",
+            "nullable": true
+          },
+          "keyName": {
+            "type": "string",
+            "description": "The name for the key credential",
+            "nullable": true
+          },
+          "organization": {
+            "type": "string",
+            "description": "The organization for the key (optional)",
+            "nullable": true
+          },
+          "baseUrl": {
+            "type": "string",
+            "description": "The base URL for the key (optional)",
+            "nullable": true
+          },
+          "isPrimary": {
+            "type": "boolean",
+            "description": "Whether this is the primary key for the provider"
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Whether the key is enabled"
+          },
+          "providerAccountGroup": {
+            "type": "integer",
+            "description": "The provider account group (optional)",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request model for creating a key credential"
+      },
+      "ConduitLLM.Admin.Controllers.CreateProviderRequest": {
+        "type": "object",
+        "properties": {
+          "providerType": {
+            "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
+          },
+          "providerName": {
+            "type": "string",
+            "description": "The name of the provider",
+            "nullable": true
+          },
+          "baseUrl": {
+            "type": "string",
+            "description": "The base URL for the provider (optional)",
+            "nullable": true
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Whether the provider is enabled"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request model for creating a provider"
+      },
       "ConduitLLM.Admin.Controllers.ErrorQueueController.ReplayRequest": {
         "type": "object",
         "properties": {
@@ -10882,37 +10190,6 @@
         "description": "Status types for providers",
         "format": "int32"
       },
-      "ConduitLLM.Admin.Controllers.ProviderTypeInfo": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "The enum name (e.g., \"OpenAI\")",
-            "nullable": true
-          },
-          "value": {
-            "type": "integer",
-            "description": "The numeric value of the enum",
-            "format": "int32"
-          },
-          "displayName": {
-            "type": "string",
-            "description": "A friendly display name (e.g., \"OpenAI\" or \"Azure OpenAI\")",
-            "nullable": true
-          },
-          "isRegistered": {
-            "type": "boolean",
-            "description": "Indicates whether this provider is registered in the provider registry"
-          },
-          "defaultBaseUrl": {
-            "type": "string",
-            "description": "The default base URL for this provider's API",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false,
-        "description": "Information about a provider type"
-      },
       "ConduitLLM.Admin.Controllers.PruneMediaRequest": {
         "type": "object",
         "properties": {
@@ -10925,6 +10202,95 @@
         },
         "additionalProperties": false,
         "description": "Request model for pruning old media."
+      },
+      "ConduitLLM.Admin.Controllers.TestProviderRequest": {
+        "type": "object",
+        "properties": {
+          "providerType": {
+            "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
+          },
+          "apiKey": {
+            "type": "string",
+            "description": "The API key to test",
+            "nullable": true
+          },
+          "baseUrl": {
+            "type": "string",
+            "description": "The base URL to test (optional)",
+            "nullable": true
+          },
+          "organization": {
+            "type": "string",
+            "description": "The organization to test (optional)",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request model for testing a provider connection"
+      },
+      "ConduitLLM.Admin.Controllers.UpdateKeyRequest": {
+        "type": "object",
+        "properties": {
+          "keyName": {
+            "type": "string",
+            "description": "The new name for the key (optional)",
+            "nullable": true
+          },
+          "apiKey": {
+            "type": "string",
+            "description": "The new API key (optional)",
+            "nullable": true
+          },
+          "organization": {
+            "type": "string",
+            "description": "The new organization (optional)",
+            "nullable": true
+          },
+          "baseUrl": {
+            "type": "string",
+            "description": "The new base URL (optional)",
+            "nullable": true
+          },
+          "isPrimary": {
+            "type": "boolean",
+            "description": "Whether this should be the primary key (optional)",
+            "nullable": true
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Whether the key is enabled (optional)",
+            "nullable": true
+          },
+          "providerAccountGroup": {
+            "type": "integer",
+            "description": "The provider account group (optional)",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request model for updating a key credential"
+      },
+      "ConduitLLM.Admin.Controllers.UpdateProviderRequest": {
+        "type": "object",
+        "properties": {
+          "providerName": {
+            "type": "string",
+            "description": "The new name for the provider (optional)",
+            "nullable": true
+          },
+          "baseUrl": {
+            "type": "string",
+            "description": "The new base URL for the provider (optional)",
+            "nullable": true
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Whether the provider is enabled"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request model for updating a provider"
       },
       "ConduitLLM.Admin.Controllers.UpdateRoutingConfigDto": {
         "type": "object",
@@ -11491,7 +10857,7 @@
         "properties": {
           "queueName": {
             "type": "string",
-            "description": "Full name of the error queue (e.g., \"ProviderCredentialEventHandler_error\").",
+            "description": "Full name of the error queue (e.g., \"ProviderEventHandler_error\").",
             "nullable": true
           },
           "originalQueue": {
@@ -11873,7 +11239,7 @@
         "required": [
           "costUnit",
           "operationType",
-          "providerType"
+          "providerId"
         ],
         "type": "object",
         "properties": {
@@ -11881,8 +11247,13 @@
             "type": "integer",
             "format": "int32"
           },
-          "providerType": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
+          "providerId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "providerName": {
+            "type": "string",
+            "nullable": true
           },
           "operationType": {
             "maxLength": 50,
@@ -11977,7 +11348,7 @@
             "type": "integer",
             "format": "int32"
           },
-          "providerCredentialId": {
+          "providerId": {
             "type": "integer",
             "format": "int32"
           },
@@ -12040,8 +11411,13 @@
       "ConduitLLM.Configuration.DTOs.Audio.AudioProviderUsageDto": {
         "type": "object",
         "properties": {
-          "providerType": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
+          "providerId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "providerName": {
+            "type": "string",
+            "nullable": true
           },
           "totalOperations": {
             "type": "integer",
@@ -12089,8 +11465,9 @@
             "type": "string",
             "nullable": true
           },
-          "providerType": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
+          "providerId": {
+            "type": "integer",
+            "format": "int32"
           },
           "operationType": {
             "type": "string",
@@ -12154,6 +11531,10 @@
             "nullable": true
           },
           "userAgent": {
+            "type": "string",
+            "nullable": true
+          },
+          "metadata": {
             "type": "string",
             "nullable": true
           },
@@ -12236,12 +11617,13 @@
           "costPerUnit",
           "costUnit",
           "operationType",
-          "providerType"
+          "providerId"
         ],
         "type": "object",
         "properties": {
-          "providerType": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
+          "providerId": {
+            "type": "integer",
+            "format": "int32"
           },
           "operationType": {
             "maxLength": 50,
@@ -12290,11 +11672,11 @@
       },
       "ConduitLLM.Configuration.DTOs.Audio.CreateAudioProviderConfigDto": {
         "required": [
-          "providerCredentialId"
+          "providerId"
         ],
         "type": "object",
         "properties": {
-          "providerCredentialId": {
+          "providerId": {
             "type": "integer",
             "format": "int32"
           },
@@ -12368,8 +11750,13 @@
       "ConduitLLM.Configuration.DTOs.Audio.ProviderBreakdown": {
         "type": "object",
         "properties": {
-          "providerType": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
+          "providerId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "providerName": {
+            "type": "string",
+            "nullable": true
           },
           "count": {
             "type": "integer",
@@ -12397,8 +11784,13 @@
             "type": "string",
             "nullable": true
           },
-          "providerType": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
+          "providerId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "providerName": {
+            "type": "string",
+            "nullable": true
           },
           "model": {
             "type": "string",
@@ -12516,12 +11908,13 @@
           "costPerUnit",
           "costUnit",
           "operationType",
-          "providerType"
+          "providerId"
         ],
         "type": "object",
         "properties": {
-          "providerType": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
+          "providerId": {
+            "type": "integer",
+            "format": "int32"
           },
           "operationType": {
             "maxLength": 50,
@@ -12570,11 +11963,11 @@
       },
       "ConduitLLM.Configuration.DTOs.Audio.UpdateAudioProviderConfigDto": {
         "required": [
-          "providerCredentialId"
+          "providerId"
         ],
         "type": "object",
         "properties": {
-          "providerCredentialId": {
+          "providerId": {
             "type": "integer",
             "format": "int32"
           },
@@ -12641,107 +12034,6 @@
           "totalCost": {
             "type": "number",
             "format": "double"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.BulkMappingError": {
-        "type": "object",
-        "properties": {
-          "index": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "mapping": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.CreateModelProviderMappingDto"
-          },
-          "errorMessage": {
-            "type": "string",
-            "nullable": true
-          },
-          "details": {
-            "type": "string",
-            "nullable": true
-          },
-          "errorType": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.BulkMappingErrorType"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.BulkMappingErrorType": {
-        "enum": [
-          0,
-          1,
-          2,
-          3,
-          4
-        ],
-        "type": "integer",
-        "format": "int32"
-      },
-      "ConduitLLM.Configuration.DTOs.BulkModelMappingRequest": {
-        "required": [
-          "mappings"
-        ],
-        "type": "object",
-        "properties": {
-          "mappings": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.CreateModelProviderMappingDto"
-            }
-          },
-          "replaceExisting": {
-            "type": "boolean"
-          },
-          "validateProviderModels": {
-            "type": "boolean"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.BulkModelMappingResponse": {
-        "type": "object",
-        "properties": {
-          "created": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
-            },
-            "nullable": true
-          },
-          "updated": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
-            },
-            "nullable": true
-          },
-          "failed": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.BulkMappingError"
-            },
-            "nullable": true
-          },
-          "totalProcessed": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "successCount": {
-            "type": "integer",
-            "format": "int32",
-            "readOnly": true
-          },
-          "failureCount": {
-            "type": "integer",
-            "format": "int32",
-            "readOnly": true
-          },
-          "isSuccess": {
-            "type": "boolean",
-            "readOnly": true
           }
         },
         "additionalProperties": false
@@ -12941,14 +12233,37 @@
       },
       "ConduitLLM.Configuration.DTOs.CreateModelCostDto": {
         "required": [
-          "modelIdPattern"
+          "costName",
+          "modelType"
         ],
         "type": "object",
         "properties": {
-          "modelIdPattern": {
+          "costName": {
             "maxLength": 255,
             "minLength": 1,
             "type": "string"
+          },
+          "modelProviderMappingIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "modelType": {
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "priority": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "description": {
+            "maxLength": 500,
+            "type": "string",
+            "nullable": true
           },
           "inputTokenCost": {
             "minimum": 0,
@@ -13039,102 +12354,6 @@
         },
         "additionalProperties": false
       },
-      "ConduitLLM.Configuration.DTOs.CreateModelProviderMappingDto": {
-        "required": [
-          "modelId",
-          "providerId",
-          "providerModelId"
-        ],
-        "type": "object",
-        "properties": {
-          "modelId": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "providerModelId": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "providerId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "priority": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "isEnabled": {
-            "type": "boolean"
-          },
-          "capabilities": {
-            "type": "string",
-            "nullable": true
-          },
-          "maxContextLength": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "supportsVision": {
-            "type": "boolean"
-          },
-          "supportsAudioTranscription": {
-            "type": "boolean"
-          },
-          "supportsTextToSpeech": {
-            "type": "boolean"
-          },
-          "supportsRealtimeAudio": {
-            "type": "boolean"
-          },
-          "supportsImageGeneration": {
-            "type": "boolean"
-          },
-          "supportsVideoGeneration": {
-            "type": "boolean"
-          },
-          "supportsEmbeddings": {
-            "type": "boolean"
-          },
-          "supportsChat": {
-            "type": "boolean"
-          },
-          "supportsFunctionCalling": {
-            "type": "boolean"
-          },
-          "supportsStreaming": {
-            "type": "boolean"
-          },
-          "tokenizerType": {
-            "type": "string",
-            "nullable": true
-          },
-          "supportedVoices": {
-            "type": "string",
-            "nullable": true
-          },
-          "supportedLanguages": {
-            "type": "string",
-            "nullable": true
-          },
-          "supportedFormats": {
-            "type": "string",
-            "nullable": true
-          },
-          "isDefault": {
-            "type": "boolean"
-          },
-          "defaultCapabilityType": {
-            "type": "string",
-            "nullable": true
-          },
-          "notes": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
       "ConduitLLM.Configuration.DTOs.CreateNotificationDto": {
         "type": "object",
         "properties": {
@@ -13150,116 +12369,6 @@
             "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.NotificationSeverity"
           },
           "message": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.CreateProviderCredentialDto": {
-        "required": [
-          "providerName",
-          "providerType"
-        ],
-        "type": "object",
-        "properties": {
-          "providerType": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
-          },
-          "providerName": {
-            "maxLength": 100,
-            "minLength": 1,
-            "type": "string"
-          },
-          "baseUrl": {
-            "type": "string",
-            "nullable": true
-          },
-          "isEnabled": {
-            "type": "boolean"
-          },
-          "organization": {
-            "type": "string",
-            "nullable": true
-          },
-          "apiKey": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.CreateProviderHealthConfigurationDto": {
-        "required": [
-          "providerType"
-        ],
-        "type": "object",
-        "properties": {
-          "providerType": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
-          },
-          "monitoringEnabled": {
-            "type": "boolean"
-          },
-          "checkIntervalMinutes": {
-            "maximum": 1440,
-            "minimum": 1,
-            "type": "integer",
-            "format": "int32"
-          },
-          "timeoutSeconds": {
-            "maximum": 300,
-            "minimum": 1,
-            "type": "integer",
-            "format": "int32"
-          },
-          "consecutiveFailuresThreshold": {
-            "maximum": 10,
-            "minimum": 1,
-            "type": "integer",
-            "format": "int32"
-          },
-          "notificationsEnabled": {
-            "type": "boolean"
-          },
-          "customEndpointUrl": {
-            "maxLength": 500,
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.CreateProviderKeyCredentialDto": {
-        "type": "object",
-        "properties": {
-          "providerAccountGroup": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "apiKey": {
-            "type": "string",
-            "nullable": true
-          },
-          "baseUrl": {
-            "type": "string",
-            "nullable": true
-          },
-          "apiVersion": {
-            "type": "string",
-            "nullable": true
-          },
-          "organization": {
-            "type": "string",
-            "nullable": true
-          },
-          "isPrimary": {
-            "type": "boolean"
-          },
-          "isEnabled": {
-            "type": "boolean"
-          },
-          "keyName": {
             "type": "string",
             "nullable": true
           }
@@ -13706,7 +12815,8 @@
       },
       "ConduitLLM.Configuration.DTOs.ModelCostDto": {
         "required": [
-          "modelIdPattern"
+          "costName",
+          "modelType"
         ],
         "type": "object",
         "properties": {
@@ -13714,10 +12824,17 @@
             "type": "integer",
             "format": "int32"
           },
-          "modelIdPattern": {
+          "costName": {
             "maxLength": 255,
             "minLength": 1,
             "type": "string"
+          },
+          "associatedModelAliases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
           },
           "inputTokenCost": {
             "minimum": 0,
@@ -13747,7 +12864,25 @@
             "type": "string",
             "format": "date-time"
           },
+          "modelType": {
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "effectiveDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiryDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
           "description": {
+            "maxLength": 500,
             "type": "string",
             "nullable": true
           },
@@ -13846,121 +12981,6 @@
           "outputTokens": {
             "type": "integer",
             "format": "int64"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.ModelProviderMappingDto": {
-        "required": [
-          "modelId",
-          "providerId",
-          "providerModelId"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "modelId": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "providerModelId": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "providerId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "providerType": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
-          },
-          "providerName": {
-            "type": "string",
-            "nullable": true
-          },
-          "priority": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "isEnabled": {
-            "type": "boolean"
-          },
-          "capabilities": {
-            "type": "string",
-            "nullable": true
-          },
-          "maxContextLength": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "supportsVision": {
-            "type": "boolean"
-          },
-          "supportsAudioTranscription": {
-            "type": "boolean"
-          },
-          "supportsTextToSpeech": {
-            "type": "boolean"
-          },
-          "supportsRealtimeAudio": {
-            "type": "boolean"
-          },
-          "supportsImageGeneration": {
-            "type": "boolean"
-          },
-          "supportsVideoGeneration": {
-            "type": "boolean"
-          },
-          "supportsEmbeddings": {
-            "type": "boolean"
-          },
-          "supportsChat": {
-            "type": "boolean"
-          },
-          "supportsFunctionCalling": {
-            "type": "boolean"
-          },
-          "supportsStreaming": {
-            "type": "boolean"
-          },
-          "tokenizerType": {
-            "type": "string",
-            "nullable": true
-          },
-          "supportedVoices": {
-            "type": "string",
-            "nullable": true
-          },
-          "supportedLanguages": {
-            "type": "string",
-            "nullable": true
-          },
-          "supportedFormats": {
-            "type": "string",
-            "nullable": true
-          },
-          "isDefault": {
-            "type": "boolean"
-          },
-          "defaultCapabilityType": {
-            "type": "string",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "notes": {
-            "type": "string",
-            "nullable": true
           }
         },
         "additionalProperties": false
@@ -14091,178 +13111,6 @@
         },
         "additionalProperties": false
       },
-      "ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean"
-          },
-          "message": {
-            "type": "string",
-            "nullable": true
-          },
-          "errorDetails": {
-            "type": "string",
-            "nullable": true
-          },
-          "providerType": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
-          },
-          "timestamp": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "responseTimeMs": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.ProviderCredentialDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "providerType": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
-          },
-          "providerName": {
-            "type": "string",
-            "nullable": true
-          },
-          "baseUrl": {
-            "type": "string",
-            "nullable": true
-          },
-          "isEnabled": {
-            "type": "boolean"
-          },
-          "organization": {
-            "type": "string",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.ProviderDataDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "providerType": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.ProviderHealthConfigurationDto": {
-        "required": [
-          "providerType"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "providerType": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
-          },
-          "monitoringEnabled": {
-            "type": "boolean"
-          },
-          "checkIntervalMinutes": {
-            "maximum": 1440,
-            "minimum": 1,
-            "type": "integer",
-            "format": "int32"
-          },
-          "timeoutSeconds": {
-            "maximum": 300,
-            "minimum": 1,
-            "type": "integer",
-            "format": "int32"
-          },
-          "consecutiveFailuresThreshold": {
-            "maximum": 10,
-            "minimum": 1,
-            "type": "integer",
-            "format": "int32"
-          },
-          "notificationsEnabled": {
-            "type": "boolean"
-          },
-          "customEndpointUrl": {
-            "maxLength": 500,
-            "type": "string",
-            "nullable": true
-          },
-          "lastCheckedUtc": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.ProviderHealthRecordDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "providerType": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
-          },
-          "status": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord.StatusType"
-          },
-          "isOnline": {
-            "type": "boolean",
-            "readOnly": true
-          },
-          "statusMessage": {
-            "type": "string",
-            "nullable": true
-          },
-          "timestampUtc": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "responseTimeMs": {
-            "type": "number",
-            "format": "double"
-          },
-          "errorCategory": {
-            "type": "string",
-            "nullable": true
-          },
-          "errorDetails": {
-            "type": "string",
-            "nullable": true
-          },
-          "endpointUrl": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
       "ConduitLLM.Configuration.DTOs.ProviderHealthStatisticsDto": {
         "type": "object",
         "properties": {
@@ -14308,8 +13156,9 @@
       "ConduitLLM.Configuration.DTOs.ProviderHealthSummaryDto": {
         "type": "object",
         "properties": {
-          "providerType": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
+          "providerId": {
+            "type": "integer",
+            "format": "int32"
           },
           "status": {
             "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord.StatusType"
@@ -14345,85 +13194,6 @@
           },
           "monitoringEnabled": {
             "type": "boolean"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.ProviderKeyCredentialDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "providerCredentialId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "providerAccountGroup": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "apiKey": {
-            "type": "string",
-            "nullable": true
-          },
-          "baseUrl": {
-            "type": "string",
-            "nullable": true
-          },
-          "apiVersion": {
-            "type": "string",
-            "nullable": true
-          },
-          "organization": {
-            "type": "string",
-            "nullable": true
-          },
-          "isPrimary": {
-            "type": "boolean"
-          },
-          "isEnabled": {
-            "type": "boolean"
-          },
-          "keyName": {
-            "type": "string",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.TestProviderConnectionDto": {
-        "type": "object",
-        "properties": {
-          "providerType": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
-          },
-          "apiKey": {
-            "type": "string",
-            "nullable": true
-          },
-          "baseUrl": {
-            "type": "string",
-            "nullable": true
-          },
-          "organizationId": {
-            "type": "string",
-            "nullable": true
-          },
-          "additionalConfig": {
-            "type": "object",
-            "additionalProperties": { },
-            "nullable": true
           }
         },
         "additionalProperties": false
@@ -14478,7 +13248,8 @@
       },
       "ConduitLLM.Configuration.DTOs.UpdateModelCostDto": {
         "required": [
-          "modelIdPattern"
+          "costName",
+          "modelType"
         ],
         "type": "object",
         "properties": {
@@ -14486,10 +13257,35 @@
             "type": "integer",
             "format": "int32"
           },
-          "modelIdPattern": {
+          "costName": {
             "maxLength": 255,
             "minLength": 1,
             "type": "string"
+          },
+          "modelProviderMappingIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "modelType": {
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "priority": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "description": {
+            "maxLength": 500,
+            "type": "string",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean"
           },
           "inputTokenCost": {
             "minimum": 0,
@@ -14591,107 +13387,6 @@
             "type": "boolean"
           },
           "message": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.UpdateProviderCredentialDto": {
-        "required": [
-          "id"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "providerName": {
-            "maxLength": 100,
-            "type": "string",
-            "nullable": true
-          },
-          "baseUrl": {
-            "type": "string",
-            "nullable": true
-          },
-          "isEnabled": {
-            "type": "boolean"
-          },
-          "organization": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.UpdateProviderHealthConfigurationDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "monitoringEnabled": {
-            "type": "boolean"
-          },
-          "checkIntervalMinutes": {
-            "maximum": 1440,
-            "minimum": 1,
-            "type": "integer",
-            "format": "int32"
-          },
-          "timeoutSeconds": {
-            "maximum": 300,
-            "minimum": 1,
-            "type": "integer",
-            "format": "int32"
-          },
-          "consecutiveFailuresThreshold": {
-            "maximum": 10,
-            "minimum": 1,
-            "type": "integer",
-            "format": "int32"
-          },
-          "notificationsEnabled": {
-            "type": "boolean"
-          },
-          "customEndpointUrl": {
-            "maxLength": 500,
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.UpdateProviderKeyCredentialDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "apiKey": {
-            "type": "string",
-            "nullable": true
-          },
-          "baseUrl": {
-            "type": "string",
-            "nullable": true
-          },
-          "apiVersion": {
-            "type": "string",
-            "nullable": true
-          },
-          "organization": {
-            "type": "string",
-            "nullable": true
-          },
-          "isEnabled": {
-            "type": "boolean"
-          },
-          "keyName": {
             "type": "string",
             "nullable": true
           }
@@ -15054,6 +13749,290 @@
         },
         "additionalProperties": false
       },
+      "ConduitLLM.Configuration.Entities.ModelCost": {
+        "required": [
+          "costName",
+          "modelType"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "costName": {
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          },
+          "inputTokenCost": {
+            "type": "number",
+            "format": "double"
+          },
+          "outputTokenCost": {
+            "type": "number",
+            "format": "double"
+          },
+          "embeddingTokenCost": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "imageCostPerImage": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "modelType": {
+            "maxLength": 50,
+            "minLength": 1,
+            "type": "string"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "effectiveDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiryDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "description": {
+            "maxLength": 500,
+            "type": "string",
+            "nullable": true
+          },
+          "priority": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "audioCostPerMinute": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "audioCostPerKCharacters": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "audioInputCostPerMinute": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "audioOutputCostPerMinute": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "videoCostPerSecond": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "videoResolutionMultipliers": {
+            "type": "string",
+            "nullable": true
+          },
+          "batchProcessingMultiplier": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "supportsBatchProcessing": {
+            "type": "boolean"
+          },
+          "imageQualityMultipliers": {
+            "type": "string",
+            "nullable": true
+          },
+          "cachedInputTokenCost": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "cachedInputWriteCost": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "costPerSearchUnit": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "costPerInferenceStep": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "defaultInferenceSteps": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "modelCostMappings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelCostMapping"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.Entities.ModelCostMapping": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "modelCostId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "modelCost": {
+            "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelCost"
+          },
+          "modelProviderMappingId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "modelProviderMapping": {
+            "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.Entities.ModelProviderMapping": {
+        "required": [
+          "modelAlias",
+          "providerModelId"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "modelAlias": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "providerModelId": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "providerId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.Provider"
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "maxContextTokens": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "supportsVision": {
+            "type": "boolean"
+          },
+          "supportsAudioTranscription": {
+            "type": "boolean"
+          },
+          "supportsTextToSpeech": {
+            "type": "boolean"
+          },
+          "supportsRealtimeAudio": {
+            "type": "boolean"
+          },
+          "supportsImageGeneration": {
+            "type": "boolean"
+          },
+          "supportsVideoGeneration": {
+            "type": "boolean"
+          },
+          "supportsEmbeddings": {
+            "type": "boolean"
+          },
+          "supportsChat": {
+            "type": "boolean"
+          },
+          "supportsFunctionCalling": {
+            "type": "boolean"
+          },
+          "supportsStreaming": {
+            "type": "boolean"
+          },
+          "tokenizerType": {
+            "maxLength": 50,
+            "type": "string",
+            "nullable": true
+          },
+          "supportedVoices": {
+            "type": "string",
+            "nullable": true
+          },
+          "supportedLanguages": {
+            "type": "string",
+            "nullable": true
+          },
+          "supportedFormats": {
+            "type": "string",
+            "nullable": true
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "defaultCapabilityType": {
+            "maxLength": 50,
+            "type": "string",
+            "nullable": true
+          },
+          "modelCostMappings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelCostMapping"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ConduitLLM.Configuration.Entities.NotificationSeverity": {
         "enum": [
           0,
@@ -15072,6 +14051,141 @@
         "type": "integer",
         "format": "int32"
       },
+      "ConduitLLM.Configuration.Entities.Provider": {
+        "required": [
+          "providerName",
+          "providerType"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "providerType": {
+            "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
+          },
+          "providerName": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "baseUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "providerKeyCredentials": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderKeyCredential"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.Entities.ProviderHealthConfiguration": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "providerId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.Provider"
+          },
+          "monitoringEnabled": {
+            "type": "boolean"
+          },
+          "checkIntervalMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "timeoutSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "consecutiveFailuresThreshold": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "notificationsEnabled": {
+            "type": "boolean"
+          },
+          "customEndpointUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastCheckedUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.Entities.ProviderHealthRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "providerId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.Provider"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord.StatusType"
+          },
+          "isOnline": {
+            "type": "boolean"
+          },
+          "statusMessage": {
+            "type": "string",
+            "nullable": true
+          },
+          "timestampUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "responseTimeMs": {
+            "type": "number",
+            "format": "double"
+          },
+          "errorCategory": {
+            "type": "string",
+            "nullable": true
+          },
+          "errorDetails": {
+            "type": "string",
+            "nullable": true
+          },
+          "endpointUrl": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ConduitLLM.Configuration.Entities.ProviderHealthRecord.StatusType": {
         "enum": [
           0,
@@ -15080,6 +14194,62 @@
         ],
         "type": "integer",
         "format": "int32"
+      },
+      "ConduitLLM.Configuration.Entities.ProviderKeyCredential": {
+        "required": [
+          "providerId"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "providerId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.Provider"
+          },
+          "providerAccountGroup": {
+            "maximum": 32,
+            "minimum": 0,
+            "type": "integer",
+            "format": "int32"
+          },
+          "apiKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "baseUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "organization": {
+            "type": "string",
+            "nullable": true
+          },
+          "keyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "isPrimary": {
+            "type": "boolean"
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
       },
       "ConduitLLM.Configuration.ProviderType": {
         "enum": [
@@ -15108,84 +14278,6 @@
         ],
         "type": "integer",
         "format": "int32"
-      },
-      "ConduitLLM.Core.Interfaces.AuthField": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "nullable": true
-          },
-          "displayName": {
-            "type": "string",
-            "nullable": true
-          },
-          "required": {
-            "type": "boolean"
-          },
-          "type": {
-            "$ref": "#/components/schemas/ConduitLLM.Core.Interfaces.AuthFieldType"
-          },
-          "validationPattern": {
-            "type": "string",
-            "nullable": true
-          },
-          "helpText": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Core.Interfaces.AuthFieldType": {
-        "enum": [
-          0,
-          1,
-          2,
-          3
-        ],
-        "type": "integer",
-        "format": "int32"
-      },
-      "ConduitLLM.Core.Interfaces.AuthenticationRequirements": {
-        "type": "object",
-        "properties": {
-          "requiresApiKey": {
-            "type": "boolean"
-          },
-          "supportsOAuth": {
-            "type": "boolean"
-          },
-          "customFields": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ConduitLLM.Core.Interfaces.AuthField"
-            },
-            "nullable": true
-          },
-          "apiKeyHeaderName": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Core.Interfaces.ConfigurationTip": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string",
-            "nullable": true
-          },
-          "description": {
-            "type": "string",
-            "nullable": true
-          },
-          "severity": {
-            "$ref": "#/components/schemas/ConduitLLM.Core.Interfaces.TipSeverity"
-          }
-        },
-        "additionalProperties": false
       },
       "ConduitLLM.Core.Interfaces.DiscoveredModel": {
         "required": [
@@ -15283,232 +14375,6 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Core.Interfaces.ProviderConfigurationHints": {
-        "type": "object",
-        "properties": {
-          "documentationUrl": {
-            "type": "string",
-            "nullable": true
-          },
-          "exampleValues": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "string"
-            },
-            "nullable": true
-          },
-          "tips": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ConduitLLM.Core.Interfaces.ConfigurationTip"
-            },
-            "nullable": true
-          },
-          "requiresSpecialSetup": {
-            "type": "boolean"
-          },
-          "setupInstructions": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Core.Interfaces.ProviderRegistryDiagnostics": {
-        "type": "object",
-        "properties": {
-          "totalProviders": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "registeredProviders": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "nullable": true
-          },
-          "providersByCapability": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "nullable": true
-          },
-          "registrationErrors": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "nullable": true
-          },
-          "generatedAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Core.Interfaces.TipSeverity": {
-        "enum": [
-          0,
-          1,
-          2
-        ],
-        "type": "integer",
-        "format": "int32"
-      },
-      "ConduitLLM.Core.Models.ChatParameterSupport": {
-        "type": "object",
-        "properties": {
-          "temperature": {
-            "type": "boolean"
-          },
-          "maxTokens": {
-            "type": "boolean"
-          },
-          "topP": {
-            "type": "boolean"
-          },
-          "topK": {
-            "type": "boolean"
-          },
-          "stop": {
-            "type": "boolean"
-          },
-          "presencePenalty": {
-            "type": "boolean"
-          },
-          "frequencyPenalty": {
-            "type": "boolean"
-          },
-          "logitBias": {
-            "type": "boolean"
-          },
-          "n": {
-            "type": "boolean"
-          },
-          "user": {
-            "type": "boolean"
-          },
-          "seed": {
-            "type": "boolean"
-          },
-          "responseFormat": {
-            "type": "boolean"
-          },
-          "tools": {
-            "type": "boolean"
-          },
-          "constraints": {
-            "$ref": "#/components/schemas/ConduitLLM.Core.Models.ParameterConstraints"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Core.Models.FeatureSupport": {
-        "type": "object",
-        "properties": {
-          "streaming": {
-            "type": "boolean"
-          },
-          "embeddings": {
-            "type": "boolean"
-          },
-          "imageGeneration": {
-            "type": "boolean"
-          },
-          "visionInput": {
-            "type": "boolean"
-          },
-          "functionCalling": {
-            "type": "boolean"
-          },
-          "audioTranscription": {
-            "type": "boolean"
-          },
-          "textToSpeech": {
-            "type": "boolean"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Core.Models.ParameterConstraints": {
-        "type": "object",
-        "properties": {
-          "temperatureRange": {
-            "$ref": "#/components/schemas/ConduitLLM.Core.Models.Range`1[[System.Double, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]"
-          },
-          "topPRange": {
-            "$ref": "#/components/schemas/ConduitLLM.Core.Models.Range`1[[System.Double, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]"
-          },
-          "topKRange": {
-            "$ref": "#/components/schemas/ConduitLLM.Core.Models.Range`1[[System.Int32, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]"
-          },
-          "maxStopSequences": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "maxTokenLimit": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Core.Models.ProviderCapabilities": {
-        "type": "object",
-        "properties": {
-          "provider": {
-            "type": "string",
-            "nullable": true
-          },
-          "modelId": {
-            "type": "string",
-            "nullable": true
-          },
-          "chatParameters": {
-            "$ref": "#/components/schemas/ConduitLLM.Core.Models.ChatParameterSupport"
-          },
-          "features": {
-            "$ref": "#/components/schemas/ConduitLLM.Core.Models.FeatureSupport"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Core.Models.Range`1[[System.Double, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]": {
-        "type": "object",
-        "properties": {
-          "min": {
-            "type": "number",
-            "format": "double"
-          },
-          "max": {
-            "type": "number",
-            "format": "double"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Core.Models.Range`1[[System.Int32, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]": {
-        "type": "object",
-        "properties": {
-          "min": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "max": {
-            "type": "integer",
-            "format": "int32"
           }
         },
         "additionalProperties": false

@@ -22,9 +22,9 @@ namespace ConduitLLM.Tests.Repositories
     [Trait("Component", "Repository")]
     public class VirtualKeyRepositoryExampleTests : IDisposable
     {
-        private readonly ConfigurationDbContext _context;
-        private readonly DbContextOptions<ConfigurationDbContext> _options;
-        private readonly Mock<IDbContextFactory<ConfigurationDbContext>> _mockContextFactory;
+        private readonly ConduitDbContext _context;
+        private readonly DbContextOptions<ConduitDbContext> _options;
+        private readonly Mock<IDbContextFactory<ConduitDbContext>> _mockContextFactory;
         private readonly Mock<ILogger<VirtualKeyRepository>> _mockLogger;
         private readonly VirtualKeyRepository _repository;
         private readonly ITestOutputHelper _output;
@@ -34,16 +34,16 @@ namespace ConduitLLM.Tests.Repositories
             _output = output;
             
             // Setup in-memory database for testing
-            _options = new DbContextOptionsBuilder<ConfigurationDbContext>()
+            _options = new DbContextOptionsBuilder<ConduitDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
                 .Options;
             
-            _context = new ConfigurationDbContext(_options);
-            _mockContextFactory = new Mock<IDbContextFactory<ConfigurationDbContext>>();
+            _context = new ConduitDbContext(_options);
+            _mockContextFactory = new Mock<IDbContextFactory<ConduitDbContext>>();
             // The factory must return a new context each time to simulate production behavior
             // where each operation gets its own context that will be disposed
             _mockContextFactory.Setup(x => x.CreateDbContextAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(() => new ConfigurationDbContext(_options));
+                .ReturnsAsync(() => new ConduitDbContext(_options));
             
             _mockLogger = new Mock<ILogger<VirtualKeyRepository>>();
             
@@ -100,7 +100,7 @@ namespace ConduitLLM.Tests.Repositories
                 KeyName = "New Key",
                 KeyHash = "new-hash-456",
                 IsEnabled = true,
-                MaxBudget = 100m,
+                VirtualKeyGroupId = 1,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -116,7 +116,7 @@ namespace ConduitLLM.Tests.Repositories
             dbKey.Should().NotBeNull();
             dbKey!.KeyName.Should().Be("New Key");
             dbKey.KeyHash.Should().Be("new-hash-456");
-            dbKey.MaxBudget.Should().Be(100m);
+            dbKey.VirtualKeyGroupId.Should().Be(1);
         }
 
         [Fact]
@@ -152,7 +152,7 @@ namespace ConduitLLM.Tests.Repositories
             // Modify the key
             key.KeyName = "Updated Name";
             key.IsEnabled = false;
-            key.MaxBudget = 500m;
+            key.RateLimitRpm = 100;
 
             // Act
             var result = await _repository.UpdateAsync(key);
@@ -164,7 +164,7 @@ namespace ConduitLLM.Tests.Repositories
             var dbKey = await _context.VirtualKeys.FindAsync(key.Id);
             dbKey!.KeyName.Should().Be("Updated Name");
             dbKey.IsEnabled.Should().BeFalse();
-            dbKey.MaxBudget.Should().Be(500m);
+            dbKey.RateLimitRpm.Should().Be(100);
         }
 
         [Fact]
@@ -214,7 +214,7 @@ namespace ConduitLLM.Tests.Repositories
             result.Should().BeTrue();
             
             // Verify deletion using a new context
-            using (var verifyContext = new ConfigurationDbContext(_options))
+            using (var verifyContext = new ConduitDbContext(_options))
             {
                 var deletedKey = await verifyContext.VirtualKeys.FindAsync(key.Id);
                 deletedKey.Should().BeNull();
@@ -233,45 +233,7 @@ namespace ConduitLLM.Tests.Repositories
 
         #endregion
 
-        #region BulkUpdateSpendAsync Tests
-
-        [Fact]
-        public async Task BulkUpdateSpendAsync_WithValidUpdates_ShouldUpdateAndReturnTrue()
-        {
-            // Arrange
-            var keys = new List<VirtualKey>
-            {
-                new VirtualKey { KeyName = "Key1", KeyHash = "hash1", IsEnabled = true, CurrentSpend = 0 },
-                new VirtualKey { KeyName = "Key2", KeyHash = "hash2", IsEnabled = true, CurrentSpend = 0 },
-                new VirtualKey { KeyName = "Key3", KeyHash = "hash3", IsEnabled = true, CurrentSpend = 0 }
-            };
-            _context.VirtualKeys.AddRange(keys);
-            await _context.SaveChangesAsync();
-
-            var updates = new Dictionary<string, decimal>
-            {
-                { "hash1", 10.5m },
-                { "hash2", 20.0m },
-                { "hash3", 30.25m }
-            };
-
-            // Act
-            var result = await _repository.BulkUpdateSpendAsync(updates);
-
-            // Assert
-            result.Should().BeTrue();
-            
-            // Verify updates using a new context
-            using (var verifyContext = new ConfigurationDbContext(_options))
-            {
-                var updatedKeys = await verifyContext.VirtualKeys.ToListAsync();
-                updatedKeys.First(k => k.KeyHash == "hash1").CurrentSpend.Should().Be(10.5m);
-                updatedKeys.First(k => k.KeyHash == "hash2").CurrentSpend.Should().Be(20.0m);
-                updatedKeys.First(k => k.KeyHash == "hash3").CurrentSpend.Should().Be(30.25m);
-            }
-        }
-
-        #endregion
+        // Note: BulkUpdateSpendAsync has been removed as spend tracking is now at the group level
 
         public void Dispose()
         {

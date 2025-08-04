@@ -1,6 +1,5 @@
 import { SignalRService } from './SignalRService';
 import { NavigationStateHubClient } from '../signalr/NavigationStateHubClient';
-import { AdminNotificationHubClient } from '../signalr/AdminNotificationHubClient';
 import type {
   NavigationStateUpdateCallback,
   ModelDiscoveredCallback,
@@ -15,10 +14,7 @@ import type {
 import type {
   NavigationStateUpdateEvent,
   ModelDiscoveredEvent,
-  ProviderHealthChangeEvent,
-  VirtualKeyEvent,
-  ConfigurationChangeEvent,
-  AdminNotificationEvent
+  ProviderHealthChangeEvent
 } from '../models/signalr';
 
 /**
@@ -28,7 +24,6 @@ export class RealtimeNotificationsService implements IRealtimeNotificationServic
   private signalRService: SignalRService;
   private subscriptions: Map<string, NotificationSubscription> = new Map();
   private navigationStateHub?: NavigationStateHubClient;
-  private adminNotificationHub?: AdminNotificationHubClient;
   private connectionStateCallbacks: Set<(state: 'connected' | 'disconnected' | 'reconnecting') => void> = new Set();
 
   constructor(signalRService: SignalRService) {
@@ -147,110 +142,8 @@ export class RealtimeNotificationsService implements IRealtimeNotificationServic
     return subscription;
   }
 
-  /**
-   * Subscribe to virtual key events
-   */
-  async onVirtualKeyEvent(
-    callback: VirtualKeyEventCallback,
-    options?: AdminNotificationOptions
-  ): Promise<NotificationSubscription> {
-    this.adminNotificationHub ??= this.signalRService.getOrCreateAdminNotificationHub();
 
-    const subscriptionId = this.generateSubscriptionId();
 
-    this.adminNotificationHub.onVirtualKeyEvent((event: VirtualKeyEvent) => {
-      // Apply filters
-      if (options?.filter?.virtualKeyIds && !options.filter.virtualKeyIds.includes(event.virtualKeyId)) {
-        return;
-      }
-
-      callback(event);
-    });
-
-    const subscription: NotificationSubscription = {
-      id: subscriptionId,
-      eventType: 'virtualKeyEvent',
-      unsubscribe: () => this.unsubscribe(subscriptionId),
-    };
-
-    this.subscriptions.set(subscriptionId, subscription);
-
-    if (options?.onConnectionStateChange) {
-      this.connectionStateCallbacks.add(options.onConnectionStateChange);
-    }
-
-    return subscription;
-  }
-
-  /**
-   * Subscribe to configuration changes
-   */
-  async onConfigurationChange(
-    callback: ConfigurationChangeCallback,
-    options?: AdminNotificationOptions
-  ): Promise<NotificationSubscription> {
-    this.adminNotificationHub ??= this.signalRService.getOrCreateAdminNotificationHub();
-
-    const subscriptionId = this.generateSubscriptionId();
-
-    this.adminNotificationHub.onConfigurationChange((event: ConfigurationChangeEvent) => {
-      // Apply filters
-      if (options?.filter?.categories && !options.filter.categories.includes(event.category)) {
-        return;
-      }
-
-      callback(event);
-    });
-
-    const subscription: NotificationSubscription = {
-      id: subscriptionId,
-      eventType: 'configurationChange',
-      unsubscribe: () => this.unsubscribe(subscriptionId),
-    };
-
-    this.subscriptions.set(subscriptionId, subscription);
-
-    if (options?.onConnectionStateChange) {
-      this.connectionStateCallbacks.add(options.onConnectionStateChange);
-    }
-
-    return subscription;
-  }
-
-  /**
-   * Subscribe to admin notifications
-   */
-  async onAdminNotification(
-    callback: AdminNotificationCallback,
-    options?: AdminNotificationOptions
-  ): Promise<NotificationSubscription> {
-    this.adminNotificationHub ??= this.signalRService.getOrCreateAdminNotificationHub();
-
-    const subscriptionId = this.generateSubscriptionId();
-
-    this.adminNotificationHub.onAdminNotification((event: AdminNotificationEvent) => {
-      // Apply filters
-      if (options?.filter?.severity && !options.filter.severity.includes(event.type)) {
-        return;
-      }
-
-      callback(event);
-    });
-
-    const subscription: NotificationSubscription = {
-      id: subscriptionId,
-      eventType: 'adminNotification',
-      unsubscribe: () => this.unsubscribe(subscriptionId),
-    };
-
-    this.subscriptions.set(subscriptionId, subscription);
-
-    if (options?.onConnectionStateChange) {
-      this.connectionStateCallbacks.add(options.onConnectionStateChange);
-    }
-
-    return subscription;
-  }
 
   /**
    * Unsubscribe from all notifications
@@ -289,14 +182,6 @@ export class RealtimeNotificationsService implements IRealtimeNotificationServic
     return this.signalRService.isAnyConnected();
   }
 
-  /**
-   * Acknowledge an admin notification
-   */
-  async acknowledgeNotification(notificationId: string): Promise<void> {
-    this.adminNotificationHub ??= this.signalRService.getOrCreateAdminNotificationHub();
-    
-    await this.adminNotificationHub.acknowledgeNotification(notificationId);
-  }
 
   private unsubscribe(subscriptionId: string): void {
     this.subscriptions.delete(subscriptionId);
@@ -307,5 +192,35 @@ export class RealtimeNotificationsService implements IRealtimeNotificationServic
 
   private generateSubscriptionId(): string {
     return `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  /**
+   * Subscribe to virtual key events (not implemented)
+   */
+  async onVirtualKeyEvent(
+    _callback: VirtualKeyEventCallback,
+    _options?: AdminNotificationOptions
+  ): Promise<NotificationSubscription> {
+    throw new Error('onVirtualKeyEvent not implemented');
+  }
+
+  /**
+   * Subscribe to configuration changes (not implemented)
+   */
+  async onConfigurationChange(
+    _callback: ConfigurationChangeCallback,
+    _options?: AdminNotificationOptions
+  ): Promise<NotificationSubscription> {
+    throw new Error('onConfigurationChange not implemented');
+  }
+
+  /**
+   * Subscribe to admin notifications (not implemented)
+   */
+  async onAdminNotification(
+    _callback: AdminNotificationCallback,
+    _options?: AdminNotificationOptions
+  ): Promise<NotificationSubscription> {
+    throw new Error('onAdminNotification not implemented');
   }
 }

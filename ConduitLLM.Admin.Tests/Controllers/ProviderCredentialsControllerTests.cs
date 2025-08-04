@@ -1,19 +1,21 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Admin.Controllers;
-using ConduitLLM.Admin.Interfaces;
-using ConduitLLM.Admin.Tests.TestHelpers;
 using ConduitLLM.Configuration;
-using ConduitLLM.Configuration.DTOs;
-using FluentAssertions;
+using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Core.Interfaces;
+using MassTransit;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
+using static ConduitLLM.Admin.Controllers.ProviderCredentialsController;
 
 namespace ConduitLLM.Admin.Tests.Controllers
 {
@@ -24,7 +26,11 @@ namespace ConduitLLM.Admin.Tests.Controllers
     [Trait("Component", "AdminController")]
     public class ProviderCredentialsControllerTests
     {
-        private readonly Mock<IAdminProviderCredentialService> _mockService;
+        private readonly Mock<IProviderRepository> _mockProviderRepository;
+        private readonly Mock<IProviderKeyCredentialRepository> _mockKeyRepository;
+        private readonly Mock<ILLMClientFactory> _mockClientFactory;
+        private readonly Mock<ILLMClient> _mockClient;
+        private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
         private readonly Mock<ILogger<ProviderCredentialsController>> _mockLogger;
         private readonly ProviderCredentialsController _controller;
         private readonly ITestOutputHelper _output;
@@ -32,19 +38,37 @@ namespace ConduitLLM.Admin.Tests.Controllers
         public ProviderCredentialsControllerTests(ITestOutputHelper output)
         {
             _output = output;
-            _mockService = new Mock<IAdminProviderCredentialService>();
+            _mockProviderRepository = new Mock<IProviderRepository>();
+            _mockKeyRepository = new Mock<IProviderKeyCredentialRepository>();
+            _mockClientFactory = new Mock<ILLMClientFactory>();
+            _mockClient = new Mock<ILLMClient>();
+            _mockPublishEndpoint = new Mock<IPublishEndpoint>();
             _mockLogger = new Mock<ILogger<ProviderCredentialsController>>();
-            _controller = new ProviderCredentialsController(_mockService.Object, _mockLogger.Object);
+            
+            _controller = new ProviderCredentialsController(
+                _mockProviderRepository.Object,
+                _mockKeyRepository.Object,
+                _mockClientFactory.Object,
+                _mockPublishEndpoint.Object,
+                _mockLogger.Object);
         }
 
         #region Constructor Tests
 
         [Fact]
-        public void Constructor_WithNullService_ShouldThrowArgumentNullException()
+        public void Constructor_WithNullProviderRepository_ShouldThrowArgumentNullException()
         {
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new ProviderCredentialsController(null!, _mockLogger.Object));
+                new ProviderCredentialsController(null!, _mockKeyRepository.Object, _mockClientFactory.Object, _mockPublishEndpoint.Object, _mockLogger.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullClientFactory_ShouldThrowArgumentNullException()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => 
+                new ProviderCredentialsController(_mockProviderRepository.Object, _mockKeyRepository.Object, null!, _mockPublishEndpoint.Object, _mockLogger.Object));
         }
 
         [Fact]
@@ -52,340 +76,251 @@ namespace ConduitLLM.Admin.Tests.Controllers
         {
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new ProviderCredentialsController(_mockService.Object, null!));
+                new ProviderCredentialsController(_mockProviderRepository.Object, _mockKeyRepository.Object, _mockClientFactory.Object, _mockPublishEndpoint.Object, null!));
         }
 
         #endregion
 
-        #region GetAllProviderCredentials Tests
+        #region TestProviderConnectionWithCredentials Tests
 
         [Fact]
-        public async Task GetAllProviderCredentials_WithCredentials_ShouldReturnOkWithList()
+        public async Task TestProviderConnectionWithCredentials_WithValidCredentials_ShouldReturnSuccess()
         {
             // Arrange
-            var credentials = new List<ProviderCredentialDto>
-            {
-                new() { Id = 1, ProviderType = ProviderType.OpenAI, IsEnabled = true },
-                new() { Id = 2, ProviderType = ProviderType.Anthropic, IsEnabled = true },
-                new() { Id = 3, ProviderType = ProviderType.AzureOpenAI, IsEnabled = false }
-            };
-
-            _mockService.Setup(x => x.GetAllProviderCredentialsAsync())
-                .ReturnsAsync(credentials);
-
-            // Act
-            var result = await _controller.GetAllProviderCredentials();
-
-            // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedCredentials = Assert.IsAssignableFrom<IEnumerable<ProviderCredentialDto>>(okResult.Value);
-            returnedCredentials.Should().HaveCount(3);
-            returnedCredentials.Should().BeEquivalentTo(credentials);
-        }
-
-        [Fact]
-        public async Task GetAllProviderCredentials_WithEmptyList_ShouldReturnOkWithEmptyList()
-        {
-            // Arrange
-            _mockService.Setup(x => x.GetAllProviderCredentialsAsync())
-                .ReturnsAsync(new List<ProviderCredentialDto>());
-
-            // Act
-            var result = await _controller.GetAllProviderCredentials();
-
-            // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedCredentials = Assert.IsAssignableFrom<IEnumerable<ProviderCredentialDto>>(okResult.Value);
-            returnedCredentials.Should().BeEmpty();
-        }
-
-        [Fact]
-        public async Task GetAllProviderCredentials_WithException_ShouldReturn500()
-        {
-            // Arrange
-            _mockService.Setup(x => x.GetAllProviderCredentialsAsync())
-                .ThrowsAsync(new Exception("Database error"));
-
-            // Act
-            var result = await _controller.GetAllProviderCredentials();
-
-            // Assert
-            var statusCodeResult = Assert.IsType<ObjectResult>(result);
-            statusCodeResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            statusCodeResult.Value.Should().Be("An unexpected error occurred.");
-            
-            _mockLogger.VerifyLogWithAnyException(LogLevel.Error, "Error getting all provider credentials");
-        }
-
-        #endregion
-
-        #region GetProviderCredentialById Tests
-
-        [Fact]
-        public async Task GetProviderCredentialById_WithExistingId_ShouldReturnOkWithCredential()
-        {
-            // Arrange
-            var credential = new ProviderCredentialDto
-            {
-                Id = 1,
-                ProviderType = ProviderType.OpenAI,
-                IsEnabled = true,
-                BaseUrl = "https://api.openai.com"
-            };
-
-            _mockService.Setup(x => x.GetProviderCredentialByIdAsync(1))
-                .ReturnsAsync(credential);
-
-            // Act
-            var result = await _controller.GetProviderCredentialById(1);
-
-            // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedCredential = Assert.IsType<ProviderCredentialDto>(okResult.Value);
-            returnedCredential.Should().BeEquivalentTo(credential);
-        }
-
-        [DynamicObjectIssue("Test expects error.error property but controller may return different format")]
-        public async Task GetProviderCredentialById_WithNonExistingId_ShouldReturnNotFound()
-        {
-            // Arrange
-            _mockService.Setup(x => x.GetProviderCredentialByIdAsync(999))
-                .ReturnsAsync((ProviderCredentialDto?)null);
-
-            // Act
-            var result = await _controller.GetProviderCredentialById(999);
-
-            // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            dynamic error = notFoundResult.Value!;
-            ((string)error.error).Should().Be("Provider credential not found");
-            
-            _mockLogger.VerifyLog(LogLevel.Warning, "Provider credential not found");
-        }
-
-        [Fact]
-        public async Task GetProviderCredentialById_WithException_ShouldReturn500()
-        {
-            // Arrange
-            _mockService.Setup(x => x.GetProviderCredentialByIdAsync(It.IsAny<int>()))
-                .ThrowsAsync(new Exception("Database error"));
-
-            // Act
-            var result = await _controller.GetProviderCredentialById(1);
-
-            // Assert
-            var statusCodeResult = Assert.IsType<ObjectResult>(result);
-            statusCodeResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-            
-            _mockLogger.VerifyLogWithAnyException(LogLevel.Error, "Error getting provider credential with ID");
-        }
-
-        #endregion
-
-        #region CreateProviderCredential Tests
-
-        [Fact]
-        public async Task CreateProviderCredential_WithValidRequest_ShouldReturnCreated()
-        {
-            // Arrange
-            var request = new CreateProviderCredentialDto
+            var testRequest = new TestProviderRequest
             {
                 ProviderType = ProviderType.OpenAI,
-                BaseUrl = "https://api.example.com",
-                IsEnabled = true
+                ApiKey = "valid-api-key",
+                BaseUrl = "https://api.openai.com/v1"
             };
 
-            var createdDto = new ProviderCredentialDto
-            {
-                Id = 10,
-                ProviderType = request.ProviderType,
-                BaseUrl = request.BaseUrl ?? string.Empty,
-                IsEnabled = request.IsEnabled
-            };
-
-            _mockService.Setup(x => x.CreateProviderCredentialAsync(It.IsAny<CreateProviderCredentialDto>()))
-                .ReturnsAsync(createdDto);
+            var mockModels = new List<string> { "gpt-4", "gpt-3.5-turbo" };
+            _mockClientFactory.Setup(x => x.CreateTestClient(It.IsAny<Provider>(), It.IsAny<ProviderKeyCredential>()))
+                .Returns(_mockClient.Object);
+            _mockClient.Setup(x => x.ListModelsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(mockModels);
 
             // Act
-            var result = await _controller.CreateProviderCredential(request);
+            var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
 
             // Assert
-            var createdResult = Assert.IsType<CreatedAtActionResult>(result);
-            createdResult.ActionName.Should().Be(nameof(ProviderCredentialsController.GetProviderCredentialById));
-            createdResult.RouteValues!["id"].Should().Be(10);
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var response = okResult.Value!;
             
-            var returnedCredential = Assert.IsType<ProviderCredentialDto>(createdResult.Value);
-            returnedCredential.Id.Should().Be(10);
-            returnedCredential.ProviderType.Should().Be(ProviderType.OpenAI);
+            // Use reflection to access anonymous object properties
+            var successProperty = response.GetType().GetProperty("Success");
+            var messageProperty = response.GetType().GetProperty("Message");
+            var modelCountProperty = response.GetType().GetProperty("ModelCount");
+            
+            Assert.NotNull(successProperty);
+            Assert.NotNull(messageProperty);
+            Assert.NotNull(modelCountProperty);
+            
+            Assert.True((bool)successProperty.GetValue(response)!);
+            Assert.Contains("Connection successful", (string)messageProperty.GetValue(response)!);
+            Assert.Equal(2, (int)modelCountProperty.GetValue(response)!);
         }
 
         [Fact]
-        public async Task CreateProviderCredential_WithDuplicateName_ShouldReturnBadRequest()
+        public async Task TestProviderConnectionWithCredentials_WithInvalidApiKey_ShouldReturnFailure()
         {
             // Arrange
-            var request = new CreateProviderCredentialDto
+            var testRequest = new TestProviderRequest
             {
                 ProviderType = ProviderType.OpenAI,
+                ApiKey = "invalid-api-key",
+                BaseUrl = "https://api.openai.com/v1"
             };
 
-            _mockService.Setup(x => x.CreateProviderCredentialAsync(It.IsAny<CreateProviderCredentialDto>()))
-                .ThrowsAsync(new InvalidOperationException("Provider with name 'existing-provider' already exists"));
+            _mockClientFactory.Setup(x => x.CreateTestClient(It.IsAny<Provider>(), It.IsAny<ProviderKeyCredential>()))
+                .Returns(_mockClient.Object);
+            _mockClient.Setup(x => x.ListModelsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new LLMCommunicationException("Invalid API key provided"));
 
             // Act
-            var result = await _controller.CreateProviderCredential(request);
-
-            // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            badRequestResult.Value.Should().Be("Provider with name 'existing-provider' already exists");
-        }
-
-        #endregion
-
-        #region UpdateProviderCredential Tests
-
-        [Fact]
-        public async Task UpdateProviderCredential_WithValidRequest_ShouldReturnNoContent()
-        {
-            // Arrange
-            var request = new UpdateProviderCredentialDto
-            {
-                Id = 1,
-                BaseUrl = "https://api.updated.com",
-                IsEnabled = false
-            };
-
-            _mockService.Setup(x => x.UpdateProviderCredentialAsync(It.IsAny<UpdateProviderCredentialDto>()))
-                .ReturnsAsync(true);
-
-            // Act
-            var result = await _controller.UpdateProviderCredential(1, request);
-
-            // Assert
-            Assert.IsType<NoContentResult>(result);
-        }
-
-        [DynamicObjectIssue("Test expects error.error property but controller may return different format")]
-        public async Task UpdateProviderCredential_WithNonExistingId_ShouldReturnNotFound()
-        {
-            // Arrange
-            var request = new UpdateProviderCredentialDto
-            {
-                Id = 999,
-                IsEnabled = false
-            };
-
-            _mockService.Setup(x => x.UpdateProviderCredentialAsync(It.IsAny<UpdateProviderCredentialDto>()))
-                .ReturnsAsync(false);
-
-            // Act
-            var result = await _controller.UpdateProviderCredential(999, request);
-
-            // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            dynamic error = notFoundResult.Value!;
-            ((string)error.error).Should().Be("Provider credential not found");
-        }
-
-        #endregion
-
-        #region DeleteProviderCredential Tests
-
-        [Fact]
-        public async Task DeleteProviderCredential_WithExistingId_ShouldReturnNoContent()
-        {
-            // Arrange
-            _mockService.Setup(x => x.DeleteProviderCredentialAsync(1))
-                .ReturnsAsync(true);
-
-            // Act
-            var result = await _controller.DeleteProviderCredential(1);
-
-            // Assert
-            Assert.IsType<NoContentResult>(result);
-        }
-
-        [DynamicObjectIssue("Test expects error.error property but controller may return different format")]
-        public async Task DeleteProviderCredential_WithNonExistingId_ShouldReturnNotFound()
-        {
-            // Arrange
-            _mockService.Setup(x => x.DeleteProviderCredentialAsync(999))
-                .ReturnsAsync(false);
-
-            // Act
-            var result = await _controller.DeleteProviderCredential(999);
-
-            // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            dynamic error = notFoundResult.Value!;
-            ((string)error.error).Should().Be("Provider credential not found");
-        }
-
-        [DynamicObjectIssue("Test expects error.error property but controller may return different format")]
-        public async Task DeleteProviderCredential_WithProviderInUse_ShouldReturnConflict()
-        {
-            // Arrange
-            _mockService.Setup(x => x.DeleteProviderCredentialAsync(1))
-                .ThrowsAsync(new InvalidOperationException("Cannot delete provider credential that is in use"));
-
-            // Act
-            var result = await _controller.DeleteProviderCredential(1);
-
-            // Assert
-            var conflictResult = Assert.IsType<ConflictObjectResult>(result);
-            dynamic error = conflictResult.Value!;
-            ((string)error.error).Should().Contain("Cannot delete");
-        }
-
-        #endregion
-
-        #region TestProviderConnection Tests
-
-        [Fact]
-        public async Task TestProviderConnection_WithValidProvider_ShouldReturnOk()
-        {
-            // Arrange
-            var testResult = new ProviderConnectionTestResultDto
-            {
-                Success = true,
-                Message = "Connection successful",
-                ProviderType = ProviderType.OpenAI
-            };
-
-            _mockService.Setup(x => x.TestProviderConnectionAsync(It.IsAny<ProviderCredentialDto>()))
-                .ReturnsAsync(testResult);
-
-            // Act
-            var result = await _controller.TestProviderConnection(1);
+            var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedResult = Assert.IsType<ProviderConnectionTestResultDto>(okResult.Value);
-            returnedResult.Success.Should().BeTrue();
-            returnedResult.Message.Should().Be("Connection successful");
+            var response = okResult.Value!;
+            
+            // Use reflection to access anonymous object properties
+            var successProperty = response.GetType().GetProperty("Success");
+            var messageProperty = response.GetType().GetProperty("Message");
+            var modelCountProperty = response.GetType().GetProperty("ModelCount");
+            
+            Assert.NotNull(successProperty);
+            Assert.NotNull(messageProperty);
+            Assert.NotNull(modelCountProperty);
+            
+            Assert.False((bool)successProperty.GetValue(response)!);
+            Assert.Contains("Invalid API key", (string)messageProperty.GetValue(response)!);
+            Assert.Equal(0, (int)modelCountProperty.GetValue(response)!);
         }
 
         [Fact]
-        public async Task TestProviderConnection_WithFailedConnection_ShouldReturnOkWithFailure()
+        public async Task TestProviderConnectionWithCredentials_WithUnauthorizedError_ShouldReturnFailure()
         {
             // Arrange
-            var testResult = new ProviderConnectionTestResultDto
+            var testRequest = new TestProviderRequest
             {
-                Success = false,
-                Message = "Connection failed: Invalid API key",
-                ErrorDetails = "401 Unauthorized"
+                ProviderType = ProviderType.OpenAI,
+                ApiKey = "badkey",
+                BaseUrl = "https://api.openai.com/v1"
             };
 
-            _mockService.Setup(x => x.TestProviderConnectionAsync(It.IsAny<ProviderCredentialDto>()))
-                .ReturnsAsync(testResult);
+            _mockClientFactory.Setup(x => x.CreateTestClient(It.IsAny<Provider>(), It.IsAny<ProviderKeyCredential>()))
+                .Returns(_mockClient.Object);
+            _mockClient.Setup(x => x.ListModelsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new LLMCommunicationException("HTTP 401: Unauthorized - Invalid API key provided"));
 
             // Act
-            var result = await _controller.TestProviderConnection(1);
+            var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedResult = Assert.IsType<ProviderConnectionTestResultDto>(okResult.Value);
-            returnedResult.Success.Should().BeFalse();
-            returnedResult.Message.Should().Contain("Invalid API key");
+            var response = okResult.Value!;
+            
+            // Use reflection to access anonymous object properties
+            var successProperty = response.GetType().GetProperty("Success");
+            var messageProperty = response.GetType().GetProperty("Message");
+            var modelCountProperty = response.GetType().GetProperty("ModelCount");
+            
+            Assert.NotNull(successProperty);
+            Assert.NotNull(messageProperty);
+            Assert.NotNull(modelCountProperty);
+            
+            Assert.False((bool)successProperty.GetValue(response)!);
+            Assert.Contains("Invalid API key", (string)messageProperty.GetValue(response)!);
+            Assert.Equal(0, (int)modelCountProperty.GetValue(response)!);
+        }
+
+        [Fact]
+        public async Task TestProviderConnectionWithCredentials_DoesNotReturnFallbackModels()
+        {
+            // Arrange - This test verifies the fix for the original issue
+            var testRequest = new TestProviderRequest
+            {
+                ProviderType = ProviderType.OpenAI,
+                ApiKey = "fake-key-should-fail",
+                BaseUrl = "https://api.openai.com/v1"
+            };
+
+            _mockClientFactory.Setup(x => x.CreateTestClient(It.IsAny<Provider>(), It.IsAny<ProviderKeyCredential>()))
+                .Returns(_mockClient.Object);
+            
+            // Mock the authentication failure that should occur with invalid key
+            _mockClient.Setup(x => x.ListModelsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new LLMCommunicationException("Authentication failed - invalid API key"));
+
+            // Act
+            var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var response = okResult.Value!;
+            
+            // Use reflection to access anonymous object properties
+            var successProperty = response.GetType().GetProperty("Success");
+            var messageProperty = response.GetType().GetProperty("Message");
+            var modelCountProperty = response.GetType().GetProperty("ModelCount");
+            
+            Assert.NotNull(successProperty);
+            Assert.NotNull(messageProperty);
+            Assert.NotNull(modelCountProperty);
+            
+            // Verify the connection test properly fails (no fallback models returned)
+            Assert.False((bool)successProperty.GetValue(response)!);
+            Assert.Contains("Authentication failed", (string)messageProperty.GetValue(response)!);
+            Assert.Equal(0, (int)modelCountProperty.GetValue(response)!);
+            
+            // Verify that ListModelsAsync was called (not bypassed by fallback)
+            _mockClient.Verify(x => x.ListModelsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task TestProviderConnectionWithCredentials_WithEmptyApiKey_ShouldReturnInternalServerError()
+        {
+            // Arrange
+            var testRequest = new TestProviderRequest
+            {
+                ProviderType = ProviderType.OpenAI,
+                ApiKey = "", // Empty API key
+                BaseUrl = "https://api.openai.com/v1"
+            };
+
+            // Mock the client factory to throw when creating client with empty key
+            _mockClientFactory.Setup(x => x.CreateTestClient(It.IsAny<Provider>(), It.IsAny<ProviderKeyCredential>()))
+                .Throws(new ArgumentException("API key is required for testing credentials"));
+
+            // Act
+            var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
+
+            // Assert - Client factory exceptions result in 500 Internal Server Error
+            var statusResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(500, statusResult.StatusCode);
+            Assert.Equal("An unexpected error occurred.", statusResult.Value);
+        }
+
+        [Fact]
+        public async Task TestProviderConnectionWithCredentials_WithNullApiKey_ShouldReturnInternalServerError()
+        {
+            // Arrange
+            var testRequest = new TestProviderRequest
+            {
+                ProviderType = ProviderType.OpenAI,
+                ApiKey = null, // Null API key
+                BaseUrl = "https://api.openai.com/v1"
+            };
+
+            // Mock the client factory to throw when creating client with null key
+            _mockClientFactory.Setup(x => x.CreateTestClient(It.IsAny<Provider>(), It.IsAny<ProviderKeyCredential>()))
+                .Throws(new ArgumentException("API key is required for testing credentials"));
+
+            // Act
+            var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
+
+            // Assert - Client factory exceptions result in 500 Internal Server Error
+            var statusResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(500, statusResult.StatusCode);
+            Assert.Equal("An unexpected error occurred.", statusResult.Value);
+        }
+
+        [Fact]
+        public async Task TestProviderConnectionWithCredentials_WithGenericException_ShouldReturnFailure()
+        {
+            // Arrange
+            var testRequest = new TestProviderRequest
+            {
+                ProviderType = ProviderType.OpenAI,
+                ApiKey = "test-key",
+                BaseUrl = "https://api.openai.com/v1"
+            };
+
+            _mockClientFactory.Setup(x => x.CreateTestClient(It.IsAny<Provider>(), It.IsAny<ProviderKeyCredential>()))
+                .Returns(_mockClient.Object);
+            _mockClient.Setup(x => x.ListModelsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new Exception("Network timeout"));
+
+            // Act
+            var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var response = okResult.Value!;
+            
+            // Use reflection to access anonymous object properties
+            var successProperty = response.GetType().GetProperty("Success");
+            var messageProperty = response.GetType().GetProperty("Message");
+            var modelCountProperty = response.GetType().GetProperty("ModelCount");
+            
+            Assert.NotNull(successProperty);
+            Assert.NotNull(messageProperty);
+            Assert.NotNull(modelCountProperty);
+            
+            Assert.False((bool)successProperty.GetValue(response)!);
+            Assert.Contains("Network timeout", (string)messageProperty.GetValue(response)!);
+            Assert.Equal(0, (int)modelCountProperty.GetValue(response)!);
         }
 
         #endregion

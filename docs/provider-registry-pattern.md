@@ -8,8 +8,8 @@ The Provider Registry pattern provides a centralized, single source of truth for
 
 Previously, provider capabilities and metadata were duplicated across multiple locations:
 - Each provider's `IProviderMetadata` implementation
-- `ProviderTypesController`'s hardcoded switch statement
 - Various service classes with provider-specific logic
+- Hardcoded switch statements and capabilities spread throughout the codebase
 
 This duplication led to:
 - Maintenance burden when adding or modifying providers
@@ -86,30 +86,6 @@ if (!result.IsValid)
 services.AddSingleton<IProviderMetadataRegistry, ProviderMetadataRegistry>();
 ```
 
-### Controller Usage
-```csharp
-[ApiController]
-public class ProviderTypesController : ControllerBase
-{
-    private readonly IProviderMetadataRegistry _registry;
-
-    public ProviderTypesController(IProviderMetadataRegistry registry)
-    {
-        _registry = registry;
-    }
-
-    [HttpGet("{providerType}/capabilities")]
-    public IActionResult GetCapabilities(ProviderType providerType)
-    {
-        if (_registry.TryGetMetadata(providerType, out var metadata))
-        {
-            return Ok(metadata.Capabilities);
-        }
-        return NotFound();
-    }
-}
-```
-
 ### Service Usage
 ```csharp
 public class ProviderConfigurationService
@@ -162,16 +138,14 @@ To add a new provider to the system:
 
 3. **Build the solution** - the registry will automatically discover the new provider
 
-## API Endpoints
+## Integration with Admin API
 
-The following endpoints are available for provider metadata:
+Provider metadata is integrated into the existing provider management endpoints:
 
-- `GET /api/admin/providertypes` - List all provider types
-- `GET /api/admin/providertypes/{providerType}/capabilities` - Get provider capabilities
-- `GET /api/admin/providertypes/{providerType}/auth-requirements` - Get authentication requirements
-- `GET /api/admin/providertypes/{providerType}/configuration-hints` - Get configuration hints
-- `GET /api/admin/providertypes/by-feature/{feature}` - Find providers by feature
-- `GET /api/admin/providertypes/diagnostics` - Get registry diagnostics
+- Provider creation uses metadata for validation and configuration hints
+- Provider listing includes capabilities from the registry
+- Provider configuration UI is generated based on metadata requirements
+- The registry ensures consistent provider behavior across all API endpoints
 
 ## Testing
 
@@ -188,16 +162,16 @@ The pattern includes comprehensive unit tests:
    - Tests default values
    - Tests helper methods
 
-3. **Controller Tests** (`ProviderTypesControllerTests.cs`)
-   - Tests all API endpoints
-   - Tests error handling
-   - Tests registry integration
+3. **Integration Tests**
+   - Tests registry integration with existing Admin API controllers
+   - Tests provider creation with metadata validation
+   - Tests error handling and edge cases
 
 ## Benefits
 
 1. **Single Source of Truth**: All provider metadata is defined in one place
 2. **Type Safety**: Uses strongly-typed enums instead of magic strings
-3. **Discoverability**: Providers can be discovered by their capabilities
+3. **Discoverability**: Provider can be discovered by their capabilities
 4. **Extensibility**: New providers can be added without modifying existing code
 5. **Testability**: Clean separation of concerns enables easy testing
 6. **Performance**: Metadata is cached at startup for fast lookups

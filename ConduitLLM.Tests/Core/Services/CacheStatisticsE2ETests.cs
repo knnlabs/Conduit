@@ -116,15 +116,24 @@ namespace ConduitLLM.Tests.Core.Services
                 var keyStr = key.ToString();
                 var fieldStr = field.ToString();
                 
-                if (!hashData.ContainsKey(keyStr))
-                    hashData[keyStr] = new Dictionary<string, long>();
-                
-                if (!hashData[keyStr].ContainsKey(fieldStr))
-                    hashData[keyStr][fieldStr] = 0;
-                
-                hashData[keyStr][fieldStr] += increment;
-                return hashData[keyStr][fieldStr];
+                // Thread-safe initialization
+                lock (hashData)
+                {
+                    if (!hashData.ContainsKey(keyStr))
+                        hashData[keyStr] = new Dictionary<string, long>();
+                    
+                    if (!hashData[keyStr].ContainsKey(fieldStr))
+                        hashData[keyStr][fieldStr] = 0;
+                    
+                    hashData[keyStr][fieldStr] += increment;
+                    return hashData[keyStr][fieldStr];
+                }
             };
+
+            // Setup overload with default values (what the 2-parameter call expands to)
+            _mockDatabase.Setup(db => db.HashIncrementAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), 1, CommandFlags.None))
+                .ReturnsAsync((RedisKey key, RedisValue field, long increment, CommandFlags flags) => 
+                    hashIncrementHandler(key, field, increment));
 
             // Setup overload with explicit increment value
             _mockDatabase.Setup(db => db.HashIncrementAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<long>(), It.IsAny<CommandFlags>()))

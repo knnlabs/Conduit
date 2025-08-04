@@ -70,7 +70,7 @@ namespace ConduitLLM.Configuration.Services
     /// </summary>
     public class CacheConfigurationService : ICacheConfigurationService
     {
-        private readonly ConfigurationDbContext _dbContext;
+        private readonly ConduitDbContext _dbContext;
         private readonly IPublishEndpoint _publishEndpoint;
         private readonly IConfiguration _configuration;
         private readonly ILogger<CacheConfigurationService> _logger;
@@ -78,7 +78,7 @@ namespace ConduitLLM.Configuration.Services
         private readonly SemaphoreSlim _lock = new(1, 1);
 
         public CacheConfigurationService(
-            ConfigurationDbContext dbContext,
+            ConduitDbContext dbContext,
             IPublishEndpoint publishEndpoint,
             IConfiguration configuration,
             ILogger<CacheConfigurationService> logger)

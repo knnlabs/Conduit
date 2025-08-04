@@ -2,6 +2,9 @@ namespace ConduitLLM.Configuration
 {
     /// <summary>
     /// Strongly-typed enumeration of supported LLM providers
+    /// This is NOT a unique identifer for providers! 
+    /// It's really used for determining which provider to use for a given model.
+    /// All other references to this enum are likely suspect and should be removed!
     /// </summary>
     public enum ProviderType
     {

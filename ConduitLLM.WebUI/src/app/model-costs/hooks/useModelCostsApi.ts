@@ -19,8 +19,9 @@ export function useModelCostsApi() {
       pageSize: pageSize.toString(),
     });
 
-    if (filters?.provider !== undefined) {
-      params.append('provider', filters.provider.toString());
+    // Map providerId to provider for API compatibility
+    if (filters?.providerId !== undefined) {
+      params.append('provider', filters.providerId);
     }
     if (filters?.isActive !== undefined) {
       params.append('isActive', filters.isActive.toString());
@@ -167,6 +168,67 @@ export function useModelCostsApi() {
     }
   };
 
+  const importModelCostsWithAliases = async (
+    costsWithAliases: Array<{
+      costName: string;
+      modelAliases: string[];
+      modelType: string;
+      inputTokenCost: number;
+      outputTokenCost: number;
+      [key: string]: unknown;
+    }>
+  ): Promise<{ success: number; failed: number; errors: Array<{ costName: string; error: string }> }> => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/model-costs/import-with-aliases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(costsWithAliases),
+      });
+
+      if (!response.ok) {
+        const error = await response.json() as { message?: string };
+        throw new Error(error.message ?? 'Failed to import model costs');
+      }
+
+      const result = await response.json() as { 
+        success: number; 
+        failed: number; 
+        errors: Array<{ costName: string; error: string }> 
+      };
+      
+      if (result.success > 0) {
+        notifications.show({
+          title: 'Success',
+          message: `Successfully imported ${result.success} model costs`,
+          color: 'green',
+        });
+      }
+
+      if (result.failed > 0) {
+        const errorMessage = result.errors
+          .map(e => `${e.costName}: ${e.error}`)
+          .join('\n');
+        notifications.show({
+          title: 'Warning',
+          message: `Failed to import ${result.failed} costs:\n${errorMessage}`,
+          color: 'orange',
+        });
+      }
+
+      return result;
+    } catch (error) {
+      notifications.show({
+        title: 'Error',
+        message: error instanceof Error ? error.message : 'Failed to import model costs',
+        color: 'red',
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const exportModelCosts = async (format: 'csv' | 'json' = 'csv'): Promise<void> => {
     setIsExporting(true);
     try {
@@ -234,6 +296,7 @@ export function useModelCostsApi() {
     updateModelCost,
     deleteModelCost,
     importModelCosts,
+    importModelCostsWithAliases,
     exportModelCosts,
     getModelCostByPattern,
     getModelCostsByProvider,

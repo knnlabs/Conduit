@@ -48,8 +48,8 @@ namespace ConduitLLM.Http.EventHandlers
         {
             var message = context.Message;
             _logger.LogInformation(
-                "Processing model discovery notification for provider {Provider} with {ModelCount} models",
-                message.ProviderType.ToString(), message.ModelCapabilities.Count);
+                "Processing model discovery notification for provider ID {ProviderId} with {ModelCount} models",
+                message.ProviderId, message.ModelCapabilities.Count);
 
             try
             {
@@ -57,42 +57,42 @@ namespace ConduitLLM.Http.EventHandlers
                 var newModels = await CheckForNewModelsAsync(message);
                 if (newModels.Any())
                 {
-                    await NotifyNewModelsDiscoveredAsync(message.ProviderType.ToString(), newModels, message);
+                    await NotifyNewModelsDiscoveredAsync(message.ProviderId, newModels, message);
                 }
 
                 // Check for capability changes
                 var capabilityChanges = await CheckForCapabilityChangesAsync(message);
                 foreach (var change in capabilityChanges)
                 {
-                    await NotifyCapabilityChangedAsync(message.ProviderType.ToString(), change);
+                    await NotifyCapabilityChangedAsync(message.ProviderId, change);
                 }
 
                 // Check for pricing updates
                 var pricingUpdates = await CheckForPricingUpdatesAsync(message);
                 foreach (var update in pricingUpdates)
                 {
-                    await NotifyPricingUpdatedAsync(message.ProviderType.ToString(), update);
+                    await NotifyPricingUpdatedAsync(message.ProviderId, update);
                 }
 
                 // Update cache with current state for next comparison
                 await UpdateCacheAsync(message);
 
                 _logger.LogInformation(
-                    "Successfully processed model discovery notification for provider {Provider}",
-                    message.ProviderType.ToString());
+                    "Successfully processed model discovery notification for provider ID {ProviderId}",
+                    message.ProviderId);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex,
-                    "Error processing model discovery notification for provider {Provider}",
-                    message.ProviderType.ToString());
+                    "Error processing model discovery notification for provider ID {ProviderId}",
+                    message.ProviderId);
                 throw;
             }
         }
 
         private Task<List<DiscoveredModelInfo>> CheckForNewModelsAsync(ModelCapabilitiesDiscovered message)
         {
-            var cacheKey = $"{CacheKeyPrefix}{message.ProviderType}";
+            var cacheKey = $"{CacheKeyPrefix}provider_{message.ProviderId}";
             var previousModels = _cache.Get<Dictionary<string, Core.Events.ModelCapabilities>>(cacheKey);
             
             if (previousModels == null)
@@ -115,7 +115,7 @@ namespace ConduitLLM.Http.EventHandlers
 
         private Task<List<ModelCapabilityChange>> CheckForCapabilityChangesAsync(ModelCapabilitiesDiscovered message)
         {
-            var cacheKey = $"{CacheKeyPrefix}{message.ProviderType}";
+            var cacheKey = $"{CacheKeyPrefix}provider_{message.ProviderId}";
             var previousModels = _cache.Get<Dictionary<string, Core.Events.ModelCapabilities>>(cacheKey);
             
             if (previousModels == null)
@@ -134,7 +134,7 @@ namespace ConduitLLM.Http.EventHandlers
                         changes.Add(new ModelCapabilityChange
                         {
                             ModelId = kvp.Key,
-                            ProviderType = message.ProviderType,
+                            ProviderId = message.ProviderId,
                             PreviousCapabilities = previousCapabilities,
                             NewCapabilities = kvp.Value,
                             Changes = changeList
@@ -158,7 +158,7 @@ namespace ConduitLLM.Http.EventHandlers
                     var currentCost = await _modelCostService.GetCostForModelAsync(modelId);
                     if (currentCost != null)
                     {
-                        var pricingCacheKey = $"{PricingCacheKeyPrefix}{message.ProviderType}_{modelId}";
+                        var pricingCacheKey = $"{PricingCacheKeyPrefix}provider_{message.ProviderId}_{modelId}";
                         var previousCost = _cache.Get<decimal?>(pricingCacheKey);
                         
                         if (previousCost.HasValue && previousCost.Value != currentCost.InputTokenCost)
@@ -166,7 +166,7 @@ namespace ConduitLLM.Http.EventHandlers
                             updates.Add(new ModelPricingUpdate
                             {
                                 ModelId = modelId,
-                                ProviderType = message.ProviderType,
+                                ProviderId = message.ProviderId,
                                 PreviousCost = previousCost.Value,
                                 NewCost = currentCost.InputTokenCost,
                                 CostDetails = currentCost
@@ -180,19 +180,19 @@ namespace ConduitLLM.Http.EventHandlers
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, 
-                        "Failed to check pricing for model {Model} from provider {Provider}",
-                        modelId, message.ProviderType.ToString());
+                        "Failed to check pricing for model {Model} from provider ID {ProviderId}",
+                        modelId, message.ProviderId);
                 }
             }
 
             return updates;
         }
 
-        private async Task NotifyNewModelsDiscoveredAsync(string provider, List<DiscoveredModelInfo> newModels, ModelCapabilitiesDiscovered message)
+        private async Task NotifyNewModelsDiscoveredAsync(int providerId, List<DiscoveredModelInfo> newModels, ModelCapabilitiesDiscovered message)
         {
             var notification = new NewModelsDiscoveredNotification
             {
-                ProviderType = message.ProviderType,
+                ProviderId = message.ProviderId,
                 NewModels = newModels,
                 TotalModelCount = message.ModelCapabilities.Count,
                 DiscoveredAt = message.DiscoveredAt
@@ -206,35 +206,35 @@ namespace ConduitLLM.Http.EventHandlers
             var severity = NotificationSeverity.Low;
             if (severityClassifier != null && newModels.Any())
             {
-                severity = newModels.Max(m => severityClassifier.ClassifyNewModel(provider, m));
+                severity = newModels.Max(m => severityClassifier.ClassifyNewModel(providerId.ToString(), m));
             }
 
             if (batcher != null)
             {
                 // Queue for provider-specific subscribers
-                var providerGroup = $"provider-{provider.ToLowerInvariant()}";
+                var providerGroup = $"provider-{providerId}";
                 await batcher.QueueNotificationAsync(providerGroup, notification, severity);
 
                 // Queue for global subscribers 
                 await batcher.QueueNotificationAsync("model-discovery-all", notification, severity);
 
                 _logger.LogInformation(
-                    "Queued new models notification for provider {Provider}: {Count} new models with severity {Severity}",
-                    provider, newModels.Count, severity);
+                    "Queued new models notification for provider ID {ProviderId}: {Count} new models with severity {Severity}",
+                    providerId, newModels.Count, severity);
             }
             else
             {
                 _logger.LogDebug(
-                    "Model discovery notification batcher not available - skipping batched notifications for {Count} new models from {Provider}",
-                    newModels.Count, provider);
+                    "Model discovery notification batcher not available - skipping batched notifications for {Count} new models from provider ID {ProviderId}",
+                    newModels.Count, providerId);
             }
         }
 
-        private async Task NotifyCapabilityChangedAsync(string provider, ModelCapabilityChange change)
+        private async Task NotifyCapabilityChangedAsync(int providerId, ModelCapabilityChange change)
         {
             var notification = new ModelCapabilitiesChangedNotification
             {
-                ProviderType = change.ProviderType,
+                ProviderId = change.ProviderId,
                 ModelId = change.ModelId,
                 PreviousCapabilities = ConvertToCapabilityInfo(change.PreviousCapabilities),
                 NewCapabilities = ConvertToCapabilityInfo(change.NewCapabilities),
@@ -250,37 +250,37 @@ namespace ConduitLLM.Http.EventHandlers
             var severity = NotificationSeverity.Low;
             if (severityClassifier != null)
             {
-                severity = severityClassifier.ClassifyCapabilityChange(provider, change.ModelId, change.Changes);
+                severity = severityClassifier.ClassifyCapabilityChange(providerId.ToString(), change.ModelId, change.Changes);
             }
 
             if (batcher != null)
             {
                 // Queue for provider-specific subscribers
-                var providerGroup = $"provider-{provider.ToLowerInvariant()}";
+                var providerGroup = $"provider-{providerId}";
                 await batcher.QueueNotificationAsync(providerGroup, notification, severity);
 
                 // Queue for global subscribers
                 await batcher.QueueNotificationAsync("model-discovery-all", notification, severity);
 
                 _logger.LogInformation(
-                    "Queued capability change notification for model {Model} from provider {Provider} with severity {Severity}",
-                    change.ModelId, provider, severity);
+                    "Queued capability change notification for model {Model} from provider ID {ProviderId} with severity {Severity}",
+                    change.ModelId, providerId, severity);
             }
             else
             {
                 _logger.LogDebug(
-                    "Model discovery notification batcher not available - skipping capability change notifications for {Model} from {Provider}",
-                    change.ModelId, provider);
+                    "Model discovery notification batcher not available - skipping capability change notifications for {Model} from provider ID {ProviderId}",
+                    change.ModelId, providerId);
             }
         }
 
-        private async Task NotifyPricingUpdatedAsync(string provider, ModelPricingUpdate update)
+        private async Task NotifyPricingUpdatedAsync(int providerId, ModelPricingUpdate update)
         {
             var percentageChange = ((update.NewCost - update.PreviousCost) / update.PreviousCost) * 100;
             
             var notification = new ModelPricingUpdatedNotification
             {
-                ProviderType = update.ProviderType,
+                ProviderId = update.ProviderId,
                 ModelId = update.ModelId,
                 PreviousPricing = new ModelPricingInfo
                 {
@@ -306,33 +306,33 @@ namespace ConduitLLM.Http.EventHandlers
             var severity = NotificationSeverity.Low;
             if (severityClassifier != null)
             {
-                severity = severityClassifier.ClassifyPriceChange(provider, update.ModelId, percentageChange);
+                severity = severityClassifier.ClassifyPriceChange(providerId.ToString(), update.ModelId, percentageChange);
             }
 
             if (batcher != null)
             {
                 // Queue for provider-specific subscribers
-                var providerGroup = $"provider-{provider.ToLowerInvariant()}";
+                var providerGroup = $"provider-{providerId}";
                 await batcher.QueueNotificationAsync(providerGroup, notification, severity);
 
                 // Queue for global subscribers
                 await batcher.QueueNotificationAsync("model-discovery-all", notification, severity);
 
                 _logger.LogInformation(
-                    "Queued pricing update notification for model {Model} from provider {Provider}: {Change:F2}% change with severity {Severity}",
-                    update.ModelId, provider, percentageChange, severity);
+                    "Queued pricing update notification for model {Model} from provider ID {ProviderId}: {Change:F2}% change with severity {Severity}",
+                    update.ModelId, providerId, percentageChange, severity);
             }
             else
             {
                 _logger.LogDebug(
-                    "Model discovery notification batcher not available - skipping pricing update notifications for {Model} from {Provider}",
-                    update.ModelId, provider);
+                    "Model discovery notification batcher not available - skipping pricing update notifications for {Model} from provider ID {ProviderId}",
+                    update.ModelId, providerId);
             }
         }
 
         private Task UpdateCacheAsync(ModelCapabilitiesDiscovered message)
         {
-            var cacheKey = $"{CacheKeyPrefix}{message.ProviderType}";
+            var cacheKey = $"{CacheKeyPrefix}provider_{message.ProviderId}";
             _cache.Set(cacheKey, message.ModelCapabilities, TimeSpan.FromDays(7));
             return Task.CompletedTask;
         }
@@ -396,7 +396,7 @@ namespace ConduitLLM.Http.EventHandlers
         private class ModelCapabilityChange
         {
             public string ModelId { get; set; } = string.Empty;
-            public ProviderType ProviderType { get; set; }
+            public int ProviderId { get; set; }
             public Core.Events.ModelCapabilities PreviousCapabilities { get; set; } = new();
             public Core.Events.ModelCapabilities NewCapabilities { get; set; } = new();
             public List<string> Changes { get; set; } = new();
@@ -405,7 +405,7 @@ namespace ConduitLLM.Http.EventHandlers
         private class ModelPricingUpdate
         {
             public string ModelId { get; set; } = string.Empty;
-            public ProviderType ProviderType { get; set; }
+            public int ProviderId { get; set; }
             public decimal PreviousCost { get; set; }
             public decimal NewCost { get; set; }
             public dynamic? CostDetails { get; set; }

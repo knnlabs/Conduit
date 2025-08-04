@@ -13,11 +13,10 @@ public class UpdateVirtualKeyRequestDto
 
     public string? AllowedModels { get; set; } // Comma-separated. Empty string clears the list, null leaves unchanged.
 
-    [Range(0, 1000000, ErrorMessage = "Max budget must be between 0 and 1,000,000. Set to 0 for no budget limit.")]
-    public decimal? MaxBudget { get; set; }
-
-    [MaxLength(20)]
-    public string? BudgetDuration { get; set; } // e.g., "Total", "Monthly"
+    /// <summary>
+    /// Optional ID of a different virtual key group to move this key to.
+    /// </summary>
+    public int? VirtualKeyGroupId { get; set; }
 
     public bool? IsEnabled { get; set; }
 

@@ -88,6 +88,73 @@ namespace ConduitLLM.Core.Utilities
         }
 
         /// <summary>
+        /// Sends a GET request and deserializes the JSON response.
+        /// </summary>
+        /// <typeparam name="TResponse">The type of the response object.</typeparam>
+        /// <param name="client">The HTTP client to use for the request.</param>
+        /// <param name="endpoint">The endpoint to send the request to.</param>
+        /// <param name="headers">Optional headers to include in the request.</param>
+        /// <param name="jsonOptions">Optional JSON serialization options.</param>
+        /// <param name="logger">Optional logger for diagnostic information.</param>
+        /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+        /// <returns>The deserialized response object.</returns>
+        /// <exception cref="LLMCommunicationException">Thrown when there is an error communicating with the API.</exception>
+        public static async Task<TResponse> GetJsonAsync<TResponse>(
+            HttpClient client,
+            string endpoint,
+            IDictionary<string, string>? headers = null,
+            JsonSerializerOptions? jsonOptions = null,
+            ILogger? logger = null,
+            CancellationToken cancellationToken = default)
+        {
+            var options = jsonOptions ?? DefaultJsonOptions;
+
+            try
+            {
+                var request = new HttpRequestMessage(HttpMethod.Get, endpoint);
+                
+                // Add custom headers if provided
+                if (headers != null)
+                {
+                    foreach (var header in headers)
+                    {
+                        request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                    }
+                }
+                
+                logger?.LogDebug("Sending GET request to {Endpoint}", endpoint);
+
+                using var response = await client.SendAsync(request, cancellationToken);
+                return await ProcessResponseAsync<TResponse>(response, options, logger, cancellationToken);
+            }
+            catch (HttpRequestException ex)
+            {
+                logger?.LogError(ex, "HTTP request error communicating with API at {Endpoint}", endpoint);
+                throw new LLMCommunicationException($"HTTP request error: {ex.Message}", ex);
+            }
+            catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
+            {
+                logger?.LogWarning("Request to {Endpoint} was cancelled", endpoint);
+                throw new LLMCommunicationException("Request was cancelled", ex);
+            }
+            catch (TaskCanceledException ex)
+            {
+                logger?.LogError(ex, "Request to {Endpoint} timed out", endpoint);
+                throw new LLMCommunicationException("Request timed out", ex);
+            }
+            catch (JsonException ex)
+            {
+                logger?.LogError(ex, "Failed to deserialize JSON response from {Endpoint}", endpoint);
+                throw new LLMCommunicationException($"Failed to deserialize response: {ex.Message}", ex);
+            }
+            catch (Exception ex) when (ex is not LLMCommunicationException)
+            {
+                logger?.LogError(ex, "Unexpected error during API communication with {Endpoint}", endpoint);
+                throw new LLMCommunicationException($"Unexpected error: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
         /// Creates an HTTP request with JSON content and headers.
         /// </summary>
         private static HttpRequestMessage CreateJsonRequest<TRequest>(

@@ -19,9 +19,14 @@ namespace ConduitLLM.Configuration.DTOs.Audio
         public string VirtualKey { get; set; } = string.Empty;
 
         /// <summary>
-        /// Provider type handling the session.
+        /// Provider ID handling the session.
         /// </summary>
-        public ProviderType ProviderType { get; set; }
+        public int ProviderId { get; set; }
+
+        /// <summary>
+        /// Provider name handling the session.
+        /// </summary>
+        public string? ProviderName { get; set; }
 
         /// <summary>
         /// Model being used for the session.

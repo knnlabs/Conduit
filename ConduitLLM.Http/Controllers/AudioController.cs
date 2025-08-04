@@ -24,21 +24,25 @@ namespace ConduitLLM.Http.Controllers
     /// </summary>
     [ApiController]
     [Route("v1/audio")]
-    [Authorize]
+    [Authorize(Policy = "RequireVirtualKey")]
+    [Tags("Audio")]
     public class AudioController : ControllerBase
     {
         private readonly IAudioRouter _audioRouter;
         private readonly ConduitLLM.Configuration.Services.IVirtualKeyService _virtualKeyService;
         private readonly ILogger<AudioController> _logger;
+        private readonly ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService _modelMappingService;
 
         public AudioController(
             IAudioRouter audioRouter,
             ConduitLLM.Configuration.Services.IVirtualKeyService virtualKeyService,
-            ILogger<AudioController> logger)
+            ILogger<AudioController> logger,
+            ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService modelMappingService)
         {
             _audioRouter = audioRouter ?? throw new ArgumentNullException(nameof(audioRouter));
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _modelMappingService = modelMappingService ?? throw new ArgumentNullException(nameof(modelMappingService));
         }
 
         /// <summary>
@@ -101,6 +105,21 @@ namespace ConduitLLM.Http.Controllers
 
             try
             {
+                // Get provider info for usage tracking
+                try
+                {
+                    var modelMapping = await _modelMappingService.GetMappingByModelAliasAsync(model);
+                    if (modelMapping != null)
+                    {
+                        HttpContext.Items["ProviderId"] = modelMapping.ProviderId;
+                        HttpContext.Items["ProviderType"] = modelMapping.Provider?.ProviderType;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to get provider info for model {Model}", model);
+                }
+
                 // Read file into memory
                 byte[] audioData;
                 using (var memoryStream = new MemoryStream())
@@ -236,6 +255,21 @@ namespace ConduitLLM.Http.Controllers
 
             try
             {
+                // Get provider info for usage tracking
+                try
+                {
+                    var modelMapping = await _modelMappingService.GetMappingByModelAliasAsync(request.Model);
+                    if (modelMapping != null)
+                    {
+                        HttpContext.Items["ProviderId"] = modelMapping.ProviderId;
+                        HttpContext.Items["ProviderType"] = modelMapping.Provider?.ProviderType;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to get provider info for model {Model}", request.Model);
+                }
+
                 // Parse response format
                 AudioFormat format = AudioFormat.Mp3;
                 if (!string.IsNullOrEmpty(request.ResponseFormat))

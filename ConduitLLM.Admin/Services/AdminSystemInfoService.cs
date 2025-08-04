@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.Data;
+using ConduitLLM.Configuration.Repositories;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -24,7 +25,7 @@ public class AdminSystemInfoService : IAdminSystemInfoService
     private readonly IConfigurationDbContext _dbContext;
     private readonly ILogger<AdminSystemInfoService> _logger;
     private readonly IAdminProviderHealthService _providerHealthService;
-    private readonly IAdminProviderCredentialService _providerCredentialService;
+    private readonly IProviderRepository _providerRepository;
     private readonly DateTime _startTime;
 
     /// <summary>
@@ -33,17 +34,17 @@ public class AdminSystemInfoService : IAdminSystemInfoService
     /// <param name="dbContext">The configuration database context</param>
     /// <param name="logger">The logger</param>
     /// <param name="providerHealthService">The provider health service</param>
-    /// <param name="providerCredentialService">The provider credential service</param>
+    /// <param name="providerRepository">The provider repository</param>
     public AdminSystemInfoService(
         IConfigurationDbContext dbContext,
         ILogger<AdminSystemInfoService> logger,
         IAdminProviderHealthService providerHealthService,
-        IAdminProviderCredentialService providerCredentialService)
+        IProviderRepository providerRepository)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _providerHealthService = providerHealthService ?? throw new ArgumentNullException(nameof(providerHealthService));
-        _providerCredentialService = providerCredentialService ?? throw new ArgumentNullException(nameof(providerCredentialService));
+        _providerRepository = providerRepository ?? throw new ArgumentNullException(nameof(providerRepository));
         _startTime = Process.GetCurrentProcess().StartTime;
     }
 
@@ -303,7 +304,7 @@ public class AdminSystemInfoService : IAdminSystemInfoService
         try
         {
             // Simple check: just see if we have enabled providers
-            var allProviders = await _providerCredentialService.GetAllProviderCredentialsAsync();
+            var allProviders = await _providerRepository.GetAllAsync();
             var enabledProviders = allProviders.Where(p => p.IsEnabled).ToList();
 
             if (!enabledProviders.Any())
@@ -314,7 +315,7 @@ public class AdminSystemInfoService : IAdminSystemInfoService
             else if (enabledProviders.Count == 1)
             {
                 health.Status = "degraded";
-                health.Description = $"1 provider configured ({enabledProviders[0].ProviderType})";
+                health.Description = "1 provider configured";
             }
             else
             {
@@ -341,7 +342,7 @@ public class AdminSystemInfoService : IAdminSystemInfoService
             counts.VirtualKeys = await _dbContext.VirtualKeys.CountAsync();
             counts.Requests = await _dbContext.RequestLogs.CountAsync();
             counts.Settings = await _dbContext.GlobalSettings.CountAsync();
-            counts.Providers = await _dbContext.ProviderCredentials.CountAsync();
+            counts.Providers = await _dbContext.Providers.CountAsync();
             counts.ModelMappings = await _dbContext.ModelProviderMappings.CountAsync();
         }
         catch (Exception ex)

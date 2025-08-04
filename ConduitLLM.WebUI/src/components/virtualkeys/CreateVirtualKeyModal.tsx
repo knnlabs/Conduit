@@ -14,12 +14,15 @@ import {
   Divider,
   Stack,
   Group,
+  Select,
+  Anchor,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconInfoCircle } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { validators } from '@/lib/utils/form-validators';
 import { notifications } from '@mantine/notifications';
+import type { VirtualKeyGroupDto } from '@knn_labs/conduit-admin-client';
 
 interface CreateVirtualKeyModalProps {
   opened: boolean;
@@ -30,7 +33,7 @@ interface CreateVirtualKeyModalProps {
 interface CreateVirtualKeyForm {
   keyName: string;
   description?: string;
-  maxBudget?: number;
+  virtualKeyGroupId?: number;
   rateLimitPerMinute?: number;
   isEnabled: boolean;
   allowedModels: string[];
@@ -65,12 +68,37 @@ const MODEL_OPTIONS = [
 export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirtualKeyModalProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [groups, setGroups] = useState<VirtualKeyGroupDto[]>([]);
+  const [isLoadingGroups, setIsLoadingGroups] = useState(false);
+
+  // Fetch groups when modal opens
+  useEffect(() => {
+    const fetchGroups = async () => {
+      if (!opened) return;
+      
+      try {
+        setIsLoadingGroups(true);
+        const response = await fetch('/api/virtualkeys/groups');
+        
+        if (response.ok) {
+          const data = await response.json() as VirtualKeyGroupDto[];
+          setGroups(data);
+        }
+      } catch (error) {
+        console.warn('Failed to fetch virtual key groups:', error);
+      } finally {
+        setIsLoadingGroups(false);
+      }
+    };
+    
+    void fetchGroups();
+  }, [opened]);
 
   const form = useForm<CreateVirtualKeyForm>({
     initialValues: {
       keyName: '',
       description: '',
-      maxBudget: undefined,
+      virtualKeyGroupId: undefined,
       rateLimitPerMinute: undefined,
       isEnabled: true,
       allowedModels: ['*'], // Default to all models
@@ -91,7 +119,10 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
         
         return null;
       },
-      maxBudget: validators.positiveNumber('Budget'),
+      virtualKeyGroupId: (value) => {
+        if (!value) return 'Virtual Key Group is required';
+        return null;
+      },
       rateLimitPerMinute: validators.minValue('Rate limit', 1),
       allowedModels: validators.arrayMinLength('model', 1),
       allowedEndpoints: validators.arrayMinLength('endpoint', 1),
@@ -105,7 +136,7 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
       const payload = {
         keyName: values.keyName.trim(),
         description: values.description?.trim() ?? undefined,
-        maxBudget: values.maxBudget ?? undefined,
+        virtualKeyGroupId: values.virtualKeyGroupId ?? undefined,
         rateLimitRpm: values.rateLimitPerMinute ?? undefined,
         allowedModels: values.allowedModels.length > 0 ? values.allowedModels.join(',') : undefined,
         metadata: values.metadata?.trim() ? values.metadata : undefined,
@@ -182,16 +213,32 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
         {...form.getInputProps('isEnabled')}
       />
 
-      <NumberInput
-        label="Maximum Budget"
-        description="Maximum amount this key can spend (in USD)"
-        placeholder="No limit"
-        min={0}
-        step={10}
-        decimalScale={2}
-        prefix="$"
-        {...form.getInputProps('maxBudget')}
-      />
+      {groups.length === 0 && !isLoadingGroups ? (
+        <Alert icon={<IconInfoCircle size={16} />} color="yellow">
+          <Text size="sm">
+            No Virtual Key Groups found.{' '}
+            <Anchor href="/virtualkeys/groups" size="sm">
+              Create a group first
+            </Anchor>{' '}
+            to organize your keys.
+          </Text>
+        </Alert>
+      ) : (
+        <Select
+          label="Virtual Key Group"
+          description="Select the group this key belongs to"
+          placeholder={isLoadingGroups ? "Loading groups..." : "Select a group"}
+          required
+          disabled={isLoadingGroups}
+          data={groups.map(group => ({
+            value: group.id.toString(),
+            label: `${group.groupName} (Balance: $${group.balance.toFixed(2)})`
+          }))}
+          value={form.values.virtualKeyGroupId?.toString() ?? null}
+          onChange={(value) => form.setFieldValue('virtualKeyGroupId', value ? parseInt(value, 10) : undefined)}
+          error={form.errors.virtualKeyGroupId}
+        />
+      )}
 
       <Button
         variant="subtle"
@@ -262,7 +309,11 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
         <Button variant="subtle" onClick={handleClose}>
           Cancel
         </Button>
-        <Button type="submit" loading={isSubmitting}>
+        <Button 
+          type="submit" 
+          loading={isSubmitting}
+          disabled={groups.length === 0 && !isLoadingGroups}
+        >
           Create Key
         </Button>
       </Group>

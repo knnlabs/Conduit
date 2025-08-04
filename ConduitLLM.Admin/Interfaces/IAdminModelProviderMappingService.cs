@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Admin.Interfaces;
 
@@ -14,35 +14,35 @@ public interface IAdminModelProviderMappingService
     /// Gets all model provider mappings
     /// </summary>
     /// <returns>List of all model provider mappings</returns>
-    Task<IEnumerable<ModelProviderMappingDto>> GetAllMappingsAsync();
+    Task<IEnumerable<ModelProviderMapping>> GetAllMappingsAsync();
 
     /// <summary>
     /// Gets a model provider mapping by ID
     /// </summary>
     /// <param name="id">The ID of the mapping to retrieve</param>
     /// <returns>The model provider mapping, or null if not found</returns>
-    Task<ModelProviderMappingDto?> GetMappingByIdAsync(int id);
+    Task<ModelProviderMapping?> GetMappingByIdAsync(int id);
 
     /// <summary>
     /// Gets a model provider mapping by model ID
     /// </summary>
     /// <param name="modelId">The model ID to look up</param>
     /// <returns>The model provider mapping, or null if not found</returns>
-    Task<ModelProviderMappingDto?> GetMappingByModelIdAsync(string modelId);
+    Task<ModelProviderMapping?> GetMappingByModelIdAsync(string modelId);
 
     /// <summary>
     /// Adds a new model provider mapping
     /// </summary>
     /// <param name="mapping">The mapping to add</param>
     /// <returns>True if the operation was successful</returns>
-    Task<bool> AddMappingAsync(ModelProviderMappingDto mapping);
+    Task<bool> AddMappingAsync(ModelProviderMapping mapping);
 
     /// <summary>
     /// Updates an existing model provider mapping
     /// </summary>
     /// <param name="mapping">The mapping to update</param>
     /// <returns>True if the operation was successful</returns>
-    Task<bool> UpdateMappingAsync(ModelProviderMappingDto mapping);
+    Task<bool> UpdateMappingAsync(ModelProviderMapping mapping);
 
     /// <summary>
     /// Deletes a model provider mapping
@@ -54,13 +54,13 @@ public interface IAdminModelProviderMappingService
     /// <summary>
     /// Gets a list of all available providers
     /// </summary>
-    /// <returns>List of provider data with IDs and names</returns>
-    Task<IEnumerable<ProviderDataDto>> GetProvidersAsync();
+    /// <returns>List of providers with IDs and names</returns>
+    Task<IEnumerable<Provider>> GetProvidersAsync();
 
     /// <summary>
     /// Creates multiple model provider mappings in a single operation
     /// </summary>
-    /// <param name="request">The bulk mapping request containing mappings to create</param>
-    /// <returns>The bulk mapping response with results and errors</returns>
-    Task<BulkModelMappingResponse> CreateBulkMappingsAsync(BulkModelMappingRequest request);
+    /// <param name="mappings">The mappings to create</param>
+    /// <returns>A tuple containing successfully created mappings and any errors</returns>
+    Task<(IEnumerable<ModelProviderMapping> created, IEnumerable<string> errors)> CreateBulkMappingsAsync(IEnumerable<ModelProviderMapping> mappings);
 }

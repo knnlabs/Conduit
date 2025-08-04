@@ -21,9 +21,11 @@ namespace ConduitLLM.Configuration.Tests.Repositories
         {
             var options = new DbContextOptionsBuilder<ConfigurationDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+                .ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.CoreEventId.TransactionIgnoredWarning))
                 .Options;
 
             _context = new ConfigurationDbContext(options);
+            _context.IsTestEnvironment = true;
             _mockLogger = new Mock<ILogger<ProviderKeyCredentialRepository>>();
             _repository = new ProviderKeyCredentialRepository(_context, _mockLogger.Object);
         }
@@ -37,7 +39,7 @@ namespace ConduitLLM.Configuration.Tests.Repositories
         public async Task SetPrimaryKeyAsync_WithExistingPrimary_ShouldUpdateCorrectly()
         {
             // Arrange
-            var provider = new ProviderCredential
+            var provider = new Provider
             {
                 Id = 1,
                 ProviderType = ProviderType.OpenAI,
@@ -45,12 +47,12 @@ namespace ConduitLLM.Configuration.Tests.Repositories
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
-            _context.ProviderCredentials.Add(provider);
+            _context.Providers.Add(provider);
 
             var existingPrimaryKey = new ProviderKeyCredential
             {
                 Id = 1,
-                ProviderCredentialId = 1,
+                ProviderId = 1,
                 ApiKey = "key1",
                 IsPrimary = true,
                 IsEnabled = true,
@@ -60,7 +62,7 @@ namespace ConduitLLM.Configuration.Tests.Repositories
             var newKey = new ProviderKeyCredential
             {
                 Id = 2,
-                ProviderCredentialId = 1,
+                ProviderId = 1,
                 ApiKey = "key2",
                 IsPrimary = false,
                 IsEnabled = true,
@@ -78,7 +80,7 @@ namespace ConduitLLM.Configuration.Tests.Repositories
             Assert.True(result);
             
             var keys = await _context.ProviderKeyCredentials
-                .Where(k => k.ProviderCredentialId == 1)
+                .Where(k => k.ProviderId == 1)
                 .ToListAsync();
             
             Assert.Equal(2, keys.Count);
@@ -90,7 +92,7 @@ namespace ConduitLLM.Configuration.Tests.Repositories
         public async Task SetPrimaryKeyAsync_WithNoPrimary_ShouldSetPrimary()
         {
             // Arrange
-            var provider = new ProviderCredential
+            var provider = new Provider
             {
                 Id = 1,
                 ProviderType = ProviderType.Anthropic,
@@ -98,12 +100,12 @@ namespace ConduitLLM.Configuration.Tests.Repositories
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
-            _context.ProviderCredentials.Add(provider);
+            _context.Providers.Add(provider);
 
             var key = new ProviderKeyCredential
             {
                 Id = 1,
-                ProviderCredentialId = 1,
+                ProviderId = 1,
                 ApiKey = "key1",
                 IsPrimary = false,
                 IsEnabled = true,
@@ -128,7 +130,7 @@ namespace ConduitLLM.Configuration.Tests.Repositories
         public async Task SetPrimaryKeyAsync_WithNonExistentKey_ShouldReturnFalse()
         {
             // Arrange
-            var provider = new ProviderCredential
+            var provider = new Provider
             {
                 Id = 1,
                 ProviderType = ProviderType.Gemini,
@@ -136,7 +138,7 @@ namespace ConduitLLM.Configuration.Tests.Repositories
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
-            _context.ProviderCredentials.Add(provider);
+            _context.Providers.Add(provider);
             await _context.SaveChangesAsync();
 
             // Act
@@ -150,7 +152,7 @@ namespace ConduitLLM.Configuration.Tests.Repositories
         public async Task SetPrimaryKeyAsync_WithWrongProvider_ShouldReturnFalse()
         {
             // Arrange
-            var provider1 = new ProviderCredential
+            var provider1 = new Provider
             {
                 Id = 1,
                 ProviderType = ProviderType.OpenAI,
@@ -158,7 +160,7 @@ namespace ConduitLLM.Configuration.Tests.Repositories
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
-            var provider2 = new ProviderCredential
+            var provider2 = new Provider
             {
                 Id = 2,
                 ProviderType = ProviderType.Anthropic,
@@ -166,12 +168,12 @@ namespace ConduitLLM.Configuration.Tests.Repositories
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
-            _context.ProviderCredentials.AddRange(provider1, provider2);
+            _context.Providers.AddRange(provider1, provider2);
 
             var key = new ProviderKeyCredential
             {
                 Id = 1,
-                ProviderCredentialId = 2, // Belongs to provider 2
+                ProviderId = 2, // Belongs to provider 2
                 ApiKey = "key1",
                 IsPrimary = false,
                 IsEnabled = true,
@@ -193,7 +195,7 @@ namespace ConduitLLM.Configuration.Tests.Repositories
         public async Task SetPrimaryKeyAsync_WithMultiplePrimaryKeys_ShouldFixDataCorruption()
         {
             // Arrange - simulate data corruption with multiple primary keys
-            var provider = new ProviderCredential
+            var provider = new Provider
             {
                 Id = 1,
                 ProviderType = ProviderType.MiniMax,
@@ -201,13 +203,13 @@ namespace ConduitLLM.Configuration.Tests.Repositories
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
-            _context.ProviderCredentials.Add(provider);
+            _context.Providers.Add(provider);
 
             // Directly insert corrupted data bypassing constraints
             var key1 = new ProviderKeyCredential
             {
                 Id = 1,
-                ProviderCredentialId = 1,
+                ProviderId = 1,
                 ApiKey = "key1",
                 IsPrimary = true,
                 IsEnabled = true,
@@ -217,7 +219,7 @@ namespace ConduitLLM.Configuration.Tests.Repositories
             var key2 = new ProviderKeyCredential
             {
                 Id = 2,
-                ProviderCredentialId = 1,
+                ProviderId = 1,
                 ApiKey = "key2",
                 IsPrimary = true, // Corrupted - also primary
                 IsEnabled = true,
@@ -227,7 +229,7 @@ namespace ConduitLLM.Configuration.Tests.Repositories
             var key3 = new ProviderKeyCredential
             {
                 Id = 3,
-                ProviderCredentialId = 1,
+                ProviderId = 1,
                 ApiKey = "key3",
                 IsPrimary = false,
                 IsEnabled = true,
@@ -249,7 +251,7 @@ namespace ConduitLLM.Configuration.Tests.Repositories
             Assert.True(result);
             
             var keys = await _context.ProviderKeyCredentials
-                .Where(k => k.ProviderCredentialId == 1)
+                .Where(k => k.ProviderId == 1)
                 .ToListAsync();
             
             Assert.Equal(3, keys.Count);
@@ -262,7 +264,7 @@ namespace ConduitLLM.Configuration.Tests.Repositories
         public async Task SetPrimaryKeyAsync_WithTransactionFailure_ShouldRollback()
         {
             // Arrange
-            var provider = new ProviderCredential
+            var provider = new Provider
             {
                 Id = 1,
                 ProviderType = ProviderType.Groq,
@@ -270,12 +272,12 @@ namespace ConduitLLM.Configuration.Tests.Repositories
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
-            _context.ProviderCredentials.Add(provider);
+            _context.Providers.Add(provider);
 
             var existingPrimaryKey = new ProviderKeyCredential
             {
                 Id = 1,
-                ProviderCredentialId = 1,
+                ProviderId = 1,
                 ApiKey = "key1",
                 IsPrimary = true,
                 IsEnabled = true,
@@ -317,7 +319,7 @@ namespace ConduitLLM.Configuration.Tests.Repositories
         public async Task SetPrimaryKeyAsync_ShouldUpdateTimestamps()
         {
             // Arrange
-            var provider = new ProviderCredential
+            var provider = new Provider
             {
                 Id = 1,
                 ProviderType = ProviderType.Ollama,
@@ -325,13 +327,13 @@ namespace ConduitLLM.Configuration.Tests.Repositories
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
-            _context.ProviderCredentials.Add(provider);
+            _context.Providers.Add(provider);
 
             var originalTime = DateTime.UtcNow.AddDays(-1);
             var key = new ProviderKeyCredential
             {
                 Id = 1,
-                ProviderCredentialId = 1,
+                ProviderId = 1,
                 ApiKey = "key1",
                 IsPrimary = false,
                 IsEnabled = true,

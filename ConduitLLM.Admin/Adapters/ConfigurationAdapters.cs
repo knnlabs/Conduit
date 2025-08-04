@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces.Configuration;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -23,7 +24,7 @@ namespace ConduitLLM.Admin.Adapters
                 new ModelProviderMappingServiceAdapter(provider.GetRequiredService<ConduitLLM.Configuration.IModelProviderMappingService>()));
 
             services.AddScoped<Core.Interfaces.Configuration.IProviderCredentialService>(provider =>
-                new ProviderCredentialServiceAdapter(provider.GetRequiredService<ConduitLLM.Configuration.IProviderCredentialService>()));
+                new ProviderServiceAdapter(provider.GetRequiredService<ConduitLLM.Configuration.IProviderService>()));
 
             services.AddScoped<IModelCostService>(provider =>
                 new ModelCostServiceAdapter(provider.GetRequiredService<ConduitLLM.Configuration.Services.IModelCostService>()));
@@ -46,77 +47,34 @@ namespace ConduitLLM.Admin.Adapters
                 _innerService = innerService;
             }
 
-            public async Task<List<Core.Interfaces.Configuration.ModelProviderMapping>> GetAllMappingsAsync()
+            public async Task<List<ConduitLLM.Configuration.Entities.ModelProviderMapping>> GetAllMappingsAsync()
             {
-                var mappings = await _innerService.GetAllMappingsAsync();
-                return mappings.Select(m => new Core.Interfaces.Configuration.ModelProviderMapping
-                {
-                    ModelAlias = m.ModelAlias,
-                    ProviderId = m.ProviderId,
-                    ProviderModelId = m.ProviderModelId,
-                    DeploymentName = m.DeploymentName,
-                    IsEnabled = true, // Default
-                    MaxContextTokens = null // Default
-                }).ToList();
+                return await _innerService.GetAllMappingsAsync();
             }
 
-            public async Task<Core.Interfaces.Configuration.ModelProviderMapping?> GetMappingByModelAliasAsync(string modelAlias)
+            public async Task<ConduitLLM.Configuration.Entities.ModelProviderMapping?> GetMappingByModelAliasAsync(string modelAlias)
             {
-                var mapping = await _innerService.GetMappingByModelAliasAsync(modelAlias);
-                if (mapping == null) return null;
-
-                return new Core.Interfaces.Configuration.ModelProviderMapping
-                {
-                    ModelAlias = mapping.ModelAlias,
-                    ProviderId = mapping.ProviderId,
-                    ProviderModelId = mapping.ProviderModelId,
-                    DeploymentName = mapping.DeploymentName,
-                    IsEnabled = true, // Default
-                    MaxContextTokens = null // Default
-                };
+                return await _innerService.GetMappingByModelAliasAsync(modelAlias);
             }
         }
 
         /// <summary>
-        /// Adapter that wraps Configuration's IProviderCredentialService to implement Core's interface.
+        /// Adapter that wraps Configuration's IProviderService to implement Core's interface.
         /// </summary>
-        private class ProviderCredentialServiceAdapter : Core.Interfaces.Configuration.IProviderCredentialService
+        private class ProviderServiceAdapter : Core.Interfaces.Configuration.IProviderCredentialService
         {
-            private readonly ConduitLLM.Configuration.IProviderCredentialService _innerService;
+            private readonly ConduitLLM.Configuration.IProviderService _innerService;
 
-            public ProviderCredentialServiceAdapter(ConduitLLM.Configuration.IProviderCredentialService innerService)
+            public ProviderServiceAdapter(ConduitLLM.Configuration.IProviderService innerService)
             {
                 _innerService = innerService;
             }
 
             
-            public async Task<Core.Interfaces.Configuration.ProviderCredentials?> GetCredentialByIdAsync(int providerId)
+            public async Task<Provider?> GetCredentialByIdAsync(int providerId)
             {
-                var credential = await _innerService.GetCredentialByIdAsync(providerId);
-                if (credential == null) return null;
-
-                // Get the primary key or first enabled key
-                string? effectiveApiKey = null;
-                string? effectiveBaseUrl = credential.BaseUrl;
-                
-                if (credential.ProviderKeyCredentials?.Any() == true)
-                {
-                    var primaryKey = credential.ProviderKeyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled) ??
-                                    credential.ProviderKeyCredentials.FirstOrDefault(k => k.IsEnabled);
-                    if (primaryKey != null)
-                    {
-                        effectiveApiKey = primaryKey.ApiKey;
-                        effectiveBaseUrl = primaryKey.BaseUrl ?? credential.BaseUrl;
-                    }
-                }
-
-                return new Core.Interfaces.Configuration.ProviderCredentials
-                {
-                    ProviderId = credential.Id,
-                    ApiKey = effectiveApiKey,
-                    BaseUrl = effectiveBaseUrl,
-                    IsEnabled = credential.IsEnabled
-                };
+                // Use GetProviderByIdAsync since that's what the Configuration service has
+                return await _innerService.GetProviderByIdAsync(providerId);
             }
         }
 
@@ -167,7 +125,7 @@ namespace ConduitLLM.Admin.Adapters
 
                 return new ModelCostInfo
                 {
-                    ModelIdPattern = modelCost.ModelIdPattern,
+                    ModelIdPattern = modelCost.CostName, // Using CostName as the identifier
                     InputTokenCost = modelCost.InputTokenCost,
                     OutputTokenCost = modelCost.OutputTokenCost,
                     EmbeddingTokenCost = modelCost.EmbeddingTokenCost,
@@ -176,7 +134,12 @@ namespace ConduitLLM.Admin.Adapters
                     VideoResolutionMultipliers = videoResolutionMultipliers,
                     BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
                     SupportsBatchProcessing = modelCost.SupportsBatchProcessing,
-                    ImageQualityMultipliers = imageQualityMultipliers
+                    ImageQualityMultipliers = imageQualityMultipliers,
+                    CachedInputTokenCost = modelCost.CachedInputTokenCost,
+                    CachedInputWriteCost = modelCost.CachedInputWriteCost,
+                    CostPerSearchUnit = modelCost.CostPerSearchUnit,
+                    CostPerInferenceStep = modelCost.CostPerInferenceStep,
+                    DefaultInferenceSteps = modelCost.DefaultInferenceSteps
                 };
             }
         }

@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ConduitLLM.Configuration.Entities
 {
@@ -34,9 +35,15 @@ namespace ConduitLLM.Configuration.Entities
         public int Id { get; set; }
 
         /// <summary>
-        /// The provider type that was checked.
+        /// The ID of the provider that was checked.
         /// </summary>
-        public ProviderType ProviderType { get; set; }
+        public int ProviderId { get; set; }
+
+        /// <summary>
+        /// Navigation property to the provider.
+        /// </summary>
+        [ForeignKey("ProviderId")]
+        public virtual Provider Provider { get; set; } = null!;
 
         /// <summary>
         /// The status of the provider.

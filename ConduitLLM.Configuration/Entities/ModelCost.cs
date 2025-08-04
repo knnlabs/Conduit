@@ -5,13 +5,14 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace ConduitLLM.Configuration.Entities;
 
 /// <summary>
-/// Represents cost configuration for a specific model or model pattern in the system.
+/// Represents cost configuration that can be applied to multiple models in the system.
 /// This entity stores pricing information for different operations (input/output tokens, embeddings, images).
 /// </summary>
 /// <remarks>
-/// ModelCost entities are used for cost calculation and budget tracking, with support for wildcard patterns
-/// to match model names. The pricing information is used to calculate costs for each request processed
-/// through the system, enabling detailed cost reporting and budget management.
+/// ModelCost entities are linked to specific ModelProviderMapping records through the ModelCostMappings collection.
+/// This allows one cost configuration to be applied to multiple models (e.g., same cost for Llama across different providers).
+/// The pricing information is used to calculate costs for each request processed through the system,
+/// enabling detailed cost reporting and budget management.
 /// </remarks>
 public class ModelCost
 {
@@ -22,16 +23,15 @@ public class ModelCost
     public int Id { get; set; }
 
     /// <summary>
-    /// Gets or sets the model identification pattern, which can include wildcards.
+    /// Gets or sets a user-friendly name for this cost configuration.
     /// </summary>
     /// <remarks>
-    /// Examples: "openai/gpt-4o", "anthropic.claude-3*", "*-embedding-*"
-    /// The pattern is used to match against model names for cost calculation,
-    /// with support for * wildcard to match multiple models with similar names.
+    /// Examples: "GPT-4 Standard Pricing", "Llama 3 Unified Cost", "Embedding Models - Ada"
+    /// This helps administrators identify and manage different cost configurations.
     /// </remarks>
     [Required]
     [MaxLength(255)]
-    public string ModelIdPattern { get; set; } = string.Empty;
+    public string CostName { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the cost per input token for chat/completion requests.
@@ -92,16 +92,57 @@ public class ModelCost
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
-    /// Optional description for this model cost entry (for backward compatibility)
+    /// Gets or sets the model type for categorization.
     /// </summary>
-    [NotMapped]
+    /// <remarks>
+    /// Indicates the type of operations this model cost applies to.
+    /// Used for filtering and organizing costs in the UI.
+    /// </remarks>
+    [Required]
+    [MaxLength(50)]
+    public string ModelType { get; set; } = "chat";
+
+    /// <summary>
+    /// Gets or sets whether this cost configuration is active.
+    /// </summary>
+    /// <remarks>
+    /// When false, this cost configuration is ignored during cost calculations.
+    /// Allows disabling costs without deleting the configuration.
+    /// </remarks>
+    public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the effective date for this pricing.
+    /// </summary>
+    /// <remarks>
+    /// The date from which this pricing becomes active.
+    /// Used for historical cost tracking and future price changes.
+    /// </remarks>
+    public DateTime EffectiveDate { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Gets or sets the expiry date for this pricing.
+    /// </summary>
+    /// <remarks>
+    /// Optional date when this pricing expires.
+    /// Null means the pricing has no expiration date.
+    /// </remarks>
+    public DateTime? ExpiryDate { get; set; }
+
+    /// <summary>
+    /// Optional description for this model cost entry
+    /// </summary>
+    [MaxLength(500)]
     public string? Description { get; set; }
 
     /// <summary>
-    /// Optional priority value for this model cost entry (for backward compatibility)
+    /// Priority value for this model cost entry
     /// </summary>
-    [NotMapped]
-    public int Priority { get; set; }
+    /// <remarks>
+    /// Higher priority patterns are evaluated first when matching model names.
+    /// Default is 0. Use higher values for more specific patterns.
+    /// </remarks>
+    public int Priority { get; set; } = 0;
 
     /// <summary>
     /// Gets or sets the cost per minute for audio transcription (speech-to-text), if applicable.
@@ -273,4 +314,13 @@ public class ModelCost
     /// Nullable because not all models use step-based generation or have configurable steps.
     /// </remarks>
     public int? DefaultInferenceSteps { get; set; }
+
+    /// <summary>
+    /// Gets or sets the collection of model mappings that use this cost configuration.
+    /// </summary>
+    /// <remarks>
+    /// This navigation property represents the many-to-many relationship between ModelCost and ModelProviderMapping.
+    /// Through this collection, one cost configuration can be applied to multiple models across different providers.
+    /// </remarks>
+    public virtual ICollection<ModelCostMapping> ModelCostMappings { get; set; } = new List<ModelCostMapping>();
 }

@@ -101,5 +101,29 @@ namespace ConduitLLM.Core.Extensions
 
             return services;
         }
+
+        /// <summary>
+        /// Adds the ConduitLLM Batch Cache Invalidation services to the service collection.
+        /// </summary>
+        /// <param name="services">The service collection to add services to.</param>
+        /// <param name="configuration">The configuration instance.</param>
+        /// <returns>The service collection for chaining.</returns>
+        public static IServiceCollection AddBatchCacheInvalidation(
+            this IServiceCollection services, 
+            IConfiguration configuration)
+        {
+            // Register configuration options
+            services.Configure<BatchInvalidationOptions>(
+                configuration.GetSection("CacheInvalidation"));
+            
+            // Register batch service as singleton and hosted service
+            services.AddSingleton<BatchCacheInvalidationService>();
+            services.AddSingleton<IBatchCacheInvalidationService>(provider => 
+                provider.GetRequiredService<BatchCacheInvalidationService>());
+            services.AddHostedService(provider => 
+                provider.GetRequiredService<BatchCacheInvalidationService>());
+            
+            return services;
+        }
     }
 }

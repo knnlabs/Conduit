@@ -90,21 +90,23 @@ namespace ConduitLLM.Http.Consumers
             
             try
             {
+                // TODO: Look up provider name from repository using ProviderId
                 await _notificationService.NotifyProviderHealthChangedAsync(
-                    @event.ProviderType.ToString(),
+                    @event.ProviderId,
+                    $"Provider {@event.ProviderId}", // Temporary - should look up actual name
                     @event.IsHealthy,
                     @event.Status);
                 
                 _logger.LogInformation(
-                    "Pushed real-time update for provider health change: {ProviderName} (Healthy: {IsHealthy})",
-                    @event.ProviderType.ToString(),
+                    "Pushed real-time update for provider health change: {ProviderId} (Healthy: {IsHealthy})",
+                    @event.ProviderId,
                     @event.IsHealthy);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, 
-                    "Failed to push real-time update for provider health change: {ProviderName}", 
-                    @event.ProviderType.ToString());
+                    "Failed to push real-time update for provider health change: {ProviderId}", 
+                    @event.ProviderId);
                 throw; // Re-throw to trigger MassTransit retry logic
             }
         }
@@ -147,8 +149,10 @@ namespace ConduitLLM.Http.Consumers
                 var imageGenCount = @event.ModelCapabilities.Values.Count(c => c.SupportsImageGeneration);
                 var videoGenCount = @event.ModelCapabilities.Values.Count(c => c.SupportsVideoGeneration);
 
+                // TODO: Look up provider name from repository using ProviderId
                 await _notificationService.NotifyModelCapabilitiesDiscoveredAsync(
-                    @event.ProviderType.ToString(),
+                    @event.ProviderId,
+                    $"Provider {@event.ProviderId}", // Temporary - should look up actual name
                     @event.ModelCapabilities.Count,
                     embeddingCount,
                     visionCount,
@@ -156,8 +160,8 @@ namespace ConduitLLM.Http.Consumers
                     videoGenCount);
                 
                 _logger.LogInformation(
-                    "Pushed real-time update for model capabilities discovered: {ProviderName} ({ModelCount} models, {EmbeddingCount} embeddings, {VisionCount} vision, {ImageGenCount} image gen, {VideoGenCount} video gen)",
-                    @event.ProviderType.ToString(),
+                    "Pushed real-time update for model capabilities discovered: {ProviderId} ({ModelCount} models, {EmbeddingCount} embeddings, {VisionCount} vision, {ImageGenCount} image gen, {VideoGenCount} video gen)",
+                    @event.ProviderId,
                     @event.ModelCapabilities.Count,
                     embeddingCount,
                     visionCount,
@@ -167,8 +171,8 @@ namespace ConduitLLM.Http.Consumers
             catch (Exception ex)
             {
                 _logger.LogError(ex, 
-                    "Failed to push real-time update for model capabilities discovered: {ProviderName}", 
-                    @event.ProviderType.ToString());
+                    "Failed to push real-time update for model capabilities discovered: {ProviderId}", 
+                    @event.ProviderId);
                 throw; // Re-throw to trigger MassTransit retry logic
             }
         }

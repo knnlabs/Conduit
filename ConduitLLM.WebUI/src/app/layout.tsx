@@ -4,6 +4,7 @@ import { ClerkProvider } from '@clerk/nextjs';
 import { MantineProvider } from '@/lib/providers/MantineProvider';
 import { QueryProvider } from '@/lib/providers/QueryProvider';
 import { ThemeProvider } from '@/contexts/ThemeContext';
+import { AuthProvider } from '@/contexts/AuthContext';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
 import { ErrorHandlerInitializer } from '@/components/error/ErrorHandlerInitializer';
 import { EnvironmentValidator } from '@/components/core/EnvironmentValidator';
@@ -28,27 +29,34 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Server-side check - secure and not accessible to client
+  const isAuthDisabled = process.env.DISABLE_CLERK_AUTH === 'true' && process.env.NODE_ENV === 'development';
+  
+  const content = (
+    <AuthProvider isAuthDisabled={isAuthDisabled}>
+      <QueryProvider>
+        <ThemeProvider>
+          <MantineProvider>
+            <ErrorBoundary>
+              <ErrorHandlerInitializer />
+              <EnvironmentValidator />
+              <ConditionalLayout>
+                {children}
+              </ConditionalLayout>
+            </ErrorBoundary>
+          </MantineProvider>
+        </ThemeProvider>
+      </QueryProvider>
+    </AuthProvider>
+  );
+
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <ColorSchemeScript defaultColorScheme="auto" />
       </head>
-      <body>
-        <ClerkProvider>
-          <QueryProvider>
-            <ThemeProvider>
-              <MantineProvider>
-                <ErrorBoundary>
-                  <ErrorHandlerInitializer />
-                  <EnvironmentValidator />
-                  <ConditionalLayout>
-                    {children}
-                  </ConditionalLayout>
-                </ErrorBoundary>
-              </MantineProvider>
-            </ThemeProvider>
-          </QueryProvider>
-        </ClerkProvider>
+      <body suppressHydrationWarning>
+        {isAuthDisabled ? content : <ClerkProvider>{content}</ClerkProvider>}
       </body>
     </html>
   );

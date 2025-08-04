@@ -37,9 +37,9 @@ namespace ConduitLLM.Http.Consumers
             var @event = context.Message;
 
             _logger.LogInformation(
-                "ModelCostChanged event received - ModelCostId: {ModelCostId}, ModelIdPattern: {ModelIdPattern}, ChangeType: {ChangeType}",
+                "ModelCostChanged event received - ModelCostId: {ModelCostId}, CostName: {CostName}, ChangeType: {ChangeType}",
                 @event.ModelCostId,
-                @event.ModelIdPattern,
+                @event.CostName,
                 @event.ChangeType);
 
             if (@event.ChangedProperties?.Length > 0)
@@ -56,8 +56,8 @@ namespace ConduitLLM.Http.Consumers
                  @event.ChangedProperties?.Contains("Cost") == true))
             {
                 _logger.LogWarning(
-                    "Model pricing changed for pattern {ModelIdPattern}. This will affect cost calculations for new requests.",
-                    @event.ModelIdPattern);
+                    "Model pricing changed for cost '{CostName}'. This will affect cost calculations for new requests.",
+                    @event.CostName);
             }
 
             // Invalidate cache if available

@@ -21,7 +21,7 @@ namespace ConduitLLM.Http.Controllers
     [Authorize]
     public class DiscoveryController : ControllerBase
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly IModelCapabilityService _modelCapabilityService;
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly ILogger<DiscoveryController> _logger;
@@ -30,7 +30,7 @@ namespace ConduitLLM.Http.Controllers
         /// Initializes a new instance of the <see cref="DiscoveryController"/> class.
         /// </summary>
         public DiscoveryController(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             IModelCapabilityService modelCapabilityService,
             IVirtualKeyService virtualKeyService,
             ILogger<DiscoveryController> logger)
@@ -69,8 +69,8 @@ namespace ConduitLLM.Http.Controllers
                 
                 // Get all enabled model mappings with their providers
                 var modelMappings = await context.ModelProviderMappings
-                    .Include(m => m.ProviderCredential)
-                    .Where(m => m.IsEnabled && m.ProviderCredential != null && m.ProviderCredential.IsEnabled)
+                    .Include(m => m.Provider)
+                    .Where(m => m.IsEnabled && m.Provider != null && m.Provider.IsEnabled)
                     .ToListAsync();
 
                 var models = new List<object>();
@@ -179,7 +179,7 @@ namespace ConduitLLM.Http.Controllers
                     models.Add(new
                     {
                         id = mapping.ModelAlias,
-                        provider = mapping.ProviderCredential?.ProviderType.ToString().ToLowerInvariant(),
+                        provider = mapping.Provider?.ProviderType.ToString().ToLowerInvariant(),
                         display_name = mapping.ModelAlias,
                         capabilities = capabilities
                     });

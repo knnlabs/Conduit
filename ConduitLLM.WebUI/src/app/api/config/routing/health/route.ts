@@ -7,19 +7,12 @@ export async function GET() {
   try {
     const adminClient = getServerAdminClient();
     
+    // Load balancer health endpoint no longer exists, use provider health check instead
     try {
-      // Try to fetch load balancer health from SDK
-      const health = await adminClient.configuration.getLoadBalancerHealth();
-      return NextResponse.json(health);
-    } catch (error) {
-      console.warn('Failed to fetch load balancer health:', error);
-      
-      // Fallback to provider health check
-      try {
-        const response = await adminClient.providers.list();
+      const response = await adminClient.providers.list();
         
         // Handle paginated response or array
-        let providers;
+        let providers: unknown[];
         if (Array.isArray(response)) {
           providers = response;
         } else if ('items' in response && Array.isArray(response.items)) {
@@ -61,17 +54,16 @@ export async function GET() {
         };
         
         return NextResponse.json(health);
-      } catch (fallbackError) {
-        console.warn('Failed to fetch providers for health check:', fallbackError);
-        
-        // Return minimal health response
-        return NextResponse.json({
-          status: 'unknown',
-          lastCheck: new Date().toISOString(),
-          nodes: [],
-          distribution: {}
-        });
-      }
+    } catch (fallbackError) {
+      console.warn('Failed to fetch providers for health check:', fallbackError);
+      
+      // Return minimal health response
+      return NextResponse.json({
+        status: 'unknown',
+        lastCheck: new Date().toISOString(),
+        nodes: [],
+        distribution: {}
+      });
     }
   } catch (error) {
     console.error('Error fetching load balancer health:', error);

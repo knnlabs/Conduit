@@ -15,7 +15,7 @@ namespace ConduitLLM.Http.Services
         /// <summary>
         /// Refreshes provider credentials from the database
         /// </summary>
-        Task RefreshProviderCredentialsAsync();
+        Task RefreshProvidersAsync();
 
         /// <summary>
         /// Refreshes all settings from the database

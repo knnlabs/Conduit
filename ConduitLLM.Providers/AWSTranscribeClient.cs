@@ -16,7 +16,8 @@ using Amazon.TranscribeService;
 using Amazon.TranscribeService.Model;
 
 using ConduitLLM.Configuration;
-using ConduitLLM.Providers.InternalModels;
+using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Providers.Common.Models;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -44,52 +45,36 @@ namespace ConduitLLM.Providers
         /// <param name="httpClientFactory">Optional HTTP client factory.</param>
         /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public AWSTranscribeClient(
-            ProviderCredentials credentials,
+            Provider provider,
+            ProviderKeyCredential keyCredential,
             string providerModelId,
             ILogger<AWSTranscribeClient> logger,
             IHttpClientFactory? httpClientFactory = null,
             ProviderDefaultModels? defaultModels = null)
             : base(
-                EnsureAWSCredentials(credentials),
+                provider,
+                keyCredential,
                 providerModelId,
                 logger,
                 httpClientFactory,
                 "aws",
                 defaultModels)
         {
-            // Extract region from credentials.BaseUrl or use default
-            _region = string.IsNullOrWhiteSpace(credentials.BaseUrl) ? "us-east-1" : credentials.BaseUrl;
+            // Extract region from provider.BaseUrl or use default
+            _region = string.IsNullOrWhiteSpace(provider.BaseUrl) ? "us-east-1" : provider.BaseUrl;
             
             // Initialize AWS clients
             // For now, we'll use environment variables for AWS credentials
             // In production, use IAM roles or proper credential management
             var secretKey = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY") ?? "dummy-secret-key";
             var awsCredentials = new Amazon.Runtime.BasicAWSCredentials(
-                credentials.ApiKey!,
+                keyCredential.ApiKey!,
                 secretKey);
             
             var regionEndpoint = RegionEndpoint.GetBySystemName(_region);
             
             _transcribeClient = new AmazonTranscribeServiceClient(awsCredentials, regionEndpoint);
             _pollyClient = new AmazonPollyClient(awsCredentials, regionEndpoint);
-        }
-
-        private static ProviderCredentials EnsureAWSCredentials(ProviderCredentials credentials)
-        {
-            if (credentials == null)
-            {
-                throw new ArgumentNullException(nameof(credentials));
-            }
-
-            if (string.IsNullOrWhiteSpace(credentials.ApiKey))
-            {
-                throw new ConfigurationException("AWS Access Key ID is required");
-            }
-
-            // AWS Secret Key should be provided via environment variables or IAM role
-            // The ApiKey field contains the Access Key ID
-
-            return credentials;
         }
 
         /// <inheritdoc />

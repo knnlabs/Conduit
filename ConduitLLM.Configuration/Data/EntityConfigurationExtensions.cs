@@ -20,11 +20,11 @@ namespace ConduitLLM.Configuration.Data
             modelBuilder.Entity<ConduitLLM.Configuration.Entities.ModelProviderMapping>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.HasIndex(e => new { e.ModelAlias, e.ProviderCredentialId }).IsUnique();
+                entity.HasIndex(e => new { e.ModelAlias, e.ProviderId }).IsUnique();
             });
 
-            // Configure ProviderCredential entity
-            modelBuilder.Entity<ConduitLLM.Configuration.Entities.ProviderCredential>(entity =>
+            // Configure Provider entity
+            modelBuilder.Entity<ConduitLLM.Configuration.Entities.Provider>(entity =>
             {
                 entity.HasKey(e => e.Id);
                 entity.HasIndex(e => e.ProviderType); // Removed .IsUnique() to allow multiple providers of same type
@@ -36,23 +36,23 @@ namespace ConduitLLM.Configuration.Data
                 entity.HasKey(e => e.Id);
                 
                 // Foreign key relationship
-                entity.HasOne(e => e.ProviderCredential)
+                entity.HasOne(e => e.Provider)
                     .WithMany(e => e.ProviderKeyCredentials)
-                    .HasForeignKey(e => e.ProviderCredentialId)
+                    .HasForeignKey(e => e.ProviderId)
                     .OnDelete(DeleteBehavior.Cascade);
                 
                 // Index for performance
-                entity.HasIndex(e => e.ProviderCredentialId)
-                    .HasDatabaseName("IX_ProviderKeyCredential_ProviderCredentialId");
+                entity.HasIndex(e => e.ProviderId)
+                    .HasDatabaseName("IX_ProviderKeyCredential_ProviderId");
                 
                 // Unique constraint: Only one primary key per provider
-                entity.HasIndex(e => new { e.ProviderCredentialId, e.IsPrimary })
+                entity.HasIndex(e => new { e.ProviderId, e.IsPrimary })
                     .IsUnique()
                     .HasFilter("\"IsPrimary\" = true")
                     .HasDatabaseName("IX_ProviderKeyCredential_OnePrimaryPerProvider");
                 
                 // Unique constraint: Prevent duplicate API keys for the same provider
-                entity.HasIndex(e => new { e.ProviderCredentialId, e.ApiKey })
+                entity.HasIndex(e => new { e.ProviderId, e.ApiKey })
                     .IsUnique()
                     .HasDatabaseName("IX_ProviderKeyCredential_UniqueApiKeyPerProvider")
                     .HasFilter("\"ApiKey\" IS NOT NULL");
@@ -90,7 +90,7 @@ namespace ConduitLLM.Configuration.Data
             modelBuilder.Entity<ProviderHealthRecord>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.HasIndex(e => new { e.ProviderType, e.TimestampUtc });
+                entity.HasIndex(e => new { e.ProviderId, e.TimestampUtc });
                 entity.HasIndex(e => e.IsOnline);
                 entity.Property(e => e.StatusMessage).HasMaxLength(500);
                 entity.Property(e => e.ErrorCategory).HasMaxLength(50);
@@ -102,7 +102,7 @@ namespace ConduitLLM.Configuration.Data
             modelBuilder.Entity<ProviderHealthConfiguration>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.HasIndex(e => e.ProviderType).IsUnique();
+                entity.HasIndex(e => e.ProviderId).IsUnique();
                 entity.Property(e => e.CustomEndpointUrl).HasMaxLength(1000);
             });
         }

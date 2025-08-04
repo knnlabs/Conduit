@@ -60,7 +60,38 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No valid rules found in file' }, { status: 400 });
     }
     
-    const result = await client.ipFilters.import(rules);
+    // Import endpoint no longer exists in the API
+    // Create filters individually
+    const results = {
+      success: true,
+      imported: 0,
+      failed: 0,
+      errors: [] as string[]
+    };
+    
+    for (const rule of rules) {
+      // Map the parsed rule format to SDK format
+      const ipAddress = 'ipAddress' in rule ? String(rule.ipAddress) : '';
+      const filterType = 'rule' in rule && rule.rule === 'allow' ? 'whitelist' : 'blacklist';
+      const description = 'description' in rule ? String(rule.description ?? '') : '';
+      
+      try {
+        await client.ipFilters.create({
+          name: `Imported ${ipAddress}`,
+          ipAddressOrCidr: ipAddress,
+          filterType,
+          isEnabled: true,
+          description: description
+        });
+        results.imported++;
+      } catch (error) {
+        results.failed++;
+        results.errors.push(`Failed to import ${ipAddress}: ${String(error)}`);
+      }
+    }
+    
+    results.success = results.failed === 0;
+    const result = results;
     
     return NextResponse.json({
       imported: result.imported,

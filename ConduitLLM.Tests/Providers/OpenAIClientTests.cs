@@ -8,20 +8,20 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Providers;
-using ConduitLLM.Providers.InternalModels;
+using ConduitLLM.Providers.Providers.OpenAI;
+using ConduitLLM.Providers.Providers.OpenAI.Models;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
 using Xunit;
 using Xunit.Abstractions;
 using ConduitLLM.Tests.TestHelpers;
-using OpenAIModels = ConduitLLM.Providers.InternalModels.OpenAIModels;
-using AzureOpenAIModels = ConduitLLM.Providers.AzureOpenAIModels;
 
 namespace ConduitLLM.Tests.Providers
 {
@@ -55,17 +55,26 @@ namespace ConduitLLM.Tests.Providers
         public void Constructor_WithValidOpenAICredentials_InitializesCorrectly()
         {
             // Arrange
-            var credentials = new ProviderCredentials
+            var provider = new Provider
             {
-                ApiKey = "test-api-key",
+                Id = 1,
                 ProviderType = ProviderType.OpenAI
             };
+            
+            var keyCredential = new ProviderKeyCredential
+            {
+                Id = 1,
+                ProviderId = 1,
+                ApiKey = "test-api-key"
+            };
+            
             var modelId = "gpt-4";
             var logger = CreateLogger<OpenAIClient>();
 
             // Act
             var client = new OpenAIClient(
-                credentials,
+                provider,
+                keyCredential,
                 modelId,
                 logger.Object,
                 _httpClientFactoryMock.Object,
@@ -79,18 +88,27 @@ namespace ConduitLLM.Tests.Providers
         public void Constructor_WithValidAzureCredentials_InitializesCorrectly()
         {
             // Arrange
-            var credentials = new ProviderCredentials
+            var provider = new Provider
             {
-                ApiKey = "test-api-key",
-                BaseUrl = "https://myinstance.openai.azure.com",
+                Id = 1,
                 ProviderType = ProviderType.AzureOpenAI
             };
+            
+            var keyCredential = new ProviderKeyCredential
+            {
+                Id = 1,
+                ProviderId = 1,
+                ApiKey = "test-api-key",
+                BaseUrl = "https://myinstance.openai.azure.com"
+            };
+            
             var modelId = "my-deployment";
             var logger = CreateLogger<OpenAIClient>();
 
             // Act
             var client = new OpenAIClient(
-                credentials,
+                provider,
+                keyCredential,
                 modelId,
                 logger.Object,
                 _httpClientFactoryMock.Object,
@@ -104,18 +122,28 @@ namespace ConduitLLM.Tests.Providers
         public void Constructor_WithAzureButNoApiBase_ThrowsConfigurationException()
         {
             // Arrange
-            var credentials = new ProviderCredentials
+            var provider = new Provider
             {
-                ApiKey = "test-api-key",
+                Id = 1,
                 ProviderType = ProviderType.AzureOpenAI
             };
+            
+            var keyCredential = new ProviderKeyCredential
+            {
+                Id = 1,
+                ProviderId = 1,
+                ApiKey = "test-api-key"
+                // No BaseUrl set
+            };
+            
             var modelId = "my-deployment";
             var logger = CreateLogger<OpenAIClient>();
 
             // Act & Assert
             var exception = Assert.Throws<ConfigurationException>(() =>
                 new OpenAIClient(
-                    credentials,
+                    provider,
+                    keyCredential,
                     modelId,
                     logger.Object,
                     _httpClientFactoryMock.Object,
@@ -137,6 +165,7 @@ namespace ConduitLLM.Tests.Providers
             Assert.ThrowsAny<Exception>(() =>
                 new OpenAIClient(
                     null!,
+                    null!,
                     modelId,
                     logger.Object,
                     _httpClientFactoryMock.Object));
@@ -146,17 +175,26 @@ namespace ConduitLLM.Tests.Providers
         public void Constructor_WithNullLogger_ThrowsArgumentNullException()
         {
             // Arrange
-            var credentials = new ProviderCredentials 
+            var provider = new Provider 
             { 
-                ApiKey = "test-key",
+                Id = 1,
                 ProviderType = ProviderType.OpenAI
             };
+            
+            var keyCredential = new ProviderKeyCredential
+            {
+                Id = 1,
+                ProviderId = 1,
+                ApiKey = "test-key"
+            };
+            
             var modelId = "gpt-4";
 
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() =>
                 new OpenAIClient(
-                    credentials,
+                    provider,
+                    keyCredential,
                     modelId,
                     null!,
                     _httpClientFactoryMock.Object));
@@ -166,17 +204,26 @@ namespace ConduitLLM.Tests.Providers
         public void Constructor_WithNullHttpClientFactory_DoesNotThrow()
         {
             // Arrange
-            var credentials = new ProviderCredentials 
+            var provider = new Provider 
             { 
-                ApiKey = "test-key",
+                Id = 1,
                 ProviderType = ProviderType.OpenAI
             };
+            
+            var keyCredential = new ProviderKeyCredential
+            {
+                Id = 1,
+                ProviderId = 1,
+                ApiKey = "test-key"
+            };
+            
             var modelId = "gpt-4";
             var logger = CreateLogger<OpenAIClient>();
 
             // Act
             var client = new OpenAIClient(
-                credentials,
+                provider,
+                keyCredential,
                 modelId,
                 logger.Object,
                 null); // HttpClientFactory is optional
@@ -201,7 +248,7 @@ namespace ConduitLLM.Tests.Providers
                 Model = "whisper-1"
             };
 
-            var expectedResponse = new OpenAIModels.TranscriptionResponse
+            var expectedResponse = new TranscriptionResponse
             {
                 Text = "This is the transcribed text",
                 Language = "en",
@@ -252,7 +299,7 @@ namespace ConduitLLM.Tests.Providers
                     return new HttpResponseMessage
                     {
                         StatusCode = HttpStatusCode.OK,
-                        Content = new StringContent(JsonSerializer.Serialize(new OpenAIModels.TranscriptionResponse
+                        Content = new StringContent(JsonSerializer.Serialize(new TranscriptionResponse
                         {
                             Text = "Transcribed text"
                         }))
@@ -367,7 +414,7 @@ namespace ConduitLLM.Tests.Providers
                 .ReturnsAsync(new HttpResponseMessage
                 {
                     StatusCode = HttpStatusCode.OK,
-                    Content = new StringContent(JsonSerializer.Serialize(new OpenAIModels.TranscriptionResponse
+                    Content = new StringContent(JsonSerializer.Serialize(new TranscriptionResponse
                     {
                         Text = "Transcribed text"
                     }))
@@ -392,7 +439,7 @@ namespace ConduitLLM.Tests.Providers
         {
             // Arrange
             var client = CreateOpenAIClient();
-            var request = new TextToSpeechRequest
+            var request = new ConduitLLM.Core.Models.Audio.TextToSpeechRequest
             {
                 Input = "Hello, this is a test",
                 Voice = "alloy",
@@ -418,7 +465,7 @@ namespace ConduitLLM.Tests.Providers
         {
             // Arrange
             var client = CreateOpenAIClient();
-            var request = new TextToSpeechRequest
+            var request = new ConduitLLM.Core.Models.Audio.TextToSpeechRequest
             {
                 Input = "Test audio",
                 Voice = "nova",
@@ -463,7 +510,7 @@ namespace ConduitLLM.Tests.Providers
         {
             // Arrange
             var client = CreateOpenAIClient();
-            var request = new TextToSpeechRequest
+            var request = new ConduitLLM.Core.Models.Audio.TextToSpeechRequest
             {
                 Input = "Test",
                 Voice = "invalid-voice",
@@ -484,7 +531,7 @@ namespace ConduitLLM.Tests.Providers
         {
             // Arrange
             var client = CreateOpenAIClient();
-            var request = new TextToSpeechRequest
+            var request = new ConduitLLM.Core.Models.Audio.TextToSpeechRequest
             {
                 Input = "Test streaming",
                 Voice = "echo",
@@ -688,9 +735,9 @@ namespace ConduitLLM.Tests.Providers
         {
             // Arrange
             var client = CreateOpenAIClient();
-            var response = new OpenAIModels.ListModelsResponse
+            var response = new ListModelsResponse
             {
-                Data = new List<OpenAIModels.OpenAIModelData>
+                Data = new List<OpenAIModelData>
                 {
                     new() { Id = "gpt-4", Object = "model", OwnedBy = "openai" },
                     new() { Id = "gpt-3.5-turbo", Object = "model", OwnedBy = "openai" }
@@ -714,9 +761,9 @@ namespace ConduitLLM.Tests.Providers
         {
             // Arrange
             var client = CreateAzureOpenAIClient();
-            var response = new AzureOpenAIModels.ListDeploymentsResponse
+            var response = new ConduitLLM.Providers.Providers.OpenAI.AzureOpenAIModels.ListDeploymentsResponse
             {
-                Data = new List<AzureOpenAIModels.DeploymentInfo>
+                Data = new List<ConduitLLM.Providers.Providers.OpenAI.AzureOpenAIModels.DeploymentInfo>
                 {
                     new() { DeploymentId = "my-gpt4", Model = "gpt-4", Status = "succeeded" },
                     new() { DeploymentId = "my-gpt35", Model = "gpt-3.5-turbo", Status = "succeeded" }
@@ -733,6 +780,80 @@ namespace ConduitLLM.Tests.Providers
             Assert.Equal(2, models.Count);
             Assert.Contains(models, m => m.Id == "my-gpt4");
             Assert.Contains(models, m => m.Id == "my-gpt35");
+        }
+
+        [Fact]
+        public async Task GetModelsAsync_WithUnauthorizedResponse_ThrowsException()
+        {
+            // Arrange
+            var client = CreateOpenAIClient();
+            var errorResponse = new
+            {
+                error = new
+                {
+                    message = "Invalid API key provided",
+                    type = "invalid_request_error",
+                    code = "invalid_api_key"
+                }
+            };
+
+            SetupHttpResponse(HttpStatusCode.Unauthorized, errorResponse);
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<LLMCommunicationException>(() =>
+                client.GetModelsAsync());
+
+            Assert.Contains("Invalid API key", exception.Message);
+        }
+
+        [Fact]
+        public async Task GetModelsAsync_WithForbiddenResponse_ThrowsException()
+        {
+            // Arrange
+            var client = CreateOpenAIClient();
+            var errorResponse = new
+            {
+                error = new
+                {
+                    message = "Access denied. Your API key does not have permission to access this resource.",
+                    type = "permission_error",
+                    code = "insufficient_quota"
+                }
+            };
+
+            SetupHttpResponse(HttpStatusCode.Forbidden, errorResponse);
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<LLMCommunicationException>(() =>
+                client.GetModelsAsync());
+
+            Assert.Contains("Access denied", exception.Message);
+        }
+
+        [Fact]
+        public async Task GetModelsAsync_WithInvalidApiKey_DoesNotReturnFallbackModels()
+        {
+            // Arrange
+            var client = CreateOpenAIClient(); 
+            var errorResponse = new
+            {
+                error = new
+                {
+                    message = "Invalid API key provided: badkey",
+                    type = "invalid_request_error", 
+                    code = "invalid_api_key"
+                }
+            };
+
+            SetupHttpResponse(HttpStatusCode.Unauthorized, errorResponse);
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<LLMCommunicationException>(() =>
+                client.GetModelsAsync());
+
+            // Verify that no fallback models are returned - should throw exception instead
+            Assert.NotNull(exception);
+            Assert.Contains("Invalid API key", exception.Message);
         }
 
         #endregion
@@ -817,15 +938,24 @@ namespace ConduitLLM.Tests.Providers
 
         private OpenAIClient CreateOpenAIClient(string modelId = "gpt-4")
         {
-            var credentials = new ProviderCredentials
+            var provider = new Provider
             {
-                ApiKey = "test-api-key",
+                Id = 1,
                 ProviderType = ProviderType.OpenAI
             };
+            
+            var keyCredential = new ProviderKeyCredential
+            {
+                Id = 1,
+                ProviderId = 1,
+                ApiKey = "test-api-key"
+            };
+            
             var logger = CreateLogger<OpenAIClient>();
 
             return new OpenAIClient(
-                credentials,
+                provider,
+                keyCredential,
                 modelId,
                 logger.Object,
                 _httpClientFactoryMock.Object,
@@ -834,16 +964,25 @@ namespace ConduitLLM.Tests.Providers
 
         private OpenAIClient CreateAzureOpenAIClient(string deploymentId = "my-deployment")
         {
-            var credentials = new ProviderCredentials
+            var provider = new Provider
             {
-                ApiKey = "test-api-key",
-                BaseUrl = "https://myinstance.openai.azure.com",
+                Id = 1,
                 ProviderType = ProviderType.AzureOpenAI
             };
+            
+            var keyCredential = new ProviderKeyCredential
+            {
+                Id = 1,
+                ProviderId = 1,
+                ApiKey = "test-api-key",
+                BaseUrl = "https://myinstance.openai.azure.com"
+            };
+            
             var logger = CreateLogger<OpenAIClient>();
 
             return new OpenAIClient(
-                credentials,
+                provider,
+                keyCredential,
                 deploymentId,
                 logger.Object,
                 _httpClientFactoryMock.Object,

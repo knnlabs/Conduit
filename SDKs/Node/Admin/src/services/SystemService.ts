@@ -1,15 +1,10 @@
 import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
-import { HttpMethod } from '../client/HttpMethod';
 import type { DiagnosticChecks } from '../models/common-types';
 import { ApiClientConfig } from '../client/types';
 import { ENDPOINTS, CACHE_TTL } from '../constants';
 import {
   SystemInfoDto,
   HealthStatusDto,
-  BackupDto,
-  CreateBackupRequest,
-  RestoreBackupRequest,
-  BackupRestoreResult,
   NotificationDto,
   CreateNotificationDto,
   MaintenanceTaskDto,
@@ -18,14 +13,29 @@ import {
   AuditLogDto,
   AuditLogFilters,
   FeatureAvailability,
+  CreateBackupRequest,
 } from '../models/system';
 import { PaginatedResponse } from '../models/common';
-import { ValidationError, NotImplementedError } from '../utils/errors';
-import { z } from 'zod';
+import { NotImplementedError } from '../utils/errors';
 import { FetchVirtualKeyService as VirtualKeyService } from './FetchVirtualKeyService';
+import { FetchVirtualKeyGroupService as VirtualKeyGroupService } from './FetchVirtualKeyGroupService';
 import { SettingsService } from './SettingsService';
+import type { components } from '../generated/admin-api';
 // Get SDK version from package.json at build time
 const SDK_VERSION = process.env.npm_package_version ?? '1.0.0';
+
+// Extended interface to support virtualKeyGroupId (supported by API but not in generated types yet)
+interface CreateVirtualKeyWithGroupDto {
+  keyName: string;
+  allowedModels?: string | null;
+  maxBudget?: number | null;
+  budgetDuration?: string | null;
+  expiresAt?: string | null;
+  metadata?: string | null;
+  rateLimitRpm?: number | null;
+  rateLimitRpd?: number | null;
+  virtualKeyGroupId?: number;
+}
 
 // C# API response types
 interface SystemInfoApiResponse {
@@ -49,26 +59,6 @@ interface SystemInfoApiResponse {
   };
 }
 
-const createBackupSchema = z.object({
-  description: z.string().max(500).optional(),
-  includeKeys: z.boolean().optional(),
-  includeProviders: z.boolean().optional(),
-  includeSettings: z.boolean().optional(),
-  includeLogs: z.boolean().optional(),
-  encryptionPassword: z.string().min(8).optional(),
-});
-
-const restoreBackupSchema = z.object({
-  backupId: z.string().min(1),
-  decryptionPassword: z.string().optional(),
-  overwriteExisting: z.boolean().optional(),
-  selectedItems: z.object({
-    keys: z.boolean().optional(),
-    providers: z.boolean().optional(),
-    settings: z.boolean().optional(),
-    logs: z.boolean().optional(),
-  }).optional(),
-});
 
 export class SystemService extends FetchBaseApiClient {
   // System Information
@@ -129,63 +119,7 @@ export class SystemService extends FetchBaseApiClient {
     return super.get<HealthStatusDto>(ENDPOINTS.SYSTEM.HEALTH);
   }
 
-  // Backup Management
-  async listBackups(): Promise<BackupDto[]> {
-    const cacheKey = 'backups';
-    return this.withCache(
-      cacheKey,
-      () => super.get<BackupDto[]>(ENDPOINTS.SYSTEM.BACKUP),
-      CACHE_TTL.SHORT
-    );
-  }
-
-  async createBackup(request?: CreateBackupRequest): Promise<BackupDto> {
-    if (request) {
-      try {
-        createBackupSchema.parse(request);
-      } catch (error) {
-        throw new ValidationError('Invalid backup request', { validationError: error });
-      }
-    }
-
-    const response = await this.post<BackupDto>(
-      ENDPOINTS.SYSTEM.BACKUP,
-      request ?? {}
-    );
-
-    await this.invalidateCache();
-    return response;
-  }
-
-  async downloadBackup(backupId: string): Promise<Blob> {
-    const response = await super.request<Blob>(
-      `${ENDPOINTS.SYSTEM.BACKUP}/${backupId}/download`,
-      {
-        method: HttpMethod.GET,
-        headers: { Accept: 'application/octet-stream' },
-        responseType: 'blob'
-      }
-    );
-    return response;
-  }
-
-  async deleteBackup(backupId: string): Promise<void> {
-    await this.delete(`${ENDPOINTS.SYSTEM.BACKUP}/${backupId}`);
-    await this.invalidateCache();
-  }
-
-  async restoreBackup(request: RestoreBackupRequest): Promise<BackupRestoreResult> {
-    try {
-      restoreBackupSchema.parse(request);
-    } catch (error) {
-      throw new ValidationError('Invalid restore request', { validationError: error });
-    }
-
-    return this.post<BackupRestoreResult>(
-      ENDPOINTS.SYSTEM.RESTORE,
-      request
-    );
-  }
+  // Backup Management - removed (endpoints no longer exist)
 
   // Notifications
   async getNotifications(unreadOnly?: boolean): Promise<NotificationDto[]> {
@@ -342,31 +276,69 @@ export class SystemService extends FetchBaseApiClient {
     };
     
     const settingsService = new SettingsService(baseConfig);
+    const virtualKeyService = new VirtualKeyService(this);
+    
+    let existingKey: string | null = null;
     
     try {
       // First try to get existing key from GlobalSettings
       const setting = await settingsService.getGlobalSetting('WebUI_VirtualKey');
       if (setting?.value) {
-        return setting.value;
+        existingKey = setting.value;
+        this.log('debug', 'Found WebUI virtual key in GlobalSettings, validating...');
+        
+        // Validate that the key exists in VirtualKeys table
+        try {
+          // Try to validate the key by checking if it works
+          // Since we can't easily search by hash, we'll test if the key is valid
+          const validationResult = await virtualKeyService.validate(existingKey);
+          
+          if (!validationResult?.isValid) {
+            this.log('warn', 'WebUI virtual key from GlobalSettings is not valid');
+            existingKey = null;
+          } else {
+            this.log('info', 'WebUI virtual key validated successfully');
+            return existingKey;
+          }
+        } catch (validationError) {
+          this.log('error', 'Failed to validate WebUI virtual key', validationError);
+          existingKey = null;
+        }
       }
     } catch {
-      // Key doesn't exist, we'll create it
-      this.log('debug', 'WebUI virtual key not found in GlobalSettings, creating new one');
+      // Key doesn't exist in GlobalSettings
+      this.log('debug', 'WebUI virtual key not found in GlobalSettings');
     }
 
+    // If we don't have a valid key, create a new one
+    this.log('info', 'Creating new WebUI virtual key with group and $1000 balance');
+    
+    // First, create a virtual key group with $1000 initial balance
+    const virtualKeyGroupService = new VirtualKeyGroupService(this);
+    const group = await virtualKeyGroupService.create({
+      groupName: 'WebUI Internal Group',
+      externalGroupId: 'webui-internal',
+      initialBalance: 1000.00
+    });
+    
+    this.log('info', `Created WebUI virtual key group with ID ${group.id} and $1000 balance`);
+    
     // Create metadata
     const metadata = {
       visibility: 'hidden',
       created: new Date().toISOString(),
-      originator: `Admin SDK ${SDK_VERSION}`
+      originator: `Admin SDK ${SDK_VERSION}`,
+      groupId: group.id
     };
 
-    // Create the virtual key via VirtualKeyService
-    const virtualKeyService = new VirtualKeyService(this);
-    const response = await virtualKeyService.create({
+    // Create the virtual key and associate it with the group
+    const virtualKeyRequest: CreateVirtualKeyWithGroupDto = {
       keyName: 'WebUI Internal Key',
-      metadata: JSON.stringify(metadata)
-    });
+      metadata: JSON.stringify(metadata),
+      virtualKeyGroupId: group.id
+    };
+    
+    const response = await virtualKeyService.create(virtualKeyRequest as components['schemas']['ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyRequestDto']);
     
     if (!response.virtualKey) {
       throw new Error('Failed to create virtual key: No key returned');
@@ -381,7 +353,7 @@ export class SystemService extends FetchBaseApiClient {
       description: 'Virtual key for WebUI Core API access'
     });
     
-    this.log('info', 'Created new WebUI virtual key');
+    this.log('info', 'Created new WebUI virtual key and stored in GlobalSettings');
     return response.virtualKey;
   }
 

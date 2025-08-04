@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
@@ -11,8 +10,6 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 
 using Microsoft.Extensions.Logging;
-
-using ProviderHealthExt = ConduitLLM.Admin.Extensions.ProviderHealthExtensions;
 
 namespace ConduitLLM.Admin.Services
 {
@@ -22,27 +19,27 @@ namespace ConduitLLM.Admin.Services
     public class AdminProviderHealthService : IAdminProviderHealthService
     {
         private readonly IProviderHealthRepository _providerHealthRepository;
-        private readonly IProviderCredentialRepository _providerCredentialRepository;
+        private readonly IProviderRepository _ProviderRepository;
         private readonly ILogger<AdminProviderHealthService> _logger;
 
         /// <summary>
         /// Initializes a new instance of the AdminProviderHealthService
         /// </summary>
         /// <param name="providerHealthRepository">The provider health repository</param>
-        /// <param name="providerCredentialRepository">The provider credential repository</param>
+        /// <param name="ProviderRepository">The provider credential repository</param>
         /// <param name="logger">The logger</param>
         public AdminProviderHealthService(
             IProviderHealthRepository providerHealthRepository,
-            IProviderCredentialRepository providerCredentialRepository,
+            IProviderRepository ProviderRepository,
             ILogger<AdminProviderHealthService> logger)
         {
             _providerHealthRepository = providerHealthRepository ?? throw new ArgumentNullException(nameof(providerHealthRepository));
-            _providerCredentialRepository = providerCredentialRepository ?? throw new ArgumentNullException(nameof(providerCredentialRepository));
+            _ProviderRepository = ProviderRepository ?? throw new ArgumentNullException(nameof(ProviderRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <inheritdoc />
-        public async Task<ProviderHealthConfigurationDto> CreateConfigurationAsync(CreateProviderHealthConfigurationDto config)
+        public async Task<ProviderHealthConfiguration> CreateConfigurationAsync(ProviderHealthConfiguration config)
         {
             if (config == null)
             {
@@ -52,48 +49,45 @@ namespace ConduitLLM.Admin.Services
             try
             {
                 // Check if configuration already exists for this provider
-                // Check if this provider exists
-                var existingConfig = await _providerHealthRepository.GetConfigurationAsync(config.ProviderType);
+                var existingConfig = await _providerHealthRepository.GetConfigurationAsync(config.ProviderId);
                 if (existingConfig != null)
                 {
-                    throw new InvalidOperationException($"Provider health configuration already exists for provider '{config.ProviderType}'" );
+                    throw new InvalidOperationException($"Provider health configuration already exists for provider ID '{config.ProviderId}'" );
                 }
 
                 // Verify that the provider exists
-                var providerExists = await ProviderExistsByTypeAsync(config.ProviderType);
-                if (!providerExists)
+                var provider = await _ProviderRepository.GetByIdAsync(config.ProviderId);
+                if (provider == null)
                 {
-                    throw new InvalidOperationException($"Provider '{config.ProviderType}' does not exist");
+                    throw new InvalidOperationException($"Provider with ID '{config.ProviderId}' does not exist");
                 }
 
-                // Convert to entity and save
-                var configEntity = config.ToEntity();
-                await _providerHealthRepository.SaveConfigurationAsync(configEntity);
+                // Save the configuration
+                await _providerHealthRepository.SaveConfigurationAsync(config);
 
                 // Retrieve the saved configuration
-                var savedConfig = await _providerHealthRepository.GetConfigurationAsync(config.ProviderType);
+                var savedConfig = await _providerHealthRepository.GetConfigurationAsync(config.ProviderId);
                 if (savedConfig == null)
                 {
-                    throw new InvalidOperationException($"Failed to retrieve newly created configuration for provider '{config.ProviderType}'");
+                    throw new InvalidOperationException($"Failed to retrieve newly created configuration for provider ID '{config.ProviderId}'");
                 }
 
-_logger.LogInformation("Created health configuration for provider '{ProviderType}'", config.ProviderType.ToString().Replace(Environment.NewLine, ""));
-                return savedConfig.ToDto();
+                _logger.LogInformation("Created health configuration for provider ID '{ProviderId}'", config.ProviderId);
+                return savedConfig;
             }
             catch (Exception ex)
             {
-_logger.LogError(ex, "Error creating health configuration for provider '{ProviderType}'".Replace(Environment.NewLine, ""), config.ProviderType.ToString().Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error creating health configuration for provider ID '{ProviderId}'", config.ProviderId);
                 throw;
             }
         }
 
         /// <inheritdoc />
-        public async Task<IEnumerable<ProviderHealthConfigurationDto>> GetAllConfigurationsAsync()
+        public async Task<IEnumerable<ProviderHealthConfiguration>> GetAllConfigurationsAsync()
         {
             try
             {
-                var configurations = await _providerHealthRepository.GetAllConfigurationsAsync();
-                return configurations.Select(c => c.ToDto()).ToList();
+                return await _providerHealthRepository.GetAllConfigurationsAsync();
             }
             catch (Exception ex)
             {
@@ -103,14 +97,11 @@ _logger.LogError(ex, "Error creating health configuration for provider '{Provide
         }
 
         /// <inheritdoc />
-        public async Task<Dictionary<ProviderType, ProviderHealthRecordDto>> GetAllLatestStatusesAsync()
+        public async Task<Dictionary<int, ProviderHealthRecord>> GetAllLatestStatusesAsync()
         {
             try
             {
-                var statuses = await _providerHealthRepository.GetAllLatestStatusesAsync();
-                return statuses.ToDictionary(
-                    kvp => kvp.Key,
-                    kvp => kvp.Value.ToDto());
+                return await _providerHealthRepository.GetAllLatestStatusesAsync();
             }
             catch (Exception ex)
             {
@@ -120,20 +111,11 @@ _logger.LogError(ex, "Error creating health configuration for provider '{Provide
         }
 
         /// <inheritdoc />
-        public async Task<IEnumerable<ProviderHealthRecordDto>> GetAllRecordsAsync()
+        public async Task<IEnumerable<ProviderHealthRecord>> GetAllRecordsAsync()
         {
             try
             {
-                // Since the GetStatusHistoryAsync method filters by provider name, 
-                // we need a different approach to get all records.
-                // Get all provider names first, then get records for each
-                var latestStatuses = await _providerHealthRepository.GetAllLatestStatusesAsync();
-                var providerNames = latestStatuses.Keys.ToList();
-
-                // Use bulk query instead of N individual queries
-                var allRecords = await _providerHealthRepository.GetAllRecordsAsync();
-
-                return allRecords.Select(r => r.ToDto()).ToList();
+                return await _providerHealthRepository.GetAllRecordsAsync();
             }
             catch (Exception ex)
             {
@@ -143,16 +125,15 @@ _logger.LogError(ex, "Error creating health configuration for provider '{Provide
         }
 
         /// <inheritdoc />
-        public async Task<ProviderHealthConfigurationDto?> GetConfigurationByProviderTypeAsync(ProviderType providerType)
+        public async Task<ProviderHealthConfiguration?> GetConfigurationByProviderIdAsync(int providerId)
         {
             try
             {
-                var config = await _providerHealthRepository.GetConfigurationAsync(providerType);
-                return config?.ToDto();
+                return await _providerHealthRepository.GetConfigurationAsync(providerId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving health configuration for provider type '{ProviderType}'", providerType);
+                _logger.LogError(ex, "Error retrieving health configuration for provider ID '{ProviderId}'", providerId);
                 throw;
             }
         }
@@ -254,27 +235,26 @@ _logger.LogError(ex, "Error creating health configuration for provider '{Provide
 
                 // Get configuration for all providers
                 var allConfigs = await _providerHealthRepository.GetAllConfigurationsAsync();
-                var configDict = allConfigs.ToDictionary(c => c.ProviderType.ToString(), c => c);
+                var configDict = allConfigs.ToDictionary(c => c.ProviderId, c => c);
 
                 // Combine all data into summaries
                 var summaries = new List<ProviderHealthSummaryDto>();
 
-                foreach (var provider in allStatuses.Keys)
+                foreach (var providerId in allStatuses.Keys)
                 {
-                    var status = allStatuses[provider];
-                    var config = configDict.ContainsKey(provider.ToString()) ? configDict[provider.ToString()] : null;
-                    var providerType = provider; // provider is already a ProviderType
+                    var status = allStatuses[providerId];
+                    var config = configDict.ContainsKey(providerId) ? configDict[providerId] : null;
 
                     var summary = new ProviderHealthSummaryDto
                     {
-                        ProviderType = providerType,
+                        ProviderId = providerId,
                         Status = status.Status,
                         StatusMessage = status.StatusMessage,
-                        UptimePercentage = uptimeDict.ContainsKey(provider) ? uptimeDict[provider] : 0,
-                        AverageResponseTimeMs = responseTimesDict.ContainsKey(provider) ? responseTimesDict[provider] : 0,
-                        ErrorCount = errorCountDict.ContainsKey(provider) ? errorCountDict[provider] : 0,
-                        ErrorCategories = errorCategoriesDict.ContainsKey(provider)
-                            ? errorCategoriesDict[provider]
+                        UptimePercentage = uptimeDict.ContainsKey(providerId) ? uptimeDict[providerId] : 0,
+                        AverageResponseTimeMs = responseTimesDict.ContainsKey(providerId) ? responseTimesDict[providerId] : 0,
+                        ErrorCount = errorCountDict.ContainsKey(providerId) ? errorCountDict[providerId] : 0,
+                        ErrorCategories = errorCategoriesDict.ContainsKey(providerId)
+                            ? errorCategoriesDict[providerId]
                             : new Dictionary<string, int>(),
                         LastCheckedUtc = config?.LastCheckedUtc,
                         MonitoringEnabled = config?.MonitoringEnabled ?? false
@@ -293,22 +273,21 @@ _logger.LogError(ex, "Error creating health configuration for provider '{Provide
         }
 
         /// <inheritdoc />
-        public async Task<ProviderHealthRecordDto?> GetLatestStatusAsync(ProviderType providerType)
+        public async Task<ProviderHealthRecord?> GetLatestStatusAsync(int providerId)
         {
             try
             {
-                var status = await _providerHealthRepository.GetLatestStatusAsync(providerType);
-                return status?.ToDto();
+                return await _providerHealthRepository.GetLatestStatusAsync(providerId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving latest health status for provider type '{ProviderType}'", providerType);
+                _logger.LogError(ex, "Error retrieving latest health status for provider ID '{ProviderId}'", providerId);
                 throw;
             }
         }
 
         /// <inheritdoc />
-        public async Task<IEnumerable<ProviderHealthRecordDto>> GetStatusHistoryAsync(ProviderType providerType, int hours = 24, int limit = 100)
+        public async Task<IEnumerable<ProviderHealthRecord>> GetStatusHistoryAsync(int providerId, int hours = 24, int limit = 100)
         {
             if (hours <= 0)
             {
@@ -323,12 +302,11 @@ _logger.LogError(ex, "Error creating health configuration for provider '{Provide
             try
             {
                 var sinceTime = DateTime.UtcNow.AddHours(-hours);
-                var history = await _providerHealthRepository.GetStatusHistoryAsync(providerType, sinceTime, limit);
-                return history.Select(h => h.ToDto()).ToList();
+                return await _providerHealthRepository.GetStatusHistoryAsync(providerId, sinceTime, limit);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving health status history for provider type '{ProviderType}'", providerType);
+                _logger.LogError(ex, "Error retrieving health status history for provider ID '{ProviderId}'", providerId);
                 throw;
             }
         }
@@ -357,14 +335,14 @@ _logger.LogError(ex, "Error creating health configuration for provider '{Provide
         }
 
         /// <inheritdoc />
-        public async Task<ProviderHealthRecordDto> TriggerHealthCheckAsync(ProviderType providerType)
+        public async Task<ProviderHealthRecord> TriggerHealthCheckAsync(int providerId)
         {
             try
             {
-                var providerExists = await ProviderExistsByTypeAsync(providerType);
-                if (!providerExists)
+                var provider = await _ProviderRepository.GetByIdAsync(providerId);
+                if (provider == null)
                 {
-                    throw new InvalidOperationException($"Provider '{providerType}' does not exist");
+                    throw new InvalidOperationException($"Provider with ID '{providerId}' does not exist");
                 }
 
                 
@@ -372,7 +350,7 @@ _logger.LogError(ex, "Error creating health configuration for provider '{Provide
                 // In a real implementation, this would trigger the health check service
                 var record = new ProviderHealthRecord
                 {
-                    ProviderType = providerType,
+                    ProviderId = providerId,
                     Status = ProviderHealthRecord.StatusType.Unknown,
                     StatusMessage = "Manual health check triggered",
                     TimestampUtc = DateTime.UtcNow,
@@ -386,20 +364,20 @@ _logger.LogError(ex, "Error creating health configuration for provider '{Provide
                 await _providerHealthRepository.SaveStatusAsync(record);
 
                 // Update last checked time
-                await _providerHealthRepository.UpdateLastCheckedTimeAsync(providerType);
+                await _providerHealthRepository.UpdateLastCheckedTimeAsync(providerId);
 
-                _logger.LogInformation("Triggered health check for provider type '{ProviderType}'", providerType);
-                return record.ToDto();
+                _logger.LogInformation("Triggered health check for provider ID '{ProviderId}'", providerId);
+                return record;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error triggering health check for provider type '{ProviderType}'", providerType);
+                _logger.LogError(ex, "Error triggering health check for provider ID '{ProviderId}'", providerId);
                 throw;
             }
         }
 
         /// <inheritdoc />
-        public async Task<bool> UpdateConfigurationAsync(UpdateProviderHealthConfigurationDto config)
+        public async Task<bool> UpdateConfigurationAsync(ProviderHealthConfiguration config)
         {
             if (config == null)
             {
@@ -408,22 +386,18 @@ _logger.LogError(ex, "Error creating health configuration for provider '{Provide
 
             try
             {
-                // Get existing configuration by id
-                var existingConfig = await _providerHealthRepository.GetConfigurationByIdAsync(config.Id);
+                // Verify the configuration exists
+                var existingConfig = await _providerHealthRepository.GetConfigurationAsync(config.ProviderId);
                 if (existingConfig == null)
                 {
-                    _logger.LogWarning("Provider health configuration not found with ID {Id}", config.Id);
+                    _logger.LogWarning("Provider health configuration not found for provider ID {ProviderId}", config.ProviderId);
                     return false;
                 }
 
-                // Update entity using the extension method from ProviderHealthExtensions
-                ProviderHealthExt.UpdateFrom(existingConfig, config);
+                // Save the updated configuration
+                await _providerHealthRepository.SaveConfigurationAsync(config);
 
-                // Save changes
-                await _providerHealthRepository.SaveConfigurationAsync(existingConfig);
-
-                string providerName = existingConfig.ProviderType.ToString(); // Get the name from the existing config
-                _logger.LogInformation("Updated health configuration for provider '{ProviderName}'", providerName);
+                _logger.LogInformation("Updated health configuration for provider ID '{ProviderId}'", config.ProviderId);
                 return true;
             }
             catch (Exception ex)
@@ -433,23 +407,5 @@ _logger.LogError(ex, "Error creating health configuration for provider '{Provide
             }
         }
 
-        /// <summary>
-        /// Checks if a provider exists
-        /// </summary>
-        /// <param name="providerType">The type of the provider</param>
-        /// <returns>True if the provider exists, false otherwise</returns>
-        private async Task<bool> ProviderExistsByTypeAsync(ProviderType providerType)
-        {
-            try
-            {
-                var credential = await _providerCredentialRepository.GetByProviderTypeAsync(providerType);
-                return credential != null;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error checking if provider '{ProviderType}' exists", providerType);
-                return false;
-            }
-        }
     }
 }

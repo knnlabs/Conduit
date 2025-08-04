@@ -5,12 +5,14 @@ import { Combobox, useCombobox, Loader, Text, Stack, Badge, Group, TextInput, Di
 import { useDebouncedValue } from '@mantine/hooks';
 import { IconSearch } from '@tabler/icons-react';
 import { useModelMappings } from '@/hooks/useModelMappingsApi';
-import { providerNameToType } from '@/lib/utils/providerTypeUtils';
+import type { ProviderType } from '@knn_labs/conduit-admin-client';
 
 interface ModelPatternComboboxProps {
   value: string;
   onChange: (value: string) => void;
   selectedProvider: string | null;
+  selectedProviderId?: number;
+  selectedProviderType?: number;
   error?: string;
   required?: boolean;
   disabled?: boolean;
@@ -27,6 +29,8 @@ export function ModelPatternCombobox({
   value,
   onChange,
   selectedProvider,
+  selectedProviderId,
+  selectedProviderType,
   error,
   required = false,
   disabled = false,
@@ -48,23 +52,20 @@ export function ModelPatternCombobox({
   const options = useMemo(() => {
     const items: ComboboxOption[] = [];
     
-    if (!selectedProvider) {
+    if (!selectedProvider || (!selectedProviderId && !selectedProviderType)) {
       return items;
     }
 
-    // Convert provider name to provider type for filtering
-    let providerType: number | null = null;
-    try {
-      providerType = selectedProvider ? providerNameToType(selectedProvider) : null;
-    } catch {
-      console.warn('Invalid provider name:', selectedProvider);
-      return items;
-    }
-
-    // Filter mappings by selected provider
-    const providerMappings = mappings.filter(
-      (mapping) => mapping.providerType === providerType
-    );
+    // Filter mappings by selected provider - prefer providerId, fall back to providerType
+    const providerMappings = mappings.filter((mapping) => {
+      if (selectedProviderId && mapping.providerId) {
+        return mapping.providerId === selectedProviderId;
+      }
+      if (selectedProviderType !== undefined && mapping.providerType !== undefined) {
+        return mapping.providerType === selectedProviderType as ProviderType;
+      }
+      return false;
+    });
 
     // If there's a search term, add it as a pattern option
     if (debouncedSearch.trim()) {
@@ -93,7 +94,7 @@ export function ModelPatternCombobox({
     });
 
     return items;
-  }, [mappings, selectedProvider, debouncedSearch]);
+  }, [mappings, selectedProvider, selectedProviderId, selectedProviderType, debouncedSearch]);
 
   // Group options by type
   const groupedOptions = useMemo(() => {

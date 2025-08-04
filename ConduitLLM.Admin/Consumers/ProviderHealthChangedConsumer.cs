@@ -2,9 +2,9 @@ using System;
 using System.Threading.Tasks;
 using MassTransit;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.SignalR;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Admin.Hubs;
-using ConduitLLM.Configuration.DTOs.SignalR;
 
 namespace ConduitLLM.Admin.Consumers
 {
@@ -14,19 +14,19 @@ namespace ConduitLLM.Admin.Consumers
     /// </summary>
     public class ProviderHealthChangedConsumer : IConsumer<ProviderHealthChanged>
     {
-        private readonly AdminNotificationService _notificationService;
+        private readonly IHubContext<AdminNotificationHub> _hubContext;
         private readonly ILogger<ProviderHealthChangedConsumer> _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ProviderHealthChangedConsumer"/> class.
         /// </summary>
-        /// <param name="notificationService">The admin notification service for SignalR.</param>
+        /// <param name="hubContext">The SignalR hub context.</param>
         /// <param name="logger">The logger instance.</param>
         public ProviderHealthChangedConsumer(
-            AdminNotificationService notificationService,
+            IHubContext<AdminNotificationHub> hubContext,
             ILogger<ProviderHealthChangedConsumer> logger)
         {
-            _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
+            _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -38,42 +38,32 @@ namespace ConduitLLM.Admin.Consumers
             try
             {
                 _logger.LogInformation(
-                    "Processing ProviderHealthChanged event for {ProviderName} - Status: {Status}, IsHealthy: {IsHealthy}",
-                    @event.ProviderType.ToString(), @event.Status, @event.IsHealthy);
+                    "Processing ProviderHealthChanged event for {ProviderId} - Status: {Status}, IsHealthy: {IsHealthy}",
+                    @event.ProviderId, @event.Status, @event.IsHealthy);
 
-                // Parse health status from event
-                var healthStatus = @event.Status.ToLowerInvariant() switch
+                // Create a simple health update object
+                var healthUpdate = new
                 {
-                    "healthy" => HealthStatus.Healthy,
-                    "degraded" => HealthStatus.Degraded,
-                    "unhealthy" => HealthStatus.Unhealthy,
-                    _ => @event.IsHealthy ? HealthStatus.Healthy : HealthStatus.Unhealthy
+                    ProviderId = @event.ProviderId,
+                    Status = @event.Status,
+                    IsHealthy = @event.IsHealthy,
+                    HealthData = @event.HealthData,
+                    Timestamp = DateTime.UtcNow
                 };
 
-                // Extract response time from health data if available
-                TimeSpan? responseTime = null;
-                if (@event.HealthData.TryGetValue("responseTime", out var responseTimeObj) && 
-                    responseTimeObj is double responseTimeMs)
-                {
-                    responseTime = TimeSpan.FromMilliseconds(responseTimeMs);
-                }
-
-                // Forward to SignalR clients via Admin notification service
-                await _notificationService.NotifyProviderHealthUpdate(
-                    @event.ProviderType,
-                    healthStatus,
-                    responseTime,
-                    @event.HealthData);
+                // Send to all admins and those subscribed to this specific provider
+                await _hubContext.Clients.Groups("admin", $"admin-provider-{@event.ProviderId}")
+                    .SendAsync("ProviderHealthUpdate", healthUpdate);
 
                 _logger.LogDebug(
-                    "Successfully forwarded ProviderHealthChanged event to Admin SignalR clients for provider {ProviderName}",
-                    @event.ProviderType.ToString());
+                    "Successfully forwarded ProviderHealthChanged event to Admin SignalR clients for provider {ProviderId}",
+                    @event.ProviderId);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, 
-                    "Failed to process ProviderHealthChanged event for provider {ProviderName}",
-                    @event.ProviderType.ToString());
+                    "Failed to process ProviderHealthChanged event for provider {ProviderId}",
+                    @event.ProviderId);
                 throw;
             }
         }

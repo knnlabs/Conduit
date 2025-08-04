@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.Entities;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -99,7 +100,7 @@ namespace ConduitLLM.Admin.Controllers
         /// </summary>
         /// <returns>List of all provider health configurations</returns>
         [HttpGet("configurations")]
-        [ProducesResponseType(typeof(IEnumerable<ProviderHealthConfigurationDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(IEnumerable<ProviderHealthConfiguration>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetAllConfigurations()
         {
@@ -118,17 +119,17 @@ namespace ConduitLLM.Admin.Controllers
         /// <summary>
         /// Gets health configuration for a specific provider
         /// </summary>
-        /// <param name="providerType">The provider type</param>
+        /// <param name="providerId">The provider ID</param>
         /// <returns>The provider health configuration</returns>
-        [HttpGet("configurations/{providerType}")]
-        [ProducesResponseType(typeof(ProviderHealthConfigurationDto), StatusCodes.Status200OK)]
+        [HttpGet("configurations/{providerId}")]
+        [ProducesResponseType(typeof(ProviderHealthConfiguration), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetConfigurationByProviderType(ProviderType providerType)
+        public async Task<IActionResult> GetConfigurationByProviderId(int providerId)
         {
             try
             {
-                var configuration = await _providerHealthService.GetConfigurationByProviderTypeAsync(providerType);
+                var configuration = await _providerHealthService.GetConfigurationByProviderIdAsync(providerId);
 
                 if (configuration == null)
                 {
@@ -139,7 +140,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting health configuration for provider type '{ProviderType}'", providerType);
+                _logger.LogError(ex, "Error getting health configuration for provider ID '{ProviderId}'", providerId);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -150,10 +151,10 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="configuration">The configuration to create</param>
         /// <returns>The created configuration</returns>
         [HttpPost("configurations")]
-        [ProducesResponseType(typeof(ProviderHealthConfigurationDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ProviderHealthConfiguration), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> CreateConfiguration([FromBody] CreateProviderHealthConfigurationDto configuration)
+        public async Task<IActionResult> CreateConfiguration([FromBody] ProviderHealthConfiguration configuration)
         {
             if (!ModelState.IsValid)
             {
@@ -164,8 +165,8 @@ namespace ConduitLLM.Admin.Controllers
             {
                 var createdConfiguration = await _providerHealthService.CreateConfigurationAsync(configuration);
                 return CreatedAtAction(
-                    nameof(GetConfigurationByProviderType),
-                    new { providerType = createdConfiguration.ProviderType },
+                    nameof(GetConfigurationByProviderId),
+                    new { providerId = createdConfiguration.ProviderId },
                     createdConfiguration);
             }
             catch (InvalidOperationException ex)
@@ -190,7 +191,7 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> UpdateConfiguration([FromBody] UpdateProviderHealthConfigurationDto configuration)
+        public async Task<IActionResult> UpdateConfiguration([FromBody] ProviderHealthConfiguration configuration)
         {
             if (!ModelState.IsValid)
             {
@@ -218,9 +219,9 @@ namespace ConduitLLM.Admin.Controllers
         /// <summary>
         /// Gets the latest health status for all providers
         /// </summary>
-        /// <returns>Dictionary of provider names to their latest health status</returns>
+        /// <returns>Dictionary of provider IDs to their latest health status</returns>
         [HttpGet("statuses")]
-        [ProducesResponseType(typeof(Dictionary<string, ProviderHealthRecordDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(Dictionary<int, ProviderHealthRecord>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetAllLatestStatuses()
         {
@@ -239,23 +240,17 @@ namespace ConduitLLM.Admin.Controllers
         /// <summary>
         /// Gets the latest health status for a specific provider
         /// </summary>
-        /// <param name="providerName">The name of the provider</param>
+        /// <param name="providerId">The ID of the provider</param>
         /// <returns>The latest health status</returns>
-        [HttpGet("statuses/{providerName}")]
-        [ProducesResponseType(typeof(ProviderHealthRecordDto), StatusCodes.Status200OK)]
+        [HttpGet("statuses/{providerId}")]
+        [ProducesResponseType(typeof(ProviderHealthRecord), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetLatestStatus(string providerName)
+        public async Task<IActionResult> GetLatestStatus(int providerId)
         {
             try
             {
-                // Parse provider name to ProviderType
-                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
-                {
-                    return BadRequest($"Invalid provider name: {providerName}");
-                }
-                
-                var status = await _providerHealthService.GetLatestStatusAsync(providerType);
+                var status = await _providerHealthService.GetLatestStatusAsync(providerId);
 
                 if (status == null)
                 {
@@ -266,7 +261,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-_logger.LogError(ex, "Error getting latest health status for provider '{ProviderName}'".Replace(Environment.NewLine, ""), providerName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error getting latest health status for provider ID '{ProviderId}'", providerId);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -274,16 +269,16 @@ _logger.LogError(ex, "Error getting latest health status for provider '{Provider
         /// <summary>
         /// Gets health status history for a provider
         /// </summary>
-        /// <param name="providerName">The name of the provider</param>
+        /// <param name="providerId">The ID of the provider</param>
         /// <param name="hours">Number of hours to look back (default: 24)</param>
         /// <param name="limit">Maximum number of records to return (default: 100)</param>
         /// <returns>List of health status records</returns>
-        [HttpGet("history/{providerName}")]
-        [ProducesResponseType(typeof(IEnumerable<ProviderHealthRecordDto>), StatusCodes.Status200OK)]
+        [HttpGet("history/{providerId}")]
+        [ProducesResponseType(typeof(IEnumerable<ProviderHealthRecord>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetStatusHistory(
-            string providerName,
+            int providerId,
             [FromQuery] int hours = 24,
             [FromQuery] int limit = 100)
         {
@@ -299,18 +294,12 @@ _logger.LogError(ex, "Error getting latest health status for provider '{Provider
 
             try
             {
-                // Parse provider name to ProviderType
-                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
-                {
-                    return BadRequest($"Invalid provider name: {providerName}");
-                }
-                
-                var history = await _providerHealthService.GetStatusHistoryAsync(providerType, hours, limit);
+                var history = await _providerHealthService.GetStatusHistoryAsync(providerId, hours, limit);
                 return Ok(history);
             }
             catch (Exception ex)
             {
-_logger.LogError(ex, "Error getting health status history for provider '{ProviderName}'".Replace(Environment.NewLine, ""), providerName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error getting health status history for provider ID '{ProviderId}'", providerId);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -374,33 +363,27 @@ _logger.LogError(ex, "Error getting health status history for provider '{Provide
         /// <summary>
         /// Triggers an immediate health check for a provider
         /// </summary>
-        /// <param name="providerName">The name of the provider to check</param>
+        /// <param name="providerId">The ID of the provider to check</param>
         /// <returns>The health check result</returns>
-        [HttpPost("check/{providerName}")]
-        [ProducesResponseType(typeof(ProviderHealthRecordDto), StatusCodes.Status200OK)]
+        [HttpPost("check/{providerId}")]
+        [ProducesResponseType(typeof(ProviderHealthRecord), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> TriggerHealthCheck(string providerName)
+        public async Task<IActionResult> TriggerHealthCheck(int providerId)
         {
             try
             {
-                // Parse provider name to ProviderType
-                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
-                {
-                    return BadRequest($"Invalid provider name: {providerName}");
-                }
-                
-                var result = await _providerHealthService.TriggerHealthCheckAsync(providerType);
+                var result = await _providerHealthService.TriggerHealthCheckAsync(providerId);
                 return Ok(result);
             }
             catch (InvalidOperationException ex)
             {
-_logger.LogWarning(ex, "Invalid operation when triggering health check for provider '{ProviderName}'".Replace(Environment.NewLine, ""), providerName.Replace(Environment.NewLine, ""));
+                _logger.LogWarning(ex, "Invalid operation when triggering health check for provider ID '{ProviderId}'", providerId);
                 return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
-_logger.LogError(ex, "Error triggering health check for provider '{ProviderName}'".Replace(Environment.NewLine, ""), providerName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error triggering health check for provider ID '{ProviderId}'", providerId);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -436,30 +419,24 @@ _logger.LogError(ex, "Error triggering health check for provider '{ProviderName}
         /// <summary>
         /// Gets all provider health records
         /// </summary>
-        /// <param name="providerName">Optional provider name to filter records</param>
+        /// <param name="providerId">Optional provider ID to filter records</param>
         /// <returns>List of health records</returns>
         [HttpGet("records")]
-        [ProducesResponseType(typeof(IEnumerable<ProviderHealthRecordDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(IEnumerable<ProviderHealthRecord>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetHealthRecords([FromQuery] string? providerName = null)
+        public async Task<IActionResult> GetHealthRecords([FromQuery] int? providerId = null)
         {
             try
             {
-                IEnumerable<ProviderHealthRecordDto> records;
+                IEnumerable<ProviderHealthRecord> records;
 
-                if (string.IsNullOrEmpty(providerName))
+                if (!providerId.HasValue)
                 {
                     records = await _providerHealthService.GetAllRecordsAsync();
                 }
                 else
                 {
-                    // Parse provider name to ProviderType
-                    if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
-                    {
-                        return BadRequest($"Invalid provider name: {providerName}");
-                    }
-                    
-                    var history = await _providerHealthService.GetStatusHistoryAsync(providerType, 24 * 30, 1000); // 30 days, 1000 records max
+                    var history = await _providerHealthService.GetStatusHistoryAsync(providerId.Value, 24 * 30, 1000); // 30 days, 1000 records max
                     records = history;
                 }
 
@@ -475,9 +452,9 @@ _logger.LogError(ex, "Error triggering health check for provider '{ProviderName}
         /// <summary>
         /// Gets provider status for all providers that have been checked
         /// </summary>
-        /// <returns>Dictionary of provider names to their status</returns>
+        /// <returns>Dictionary of provider IDs to their status</returns>
         [HttpGet("status")]
-        [ProducesResponseType(typeof(Dictionary<string, Models.ProviderStatus>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(Dictionary<int, Models.ProviderStatus>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetProviderStatus()
         {
@@ -485,9 +462,9 @@ _logger.LogError(ex, "Error triggering health check for provider '{ProviderName}
             {
                 var statuses = await _providerHealthService.GetAllLatestStatusesAsync();
 
-                // Convert to a dictionary of provider name to status model
+                // Convert to a dictionary of provider ID to status model
                 var result = statuses.ToDictionary(
-                    kvp => kvp.Key.ToString(),
+                    kvp => kvp.Key,
                     kvp => new Models.ProviderStatus
                     {
                         Status = kvp.Value.IsOnline ? Models.ProviderStatus.StatusType.Online : Models.ProviderStatus.StatusType.Offline,
@@ -510,23 +487,17 @@ _logger.LogError(ex, "Error triggering health check for provider '{ProviderName}
         /// <summary>
         /// Gets provider status for a specific provider
         /// </summary>
-        /// <param name="providerName">The name of the provider</param>
+        /// <param name="providerId">The ID of the provider</param>
         /// <returns>The provider status</returns>
-        [HttpGet("status/{providerName}")]
+        [HttpGet("status/{providerId}")]
         [ProducesResponseType(typeof(Models.ProviderStatus), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetProviderStatus(string providerName)
+        public async Task<IActionResult> GetProviderStatus(int providerId)
         {
             try
             {
-                // Parse provider name to ProviderType
-                if (!Enum.TryParse<ProviderType>(providerName, true, out var providerType))
-                {
-                    return BadRequest($"Invalid provider name: {providerName}");
-                }
-                
-                var statusRecord = await _providerHealthService.GetLatestStatusAsync(providerType);
+                var statusRecord = await _providerHealthService.GetLatestStatusAsync(providerId);
 
                 if (statusRecord == null)
                 {
@@ -546,7 +517,7 @@ _logger.LogError(ex, "Error triggering health check for provider '{ProviderName}
             }
             catch (Exception ex)
             {
-_logger.LogError(ex, "Error retrieving status for provider '{ProviderName}'".Replace(Environment.NewLine, ""), providerName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error retrieving status for provider ID '{ProviderId}'", providerId);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }

@@ -26,8 +26,15 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useModelCostsApi } from '../hooks/useModelCostsApi';
 import { ModelCost, UpdateModelCostDto } from '../types/modelCost';
-import { PatternPreview } from './PatternPreview';
 import { formatters } from '@/lib/utils/formatters';
+import { ModelMappingSelector } from './ModelMappingSelector';
+import { useModelMappings } from '@/hooks/useModelMappingsApi';
+import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
+
+// Extended type to include additional fields from API response
+interface ExtendedModelProviderMappingDto extends ModelProviderMappingDto {
+  modelAlias?: string;
+}
 
 interface EditModelCostModalProps {
   isOpen: boolean;
@@ -37,7 +44,8 @@ interface EditModelCostModalProps {
 }
 
 interface FormValues {
-  modelIdPattern: string;
+  costName: string;
+  modelProviderMappingIds: number[];
   modelType: 'chat' | 'embedding' | 'image' | 'audio' | 'video';
   // Token-based costs (per 1K tokens for display)
   inputCostPer1K: number;
@@ -70,17 +78,31 @@ interface FormValues {
 export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: EditModelCostModalProps) {
   const queryClient = useQueryClient();
   const { updateModelCost } = useModelCostsApi();
+  const { mappings } = useModelMappings();
+
+  // Find mapping IDs from associated model aliases
+  const getMappingIds = (): number[] => {
+    if (!modelCost.associatedModelAliases || modelCost.associatedModelAliases.length === 0) {
+      return [];
+    }
+    // Match aliases to mapping IDs
+    const extendedMappings = mappings as ExtendedModelProviderMappingDto[];
+    return extendedMappings
+      .filter(m => m?.modelAlias && modelCost.associatedModelAliases.includes(m.modelAlias))
+      .map(m => m.id);
+  };
 
   // Convert backend data to form values
   const initialValues: FormValues = {
-    modelIdPattern: modelCost.modelIdPattern,
+    costName: modelCost.costName,
+    modelProviderMappingIds: getMappingIds(),
     modelType: modelCost.modelType,
-    // Convert from per million to per 1K for display
-    inputCostPer1K: (modelCost.inputCostPerMillionTokens ?? 0) / 1000,
-    outputCostPer1K: (modelCost.outputCostPerMillionTokens ?? 0) / 1000,
-    cachedInputCostPer1K: (modelCost.cachedInputCostPerMillionTokens ?? 0) / 1000,
-    cachedInputWriteCostPer1K: (modelCost.cachedInputWriteCostPerMillionTokens ?? 0) / 1000,
-    embeddingCostPer1K: (modelCost.embeddingTokenCost ?? 0) / 1000,
+    // Token costs are already per token, convert to per 1K for display
+    inputCostPer1K: (modelCost.inputTokenCost ?? 0) * 1000,
+    outputCostPer1K: (modelCost.outputTokenCost ?? 0) * 1000,
+    cachedInputCostPer1K: (modelCost.cachedInputTokenCost ?? 0) * 1000,
+    cachedInputWriteCostPer1K: (modelCost.cachedInputWriteCost ?? 0) * 1000,
+    embeddingCostPer1K: (modelCost.embeddingTokenCost ?? 0) * 1000,
     searchUnitCostPer1K: modelCost.costPerSearchUnit ?? 0,
     inferenceStepCost: modelCost.costPerInferenceStep ?? 0,
     defaultInferenceSteps: modelCost.defaultInferenceSteps ?? 0,
@@ -102,7 +124,8 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
   const form = useForm<FormValues>({
     initialValues,
     validate: {
-      modelIdPattern: (value) => !value?.trim() ? 'Model pattern is required' : null,
+      costName: (value) => !value?.trim() ? 'Cost name is required' : null,
+      modelProviderMappingIds: (value) => !value || value.length === 0 ? 'At least one model must be selected' : null,
       priority: (value) => value < 0 ? 'Priority must be non-negative' : null,
       inputCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
       outputCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
@@ -155,33 +178,33 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
 
   const handleSubmit = (values: FormValues) => {
     // Only send changed fields
-    const updates: UpdateModelCostDto = {};
+    const updates: UpdateModelCostDto = {
+      id: modelCost.id,
+      costName: values.costName,
+      modelProviderMappingIds: values.modelProviderMappingIds
+    };
     
-    if (values.modelIdPattern !== modelCost.modelIdPattern) {
-      updates.modelIdPattern = values.modelIdPattern;
-    }
+    // Convert from per 1K back to per token
+    const inputTokenCost = values.inputCostPer1K / 1000;
+    const outputTokenCost = values.outputCostPer1K / 1000;
+    const cachedInputTokenCost = values.cachedInputCostPer1K / 1000;
+    const cachedInputWriteTokenCost = values.cachedInputWriteCostPer1K / 1000;
     
-    // Convert token costs back to per million
-    const inputTokenCost = values.inputCostPer1K * 1000;
-    const outputTokenCost = values.outputCostPer1K * 1000;
-    const cachedInputTokenCost = values.cachedInputCostPer1K * 1000;
-    const cachedInputWriteTokenCost = values.cachedInputWriteCostPer1K * 1000;
-    
-    if (inputTokenCost !== modelCost.inputCostPerMillionTokens) {
+    if (inputTokenCost !== modelCost.inputTokenCost) {
       updates.inputTokenCost = inputTokenCost;
     }
-    if (outputTokenCost !== modelCost.outputCostPerMillionTokens) {
+    if (outputTokenCost !== modelCost.outputTokenCost) {
       updates.outputTokenCost = outputTokenCost;
     }
-    if (cachedInputTokenCost !== modelCost.cachedInputCostPerMillionTokens) {
+    if (cachedInputTokenCost !== modelCost.cachedInputTokenCost) {
       updates.cachedInputTokenCost = cachedInputTokenCost || undefined;
     }
-    if (cachedInputWriteTokenCost !== modelCost.cachedInputWriteCostPerMillionTokens) {
-      updates.cachedInputWriteTokenCost = cachedInputWriteTokenCost || undefined;
+    if (cachedInputWriteTokenCost !== modelCost.cachedInputWriteCost) {
+      updates.cachedInputWriteCost = cachedInputWriteTokenCost || undefined;
     }
     
     if (values.embeddingCostPer1K > 0) {
-      updates.embeddingTokenCost = values.embeddingCostPer1K * 1000;
+      updates.embeddingTokenCost = values.embeddingCostPer1K / 1000;
     }
     
     if (values.searchUnitCostPer1K !== modelCost.costPerSearchUnit) {
@@ -258,18 +281,23 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="md">
           <Alert icon={<IconInfoCircle size={16} />} color="blue">
-            Update pricing for {modelCost.modelIdPattern}. Token costs are displayed per 1,000 tokens.
+            Update pricing for {modelCost.costName}. Token costs are displayed per 1,000 tokens.
           </Alert>
 
           <TextInput
-            label="Model Pattern"
-            placeholder="e.g., openai/gpt-4, anthropic/claude-3*, minimax/abab6.5g"
+            label="Cost Name"
+            placeholder="e.g., GPT-4 Standard Pricing, Claude 3 Opus Batch"
             required
-            {...form.getInputProps('modelIdPattern')}
-            description="Exact model ID or pattern with * wildcard"
+            {...form.getInputProps('costName')}
+            description="A descriptive name for this pricing configuration"
           />
 
-          <PatternPreview pattern={form.values.modelIdPattern} />
+          <ModelMappingSelector
+            value={form.values.modelProviderMappingIds}
+            onChange={(value) => form.setFieldValue('modelProviderMappingIds', value)}
+            error={form.errors.modelProviderMappingIds as string}
+            required
+          />
 
           <Select
             label="Model Type"
