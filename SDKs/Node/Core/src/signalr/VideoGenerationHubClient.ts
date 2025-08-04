@@ -33,7 +33,7 @@ export class VideoGenerationHubClient extends BaseSignalRConnection implements I
    */
   protected configureHubHandlers(connection: signalR.HubConnection): void {
     connection.on('VideoGenerationStarted', async (taskId: string, prompt: string, estimatedSeconds: number) => {
-      console.warn(`Video generation started: ${taskId}, Estimated: ${estimatedSeconds}s`);
+      // Video generation started: ${taskId}, Estimated: ${estimatedSeconds}s
       if (this.onVideoGenerationStarted) {
         await this.onVideoGenerationStarted({ eventType: 'VideoGenerationStarted', taskId, prompt, estimatedSeconds });
       }
@@ -46,7 +46,7 @@ export class VideoGenerationHubClient extends BaseSignalRConnection implements I
       totalFrames?: number, 
       message?: string
     ) => {
-      console.warn(`Video generation progress: ${taskId}, Progress: ${progress}%`);
+      // Video generation progress: ${taskId}, Progress: ${progress}%
       if (this.onVideoGenerationProgress) {
         await this.onVideoGenerationProgress({ 
           eventType: 'VideoGenerationProgress',
@@ -65,7 +65,7 @@ export class VideoGenerationHubClient extends BaseSignalRConnection implements I
       duration: number, 
       metadata: unknown
     ) => {
-      console.warn(`Video generation completed: ${taskId}, Duration: ${duration}s`);
+      // Video generation completed: ${taskId}, Duration: ${duration}s
       if (this.onVideoGenerationCompleted) {
         await this.onVideoGenerationCompleted({ eventType: 'VideoGenerationCompleted', taskId, videoUrl, duration, metadata: metadata as Record<string, unknown> });
       }
@@ -88,7 +88,7 @@ export class VideoGenerationHubClient extends BaseSignalRConnection implements I
     }
 
     await this.invoke('SubscribeToTask', taskId);
-    console.warn(`Subscribed to video generation task: ${taskId}`);
+    // Subscribed to video generation task: ${taskId}
   }
 
   /**
@@ -100,7 +100,7 @@ export class VideoGenerationHubClient extends BaseSignalRConnection implements I
     }
 
     await this.invoke('UnsubscribeFromTask', taskId);
-    console.warn(`Unsubscribed from video generation task: ${taskId}`);
+    // Unsubscribed from video generation task: ${taskId}
   }
 
   /**

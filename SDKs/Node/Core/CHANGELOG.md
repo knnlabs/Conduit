@@ -8,25 +8,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Initial release of @conduit/core
-- Full TypeScript support with complete type definitions
-- OpenAI-compatible API interface
-- Chat completions support (streaming and non-streaming)
-- Function calling support
-- Models listing and caching
-- Robust error handling with typed errors
-- Automatic retry logic with exponential backoff
-- Performance metrics tracking
-- Correlation ID support for request tracking
-- Comprehensive examples and documentation
+- Video generation progress tracking with real-time updates via SignalR
+- Unified `generateWithProgress()` method for video generation with callbacks
+- Automatic fallback from SignalR to polling for progress updates
+- Progress deduplication to prevent duplicate events
+- Comprehensive video generation capabilities checking
+- Support for cancelling video generation tasks
+- React Query hooks for video generation with progress
+- Enhanced error handling with retryable error support
+
+### Changed
+- Enhanced `VideosService` with optional SignalR dependencies
+- Improved `pollTaskUntilCompletion()` with progress callbacks
+- Added exponential backoff support for polling intervals
 
 ### Features
-- `ConduitCoreClient` - Main client class
-- `ChatService` - Chat completions with streaming support
-- `ModelsService` - Model listing and caching
-- Request validation
-- SSE streaming parser for real-time responses
-- Zero runtime dependencies (except axios)
+- **Video Generation Progress Tracking**
+  - `generateWithProgress()` - Unified method with real-time progress
+  - `VideoProgressTracker` - Dual-mode progress tracking (SignalR + polling)
+  - Progress callbacks: `onProgress`, `onStarted`, `onCompleted`, `onFailed`
+  - Automatic deduplication within 500ms windows
+  - SignalR reconnection with exponential backoff
+- **Core Features**
+  - `ConduitCoreClient` - Main client class with SignalR support
+  - `ChatService` - Chat completions with streaming support
+  - `ModelsService` - Model listing and caching
+  - `VideosService` - Video generation with progress tracking
+  - Request validation
+  - SSE streaming parser for real-time responses
+  - Robust error handling with typed errors
+  - Automatic retry logic with exponential backoff
+  - Performance metrics tracking
+  - Correlation ID support for request tracking
+
+### Dependencies
+- Added `@microsoft/signalr` for real-time communication
+- Core dependency remains `axios` for HTTP requests
 
 ## [0.1.0] - TBD
 

@@ -825,7 +825,7 @@ namespace ConduitLLM.Core.Services
                     Key = storageKey,
                     Verb = HttpVerb.PUT,
                     Expires = DateTime.UtcNow.Add(expiration),
-                    Protocol = Protocol.HTTP,
+                    Protocol = Protocol.HTTPS,
                     ContentType = metadata.ContentType
                 };
 

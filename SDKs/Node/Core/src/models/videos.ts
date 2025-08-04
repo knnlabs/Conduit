@@ -212,6 +212,18 @@ export interface VideoTaskPollingOptions {
   
   /** The maximum interval between polls in milliseconds when using exponential backoff */
   maxIntervalMs?: number;
+  
+  /** Called when progress updates are received during polling */
+  onProgress?: (progress: number, status: VideoTaskStatus, message?: string) => void;
+  
+  /** Called when video generation starts (status changes from Pending to Running) */
+  onStarted?: (estimatedSeconds?: number) => void;
+  
+  /** Called when video generation completes successfully */
+  onCompleted?: (result: VideoGenerationResponse) => void;
+  
+  /** Called when video generation fails */
+  onFailed?: (error: string, isRetryable: boolean) => void;
 }
 
 /**

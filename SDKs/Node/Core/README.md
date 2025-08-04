@@ -225,6 +225,139 @@ try {
 }
 ```
 
+## Video Generation
+
+### Basic Video Generation
+
+```typescript
+// Start an async video generation task
+const response = await client.videos.generateAsync({
+  prompt: 'A serene lake at sunset',
+  model: 'minimax-video-01',
+  duration: 6,
+  size: '1280x720',
+});
+
+// Poll for completion
+const result = await client.videos.pollTaskUntilCompletion(response.task_id);
+console.log('Video URL:', result.data[0].url);
+```
+
+### Video Generation with Progress Tracking
+
+The SDK provides real-time progress tracking for video generation through SignalR with automatic fallback to polling.
+
+```typescript
+const { taskId, result } = await client.videos.generateWithProgress({
+  prompt: 'A serene lake at sunset',
+  model: 'minimax-video-01', 
+  duration: 6,
+}, {
+  onProgress: ({ percentage, status, message }) => {
+    console.log(`Progress: ${percentage}% - ${status}`);
+    if (message) console.log(`Status: ${message}`);
+  },
+  onStarted: (taskId, estimatedSeconds) => {
+    console.log(`Started task ${taskId}, ETA: ${estimatedSeconds}s`);
+  },
+  onCompleted: (videoResult) => {
+    console.log('Video generated:', videoResult.data[0].url);
+  },
+  onFailed: (error, isRetryable) => {
+    console.error(`Generation failed: ${error}`);
+    if (isRetryable) console.log('Task can be retried');
+  }
+});
+
+// Wait for the result
+const video = await result;
+```
+
+### Migrating from Polling to Progress Tracking
+
+#### Before (Manual Polling):
+```typescript
+const response = await client.videos.generateAsync(request);
+const taskId = response.task_id;
+
+// Poll manually
+while (true) {
+  const status = await client.videos.getTaskStatus(taskId);
+  console.log(`Progress: ${status.progress}%`);
+  
+  if (status.status === 'Completed') {
+    console.log('Video ready:', status.result.data[0].url);
+    break;
+  }
+  
+  if (status.status === 'Failed') {
+    throw new Error(status.error);
+  }
+  
+  await new Promise(resolve => setTimeout(resolve, 2000));
+}
+```
+
+#### After (Automatic Progress):
+```typescript
+const { result } = await client.videos.generateWithProgress(request, {
+  onProgress: ({ percentage }) => console.log(`Progress: ${percentage}%`),
+  onCompleted: (video) => console.log('Video ready:', video.data[0].url),
+  onFailed: (error) => console.error('Failed:', error)
+});
+
+const video = await result;
+```
+
+### Video Generation with SignalR Configuration
+
+```typescript
+// Create client with SignalR enabled
+const client = new ConduitCoreClient({
+  apiKey: 'your-virtual-key',
+  signalR: {
+    enabled: true,
+    autoConnect: true,
+    reconnectAttempts: 3,
+    reconnectInterval: 5000,
+  }
+});
+
+// Generate video with real-time updates
+const { taskId, result } = await client.videos.generateWithProgress({
+  prompt: 'Modern city skyline',
+  model: 'minimax-video-01',
+});
+```
+
+### Cancel Video Generation
+
+```typescript
+const { taskId } = await client.videos.generateWithProgress({
+  prompt: 'Complex animation',
+});
+
+// Cancel if needed
+await client.videos.cancelTask(taskId);
+```
+
+### Model Capabilities
+
+Check what a video model supports:
+
+```typescript
+const capabilities = client.videos.getModelCapabilities('minimax-video-01');
+console.log(capabilities);
+// {
+//   maxDuration: 6,
+//   supportedResolutions: ['1280x720', '1920x1080'],
+//   supportedFps: [24, 30],
+//   supportsCustomStyles: true,
+//   supportsSeed: true,
+//   maxVideos: 1
+// }
+```
+
 ## Advanced Features
 
 ### Correlation IDs
