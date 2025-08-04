@@ -17,12 +17,15 @@ services:
       HealthMonitoring__ApiEndpoints__0__TimeoutMs: 5000
       HealthMonitoring__ApiEndpoints__0__WarningThresholdMs: 1000
       # MinIO S3 configuration (optional - only used when ENABLE_MINIO=true)
-      CONDUIT_MEDIA_STORAGE_TYPE: "${CONDUIT_MEDIA_STORAGE_TYPE:-InMemory}"
+      CONDUIT_MEDIA_STORAGE_TYPE: "${CONDUIT_MEDIA_STORAGE_TYPE:-S3}"
       CONDUIT_S3_ENDPOINT: "${CONDUIT_S3_ENDPOINT:-http://minio:9000}"
       CONDUIT_S3_ACCESS_KEY: "${CONDUIT_S3_ACCESS_KEY:-minioadmin}"
       CONDUIT_S3_SECRET_KEY: "${CONDUIT_S3_SECRET_KEY:-minioadmin123}"
       CONDUIT_S3_BUCKET_NAME: "${CONDUIT_S3_BUCKET_NAME:-conduit-media}"
       CONDUIT_S3_REGION: "${CONDUIT_S3_REGION:-us-east-1}"
+      # Public URL for accessing media from outside Docker network (browser/host)
+      # This URL is returned to clients instead of internal MinIO URL
+      CONDUIT_S3_PUBLIC_BASE_URL: "${CONDUIT_S3_PUBLIC_BASE_URL:-http://localhost:9000/conduit-media}"
 
   admin:
     environment:
@@ -33,12 +36,15 @@ services:
       CacheInvalidation__MaxBatchSize: "50"   # Smaller batches for easier debugging
       CacheInvalidation__EnableCoalescing: "true"
       # MinIO S3 configuration (optional - only used when ENABLE_MINIO=true)
-      CONDUIT_MEDIA_STORAGE_TYPE: "${CONDUIT_MEDIA_STORAGE_TYPE:-InMemory}"
+      CONDUIT_MEDIA_STORAGE_TYPE: "${CONDUIT_MEDIA_STORAGE_TYPE:-S3}"
       CONDUIT_S3_ENDPOINT: "${CONDUIT_S3_ENDPOINT:-http://minio:9000}"
       CONDUIT_S3_ACCESS_KEY: "${CONDUIT_S3_ACCESS_KEY:-minioadmin}"
       CONDUIT_S3_SECRET_KEY: "${CONDUIT_S3_SECRET_KEY:-minioadmin123}"
       CONDUIT_S3_BUCKET_NAME: "${CONDUIT_S3_BUCKET_NAME:-conduit-media}"
       CONDUIT_S3_REGION: "${CONDUIT_S3_REGION:-us-east-1}"
+      # Public URL for accessing media from outside Docker network (browser/host)
+      # This URL is returned to clients instead of internal MinIO URL
+      CONDUIT_S3_PUBLIC_BASE_URL: "${CONDUIT_S3_PUBLIC_BASE_URL:-http://localhost:9000/conduit-media}"
 
   webui:
     # Use Node 22 to match host environment
@@ -135,6 +141,17 @@ services:
       interval: 30s
       timeout: 20s
       retries: 3
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: conduit-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./scripts/init-minio.sh:/init-minio.sh:ro
+    entrypoint: ["/bin/sh", "/init-minio.sh"]
+    restart: "no"
 
 volumes:
   minio_dev_data:

@@ -185,8 +185,14 @@ namespace ConduitLLM.Http.Controllers
                                         extension = "jpg";
                                     }
                                     
-                                    // Get the stream directly without buffering
-                                    imageStream = await imageResponse.Content.ReadAsStreamAsync();
+                                    // Copy the stream to memory to avoid disposal issues
+                                    var responseStream = await imageResponse.Content.ReadAsStreamAsync();
+                                    var memoryStream = new MemoryStream();
+                                    await responseStream.CopyToAsync(memoryStream);
+                                    memoryStream.Position = 0;
+                                    imageStream = memoryStream;
+                                    
+                                    _logger.LogInformation("Downloaded image data: {Bytes} bytes", memoryStream.Length);
                                 }
                                 else
                                 {
@@ -285,6 +291,7 @@ namespace ConduitLLM.Http.Controllers
                             }
                             
                             // Update response with our proxied URL
+                            _logger.LogInformation("Setting image URL: {Url}", storageResult.Url);
                             imageData.Url = storageResult.Url;
                             
                             // Handle response format

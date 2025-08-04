@@ -112,8 +112,16 @@ export default function ImageGallery() {
                   loading="lazy"
                   unoptimized={true}
                   onError={(e) => {
-                    console.error('Image failed to load:', e);
-                    console.error('Failed URL:', getImageSrc(image));
+                    const failedUrl = getImageSrc(image);
+                    console.error('Image failed to load');
+                    console.error('Failed URL:', failedUrl);
+                    console.error('URL length:', failedUrl.length);
+                    console.error('Full URL:', JSON.stringify(failedUrl));
+                    // Log the event details separately to avoid React property contamination
+                    console.error('Error event:', {
+                      type: e.type,
+                      target: e.currentTarget?.src
+                    });
                   }}
                 />
                 <div 

@@ -190,6 +190,32 @@ The following environment variables are specific to the LLM API service:
 | `CONDUIT_LLM_API_PORT` | Integer | 5002 | The port on which the LLM API service listens. |
 | `CONDUIT_LLM_LOG_LEVEL` | String | `Information` | The logging level for the LLM API service. |
 
+## Media Storage Configuration
+
+Configure S3-compatible storage for production deployments:
+
+| Environment Variable | Type | Default | Description |
+|---------------------|------|---------|-------------|
+| `CONDUIT_MEDIA_STORAGE_TYPE` | String | `InMemory` | Storage provider type (`InMemory` for development, `S3` for production) |
+| `CONDUIT_S3_ENDPOINT` | String | *None* | S3-compatible endpoint URL (e.g., `http://minio:9000`, `https://s3.amazonaws.com`) |
+| `CONDUIT_S3_ACCESS_KEY` | String | *None* | S3 access key ID |
+| `CONDUIT_S3_SECRET_KEY` | String | *None* | S3 secret access key |
+| `CONDUIT_S3_BUCKET_NAME` | String | *None* | S3 bucket name for storing media |
+| `CONDUIT_S3_REGION` | String | `us-east-1` | S3 region (use `auto` for MinIO/R2) |
+| `CONDUIT_S3_PUBLIC_BASE_URL` | String | *None* | Public URL for accessing media (e.g., `http://localhost:9000/conduit-media` for local MinIO, `https://cdn.example.com` for production CDN) |
+
+### Local Development with MinIO
+When using MinIO in Docker for local development, set `CONDUIT_S3_PUBLIC_BASE_URL` to ensure media URLs are accessible from your browser:
+```bash
+CONDUIT_S3_PUBLIC_BASE_URL=http://localhost:9000/conduit-media
+```
+
+### Production with CDN
+For production deployments with a CDN:
+```bash
+CONDUIT_S3_PUBLIC_BASE_URL=https://cdn.yourdomain.com
+```
+
 ## Docker Configuration Examples
 
 Below is an example of setting environment variables in a docker-compose.yml file with all three services:

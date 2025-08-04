@@ -7,13 +7,99 @@ public partial class Program
     public static void ConfigureMediaServices(WebApplicationBuilder builder)
     {
         // Register Media Storage Service
-        var storageProvider = builder.Configuration.GetValue<string>("ConduitLLM:Storage:Provider") ?? "InMemory";
-        Console.WriteLine($"[Conduit] Storage Provider: {storageProvider}");
+        // Check both configuration key and environment variable
+        Console.WriteLine("[Conduit] ConfigureMediaServices - Starting media configuration");
+        
+        var configProvider = builder.Configuration.GetValue<string>("ConduitLLM:Storage:Provider");
+        var configEnvVar = builder.Configuration.GetValue<string>("CONDUIT_MEDIA_STORAGE_TYPE");
+        var directEnvVar = Environment.GetEnvironmentVariable("CONDUIT_MEDIA_STORAGE_TYPE");
+        
+        Console.WriteLine($"[Conduit] Storage detection - Config: {configProvider}, ConfigEnv: {configEnvVar}, DirectEnv: {directEnvVar}");
+        
+        var storageProvider = configProvider ?? configEnvVar ?? directEnvVar ?? "InMemory";
+        Console.WriteLine($"[Conduit] Storage Provider Selected: {storageProvider}");
         if (storageProvider.Equals("S3", StringComparison.OrdinalIgnoreCase))
         {
             Console.WriteLine("[Conduit] Configuring S3 Media Storage Service");
-            builder.Services.Configure<ConduitLLM.Core.Options.S3StorageOptions>(
-                builder.Configuration.GetSection(ConduitLLM.Core.Options.S3StorageOptions.SectionName));
+            
+            // Configure S3StorageOptions with environment variable mapping
+            builder.Services.Configure<ConduitLLM.Core.Options.S3StorageOptions>(options =>
+            {
+                // First try to bind from the configuration section
+                builder.Configuration.GetSection(ConduitLLM.Core.Options.S3StorageOptions.SectionName).Bind(options);
+                
+                // Then override with environment variables if they exist
+                var endpoint = builder.Configuration["CONDUIT_S3_ENDPOINT"] ?? Environment.GetEnvironmentVariable("CONDUIT_S3_ENDPOINT");
+                if (!string.IsNullOrEmpty(endpoint))
+                {
+                    options.ServiceUrl = endpoint;
+                    Console.WriteLine($"[Conduit] S3 Endpoint: {endpoint}");
+                }
+                
+                var accessKey = builder.Configuration["CONDUIT_S3_ACCESS_KEY_ID"] 
+                    ?? builder.Configuration["CONDUIT_S3_ACCESS_KEY"] 
+                    ?? Environment.GetEnvironmentVariable("CONDUIT_S3_ACCESS_KEY_ID")
+                    ?? Environment.GetEnvironmentVariable("CONDUIT_S3_ACCESS_KEY");
+                if (!string.IsNullOrEmpty(accessKey))
+                {
+                    options.AccessKey = accessKey;
+                    Console.WriteLine($"[Conduit] S3 Access Key: {accessKey.Substring(0, Math.Min(4, accessKey.Length))}...");
+                }
+                
+                var secretKey = builder.Configuration["CONDUIT_S3_SECRET_ACCESS_KEY"] 
+                    ?? builder.Configuration["CONDUIT_S3_SECRET_KEY"]
+                    ?? Environment.GetEnvironmentVariable("CONDUIT_S3_SECRET_ACCESS_KEY")
+                    ?? Environment.GetEnvironmentVariable("CONDUIT_S3_SECRET_KEY");
+                if (!string.IsNullOrEmpty(secretKey))
+                {
+                    options.SecretKey = secretKey;
+                    Console.WriteLine("[Conduit] S3 Secret Key: ****");
+                }
+                
+                var bucketName = builder.Configuration["CONDUIT_S3_BUCKET_NAME"] ?? Environment.GetEnvironmentVariable("CONDUIT_S3_BUCKET_NAME");
+                if (!string.IsNullOrEmpty(bucketName))
+                {
+                    options.BucketName = bucketName;
+                    Console.WriteLine($"[Conduit] S3 Bucket: {bucketName}");
+                }
+                
+                var region = builder.Configuration["CONDUIT_S3_REGION"] ?? Environment.GetEnvironmentVariable("CONDUIT_S3_REGION");
+                if (!string.IsNullOrEmpty(region))
+                {
+                    options.Region = region;
+                    Console.WriteLine($"[Conduit] S3 Region: {region}");
+                }
+                
+                var publicBaseUrl = builder.Configuration["CONDUIT_S3_PUBLIC_BASE_URL"] ?? Environment.GetEnvironmentVariable("CONDUIT_S3_PUBLIC_BASE_URL");
+                if (!string.IsNullOrEmpty(publicBaseUrl))
+                {
+                    options.PublicBaseUrl = publicBaseUrl;
+                    Console.WriteLine($"[Conduit] S3 Public Base URL: {publicBaseUrl}");
+                }
+                
+                // Set defaults for MinIO compatibility
+                options.ForcePathStyle = true;
+                options.AutoCreateBucket = true;
+                
+                // Validate required fields
+                if (string.IsNullOrEmpty(options.ServiceUrl))
+                {
+                    throw new InvalidOperationException("S3 ServiceUrl is required. Set CONDUIT_S3_ENDPOINT environment variable.");
+                }
+                if (string.IsNullOrEmpty(options.AccessKey))
+                {
+                    throw new InvalidOperationException("S3 AccessKey is required. Set CONDUIT_S3_ACCESS_KEY or CONDUIT_S3_ACCESS_KEY_ID environment variable.");
+                }
+                if (string.IsNullOrEmpty(options.SecretKey))
+                {
+                    throw new InvalidOperationException("S3 SecretKey is required. Set CONDUIT_S3_SECRET_KEY or CONDUIT_S3_SECRET_ACCESS_KEY environment variable.");
+                }
+                if (string.IsNullOrEmpty(options.BucketName))
+                {
+                    throw new InvalidOperationException("S3 BucketName is required. Set CONDUIT_S3_BUCKET_NAME environment variable.");
+                }
+            });
+            
             builder.Services.AddSingleton<IMediaStorageService, S3MediaStorageService>();
         }
         else

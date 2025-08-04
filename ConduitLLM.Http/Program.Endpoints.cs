@@ -88,6 +88,6 @@ public partial class Program
         app.UseOpenTelemetryPrometheusScrapingEndpoint("/metrics");
         Console.WriteLine("[Conduit API] Prometheus metrics endpoint registered at /metrics");
 
-        Console.WriteLine("[Conduit API] All API endpoints are now handled by controllers.");
+d        Console.WriteLine("[Conduit API] All API endpoints are now handled by controllers.");
     }
 }
