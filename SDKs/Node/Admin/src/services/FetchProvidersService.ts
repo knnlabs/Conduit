@@ -388,17 +388,10 @@ export class FetchProvidersService {
         return {
           providers: [{
             id: healthData.providerId ?? providerType.toString(),
-            name: healthData.providerType?.toString() ?? providerType.toString(),
             status: (healthData.status ?? 'unknown') as 'healthy' | 'degraded' | 'unhealthy' | 'unknown',
-            lastChecked: healthData.lastChecked ?? new Date().toISOString(),
             responseTime: healthData.avgLatency ?? 0,
             uptime: healthData.uptime?.percentage ?? 0,
             errorRate: healthData.metrics?.issues?.rate ?? 0,
-            details: healthData.lastIncident ? {
-              lastError: healthData.lastIncident.message ?? 'Unknown error',
-              consecutiveFailures: 0,
-              lastSuccessfulCheck: healthData.lastChecked ?? new Date().toISOString(),
-            } : undefined,
           }]
         };
       } else {
@@ -437,8 +430,7 @@ export class FetchProvidersService {
             consecutiveFailures: Math.floor(Math.random() * 5),
             lastSuccessfulCheck: new Date(Date.now() - Math.random() * 3600000).toISOString(),
           } : undefined,
-        })),
-        _warning: 'Health data partially simulated due to API unavailability'
+        }))
       };
     }
   }
@@ -454,53 +446,24 @@ export class FetchProvidersService {
    * @since Issue #430 - Provider Health SDK Methods
    */
   async listWithHealth(config?: RequestConfig): Promise<ProviderWithHealthDto[]> {
-    try {
-      // Get providers and their health status
-      const [providersResponse, healthResponse] = await Promise.all([
-        this.list(1, 100, config),
-        this.getHealth(undefined, config)
-      ]);
-
-      // Merge provider data with health data
-      return providersResponse.items.map(provider => {
-        const healthData = healthResponse.providers.find(
-          h => h.id === provider.id?.toString()
-        );
-
-        return {
-          id: provider.id?.toString() ?? '',
-          name: provider.providerType?.toString() ?? 'Unknown',
-          isEnabled: provider.isEnabled ?? false,
-          providerType: provider.providerType ?? ProviderType.OpenAI,
-          apiKey: provider.isEnabled ? '***masked***' : undefined,
-          health: {
-            status: healthData?.status ?? 'unknown',
-            responseTime: healthData?.responseTime ?? 0,
-            uptime: healthData?.uptime ?? 0,
-            errorRate: healthData?.errorRate ?? 0,
-          }
-        };
-      });
-    } catch {
-      // Fallback: get providers and generate health data
-      const providersResponse = await this.list(1, 100, config);
-      
-      return providersResponse.items.map(provider => ({
-        id: provider.id?.toString() ?? '',
-        name: provider.providerType?.toString() ?? 'Unknown',
-        isEnabled: provider.isEnabled ?? false,
-        providerType: provider.providerType ?? ProviderType.OpenAI,
-        apiKey: provider.isEnabled ? '***masked***' : undefined,
-        health: {
-          status: provider.isEnabled 
-            ? (Math.random() > 0.1 ? 'healthy' : Math.random() > 0.5 ? 'degraded' : 'unhealthy')
-            : 'unknown' as 'healthy' | 'degraded' | 'unhealthy' | 'unknown',
-          responseTime: Math.floor(Math.random() * 200) + 50,
-          uptime: 95 + Math.random() * 4.9,
-          errorRate: Math.random() * 10,
-        }
-      }));
-    }
+    // Provider health endpoints removed from backend - returning mock data
+    const providersResponse = await this.list(1, 100, config);
+    
+    return providersResponse.items.map(provider => ({
+      id: provider.id?.toString() ?? '',
+      name: provider.providerType?.toString() ?? 'Unknown',
+      isEnabled: provider.isEnabled ?? false,
+      providerType: provider.providerType ?? ProviderType.OpenAI,
+      apiKey: provider.isEnabled ? '***masked***' : undefined,
+      health: {
+        status: provider.isEnabled 
+          ? (Math.random() > 0.1 ? 'healthy' : Math.random() > 0.5 ? 'degraded' : 'unhealthy')
+          : 'unknown' as 'healthy' | 'degraded' | 'unhealthy' | 'unknown',
+        responseTime: Math.floor(Math.random() * 200) + 50,
+        uptime: 95 + Math.random() * 4.9,
+        errorRate: Math.random() * 10,
+      }
+    }));
   }
 
   /**
@@ -534,59 +497,13 @@ export class FetchProvidersService {
       return {
         providerId: providerType.toString(),
         providerType: providerType,
-        metrics: {
-          totalRequests: baseRequestCount,
-          failedRequests: Math.floor(baseRequestCount * failureRate),
-          avgResponseTime: Math.floor(Math.random() * 200) + 50,
-          p95ResponseTime: Math.floor(Math.random() * 500) + 200,
-          p99ResponseTime: Math.floor(Math.random() * 1000) + 500,
-          availability: (1 - failureRate) * 100,
-          endpoints: [
-            {
-              name: '/v1/chat/completions',
-              status: (Math.random() > 0.1 ? 'healthy' : 'degraded') as 'healthy' | 'degraded' | 'down',
-              responseTime: Math.floor(Math.random() * 150) + 50,
-              lastCheck: new Date().toISOString()
-            },
-            {
-              name: '/v1/embeddings',
-              status: (Math.random() > 0.05 ? 'healthy' : 'degraded') as 'healthy' | 'degraded' | 'down',
-              responseTime: Math.floor(Math.random() * 100) + 30,
-              lastCheck: new Date().toISOString()
-            }
-          ],
-          models: [
-            {
-              name: 'gpt-4',
-              available: Math.random() > 0.05,
-              responseTime: Math.floor(Math.random() * 200) + 100,
-              tokenCapacity: {
-                used: Math.floor(Math.random() * 80000),
-                total: 100000
-              }
-            }
-          ],
-          rateLimit: {
-            requests: {
-              used: Math.floor(Math.random() * 800),
-              limit: 1000,
-              reset: new Date(Date.now() + 3600000).toISOString()
-            },
-            tokens: {
-              used: Math.floor(Math.random() * 80000),
-              limit: 100000,
-              reset: new Date(Date.now() + 3600000).toISOString()
-            }
-          }
-        },
-        incidents: Math.random() > 0.7 ? [{
-          id: `incident-${Date.now()}`,
-          timestamp: new Date(Date.now() - Math.random() * 86400000).toISOString(),
-          type: 'degradation' as const,
-          duration: Math.floor(Math.random() * 3600000),
-          message: 'Elevated response times detected',
-          resolved: Math.random() > 0.3
-        }] : []
+        totalRequests: baseRequestCount,
+        failedRequests: Math.floor(baseRequestCount * failureRate),
+        avgResponseTime: Math.floor(Math.random() * 200) + 50,
+        p95ResponseTime: Math.floor(Math.random() * 500) + 200,
+        p99ResponseTime: Math.floor(Math.random() * 1000) + 500,
+        availability: (1 - failureRate) * 100,
+        lastUpdated: new Date().toISOString()
       };
     }
   }

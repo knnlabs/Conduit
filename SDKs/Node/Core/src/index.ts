@@ -192,13 +192,22 @@ export type {
   RedisMetrics,
   SignalRMetrics,
   RabbitMQMetrics,
-  ProviderHealthStatus,
   HistoricalMetricsRequest,
   HistoricalMetricsResponse,
   MetricSeries,
   MetricDataPoint,
   KPISummary,
 } from './models/metrics';
+
+export type {
+  HealthCheckResponse,
+  HealthCheckItem,
+  HealthSummary,
+  HealthStatus,
+  HealthCheckOptions,
+  SimpleHealthStatus,
+  WaitForHealthOptions,
+} from './models/health';
 
 export { MetricsService } from './services/MetricsService';
 

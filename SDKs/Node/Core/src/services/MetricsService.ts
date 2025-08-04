@@ -7,7 +7,6 @@ import type {
   BusinessMetrics,
   SystemMetrics,
   InfrastructureMetrics,
-  ProviderHealthStatus,
   HistoricalMetricsRequest,
   HistoricalMetricsResponse,
   ModelUsageStats,
@@ -147,40 +146,40 @@ export class MetricsService {
 
   /**
    * Gets current provider health status for all providers
+   * This method is deprecated as provider health tracking has been removed from the backend
    * 
-   * @returns Promise<ProviderHealthStatus[]> List of provider health statuses
+   * @deprecated Provider health tracking has been removed from the backend
+   * @returns Promise<never[]> Empty array
    */
-  async getProviderHealth(): Promise<ProviderHealthStatus[]> {
-    const snapshot = await this.getCurrentMetrics();
-    return snapshot.providerHealth;
+  async getProviderHealth(): Promise<never[]> {
+    // Provider health tracking has been removed from the backend
+    return [];
   }
 
   /**
    * Gets health status for a specific provider by ID
+   * This method is deprecated as provider health tracking has been removed from the backend
    * 
+   * @deprecated Provider health tracking has been removed from the backend
    * @param providerId - The ID of the provider
-   * @returns Promise<ProviderHealthStatus | null> Provider health status, or null if not found
+   * @returns Promise<null> Always returns null
    */
-  async getProviderHealthById(providerId: number): Promise<ProviderHealthStatus | null> {
-    if (!providerId || providerId <= 0) {
-      throw new Error('Valid provider ID is required');
-    }
-
-    await this.getProviderHealth();
-    // Note: This requires the backend to include provider ID in health status
-    // For now, this is a stub implementation
-    throw new Error('Provider health by ID is not yet implemented. Backend needs to include provider ID in health status.');
+  async getProviderHealthById(_providerId: number): Promise<null> {
+    // Provider health tracking has been removed from the backend
+    return null;
   }
 
   /**
-   * @deprecated Provider names are no longer unique identifiers. Use getProviderHealthById instead.
+   * @deprecated Provider names are no longer unique identifiers and provider health tracking has been removed.
    * Gets health status for a specific provider by name
    * 
+   * @deprecated Provider health tracking has been removed from the backend
    * @param providerName - The name of the provider
-   * @returns Promise<ProviderHealthStatus | null> Provider health status, or null if not found
+   * @returns Promise<null> Always returns null
    */
-  async getProviderHealthByName(): Promise<ProviderHealthStatus | null> {
-    throw new Error('Provider names are no longer unique identifiers. Use getProviderHealthById with provider ID instead.');
+  async getProviderHealthByName(): Promise<null> {
+    // Provider health tracking has been removed from the backend
+    return null;
   }
 
   /**
@@ -219,12 +218,14 @@ export class MetricsService {
 
   /**
    * Gets providers that are currently unhealthy
+   * This method is deprecated as provider health tracking has been removed from the backend
    * 
-   * @returns Promise<ProviderHealthStatus[]> List of unhealthy providers
+   * @deprecated Provider health tracking has been removed from the backend
+   * @returns Promise<never[]> Empty array
    */
-  async getUnhealthyProviders(): Promise<ProviderHealthStatus[]> {
-    const allProviders = await this.getProviderHealth();
-    return allProviders.filter(p => !p.isHealthy);
+  async getUnhealthyProviders(): Promise<never[]> {
+    // Provider health tracking has been removed from the backend
+    return [];
   }
 
   /**
@@ -233,11 +234,9 @@ export class MetricsService {
    * @returns Promise<number> System health percentage (0-100)
    */
   async getSystemHealthPercentage(): Promise<number> {
-    const providers = await this.getProviderHealth();
-    if (providers.length === 0) return 100; // If no providers, assume healthy
-
-    const healthyCount = providers.filter(p => p.isHealthy).length;
-    return (healthyCount / providers.length) * 100;
+    // Provider health tracking has been removed from the backend
+    // Return 100% health as default
+    return 100;
   }
 
   /**

@@ -6,21 +6,38 @@ import { CoreApiStatusIndicator } from './CoreApiStatusIndicator';
 import { AdminApiStatusIndicator } from './AdminApiStatusIndicator';
 
 export function ConnectionIndicator() {
-  const { healthStatus } = useBackendHealth();
+  const { health } = useBackendHealth();
+
+  if (!health) {
+    return (
+      <Group gap="xs">
+        <CoreApiStatusIndicator
+          status="unavailable"
+          message="Loading..."
+          lastChecked={undefined}
+        />
+        
+        <AdminApiStatusIndicator
+          status="unavailable"
+          lastChecked={undefined}
+        />
+      </Group>
+    );
+  }
 
   return (
     <Group gap="xs">
       <CoreApiStatusIndicator
-        status={healthStatus.coreApi}
-        message={healthStatus.coreApiMessage}
-        checks={healthStatus.coreApiChecks}
-        lastChecked={healthStatus.lastChecked}
+        status={health.coreApi}
+        message={health.coreApiMessage}
+        checks={undefined}
+        lastChecked={health.lastChecked}
       />
       
       <AdminApiStatusIndicator
-        status={healthStatus.adminApi}
-        checks={healthStatus.adminApiChecks}
-        lastChecked={healthStatus.lastChecked}
+        status={health.adminApi}
+        checks={undefined}
+        lastChecked={health.lastChecked}
       />
       
     </Group>

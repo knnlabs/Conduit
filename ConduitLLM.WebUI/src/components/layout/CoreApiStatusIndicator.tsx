@@ -3,17 +3,16 @@
 import { Indicator, ThemeIcon } from '@mantine/core';
 import { IconServer } from '@tabler/icons-react';
 import { StatusHoverCard } from '@/components/common/StatusHoverCard';
-import { BackendHealthStatus } from '@/hooks/useBackendHealth';
 import type { HealthCheckDetail } from '@/types/health';
 
 interface CoreApiStatusIndicatorProps {
-  status: BackendHealthStatus['coreApi'];
+  status: 'healthy' | 'degraded' | 'unavailable';
   message?: string;
   checks?: Record<string, HealthCheckDetail>;
   lastChecked?: Date;
 }
 
-const getStatusColor = (status: BackendHealthStatus['coreApi']) => {
+const getStatusColor = (status: 'healthy' | 'degraded' | 'unavailable') => {
   switch (status) {
     case 'healthy':
       return 'green';

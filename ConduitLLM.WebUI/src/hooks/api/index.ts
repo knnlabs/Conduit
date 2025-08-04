@@ -13,4 +13,4 @@ export { useBackendHealth } from '../useBackendHealth';
 
 // Re-export types
 export type { ExportFormat, ExportType } from '../useExportApi';
-export type { BackendHealthStatus } from '../useBackendHealth';
+export type { BackendHealthState } from '../useBackendHealth';

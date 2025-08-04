@@ -36,7 +36,12 @@ export function BackendStatusIndicator({
   showDetails = false 
 }: BackendStatusIndicatorProps) {
   const [expanded, setExpanded] = useState(false);
-  const { healthStatus, isHealthy, isDegraded, isUnavailable, error, refetch } = useBackendHealth();
+  const { health, error, refresh } = useBackendHealth();
+  
+  // Derive status booleans from health object
+  const isHealthy = health?.adminApi === 'healthy' && health?.coreApi === 'healthy';
+  const isDegraded = health?.adminApi === 'degraded' || health?.coreApi === 'degraded';
+  const isUnavailable = health?.adminApi === 'unavailable' || health?.coreApi === 'unavailable';
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -84,7 +89,7 @@ export function BackendStatusIndicator({
         </Badge>
         {!isHealthy && (
           <Tooltip label="Refresh status">
-            <ActionIcon size="sm" variant="subtle" onClick={() => void refetch()}>
+            <ActionIcon size="sm" variant="subtle" onClick={() => void refresh()}>
               <IconRefresh size={14} />
             </ActionIcon>
           </Tooltip>
@@ -111,7 +116,7 @@ export function BackendStatusIndicator({
           
           <Group gap="xs">
             <Tooltip label="Refresh status">
-              <ActionIcon variant="subtle" onClick={() => void refetch()}>
+              <ActionIcon variant="subtle" onClick={() => void refresh()}>
                 <IconRefresh size={16} />
               </ActionIcon>
             </Tooltip>
@@ -131,10 +136,10 @@ export function BackendStatusIndicator({
             <Text size="xs" c="dimmed">Admin API:</Text>
             <Badge 
               size="xs" 
-              color={getStatusColor(healthStatus.adminApi)}
+              color={getStatusColor(health?.adminApi ?? 'unavailable')}
               variant="light"
             >
-              {healthStatus.adminApi}
+              {health?.adminApi ?? 'unavailable'}
             </Badge>
           </Group>
           
@@ -142,10 +147,10 @@ export function BackendStatusIndicator({
             <Text size="xs" c="dimmed">Core API:</Text>
             <Badge 
               size="xs" 
-              color={getStatusColor(healthStatus.coreApi)}
+              color={getStatusColor(health?.coreApi ?? 'unavailable')}
               variant="light"
             >
-              {healthStatus.coreApi}
+              {health?.coreApi ?? 'unavailable'}
             </Badge>
           </Group>
         </Group>
@@ -182,22 +187,22 @@ export function BackendStatusIndicator({
             <Stack gap="xs">
               <Text size="xs" fw={500}>Service Details</Text>
               
-              {Boolean(healthStatus.adminApiDetails) && (
+              {Boolean(health?.adminApiChecks) && (
                 <Card withBorder p="xs">
                   <Text size="xs" fw={500} mb="xs">Admin API</Text>
                   <Text size="xs" c="dimmed">
-                    Status: {(healthStatus.adminApiDetails as { status?: string })?.status ?? 'Unknown'}<br/>
-                    Last checked: <TimeDisplay date={healthStatus.lastChecked} />
+                    Status: {health?.adminApi ?? 'Unknown'}<br/>
+                    Last checked: <TimeDisplay date={health?.lastChecked ?? new Date()} />
                   </Text>
                 </Card>
               )}
               
-              {Boolean(healthStatus.coreApiDetails) && (
+              {Boolean(health?.coreApiChecks) && (
                 <Card withBorder p="xs">
                   <Text size="xs" fw={500} mb="xs">Core API</Text>
                   <Text size="xs" c="dimmed">
-                    Status: {(healthStatus.coreApiDetails as { status?: string })?.status ?? 'Unknown'}<br/>
-                    Last checked: <TimeDisplay date={healthStatus.lastChecked} />
+                    Status: {health?.coreApi ?? 'Unknown'}<br/>
+                    Last checked: <TimeDisplay date={health?.lastChecked ?? new Date()} />
                   </Text>
                 </Card>
               )}
@@ -206,7 +211,7 @@ export function BackendStatusIndicator({
         )}
 
         <Text size="xs" c="dimmed" ta="center">
-          Last updated: <TimeDisplay date={healthStatus.lastChecked} />
+          Last updated: <TimeDisplay date={health?.lastChecked ?? new Date()} />
         </Text>
       </Stack>
     </Card>
