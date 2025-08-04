@@ -16,13 +16,13 @@ namespace ConduitLLM.Configuration.Repositories;
 /// </summary>
 public class VirtualKeyGroupRepository : IVirtualKeyGroupRepository
 {
-    private readonly IConfigurationDbContext _context;
+    private readonly ConfigurationDbContext _context;
     private readonly ILogger<VirtualKeyGroupRepository> _logger;
 
     /// <summary>
     /// Initializes a new instance of the VirtualKeyGroupRepository
     /// </summary>
-    public VirtualKeyGroupRepository(IConfigurationDbContext context, ILogger<VirtualKeyGroupRepository> logger)
+    public VirtualKeyGroupRepository(ConfigurationDbContext context, ILogger<VirtualKeyGroupRepository> logger)
     {
         _context = context;
         _logger = logger;
@@ -57,6 +57,7 @@ public class VirtualKeyGroupRepository : IVirtualKeyGroupRepository
     public async Task<List<VirtualKeyGroup>> GetAllAsync()
     {
         return await _context.VirtualKeyGroups
+            .Include(g => g.VirtualKeys)
             .OrderBy(g => g.GroupName)
             .ToListAsync();
     }

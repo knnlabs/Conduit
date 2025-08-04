@@ -54,18 +54,26 @@ namespace ConduitLLM.Admin.Controllers
         {
             try
             {
+                _logger.LogInformation("GetAllGroups called");
                 var groups = await _groupRepository.GetAllAsync();
-                var dtos = groups.Select(g => new VirtualKeyGroupDto
+                _logger.LogInformation("Repository returned {Count} groups", groups.Count);
+                var dtos = groups.Select(g => 
                 {
-                    Id = g.Id,
-                    ExternalGroupId = g.ExternalGroupId,
-                    GroupName = g.GroupName,
-                    Balance = g.Balance,
-                    LifetimeCreditsAdded = g.LifetimeCreditsAdded,
-                    LifetimeSpent = g.LifetimeSpent,
-                    CreatedAt = g.CreatedAt,
-                    UpdatedAt = g.UpdatedAt,
-                    VirtualKeyCount = g.VirtualKeys?.Count ?? 0
+                    _logger.LogInformation("Group {GroupId} has {KeyCount} keys (null: {IsNull})", 
+                        g.Id, g.VirtualKeys?.Count ?? -1, g.VirtualKeys == null);
+                    
+                    return new VirtualKeyGroupDto
+                    {
+                        Id = g.Id,
+                        ExternalGroupId = g.ExternalGroupId,
+                        GroupName = g.GroupName,
+                        Balance = g.Balance,
+                        LifetimeCreditsAdded = g.LifetimeCreditsAdded,
+                        LifetimeSpent = g.LifetimeSpent,
+                        CreatedAt = g.CreatedAt,
+                        UpdatedAt = g.UpdatedAt,
+                        VirtualKeyCount = g.VirtualKeys?.Count ?? 0
+                    };
                 }).ToList();
 
                 return Ok(dtos);
@@ -85,7 +93,7 @@ namespace ConduitLLM.Admin.Controllers
         {
             try
             {
-                var group = await _groupRepository.GetByIdAsync(id);
+                var group = await _groupRepository.GetByIdWithKeysAsync(id);
                 if (group == null)
                 {
                     return NotFound(new { message = "Group not found" });
