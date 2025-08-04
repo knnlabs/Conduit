@@ -342,59 +342,6 @@ namespace ConduitLLM.Configuration.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ProviderHealthConfigurations",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    ProviderId = table.Column<int>(type: "integer", nullable: false),
-                    MonitoringEnabled = table.Column<bool>(type: "boolean", nullable: false),
-                    CheckIntervalMinutes = table.Column<int>(type: "integer", nullable: false),
-                    TimeoutSeconds = table.Column<int>(type: "integer", nullable: false),
-                    ConsecutiveFailuresThreshold = table.Column<int>(type: "integer", nullable: false),
-                    NotificationsEnabled = table.Column<bool>(type: "boolean", nullable: false),
-                    CustomEndpointUrl = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
-                    LastCheckedUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ProviderHealthConfigurations", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_ProviderHealthConfigurations_Providers_ProviderId",
-                        column: x => x.ProviderId,
-                        principalTable: "Providers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "ProviderHealthRecords",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    ProviderId = table.Column<int>(type: "integer", nullable: false),
-                    Status = table.Column<int>(type: "integer", nullable: false),
-                    IsOnline = table.Column<bool>(type: "boolean", nullable: false),
-                    StatusMessage = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    TimestampUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    ResponseTimeMs = table.Column<double>(type: "double precision", nullable: false),
-                    ErrorCategory = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
-                    ErrorDetails = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
-                    EndpointUrl = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ProviderHealthRecords", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_ProviderHealthRecords_Providers_ProviderId",
-                        column: x => x.ProviderId,
-                        principalTable: "Providers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "ProviderKeyCredentials",
                 columns: table => new
                 {
@@ -484,6 +431,36 @@ namespace ConduitLLM.Configuration.Migrations
                         name: "FK_ModelDeployments_RouterConfigEntity_RouterConfigId",
                         column: x => x.RouterConfigId,
                         principalTable: "RouterConfigEntity",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "VirtualKeyGroupTransactions",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    VirtualKeyGroupId = table.Column<int>(type: "integer", nullable: false),
+                    TransactionType = table.Column<int>(type: "integer", nullable: false),
+                    Amount = table.Column<decimal>(type: "numeric(18,6)", nullable: false),
+                    BalanceAfter = table.Column<decimal>(type: "numeric(18,6)", nullable: false),
+                    ReferenceType = table.Column<int>(type: "integer", nullable: false),
+                    ReferenceId = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    InitiatedBy = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    InitiatedByUserId = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_VirtualKeyGroupTransactions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_VirtualKeyGroupTransactions_VirtualKeyGroups_VirtualKeyGrou~",
+                        column: x => x.VirtualKeyGroupId,
+                        principalTable: "VirtualKeyGroups",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -1081,22 +1058,6 @@ namespace ConduitLLM.Configuration.Migrations
                 column: "VirtualKeyId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ProviderHealthConfigurations_ProviderId",
-                table: "ProviderHealthConfigurations",
-                column: "ProviderId",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ProviderHealthRecords_IsOnline",
-                table: "ProviderHealthRecords",
-                column: "IsOnline");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ProviderHealthRecords_ProviderId_TimestampUtc",
-                table: "ProviderHealthRecords",
-                columns: new[] { "ProviderId", "TimestampUtc" });
-
-            migrationBuilder.CreateIndex(
                 name: "IX_ProviderKeyCredential_OnePrimaryPerProvider",
                 table: "ProviderKeyCredentials",
                 columns: new[] { "ProviderId", "IsPrimary" },
@@ -1134,6 +1095,36 @@ namespace ConduitLLM.Configuration.Migrations
                 name: "IX_VirtualKeyGroups_ExternalGroupId",
                 table: "VirtualKeyGroups",
                 column: "ExternalGroupId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_VirtualKeyGroupTransactions_CreatedAt",
+                table: "VirtualKeyGroupTransactions",
+                column: "CreatedAt");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_VirtualKeyGroupTransactions_IsDeleted_CreatedAt",
+                table: "VirtualKeyGroupTransactions",
+                columns: new[] { "IsDeleted", "CreatedAt" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_VirtualKeyGroupTransactions_ReferenceType",
+                table: "VirtualKeyGroupTransactions",
+                column: "ReferenceType");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_VirtualKeyGroupTransactions_TransactionType",
+                table: "VirtualKeyGroupTransactions",
+                column: "TransactionType");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_VirtualKeyGroupTransactions_VirtualKeyGroupId",
+                table: "VirtualKeyGroupTransactions",
+                column: "VirtualKeyGroupId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_VirtualKeyGroupTransactions_VirtualKeyGroupId_CreatedAt",
+                table: "VirtualKeyGroupTransactions",
+                columns: new[] { "VirtualKeyGroupId", "CreatedAt" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_VirtualKeys_KeyHash",
@@ -1201,16 +1192,13 @@ namespace ConduitLLM.Configuration.Migrations
                 name: "Notifications");
 
             migrationBuilder.DropTable(
-                name: "ProviderHealthConfigurations");
-
-            migrationBuilder.DropTable(
-                name: "ProviderHealthRecords");
-
-            migrationBuilder.DropTable(
                 name: "ProviderKeyCredentials");
 
             migrationBuilder.DropTable(
                 name: "RequestLogs");
+
+            migrationBuilder.DropTable(
+                name: "VirtualKeyGroupTransactions");
 
             migrationBuilder.DropTable(
                 name: "VirtualKeySpendHistory");

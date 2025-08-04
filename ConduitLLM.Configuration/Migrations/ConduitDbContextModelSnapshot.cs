@@ -11,7 +11,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ConduitLLM.Configuration.Migrations
 {
     [DbContext(typeof(ConduitDbContext))]
-    partial class ConfigurationDbContextModelSnapshot : ModelSnapshot
+    partial class ConduitDbContextModelSnapshot : ModelSnapshot
     {
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
@@ -1238,96 +1238,6 @@ namespace ConduitLLM.Configuration.Migrations
                     b.ToTable("Providers");
                 });
 
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ProviderHealthConfiguration", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("CheckIntervalMinutes")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("ConsecutiveFailuresThreshold")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("CustomEndpointUrl")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<DateTime?>("LastCheckedUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("MonitoringEnabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("NotificationsEnabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("ProviderId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("TimeoutSeconds")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProviderId")
-                        .IsUnique();
-
-                    b.ToTable("ProviderHealthConfigurations");
-                });
-
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ProviderHealthRecord", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("EndpointUrl")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<string>("ErrorCategory")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("ErrorDetails")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<bool>("IsOnline")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("ProviderId")
-                        .HasColumnType("integer");
-
-                    b.Property<double>("ResponseTimeMs")
-                        .HasColumnType("double precision");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("StatusMessage")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<DateTime>("TimestampUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IsOnline");
-
-                    b.HasIndex("ProviderId", "TimestampUtc");
-
-                    b.ToTable("ProviderHealthRecords");
-                });
-
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ProviderKeyCredential", b =>
                 {
                     b.Property<int>("Id")
@@ -1852,28 +1762,6 @@ namespace ConduitLLM.Configuration.Migrations
                         .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("VirtualKey");
-                });
-
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ProviderHealthConfiguration", b =>
-                {
-                    b.HasOne("ConduitLLM.Configuration.Entities.Provider", "Provider")
-                        .WithMany()
-                        .HasForeignKey("ProviderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Provider");
-                });
-
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ProviderHealthRecord", b =>
-                {
-                    b.HasOne("ConduitLLM.Configuration.Entities.Provider", "Provider")
-                        .WithMany()
-                        .HasForeignKey("ProviderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Provider");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ProviderKeyCredential", b =>
