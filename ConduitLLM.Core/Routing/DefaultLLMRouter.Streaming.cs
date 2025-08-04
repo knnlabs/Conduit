@@ -156,7 +156,6 @@ namespace ConduitLLM.Core.Routing
             catch (Exception ex)
             {
                 // Handle exceptions during stream creation
-                UpdateModelHealth(selectedModel, false);
                 _logger.LogError(ex, "Error creating stream from model {ModelName}", selectedModel);
                 throw;
             }
@@ -182,7 +181,6 @@ namespace ConduitLLM.Core.Routing
             else
             {
                 // No chunks received - update health status
-                UpdateModelHealth(selectedModel, false);
                 throw new LLMCommunicationException($"No chunks received from model {selectedModel}");
             }
         }
@@ -236,21 +234,11 @@ namespace ConduitLLM.Core.Routing
                 _logger.LogInformation("Selected model {ModelName} for streaming using {Strategy} strategy{VisionMessage}",
                     selectedModel, strategy, visionRequired ? " (vision-capable)" : "");
 
-                // Add this model to attempted list regardless of health status
+                // Add this model to attempted list
                 attemptedModels.Add(selectedModel);
 
-                // If the model is healthy, use it
-                if (!_modelHealthStatus.TryGetValue(selectedModel, out var isHealthy) || isHealthy)
-                {
-                    return selectedModel;
-                }
-
-                // Model is unhealthy, try another after a delay
-                if (attemptCount <= maxRetries)
-                {
-                    int delayMs = CalculateBackoffDelay(attemptCount);
-                    await Task.Delay(delayMs, cancellationToken);
-                }
+                // Health checking removed - always use the selected model
+                return selectedModel;
             }
 
             // No suitable model found

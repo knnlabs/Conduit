@@ -51,7 +51,7 @@ public partial class Program
             
             // Add navigation state event consumers for real-time updates
             x.AddConsumer<ConduitLLM.Http.Consumers.ModelMappingChangedNotificationConsumer>();
-            x.AddConsumer<ConduitLLM.Http.Consumers.ProviderHealthChangedNotificationConsumer>();
+            // Provider health consumer removed
             x.AddConsumer<ConduitLLM.Http.Consumers.ModelCapabilitiesDiscoveredNotificationConsumer>();
             
             // Add settings refresh consumers for runtime configuration updates

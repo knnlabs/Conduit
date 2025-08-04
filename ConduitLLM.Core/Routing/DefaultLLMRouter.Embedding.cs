@@ -84,7 +84,6 @@ namespace ConduitLLM.Core.Routing
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during embedding pass-through to model {Model}", request.Model);
-                UpdateModelHealth(request.Model, false);
                 throw;
             }
         }
@@ -419,11 +418,8 @@ namespace ConduitLLM.Core.Routing
         /// <param name="selectedModel">The model that was used.</param>
         private void HandleEmbeddingExecutionException(Exception exception, string selectedModel)
         {
-            _logger.LogWarning(exception, "Embedding request to model {ModelName} failed, marking as unhealthy",
+            _logger.LogWarning(exception, "Embedding request to model {ModelName} failed",
                 selectedModel);
-
-            // Mark this model as unhealthy
-            UpdateModelHealth(selectedModel, false);
         }
 
         /// <summary>

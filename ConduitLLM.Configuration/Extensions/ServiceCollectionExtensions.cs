@@ -52,7 +52,6 @@ namespace ConduitLLM.Configuration.Extensions
             services.AddScoped<IModelDeploymentRepository, ModelDeploymentRepository>();
             services.AddScoped<IFallbackConfigurationRepository, FallbackConfigurationRepository>();
             services.AddScoped<IFallbackModelMappingRepository, FallbackModelMappingRepository>();
-            services.AddScoped<IProviderHealthRepository, ProviderHealthRepository>();
             services.AddScoped<IIpFilterRepository, IpFilterRepository>();
 
             // Register audio-related repositories

@@ -117,7 +117,6 @@ public static class ServiceCollectionExtensions
             
             return new AdminGlobalSettingService(globalSettingRepository, publishEndpoint, logger);
         });
-        services.AddScoped<IAdminProviderHealthService, AdminProviderHealthService>();
         // Register AdminModelCostService with optional event publishing dependency
         services.AddScoped<IAdminModelCostService>(serviceProvider =>
         {
@@ -212,9 +211,6 @@ public static class ServiceCollectionExtensions
             services.AddScoped<IMediaLifecycleService, ConduitLLM.Core.Services.MediaLifecycleService>();
         }
 
-        // Register provider health monitoring background service
-        services.Configure<ProviderHealthOptions>(configuration.GetSection(ProviderHealthOptions.SectionName));
-        services.AddHostedService<ProviderHealthMonitoringService>();
 
         // Register SignalR admin notification service
         services.AddScoped<ConduitLLM.Admin.Hubs.AdminNotificationService>();

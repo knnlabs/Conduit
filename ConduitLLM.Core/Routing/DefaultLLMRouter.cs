@@ -105,10 +105,6 @@ namespace ConduitLLM.Core.Routing
         private readonly IModelCapabilityDetector? _capabilityDetector;
         private readonly IEmbeddingCache? _embeddingCache;
 
-        /// <summary>
-        /// Tracks the health status (true = healthy, false = unhealthy) of each model
-        /// </summary>
-        private readonly ConcurrentDictionary<string, bool> _modelHealthStatus = new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// Maps primary models to their list of fallback models
@@ -193,7 +189,6 @@ namespace ConduitLLM.Core.Routing
 
             // Clear existing deployment information
             _modelDeployments.Clear();
-            _modelHealthStatus.Clear();
             _fallbackModels.Clear();
 
             // Load model deployments
@@ -209,7 +204,6 @@ namespace ConduitLLM.Core.Routing
                     }
 
                     _modelDeployments[deployment.DeploymentName] = deployment;
-                    _modelHealthStatus[deployment.DeploymentName] = deployment.IsHealthy;
                     _logger.LogInformation("Added model deployment {DeploymentName} for model {ModelAlias}",
                         deployment.DeploymentName, deployment.ModelAlias);
                 }
@@ -279,25 +273,6 @@ namespace ConduitLLM.Core.Routing
             return Array.Empty<string>();
         }
 
-        /// <inheritdoc/>
-        public void UpdateModelHealth(string modelName, bool isHealthy)
-        {
-            if (string.IsNullOrEmpty(modelName))
-            {
-                return;
-            }
-
-            _modelHealthStatus[modelName] = isHealthy;
-
-            // Also update the model deployment health if it exists
-            if (_modelDeployments.TryGetValue(modelName, out var deployment))
-            {
-                deployment.IsHealthy = isHealthy;
-            }
-
-            _logger.LogInformation("Updated model {ModelName} health status to {IsHealthy}",
-                modelName, isHealthy);
-        }
 
         /// <summary>
         /// Add fallback models for a primary model
@@ -393,11 +368,8 @@ namespace ConduitLLM.Core.Routing
         /// <param name="selectedModel">The model that was used.</param>
         private void HandleExecutionException(Exception exception, string selectedModel)
         {
-            _logger.LogWarning(exception, "Request to model {ModelName} failed, marking as unhealthy",
+            _logger.LogWarning(exception, "Request to model {ModelName} failed",
                 selectedModel);
-
-            // Mark this model as unhealthy
-            UpdateModelHealth(selectedModel, false);
         }
 
         /// <summary>
@@ -407,7 +379,6 @@ namespace ConduitLLM.Core.Routing
         /// <param name="latencyMs">The request latency in milliseconds.</param>
         private void UpdateModelStatistics(string modelName, long latencyMs)
         {
-            UpdateModelHealth(modelName, true);
             IncrementModelUsage(modelName);
             UpdateModelLatency(modelName, latencyMs);
         }

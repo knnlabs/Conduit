@@ -87,8 +87,8 @@ public partial class Program
         // Add standardized health checks (skip in test environment to avoid conflicts)
         if (builder.Environment.EnvironmentName != "Test")
         {
-            // Use the same Redis connection string we configured above for health checks
-            var healthChecksBuilder = builder.Services.AddConduitHealthChecks(dbConnectionString, redisConnectionString, true, rabbitMqConfig);
+            // Add basic health checks
+            var healthChecksBuilder = builder.Services.AddHealthChecks();
 
             // Add comprehensive RabbitMQ health check if RabbitMQ is configured
             if (useRabbitMq)

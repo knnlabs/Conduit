@@ -117,15 +117,6 @@ namespace ConduitLLM.Configuration
         /// </summary>
         public virtual DbSet<FallbackModelMappingEntity> FallbackModelMappings { get; set; } = null!;
 
-        /// <summary>
-        /// Database set for provider health records
-        /// </summary>
-        public virtual DbSet<ProviderHealthRecord> ProviderHealthRecords { get; set; } = null!;
-
-        /// <summary>
-        /// Database set for provider health configurations
-        /// </summary>
-        public virtual DbSet<ProviderHealthConfiguration> ProviderHealthConfigurations { get; set; } = null!;
 
         /// <summary>
         /// Database set for IP filters
@@ -335,19 +326,6 @@ namespace ConduitLLM.Configuration
                 entity.HasIndex(e => new { e.FallbackConfigurationId, e.ModelDeploymentId }).IsUnique();
             });
 
-            // Configure Provider Health entities
-            modelBuilder.Entity<ProviderHealthRecord>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.HasIndex(e => new { e.ProviderId, e.TimestampUtc });
-                entity.HasIndex(e => e.IsOnline);
-            });
-
-            modelBuilder.Entity<ProviderHealthConfiguration>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.HasIndex(e => e.ProviderId).IsUnique();
-            });
 
             // Configure IP Filter entity
             modelBuilder.Entity<IpFilterEntity>(entity =>

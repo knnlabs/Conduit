@@ -12,7 +12,6 @@ export * from './models/virtualKey';
 export * from './models/provider';
 export * from './models/providerType';
 export * from './models/providerModels';
-export * from './models/providerHealth';
 export * from './models/settings';
 export * from './models/ipFilter';
 // Re-export modelCost types except CostTrend (conflicts with analytics)
@@ -143,7 +142,6 @@ export { FetchProviderModelsService } from './services/FetchProviderModelsServic
 export { FetchSettingsService } from './services/FetchSettingsService';
 export type { SettingUpdate, SettingsDto, SettingsListResponseDto } from './services/FetchSettingsService';
 export { FetchAnalyticsService } from './services/FetchAnalyticsService';
-export { FetchProviderHealthService } from './services/FetchProviderHealthService';
 export { FetchSecurityService } from './services/FetchSecurityService';
 export { FetchConfigurationService } from './services/FetchConfigurationService';
 export { FetchMonitoringService } from './services/FetchMonitoringService';
@@ -190,7 +188,6 @@ export { SystemService } from './services/SystemService';
 // DiscoveryService removed - use ModelMappingService.discoverProviderModels() instead
 export { AudioConfigurationService } from './services/AudioConfigurationService';
 export { MetricsService } from './services/MetricsService';
-export { ProviderHealthService } from './services/ProviderHealthService';
 export { NotificationsService } from './services/NotificationsService';
 // export { DatabaseBackupService } from './services/DatabaseBackupService'; // Removed
 export { SignalRService } from './services/SignalRService';

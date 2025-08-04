@@ -382,12 +382,7 @@ namespace ConduitLLM.Admin.Controllers
                     p.Id,
                     p.ProviderName,
                     p.ProviderType,
-                    p.BaseUrl,
-                    LastHealth = dbContext.ProviderHealthRecords
-                        .Where(h => h.ProviderId == p.Id)
-                        .OrderByDescending(h => h.TimestampUtc)
-                        .Select(h => new { IsHealthy = h.IsOnline, ResponseTime = h.ResponseTimeMs })
-                        .FirstOrDefault()
+                    p.BaseUrl
                 })
                 .ToListAsync(cancellationToken);
 
@@ -398,8 +393,8 @@ namespace ConduitLLM.Admin.Controllers
                 Type = p.ProviderType.ToString(),
                 Url = p.BaseUrl ?? $"https://api.{p.ProviderType.ToString().ToLower()}.com",
                 Weight = 1,
-                HealthStatus = p.LastHealth?.IsHealthy ?? false ? "healthy" : "unhealthy",
-                ResponseTime = p.LastHealth?.ResponseTime ?? 0
+                HealthStatus = "healthy", // Provider health tracking removed
+                ResponseTime = 0 // Provider health tracking removed
             }).ToList();
         }
 

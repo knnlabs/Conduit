@@ -7,7 +7,6 @@ import { FetchModelMappingsService } from './services/FetchModelMappingsService'
 import { FetchProviderModelsService } from './services/FetchProviderModelsService';
 import { FetchSettingsService } from './services/FetchSettingsService';
 import { FetchAnalyticsService } from './services/FetchAnalyticsService';
-import { FetchProviderHealthService } from './services/FetchProviderHealthService';
 import { FetchSecurityService } from './services/FetchSecurityService';
 import { FetchConfigurationService } from './services/FetchConfigurationService';
 import { FetchMonitoringService } from './services/FetchMonitoringService';
@@ -45,7 +44,6 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
   public readonly providerModels: FetchProviderModelsService;
   public readonly settings: FetchSettingsService;
   public readonly analytics: FetchAnalyticsService;
-  public readonly providerHealth: FetchProviderHealthService;
   public readonly security: FetchSecurityService;
   public readonly configuration: FetchConfigurationService;
   public readonly monitoring: FetchMonitoringService;
@@ -67,7 +65,6 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
     this.providerModels = new FetchProviderModelsService(this);
     this.settings = new FetchSettingsService(this);
     this.analytics = new FetchAnalyticsService(this);
-    this.providerHealth = new FetchProviderHealthService(this);
     this.security = new FetchSecurityService(this);
     this.configuration = new FetchConfigurationService(this);
     this.monitoring = new FetchMonitoringService(this);

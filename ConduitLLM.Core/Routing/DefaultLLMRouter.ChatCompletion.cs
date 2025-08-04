@@ -79,7 +79,6 @@ namespace ConduitLLM.Core.Routing
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during pass-through to model {Model}", request.Model);
-                UpdateModelHealth(request.Model, false);
                 throw;
             }
         }

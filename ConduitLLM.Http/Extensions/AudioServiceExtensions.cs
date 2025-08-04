@@ -46,8 +46,6 @@ namespace ConduitLLM.Http.Extensions
                 configuration.GetSection("AudioService:Cdn"));
             services.Configure<AudioAlertingOptions>(
                 configuration.GetSection("AudioService:Monitoring"));
-            services.Configure<AudioProviderHealthCheckOptions>(
-                configuration.GetSection("HealthChecks:AudioProviders"));
             
             return services;
         }
@@ -65,22 +63,7 @@ namespace ConduitLLM.Http.Extensions
                 failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
                 tags: new[] { "audio", "live", "ready" });
             
-            // Add provider-specific health checks
-            var providers = configuration.GetSection("AudioService:Providers").GetChildren();
-            foreach (var provider in providers)
-            {
-                var providerName = provider.Key;
-                var enabled = provider.GetValue<bool>("Enabled");
-                
-                if (enabled)
-                {
-                    builder.AddTypeActivatedCheck<AudioProviderHealthCheck>(
-                        $"audio-provider-{providerName.ToLower()}",
-                        failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
-                        tags: new[] { "audio", "provider", providerName.ToLower(), "monitoring" },
-                        args: new object[] { providerName });
-                }
-            }
+            // Provider health checks removed
             
             // Add dependency health checks
             var redisConnectionString = configuration.GetConnectionString("Redis");
