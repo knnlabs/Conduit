@@ -75,11 +75,7 @@ public class AdminSystemInfoService : IAdminSystemInfoService
         dbHealth.Duration = dbSw.ElapsedMilliseconds;
         checks.Add("database", dbHealth);
 
-        // Provider health
-        var providerSw = Stopwatch.StartNew();
-        var providerHealth = await CheckProviderHealthAsync();
-        providerHealth.Duration = providerSw.ElapsedMilliseconds;
-        checks.Add("providers", providerHealth);
+        // Provider health check removed - Epic #680
 
         sw.Stop();
 
@@ -290,44 +286,6 @@ public class AdminSystemInfoService : IAdminSystemInfoService
         return health;
     }
 
-    private async Task<ComponentHealth> CheckProviderHealthAsync()
-    {
-        var health = new ComponentHealth
-        {
-            Description = "LLM provider configuration status"
-        };
-
-        try
-        {
-            // Simple check: just see if we have enabled providers
-            var allProviders = await _providerRepository.GetAllAsync();
-            var enabledProviders = allProviders.Where(p => p.IsEnabled).ToList();
-
-            if (!enabledProviders.Any())
-            {
-                health.Status = "unhealthy";
-                health.Description = "No enabled providers configured";
-            }
-            else if (enabledProviders.Count == 1)
-            {
-                health.Status = "degraded";
-                health.Description = "1 provider configured";
-            }
-            else
-            {
-                health.Status = "healthy";
-                health.Description = $"{enabledProviders.Count} providers configured";
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error checking provider configuration");
-            health.Status = "unhealthy";
-            health.Error = ex.Message;
-        }
-
-        return health;
-    }
 
     private async Task<RecordCountsDto> GetRecordCountsAsync()
     {

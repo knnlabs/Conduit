@@ -80,8 +80,16 @@ public partial class Program
             .RequireAuthorization();
         Console.WriteLine("[Conduit API] SignalR EnhancedVideoGenerationHub registered at /hubs/enhanced-video-generation (requires authentication)");
 
-        // Map health check endpoint
+        // Map health check endpoints
         app.MapHealthChecks("/health");
+        app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+        {
+            Predicate = check => check.Tags.Contains("live")
+        });
+        app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+        {
+            Predicate = check => check.Tags.Contains("ready") || !check.Tags.Any()
+        });
 
         // Map Prometheus metrics endpoint for scraping
         app.UseOpenTelemetryPrometheusScrapingEndpoint("/metrics");

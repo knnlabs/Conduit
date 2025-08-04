@@ -104,25 +104,7 @@ namespace ConduitLLM.Http.Extensions
                 failureStatus: HealthStatus.Degraded,
                 tags: new[] { "signalr", "realtime", "ready", "monitoring" });
 
-            // Add API endpoint health checks from configuration
-            // Configuration format: HealthMonitoring__ApiEndpoints__0__Name, HealthMonitoring__ApiEndpoints__0__Url, etc.
-            var endpoints = configuration.GetSection("HealthMonitoring:ApiEndpoints").GetChildren();
-            foreach (var endpoint in endpoints)
-            {
-                var name = endpoint["Name"] ?? "Unknown";
-                var url = endpoint["Url"] ?? "";
-                var timeout = endpoint.GetValue<int?>("TimeoutMs") ?? 5000;
-                var warningThreshold = endpoint.GetValue<int?>("WarningThresholdMs") ?? 1000;
-
-                if (!string.IsNullOrEmpty(url))
-                {
-                    healthChecksBuilder.AddTypeActivatedCheck<ApiEndpointHealthCheck>(
-                        $"api_endpoint_{name}",
-                        failureStatus: HealthStatus.Unhealthy,
-                        tags: new[] { "api", "endpoint", "ready", "monitoring" },
-                        args: new object[] { url, name, timeout, warningThreshold });
-                }
-            }
+            // API endpoint health checks removed - causes circular dependencies
 
             return healthChecksBuilder;
         }

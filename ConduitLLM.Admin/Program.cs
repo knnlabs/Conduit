@@ -316,8 +316,16 @@ public partial class Program
         // Map SignalR hub with master key authentication (filter applied globally in AddSignalR)
         app.MapHub<ConduitLLM.Admin.Hubs.AdminNotificationHub>("/hubs/admin-notifications");
 
-        // Map health check endpoint
+        // Map health check endpoints
         app.MapHealthChecks("/health");
+        app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+        {
+            Predicate = check => check.Tags.Contains("live")
+        });
+        app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+        {
+            Predicate = check => check.Tags.Contains("ready") || !check.Tags.Any()
+        });
 
         // Map Prometheus metrics endpoint - requires authentication
         app.UseOpenTelemetryPrometheusScrapingEndpoint(
