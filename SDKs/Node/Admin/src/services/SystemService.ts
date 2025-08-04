@@ -18,9 +18,24 @@ import {
 import { PaginatedResponse } from '../models/common';
 import { NotImplementedError } from '../utils/errors';
 import { FetchVirtualKeyService as VirtualKeyService } from './FetchVirtualKeyService';
+import { FetchVirtualKeyGroupService as VirtualKeyGroupService } from './FetchVirtualKeyGroupService';
 import { SettingsService } from './SettingsService';
+import type { components } from '../generated/admin-api';
 // Get SDK version from package.json at build time
 const SDK_VERSION = process.env.npm_package_version ?? '1.0.0';
+
+// Extended interface to support virtualKeyGroupId (supported by API but not in generated types yet)
+interface CreateVirtualKeyWithGroupDto {
+  keyName: string;
+  allowedModels?: string | null;
+  maxBudget?: number | null;
+  budgetDuration?: string | null;
+  expiresAt?: string | null;
+  metadata?: string | null;
+  rateLimitRpm?: number | null;
+  rateLimitRpd?: number | null;
+  virtualKeyGroupId?: number;
+}
 
 // C# API response types
 interface SystemInfoApiResponse {
@@ -296,20 +311,34 @@ export class SystemService extends FetchBaseApiClient {
     }
 
     // If we don't have a valid key, create a new one
-    this.log('info', 'Creating new WebUI virtual key');
+    this.log('info', 'Creating new WebUI virtual key with group and $1000 balance');
+    
+    // First, create a virtual key group with $1000 initial balance
+    const virtualKeyGroupService = new VirtualKeyGroupService(this);
+    const group = await virtualKeyGroupService.create({
+      groupName: 'WebUI Internal Group',
+      externalGroupId: 'webui-internal',
+      initialBalance: 1000.00
+    });
+    
+    this.log('info', `Created WebUI virtual key group with ID ${group.id} and $1000 balance`);
     
     // Create metadata
     const metadata = {
       visibility: 'hidden',
       created: new Date().toISOString(),
-      originator: `Admin SDK ${SDK_VERSION}`
+      originator: `Admin SDK ${SDK_VERSION}`,
+      groupId: group.id
     };
 
-    // Create the virtual key - use only the fields that exist in the DTO
-    const response = await virtualKeyService.create({
+    // Create the virtual key and associate it with the group
+    const virtualKeyRequest: CreateVirtualKeyWithGroupDto = {
       keyName: 'WebUI Internal Key',
-      metadata: JSON.stringify(metadata)
-    });
+      metadata: JSON.stringify(metadata),
+      virtualKeyGroupId: group.id
+    };
+    
+    const response = await virtualKeyService.create(virtualKeyRequest as components['schemas']['ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyRequestDto']);
     
     if (!response.virtualKey) {
       throw new Error('Failed to create virtual key: No key returned');
