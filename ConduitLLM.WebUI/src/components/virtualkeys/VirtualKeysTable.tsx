@@ -11,6 +11,7 @@ import {
   Paper,
   Menu,
   rem,
+  Anchor,
 } from '@mantine/core';
 import {
   IconEye,
@@ -20,6 +21,7 @@ import {
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
 import { formatters } from '@/lib/utils/formatters';
+import { useRouter } from 'next/navigation';
 import type { VirtualKeyDto, VirtualKeyGroupDto } from '@knn_labs/conduit-admin-client';
 
 interface VirtualKeysTableProps {
@@ -32,6 +34,7 @@ interface VirtualKeysTableProps {
 
 export function VirtualKeysTable({ onEdit, onView, data, groups, onDelete }: VirtualKeysTableProps) {
   const virtualKeys = data ?? [];
+  const router = useRouter();
   
   // Create a map of group ID to group name for quick lookup
   const groupMap = new Map<number, string>();
@@ -55,6 +58,10 @@ export function VirtualKeysTable({ onEdit, onView, data, groups, onDelete }: Vir
     });
   };
 
+  const handleGroupClick = (groupId: number) => {
+    router.push(`/virtualkeys/groups?groupId=${groupId}`);
+  };
+
   const rows = virtualKeys.map((key) => {
 
     return (
@@ -76,9 +83,14 @@ export function VirtualKeysTable({ onEdit, onView, data, groups, onDelete }: Vir
 
         <Table.Td>
           <Stack gap={4}>
-            <Text size="sm" fw={500}>
+            <Anchor 
+              size="sm" 
+              fw={500}
+              onClick={() => handleGroupClick(key.virtualKeyGroupId)}
+              style={{ cursor: 'pointer' }}
+            >
               {groupMap.get(key.virtualKeyGroupId) ?? `Group ID: ${key.virtualKeyGroupId}`}
-            </Text>
+            </Anchor>
             <Text size="xs" c="dimmed">
               Balance tracked at group level
             </Text>

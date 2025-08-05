@@ -31,6 +31,7 @@ import {
 } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { useDisclosure } from '@mantine/hooks';
+import { useSearchParams } from 'next/navigation';
 import { formatters } from '@/lib/utils/formatters';
 import type { VirtualKeyGroupDto } from '@knn_labs/conduit-admin-client';
 
@@ -48,6 +49,7 @@ export default function VirtualKeyGroupsPage() {
   const [error, setError] = useState<Error | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroup, setSelectedGroup] = useState<VirtualKeyGroupDto | null>(null);
+  const searchParams = useSearchParams();
 
   // Modal states
   const [createModalOpened, { open: openCreateModal, close: closeCreateModal }] = useDisclosure(false);
@@ -59,6 +61,19 @@ export default function VirtualKeyGroupsPage() {
   useEffect(() => {
     void fetchGroups();
   }, []);
+
+  // Handle groupId parameter to auto-open modal
+  useEffect(() => {
+    const groupIdParam = searchParams.get('groupId');
+    if (groupIdParam && groups.length > 0) {
+      const groupId = parseInt(groupIdParam, 10);
+      const group = groups.find(g => g.id === groupId);
+      if (group) {
+        setSelectedGroup(group);
+        openViewModal();
+      }
+    }
+  }, [searchParams, groups, openViewModal]);
 
   const fetchGroups = async () => {
     try {
