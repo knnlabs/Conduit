@@ -51,9 +51,6 @@ import type {
 
 // Type aliases for better readability  
 type GlobalSettingDto = components['schemas']['ConduitLLM.Configuration.DTOs.GlobalSettingDto'];
-type CreateVirtualKeyRequestDto = components['schemas']['ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyRequestDto'];
-type CreateVirtualKeyResponseDto = components['schemas']['ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyResponseDto'];
-type CreateGlobalSettingDto = components['schemas']['ConduitLLM.Configuration.DTOs.CreateGlobalSettingDto'];
 
 // Performance types (not in generated schemas yet)
 interface MetricsParams {
