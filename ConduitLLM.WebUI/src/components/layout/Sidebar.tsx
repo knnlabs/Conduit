@@ -18,7 +18,8 @@ import {
   IconFileText,
   IconCoin,
   IconInfoCircle,
-  IconEye
+  IconEye,
+  IconUsers
 } from '@tabler/icons-react';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -28,6 +29,7 @@ const navigationSections = [
     items: [
       { id: 'dashboard', label: 'Dashboard', href: '/', icon: IconDashboard },
       { id: 'virtualkeys', label: 'Virtual Keys', href: '/virtualkeys', icon: IconKey },
+      { id: 'virtualkeys-groups', label: 'Virtual Key Groups', href: '/virtualkeys/groups', icon: IconUsers },
       { id: 'virtualkeys-discovery-preview', label: 'Discovery Preview', href: '/virtualkeys/discovery-preview', icon: IconEye },
       { id: 'virtualkeys-dashboard', label: 'Virtual Keys Dashboard', href: '/virtualkeys/dashboard', icon: IconChartBar },
       { id: 'virtual-keys-analytics', label: 'Virtual Keys Analytics', href: '/virtual-keys-analytics', icon: IconChartBar },

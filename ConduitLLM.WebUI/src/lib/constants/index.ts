@@ -9,8 +9,6 @@ export * from './providers';
 // Model capability constants
 export * from './modelCapabilities';
 
-// Health constants
-export * from './health';
 
 // Re-export commonly used SDK constants
 export { 

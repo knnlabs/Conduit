@@ -170,7 +170,7 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
       
       void loadProvider();
     }
-  }, [mode, providerId, router, form]);
+  }, [mode, providerId, router]);
 
   const handleSubmit = async (values: ProviderFormData) => {
     setIsSubmitting(true);

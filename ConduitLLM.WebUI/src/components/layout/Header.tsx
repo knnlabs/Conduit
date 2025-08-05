@@ -5,13 +5,11 @@ import {
   Burger,
   Text,
   ActionIcon,
-  Divider,
 } from '@mantine/core';
 import {
   IconBell,
 } from '@tabler/icons-react';
 import { UserButton } from '@clerk/nextjs';
-import { ConnectionIndicator } from './ConnectionIndicator';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -52,10 +50,6 @@ export function Header({
       </Group>
 
       <Group>
-        <ConnectionIndicator />
-        
-        <Divider orientation="vertical" />
-        
         <ThemeToggle />
         
         <ActionIcon variant="light" size="lg">

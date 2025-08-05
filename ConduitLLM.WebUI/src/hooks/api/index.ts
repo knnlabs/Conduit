@@ -9,8 +9,6 @@ export { useExportApi } from '../useExportApi';
 export { useMonitoringApi } from '../useMonitoringApi';
 export { useSystemApi } from '../useSystemApi';
 export { useProviderApi } from '../useProviderApi';
-export { useBackendHealth } from '../useBackendHealth';
 
 // Re-export types
 export type { ExportFormat, ExportType } from '../useExportApi';
-export type { BackendHealthState } from '../useBackendHealth';
