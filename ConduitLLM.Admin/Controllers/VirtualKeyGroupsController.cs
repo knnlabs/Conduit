@@ -359,7 +359,7 @@ namespace ConduitLLM.Admin.Controllers
         {
             try
             {
-                var group = await _groupRepository.GetByIdAsync(id);
+                var group = await _groupRepository.GetByIdWithKeysAsync(id);
                 if (group == null)
                 {
                     return NotFound(new { message = "Group not found" });
