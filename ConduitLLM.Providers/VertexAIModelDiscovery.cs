@@ -78,7 +78,8 @@ namespace ConduitLLM.Providers
                     {
                         ["created"] = model.Created ?? 0,
                         ["owned_by"] = model.OwnedBy ?? "google",
-                        ["object"] = model.Object ?? "model"
+                        ["object"] = model.Object ?? "model",
+                        ["endpoint_format"] = $"https://{{region}}-aiplatform.googleapis.com/v1/projects/{{project}}/locations/{{region}}/publishers/google/models/{model.Id}"
                     }
                 }).ToList();
             }
