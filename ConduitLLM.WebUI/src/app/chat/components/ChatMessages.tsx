@@ -257,6 +257,12 @@ export function ChatMessages({ messages, streamingContent, tokensPerSecond }: Ch
                     <HoverCard.Dropdown>
                       <Stack gap="xs">
                         <Text size="sm" fw={600}>Response Details</Text>
+                        {message.metadata.streaming !== undefined && (
+                          <Group gap="xs">
+                            <Text size="xs" c="dimmed">Response Type:</Text>
+                            <Text size="xs">{message.metadata.streaming ? 'SSE (Streaming)' : 'JSON (Complete)'}</Text>
+                          </Group>
+                        )}
                         {message.metadata.provider && (
                           <Group gap="xs">
                             <Text size="xs" c="dimmed">Provider:</Text>

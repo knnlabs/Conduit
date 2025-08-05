@@ -186,7 +186,10 @@ export function ChatInterface() {
             console.warn('Final metrics collected:', finalMetrics);
           }
           const totalTokens = finalMetrics.total_tokens ?? finalMetrics.completion_tokens ?? 0;
-          const tokensPerSec = (finalMetrics as StreamingPerformanceMetrics).tokens_per_second ?? (totalTokens > 0 && duration > 0 ? totalTokens / duration : 0);
+          // Use completion_tokens_per_second for more accurate generation speed
+          const tokensPerSec = (finalMetrics as StreamingPerformanceMetrics).completion_tokens_per_second 
+            ?? (finalMetrics as StreamingPerformanceMetrics).tokens_per_second 
+            ?? (totalTokens > 0 && duration > 0 ? totalTokens / duration : 0);
           const latencyMs = (finalMetrics as MetricsEventData).total_latency_ms ?? duration * 1000;
           
           const metadata = performanceSettings.trackPerformanceMetrics
@@ -199,8 +202,9 @@ export function ChatInterface() {
                 promptTokens: finalMetrics.prompt_tokens,
                 completionTokens: finalMetrics.completion_tokens,
                 timeToFirstToken: (finalMetrics as StreamingPerformanceMetrics).time_to_first_token_ms,
+                streaming: true,
               }
-            : undefined;
+            : { streaming: true };
           
           const assistantMessage: ChatMessage = {
             id: uuidv4(),
@@ -231,8 +235,9 @@ export function ChatInterface() {
             const performanceData = event.data as { performance?: StreamingPerformanceMetrics };
             if (performanceData?.performance && performanceSettings.useServerMetrics) {
               Object.assign(finalMetrics, performanceData.performance);
-              // Access tokens_per_second directly from the performance data
-              const tps = performanceData.performance.tokens_per_second;
+              // Use completion_tokens_per_second for more accurate generation speed
+              const tps = performanceData.performance.completion_tokens_per_second 
+                ?? performanceData.performance.tokens_per_second;
               if (tps && performanceSettings.showTokensPerSecond) {
                 setTokensPerSecond(tps);
               }
@@ -254,8 +259,8 @@ export function ChatInterface() {
                 console.warn('Metrics event received:', metricsData);
               }
               Object.assign(finalMetrics, metricsData);
-              // Access tokens_per_second directly from the metrics data
-              const tps = metricsData.tokens_per_second;
+              // Use completion_tokens_per_second for more accurate generation speed
+              const tps = metricsData.completion_tokens_per_second ?? metricsData.tokens_per_second;
               if (tps !== undefined && performanceSettings.showTokensPerSecond) {
                 setTokensPerSecond(tps);
               }
@@ -317,8 +322,9 @@ export function ChatInterface() {
               model: data.model ?? selectedModel,
               promptTokens: usage?.prompt_tokens,
               completionTokens: usage?.completion_tokens,
+              streaming: false,
             }
-          : undefined;
+          : { streaming: false };
         
         const assistantMessage: ChatMessage = {
           id: uuidv4(),

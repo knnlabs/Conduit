@@ -47,9 +47,19 @@ export default function MediaAssetsContent() {
         setLoadingVirtualKeys(true);
         const response = await fetch('/api/virtualkeys');
         if (response.ok) {
-          const data = await response.json() as VirtualKeyListResponseDto;
+          const data = await response.json() as unknown;
           
-          const virtualKeysData: VirtualKeyInfo[] = data.items.map(item => ({
+          // Handle both array format and paginated response format
+          let items: any[] = [];
+          if (Array.isArray(data)) {
+            items = data;
+          } else if (data && typeof data === 'object' && 'items' in data && Array.isArray((data as any).items)) {
+            items = (data as any).items;
+          } else {
+            console.warn('Unexpected virtualkeys API response format:', data);
+          }
+          
+          const virtualKeysData: VirtualKeyInfo[] = items.map(item => ({
             id: item.id ?? 0,
             name: item.keyName,
             key: item.keyPrefix ?? `vk_${item.id ?? 'unknown'}`

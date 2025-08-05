@@ -54,11 +54,20 @@ namespace ConduitLLM.Core.Services
                 }
 
                 // Completion generation speed
-                if (response.Usage.CompletionTokens > 0 && streaming)
+                if (response.Usage.CompletionTokens > 0)
                 {
-                    // For streaming, most of the time is spent generating tokens
-                    var generationTime = totalSeconds * 0.9; // Assume 90% of time is generation
-                    metrics.CompletionTokensPerSecond = response.Usage.CompletionTokens / generationTime;
+                    if (streaming)
+                    {
+                        // For streaming, most of the time is spent generating tokens
+                        var generationTime = totalSeconds * 0.9; // Assume 90% of time is generation
+                        metrics.CompletionTokensPerSecond = response.Usage.CompletionTokens / generationTime;
+                    }
+                    else
+                    {
+                        // For non-streaming, assume 70% of time is generation (30% prompt processing)
+                        var generationTime = totalSeconds * 0.7;
+                        metrics.CompletionTokensPerSecond = response.Usage.CompletionTokens / generationTime;
+                    }
                 }
             }
 
@@ -143,7 +152,27 @@ namespace ConduitLLM.Core.Services
                     {
                         // Use actual token count from usage if available
                         metrics.TokensPerSecond = usage.CompletionTokens / totalSeconds;
-                        metrics.CompletionTokensPerSecond = usage.CompletionTokens / totalSeconds;
+                        
+                        // For CompletionTokensPerSecond, exclude prompt processing time
+                        // Generation time = total time - prompt processing time
+                        if (_timeToFirstTokenMs.HasValue)
+                        {
+                            var generationSeconds = totalSeconds - (_timeToFirstTokenMs.Value / 1000.0);
+                            if (generationSeconds > 0)
+                            {
+                                metrics.CompletionTokensPerSecond = usage.CompletionTokens / generationSeconds;
+                            }
+                            else
+                            {
+                                // Fallback if generation time is too small
+                                metrics.CompletionTokensPerSecond = usage.CompletionTokens / totalSeconds;
+                            }
+                        }
+                        else
+                        {
+                            // No time to first token recorded, use total time
+                            metrics.CompletionTokensPerSecond = usage.CompletionTokens / totalSeconds;
+                        }
                     }
                     else if (_tokenCount > 0)
                     {

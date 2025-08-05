@@ -124,7 +124,27 @@ namespace ConduitLLM.Core.Services
             if (totalSeconds > 0 && completionTokens > 0)
             {
                 metrics.TokensPerSecond = completionTokens / totalSeconds;
-                metrics.CompletionTokensPerSecond = completionTokens / totalSeconds;
+                
+                // For CompletionTokensPerSecond, exclude prompt processing time
+                // Generation time = total time - prompt processing time
+                if (_timeToFirstTokenMs.HasValue)
+                {
+                    var generationSeconds = totalSeconds - (_timeToFirstTokenMs.Value / 1000.0);
+                    if (generationSeconds > 0)
+                    {
+                        metrics.CompletionTokensPerSecond = completionTokens / generationSeconds;
+                    }
+                    else
+                    {
+                        // Fallback if generation time is too small
+                        metrics.CompletionTokensPerSecond = completionTokens / totalSeconds;
+                    }
+                }
+                else
+                {
+                    // No time to first token recorded, use total time
+                    metrics.CompletionTokensPerSecond = completionTokens / totalSeconds;
+                }
             }
 
             // Calculate prompt tokens per second if we have usage data
