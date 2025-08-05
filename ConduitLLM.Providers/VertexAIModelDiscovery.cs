@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -34,12 +36,87 @@ namespace ConduitLLM.Providers
                 return new List<DiscoveredModel>();
             }
 
-            // Vertex AI models are project and region specific
-            // Return the commonly available foundation models
-            return await Task.FromResult(GetAvailableModels());
+            // Load models from static JSON file
+            return await LoadStaticModelsAsync();
         }
 
-        private static List<DiscoveredModel> GetAvailableModels()
+        private static async Task<List<DiscoveredModel>> LoadStaticModelsAsync()
+        {
+            try
+            {
+                // Get the path to the JSON file relative to the assembly location
+                var assembly = typeof(VertexAIModelDiscovery).Assembly;
+                var assemblyLocation = Path.GetDirectoryName(assembly.Location);
+                var jsonPath = Path.Combine(assemblyLocation!, "StaticModels", "vertexai-models.json");
+                
+                if (!File.Exists(jsonPath))
+                {
+                    // Fallback to legacy hardcoded method if JSON file not found
+                    return GetLegacyAvailableModels();
+                }
+
+                var json = await File.ReadAllTextAsync(jsonPath);
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    PropertyNameCaseInsensitive = true
+                };
+                var modelsData = JsonSerializer.Deserialize<StaticModelsData>(json, options);
+                
+                if (modelsData?.Models == null || modelsData.Models.Count == 0)
+                {
+                    return GetLegacyAvailableModels();
+                }
+
+                return modelsData.Models.Select(model => new DiscoveredModel
+                {
+                    ModelId = model.Id,
+                    DisplayName = model.Name ?? model.Id,
+                    Provider = "vertexai",
+                    Capabilities = ConvertCapabilities(model),
+                    Metadata = new Dictionary<string, object>
+                    {
+                        ["created"] = model.Created ?? 0,
+                        ["owned_by"] = model.OwnedBy ?? "google",
+                        ["object"] = model.Object ?? "model"
+                    }
+                }).ToList();
+            }
+            catch
+            {
+                // If any error occurs loading from JSON, fall back to legacy method
+                return GetLegacyAvailableModels();
+            }
+        }
+
+        private static ModelCapabilities ConvertCapabilities(StaticModelData model)
+        {
+            var capabilities = new ModelCapabilities();
+            
+            if (model.Capabilities != null)
+            {
+                capabilities.Chat = model.Capabilities.Chat ?? false;
+                capabilities.ChatStream = model.Capabilities.Chat ?? false; // If chat is supported, streaming usually is too
+                capabilities.Embeddings = model.Capabilities.Embeddings ?? false;
+                capabilities.ImageGeneration = model.Capabilities.ImageGeneration ?? false;
+                capabilities.Vision = model.Capabilities.Vision ?? false;
+                capabilities.FunctionCalling = model.Capabilities.FunctionCalling ?? false;
+                capabilities.ToolUse = model.Capabilities.FunctionCalling ?? false; // Usually same as function calling
+                capabilities.JsonMode = model.Capabilities.JsonMode ?? false;
+                capabilities.VideoGeneration = model.Capabilities.VideoGeneration ?? false;
+                capabilities.VideoUnderstanding = model.Capabilities.VideoUnderstanding ?? false;
+            }
+            
+            capabilities.MaxTokens = model.ContextLength;
+            capabilities.MaxOutputTokens = model.MaxOutputTokens;
+            capabilities.SupportedImageSizes = model.SupportedImageSizes;
+            capabilities.SupportedVideoResolutions = model.SupportedVideoResolutions;
+            capabilities.MaxVideoDurationSeconds = model.MaxVideoDurationSeconds;
+            
+            return capabilities;
+        }
+
+        private static List<DiscoveredModel> GetLegacyAvailableModels()
         {
             // Based on Google Vertex AI foundation models
             var knownModels = new List<(string id, string displayName, string description, ModelType type)>
@@ -202,6 +279,45 @@ namespace ConduitLLM.Providers
             Audio,
             SpeechToText,
             VideoUnderstanding
+        }
+
+        private class StaticModelsData
+        {
+            public List<StaticModelData> Models { get; set; } = new();
+        }
+
+        private class StaticModelData
+        {
+            public string Id { get; set; } = string.Empty;
+            public string? Name { get; set; }
+            public long? Created { get; set; }
+            public string? OwnedBy { get; set; }
+            public string? Object { get; set; }
+            public int? ContextLength { get; set; }
+            public int? MaxOutputTokens { get; set; }
+            public int? EmbeddingDimensions { get; set; }
+            public StaticModelCapabilities? Capabilities { get; set; }
+            public List<string>? SupportedImageSizes { get; set; }
+            public List<string>? SupportedVideoResolutions { get; set; }
+            public int? MaxVideoDurationSeconds { get; set; }
+            public List<string>? SupportedVoices { get; set; }
+            public List<string>? SupportedAudioFormats { get; set; }
+        }
+
+        private class StaticModelCapabilities
+        {
+            public bool? Chat { get; set; }
+            public bool? Vision { get; set; }
+            public bool? FunctionCalling { get; set; }
+            public bool? JsonMode { get; set; }
+            public bool? SystemMessage { get; set; }
+            public bool? Embeddings { get; set; }
+            public bool? ImageGeneration { get; set; }
+            public bool? VideoGeneration { get; set; }
+            public bool? VideoUnderstanding { get; set; }
+            public bool? AudioSynthesis { get; set; }
+            public bool? AudioGeneration { get; set; }
+            public bool? AnimationGeneration { get; set; }
         }
     }
 }

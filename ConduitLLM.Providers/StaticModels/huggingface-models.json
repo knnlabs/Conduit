@@ -1,0 +1,752 @@
+{
+  "models": [
+    {
+      "id": "meta-llama/Meta-Llama-3.1-405B-Instruct",
+      "name": "Meta Llama 3.1 405B Instruct",
+      "created": 1721692800,
+      "ownedBy": "meta-llama",
+      "object": "model",
+      "contextLength": 131072,
+      "maxOutputTokens": 16384,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": true,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "meta-llama/Meta-Llama-3.1-70B-Instruct",
+      "name": "Meta Llama 3.1 70B Instruct",
+      "created": 1721692800,
+      "ownedBy": "meta-llama",
+      "object": "model",
+      "contextLength": 131072,
+      "maxOutputTokens": 16384,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": true,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "meta-llama/Meta-Llama-3.1-8B-Instruct",
+      "name": "Meta Llama 3.1 8B Instruct",
+      "created": 1721692800,
+      "ownedBy": "meta-llama",
+      "object": "model",
+      "contextLength": 131072,
+      "maxOutputTokens": 16384,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": true,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "meta-llama/Llama-3.2-90B-Vision-Instruct",
+      "name": "Llama 3.2 90B Vision Instruct",
+      "created": 1727222400,
+      "ownedBy": "meta-llama",
+      "object": "model",
+      "contextLength": 131072,
+      "maxOutputTokens": 16384,
+      "capabilities": {
+        "chat": true,
+        "vision": true,
+        "functionCalling": true,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "meta-llama/Llama-3.2-11B-Vision-Instruct",
+      "name": "Llama 3.2 11B Vision Instruct",
+      "created": 1727222400,
+      "ownedBy": "meta-llama",
+      "object": "model",
+      "contextLength": 131072,
+      "maxOutputTokens": 16384,
+      "capabilities": {
+        "chat": true,
+        "vision": true,
+        "functionCalling": true,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "microsoft/Phi-3.5-vision-instruct",
+      "name": "Microsoft Phi-3.5 Vision Instruct",
+      "created": 1723593600,
+      "ownedBy": "microsoft",
+      "object": "model",
+      "contextLength": 128000,
+      "maxOutputTokens": 4096,
+      "capabilities": {
+        "chat": true,
+        "vision": true,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "mistralai/Mistral-7B-Instruct-v0.3",
+      "name": "Mistral 7B Instruct v0.3",
+      "created": 1717632000,
+      "ownedBy": "mistralai",
+      "object": "model",
+      "contextLength": 32768,
+      "maxOutputTokens": 4096,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": true,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "mistralai/Mixtral-8x7B-Instruct-v0.1",
+      "name": "Mixtral 8x7B Instruct",
+      "created": 1702512000,
+      "ownedBy": "mistralai",
+      "object": "model",
+      "contextLength": 32768,
+      "maxOutputTokens": 4096,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "mistralai/Mixtral-8x22B-Instruct-v0.1",
+      "name": "Mixtral 8x22B Instruct",
+      "created": 1713312000,
+      "ownedBy": "mistralai",
+      "object": "model",
+      "contextLength": 65536,
+      "maxOutputTokens": 8192,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": true,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "google/gemma-2-27b-it",
+      "name": "Google Gemma 2 27B Instruct",
+      "created": 1719878400,
+      "ownedBy": "google",
+      "object": "model",
+      "contextLength": 8192,
+      "maxOutputTokens": 2048,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "google/gemma-2-9b-it",
+      "name": "Google Gemma 2 9B Instruct",
+      "created": 1719878400,
+      "ownedBy": "google",
+      "object": "model",
+      "contextLength": 8192,
+      "maxOutputTokens": 2048,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "Qwen/Qwen2.5-72B-Instruct",
+      "name": "Qwen 2.5 72B Instruct",
+      "created": 1726531200,
+      "ownedBy": "Qwen",
+      "object": "model",
+      "contextLength": 131072,
+      "maxOutputTokens": 8192,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": true,
+        "jsonMode": true,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "Qwen/Qwen2.5-32B-Instruct",
+      "name": "Qwen 2.5 32B Instruct",
+      "created": 1726531200,
+      "ownedBy": "Qwen",
+      "object": "model",
+      "contextLength": 131072,
+      "maxOutputTokens": 8192,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": true,
+        "jsonMode": true,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "deepseek-ai/DeepSeek-V2.5",
+      "name": "DeepSeek V2.5",
+      "created": 1725494400,
+      "ownedBy": "deepseek-ai",
+      "object": "model",
+      "contextLength": 131072,
+      "maxOutputTokens": 8192,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": true,
+        "jsonMode": true,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "NousResearch/Hermes-3-Llama-3.1-70B",
+      "name": "Hermes 3 Llama 3.1 70B",
+      "created": 1723507200,
+      "ownedBy": "NousResearch",
+      "object": "model",
+      "contextLength": 131072,
+      "maxOutputTokens": 16384,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": true,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "01-ai/Yi-1.5-34B-Chat",
+      "name": "Yi 1.5 34B Chat",
+      "created": 1715299200,
+      "ownedBy": "01-ai",
+      "object": "model",
+      "contextLength": 32768,
+      "maxOutputTokens": 4096,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "bigscience/bloom",
+      "name": "BLOOM 176B",
+      "created": 1657065600,
+      "ownedBy": "bigscience",
+      "object": "model",
+      "contextLength": 2048,
+      "maxOutputTokens": 2048,
+      "capabilities": {
+        "chat": false,
+        "vision": false,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": false
+      }
+    },
+    {
+      "id": "tiiuae/falcon-180B-chat",
+      "name": "Falcon 180B Chat",
+      "created": 1693958400,
+      "ownedBy": "tiiuae",
+      "object": "model",
+      "contextLength": 4096,
+      "maxOutputTokens": 2048,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "HuggingFaceH4/starchat2-15b-v0.1",
+      "name": "StarChat2 15B",
+      "created": 1710201600,
+      "ownedBy": "HuggingFaceH4",
+      "object": "model",
+      "contextLength": 16384,
+      "maxOutputTokens": 4096,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "microsoft/Phi-3-medium-128k-instruct",
+      "name": "Microsoft Phi-3 Medium 128K",
+      "created": 1716249600,
+      "ownedBy": "microsoft",
+      "object": "model",
+      "contextLength": 131072,
+      "maxOutputTokens": 4096,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "sentence-transformers/all-MiniLM-L6-v2",
+      "name": "All MiniLM L6 v2",
+      "created": 1625097600,
+      "ownedBy": "sentence-transformers",
+      "object": "model",
+      "contextLength": 512,
+      "embeddingDimensions": 384,
+      "capabilities": {
+        "embeddings": true,
+        "chat": false,
+        "vision": false
+      }
+    },
+    {
+      "id": "BAAI/bge-large-en-v1.5",
+      "name": "BGE Large English v1.5",
+      "created": 1693958400,
+      "ownedBy": "BAAI",
+      "object": "model",
+      "contextLength": 512,
+      "embeddingDimensions": 1024,
+      "capabilities": {
+        "embeddings": true,
+        "chat": false,
+        "vision": false
+      }
+    },
+    {
+      "id": "thenlper/gte-large",
+      "name": "GTE Large",
+      "created": 1688515200,
+      "ownedBy": "thenlper",
+      "object": "model",
+      "contextLength": 512,
+      "embeddingDimensions": 1024,
+      "capabilities": {
+        "embeddings": true,
+        "chat": false,
+        "vision": false
+      }
+    },
+    {
+      "id": "intfloat/multilingual-e5-large",
+      "name": "Multilingual E5 Large",
+      "created": 1688515200,
+      "ownedBy": "intfloat",
+      "object": "model",
+      "contextLength": 512,
+      "embeddingDimensions": 1024,
+      "capabilities": {
+        "embeddings": true,
+        "chat": false,
+        "vision": false
+      }
+    },
+    {
+      "id": "stabilityai/stable-diffusion-3.5-large",
+      "name": "Stable Diffusion 3.5 Large",
+      "created": 1729641600,
+      "ownedBy": "stabilityai",
+      "object": "model",
+      "capabilities": {
+        "imageGeneration": true,
+        "chat": false,
+        "vision": false
+      },
+      "supportedImageSizes": ["1024x1024", "512x512", "768x768", "1152x896", "896x1152"]
+    },
+    {
+      "id": "stabilityai/stable-diffusion-xl-base-1.0",
+      "name": "Stable Diffusion XL Base 1.0",
+      "created": 1690416000,
+      "ownedBy": "stabilityai",
+      "object": "model",
+      "capabilities": {
+        "imageGeneration": true,
+        "chat": false,
+        "vision": false
+      },
+      "supportedImageSizes": ["1024x1024", "768x768", "512x512"]
+    },
+    {
+      "id": "black-forest-labs/FLUX.1-schnell",
+      "name": "FLUX.1 Schnell",
+      "created": 1722470400,
+      "ownedBy": "black-forest-labs",
+      "object": "model",
+      "capabilities": {
+        "imageGeneration": true,
+        "chat": false,
+        "vision": false
+      },
+      "supportedImageSizes": ["1024x1024", "512x512", "768x768", "1024x768", "768x1024"]
+    },
+    {
+      "id": "black-forest-labs/FLUX.1-dev",
+      "name": "FLUX.1 Dev",
+      "created": 1722470400,
+      "ownedBy": "black-forest-labs",
+      "object": "model",
+      "capabilities": {
+        "imageGeneration": true,
+        "chat": false,
+        "vision": false
+      },
+      "supportedImageSizes": ["1024x1024", "512x512", "768x768", "1024x768", "768x1024"]
+    },
+    {
+      "id": "codellama/CodeLlama-70b-Instruct-hf",
+      "name": "Code Llama 70B Instruct",
+      "created": 1704672000,
+      "ownedBy": "codellama",
+      "object": "model",
+      "contextLength": 16384,
+      "maxOutputTokens": 4096,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "Salesforce/codegen25-7b-multi",
+      "name": "CodeGen2.5 7B Multi",
+      "created": 1688515200,
+      "ownedBy": "Salesforce",
+      "object": "model",
+      "contextLength": 2048,
+      "maxOutputTokens": 2048,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": false
+      }
+    },
+    {
+      "id": "databricks/dbrx-instruct",
+      "name": "DBRX Instruct",
+      "created": 1711411200,
+      "ownedBy": "databricks",
+      "object": "model",
+      "contextLength": 32768,
+      "maxOutputTokens": 4096,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": true,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "upstage/SOLAR-10.7B-Instruct-v1.0",
+      "name": "SOLAR 10.7B Instruct",
+      "created": 1702512000,
+      "ownedBy": "upstage",
+      "object": "model",
+      "contextLength": 4096,
+      "maxOutputTokens": 2048,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "EleutherAI/gpt-j-6b",
+      "name": "GPT-J 6B",
+      "created": 1622505600,
+      "ownedBy": "EleutherAI",
+      "object": "model",
+      "contextLength": 2048,
+      "maxOutputTokens": 2048,
+      "capabilities": {
+        "chat": false,
+        "vision": false,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": false
+      }
+    },
+    {
+      "id": "bigcode/starcoder2-15b",
+      "name": "StarCoder2 15B",
+      "created": 1709251200,
+      "ownedBy": "bigcode",
+      "object": "model",
+      "contextLength": 16384,
+      "maxOutputTokens": 4096,
+      "capabilities": {
+        "chat": false,
+        "vision": false,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": false
+      }
+    },
+    {
+      "id": "WizardLMTeam/WizardLM-70B-V1.0",
+      "name": "WizardLM 70B",
+      "created": 1688515200,
+      "ownedBy": "WizardLMTeam",
+      "object": "model",
+      "contextLength": 4096,
+      "maxOutputTokens": 2048,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "alignment-handbook/zephyr-7b-sft-full",
+      "name": "Zephyr 7B SFT",
+      "created": 1698796800,
+      "ownedBy": "alignment-handbook",
+      "object": "model",
+      "contextLength": 8192,
+      "maxOutputTokens": 2048,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "facebook/opt-66b",
+      "name": "OPT 66B",
+      "created": 1651622400,
+      "ownedBy": "facebook",
+      "object": "model",
+      "contextLength": 2048,
+      "maxOutputTokens": 2048,
+      "capabilities": {
+        "chat": false,
+        "vision": false,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": false
+      }
+    },
+    {
+      "id": "internlm/internlm2_5-20b-chat",
+      "name": "InternLM2.5 20B Chat",
+      "created": 1721088000,
+      "ownedBy": "internlm",
+      "object": "model",
+      "contextLength": 32768,
+      "maxOutputTokens": 4096,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": true,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "allenai/OLMo-7B-Instruct",
+      "name": "OLMo 7B Instruct",
+      "created": 1707350400,
+      "ownedBy": "allenai",
+      "object": "model",
+      "contextLength": 2048,
+      "maxOutputTokens": 2048,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "cohere/c4ai-command-r-plus",
+      "name": "Command R Plus",
+      "created": 1712188800,
+      "ownedBy": "cohere",
+      "object": "model",
+      "contextLength": 131072,
+      "maxOutputTokens": 4096,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": true,
+        "jsonMode": true,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "CohereForAI/c4ai-command-r-v01",
+      "name": "Command R v01",
+      "created": 1711411200,
+      "ownedBy": "CohereForAI",
+      "object": "model",
+      "contextLength": 131072,
+      "maxOutputTokens": 4096,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": true,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "togethercomputer/Llama-2-7B-32K-Instruct",
+      "name": "Llama 2 7B 32K Instruct",
+      "created": 1696896000,
+      "ownedBy": "togethercomputer",
+      "object": "model",
+      "contextLength": 32768,
+      "maxOutputTokens": 4096,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "THUDM/chatglm3-6b",
+      "name": "ChatGLM3 6B",
+      "created": 1698278400,
+      "ownedBy": "THUDM",
+      "object": "model",
+      "contextLength": 8192,
+      "maxOutputTokens": 2048,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": true,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "lmsys/vicuna-33b-v1.3",
+      "name": "Vicuna 33B v1.3",
+      "created": 1689638400,
+      "ownedBy": "lmsys",
+      "object": "model",
+      "contextLength": 2048,
+      "maxOutputTokens": 2048,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "Open-Orca/Mistral-7B-OpenOrca",
+      "name": "Mistral 7B OpenOrca",
+      "created": 1696291200,
+      "ownedBy": "Open-Orca",
+      "object": "model",
+      "contextLength": 8192,
+      "maxOutputTokens": 2048,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "teknium/OpenHermes-2.5-Mistral-7B",
+      "name": "OpenHermes 2.5 Mistral 7B",
+      "created": 1700006400,
+      "ownedBy": "teknium",
+      "object": "model",
+      "contextLength": 8192,
+      "maxOutputTokens": 2048,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "mlabonne/NeuralHermes-2.5-Mistral-7B",
+      "name": "NeuralHermes 2.5 Mistral 7B",
+      "created": 1706659200,
+      "ownedBy": "mlabonne",
+      "object": "model",
+      "contextLength": 32768,
+      "maxOutputTokens": 4096,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "openchat/openchat-3.5-0106",
+      "name": "OpenChat 3.5",
+      "created": 1704499200,
+      "ownedBy": "openchat",
+      "object": "model",
+      "contextLength": 8192,
+      "maxOutputTokens": 2048,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    }
+  ]
+}

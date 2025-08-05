@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,9 +18,6 @@ namespace ConduitLLM.Providers
     /// </summary>
     public static class MiniMaxModels
     {
-        // MiniMax has a models endpoint
-        private const string ModelsEndpoint = "https://api.minimax.chat/v1/models";
-
         /// <summary>
         /// Discovers available models from the MiniMax API.
         /// </summary>
@@ -36,45 +35,57 @@ namespace ConduitLLM.Providers
                 return new List<DiscoveredModel>();
             }
 
+            // Load models from static JSON file
+            return await LoadStaticModelsAsync();
+        }
+
+        private static async Task<List<DiscoveredModel>> LoadStaticModelsAsync()
+        {
             try
             {
-                var request = new HttpRequestMessage(HttpMethod.Get, ModelsEndpoint);
-                request.Headers.Add("Authorization", $"Bearer {apiKey}");
-                request.Headers.Add("Accept", "application/json");
-
-                var response = await httpClient.SendAsync(request, cancellationToken);
+                // Get the path to the JSON file relative to the assembly location
+                var assembly = typeof(MiniMaxModels).Assembly;
+                var assemblyLocation = Path.GetDirectoryName(assembly.Location);
+                var jsonPath = Path.Combine(assemblyLocation!, "StaticModels", "minimax-models.json");
                 
-                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                if (!File.Exists(jsonPath))
                 {
-                    // MiniMax doesn't provide a models endpoint
+                    // Fallback to empty list if JSON file not found
                     throw new NotSupportedException(
                         "MiniMax does not provide a models listing endpoint. " +
                         "Model availability must be confirmed through MiniMax's documentation. " +
                         "Configure specific model IDs directly in your application settings.");
                 }
-                
-                if (!response.IsSuccessStatusCode)
-                {
-                    // API call failed, return empty list
-                    return new List<DiscoveredModel>();
-                }
 
-                var content = await response.Content.ReadAsStringAsync(cancellationToken);
-                var apiResponse = JsonSerializer.Deserialize<MiniMaxModelsResponse>(content, new JsonSerializerOptions
+                var json = await File.ReadAllTextAsync(jsonPath);
+                var options = new JsonSerializerOptions
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                     PropertyNameCaseInsensitive = true
-                });
-
-                if (apiResponse?.Data == null || apiResponse.Data.Count == 0)
+                };
+                var modelsData = JsonSerializer.Deserialize<StaticModelsData>(json, options);
+                
+                if (modelsData?.Models == null || modelsData.Models.Count == 0)
                 {
-                    return new List<DiscoveredModel>();
+                    throw new NotSupportedException(
+                        "MiniMax does not provide a models listing endpoint. " +
+                        "Model availability must be confirmed through MiniMax's documentation. " +
+                        "Configure specific model IDs directly in your application settings.");
                 }
 
-                return apiResponse.Data
-                    .Where(model => !string.IsNullOrEmpty(model.Id))
-                    .Select(ConvertToDiscoveredModel)
-                    .ToList();
+                return modelsData.Models.Select(model => new DiscoveredModel
+                {
+                    ModelId = model.Id,
+                    DisplayName = model.Name ?? FormatDisplayName(model.Id),
+                    Provider = "minimax",
+                    Capabilities = ConvertCapabilities(model),
+                    Metadata = new Dictionary<string, object>
+                    {
+                        ["created"] = model.Created ?? 0,
+                        ["owned_by"] = model.OwnedBy ?? "minimax",
+                        ["object"] = model.Object ?? "model"
+                    }
+                }).ToList();
             }
             catch (NotSupportedException)
             {
@@ -83,111 +94,42 @@ namespace ConduitLLM.Providers
             }
             catch (Exception)
             {
-                // Any other error during discovery returns empty list
-                return new List<DiscoveredModel>();
+                // If any error occurs loading from JSON, throw NotSupportedException
+                throw new NotSupportedException(
+                    "MiniMax does not provide a models listing endpoint. " +
+                    "Model availability must be confirmed through MiniMax's documentation. " +
+                    "Configure specific model IDs directly in your application settings.");
             }
         }
 
-
-        private static DiscoveredModel ConvertToDiscoveredModel(MiniMaxModel model)
-        {
-            var capabilities = InferCapabilitiesFromModel(model.Id, DetermineModelType(model));
-            
-            return new DiscoveredModel
-            {
-                ModelId = model.Id,
-                DisplayName = model.Name ?? FormatDisplayName(model.Id),
-                Provider = "minimax", // This will be replaced with proper provider by caller
-                Capabilities = capabilities,
-                Metadata = new Dictionary<string, object>
-                {
-                    ["created"] = model.Created ?? 0,
-                    ["owned_by"] = model.OwnedBy ?? "minimax",
-                    ["type"] = DetermineModelType(model).ToString()
-                }
-            };
-        }
-
-        private static ModelCapabilities InferCapabilitiesFromModel(string modelId, ModelType type)
+        private static ModelCapabilities ConvertCapabilities(StaticModelData model)
         {
             var capabilities = new ModelCapabilities();
-            var modelIdLower = modelId.ToLowerInvariant();
-
-            switch (type)
+            
+            if (model.Capabilities != null)
             {
-                case ModelType.Chat:
-                    capabilities.Chat = true;
-                    capabilities.ChatStream = true;
-                    capabilities.Vision = true; // All ABAB models support vision
-                    capabilities.FunctionCalling = false;
-                    capabilities.ToolUse = false;
-                    capabilities.JsonMode = false;
-                    
-                    // Context windows based on model
-                    if (modelIdLower.Contains("6.5"))
-                    {
-                        capabilities.MaxTokens = 245760; // 245K context
-                        capabilities.MaxOutputTokens = 8192;
-                    }
-                    else
-                    {
-                        capabilities.MaxTokens = 32768; // Default for older models
-                        capabilities.MaxOutputTokens = 4096;
-                    }
-                    break;
-
-                case ModelType.Image:
-                    capabilities.ImageGeneration = true;
-                    capabilities.SupportedImageSizes = new List<string> 
-                    { 
-                        "1:1", "16:9", "9:16", "4:3", "3:4", 
-                        "2.35:1", "1:2.35", "21:9", "9:21" 
-                    };
-                    break;
-
-                case ModelType.Video:
-                    capabilities.VideoGeneration = true;
-                    capabilities.SupportedVideoResolutions = new List<string> 
-                    { 
-                        "720x480", "1280x720", "1920x1080", "720x1280", "1080x1920" 
-                    };
-                    capabilities.MaxVideoDurationSeconds = 6;
-                    break;
-
-                case ModelType.Audio:
-                    // Text-to-speech capabilities
-                    capabilities.Chat = false;
-                    capabilities.ChatStream = false;
-                    // Note: TTS capabilities not fully represented in current interface
-                    break;
-
-                case ModelType.Embedding:
-                    capabilities.Embeddings = true;
-                    capabilities.MaxTokens = 8192; // Typical for embeddings
-                    break;
+                capabilities.Chat = model.Capabilities.Chat ?? false;
+                capabilities.ChatStream = model.Capabilities.Chat ?? false; // If chat is supported, streaming usually is too
+                capabilities.Embeddings = model.Capabilities.Embeddings ?? false;
+                capabilities.ImageGeneration = model.Capabilities.ImageGeneration ?? false;
+                capabilities.Vision = model.Capabilities.Vision ?? false;
+                capabilities.FunctionCalling = model.Capabilities.FunctionCalling ?? false;
+                capabilities.ToolUse = model.Capabilities.FunctionCalling ?? false;
+                capabilities.JsonMode = model.Capabilities.JsonMode ?? false;
+                capabilities.VideoGeneration = model.Capabilities.VideoGeneration ?? false;
+                capabilities.VideoUnderstanding = model.Capabilities.VideoUnderstanding ?? false;
             }
-
+            
+            capabilities.MaxTokens = model.ContextLength;
+            capabilities.MaxOutputTokens = model.MaxOutputTokens;
+            capabilities.SupportedImageSizes = model.SupportedImageSizes;
+            capabilities.SupportedVideoResolutions = model.SupportedVideoResolutions;
+            capabilities.MaxVideoDurationSeconds = model.MaxVideoDurationSeconds;
+            
             return capabilities;
         }
 
-        private static ModelType DetermineModelType(MiniMaxModel model)
-        {
-            var idLower = model.Id.ToLowerInvariant();
-            
-            if (idLower.Contains("chat"))
-                return ModelType.Chat;
-            if (idLower.Contains("image"))
-                return ModelType.Image;
-            if (idLower.Contains("video"))
-                return ModelType.Video;
-            if (idLower.Contains("speech"))
-                return ModelType.Audio;
-            if (idLower.Contains("embo"))
-                return ModelType.Embedding;
-            
-            // Default to chat if type cannot be determined
-            return ModelType.Chat;
-        }
+
 
         private static string FormatDisplayName(string modelId)
         {
@@ -214,27 +156,43 @@ namespace ConduitLLM.Providers
             return string.Join(" ", words);
         }
 
-        private class MiniMaxModelsResponse
+        private class StaticModelsData
         {
-            public List<MiniMaxModel> Data { get; set; } = new();
+            public List<StaticModelData> Models { get; set; } = new();
         }
 
-        private class MiniMaxModel
+        private class StaticModelData
         {
             public string Id { get; set; } = string.Empty;
             public string? Name { get; set; }
             public long? Created { get; set; }
             public string? OwnedBy { get; set; }
             public string? Object { get; set; }
+            public int? ContextLength { get; set; }
+            public int? MaxOutputTokens { get; set; }
+            public int? EmbeddingDimensions { get; set; }
+            public StaticModelCapabilities? Capabilities { get; set; }
+            public List<string>? SupportedImageSizes { get; set; }
+            public List<string>? SupportedVideoResolutions { get; set; }
+            public int? MaxVideoDurationSeconds { get; set; }
+            public List<string>? SupportedVoices { get; set; }
+            public List<string>? SupportedAudioFormats { get; set; }
         }
 
-        private enum ModelType
+        private class StaticModelCapabilities
         {
-            Chat,
-            Image,
-            Video,
-            Audio,
-            Embedding
+            public bool? Chat { get; set; }
+            public bool? Vision { get; set; }
+            public bool? FunctionCalling { get; set; }
+            public bool? JsonMode { get; set; }
+            public bool? SystemMessage { get; set; }
+            public bool? Embeddings { get; set; }
+            public bool? ImageGeneration { get; set; }
+            public bool? VideoGeneration { get; set; }
+            public bool? VideoUnderstanding { get; set; }
+            public bool? AudioSynthesis { get; set; }
+            public bool? AudioGeneration { get; set; }
+            public bool? AnimationGeneration { get; set; }
         }
     }
 }

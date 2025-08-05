@@ -148,18 +148,18 @@ namespace ConduitLLM.Tests.Providers.Discovery
             // Check Gemini models
             Assert.Contains(models, m => m.ModelId == "gemini-1.5-pro-001");
             Assert.Contains(models, m => m.ModelId == "gemini-1.5-flash-001");
-            Assert.Contains(models, m => m.ModelId == "gemini-pro-vision");
+            Assert.Contains(models, m => m.ModelId == "gemini-1.0-pro-vision-001");
             
             // Check PaLM models
-            Assert.Contains(models, m => m.ModelId == "text-bison");
-            Assert.Contains(models, m => m.ModelId == "chat-bison");
-            Assert.Contains(models, m => m.ModelId == "code-bison");
+            Assert.Contains(models, m => m.ModelId == "text-bison-001");
+            Assert.Contains(models, m => m.ModelId == "chat-bison-001");
+            Assert.Contains(models, m => m.ModelId == "code-bison-001");
             
             // Check Claude via Vertex
             Assert.Contains(models, m => m.ModelId == "claude-3-opus@20240229");
             
             // Check Imagen models
-            Assert.Contains(models, m => m.ModelId == "imagegeneration@005");
+            Assert.Contains(models, m => m.ModelId == "imagen-2.0");
             Assert.Contains(models, m => m.ModelId == "imagen-3.0-generate-001");
             
             // Verify capabilities
@@ -171,7 +171,7 @@ namespace ConduitLLM.Tests.Providers.Discovery
             
             var imagen = models.First(m => m.ModelId.Contains("imagen-3"));
             Assert.True(imagen.Capabilities.ImageGeneration);
-            Assert.Contains("2048x2048", imagen.Capabilities.SupportedImageSizes);
+            Assert.Contains("1536x1024", imagen.Capabilities.SupportedImageSizes);
         }
 
         #endregion

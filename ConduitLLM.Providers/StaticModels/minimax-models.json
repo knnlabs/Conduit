@@ -1,0 +1,198 @@
+{
+  "models": [
+    {
+      "id": "abab6.5s-chat",
+      "name": "ABAB 6.5s Chat",
+      "created": 1724630400,
+      "ownedBy": "minimax",
+      "object": "model",
+      "contextLength": 245760,
+      "maxOutputTokens": 8192,
+      "capabilities": {
+        "chat": true,
+        "vision": true,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "abab6.5t-chat",
+      "name": "ABAB 6.5t Chat",
+      "created": 1724630400,
+      "ownedBy": "minimax",
+      "object": "model",
+      "contextLength": 8192,
+      "maxOutputTokens": 8192,
+      "capabilities": {
+        "chat": true,
+        "vision": true,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "abab6.5g-chat",
+      "name": "ABAB 6.5g Chat",
+      "created": 1724630400,
+      "ownedBy": "minimax",
+      "object": "model",
+      "contextLength": 8192,
+      "maxOutputTokens": 8192,
+      "capabilities": {
+        "chat": true,
+        "vision": true,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "abab6-chat",
+      "name": "ABAB 6 Chat",
+      "created": 1710288000,
+      "ownedBy": "minimax",
+      "object": "model",
+      "contextLength": 32768,
+      "maxOutputTokens": 4096,
+      "capabilities": {
+        "chat": true,
+        "vision": true,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "abab5.5s-chat",
+      "name": "ABAB 5.5s Chat",
+      "created": 1702512000,
+      "ownedBy": "minimax",
+      "object": "model",
+      "contextLength": 16384,
+      "maxOutputTokens": 4096,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "abab5.5-chat",
+      "name": "ABAB 5.5 Chat",
+      "created": 1694534400,
+      "ownedBy": "minimax",
+      "object": "model",
+      "contextLength": 16384,
+      "maxOutputTokens": 4096,
+      "capabilities": {
+        "chat": true,
+        "vision": false,
+        "functionCalling": false,
+        "jsonMode": false,
+        "systemMessage": true
+      }
+    },
+    {
+      "id": "embo-01",
+      "name": "Embo 01 Embeddings",
+      "created": 1683590400,
+      "ownedBy": "minimax",
+      "object": "model",
+      "contextLength": 8192,
+      "embeddingDimensions": 1536,
+      "capabilities": {
+        "embeddings": true,
+        "chat": false,
+        "vision": false
+      }
+    },
+    {
+      "id": "speech-01",
+      "name": "Speech 01 TTS",
+      "created": 1704672000,
+      "ownedBy": "minimax",
+      "object": "model",
+      "capabilities": {
+        "chat": false,
+        "vision": false,
+        "audioSynthesis": true
+      },
+      "supportedVoices": ["male-qn-qingse", "female-shaonv", "female-yujie", "female-tianmei", "male-qn-jingying", "presenter-male", "presenter-female", "audiobook-male", "audiobook-female"],
+      "supportedAudioFormats": ["mp3", "wav", "pcm", "flac"]
+    },
+    {
+      "id": "speech-01-turbo",
+      "name": "Speech 01 Turbo TTS",
+      "created": 1715299200,
+      "ownedBy": "minimax",
+      "object": "model",
+      "capabilities": {
+        "chat": false,
+        "vision": false,
+        "audioSynthesis": true
+      },
+      "supportedVoices": ["male-qn-qingse", "female-shaonv", "female-yujie", "female-tianmei", "male-qn-jingying"],
+      "supportedAudioFormats": ["mp3", "wav", "pcm"]
+    },
+    {
+      "id": "music-01",
+      "name": "Music 01 Generation",
+      "created": 1725494400,
+      "ownedBy": "minimax",
+      "object": "model",
+      "capabilities": {
+        "chat": false,
+        "vision": false,
+        "audioGeneration": true
+      },
+      "maxDurationSeconds": 300,
+      "supportedAudioFormats": ["mp3", "wav"]
+    },
+    {
+      "id": "video-01",
+      "name": "Video 01 Generation",
+      "created": 1724630400,
+      "ownedBy": "minimax",
+      "object": "model",
+      "capabilities": {
+        "chat": false,
+        "vision": false,
+        "videoGeneration": true
+      },
+      "supportedVideoResolutions": ["720x480", "1280x720", "1920x1080", "720x1280", "1080x1920"],
+      "maxVideoDurationSeconds": 6,
+      "supportedVideoFormats": ["mp4"]
+    },
+    {
+      "id": "video-01-hd",
+      "name": "Video 01 HD Generation",
+      "created": 1726531200,
+      "ownedBy": "minimax",
+      "object": "model",
+      "capabilities": {
+        "chat": false,
+        "vision": false,
+        "videoGeneration": true
+      },
+      "supportedVideoResolutions": ["1280x720", "1920x1080", "720x1280", "1080x1920", "2560x1440", "3840x2160"],
+      "maxVideoDurationSeconds": 6,
+      "supportedVideoFormats": ["mp4"]
+    },
+    {
+      "id": "live2d-01",
+      "name": "Live2D 01 Animation",
+      "created": 1718841600,
+      "ownedBy": "minimax",
+      "object": "model",
+      "capabilities": {
+        "chat": false,
+        "vision": false,
+        "animationGeneration": true
+      }
+    }
+  ]
+}
