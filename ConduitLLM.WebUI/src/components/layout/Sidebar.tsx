@@ -64,6 +64,7 @@ const navigationSections = [
       { id: 'images', label: 'Images', href: '/images', icon: IconPhoto },
       { id: 'videos', label: 'Videos', href: '/videos', icon: IconVideo },
       { id: 'chat', label: 'Chat', href: '/chat', icon: IconMessage },
+      { id: 'media-assets', label: 'Media Assets', href: '/media-assets', icon: IconDatabase },
     ]
   },
   {
