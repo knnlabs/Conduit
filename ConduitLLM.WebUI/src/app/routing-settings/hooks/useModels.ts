@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { DiscoveredModel, ModelsDiscoveryResponse } from '@knn_labs/conduit-core-client';
+import type { DiscoveredModel, ModelsDiscoveryResponse } from '../types/models';
 
 
 
@@ -24,7 +24,7 @@ export function useModels() {
         const modelsData = await response.json() as ModelsDiscoveryResponse;
         
         // Extract models array from response
-        const modelsArray = modelsData.data ?? [];
+        const modelsArray = modelsData.models ?? [];
         setModels(modelsArray);
       } catch (err) {
         console.error('Error fetching models:', err);
@@ -41,7 +41,7 @@ export function useModels() {
   // Convert models to select options format
   const modelOptions: { value: string; label: string; }[] = models.map((model) => ({
     value: model.id,
-    label: model.display_name ?? model.id,
+    label: model.displayName ?? model.id,
   }));
 
   return {

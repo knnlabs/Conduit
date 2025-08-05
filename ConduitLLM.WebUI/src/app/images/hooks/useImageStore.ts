@@ -1,6 +1,10 @@
 import { create } from 'zustand';
-import { ImageGenerationState, ImageGenerationActions } from '../types';
-import type { ImageGenerationResponse } from '@knn_labs/conduit-core-client';
+import { 
+  ImageGenerationState, 
+  ImageGenerationActions,
+  type ImageGenerationResponse,
+  type ErrorResponse
+} from '../types';
 import { 
   createToastErrorHandler, 
   shouldShowBalanceWarning,
@@ -70,9 +74,9 @@ export const useImageStore = create<ImageStore>((set, get) => ({
       });
 
       if (!response.ok) {
-        let errorData: unknown;
+        let errorData: ErrorResponse | { error: string };
         try {
-          errorData = await response.json();
+          errorData = await response.json() as ErrorResponse;
         } catch {
           errorData = { error: response.statusText };
         }

@@ -1,13 +1,24 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useVideoStore } from './useVideoStore';
 import { generateVideoWithProgress, cleanupClientCore } from '@/lib/client/coreClient';
-import type { VideoSettings, VideoTask, VideoGenerationResult } from '../types';
-import type { VideoProgress } from '@knn_labs/conduit-core-client';
+import type { 
+  VideoSettings, 
+  VideoTask, 
+  VideoGenerationResult, 
+  AsyncVideoGenerationResponse
+} from '../types';
 import { 
   createToastErrorHandler, 
   shouldShowBalanceWarning,
   handleApiError
 } from '@knn_labs/conduit-core-client';
+
+// Define VideoProgress type locally since SDK is broken
+interface VideoProgress {
+  percentage?: number;
+  status?: string;
+  message?: string;
+}
 import { notifications } from '@mantine/notifications';
 
 interface GenerateVideoParams {
@@ -95,8 +106,8 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
             {
               onProgress: (progress: VideoProgress) => {
                 updateTask(taskId, {
-                  progress: progress.percentage,
-                  status: progress.status === 'Processing' ? 'running' : progress.status.toLowerCase() as VideoTask['status'],
+                  progress: progress.percentage ?? 0,
+                  status: progress.status === 'Processing' ? 'running' : (progress.status?.toLowerCase() ?? 'pending') as VideoTask['status'],
                   message: progress.message,
                   updatedAt: new Date().toISOString(),
                 });
@@ -168,7 +179,7 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
       if (!response.ok) {
         let errorData: unknown;
         try {
-          errorData = await response.json();
+          errorData = await response.json() as unknown;
         } catch {
           errorData = { error: response.statusText };
         }
@@ -188,7 +199,7 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
         handleApiError(httpError, '/api/videos/generate', 'POST');
       }
 
-      const data = await response.json() as { task_id: string; message?: string; estimated_time_to_completion?: number };
+      const data = await response.json() as AsyncVideoGenerationResponse;
       
       // Create task and start polling
       const newTask: VideoTask = {
@@ -216,14 +227,7 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
               throw new Error('Failed to get task status');
             }
             
-            const status = await statusResponse.json() as {
-              status: string;
-              progress: number;
-              message?: string;
-              updated_at?: string;
-              result?: VideoGenerationResult;
-              error?: string;
-            };
+            const status = await statusResponse.json() as AsyncVideoGenerationResponse;
             
             updateTask(data.task_id, {
               status: status.status === 'Processing' ? 'running' : status.status.toLowerCase() as VideoTask['status'],
@@ -277,6 +281,7 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
     setError,
     useProgressTracking,
     fallbackToPolling,
+    handleError
   ]);
 
   const cancelGeneration = useCallback(async (taskId: string) => {

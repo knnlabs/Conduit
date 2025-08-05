@@ -42,7 +42,7 @@ export const SDK_CONFIG = {
 
 // Singleton instances
 let adminClient: ConduitAdminClient | null = null;
-let coreClient: ConduitCoreClient | null = null;
+let coreClient: InstanceType<typeof ConduitCoreClient> | null = null;
 let webuiVirtualKey: string | null = null;
 
 export function getServerAdminClient(): ConduitAdminClient {
@@ -60,7 +60,7 @@ export function getServerAdminClient(): ConduitAdminClient {
   return adminClient;
 }
 
-export async function getServerCoreClient(): Promise<ConduitCoreClient> {
+export async function getServerCoreClient(): Promise<InstanceType<typeof ConduitCoreClient>> {
   if (!coreClient || !webuiVirtualKey) {
     // Validate environment at runtime
     validateEnvironment();

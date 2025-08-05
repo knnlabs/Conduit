@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
-import { getServerCoreClient } from '@/lib/server/coreClient';
-import type { AsyncVideoGenerationRequest } from '@knn_labs/conduit-core-client';
+import { getServerCoreClient } from '@/lib/server/sdk-config';
+import type { AsyncVideoGenerationRequest } from '@/app/videos/types';
 
 // POST /api/videos/generate - Generate videos using Core SDK
 export async function POST(request: NextRequest) {

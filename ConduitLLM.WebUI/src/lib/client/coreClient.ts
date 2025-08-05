@@ -1,12 +1,20 @@
-import { ConduitCoreClient, type VideoProgressCallbacks } from '@knn_labs/conduit-core-client';
+import { ConduitCoreClient } from '@knn_labs/conduit-core-client';
 
-let clientInstance: ConduitCoreClient | null = null;
+// Define local types to avoid broken SDK imports
+interface VideoProgressCallbacks {
+  onProgress?: (progress: { percentage?: number; status?: string; message?: string }) => void;
+  onStarted?: (taskId: string, estimatedSeconds?: number) => void;
+  onCompleted?: (result: import('@/app/videos/types').VideoGenerationResult) => void; 
+  onFailed?: (error: string, isRetryable: boolean) => void;
+}
+
+let clientInstance: InstanceType<typeof ConduitCoreClient> | null = null;
 
 /**
  * Get or create a client-side ConduitCoreClient instance
  * This client uses SignalR for real-time updates
  */
-export async function getClientCoreClient(): Promise<ConduitCoreClient> {
+export async function getClientCoreClient(): Promise<InstanceType<typeof ConduitCoreClient>> {
   if (!clientInstance) {
     // For client-side, we need to get the virtual key from the server
     // This should be done through a secure endpoint that validates the user

@@ -6,6 +6,46 @@ export interface ImageAttachment {
   name: string;
 }
 
+// Content types for chat messages (similar to SDK types)
+export interface TextContent {
+  type: 'text';
+  text: string;
+}
+
+export interface ImageContent {
+  type: 'image_url';
+  image_url: {
+    url: string;
+    detail?: 'auto' | 'low' | 'high';
+  };
+}
+
+export type MessageContent = string | Array<TextContent | ImageContent>;
+
+// Content helpers
+export const ContentHelpers = {
+  text: (text: string): TextContent => ({
+    type: 'text',
+    text,
+  }),
+  
+  imageUrl: (url: string, detail?: 'auto' | 'low' | 'high'): ImageContent => ({
+    type: 'image_url',
+    image_url: {
+      url,
+      detail,
+    },
+  }),
+  
+  imageBase64: (base64: string, mimeType: string, detail?: 'auto' | 'low' | 'high'): ImageContent => ({
+    type: 'image_url',
+    image_url: {
+      url: `data:${mimeType};base64,${base64}`,
+      detail,
+    },
+  }),
+};
+
 export type ChatErrorType = 'rate_limit' | 'model_not_found' | 'auth_error' | 'network_error' | 'server_error';
 
 export interface ChatMessage {
@@ -117,6 +157,25 @@ export interface ModelWithCapabilities {
   supportsToolUsage?: boolean;
   supportsJsonMode?: boolean;
   supportsStreaming?: boolean;
+}
+
+export interface ChatCompletionRequest {
+  messages: Array<{
+    role: 'system' | 'user' | 'assistant';
+    content: MessageContent;
+  }>;
+  model: string;
+  stream?: boolean;
+  temperature?: number;
+  max_tokens?: number;
+  top_p?: number;
+  frequency_penalty?: number;
+  presence_penalty?: number;
+  seed?: number;
+  stop?: string[];
+  response_format?: {
+    type: 'json_object';
+  };
 }
 
 export interface ChatCompletionResponse {

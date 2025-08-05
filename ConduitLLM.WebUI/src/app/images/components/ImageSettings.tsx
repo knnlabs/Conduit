@@ -37,7 +37,7 @@ export default function ImageSettings({ models }: ImageSettingsProps) {
   };
 
   // Get model metadata
-  const { data: metadataResponse } = useModelMetadata(settings.model || null);
+  const { data: metadataResponse } = useModelMetadata(settings.model ?? null);
   const imageMetadata = metadataResponse?.metadata?.image;
 
   // Get size options from metadata or fallback
@@ -116,7 +116,7 @@ export default function ImageSettings({ models }: ImageSettingsProps) {
               data={imageMetadata?.qualityOptions?.map(q => ({
                 value: q,
                 label: q.charAt(0).toUpperCase() + q.slice(1)
-              })) || []}
+              })) ?? []}
               required
             />
           </Grid.Col>
@@ -132,7 +132,7 @@ export default function ImageSettings({ models }: ImageSettingsProps) {
               data={imageMetadata?.styleOptions?.map(s => ({
                 value: s,
                 label: s.charAt(0).toUpperCase() + s.slice(1)
-              })) || []}
+              })) ?? []}
               required
             />
           </Grid.Col>

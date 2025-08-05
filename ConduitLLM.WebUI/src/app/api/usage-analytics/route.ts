@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import { getServerCoreClient } from '@/lib/server/coreClient';
+import { getServerCoreClient } from '@/lib/server/sdk-config';
 
 export async function GET(req: NextRequest) {
   try {

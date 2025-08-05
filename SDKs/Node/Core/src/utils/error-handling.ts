@@ -5,10 +5,6 @@
 
 import { 
   ConduitError, 
-  InsufficientBalanceError, 
-  AuthError, 
-  ValidationError, 
-  RateLimitError, 
   ServerError,
   NetworkError,
   isInsufficientBalanceError,
@@ -47,7 +43,7 @@ export async function conduitFetch(
         response: {
           status: response.status,
           data: errorData,
-          headers: Object.fromEntries(response.headers.entries())
+          headers: {} as Record<string, string> // Simplified to avoid Headers iteration issues
         },
         message: response.statusText,
         request: { url, method: options.method ?? 'GET' }
@@ -87,7 +83,7 @@ export async function conduitFetch(
  */
 export function getErrorDisplayMessage(error: unknown, context?: string): string {
   if (isInsufficientBalanceError(error)) {
-    return `💳 Insufficient balance to ${context || 'complete this request'}. Please add credits to your account.`;
+    return `💳 Insufficient balance to ${context ?? 'complete this request'}. Please add credits to your account.`;
   }
   
   if (isAuthError(error)) {

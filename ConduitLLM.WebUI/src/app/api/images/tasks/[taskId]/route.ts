@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
-import { getServerCoreClient } from '@/lib/server/coreClient';
+import { getServerCoreClient } from '@/lib/server/sdk-config';
 // Types are inferred from the SDK methods
 
 // GET /api/images/tasks/[taskId] - Get image generation task status

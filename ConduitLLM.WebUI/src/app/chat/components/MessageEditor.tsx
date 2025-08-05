@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Textarea, Button, Group, Stack } from '@mantine/core';
 import { IconCheck, IconX } from '@tabler/icons-react';
 import type { ChatMessage } from '@/types/chat';
-import type { TextContent } from '@knn_labs/conduit-core-client';
+import type { TextContent } from '@/app/chat/types';
 
 interface MessageEditorProps {
   message: ChatMessage;

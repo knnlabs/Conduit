@@ -17,18 +17,23 @@ import {
 import { IconAlertCircle, IconSettings, IconChevronUp } from '@tabler/icons-react';
 import { v4 as uuidv4 } from 'uuid';
 import { 
-  ContentHelpers, 
-  type TextContent, 
-  type ImageContent,
-  type ChatCompletionRequest,
   createToastErrorHandler,
-  shouldShowBalanceWarning,
-  ErrorHandlers
+  shouldShowBalanceWarning
 } from '@knn_labs/conduit-core-client';
 import { ChatInput } from './ChatInput';
 import { ChatMessages } from './ChatMessages';
 import { ChatSettings } from './ChatSettings';
-import { ImageAttachment, ChatParameters, ChatCompletionResponse, ChatMessage } from '../types';
+import { 
+  ImageAttachment, 
+  ChatParameters, 
+  ChatCompletionResponse, 
+  ChatMessage,
+  ChatCompletionRequest,
+  ContentHelpers,
+  type TextContent,
+  type ImageContent,
+  type MessageContent
+} from '../types';
 import { StreamingPerformanceMetrics, UsageData, SSEEventType, MetricsEventData } from '../types/metrics';
 import { parseSSEStream } from '../utils/sse-parser';
 import { usePerformanceSettings } from '../hooks/usePerformanceSettings';
@@ -107,15 +112,14 @@ export function ChatInterface() {
       
       // Build messages array with optional system prompt
       const allMessages = [...messages, userMessage];
-      const apiMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string | Array<TextContent | ImageContent> }> = 
-        allMessages
-          .filter(m => m.role !== 'function') // Filter out function messages for API
-          .map(m => ({
-            role: m.role as 'system' | 'user' | 'assistant',
-            content: m.images && m.images.length > 0 
-              ? buildMessageContent(m.content, m.images)
-              : m.content
-          }));
+      const apiMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: MessageContent }> = allMessages
+        .filter(m => m.role !== 'function') // Filter out function messages for API
+        .map(m => ({
+          role: m.role as 'system' | 'user' | 'assistant',
+          content: m.images && m.images.length > 0 
+            ? buildMessageContent(m.content, m.images)
+            : m.content
+        }));
       
       // Prepend system prompt if it exists
       if (sessionParams.systemPrompt) {
@@ -157,27 +161,8 @@ export function ChatInterface() {
       });
 
       if (!response.ok) {
-        let errorData: unknown;
-        try {
-          const errorText = await response.text();
-          errorData = JSON.parse(errorText);
-        } catch {
-          errorData = { error: response.statusText };
-        }
-        
-        // Create a mock HTTP error that the SDK can handle properly
-        const httpError = {
-          response: {
-            status: response.status,
-            data: errorData,
-            headers: Object.fromEntries(response.headers.entries())
-          },
-          message: response.statusText,
-          request: { url: '/api/chat/completions', method: 'POST' }
-        };
-        
         // This will throw the appropriate ConduitError subclass (including InsufficientBalanceError for 402)
-        throw httpError;
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
       // Handle response based on streaming mode
@@ -366,9 +351,9 @@ export function ChatInterface() {
       setStreamingContent('');
       setTokensPerSecond(null);
     }
-  }, [selectedModel, messages, isLoading, getActiveSession, performanceSettings.showTokensPerSecond, performanceSettings.trackPerformanceMetrics, performanceSettings.useServerMetrics]);
+  }, [selectedModel, messages, isLoading, getActiveSession, performanceSettings.showTokensPerSecond, performanceSettings.trackPerformanceMetrics, performanceSettings.useServerMetrics, handleError]);
 
-  const buildMessageContent = (text: string, images?: ImageAttachment[]): string | Array<TextContent | ImageContent> => {
+  const buildMessageContent = (text: string, images?: ImageAttachment[]): MessageContent => {
     if (!images || images.length === 0) {
       return text;
     }

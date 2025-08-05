@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server';
 
 export async function GET(
   request: Request,
-  { params }: { params: { modelId: string } }
+  { params }: { params: Promise<{ modelId: string }> }
 ) {
   try {
-    const apiUrl = process.env.CONDUIT_API_URL || 'http://localhost:5000';
+    const apiUrl = process.env.CONDUIT_API_URL ?? 'http://localhost:5000';
     const apiKey = process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY;
     
     if (!apiKey) {
@@ -13,7 +13,8 @@ export async function GET(
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
-    const response = await fetch(`${apiUrl}/v1/models/${params.modelId}/metadata`, {
+    const { modelId } = await params;
+    const response = await fetch(`${apiUrl}/v1/models/${modelId}/metadata`, {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',

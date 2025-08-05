@@ -1,7 +1,7 @@
 // Chat-related type definitions
 
-// Import MessageContent type from SDK for proper typing
-import type { MessageContent } from '@knn_labs/conduit-core-client';
+// Import MessageContent type from local chat types to avoid broken SDK imports
+import type { MessageContent } from '@/app/chat/types';
 
 export interface ChatMessage {
   id?: string;

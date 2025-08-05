@@ -1,4 +1,4 @@
-// Re-export only error types and utilities from the Common package
+// Re-export error types and utilities from the Common package
 export {
   // Error classes
   ConduitError,
@@ -8,7 +8,6 @@ export {
   ValidationError,
   NotFoundError,
   ConflictError,
-  InsufficientBalanceError,
   RateLimitError,
   ServerError,
   NetworkError,
@@ -22,7 +21,6 @@ export {
   isValidationError,
   isNotFoundError,
   isConflictError,
-  isInsufficientBalanceError,
   isRateLimitError,
   isNetworkError,
   isStreamError,
@@ -39,4 +37,25 @@ export {
   // For Core SDK specific use - removed unused imports
 } from '@knn_labs/conduit-common';
 
-// Note: All error utilities and types are re-exported from the common package above
+// Core SDK specific error types not in Common package
+import { ConduitError } from '@knn_labs/conduit-common';
+
+/**
+ * Error thrown when a request fails due to insufficient balance
+ */
+export class InsufficientBalanceError extends ConduitError {
+  constructor(message: string = 'Insufficient balance', details?: Record<string, unknown>) {
+    super(message, 402, 'INSUFFICIENT_BALANCE', details);
+    this.name = 'InsufficientBalanceError';
+  }
+}
+
+/**
+ * Type guard to check if an error is an InsufficientBalanceError
+ */
+export function isInsufficientBalanceError(error: unknown): error is InsufficientBalanceError {
+  return error instanceof InsufficientBalanceError || 
+         (error instanceof Error && error.name === 'InsufficientBalanceError') ||
+         (typeof error === 'object' && error !== null && 
+          'statusCode' in error && (error as { statusCode: number }).statusCode === 402);
+}

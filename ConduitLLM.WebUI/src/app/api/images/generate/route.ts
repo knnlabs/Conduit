@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
-import { getServerCoreClient } from '@/lib/server/coreClient';
+import { getServerCoreClient } from '@/lib/server/sdk-config';
 
 // POST /api/images/generate - Generate images using Core SDK
 export async function POST(request: NextRequest) {

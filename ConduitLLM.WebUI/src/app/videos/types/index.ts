@@ -28,17 +28,71 @@ export interface VideoTask {
   }>;
 }
 
-// Import SDK video interfaces for use in this file
-import type {
-  VideoData as SDKVideoData,
-  VideoUsage as SDKVideoUsage,
-  VideoMetadata as SDKVideoMetadata
-} from '@knn_labs/conduit-core-client';
+// Local video types to avoid broken SDK imports
+export interface VideoData {
+  url?: string;
+  b64_json?: string;
+  revised_prompt?: string;
+  metadata?: VideoMetadata;
+}
 
-// Re-export SDK video interfaces
-export type VideoData = SDKVideoData;
-export type VideoUsage = SDKVideoUsage;
-export type VideoMetadata = SDKVideoMetadata;
+export interface VideoUsage {
+  prompt_tokens: number;
+  total_tokens: number;
+  duration_seconds?: number;
+  processing_time_seconds?: number;
+}
+
+export interface VideoMetadata {
+  duration?: number;
+  resolution?: string;
+  fps?: number;
+  file_size_bytes?: number;
+  format?: string;
+  codec?: string;
+  audio_codec?: string;
+  bitrate?: number;
+  mime_type?: string;
+  seed?: number;
+}
+
+export interface AsyncVideoGenerationResponse {
+  task_id: string;
+  status: string;
+  progress: number;
+  message?: string;
+  estimated_time_to_completion?: number;
+  created_at: string;
+  updated_at: string;
+  result?: VideoGenerationResult;
+  error?: string;
+}
+
+export interface ErrorResponse {
+  error: {
+    message: string;
+    type: string;
+    param?: string | null;
+    code?: string | null;
+  };
+}
+
+export interface AsyncVideoGenerationRequest {
+  prompt: string;
+  model?: string;
+  duration?: number;
+  size?: string;
+  fps?: number;
+  style?: string;
+  response_format?: 'url' | 'b64_json';
+  user?: string;
+  seed?: number;
+  n?: number;
+  webhook_url?: string;
+  webhook_metadata?: Record<string, unknown>;
+  webhook_headers?: Record<string, string>;
+  timeout_seconds?: number;
+}
 
 
 export interface VideoGenerationResult {

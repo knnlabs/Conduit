@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
-import { getServerCoreClient } from '@/lib/server/coreClient';
+import { getServerCoreClient } from '@/lib/server/sdk-config';
 
 // GET /api/provider-models/[providerId] - Get available models for a specific provider
 export async function GET(

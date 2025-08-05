@@ -2,7 +2,12 @@ import { renderHook, act } from '@testing-library/react';
 import { useEnhancedVideoGeneration } from '../useEnhancedVideoGeneration';
 import { useVideoStore } from '../useVideoStore';
 import * as clientCore from '@/lib/client/coreClient';
-import type { VideoProgress } from '@knn_labs/conduit-core-client';
+// Local VideoProgress interface to avoid broken SDK imports
+interface VideoProgress {
+  percentage?: number;
+  status?: string;
+  message?: string;
+}
 import type { VideoStoreState, VideoTask, VideoGenerationResult } from '../../types';
 
 // Mock dependencies
