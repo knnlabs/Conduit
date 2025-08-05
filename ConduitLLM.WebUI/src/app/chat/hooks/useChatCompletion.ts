@@ -57,6 +57,9 @@ function mapErrorToMetadata(error: unknown): ChatMessage['error'] {
       recoverable = true;
     } else if (statusCode === 401 || statusCode === 403) {
       type = 'auth_error';
+    } else if (statusCode === 402) {
+      type = 'auth_error'; // Payment required - treat as auth issue
+      suggestions = ['Check your provider configuration', 'Verify your API keys are valid', 'Ensure sufficient credits/balance'];
     } else if (statusCode === 404) {
       type = 'model_not_found';
     }
@@ -262,9 +265,9 @@ export function useChatCompletion(options: UseChatCompletionOptions = {}) {
                       const errorData = JSON.parse(data) as { error?: string; code?: string; statusCode?: number };
                       if (errorData.error) {
                         const error = new Error(errorData.error);
-                        const errorWithMeta = error as Error & { code?: string; statusCode?: number };
+                        const errorWithMeta = error as Error & { code?: string; status?: number };
                         errorWithMeta.code = errorData.code;
-                        errorWithMeta.statusCode = errorData.statusCode;
+                        errorWithMeta.status = errorData.statusCode; // Use 'status' to match the expected property
                         throw errorWithMeta;
                       }
                     } catch {

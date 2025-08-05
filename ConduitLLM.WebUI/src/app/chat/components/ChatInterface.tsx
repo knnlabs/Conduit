@@ -23,6 +23,7 @@ import {
 import { ChatInput } from './ChatInput';
 import { ChatMessages } from './ChatMessages';
 import { ChatSettings } from './ChatSettings';
+import { ErrorDisplay } from '@/components/common/ErrorDisplay';
 import { 
   ImageAttachment, 
   ChatParameters, 
@@ -47,7 +48,7 @@ export function ChatInterface() {
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Error | null>(null);
   const [streamingContent, setStreamingContent] = useState('');
   const [tokensPerSecond, setTokensPerSecond] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -276,13 +277,20 @@ export function ChatInterface() {
             
           case SSEEventType.Error: {
             // Handle error events
-            const errorData = event.data as { error?: string; message?: string };
+            console.warn('Received SSE error event:', event);
+            const errorData = event.data as { error?: string; message?: string; statusCode?: number };
+            console.warn('Parsed error data:', errorData);
             const rawError = errorData.error ?? errorData.message ?? 'Unknown error occurred';
             const streamError = new Error(`Stream error: ${rawError}`);
             
-            // Use enhanced error handler
-            const errorMessage = handleError(streamError, 'process streaming response');
-            setError(errorMessage);
+            // Add status code if available
+            if (errorData.statusCode) {
+              (streamError as Error & { status?: number }).status = errorData.statusCode;
+            }
+            
+            // Use enhanced error handler for notifications
+            handleError(streamError, 'process streaming response');
+            setError(streamError);
             
             // Stop processing on error
             setStreamingContent('');
@@ -323,15 +331,16 @@ export function ChatInterface() {
         setMessages(prev => [...prev, assistantMessage]);
       }
     } catch (err) {
-      // Use the enhanced error handler from SDK
-      const errorMessage = handleError(err, 'send chat message');
-      setError(errorMessage);
+      // Use the enhanced error handler from SDK for notifications
+      handleError(err, 'send chat message');
+      const errorInstance = err instanceof Error ? err : new Error(String(err));
+      setError(errorInstance);
       
       // Show error as a system message in chat
       const errorMsg: ChatMessage = {
         id: uuidv4(),
         role: 'assistant',
-        content: `Error: ${errorMessage}`,
+        content: `Error: ${errorInstance.message}`,
         timestamp: new Date(),
         metadata: {
           tokensUsed: 0,
@@ -344,7 +353,10 @@ export function ChatInterface() {
       // Show special handling for balance errors
       if (shouldShowBalanceWarning(err)) {
         // Clear the loading state faster for balance errors since user needs to take action
-        setError('Please add credits to your account to continue chatting.');
+        const balanceError = new Error('Please add credits to your account to continue chatting.');
+        balanceError.name = 'InsufficientBalanceError';
+        (balanceError as Error & { status?: number }).status = 402;
+        setError(balanceError);
       }
     } finally {
       setIsLoading(false);
@@ -388,9 +400,23 @@ export function ChatInterface() {
   if (error) {
     return (
       <Container size="sm" mt="xl">
-        <Alert icon={<IconAlertCircle size={16} />} color="red" title="Error">
-          {error}
-        </Alert>
+        <ErrorDisplay 
+          error={error}
+          variant="card"
+          showDetails={true}
+          onRetry={() => {
+            setError(null);
+            setIsLoading(false);
+          }}
+          actions={[
+            {
+              label: 'Configure Providers',
+              onClick: () => window.location.href = '/llm-providers',
+              color: 'blue',
+              variant: 'light',
+            }
+          ]}
+        />
       </Container>
     );
   }

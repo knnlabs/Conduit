@@ -259,7 +259,7 @@ export DOCKER_GROUP_ID=$(id -g)   # Usually 1000
 **ALWAYS VERIFY BUILDS BEFORE COMPLETING WORK:**
 
 ### Project-Specific Build Commands
-- **WebUI**: `cd ConduitLLM.WebUI && npm run build`
+- **WebUI**: `./scripts/start-web.sh --webui`
 - **Core API**: `dotnet build ConduitLLM.Http`
 - **Admin Client**: `cd SDKs/Node/Admin && npm run build`
 - **Core Client**: `cd SDKs/Node/Core && npm run build`
@@ -272,7 +272,7 @@ export DOCKER_GROUP_ID=$(id -g)   # Usually 1000
 4. **Never commit code that doesn't build cleanly**
 
 ### TypeScript/React Specific Rules
-- When replacing `any` types, test immediately with `npm run build`
+- When replacing `any` types, test immediately with `./scripts/fix-web-errors.sh` or `./scripts/fix-sdk-errors.sh`
 - Check existing error handling patterns before creating new ones
 - Use small, incremental changes (1-3 files at a time)
 - Follow established import patterns in the codebase

@@ -11,9 +11,11 @@ import {
   LoadingOverlay,
   Paper,
 } from '@mantine/core';
-import { IconAlertCircle, IconSettings } from '@tabler/icons-react';
+import { IconSettings } from '@tabler/icons-react';
 import { useImageStore } from '../hooks/useImageStore';
 import { useImageModels } from '../hooks/useImageModels';
+import { ErrorDisplay } from '@/components/common/ErrorDisplay';
+import { createEnhancedError } from '@/lib/utils/error-enhancement';
 import ImageSettings from './ImageSettings';
 import ImagePromptInput from './ImagePromptInput';
 import ImageGallery from './ImageGallery';
@@ -57,30 +59,50 @@ export default function ImageInterface() {
   }
 
   if (modelsError || !models || models.length === 0) {
+    const errorInstance = modelsError 
+      ? new Error(`Error loading models: ${modelsError.message}`)
+      : new Error('No image generation models available. Please configure providers and add image generation models.');
+    
+    if (modelsError) {
+      errorInstance.name = 'ModelLoadError';
+    } else {
+      errorInstance.name = 'ConfigurationError';
+    }
+
     return (
       <Stack gap="xl">
-        <Alert 
-          icon={<IconAlertCircle size={16} />} 
-          title="No image generation models available"
-          color="red"
-        >
-          {modelsError 
-            ? `Error loading models: ${modelsError.message}`
-            : (
-              <div>
-                <Text size="sm">To use image generation, you need to:</Text>
-                <ol style={{ marginLeft: '1rem', marginTop: '0.5rem' }}>
-                  <li>Configure providers (OpenAI, MiniMax, etc.) in <strong>LLM Providers</strong></li>
-                  <li>Add image generation models in <strong>Model Mappings</strong></li>
-                  <li>Enable the <strong>&quot;Supports Image Generation&quot;</strong> checkbox for those models</li>
-                </ol>
-                <Text size="sm" mt="sm">
-                  Example models: <code>dall-e-2</code>, <code>dall-e-3</code>, <code>minimax-image</code>
-                </Text>
-              </div>
-            )
-          }
-        </Alert>
+        <ErrorDisplay 
+          error={errorInstance}
+          variant="card"
+          showDetails={!!modelsError}
+          actions={[
+            {
+              label: 'Configure Providers',
+              onClick: () => window.location.href = '/llm-providers',
+              color: 'blue',
+              variant: 'filled',
+            },
+            {
+              label: 'Add Model Mappings', 
+              onClick: () => window.location.href = '/model-mappings',
+              color: 'blue',
+              variant: 'light',
+            }
+          ]}
+        />
+        {!modelsError && (
+          <Alert color="blue" variant="light">
+            <Text size="sm">To use image generation, you need to:</Text>
+            <ol style={{ marginLeft: '1rem', marginTop: '0.5rem' }}>
+              <li>Configure providers (OpenAI, MiniMax, etc.) in <strong>LLM Providers</strong></li>
+              <li>Add image generation models in <strong>Model Mappings</strong></li>
+              <li>Enable the <strong>&quot;Supports Image Generation&quot;</strong> checkbox for those models</li>
+            </ol>
+            <Text size="sm" mt="sm">
+              Example models: <code>dall-e-2</code>, <code>dall-e-3</code>, <code>minimax-image</code>
+            </Text>
+          </Alert>
+        )}
       </Stack>
     );
   }
@@ -104,15 +126,20 @@ export default function ImageInterface() {
 
       {/* Error Display */}
       {error && (
-        <Alert 
-          icon={<IconAlertCircle size={16} />} 
-          title="Error"
-          color="red"
-          onClose={() => setError(undefined)}
-          withCloseButton
-        >
-          {error}
-        </Alert>
+        <ErrorDisplay 
+          error={createEnhancedError(error)}
+          variant="inline"
+          showDetails={true}
+          onRetry={() => setError(undefined)}
+          actions={[
+            {
+              label: 'Configure Providers',
+              onClick: () => window.location.href = '/llm-providers',
+              color: 'blue',
+              variant: 'light',
+            }
+          ]}
+        />
       )}
 
       {/* Status Display */}

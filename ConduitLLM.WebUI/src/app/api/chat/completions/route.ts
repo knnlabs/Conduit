@@ -82,7 +82,24 @@ export async function POST(request: NextRequest) {
         } catch (error: unknown) { // Keep as unknown - generic error handling for various API errors
           console.error('Streaming error:', error);
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          const errorData = `data: ${JSON.stringify({ error: errorMessage })}
+          
+          // Extract HTTP status code if available
+          let statusCode: number | undefined;
+          if (error instanceof Error && error.message.includes('HTTP error! status:')) {
+            const statusMatch = error.message.match(/status: (\d+)/);
+            if (statusMatch) {
+              statusCode = parseInt(statusMatch[1], 10);
+            }
+          }
+          
+          const errorPayload = { 
+            error: errorMessage,
+            ...(statusCode && { statusCode })
+          };
+          
+          console.error('Sending error to client:', errorPayload);
+          const errorData = `event: error
+data: ${JSON.stringify(errorPayload)}
 
 `;
           await writer.write(encoder.encode(errorData));
