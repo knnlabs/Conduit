@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.Http.Authorization;
 using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -18,7 +19,8 @@ namespace ConduitLLM.Http.Controllers
     /// </summary>
     [ApiController]
     [Route("v1/videos")]
-    [Authorize(Policy = "RequireVirtualKey")]
+    [Authorize(AuthenticationSchemes = "VirtualKey")]
+    [RequireBalance]
     [EnableRateLimiting("VirtualKeyPolicy")]
     [Tags("Videos")]
     public class VideosController : ControllerBase

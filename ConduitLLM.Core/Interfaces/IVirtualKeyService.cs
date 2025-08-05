@@ -39,6 +39,15 @@ public interface IVirtualKeyService
     Task<bool> ResetSpendAsync(int id);
 
     /// <summary>
+    /// Validates a provided virtual key string for authentication only.
+    /// Checks expiry, enabled status, and model restrictions, but NOT balance.
+    /// </summary>
+    /// <param name="key">The virtual key string to validate</param>
+    /// <param name="requestedModel">Optional model being requested, to check against allowed models</param>
+    /// <returns>The valid VirtualKey entity if valid for authentication, otherwise null.</returns>
+    Task<VirtualKey?> ValidateVirtualKeyForAuthenticationAsync(string key, string? requestedModel = null);
+
+    /// <summary>
     /// Validates a provided virtual key string against stored key hashes.
     /// Checks budget, expiry, and enabled status.
     /// </summary>

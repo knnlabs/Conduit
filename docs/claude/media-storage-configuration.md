@@ -8,7 +8,7 @@ By default, Conduit uses in-memory storage for development. Generated media file
 
 ## Production (S3-Compatible Storage)
 
-For production deployments, configure S3-compatible storage (AWS S3, Cloudflare R2, MinIO, etc.):
+For production deployments, configure S3-compatible storage (AWS S3, Cloudflare R2, etc.):
 
 ```bash
 # Storage provider configuration

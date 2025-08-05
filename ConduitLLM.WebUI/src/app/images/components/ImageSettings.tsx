@@ -3,6 +3,7 @@
 import { Select, NumberInput, Grid, Text } from '@mantine/core';
 import { useImageStore } from '../hooks/useImageStore';
 import { ImageModel } from '../hooks/useImageModels';
+import { useModelMetadata } from '../hooks/useModelMetadata';
 
 interface ImageSettingsProps {
   models: ImageModel[];
@@ -35,53 +36,35 @@ export default function ImageSettings({ models }: ImageSettingsProps) {
     if (value) updateSettings({ responseFormat: value as 'url' | 'b64_json' });
   };
 
-  // Get size options based on selected model
+  // Get model metadata
+  const { data: metadataResponse } = useModelMetadata(settings.model || null);
+  const imageMetadata = metadataResponse?.metadata?.image;
+
+  // Get size options from metadata or fallback
   const getSizeOptions = () => {
-    const selectedModel = models.find(m => m.id === settings.model);
-    const provider = selectedModel?.providerId?.toLowerCase();
-    
-    if (provider === 'openai') {
-      if (settings.model === 'dall-e-2') {
-        return ['256x256', '512x512', '1024x1024'];
-      } else if (settings.model === 'dall-e-3') {
-        return ['1024x1024', '1792x1024', '1024x1792'];
-      }
-    } else if (provider === 'minimax') {
-      return ['1024x1024', '1792x1024', '1024x1792'];
+    if (imageMetadata?.sizes) {
+      return imageMetadata.sizes;
     }
-    
     // Default fallback
-    return ['1024x1024', '1792x1024', '1024x1792'];
+    return ['1024x1024'];
   };
 
-  // Get max count based on model
+  // Get max count from metadata or fallback
   const getMaxCount = () => {
-    const selectedModel = models.find(m => m.id === settings.model);
-    const provider = selectedModel?.providerId?.toLowerCase();
-    
-    if (provider === 'openai') {
-      if (settings.model === 'dall-e-2') {
-        return 10;
-      } else if (settings.model === 'dall-e-3') {
-        return 1;
-      }
-    } else if (provider === 'minimax') {
-      return 4;
+    if (imageMetadata?.maxImages) {
+      return imageMetadata.maxImages;
     }
-    
     return 1; // Safe default
   };
 
-  // Check if quality is supported
+  // Check if quality is supported from metadata
   const supportsQuality = () => {
-    const selectedModel = models.find(m => m.id === settings.model);
-    const provider = selectedModel?.providerId?.toLowerCase();
-    return provider === 'openai' && settings.model === 'dall-e-3' || provider === 'minimax';
+    return !!imageMetadata?.qualityOptions && imageMetadata.qualityOptions.length > 0;
   };
 
-  // Check if style is supported (DALL-E 3 only)
+  // Check if style is supported from metadata
   const supportsStyle = () => {
-    return settings.model === 'dall-e-3';
+    return !!imageMetadata?.styleOptions && imageMetadata.styleOptions.length > 0;
   };
 
   const sizeOptions = getSizeOptions();
@@ -130,10 +113,10 @@ export default function ImageSettings({ models }: ImageSettingsProps) {
               label="Quality"
               value={settings.quality}
               onChange={handleQualityChange}
-              data={[
-                { value: 'standard', label: 'Standard' },
-                { value: 'hd', label: 'HD' },
-              ]}
+              data={imageMetadata?.qualityOptions?.map(q => ({
+                value: q,
+                label: q.charAt(0).toUpperCase() + q.slice(1)
+              })) || []}
               required
             />
           </Grid.Col>
@@ -146,10 +129,10 @@ export default function ImageSettings({ models }: ImageSettingsProps) {
               label="Style"
               value={settings.style}
               onChange={handleStyleChange}
-              data={[
-                { value: 'vivid', label: 'Vivid' },
-                { value: 'natural', label: 'Natural' },
-              ]}
+              data={imageMetadata?.styleOptions?.map(s => ({
+                value: s,
+                label: s.charAt(0).toUpperCase() + s.slice(1)
+              })) || []}
               required
             />
           </Grid.Col>

@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Controllers;
+using ConduitLLM.Http.Authorization;
 
 namespace ConduitLLM.Http.Controllers
 {
@@ -22,7 +23,8 @@ namespace ConduitLLM.Http.Controllers
     /// </summary>
     [ApiController]
     [Route("v1/images")]
-    [Authorize(Policy = "RequireVirtualKey")]
+    [Authorize(AuthenticationSchemes = "VirtualKey")]
+    [RequireBalance]
     [Tags("Images")]
     public class ImagesController : EventPublishingControllerBase
     {

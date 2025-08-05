@@ -158,11 +158,54 @@ export type {
 
 export {
   ConduitError,
+  AuthError,
   AuthenticationError,
+  AuthorizationError,
+  ValidationError,
+  NotFoundError,
+  ConflictError,
+  InsufficientBalanceError,
   RateLimitError,
+  ServerError,
   NetworkError,
+  TimeoutError,
   StreamError,
+  
+  // Type guards
+  isConduitError,
+  isAuthError,
+  isAuthorizationError,
+  isValidationError,
+  isNotFoundError,
+  isConflictError,
+  isInsufficientBalanceError,
+  isRateLimitError,
+  isNetworkError,
+  isStreamError,
+  isTimeoutError,
+  isSerializedConduitError,
+  
+  // Utility functions
+  handleApiError,
+  serializeError,
+  deserializeError,
+  getErrorMessage,
+  getErrorStatusCode,
 } from './utils/errors';
+
+// Enhanced error handling
+export {
+  conduitFetch,
+  getErrorDisplayMessage,
+  getErrorToastColor,
+  handleConduitError,
+  createToastErrorHandler,
+  ErrorHandlers,
+  shouldShowBalanceWarning,
+  isRetryableError,
+  getErrorActions,
+  type ErrorHandlerOptions
+} from './utils/error-handling';
 
 export type {
   TaskStatusResponse,

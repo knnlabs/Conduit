@@ -334,6 +334,70 @@ run_type_check() {
     return $type_check_exit_code
 }
 
+# Check if WebUI container is running and stop it if needed
+stop_webui_container() {
+    # Find any container running on port 3000 (WebUI port)
+    local container_id=$(docker ps --format "{{.ID}}" --filter "publish=3000" | head -1)
+    local was_running=false
+    
+    if [[ -n "$container_id" ]]; then
+        was_running=true
+        local container_name=$(docker inspect --format='{{.Name}}' "$container_id" | sed 's/^\/*//')
+        log_warn "WebUI development container is running: $container_name"
+        log_task "Stopping WebUI container to prevent build conflicts..."
+        
+        if docker stop "$container_id" >/dev/null 2>&1; then
+            log_info "WebUI container stopped successfully"
+            # Store container ID for restart
+            echo "$container_id"
+            return 0
+        else
+            log_error "Failed to stop WebUI container"
+            return 1
+        fi
+    else
+        log_info "No WebUI container running on port 3000 - safe to build"
+    fi
+    
+    echo ""
+    return 0
+}
+
+# Restart WebUI container if it was running before
+restart_webui_container() {
+    local container_id="$1"
+    
+    if [[ -z "$container_id" ]]; then
+        return 0
+    fi
+    
+    log_task "Restarting WebUI development container..."
+    
+    if docker start "$container_id" >/dev/null 2>&1; then
+        log_info "WebUI container restarted"
+        
+        # Wait for container to be ready
+        log_task "Waiting for WebUI to be ready..."
+        local max_attempts=30
+        local attempt=0
+        
+        while [[ $attempt -lt $max_attempts ]]; do
+            if docker logs "$container_id" 2>&1 | tail -n 20 | grep -q "Ready in"; then
+                log_info "WebUI is ready"
+                return 0
+            fi
+            sleep 1
+            ((attempt++))
+        done
+        
+        log_warn "WebUI container started but may not be fully ready"
+    else
+        log_error "Failed to restart WebUI container"
+        log_error "To restart manually: docker start $container_id"
+        return 1
+    fi
+}
+
 # Run build process
 run_build() {
     log_task "Running build process..."
@@ -342,6 +406,15 @@ run_build() {
         log_warn "Permission issues were detected earlier"
         log_warn "Build may fail due to permission problems"
         echo ""
+    fi
+    
+    # Check and stop WebUI container if running
+    local container_id=$(stop_webui_container)
+    local stop_status=$?
+    
+    if [[ $stop_status -ne 0 ]]; then
+        log_error "Failed to stop WebUI container, aborting build"
+        return 1
     fi
     
     local build_start_time=$(date +%s)
@@ -361,6 +434,11 @@ run_build() {
     else
         log_error "No build script found in package.json"
         BUILD_FAILED=true
+    fi
+    
+    # Restart container if it was running before
+    if [[ -n "$container_id" ]]; then
+        restart_webui_container "$container_id" || log_error "Please restart the development environment manually"
     fi
     
     return $build_exit_code

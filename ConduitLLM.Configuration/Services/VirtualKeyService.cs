@@ -127,6 +127,32 @@ namespace ConduitLLM.Configuration.Services
         }
 
         /// <inheritdoc/>
+        public async Task<VirtualKey?> ValidateVirtualKeyForAuthenticationAsync(string keyValue, string? requestedModel = null)
+        {
+            var virtualKey = await _context.VirtualKeys
+                .Include(k => k.VirtualKeyGroup)
+                .FirstOrDefaultAsync(k => k.KeyHash == keyValue);
+
+            if (virtualKey == null)
+            {
+                return null; // Key doesn't exist
+            }
+
+            if (!virtualKey.IsEnabled)
+            {
+                return null; // Key is disabled
+            }
+
+            if (virtualKey.ExpiresAt.HasValue && virtualKey.ExpiresAt.Value < DateTime.UtcNow)
+            {
+                return null; // Key is expired
+            }
+
+            // For authentication, we don't check balance
+            return virtualKey; // Key is valid for authentication
+        }
+
+        /// <inheritdoc/>
         public async Task<bool> ValidateVirtualKeyAsync(string keyValue)
         {
             var virtualKey = await _context.VirtualKeys

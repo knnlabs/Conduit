@@ -46,6 +46,14 @@ namespace ConduitLLM.Configuration.Services
         Task DeleteVirtualKeyAsync(int id);
 
         /// <summary>
+        /// Validates if a virtual key is valid for authentication only
+        /// </summary>
+        /// <param name="keyValue">The key value to validate</param>
+        /// <param name="requestedModel">Optional model being requested</param>
+        /// <returns>The virtual key entity if valid for authentication, null otherwise</returns>
+        Task<VirtualKey?> ValidateVirtualKeyForAuthenticationAsync(string keyValue, string? requestedModel = null);
+
+        /// <summary>
         /// Validates if a virtual key is valid for use
         /// </summary>
         /// <param name="keyValue">The key value to validate</param>

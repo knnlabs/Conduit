@@ -200,6 +200,9 @@ public partial class Program
         // Register System Notification Service
         builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.ISystemNotificationService, ConduitLLM.Http.Services.SystemNotificationService>();
 
+        // Register Model Metadata Service
+        builder.Services.AddSingleton<IModelMetadataService, ModelMetadataService>();
+
         // Register TaskHub Service for ITaskHub interface
         builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.ITaskHub, ConduitLLM.Http.Services.TaskHubService>();
 

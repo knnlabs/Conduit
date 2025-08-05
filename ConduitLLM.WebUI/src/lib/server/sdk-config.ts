@@ -65,16 +65,16 @@ export async function getServerCoreClient(): Promise<ConduitCoreClient> {
     // Validate environment at runtime
     validateEnvironment();
     
-    // Get the WebUI's virtual key from the Admin API
+    // Get the WebUI's virtual key from the database using the admin client
     if (!webuiVirtualKey) {
       try {
-        const adminApi = getServerAdminClient();
-        webuiVirtualKey = await adminApi.system.getWebUIVirtualKey();
-        console.error('[SDK] WebUI virtual key fetched successfully');
+        console.warn('[SDK] Getting WebUI virtual key from database...');
+        const adminClient = getServerAdminClient();
+        webuiVirtualKey = await adminClient.system.getWebUIVirtualKey();
+        console.warn('[SDK] WebUI virtual key retrieved successfully');
       } catch (error) {
-        console.error('[SDK] Failed to fetch WebUI virtual key, falling back to master key:', error);
-        // Fallback to master key if we can't get the virtual key
-        webuiVirtualKey = SDK_CONFIG.masterKey;
+        console.error('[SDK] Failed to get WebUI virtual key:', error);
+        throw new Error('Failed to retrieve WebUI virtual key from database. Ensure the database is accessible and properly configured.');
       }
     }
     

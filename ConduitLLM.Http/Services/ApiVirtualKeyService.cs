@@ -312,6 +312,62 @@ namespace ConduitLLM.Http.Services
         }
 
         /// <inheritdoc />
+        public async Task<VirtualKey?> ValidateVirtualKeyForAuthenticationAsync(string key, string? requestedModel = null)
+        {
+            if (string.IsNullOrEmpty(key))
+            {
+                _logger.LogWarning("Empty key provided for authentication validation");
+                return null;
+            }
+
+            // Hash the incoming key before looking it up
+            var keyHash = HashKey(key);
+            _logger.LogDebug("Validating key for authentication: {KeyPrefix}..., Hash: {Hash}", 
+                key.Length > 10 ? key.Substring(0, 10) : key, keyHash);
+            
+            var virtualKey = await _virtualKeyRepository.GetByKeyHashAsync(keyHash);
+            if (virtualKey == null)
+            {
+                _logger.LogWarning("No matching virtual key found for hash: {Hash}", keyHash);
+                return null;
+            }
+
+            // Check if key is enabled
+            if (!virtualKey.IsEnabled)
+            {
+                _logger.LogWarning("Virtual key is disabled: {KeyName} (ID: {KeyId})", 
+                    virtualKey.KeyName?.Replace(Environment.NewLine, "") ?? "Unknown", virtualKey.Id);
+                return null;
+            }
+
+            // Check expiration
+            if (virtualKey.ExpiresAt.HasValue && virtualKey.ExpiresAt.Value < DateTime.UtcNow)
+            {
+                _logger.LogWarning("Virtual key has expired: {KeyName} (ID: {KeyId}), expired at {ExpiryDate}",
+                    virtualKey.KeyName?.Replace(Environment.NewLine, "") ?? "Unknown", virtualKey.Id, virtualKey.ExpiresAt);
+                return null;
+            }
+
+            // Check if model is allowed (but skip balance check for authentication)
+            if (!string.IsNullOrEmpty(requestedModel) && !string.IsNullOrEmpty(virtualKey.AllowedModels))
+            {
+                bool isModelAllowed = IsModelAllowed(requestedModel, virtualKey.AllowedModels);
+                if (!isModelAllowed)
+                {
+                    _logger.LogWarning("Virtual key {KeyName} (ID: {KeyId}) attempted to access restricted model: {RequestedModel}",
+                        virtualKey.KeyName?.Replace(Environment.NewLine, "") ?? "Unknown", virtualKey.Id, 
+                        requestedModel.Replace(Environment.NewLine, ""));
+                    return null;
+                }
+            }
+
+            // Authentication validation passed
+            _logger.LogDebug("Virtual key authenticated successfully: {KeyName} (ID: {KeyId})",
+                virtualKey.KeyName?.Replace(Environment.NewLine, "") ?? "Unknown", virtualKey.Id);
+            return virtualKey;
+        }
+
+        /// <inheritdoc />
         public async Task<VirtualKey?> ValidateVirtualKeyAsync(string key, string? requestedModel = null)
         {
             if (string.IsNullOrEmpty(key))

@@ -20,7 +20,10 @@ import {
   ContentHelpers, 
   type TextContent, 
   type ImageContent,
-  type ChatCompletionRequest
+  type ChatCompletionRequest,
+  createToastErrorHandler,
+  shouldShowBalanceWarning,
+  ErrorHandlers
 } from '@knn_labs/conduit-core-client';
 import { ChatInput } from './ChatInput';
 import { ChatMessages } from './ChatMessages';
@@ -31,6 +34,8 @@ import { parseSSEStream } from '../utils/sse-parser';
 import { usePerformanceSettings } from '../hooks/usePerformanceSettings';
 import { useChatStore } from '../hooks/useChatStore';
 import { useModels } from '../hooks/useModels';
+import { notifications } from '@mantine/notifications';
+import Link from 'next/link';
 
 export function ChatInterface() {
   const { data: modelData, isLoading: modelsLoading } = useModels();
@@ -41,6 +46,9 @@ export function ChatInterface() {
   const [streamingContent, setStreamingContent] = useState('');
   const [tokensPerSecond, setTokensPerSecond] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  
+  // Create error handler with toast notifications
+  const handleError = createToastErrorHandler(notifications.show);
   
   const performanceSettings = usePerformanceSettings();
   const { 
@@ -149,9 +157,27 @@ export function ChatInterface() {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Chat API error:', response.status, errorText);
-        throw new Error(`Failed to get response: ${response.status} ${response.statusText}`);
+        let errorData: unknown;
+        try {
+          const errorText = await response.text();
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { error: response.statusText };
+        }
+        
+        // Create a mock HTTP error that the SDK can handle properly
+        const httpError = {
+          response: {
+            status: response.status,
+            data: errorData,
+            headers: Object.fromEntries(response.headers.entries())
+          },
+          message: response.statusText,
+          request: { url: '/api/chat/completions', method: 'POST' }
+        };
+        
+        // This will throw the appropriate ConduitError subclass (including InsufficientBalanceError for 402)
+        throw httpError;
       }
 
       // Handle response based on streaming mode
@@ -265,10 +291,14 @@ export function ChatInterface() {
             
           case SSEEventType.Error: {
             // Handle error events
-            console.error('SSE Error event:', event.data);
             const errorData = event.data as { error?: string; message?: string };
-            const errorMessage = errorData.error ?? errorData.message ?? 'Unknown error occurred';
-            setError(`Stream error: ${errorMessage}`);
+            const rawError = errorData.error ?? errorData.message ?? 'Unknown error occurred';
+            const streamError = new Error(`Stream error: ${rawError}`);
+            
+            // Use enhanced error handler
+            const errorMessage = handleError(streamError, 'process streaming response');
+            setError(errorMessage);
+            
             // Stop processing on error
             setStreamingContent('');
             setIsLoading(false);
@@ -308,8 +338,8 @@ export function ChatInterface() {
         setMessages(prev => [...prev, assistantMessage]);
       }
     } catch (err) {
-      console.error('Chat error:', err);
-      const errorMessage = (err instanceof Error ? err.message : String(err)) ?? 'Failed to send message';
+      // Use the enhanced error handler from SDK
+      const errorMessage = handleError(err, 'send chat message');
       setError(errorMessage);
       
       // Show error as a system message in chat
@@ -325,6 +355,12 @@ export function ChatInterface() {
         }
       };
       setMessages(prev => [...prev, errorMsg]);
+      
+      // Show special handling for balance errors
+      if (shouldShowBalanceWarning(err)) {
+        // Clear the loading state faster for balance errors since user needs to take action
+        setError('Please add credits to your account to continue chatting.');
+      }
     } finally {
       setIsLoading(false);
       setStreamingContent('');
@@ -378,7 +414,8 @@ export function ChatInterface() {
     return (
       <Container size="sm" mt="xl">
         <Alert icon={<IconAlertCircle size={16} />} color="yellow" title="No models available">
-          No models are currently configured. Please configure model mappings first.
+          No models are currently configured. Please add model mappings first.<br />
+          <Link href="/model-mappings">Add model mappings</Link>
         </Alert>
       </Container>
     );

@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.Http.Authorization;
 
 using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
@@ -24,7 +25,8 @@ namespace ConduitLLM.Http.Controllers
     /// </summary>
     [ApiController]
     [Route("v1/audio")]
-    [Authorize(Policy = "RequireVirtualKey")]
+    [Authorize(AuthenticationSchemes = "VirtualKey")]
+    [RequireBalance]
     [Tags("Audio")]
     public class AudioController : ControllerBase
     {

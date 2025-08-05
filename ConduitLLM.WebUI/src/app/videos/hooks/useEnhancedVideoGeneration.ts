@@ -3,6 +3,12 @@ import { useVideoStore } from './useVideoStore';
 import { generateVideoWithProgress, cleanupClientCore } from '@/lib/client/coreClient';
 import type { VideoSettings, VideoTask, VideoGenerationResult } from '../types';
 import type { VideoProgress } from '@knn_labs/conduit-core-client';
+import { 
+  createToastErrorHandler, 
+  shouldShowBalanceWarning,
+  handleApiError
+} from '@knn_labs/conduit-core-client';
+import { notifications } from '@mantine/notifications';
 
 interface GenerateVideoParams {
   prompt: string;
@@ -35,6 +41,9 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
   // Track SignalR connection errors
   const signalRErrorCount = useRef(0);
   const maxSignalRErrors = 3;
+  
+  // Create error handler with toast notifications
+  const handleError = createToastErrorHandler(notifications.show);
 
   useEffect(() => {
     // Cleanup on unmount
@@ -157,8 +166,26 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null) as { error?: string } | null;
-        throw new Error(errorData?.error ?? `Failed to generate video: ${response.statusText}`);
+        let errorData: unknown;
+        try {
+          errorData = await response.json();
+        } catch {
+          errorData = { error: response.statusText };
+        }
+        
+        // Create a mock HTTP error that the SDK can handle properly
+        const httpError = {
+          response: {
+            status: response.status,
+            data: errorData,
+            headers: Object.fromEntries(response.headers.entries())
+          },
+          message: response.statusText,
+          request: { url: '/api/videos/generate', method: 'POST' }
+        };
+        
+        // This will automatically throw the appropriate ConduitError subclass
+        handleApiError(httpError, '/api/videos/generate', 'POST');
       }
 
       const data = await response.json() as { task_id: string; message?: string; estimated_time_to_completion?: number };
@@ -222,21 +249,27 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
               }
             }
           } catch (error) {
-            console.error('Polling error:', error);
+            const errorMessage = handleError(error, 'check task status');
             if (pollingIntervalRef.current) {
               clearInterval(pollingIntervalRef.current);
               pollingIntervalRef.current = null;
             }
             setIsGenerating(false);
-            setError(error instanceof Error ? error.message : 'Failed to get task status');
+            setError(errorMessage);
           }
         })();
       }, 2000);
 
     } catch (error) {
-      console.error('Error generating video:', error);
-      setError(error instanceof Error ? error.message : 'Failed to generate video');
+      // Use enhanced error handler with toast notifications
+      const errorMessage = handleError(error, 'generate video');
+      setError(errorMessage);
       setIsGenerating(false);
+      
+      // Special handling for balance errors
+      if (shouldShowBalanceWarning(error)) {
+        setError('Please add credits to your account to generate videos.');
+      }
     }
   }, [
     addTask,

@@ -10,7 +10,7 @@ namespace ConduitLLM.Http.Controllers
     /// </summary>
     [ApiController]
     [Route("v1")]
-    [Authorize(Policy = "RequireVirtualKey")]
+    [Authorize(AuthenticationSchemes = "VirtualKey")]
     [Tags("Completions")]
     public class CompletionsController : ControllerBase
     {

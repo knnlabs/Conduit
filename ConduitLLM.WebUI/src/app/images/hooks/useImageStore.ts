@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import { ImageGenerationState, ImageGenerationActions } from '../types';
 import type { ImageGenerationResponse } from '@knn_labs/conduit-core-client';
+import { 
+  createToastErrorHandler, 
+  shouldShowBalanceWarning,
+  handleApiError
+} from '@knn_labs/conduit-core-client';
+import { notifications } from '@mantine/notifications';
 
 type ImageStore = ImageGenerationState & ImageGenerationActions;
 
@@ -43,6 +49,9 @@ export const useImageStore = create<ImageStore>((set, get) => ({
 
     set({ status: 'generating', results: [], error: undefined });
 
+    // Create error handler
+    const handleError = createToastErrorHandler(notifications.show);
+
     try {
       const response = await fetch('/api/images/generate', {
         method: 'POST',
@@ -61,27 +70,26 @@ export const useImageStore = create<ImageStore>((set, get) => ({
       });
 
       if (!response.ok) {
-        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-        
+        let errorData: unknown;
         try {
-          const errorData = await response.json() as { error?: string };
-          if (errorData?.error) {
-            errorMessage = errorData.error;
-          }
-        } catch (parseError) {
-          console.error('Failed to parse error response:', parseError);
+          errorData = await response.json();
+        } catch {
+          errorData = { error: response.statusText };
         }
         
-        // Provide more helpful error messages based on status
-        if (response.status === 500) {
-          errorMessage = `Server error: ${errorMessage}. This might indicate missing image generation models or provider configuration issues.`;
-        } else if (response.status === 401) {
-          errorMessage = 'Authentication failed. Please check your login status.';
-        } else if (response.status === 403) {
-          errorMessage = 'Access denied. You may not have permission to generate images.';
-        }
+        // Create a mock HTTP error that the SDK can handle properly
+        const httpError = {
+          response: {
+            status: response.status,
+            data: errorData,
+            headers: Object.fromEntries(response.headers.entries())
+          },
+          message: response.statusText,
+          request: { url: '/api/images/generate', method: 'POST' }
+        };
         
-        throw new Error(errorMessage);
+        // This will automatically throw the appropriate ConduitError subclass
+        handleApiError(httpError, '/api/images/generate', 'POST');
       }
 
       const result = await response.json() as ImageGenerationResponse;
@@ -91,11 +99,20 @@ export const useImageStore = create<ImageStore>((set, get) => ({
         error: undefined 
       });
     } catch (error) {
-      console.error('Image generation error:', error);
+      // Use enhanced error handler with toast notifications
+      const errorMessage = handleError(error, 'generate images');
+      
       set({ 
         status: 'error', 
-        error: error instanceof Error ? error.message : 'Failed to generate images'
+        error: errorMessage
       });
+      
+      // Special handling for balance errors
+      if (shouldShowBalanceWarning(error)) {
+        set({ 
+          error: 'Please add credits to your account to generate images.'
+        });
+      }
     }
   },
 

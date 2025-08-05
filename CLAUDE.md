@@ -438,7 +438,7 @@ For comprehensive documentation on specific topics, see:
 
 ### Media Storage
 - Development uses in-memory storage by default
-- Production requires S3-compatible storage (AWS S3, Cloudflare R2, MinIO)
+- Production requires S3-compatible storage (AWS S3, Cloudflare R2)
 - **WARNING**: Media files are not cleaned up when virtual keys are deleted (see `docs/TODO-Media-Lifecycle-Management.md`)
 
 ### Cloudflare R2 Specific Configuration

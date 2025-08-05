@@ -31,14 +31,23 @@ public partial class Program
 
         builder.Services.AddAuthorization(options =>
         {
-            options.DefaultPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder("VirtualKey")
+            // No default policy - let each controller specify its own requirements
+            options.DefaultPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
                 .RequireAuthenticatedUser()
                 .Build();
             
             // Allow endpoints to opt out of authentication with [AllowAnonymous]
             options.FallbackPolicy = null;
             
-            // Add policy for SignalR hubs requiring virtual key authentication
+            // Create a basic authentication-only policy for VirtualKey (same as default)
+            options.AddPolicy("VirtualKeyAuthentication", policy =>
+            {
+                policy.AuthenticationSchemes.Add("VirtualKey");
+                policy.RequireAuthenticatedUser();
+                // No specific claims required - just authentication
+            });
+            
+            // Add policy for SignalR hubs requiring virtual key authentication with claims
             options.AddPolicy("RequireVirtualKey", policy =>
             {
                 policy.AuthenticationSchemes.Add("VirtualKey");

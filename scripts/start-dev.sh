@@ -51,11 +51,10 @@ Services available after startup:
   - Core API:         http://localhost:5000/swagger
   - Admin API:        http://localhost:5002/swagger
   - RabbitMQ:         http://localhost:15672 (conduit/conduitpass)
-  - MinIO Console:    http://localhost:9001 (minioadmin/minioadmin123)
-  - MinIO API:        http://localhost:9000 (for S3 storage)
+  - Media Storage:    Cloudflare R2 (configured via .env)
 
 Environment Variables:
-  CONDUIT_S3_PUBLIC_BASE_URL - Set public URL for MinIO access (default: http://localhost:9000/conduit-media)
+  CONDUIT_S3_PUBLIC_BASE_URL - Set public URL for R2 bucket access
 
 EOF
 }
@@ -163,8 +162,7 @@ start_development() {
     log_info "  📚 Core API:         http://localhost:5000/swagger"
     log_info "  🔧 Admin API:        http://localhost:5002/swagger"
     log_info "  🐰 RabbitMQ:         http://localhost:15672 (conduit/conduitpass)"
-    log_info "  📦 MinIO Console:    http://localhost:9001 (minioadmin/minioadmin123)"
-    log_info "  💾 MinIO API:        http://localhost:9000 (S3 storage)"
+    log_info "  📦 Media Storage:    Cloudflare R2"
     echo
     log_info "The WebUI directory is mounted for rapid development."
     log_info "Changes to files will be reflected automatically."

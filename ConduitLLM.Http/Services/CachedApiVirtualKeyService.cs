@@ -47,6 +47,80 @@ namespace ConduitLLM.Http.Services
             LogEventPublishingConfiguration(nameof(CachedApiVirtualKeyService));
         }
 
+        /// <summary>
+        /// Validates virtual key for authentication only (no balance check)
+        /// </summary>
+        /// <param name="key">The virtual key to validate</param>
+        /// <param name="requestedModel">Optional model to check against allowed models</param>
+        /// <returns>The virtual key if valid for authentication, null otherwise</returns>
+        public async Task<VirtualKey?> ValidateVirtualKeyForAuthenticationAsync(string key, string? requestedModel = null)
+        {
+            if (string.IsNullOrEmpty(key))
+            {
+                _logger.LogWarning("Empty key provided for authentication validation");
+                return null;
+            }
+
+            try
+            {
+                var keyHash = HashKey(key);
+                _logger.LogDebug("Validating key for authentication: {KeyPrefix}..., Hash: {Hash}", 
+                    key.Length > 10 ? key.Substring(0, 10) : key, keyHash);
+                
+                // Use cache with database fallback
+                var virtualKey = await _cache.GetVirtualKeyAsync(keyHash, async hash => 
+                {
+                    // This fallback only runs on cache miss
+                    var dbKey = await _virtualKeyRepository.GetByKeyHashAsync(hash);
+                    _logger.LogDebug("Database fallback executed for Virtual Key authentication validation");
+                    return dbKey;
+                });
+
+                if (virtualKey == null)
+                {
+                    _logger.LogWarning("No matching virtual key found for hash: {Hash}", keyHash);
+                    return null;
+                }
+
+                // Check if key is enabled
+                if (!virtualKey.IsEnabled)
+                {
+                    _logger.LogWarning("Virtual key is disabled: {KeyName} (ID: {KeyId})", virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id);
+                    return null;
+                }
+
+                // Check expiration
+                if (virtualKey.ExpiresAt.HasValue && virtualKey.ExpiresAt.Value < DateTime.UtcNow)
+                {
+                    _logger.LogWarning("Virtual key has expired: {KeyName} (ID: {KeyId}), expired at {ExpiryDate}",
+                        virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id, virtualKey.ExpiresAt);
+                    return null;
+                }
+
+                // Check if model is allowed (but skip balance check for authentication)
+                if (!string.IsNullOrEmpty(requestedModel) && !string.IsNullOrEmpty(virtualKey.AllowedModels))
+                {
+                    bool isModelAllowed = IsModelAllowed(requestedModel, virtualKey.AllowedModels);
+                    if (!isModelAllowed)
+                    {
+                        _logger.LogWarning("Virtual key {KeyName} (ID: {KeyId}) attempted to access restricted model: {RequestedModel}",
+                            virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id, requestedModel.Replace(Environment.NewLine, ""));
+                        return null;
+                    }
+                }
+
+                // Authentication validation passed
+                _logger.LogDebug("Virtual key authenticated successfully: {KeyName} (ID: {KeyId})",
+                    virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id);
+                return virtualKey;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error validating virtual key for authentication");
+                return null;
+            }
+        }
+
         /// <inheritdoc />
         public async Task<VirtualKey?> ValidateVirtualKeyAsync(string key, string? requestedModel = null)
         {
@@ -99,8 +173,9 @@ namespace ConduitLLM.Http.Services
                     _logger.LogWarning("Virtual key group budget depleted: {KeyName} (ID: {KeyId}), group {GroupId} has balance {Balance}",
                         virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id, group.Id, group.Balance);
                     
-                    // Immediately invalidate over-budget keys
-                    await _cache.InvalidateVirtualKeyAsync(keyHash);
+                    // TODO: We used to immediately invalidate over-budget keys, but this violated clean architecture
+                    // TODO: Find a better way to handle this
+                    // await _cache.InvalidateVirtualKeyAsync(keyHash);
                     
                     // Set 402 status code for insufficient balance
                     // Note: This violates clean architecture but is pragmatic

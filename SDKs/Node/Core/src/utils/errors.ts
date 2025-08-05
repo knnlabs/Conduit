@@ -4,8 +4,11 @@ export {
   ConduitError,
   AuthError,
   AuthenticationError,
+  AuthorizationError,
   ValidationError,
   NotFoundError,
+  ConflictError,
+  InsufficientBalanceError,
   RateLimitError,
   ServerError,
   NetworkError,
@@ -15,8 +18,11 @@ export {
   // Type guards
   isConduitError,
   isAuthError,
+  isAuthorizationError,
   isValidationError,
   isNotFoundError,
+  isConflictError,
+  isInsufficientBalanceError,
   isRateLimitError,
   isNetworkError,
   isStreamError,
@@ -24,6 +30,7 @@ export {
   isSerializedConduitError,
   
   // Utility functions
+  handleApiError,
   serializeError,
   deserializeError,
   getErrorMessage,

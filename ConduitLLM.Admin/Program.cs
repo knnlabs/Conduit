@@ -39,6 +39,10 @@ public partial class Program
                 // Configure JSON to use camelCase for compatibility with TypeScript clients
                 options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
                 options.JsonSerializerOptions.DictionaryKeyPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+                
+                // IMPORTANT: Make JSON deserialization case-insensitive to prevent bugs
+                // This allows the API to accept both "initialBalance" and "InitialBalance"
+                options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
             });
         builder.Services.AddEndpointsApiExplorer();
 

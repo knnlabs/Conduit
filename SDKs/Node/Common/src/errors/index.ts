@@ -148,6 +148,17 @@ export class ConflictError extends ConduitError {
   }
 }
 
+export class InsufficientBalanceError extends ConduitError {
+  public balance?: number;
+  public requiredAmount?: number;
+
+  constructor(message = 'Insufficient balance to complete request', context?: Record<string, unknown>) {
+    super(message, 402, 'INSUFFICIENT_BALANCE', context);
+    this.balance = context?.balance as number | undefined;
+    this.requiredAmount = context?.requiredAmount as number | undefined;
+  }
+}
+
 export class RateLimitError extends ConduitError {
   public retryAfter?: number;
 
@@ -210,6 +221,10 @@ export function isNotFoundError(error: unknown): error is NotFoundError {
 
 export function isConflictError(error: unknown): error is ConflictError {
   return error instanceof ConflictError;
+}
+
+export function isInsufficientBalanceError(error: unknown): error is InsufficientBalanceError {
+  return error instanceof InsufficientBalanceError;
 }
 
 export function isRateLimitError(error: unknown): error is RateLimitError {
@@ -370,6 +385,8 @@ export function handleApiError(error: unknown, endpoint?: string, method?: strin
         throw new ValidationError(enhancedMessage, context);
       case 401:
         throw new AuthError(enhancedMessage, context);
+      case 402:
+        throw new InsufficientBalanceError(enhancedMessage, context);
       case 403:
         throw new AuthorizationError(enhancedMessage, context);
       case 404:
