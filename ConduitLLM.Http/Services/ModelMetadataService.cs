@@ -57,7 +57,7 @@ namespace ConduitLLM.Http.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving metadata for model {ModelId}", modelId);
-                return null;
+                throw; // Re-throw to ensure errors are properly reported
             }
         }
 
@@ -75,11 +75,36 @@ namespace ConduitLLM.Http.Services
             {
                 var assemblyLocation = GetAssemblyDirectory();
                 var metadataPath = Path.Combine(assemblyLocation, "StaticModels", "model-metadata.json");
+                
+                _logger.LogDebug("Assembly location: {AssemblyLocation}", assemblyLocation);
+                _logger.LogDebug("Looking for metadata at: {MetadataPath}", metadataPath);
 
                 if (!File.Exists(metadataPath))
                 {
-                    _logger.LogWarning("Model metadata file not found at {Path}", metadataPath);
-                    return;
+                    // Try alternative paths
+                    var alternativePaths = new[]
+                    {
+                        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "StaticModels", "model-metadata.json"),
+                        Path.Combine(Directory.GetCurrentDirectory(), "StaticModels", "model-metadata.json"),
+                        Path.Combine("/app", "StaticModels", "model-metadata.json")
+                    };
+
+                    foreach (var altPath in alternativePaths)
+                    {
+                        _logger.LogDebug("Trying alternative path: {Path}", altPath);
+                        if (File.Exists(altPath))
+                        {
+                            metadataPath = altPath;
+                            _logger.LogInformation("Found metadata file at alternative path: {Path}", altPath);
+                            break;
+                        }
+                    }
+
+                    if (!File.Exists(metadataPath))
+                    {
+                        _logger.LogWarning("Model metadata file not found at any location. Tried: {OriginalPath} and alternatives", metadataPath);
+                        return;
+                    }
                 }
 
                 var json = await File.ReadAllTextAsync(metadataPath);
@@ -103,12 +128,13 @@ namespace ConduitLLM.Http.Services
                         _lastCacheUpdate = DateTime.UtcNow;
                     }
 
-                    _logger.LogInformation("Loaded metadata for {Count} models", _metadataCache.Count);
+                    _logger.LogInformation("Loaded metadata for {Count} models from {Path}", _metadataCache.Count, metadataPath);
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error loading model metadata");
+                throw; // Re-throw to ensure the error is visible in the endpoint response
             }
         }
 

@@ -12,16 +12,42 @@ fi
 
 echo "Creating new WebUI Internal Key..."
 
+# First, ensure we have a default virtual key group
+GROUP_RESPONSE=$(curl -s -X GET http://localhost:5002/api/VirtualKeyGroups \
+  -H "X-API-Key: $MASTER_KEY" \
+  -H "Content-Type: application/json")
+
+GROUP_ID=$(echo "$GROUP_RESPONSE" | jq -r '.[0].id // empty' 2>/dev/null)
+
+if [ -z "$GROUP_ID" ]; then
+    echo "Creating default virtual key group..."
+    GROUP_RESPONSE=$(curl -s -X POST http://localhost:5002/api/VirtualKeyGroups \
+      -H "X-API-Key: $MASTER_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "name": "Default Group",
+        "description": "Default virtual key group"
+      }')
+    GROUP_ID=$(echo "$GROUP_RESPONSE" | jq -r '.id // empty' 2>/dev/null)
+    
+    if [ -z "$GROUP_ID" ]; then
+        echo "Error: Failed to create virtual key group" >&2
+        echo "Response: $GROUP_RESPONSE" >&2
+        exit 1
+    fi
+fi
+
 # Create a new WebUI Internal Key
-RESPONSE=$(curl -s -X POST http://localhost:5002/api/virtualkeys \
-  -H "X-Master-Key: $MASTER_KEY" \
+RESPONSE=$(curl -s -X POST http://localhost:5002/api/VirtualKeys \
+  -H "X-API-Key: $MASTER_KEY" \
   -H "Content-Type: application/json" \
-  -d '{
-    "keyName": "WebUI Internal Key (Fixed)",
-    "description": "Internal key for WebUI SignalR connections",
-    "isEnabled": true,
-    "metadata": "{\"purpose\": \"Internal WebUI authentication\", \"createdBy\": \"fix-script\"}"
-  }')
+  -d "{
+    \"keyName\": \"WebUI Internal Key (Fixed)\",
+    \"description\": \"Internal key for WebUI SignalR connections\",
+    \"isEnabled\": true,
+    \"virtualKeyGroupId\": $GROUP_ID,
+    \"metadata\": \"{\\\"purpose\\\": \\\"Internal WebUI authentication\\\", \\\"createdBy\\\": \\\"fix-script\\\"}\"
+  }")
 
 # Check for error
 if echo "$RESPONSE" | grep -q '"error"'; then

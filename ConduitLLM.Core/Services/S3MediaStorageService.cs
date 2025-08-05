@@ -56,6 +56,7 @@ namespace ConduitLLM.Core.Services
             _bucketName = _options.BucketName;
             
             // Log R2 detection and configuration
+            _logger.LogInformation("S3 Storage Options - ServiceUrl: {ServiceUrl}, IsR2: {IsR2}", _options.ServiceUrl, _options.IsR2);
             if (_options.IsR2)
             {
                 _logger.LogInformation("Cloudflare R2 detected. Using optimized settings: MultipartChunkSize={ChunkSize}MB, MultipartThreshold={Threshold}MB", 
@@ -75,11 +76,15 @@ namespace ConduitLLM.Core.Services
             if (!string.IsNullOrEmpty(_options.ServiceUrl))
             {
                 config.ServiceURL = _options.ServiceUrl;
+                // Don't set RegionEndpoint when using ServiceURL for R2
             }
-            else if (!string.IsNullOrEmpty(_options.Region))
+            else if (!string.IsNullOrEmpty(_options.Region) && _options.Region != "auto")
             {
                 config.RegionEndpoint = RegionEndpoint.GetBySystemName(_options.Region);
             }
+
+            // For R2, we'll rely on using PutObject instead of TransferUtility
+            // to avoid streaming signature issues
 
             _s3Client = new AmazonS3Client(_options.AccessKey, _options.SecretKey, config);
             _transferUtility = new TransferUtility(_s3Client);
@@ -100,6 +105,8 @@ namespace ConduitLLM.Core.Services
         /// <inheritdoc/>
         public async Task<MediaStorageResult> StoreAsync(Stream content, MediaMetadata metadata, IProgress<long>? progress = null)
         {
+            _logger.LogInformation("StoreAsync called - IsR2: {IsR2}", _options.IsR2);
+            
             // Track if we created a memory stream that needs disposal
             MemoryStream? memoryStream = null;
             
@@ -128,7 +135,12 @@ namespace ConduitLLM.Core.Services
                 }
 
                 // Check if we need to use multipart upload based on stream length
-                bool useTransferUtility = uploadStream.Length > _options.MultipartThresholdBytes;
+                // For R2, we can't use TransferUtility due to streaming signature issues
+                // So we'll always use PutObject for R2, regardless of file size
+                bool useTransferUtility = !_options.IsR2 && uploadStream.Length > _options.MultipartThresholdBytes;
+                
+                _logger.LogInformation("S3 Upload Decision: IsR2={IsR2}, StreamLength={Length}, Threshold={Threshold}, UseTransferUtility={UseTransfer}", 
+                    _options.IsR2, uploadStream.Length, _options.MultipartThresholdBytes, useTransferUtility);
 
                 // Store content length before upload (stream may be disposed after)
                 long contentLength = uploadStream.Length;
@@ -146,6 +158,9 @@ namespace ConduitLLM.Core.Services
                         PartSize = _options.MultipartChunkSizeBytes,
                         CannedACL = S3CannedACL.Private
                     };
+                    
+                    // In AWS SDK v3, DisablePayloadSigning might not be available on TransferUtilityUploadRequest
+                    // We'll need to use PutObject for R2 instead
 
                     // Add metadata
                     uploadRequest.Metadata.Add("content-type", metadata.ContentType);
@@ -184,6 +199,14 @@ namespace ConduitLLM.Core.Services
                         InputStream = uploadStream,
                         ContentType = metadata.ContentType
                     };
+                    
+                    // For R2 compatibility, disable payload signing
+                    if (_options.IsR2)
+                    {
+                        putRequest.DisablePayloadSigning = true;
+                        putRequest.DisableDefaultChecksumValidation = true;
+                        _logger.LogInformation("R2 detected - DisablePayloadSigning and DisableDefaultChecksumValidation set to true for PutObjectRequest");
+                    }
 
                     // Add metadata
                     putRequest.Metadata.Add("content-type", metadata.ContentType);
@@ -475,7 +498,16 @@ namespace ConduitLLM.Core.Services
 
             try
             {
-                _logger.LogInformation("Checking if bucket {BucketName} exists at {ServiceUrl}", _bucketName, _options.ServiceUrl ?? "default endpoint");
+                _logger.LogInformation("Checking if bucket {BucketName} exists at {ServiceUrl}, IsR2: {IsR2}", 
+                    _bucketName, _options.ServiceUrl ?? "default endpoint", _options.IsR2);
+                
+                // For R2, skip bucket existence check as it may cause signature issues
+                if (_options.IsR2)
+                {
+                    _logger.LogInformation("Skipping bucket existence check for R2 compatibility");
+                    return;
+                }
+                
                 await _s3Client.HeadBucketAsync(new HeadBucketRequest { BucketName = _bucketName });
                 _logger.LogInformation("Bucket {BucketName} exists", _bucketName);
             }
@@ -605,8 +637,8 @@ namespace ConduitLLM.Core.Services
                 {
                     BucketName = _bucketName,
                     Key = storageKey,
-                    ContentType = metadata.ContentType,
-                    ServerSideEncryptionMethod = ServerSideEncryptionMethod.AES256
+                    ContentType = metadata.ContentType
+                    // Removed ServerSideEncryptionMethod for R2 compatibility
                 };
 
                 // Add metadata
