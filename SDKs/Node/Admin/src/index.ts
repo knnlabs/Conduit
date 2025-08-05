@@ -14,6 +14,7 @@ export * from './models/providerType';
 export * from './models/providerModels';
 export * from './models/settings';
 export * from './models/ipFilter';
+export * from './models/media';
 // Re-export modelCost types except CostTrend (conflicts with analytics)
 export {
   ModelCost,
@@ -148,6 +149,7 @@ export { FetchMonitoringService } from './services/FetchMonitoringService';
 export { FetchIpFilterService } from './services/FetchIpFilterService';
 export { FetchErrorQueueService } from './services/FetchErrorQueueService';
 export { FetchCostDashboardService } from './services/FetchCostDashboardService';
+export { FetchMediaService } from './services/FetchMediaService';
 export { FetchModelCostService } from './services/FetchModelCostService';
 export type {
   CostDashboardDto,

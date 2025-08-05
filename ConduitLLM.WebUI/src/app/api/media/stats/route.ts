@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import type { OverallMediaStorageStats, MediaStorageStats } from '@/app/media-assets/types';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
+import { getServerAdminClient } from '@/lib/server/adminClient';
 
 export async function GET(request: NextRequest) {
   try {
@@ -7,33 +8,23 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type') ?? 'overall';
     const virtualKeyId = searchParams.get('virtualKeyId');
 
-    let url = `${process.env.ADMIN_API_URL}/api/admin/media/stats`;
+    const adminClient = getServerAdminClient();
+    
+    let data;
     
     if (type === 'by-provider') {
-      url = `${process.env.ADMIN_API_URL}/api/admin/media/stats/by-provider`;
+      data = await adminClient.media.getMediaStats('by-provider');
     } else if (type === 'by-type') {
-      url = `${process.env.ADMIN_API_URL}/api/admin/media/stats/by-type`;
+      data = await adminClient.media.getMediaStats('by-type');
     } else if (type === 'virtual-key' && virtualKeyId) {
-      url = `${process.env.ADMIN_API_URL}/api/admin/media/stats/virtual-key/${virtualKeyId}`;
+      data = await adminClient.media.getMediaStats('virtual-key', parseInt(virtualKeyId, 10));
+    } else {
+      data = await adminClient.media.getMediaStats('overall');
     }
 
-    const response = await fetch(url, {
-      headers: new Headers([
-        ['X-Master-Key', process.env.CONDUIT_MASTER_KEY ?? ''],
-      ]),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch stats: ${response.statusText}`);
-    }
-
-    const data = await response.json() as OverallMediaStorageStats | MediaStorageStats | Record<string, number>;
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error fetching media stats:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch media stats' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }

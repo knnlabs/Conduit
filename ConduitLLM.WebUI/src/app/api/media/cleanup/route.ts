@@ -1,46 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleSDKError } from '@/lib/errors/sdk-errors';
+import { getServerAdminClient } from '@/lib/server/adminClient';
+import type { MediaCleanupRequest } from '@knn_labs/conduit-admin-client';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as { type?: string; daysToKeep?: number };
     const { type, daysToKeep } = body;
 
-    let url = `${process.env.ADMIN_API_URL}/api/admin/media/cleanup/`;
+    if (!type || !['expired', 'orphaned', 'prune'].includes(type)) {
+      return NextResponse.json({ error: 'Invalid cleanup type' }, { status: 400 });
+    }
+
+    const cleanupRequest: MediaCleanupRequest = {
+      type: type as 'expired' | 'orphaned' | 'prune',
+      daysToKeep,
+    };
+
+    const adminClient = getServerAdminClient();
+    const data = await adminClient.media.cleanupMedia(cleanupRequest);
     
-    switch (type) {
-      case 'expired':
-        url += 'expired';
-        break;
-      case 'orphaned':
-        url += 'orphaned';
-        break;
-      case 'prune':
-        url += 'prune';
-        break;
-      default:
-        return NextResponse.json({ error: 'Invalid cleanup type' }, { status: 400 });
-    }
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: new Headers([
-        ['X-Master-Key', process.env.CONDUIT_MASTER_KEY ?? ''],
-        ['Content-Type', 'application/json'],
-      ]),
-      body: type === 'prune' ? JSON.stringify({ daysToKeep }) : undefined,
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to cleanup media: ${response.statusText}`);
-    }
-
-    const data = await response.json() as { message: string; deletedCount: number };
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error cleaning up media:', error);
-    return NextResponse.json(
-      { error: 'Failed to cleanup media' },
-      { status: 500 }
-    );
+    return handleSDKError(error);
   }
 }

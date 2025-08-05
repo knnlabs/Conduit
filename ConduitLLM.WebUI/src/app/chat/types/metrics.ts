@@ -3,6 +3,7 @@
  */
 export interface StreamingPerformanceMetrics {
   ['tokens_per_second']?: number;
+  ['completion_tokens_per_second']?: number;
   ['tokens_generated']?: number;
   ['time_to_first_token_ms']?: number;
   ['total_latency_ms']?: number;
@@ -46,6 +47,7 @@ export interface MetricsEventData {
   ['elapsed_ms']?: number;
   ['tokens_generated']?: number;
   ['current_tokens_per_second']?: number;
+  ['completion_tokens_per_second']?: number;
   ['total_latency_ms']?: number;
   ['tokens_per_second']?: number;
   provider?: string;

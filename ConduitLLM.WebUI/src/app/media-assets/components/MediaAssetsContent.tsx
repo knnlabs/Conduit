@@ -5,7 +5,7 @@ import { Stack, Group, Button, Select, Text } from '@mantine/core';
 import { IconRefresh, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { modals } from '@mantine/modals';
-import type { VirtualKeyListResponseDto } from '@knn_labs/conduit-admin-client';
+import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
 import { useMediaAssets } from '../hooks/useMediaAssets';
 import { useBulkSelection } from '../hooks/useBulkSelection';
 import { MediaRecord, VirtualKeyInfo } from '../types';
@@ -50,11 +50,14 @@ export default function MediaAssetsContent() {
           const data = await response.json() as unknown;
           
           // Handle both array format and paginated response format
-          let items: any[] = [];
+          let items: VirtualKeyDto[] = [];
           if (Array.isArray(data)) {
-            items = data;
-          } else if (data && typeof data === 'object' && 'items' in data && Array.isArray((data as any).items)) {
-            items = (data as any).items;
+            items = data as VirtualKeyDto[];
+          } else if (data && typeof data === 'object' && 'items' in data) {
+            const paginatedData = data as { items: VirtualKeyDto[] };
+            if (Array.isArray(paginatedData.items)) {
+              items = paginatedData.items;
+            }
           } else {
             console.warn('Unexpected virtualkeys API response format:', data);
           }
