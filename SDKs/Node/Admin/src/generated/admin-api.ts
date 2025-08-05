@@ -10315,10 +10315,9 @@ export interface components {
     };
     "ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyRequestDto": {
       keyName: string;
+      /** Format: int32 */
+      virtualKeyGroupId: number;
       allowedModels?: string | null;
-      /** Format: double */
-      maxBudget?: number | null;
-      budgetDuration?: string | null;
       /** Format: date-time */
       expiresAt?: string | null;
       metadata?: string | null;

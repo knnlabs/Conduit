@@ -14,10 +14,12 @@ public class CreateVirtualKeyRequestDto
     public string? AllowedModels { get; set; } // Comma-separated
 
     /// <summary>
-    /// Optional ID of an existing virtual key group to add this key to.
-    /// If not provided, a new single-key group will be created.
+    /// Required ID of an existing virtual key group to add this key to.
+    /// Create a virtual key group first using POST /api/virtualkey-groups.
     /// </summary>
-    public int? VirtualKeyGroupId { get; set; }
+    [Required(ErrorMessage = "VirtualKeyGroupId is required. Create a virtual key group first using POST /api/virtualkey-groups.")]
+    [Range(1, int.MaxValue, ErrorMessage = "VirtualKeyGroupId must be a valid positive number. Create a virtual key group first using POST /api/virtualkey-groups.")]
+    public int VirtualKeyGroupId { get; set; }
 
     public DateTime? ExpiresAt { get; set; }
 

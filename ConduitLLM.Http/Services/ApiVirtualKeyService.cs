@@ -58,32 +58,13 @@ namespace ConduitLLM.Http.Services
                 // Hash the key for storage
                 var keyHash = HashKey(keyWithPrefix);
                 
-                // Create or get the virtual key group
-                int groupId;
-                if (request.VirtualKeyGroupId.HasValue)
+                // VirtualKeyGroupId is now required
+                var existingGroup = await _groupRepository.GetByIdAsync(request.VirtualKeyGroupId);
+                if (existingGroup == null)
                 {
-                    // Use existing group
-                    var existingGroup = await _groupRepository.GetByIdAsync(request.VirtualKeyGroupId.Value);
-                    if (existingGroup == null)
-                    {
-                        throw new InvalidOperationException($"Virtual key group {request.VirtualKeyGroupId} not found");
-                    }
-                    groupId = existingGroup.Id;
+                    throw new InvalidOperationException($"Virtual key group {request.VirtualKeyGroupId} not found. Ensure the group exists before creating keys.");
                 }
-                else
-                {
-                    // Create a new group with the same name as the key
-                    var newGroup = new VirtualKeyGroup
-                    {
-                        GroupName = $"{request.KeyName} Group",
-                        Balance = 0, // Start with zero balance
-                        LifetimeCreditsAdded = 0,
-                        LifetimeSpent = 0,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    };
-                    groupId = await _groupRepository.CreateAsync(newGroup);
-                }
+                var groupId = existingGroup.Id;
 
                 // Create the virtual key entity
                 var virtualKey = new VirtualKey

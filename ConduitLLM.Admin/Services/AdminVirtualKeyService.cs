@@ -92,30 +92,22 @@ namespace ConduitLLM.Admin.Services
             // Hash the key for storage
             var keyHash = ComputeSha256Hash(apiKey);
 
-            // Create or use existing group
-            int groupId;
-            if (request.VirtualKeyGroupId.HasValue)
+            // Verify the group exists
+            var existingGroup = await _groupRepository.GetByIdAsync(request.VirtualKeyGroupId);
+            if (existingGroup == null)
             {
-                // Verify the group exists
-                var existingGroup = await _groupRepository.GetByIdAsync(request.VirtualKeyGroupId.Value);
-                if (existingGroup == null)
-                {
-                    throw new InvalidOperationException($"Virtual key group with ID {request.VirtualKeyGroupId.Value} not found");
-                }
-                groupId = request.VirtualKeyGroupId.Value;
+                throw new InvalidOperationException($"Virtual key group {request.VirtualKeyGroupId} not found. Ensure the group exists before creating keys.");
             }
-            else
+            
+            // Warn if the group has zero balance
+            if (existingGroup.Balance <= 0)
             {
-                // Create a new single-key group
-                var newGroup = new VirtualKeyGroup
-                {
-                    GroupName = request.KeyName ?? "Unnamed Group",
-                    Balance = 0, // Start with zero balance
-                    LifetimeCreditsAdded = 0,
-                    LifetimeSpent = 0
-                };
-                groupId = await _groupRepository.CreateAsync(newGroup);
+                _logger.LogWarning(
+                    "Virtual key group {GroupId} has zero balance. Keys in this group cannot make API calls until funded.",
+                    request.VirtualKeyGroupId);
             }
+            
+            var groupId = request.VirtualKeyGroupId;
 
             // Create the virtual key entity
             var virtualKey = new VirtualKey

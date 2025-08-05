@@ -211,6 +211,11 @@ declare class NotFoundError extends ConduitError {
 declare class ConflictError extends ConduitError {
     constructor(message?: string, context?: Record<string, unknown>);
 }
+declare class InsufficientBalanceError extends ConduitError {
+    balance?: number;
+    requiredAmount?: number;
+    constructor(message?: string, context?: Record<string, unknown>);
+}
 declare class RateLimitError extends ConduitError {
     retryAfter?: number;
     constructor(message?: string, retryAfter?: number, context?: Record<string, unknown>);
@@ -236,6 +241,7 @@ declare function isAuthorizationError(error: unknown): error is AuthorizationErr
 declare function isValidationError(error: unknown): error is ValidationError;
 declare function isNotFoundError(error: unknown): error is NotFoundError;
 declare function isConflictError(error: unknown): error is ConflictError;
+declare function isInsufficientBalanceError(error: unknown): error is InsufficientBalanceError;
 declare function isRateLimitError(error: unknown): error is RateLimitError;
 declare function isNetworkError(error: unknown): error is NetworkError;
 declare function isStreamError(error: unknown): error is StreamError;
@@ -821,4 +827,4 @@ interface SignalRConfig {
     connectionTimeout?: number;
 }
 
-export { type ApiResponse, AuthError, AuthenticationError, AuthorizationError, type BaseClientOptions, type BaseSignalRConfig, BaseSignalRConnection, type BatchOperationParams, CONTENT_TYPES, type CacheProvider, type ClientLifecycleCallbacks, ConduitError, ConflictError, type ContentType, type DateRange, DefaultTransports, ERROR_CODES, type ErrorCode, type ErrorResponse, type ErrorResponseFormat, type ExtendedRequestInit, type FilterOptions, HTTP_HEADERS, HTTP_STATUS, HttpError, type HttpHeader, HttpMethod, type HttpStatusCode, HttpTransportType, HubConnectionState, type Logger, type ModelCapabilities, ModelCapability, type ModelCapabilityInfo, type ModelConstraints, NetworkError, NotFoundError, NotImplementedError, type PagedResponse, type PaginatedResponse, type PaginationParams, type PerformanceMetrics, RETRY_CONFIG, RateLimitError, type RequestConfigInfo, type RequestOptions, type ResponseInfo, ResponseParser, type RetryConfig, type RetryConfigValue, type SearchParams, ServerError, type SignalRArgs, type SignalRAuthConfig, type SignalRConfig, type SignalRConnectionOptions, SignalRLogLevel, type SignalRValue, type SortDirection, type SortOptions, StreamError, TIMEOUTS, type TimeRangeParams, TimeoutError, type TimeoutValue, type Usage, ValidationError, createErrorFromResponse, deserializeError, getCapabilityCategory, getCapabilityDisplayName, getErrorMessage, getErrorStatusCode, handleApiError, isAuthError, isAuthorizationError, isConduitError, isConflictError, isErrorLike, isHttpError, isHttpMethod, isHttpNetworkError, isNetworkError, isNotFoundError, isRateLimitError, isSerializedConduitError, isStreamError, isTimeoutError, isValidationError, serializeError };
+export { type ApiResponse, AuthError, AuthenticationError, AuthorizationError, type BaseClientOptions, type BaseSignalRConfig, BaseSignalRConnection, type BatchOperationParams, CONTENT_TYPES, type CacheProvider, type ClientLifecycleCallbacks, ConduitError, ConflictError, type ContentType, type DateRange, DefaultTransports, ERROR_CODES, type ErrorCode, type ErrorResponse, type ErrorResponseFormat, type ExtendedRequestInit, type FilterOptions, HTTP_HEADERS, HTTP_STATUS, HttpError, type HttpHeader, HttpMethod, type HttpStatusCode, HttpTransportType, HubConnectionState, InsufficientBalanceError, type Logger, type ModelCapabilities, ModelCapability, type ModelCapabilityInfo, type ModelConstraints, NetworkError, NotFoundError, NotImplementedError, type PagedResponse, type PaginatedResponse, type PaginationParams, type PerformanceMetrics, RETRY_CONFIG, RateLimitError, type RequestConfigInfo, type RequestOptions, type ResponseInfo, ResponseParser, type RetryConfig, type RetryConfigValue, type SearchParams, ServerError, type SignalRArgs, type SignalRAuthConfig, type SignalRConfig, type SignalRConnectionOptions, SignalRLogLevel, type SignalRValue, type SortDirection, type SortOptions, StreamError, TIMEOUTS, type TimeRangeParams, TimeoutError, type TimeoutValue, type Usage, ValidationError, createErrorFromResponse, deserializeError, getCapabilityCategory, getCapabilityDisplayName, getErrorMessage, getErrorStatusCode, handleApiError, isAuthError, isAuthorizationError, isConduitError, isConflictError, isErrorLike, isHttpError, isHttpMethod, isHttpNetworkError, isInsufficientBalanceError, isNetworkError, isNotFoundError, isRateLimitError, isSerializedConduitError, isStreamError, isTimeoutError, isValidationError, serializeError };

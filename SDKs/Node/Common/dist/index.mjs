@@ -149,6 +149,13 @@ var ConflictError = class extends ConduitError {
     super(message, 409, "CONFLICT_ERROR", context);
   }
 };
+var InsufficientBalanceError = class extends ConduitError {
+  constructor(message = "Insufficient balance to complete request", context) {
+    super(message, 402, "INSUFFICIENT_BALANCE", context);
+    this.balance = context?.balance;
+    this.requiredAmount = context?.requiredAmount;
+  }
+};
 var RateLimitError = class extends ConduitError {
   constructor(message = "Rate limit exceeded", retryAfter, context) {
     super(message, 429, "RATE_LIMIT_ERROR", { ...context, retryAfter });
@@ -197,6 +204,9 @@ function isNotFoundError(error) {
 }
 function isConflictError(error) {
   return error instanceof ConflictError;
+}
+function isInsufficientBalanceError(error) {
+  return error instanceof InsufficientBalanceError;
 }
 function isRateLimitError(error) {
   return error instanceof RateLimitError;
@@ -284,6 +294,8 @@ function handleApiError(error, endpoint, method) {
         throw new ValidationError(enhancedMessage, context);
       case 401:
         throw new AuthError(enhancedMessage, context);
+      case 402:
+        throw new InsufficientBalanceError(enhancedMessage, context);
       case 403:
         throw new AuthorizationError(enhancedMessage, context);
       case 404:
@@ -727,6 +739,7 @@ export {
   HttpMethod,
   HttpTransportType,
   HubConnectionState,
+  InsufficientBalanceError,
   ModelCapability,
   NetworkError,
   NotFoundError,
@@ -755,6 +768,7 @@ export {
   isHttpError,
   isHttpMethod,
   isHttpNetworkError,
+  isInsufficientBalanceError,
   isNetworkError,
   isNotFoundError,
   isRateLimitError,

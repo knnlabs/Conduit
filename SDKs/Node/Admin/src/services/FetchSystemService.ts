@@ -176,6 +176,9 @@ export class FetchSystemService {
   /**
    * Get WebUI virtual key for authentication
    * CRITICAL: This is required for WebUI authentication
+   * 
+   * With the new design, this method will throw an error instructing
+   * users to create the WebUI group and key manually.
    */
   async getWebUIVirtualKey(config?: RequestConfig): Promise<string> {
     try {
@@ -193,50 +196,16 @@ export class FetchSystemService {
         return setting.value;
       }
     } catch {
-      // Key doesn't exist, we'll create it
+      // Key doesn't exist
     }
 
-    // Create metadata for the virtual key
-    const metadata = {
-      visibility: 'hidden',
-      created: new Date().toISOString(),
-      originator: 'Admin SDK'
-    };
-
-    // Create the virtual key
-    const response = await this.client['post']<CreateVirtualKeyResponseDto, CreateVirtualKeyRequestDto>(
-      ENDPOINTS.VIRTUAL_KEYS.BASE,
-      {
-        keyName: 'WebUI Internal Key',
-        metadata: JSON.stringify(metadata)
-      },
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    // With the new architecture, we cannot auto-create keys without groups
+    throw new Error(
+      'WebUI virtual key not found. Please create a virtual key group and key manually:\n' +
+      '1. Create a group: POST /api/virtualkey-groups with initial balance\n' +
+      '2. Create the WebUI key: POST /api/virtualkeys with keyName="WebUI Internal Key" and the group ID\n' +
+      '3. The key will be automatically stored for future use.'
     );
-    
-    if (!response.virtualKey) {
-      throw new Error('Failed to create virtual key: No key returned');
-    }
-
-    // Store the unhashed key in GlobalSettings
-    await this.client['post']<GlobalSettingDto, CreateGlobalSettingDto>(
-      ENDPOINTS.SETTINGS.GLOBAL,
-      {
-        key: 'WebUI_VirtualKey',
-        value: response.virtualKey,
-        description: 'Virtual key for WebUI Core API access'
-      },
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-    
-    return response.virtualKey;
   }
 
   /**
