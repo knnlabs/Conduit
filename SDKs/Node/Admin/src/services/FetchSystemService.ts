@@ -49,9 +49,6 @@ import type {
   HealthEventSubscription
 } from '../models/system';
 
-// Type aliases for better readability  
-type GlobalSettingDto = components['schemas']['ConduitLLM.Configuration.DTOs.GlobalSettingDto'];
-
 // Performance types (not in generated schemas yet)
 interface MetricsParams {
   period?: 'hour' | 'day' | 'week' | 'month';
@@ -170,40 +167,6 @@ export class FetchSystemService {
     );
   }
 
-  /**
-   * Get WebUI virtual key for authentication
-   * CRITICAL: This is required for WebUI authentication
-   * 
-   * With the new design, this method will throw an error instructing
-   * users to create the WebUI group and key manually.
-   */
-  async getWebUIVirtualKey(config?: RequestConfig): Promise<string> {
-    try {
-      // First try to get existing key from GlobalSettings
-      const setting = await this.client['get']<GlobalSettingDto>(
-        `${ENDPOINTS.SETTINGS.GLOBAL_BY_KEY('WebUI_VirtualKey')}`,
-        {
-          signal: config?.signal,
-          timeout: config?.timeout,
-          headers: config?.headers,
-        }
-      );
-      
-      if (setting?.value) {
-        return setting.value;
-      }
-    } catch {
-      // Key doesn't exist
-    }
-
-    // With the new architecture, we cannot auto-create keys without groups
-    throw new Error(
-      'WebUI virtual key not found. Please create a virtual key group and key manually:\n' +
-      '1. Create a group: POST /api/virtualkey-groups with initial balance\n' +
-      '2. Create the WebUI key: POST /api/virtualkeys with keyName="WebUI Internal Key" and the group ID\n' +
-      '3. The key will be automatically stored for future use.'
-    );
-  }
 
   /**
    * Get performance metrics (optional)
@@ -745,5 +708,97 @@ export class FetchSystemService {
    */
   isFeatureEnabled(systemInfo: SystemInfoDto, feature: keyof SystemInfoDto['features']): boolean {
     return systemInfo.features[feature] === true;
+  }
+
+  /**
+   * Gets or creates the special WebUI virtual key.
+   * This key is stored unencrypted in GlobalSettings for WebUI/TUI access.
+   * @returns The actual (unhashed) virtual key value
+   */
+  async getWebUIVirtualKey(config?: RequestConfig): Promise<string> {
+    // Import services we need
+    const { FetchSettingsService } = await import('./FetchSettingsService');
+    const { FetchVirtualKeyService } = await import('./FetchVirtualKeyService');
+    const { FetchVirtualKeyGroupService } = await import('./FetchVirtualKeyGroupService');
+    
+    const settingsService = new FetchSettingsService(this.client);
+    const virtualKeyService = new FetchVirtualKeyService(this.client);
+    
+    let existingKey: string | null = null;
+    
+    try {
+      // First try to get existing key from GlobalSettings
+      const setting = await settingsService.getGlobalSetting('WebUI_VirtualKey', config);
+      if (setting?.value) {
+        existingKey = setting.value;
+        console.warn('[SDK] Found WebUI virtual key in GlobalSettings, validating...');
+        
+        // Validate that the key exists in VirtualKeys table
+        try {
+          // Try to validate the key by checking if it works
+          const validationResult = await virtualKeyService.validate(existingKey, config);
+          
+          if (!validationResult?.isValid) {
+            console.warn('[SDK] WebUI virtual key from GlobalSettings is not valid');
+            existingKey = null;
+          } else {
+            console.warn('[SDK] WebUI virtual key validated successfully');
+            return existingKey;
+          }
+        } catch (validationError) {
+          console.error('[SDK] Failed to validate WebUI virtual key', validationError);
+          existingKey = null;
+        }
+      }
+    } catch {
+      // Key doesn't exist in GlobalSettings
+      console.warn('[SDK] WebUI virtual key not found in GlobalSettings');
+    }
+
+    // If we don't have a valid key, create a new one
+    console.warn('[SDK] Creating new WebUI virtual key with group and $1000 balance');
+    
+    // First, create a virtual key group with $1000 initial balance
+    const virtualKeyGroupService = new FetchVirtualKeyGroupService(this.client);
+    const group = await virtualKeyGroupService.create({
+      groupName: 'WebUI Internal Group',
+      externalGroupId: 'webui-internal',
+      initialBalance: 1000.00
+    }, config);
+    
+    console.warn(`[SDK] Created WebUI virtual key group with ID ${group.id} and $1000 balance`);
+    
+    // Create metadata
+    const metadata = {
+      visibility: 'hidden',
+      created: new Date().toISOString(),
+      originator: 'Admin SDK',
+      groupId: group.id
+    };
+
+    // Create the virtual key and associate it with the group
+    const virtualKeyRequest = {
+      keyName: 'WebUI Internal Key',
+      metadata: JSON.stringify(metadata),
+      virtualKeyGroupId: group.id
+    } as components['schemas']['ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyRequestDto'];
+    
+    const response = await virtualKeyService.create(virtualKeyRequest, config);
+    
+    if (!response.virtualKey) {
+      throw new Error('Failed to create virtual key: No key returned');
+    }
+
+    // Store the unhashed key in GlobalSettings
+    await settingsService.createGlobalSetting({
+      key: 'WebUI_VirtualKey',
+      value: response.virtualKey,
+      isSecret: true,
+      category: 'WebUI',
+      description: 'Virtual key for WebUI Core API access'
+    }, config);
+    
+    console.warn('[SDK] Created new WebUI virtual key and stored in GlobalSettings');
+    return response.virtualKey;
   }
 }

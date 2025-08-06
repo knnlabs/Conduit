@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerCoreClient } from '@/lib/server/sdk-config';
-import type { ChatCompletionRequest } from '@/app/chat/types';
+import type { ChatCompletionRequest } from '@knn_labs/conduit-core-client';
 
 // POST /api/chat/completions - Create chat completions using Core SDK
 export async function POST(request: NextRequest) {

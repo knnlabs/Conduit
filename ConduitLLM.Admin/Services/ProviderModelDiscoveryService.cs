@@ -86,22 +86,6 @@ namespace ConduitLLM.Admin.Services
                         }
                         return groqModels;
                         
-                    case ProviderType.Anthropic:
-                        var anthropicModels = await ConduitLLM.Providers.AnthropicModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
-                        foreach (var model in anthropicModels)
-                        {
-                            model.Provider = Provider.ProviderName;
-                        }
-                        return anthropicModels;
-                        
-                    case ProviderType.OpenRouter:
-                        var openRouterModels = await ConduitLLM.Providers.OpenRouterModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
-                        foreach (var model in openRouterModels)
-                        {
-                            model.Provider = Provider.ProviderName;
-                        }
-                        return openRouterModels;
-                    
                     case ProviderType.Cerebras:
                         _logger.LogDebug("Calling CerebrasModels.DiscoverAsync with API key: {HasKey}", !string.IsNullOrEmpty(apiKey));
                         var cerebrasModels = await ConduitLLM.Providers.CerebrasModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
@@ -112,17 +96,6 @@ namespace ConduitLLM.Admin.Services
                             model.Provider = Provider.ProviderName;
                         }
                         return cerebrasModels;
-                    
-                    case ProviderType.Gemini:
-                        _logger.LogDebug("Calling GoogleModels.DiscoverAsync with API key: {HasKey}", !string.IsNullOrEmpty(apiKey));
-                        var googleModels = await ConduitLLM.Providers.GoogleModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
-                        _logger.LogDebug("GoogleModels.DiscoverAsync returned {Count} models", googleModels.Count);
-                        // Ensure provider field is set correctly
-                        foreach (var model in googleModels)
-                        {
-                            model.Provider = Provider.ProviderName;
-                        }
-                        return googleModels;
                     
                     case ProviderType.MiniMax:
                         _logger.LogDebug("Calling MiniMaxModels.DiscoverAsync with API key: {HasKey}", !string.IsNullOrEmpty(apiKey));
@@ -145,66 +118,6 @@ namespace ConduitLLM.Admin.Services
                         }
                         return replicateModels;
                     
-                    case ProviderType.Mistral:
-                        _logger.LogDebug("Calling MistralModels.DiscoverAsync with API key: {HasKey}", !string.IsNullOrEmpty(apiKey));
-                        var mistralModels = await ConduitLLM.Providers.MistralModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
-                        _logger.LogDebug("MistralModels.DiscoverAsync returned {Count} models", mistralModels.Count);
-                        foreach (var model in mistralModels)
-                        {
-                            model.Provider = Provider.ProviderName;
-                        }
-                        return mistralModels;
-                    
-                    case ProviderType.Cohere:
-                        _logger.LogDebug("Calling CohereModels.DiscoverAsync with API key: {HasKey}", !string.IsNullOrEmpty(apiKey));
-                        var cohereModels = await ConduitLLM.Providers.CohereModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
-                        _logger.LogDebug("CohereModels.DiscoverAsync returned {Count} models", cohereModels.Count);
-                        foreach (var model in cohereModels)
-                        {
-                            model.Provider = Provider.ProviderName;
-                        }
-                        return cohereModels;
-                    
-                    case ProviderType.AzureOpenAI:
-                        _logger.LogDebug("Calling AzureOpenAIModelDiscovery.DiscoverAsync with API key: {HasKey}", !string.IsNullOrEmpty(apiKey));
-                        var azureModels = await ConduitLLM.Providers.AzureOpenAIModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
-                        _logger.LogDebug("AzureOpenAIModelDiscovery.DiscoverAsync returned {Count} models", azureModels.Count);
-                        foreach (var model in azureModels)
-                        {
-                            model.Provider = Provider.ProviderName;
-                        }
-                        return azureModels;
-                    
-                    case ProviderType.Bedrock:
-                        _logger.LogDebug("Calling BedrockModelDiscovery.DiscoverAsync with API key: {HasKey}", !string.IsNullOrEmpty(apiKey));
-                        var bedrockModels = await ConduitLLM.Providers.BedrockModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
-                        _logger.LogDebug("BedrockModelDiscovery.DiscoverAsync returned {Count} models", bedrockModels.Count);
-                        foreach (var model in bedrockModels)
-                        {
-                            model.Provider = Provider.ProviderName;
-                        }
-                        return bedrockModels;
-                    
-                    case ProviderType.VertexAI:
-                        _logger.LogDebug("Calling VertexAIModelDiscovery.DiscoverAsync with API key: {HasKey}", !string.IsNullOrEmpty(apiKey));
-                        var vertexModels = await ConduitLLM.Providers.VertexAIModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
-                        _logger.LogDebug("VertexAIModelDiscovery.DiscoverAsync returned {Count} models", vertexModels.Count);
-                        foreach (var model in vertexModels)
-                        {
-                            model.Provider = Provider.ProviderName;
-                        }
-                        return vertexModels;
-                    
-                    case ProviderType.Ollama:
-                        _logger.LogDebug("Calling OllamaModelDiscovery.DiscoverAsync with API key: {HasKey}", !string.IsNullOrEmpty(apiKey));
-                        var ollamaModels = await ConduitLLM.Providers.OllamaModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
-                        _logger.LogDebug("OllamaModelDiscovery.DiscoverAsync returned {Count} models", ollamaModels.Count);
-                        foreach (var model in ollamaModels)
-                        {
-                            model.Provider = Provider.ProviderName;
-                        }
-                        return ollamaModels;
-                    
                     case ProviderType.Fireworks:
                         _logger.LogDebug("Calling FireworksModels.DiscoverAsync with API key: {HasKey}", !string.IsNullOrEmpty(apiKey));
                         var fireworksModels = await ConduitLLM.Providers.FireworksModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
@@ -214,26 +127,6 @@ namespace ConduitLLM.Admin.Services
                             model.Provider = Provider.ProviderName;
                         }
                         return fireworksModels;
-                    
-                    case ProviderType.HuggingFace:
-                        _logger.LogDebug("Calling HuggingFaceModelDiscovery.DiscoverAsync with API key: {HasKey}", !string.IsNullOrEmpty(apiKey));
-                        var huggingFaceModels = await ConduitLLM.Providers.HuggingFaceModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
-                        _logger.LogDebug("HuggingFaceModelDiscovery.DiscoverAsync returned {Count} models", huggingFaceModels.Count);
-                        foreach (var model in huggingFaceModels)
-                        {
-                            model.Provider = Provider.ProviderName;
-                        }
-                        return huggingFaceModels;
-                    
-                    case ProviderType.SageMaker:
-                        _logger.LogDebug("Calling SageMakerModelDiscovery.DiscoverAsync with API key: {HasKey}", !string.IsNullOrEmpty(apiKey));
-                        var sageMakerModels = await ConduitLLM.Providers.SageMakerModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
-                        _logger.LogDebug("SageMakerModelDiscovery.DiscoverAsync returned {Count} models", sageMakerModels.Count);
-                        foreach (var model in sageMakerModels)
-                        {
-                            model.Provider = Provider.ProviderName;
-                        }
-                        return sageMakerModels;
                     
                     case ProviderType.OpenAICompatible:
                         _logger.LogDebug("Calling OpenAICompatibleModelDiscovery.DiscoverAsync with API key: {HasKey}", !string.IsNullOrEmpty(apiKey));
@@ -271,21 +164,10 @@ namespace ConduitLLM.Admin.Services
             {
                 ProviderType.OpenAI,
                 ProviderType.Groq,
-                ProviderType.Anthropic,
-                ProviderType.OpenRouter,
                 ProviderType.Cerebras,
-                ProviderType.Gemini,
                 ProviderType.MiniMax,
                 ProviderType.Replicate,
-                ProviderType.Mistral,
-                ProviderType.Cohere,
-                ProviderType.AzureOpenAI,
-                ProviderType.Bedrock,
-                ProviderType.VertexAI,
-                ProviderType.Ollama,
                 ProviderType.Fireworks,
-                ProviderType.HuggingFace,
-                ProviderType.SageMaker,
                 ProviderType.OpenAICompatible
             };
             

@@ -65,16 +65,17 @@ export async function getServerCoreClient(): Promise<InstanceType<typeof Conduit
     // Validate environment at runtime
     validateEnvironment();
     
-    // Get the WebUI's virtual key from the database using the admin client
+    // Get the WebUI's virtual key - this will auto-create it with $1000 if it doesn't exist
     if (!webuiVirtualKey) {
       try {
-        console.warn('[SDK] Getting WebUI virtual key from database...');
+        console.warn('[SDK] Getting or creating WebUI virtual key...');
         const adminClient = getServerAdminClient();
+        // Use the SystemService's getWebUIVirtualKey method which auto-creates with $1000
         webuiVirtualKey = await adminClient.system.getWebUIVirtualKey();
-        console.warn('[SDK] WebUI virtual key retrieved successfully');
+        console.warn('[SDK] WebUI virtual key obtained successfully');
       } catch (error) {
-        console.error('[SDK] Failed to get WebUI virtual key:', error);
-        throw new Error('Failed to retrieve WebUI virtual key from database. Ensure the database is accessible and properly configured.');
+        console.error('[SDK] Failed to get or create WebUI virtual key:', error);
+        throw new Error('Failed to retrieve or create WebUI virtual key. Ensure the database is accessible and the Admin API is running.');
       }
     }
     

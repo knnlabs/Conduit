@@ -181,9 +181,6 @@ function isNonTestableProvider(providerType?: ProviderType): boolean {
   // List of providers that don't support simple API key testing
   const nonTestableProviders: ProviderType[] = [
     ProviderType.Replicate,
-    ProviderType.HuggingFace,
-    ProviderType.SageMaker,
-    ProviderType.Bedrock
   ];
 
   return nonTestableProviders.includes(providerType);

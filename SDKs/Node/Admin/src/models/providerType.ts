@@ -6,66 +6,27 @@ export enum ProviderType {
   /** OpenAI provider (GPT models) */
   OpenAI = 1,
   
-  /** Anthropic provider (Claude models) */
-  Anthropic = 2,
-  
-  /** Azure OpenAI Service */
-  AzureOpenAI = 3,
-  
-  /** Google Gemini */
-  Gemini = 4,
-  
-  /** Google Vertex AI */
-  VertexAI = 5,
-  
-  /** Cohere */
-  Cohere = 6,
-  
-  /** Mistral AI */
-  Mistral = 7,
-  
   /** Groq */
-  Groq = 8,
-  
-  /** Ollama (local models) */
-  Ollama = 9,
+  Groq = 2,
   
   /** Replicate */
-  Replicate = 10,
+  Replicate = 3,
   
   /** Fireworks AI */
-  Fireworks = 11,
-  
-  /** AWS Bedrock */
-  Bedrock = 12,
-  
-  /** Hugging Face */
-  HuggingFace = 13,
-  
-  /** AWS SageMaker */
-  SageMaker = 14,
-  
-  /** OpenRouter */
-  OpenRouter = 15,
+  Fireworks = 4,
   
   /** OpenAI-compatible generic provider */
-  OpenAICompatible = 16,
+  OpenAICompatible = 5,
   
   /** MiniMax */
-  MiniMax = 17,
+  MiniMax = 6,
   
   /** Ultravox */
-  Ultravox = 18,
+  Ultravox = 7,
   
   /** ElevenLabs (audio) */
-  ElevenLabs = 19,
-  
-  /** Google Cloud (audio) */
-  GoogleCloud = 20,
+  ElevenLabs = 8,
   
   /** Cerebras (high-performance inference) */
-  Cerebras = 21,
-  
-  /** Unknown/Future provider type */
-  Unknown = 22
+  Cerebras = 9
 }

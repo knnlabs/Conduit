@@ -2,7 +2,6 @@ import type { RequestOptions } from '../client/types';
 import type { StreamingResponse } from '../models/streaming';
 import type { EnhancedStreamingResponse } from '../models/enhanced-streaming-response';
 import type { EnhancedStreamEvent } from '../models/enhanced-streaming';
-import type { ChatCompletionRequest } from '../models/chat';
 import { createWebStream } from '../utils/web-streaming';
 import { createEnhancedWebStream } from '../utils/enhanced-web-streaming';
 
@@ -80,35 +79,4 @@ export abstract class BaseStreamingService {
     );
   }
 
-  /**
-   * Converts legacy function parameters to the tools format
-   * for backward compatibility
-   * 
-   * @param request The request object
-   * @returns The processed request
-   * @protected
-   */
-  protected convertLegacyFunctions(request: ChatCompletionRequest): ChatCompletionRequest {
-    if (request.functions && !request.tools) {
-      request.tools = request.functions.map((fn) => ({
-        type: 'function' as const,
-        function: fn
-      }));
-      delete request.functions;
-    }
-    
-    if (request.function_call && !request.tool_choice) {
-      if (typeof request.function_call === 'string') {
-        request.tool_choice = request.function_call as 'none' | 'auto';
-      } else {
-        request.tool_choice = {
-          type: 'function',
-          function: request.function_call
-        };
-      }
-      delete request.function_call;
-    }
-    
-    return request;
-  }
 }

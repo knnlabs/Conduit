@@ -53,9 +53,7 @@ namespace ConduitLLM.Core.Services
                 return provider.ProviderType switch
                 {
                     ProviderType.OpenAI => true,
-                    ProviderType.AzureOpenAI => true,
                     ProviderType.Groq => true,
-                    ProviderType.GoogleCloud => true,
                     _ => false
                 };
             }
@@ -82,9 +80,7 @@ namespace ConduitLLM.Core.Services
                 return provider.ProviderType switch
                 {
                     ProviderType.OpenAI => true,
-                    ProviderType.AzureOpenAI => true,
                     ProviderType.ElevenLabs => true,
-                    ProviderType.GoogleCloud => true,
                     _ => false
                 };
             }
@@ -111,7 +107,6 @@ namespace ConduitLLM.Core.Services
                 return provider.ProviderType switch
                 {
                     ProviderType.OpenAI => true,
-                    ProviderType.AzureOpenAI => true,
                     ProviderType.ElevenLabs => true,
                     ProviderType.Ultravox => true,
                     _ => false
@@ -164,9 +159,7 @@ namespace ConduitLLM.Core.Services
                 return provider.ProviderType switch
                 {
                     ProviderType.OpenAI => new[] { AudioFormat.Mp3, AudioFormat.Wav, AudioFormat.Flac, AudioFormat.Ogg },
-                    ProviderType.AzureOpenAI => new[] { AudioFormat.Mp3, AudioFormat.Wav, AudioFormat.Flac, AudioFormat.Ogg },
                     ProviderType.Groq => new[] { AudioFormat.Mp3, AudioFormat.Wav, AudioFormat.Flac },
-                    ProviderType.GoogleCloud => new[] { AudioFormat.Mp3, AudioFormat.Wav, AudioFormat.Flac },
                     ProviderType.ElevenLabs => new[] { AudioFormat.Mp3, AudioFormat.Wav },
                     _ => Array.Empty<AudioFormat>()
                 };

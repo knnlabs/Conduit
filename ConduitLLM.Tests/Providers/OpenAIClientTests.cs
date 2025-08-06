@@ -91,7 +91,7 @@ namespace ConduitLLM.Tests.Providers
             var provider = new Provider
             {
                 Id = 1,
-                ProviderType = ProviderType.AzureOpenAI
+                ProviderType = ProviderType.OpenAI
             };
             
             var keyCredential = new ProviderKeyCredential
@@ -118,39 +118,9 @@ namespace ConduitLLM.Tests.Providers
             Assert.NotNull(client);
         }
 
-        [Fact]
-        public void Constructor_WithAzureButNoApiBase_ThrowsConfigurationException()
-        {
-            // Arrange
-            var provider = new Provider
-            {
-                Id = 1,
-                ProviderType = ProviderType.AzureOpenAI
-            };
-            
-            var keyCredential = new ProviderKeyCredential
-            {
-                Id = 1,
-                ProviderId = 1,
-                ApiKey = "test-api-key"
-                // No BaseUrl set
-            };
-            
-            var modelId = "my-deployment";
-            var logger = CreateLogger<OpenAIClient>();
-
-            // Act & Assert
-            var exception = Assert.Throws<ConfigurationException>(() =>
-                new OpenAIClient(
-                    provider,
-                    keyCredential,
-                    modelId,
-                    logger.Object,
-                    _httpClientFactoryMock.Object,
-                    _capabilityServiceMock.Object));
-
-            Assert.Contains("BaseUrl", exception.Message);
-        }
+        // Test removed: Azure OpenAI provider type no longer supported
+        // Original test: Constructor_WithAzureButNoApiBase_ThrowsConfigurationException
+        // This test verified Azure OpenAI requires BaseUrl, but Azure OpenAI has been removed from supported providers
 
         [Fact]
         public void Constructor_WithNullCredentials_ThrowsException()
@@ -967,7 +937,7 @@ namespace ConduitLLM.Tests.Providers
             var provider = new Provider
             {
                 Id = 1,
-                ProviderType = ProviderType.AzureOpenAI
+                ProviderType = ProviderType.OpenAI
             };
             
             var keyCredential = new ProviderKeyCredential

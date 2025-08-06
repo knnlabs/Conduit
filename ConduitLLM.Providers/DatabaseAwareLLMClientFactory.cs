@@ -10,24 +10,13 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Providers;
 using ConduitLLM.Providers.Providers.OpenAI;
-using ConduitLLM.Providers.Providers.Anthropic;
-using ConduitLLM.Providers.Providers.Mistral;
 using ConduitLLM.Providers.Providers.Groq;
-using ConduitLLM.Providers.Providers.Cohere;
-using ConduitLLM.Providers.Providers.Gemini;
-using ConduitLLM.Providers.Providers.VertexAI;
-using ConduitLLM.Providers.Providers.Ollama;
 using ConduitLLM.Providers.Providers.Replicate;
 using ConduitLLM.Providers.Providers.Fireworks;
-using ConduitLLM.Providers.Providers.Bedrock;
-using ConduitLLM.Providers.Providers.HuggingFace;
-using ConduitLLM.Providers.Providers.SageMaker;
-using ConduitLLM.Providers.Providers.OpenRouter;
 using ConduitLLM.Providers.Providers.OpenAICompatible;
 using ConduitLLM.Providers.Providers.MiniMax;
 using ConduitLLM.Providers.Providers.Ultravox;
 using ConduitLLM.Providers.Providers.ElevenLabs;
-using ConduitLLM.Providers.Providers.GoogleCloud;
 using ConduitLLM.Providers.Providers.Cerebras;
 using Microsoft.Extensions.Logging;
 
@@ -248,63 +237,9 @@ namespace ConduitLLM.Providers
                         _httpClientFactory, _capabilityService, defaultModels);
                     break;
 
-                case ProviderType.AzureOpenAI:
-                    var azureLogger = _loggerFactory.CreateLogger<AzureOpenAIClient>();
-                    client = new AzureOpenAIClient(provider, keyCredential, modelId, azureLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
-                case ProviderType.Anthropic:
-                    var anthropicLogger = _loggerFactory.CreateLogger<AnthropicClient>();
-                    client = new AnthropicClient(provider, keyCredential, modelId, anthropicLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
-                case ProviderType.Mistral:
-                    var mistralLogger = _loggerFactory.CreateLogger<MistralClient>();
-                    client = new MistralClient(provider, keyCredential, modelId, mistralLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
                 case ProviderType.Groq:
                     var groqLogger = _loggerFactory.CreateLogger<GroqClient>();
                     client = new GroqClient(provider, keyCredential, modelId, groqLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
-                case ProviderType.Cohere:
-                    var cohereLogger = _loggerFactory.CreateLogger<CohereClient>();
-                    client = new CohereClient(provider, keyCredential, modelId, cohereLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
-                case ProviderType.Gemini:
-                    var geminiLogger = _loggerFactory.CreateLogger<GeminiClient>();
-                    client = new GeminiClient(provider, keyCredential, modelId, geminiLogger, 
-                        _httpClientFactory, null, defaultModels);
-                    break;
-
-                case ProviderType.VertexAI:
-                    var vertexLogger = _loggerFactory.CreateLogger<VertexAIClient>();
-                    client = new VertexAIClient(provider, keyCredential, modelId, vertexLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
-                case ProviderType.Ollama:
-                    var ollamaLogger = _loggerFactory.CreateLogger<OllamaClient>();
-                    client = new OllamaClient(provider, keyCredential, modelId, ollamaLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
-                case ProviderType.Bedrock:
-                    var bedrockLogger = _loggerFactory.CreateLogger<BedrockClient>();
-                    client = new BedrockClient(provider, keyCredential, modelId, bedrockLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
-                case ProviderType.HuggingFace:
-                    var hfLogger = _loggerFactory.CreateLogger<HuggingFaceClient>();
-                    client = new HuggingFaceClient(provider, keyCredential, modelId, hfLogger, 
                         _httpClientFactory, defaultModels);
                     break;
 
@@ -317,19 +252,6 @@ namespace ConduitLLM.Providers
                 case ProviderType.Fireworks:
                     var fireworksLogger = _loggerFactory.CreateLogger<FireworksClient>();
                     client = new FireworksClient(provider, keyCredential, modelId, fireworksLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
-                case ProviderType.SageMaker:
-                    var sageMakerLogger = _loggerFactory.CreateLogger<SageMakerClient>();
-                    // SageMaker needs endpoint name - use model ID as endpoint name
-                    client = new SageMakerClient(provider, keyCredential, modelId, sageMakerLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
-                case ProviderType.OpenRouter:
-                    var openRouterLogger = _loggerFactory.CreateLogger<OpenRouterClient>();
-                    client = new OpenRouterClient(provider, keyCredential, modelId, openRouterLogger, 
                         _httpClientFactory, defaultModels);
                     break;
 
@@ -354,12 +276,6 @@ namespace ConduitLLM.Providers
                 case ProviderType.ElevenLabs:
                     var elevenLabsLogger = _loggerFactory.CreateLogger<ElevenLabsClient>();
                     client = new ElevenLabsClient(provider, keyCredential, modelId, elevenLabsLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
-                case ProviderType.GoogleCloud:
-                    var gcpLogger = _loggerFactory.CreateLogger<GoogleCloudAudioClient>();
-                    client = new GoogleCloudAudioClient(provider, keyCredential, modelId, gcpLogger, 
                         _httpClientFactory, defaultModels);
                     break;
 

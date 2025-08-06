@@ -5,27 +5,14 @@ import { ProviderType } from '@knn_labs/conduit-admin-client';
 function getProviderDisplayName(providerType: ProviderType): string {
   const providerNames: Record<ProviderType, string> = {
     [ProviderType.OpenAI]: 'OpenAI',
-    [ProviderType.Anthropic]: 'Anthropic',
-    [ProviderType.AzureOpenAI]: 'Azure OpenAI',
-    [ProviderType.Gemini]: 'Gemini',
-    [ProviderType.VertexAI]: 'Vertex AI',
-    [ProviderType.Cohere]: 'Cohere',
-    [ProviderType.Mistral]: 'Mistral',
     [ProviderType.Groq]: 'Groq',
-    [ProviderType.Ollama]: 'Ollama',
     [ProviderType.Replicate]: 'Replicate',
     [ProviderType.Fireworks]: 'Fireworks',
-    [ProviderType.Bedrock]: 'Bedrock',
-    [ProviderType.HuggingFace]: 'HuggingFace',
-    [ProviderType.SageMaker]: 'SageMaker',
-    [ProviderType.OpenRouter]: 'OpenRouter',
     [ProviderType.OpenAICompatible]: 'OpenAI Compatible',
     [ProviderType.MiniMax]: 'MiniMax',
     [ProviderType.Ultravox]: 'Ultravox',
     [ProviderType.ElevenLabs]: 'ElevenLabs',
-    [ProviderType.GoogleCloud]: 'Google Cloud',
     [ProviderType.Cerebras]: 'Cerebras',
-    [ProviderType.Unknown]: 'Unknown',
   };
   return providerNames[providerType] || `Provider ${providerType}`;
 }

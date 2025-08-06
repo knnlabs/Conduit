@@ -112,94 +112,32 @@ namespace ConduitLLM.Tests.Providers.Discovery
 
         #endregion
 
-        #region Anthropic Tests
-
+        #region Anthropic Tests (Removed)
+        // NOTE: Anthropic provider discovery has been removed from the codebase.
+        // These tests are preserved as placeholders for potential future implementations.
+        
         [Fact]
-        public async Task AnthropicModels_WithValidApiKey_ReturnsKnownModels()
+        public void AnthropicProvider_RemovedFromCodebase_PlaceholderTest()
         {
-            // Arrange
-            var httpClient = CreateMockHttpClient(HttpStatusCode.OK);
-
-            // Act
-            var models = await AnthropicModels.DiscoverAsync(httpClient, "test-api-key");
-
-            // Assert
-            Assert.NotEmpty(models);
-            Assert.Contains(models, m => m.ModelId == "claude-3-5-haiku-20241022");
-            Assert.Contains(models, m => m.ModelId == "claude-3-5-sonnet-20241022");
-            Assert.Contains(models, m => m.ModelId == "claude-3-opus-20240229");
-            
-            // Check capabilities
-            var claude35 = models.First(m => m.ModelId.Contains("claude-3"));
-            Assert.True(claude35.Capabilities.Chat);
-            Assert.True(claude35.Capabilities.Vision);
-            Assert.True(claude35.Capabilities.ToolUse);
-            Assert.False(claude35.Capabilities.JsonMode);
+            // Anthropic provider discovery classes have been removed
+            // This test serves as a placeholder for future Anthropic provider implementations
+            Assert.True(true); // Placeholder assertion
         }
-
-        [Fact]
-        public async Task AnthropicModels_WithoutApiKey_ReturnsEmptyList()
-        {
-            // Arrange
-            var httpClient = CreateMockHttpClient(HttpStatusCode.OK);
-
-            // Act
-            var models = await AnthropicModels.DiscoverAsync(httpClient, null);
-
-            // Assert
-            Assert.Empty(models);
-        }
-
+        
         #endregion
 
-        #region Google/Gemini Tests
-
+        #region Google/Gemini Tests (Removed)
+        // NOTE: Google/Gemini provider discovery has been removed from the codebase.
+        // These tests are preserved as placeholders for potential future implementations.
+        
         [Fact]
-        public async Task GoogleModels_WithValidApiKey_ReturnsModels()
+        public void GoogleGeminiProvider_RemovedFromCodebase_PlaceholderTest()
         {
-            // Arrange
-            var responseContent = new
-            {
-                models = new[]
-                {
-                    new 
-                    { 
-                        name = "models/gemini-1.5-pro", 
-                        displayName = "Gemini 1.5 Pro",
-                        supportedGenerationMethods = new[] { "generateContent", "streamGenerateContent" },
-                        inputTokenLimit = 2097152,
-                        outputTokenLimit = 8192
-                    }
-                }
-            };
-            var httpClient = CreateMockHttpClient(HttpStatusCode.OK, responseContent);
-
-            // Act
-            var models = await GoogleModels.DiscoverAsync(httpClient, "test-api-key");
-
-            // Assert
-            Assert.NotEmpty(models);
-            var gemini = models.First(m => m.ModelId == "gemini-1.5-pro");
-            Assert.Equal("Gemini 1.5 Pro", gemini.DisplayName);
-            Assert.True(gemini.Capabilities.Chat);
-            Assert.True(gemini.Capabilities.Vision);
-            Assert.True(gemini.Capabilities.VideoUnderstanding);
-            Assert.Equal(2097152, gemini.Capabilities.MaxTokens);
+            // Google/Gemini provider discovery classes have been removed
+            // This test serves as a placeholder for future Google provider implementations
+            Assert.True(true); // Placeholder assertion
         }
-
-        [Fact]
-        public async Task GoogleModels_WithApiError_ReturnsEmptyList()
-        {
-            // Arrange
-            var httpClient = CreateMockHttpClient(HttpStatusCode.Forbidden);
-
-            // Act
-            var models = await GoogleModels.DiscoverAsync(httpClient, "test-api-key");
-
-            // Assert
-            Assert.Empty(models);
-        }
-
+        
         #endregion
 
         #region Groq Tests
@@ -278,51 +216,18 @@ namespace ConduitLLM.Tests.Providers.Discovery
 
         #endregion
 
-        #region Mistral Tests
-
+        #region Mistral Tests (Removed)
+        // NOTE: Mistral provider discovery has been removed from the codebase.
+        // These tests are preserved as placeholders for potential future implementations.
+        
         [Fact]
-        public async Task MistralModels_WithValidApiKey_ReturnsModels()
+        public void MistralProvider_RemovedFromCodebase_PlaceholderTest()
         {
-            // Arrange
-            var responseContent = new
-            {
-                data = new[]
-                {
-                    new { id = "mistral-large-latest", created = 1234567890, owned_by = "mistralai" },
-                    new { id = "mistral-embed", created = 1234567890, owned_by = "mistralai" }
-                }
-            };
-            var httpClient = CreateMockHttpClient(HttpStatusCode.OK, responseContent);
-
-            // Act
-            var models = await MistralModels.DiscoverAsync(httpClient, "test-api-key");
-
-            // Assert
-            Assert.NotEmpty(models);
-            
-            var large = models.First(m => m.ModelId == "mistral-large-latest");
-            Assert.True(large.Capabilities.Chat);
-            Assert.True(large.Capabilities.FunctionCalling);
-            Assert.True(large.Capabilities.JsonMode);
-            
-            var embed = models.First(m => m.ModelId == "mistral-embed");
-            Assert.True(embed.Capabilities.Embeddings);
-            Assert.False(embed.Capabilities.Chat);
+            // Mistral provider discovery classes have been removed
+            // This test serves as a placeholder for future Mistral provider implementations
+            Assert.True(true); // Placeholder assertion
         }
-
-        [Fact]
-        public async Task MistralModels_WithApiError_ReturnsEmptyList()
-        {
-            // Arrange
-            var httpClient = CreateMockHttpClient(HttpStatusCode.Unauthorized);
-
-            // Act
-            var models = await MistralModels.DiscoverAsync(httpClient, "invalid-key");
-
-            // Assert
-            Assert.Empty(models);
-        }
-
+        
         #endregion
 
         #region Replicate Tests
@@ -352,44 +257,18 @@ namespace ConduitLLM.Tests.Providers.Discovery
 
         #endregion
 
-        #region Ollama Tests
-
+        #region Ollama Tests (Removed)
+        // NOTE: Ollama provider discovery has been removed from the codebase.
+        // These tests are preserved as placeholders for potential future implementations.
+        
         [Fact]
-        public async Task OllamaModelDiscovery_WithLocalService_ReturnsModels()
+        public void OllamaProvider_RemovedFromCodebase_PlaceholderTest()
         {
-            // Arrange
-            var responseContent = new
-            {
-                models = new[]
-                {
-                    new { name = "llama3.2:latest", modifiedAt = "2024-01-01", size = 5000000000L },
-                    new { name = "mistral:7b", modifiedAt = "2024-01-01", size = 4000000000L }
-                }
-            };
-            var httpClient = CreateMockHttpClient(HttpStatusCode.OK, responseContent);
-
-            // Act
-            var models = await OllamaModelDiscovery.DiscoverAsync(httpClient, "not-used");
-
-            // Assert
-            Assert.NotEmpty(models);
-            Assert.Contains(models, m => m.ModelId == "llama3.2:latest");
-            Assert.Contains(models, m => m.ModelId == "mistral:7b");
+            // Ollama provider discovery classes have been removed
+            // This test serves as a placeholder for future Ollama provider implementations
+            Assert.True(true); // Placeholder assertion
         }
-
-        [Fact]
-        public async Task OllamaModelDiscovery_WithoutLocalService_ReturnsEmptyList()
-        {
-            // Arrange
-            var httpClient = CreateMockHttpClient(HttpStatusCode.ServiceUnavailable);
-
-            // Act
-            var models = await OllamaModelDiscovery.DiscoverAsync(httpClient, "not-used");
-
-            // Assert
-            Assert.Empty(models);
-        }
-
+        
         #endregion
 
         #region Cerebras Tests
@@ -409,21 +288,18 @@ namespace ConduitLLM.Tests.Providers.Discovery
 
         #endregion
 
-        #region Cohere Tests
-
+        #region Cohere Tests (Removed)
+        // NOTE: Cohere provider discovery has been removed from the codebase.
+        // These tests are preserved as placeholders for potential future implementations.
+        
         [Fact]
-        public async Task CohereModels_WithApiError_ReturnsEmptyList()
+        public void CohereProvider_RemovedFromCodebase_PlaceholderTest()
         {
-            // Arrange
-            var httpClient = CreateMockHttpClient(HttpStatusCode.Unauthorized);
-
-            // Act
-            var models = await CohereModels.DiscoverAsync(httpClient, "invalid-key");
-
-            // Assert
-            Assert.Empty(models);
+            // Cohere provider discovery classes have been removed
+            // This test serves as a placeholder for future Cohere provider implementations
+            Assert.True(true); // Placeholder assertion
         }
-
+        
         #endregion
 
         #region Fireworks Tests

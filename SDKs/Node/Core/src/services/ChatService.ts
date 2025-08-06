@@ -69,16 +69,13 @@ export class ChatService extends BaseStreamingService {
     request: ChatCompletionRequest,
     options?: RequestOptions
   ): Promise<ChatCompletionResponse | StreamingResponse<ChatCompletionChunk>> {
-    // Convert legacy function parameters to tools
-    const processedRequest = this.convertLegacyFunctions(request);
-    
-    validateChatCompletionRequest(processedRequest);
+    validateChatCompletionRequest(request);
 
-    if (processedRequest.stream === true) {
-      return this.createStream(processedRequest as ChatCompletionRequest & { stream: true }, options);
+    if (request.stream === true) {
+      return this.createStream(request as ChatCompletionRequest & { stream: true }, options);
     }
 
-    return this.createCompletion(processedRequest, options);
+    return this.createCompletion(request, options);
   }
 
   private async createCompletion(
@@ -183,11 +180,10 @@ export class ChatService extends BaseStreamingService {
     request: ChatCompletionRequest & { stream: true },
     options?: RequestOptions & { streamControl?: StreamControlOptions }
   ): Promise<ControllableStream<ChatCompletionChunk>> {
-    const processedRequest = this.convertLegacyFunctions(request);
-    validateChatCompletionRequest(processedRequest);
+    validateChatCompletionRequest(request);
 
     const baseStream = await this.createStream(
-      processedRequest as ChatCompletionRequest & { stream: true },
+      request as ChatCompletionRequest & { stream: true },
       options
     );
 
@@ -224,9 +220,8 @@ export class ChatService extends BaseStreamingService {
     request: ChatCompletionRequest & { stream: true },
     options?: RequestOptions
   ): Promise<EnhancedStreamingResponse<EnhancedStreamEvent>> {
-    const processedRequest = this.convertLegacyFunctions(request);
-    validateChatCompletionRequest(processedRequest);
+    validateChatCompletionRequest(request);
 
-    return this.createEnhancedStreamInternal(processedRequest, options);
+    return this.createEnhancedStreamInternal(request, options);
   }
 }

@@ -12,28 +12,14 @@ export { ProviderType };
 // Map ProviderType enum values to display strings
 export const PROVIDER_TYPE_DISPLAY_NAMES: Record<ProviderType, string> = {
   [ProviderType.OpenAI]: 'OpenAI',
-  [ProviderType.Anthropic]: 'Anthropic',
-  [ProviderType.AzureOpenAI]: 'Azure OpenAI',
-  [ProviderType.Gemini]: 'Google Gemini',
-  [ProviderType.VertexAI]: 'Google Vertex AI',
-  [ProviderType.Cohere]: 'Cohere',
-  [ProviderType.Mistral]: 'Mistral AI',
   [ProviderType.Groq]: 'Groq',
-  [ProviderType.Ollama]: 'Ollama',
   [ProviderType.Replicate]: 'Replicate',
   [ProviderType.Fireworks]: 'Fireworks AI',
-  [ProviderType.Bedrock]: 'AWS Bedrock',
-  [ProviderType.HuggingFace]: 'Hugging Face',
-  [ProviderType.SageMaker]: 'AWS SageMaker',
-  [ProviderType.OpenRouter]: 'OpenRouter',
   [ProviderType.OpenAICompatible]: 'OpenAI Compatible',
   [ProviderType.MiniMax]: 'MiniMax',
   [ProviderType.Ultravox]: 'Ultravox',
   [ProviderType.ElevenLabs]: 'ElevenLabs',
-  [ProviderType.GoogleCloud]: 'Google Cloud',
   [ProviderType.Cerebras]: 'Cerebras',
-  // [ProviderType.AWSTranscribe]: 'AWS Transcribe', // Not in current enum
-  [ProviderType.Unknown]: 'Unknown',
 };
 
 // Convert ProviderType to display name
@@ -81,32 +67,15 @@ export const isValidProviderType = (value: unknown): value is ProviderType => {
 // Map of provider names (as they come from the API) to ProviderType enum values
 const PROVIDER_NAME_TO_TYPE_MAP: Record<string, ProviderType> = {
   openai: ProviderType.OpenAI,
-  anthropic: ProviderType.Anthropic,
-  azureopenai: ProviderType.AzureOpenAI,
-  azureOpenai: ProviderType.AzureOpenAI, // Alternative casing
-  gemini: ProviderType.Gemini,
-  vertexai: ProviderType.VertexAI,
-  vertexAi: ProviderType.VertexAI, // Alternative casing
-  cohere: ProviderType.Cohere,
-  mistral: ProviderType.Mistral,
   groq: ProviderType.Groq,
-  ollama: ProviderType.Ollama,
   replicate: ProviderType.Replicate,
   fireworks: ProviderType.Fireworks,
-  bedrock: ProviderType.Bedrock,
-  huggingface: ProviderType.HuggingFace,
-  sagemaker: ProviderType.SageMaker,
-  openrouter: ProviderType.OpenRouter,
   openaicompatible: ProviderType.OpenAICompatible,
   openaiCompatible: ProviderType.OpenAICompatible, // Alternative casing
   minimax: ProviderType.MiniMax,
   ultravox: ProviderType.Ultravox,
   elevenlabs: ProviderType.ElevenLabs,
-  googlecloud: ProviderType.GoogleCloud,
-  googleCloud: ProviderType.GoogleCloud, // Alternative casing
   cerebras: ProviderType.Cerebras,
-  // awstranscribe: ProviderType.AWSTranscribe, // Not in current enum
-  // awsTranscribe: ProviderType.AWSTranscribe, // Alternative casing
 };
 
 // Convert provider name string to ProviderType enum
@@ -124,28 +93,14 @@ export const providerNameToType = (providerName: string): ProviderType => {
 // Reverse map of ProviderType enum values to provider names
 const PROVIDER_TYPE_TO_NAME_MAP: Record<ProviderType, string> = {
   [ProviderType.OpenAI]: 'openai',
-  [ProviderType.Anthropic]: 'anthropic',
-  [ProviderType.AzureOpenAI]: 'azureopenai',
-  [ProviderType.Gemini]: 'gemini',
-  [ProviderType.VertexAI]: 'vertexai',
-  [ProviderType.Cohere]: 'cohere',
-  [ProviderType.Mistral]: 'mistral',
   [ProviderType.Groq]: 'groq',
-  [ProviderType.Ollama]: 'ollama',
   [ProviderType.Replicate]: 'replicate',
   [ProviderType.Fireworks]: 'fireworks',
-  [ProviderType.Bedrock]: 'bedrock',
-  [ProviderType.HuggingFace]: 'huggingface',
-  [ProviderType.SageMaker]: 'sagemaker',
-  [ProviderType.OpenRouter]: 'openrouter',
   [ProviderType.OpenAICompatible]: 'openaicompatible',
   [ProviderType.MiniMax]: 'minimax',
   [ProviderType.Ultravox]: 'ultravox',
   [ProviderType.ElevenLabs]: 'elevenlabs',
-  [ProviderType.GoogleCloud]: 'googlecloud',
   [ProviderType.Cerebras]: 'cerebras',
-  // [ProviderType.AWSTranscribe]: 'awstranscribe', // Not in current enum
-  [ProviderType.Unknown]: 'unknown',
 };
 
 // Get provider name string from ProviderType

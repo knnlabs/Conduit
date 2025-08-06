@@ -5,7 +5,6 @@ import type { StreamingResponse } from '../models/streaming';
 import type { EnhancedStreamEvent } from '../models/enhanced-streaming';
 import type { EnhancedStreamingResponse } from '../models/enhanced-streaming-response';
 import type { ChatCompletionRequest, ChatCompletionResponse, ChatCompletionChunk } from '../models/chat';
-import type { ToolParameters } from '../models/metadata';
 import { API_ENDPOINTS } from '../constants';
 import { createWebStream } from '../utils/web-streaming';
 import { createEnhancedWebStream } from '../utils/enhanced-web-streaming';
@@ -34,17 +33,15 @@ export class FetchChatService extends FetchBasedClient {
     request: ChatCompletionRequest,
     options?: RequestOptions
   ): Promise<ChatCompletionResponse | StreamingResponse<ChatCompletionChunk>> {
-    // Convert legacy function parameters to tools
-    const processedRequest = this.convertLegacyFunctions(request);
     
     // Skip validation for now due to type mismatches with generated types
-    // validateChatCompletionRequest(processedRequest);
+    // validateChatCompletionRequest(request);
 
-    if (processedRequest.stream === true) {
-      return this.createStream(processedRequest as ChatCompletionRequest & { stream: true }, options);
+    if (request.stream === true) {
+      return this.createStream(request as ChatCompletionRequest & { stream: true }, options);
     }
 
-    return this.createCompletion(processedRequest, options);
+    return this.createCompletion(request, options);
   }
 
   private async createCompletion(
@@ -179,9 +176,7 @@ export class FetchChatService extends FetchBasedClient {
     request: ChatCompletionRequest & { stream: true },
     options?: RequestOptions
   ): Promise<EnhancedStreamingResponse<EnhancedStreamEvent>> {
-    const processedRequest = this.convertLegacyFunctions(request);
-    
-    const response = await this.createStreamingRequest(processedRequest, options);
+    const response = await this.createStreamingRequest(request, options);
     const stream = response.body;
     
     if (!stream) {
@@ -197,31 +192,4 @@ export class FetchChatService extends FetchBasedClient {
     );
   }
   
-  /**
-   * Converts legacy function parameters to the tools format
-   * for backward compatibility
-   */
-  protected convertLegacyFunctions(request: ChatCompletionRequest): ChatCompletionRequest {
-    if (request.functions && !request.tools) {
-      request.tools = request.functions.map((fn: { name: string; description?: string; parameters?: ToolParameters }) => ({
-        type: 'function' as const,
-        function: fn
-      }));
-      delete request.functions;
-    }
-    
-    if (request.function_call && !request.tool_choice) {
-      if (typeof request.function_call === 'string') {
-        request.tool_choice = request.function_call as 'none' | 'auto';
-      } else {
-        request.tool_choice = {
-          type: 'function',
-          function: request.function_call
-        };
-      }
-      delete request.function_call;
-    }
-    
-    return request;
-  }
 }

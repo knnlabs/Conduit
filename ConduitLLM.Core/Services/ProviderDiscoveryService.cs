@@ -254,13 +254,8 @@ namespace ConduitLLM.Core.Services
             // Provider types that have model discovery functionality implemented
             var providerTypesThatSupportDiscovery = new HashSet<ProviderType> { 
                 ProviderType.OpenAI, 
-                ProviderType.Anthropic, 
-                ProviderType.Gemini,
                 ProviderType.MiniMax, 
-                ProviderType.Replicate, 
-                ProviderType.Mistral, 
-                ProviderType.Cohere, 
-                ProviderType.OpenRouter 
+                ProviderType.Replicate 
             };
 
             // BULK OPTIMIZATION: Load all providers and mappings in parallel to avoid N+1 queries

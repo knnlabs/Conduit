@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ConduitLLM.Configuration.Migrations
 {
     [DbContext(typeof(ConduitDbContext))]
-    [Migration("20250804204320_InitialCreate")]
+    [Migration("20250806031100_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />

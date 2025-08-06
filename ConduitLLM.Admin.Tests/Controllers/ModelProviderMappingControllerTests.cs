@@ -356,8 +356,8 @@ namespace ConduitLLM.Admin.Tests.Controllers
             var providers = new List<Provider>
             {
                 new() { Id = 1, ProviderType = ProviderType.OpenAI },
-                new() { Id = 2, ProviderType = ProviderType.Anthropic },
-                new() { Id = 3, ProviderType = ProviderType.AzureOpenAI }
+                new() { Id = 2, ProviderType = ProviderType.Groq },
+                new() { Id = 3, ProviderType = ProviderType.MiniMax }
             };
 
             _mockService.Setup(x => x.GetProvidersAsync())

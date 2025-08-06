@@ -84,7 +84,7 @@ namespace ConduitLLM.Providers.Providers.OpenAI
                 DetermineBaseUrl(provider, primaryKeyCredential, providerName ?? provider.ProviderType.ToString() ?? "openai"),
                 defaultModels)
         {
-            _isAzure = (providerName ?? provider.ProviderType.ToString() ?? "openai").Equals("azure", StringComparison.OrdinalIgnoreCase) || provider.ProviderType == ProviderType.AzureOpenAI;
+            _isAzure = (providerName ?? provider.ProviderType.ToString() ?? "openai").Equals("azure", StringComparison.OrdinalIgnoreCase);
             _capabilityService = capabilityService;
 
             // Specific validation for Azure credentials

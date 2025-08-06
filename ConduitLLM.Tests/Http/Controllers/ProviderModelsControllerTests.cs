@@ -103,7 +103,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             mockDbContext.Providers.Add(new Provider
             {
                 Id = 2,
-                ProviderType = ProviderType.Anthropic,
+                ProviderType = ProviderType.Groq,
                 ProviderKeyCredentials = new List<ProviderKeyCredential>
                 {
                     new ProviderKeyCredential
