@@ -124,29 +124,21 @@ This document provides a visual representation of the Conduit LLM platform's cle
 ## Database Access Pattern
 
 ```
-Before Migration:
-┌────────────┐      ┌────────────┐      ┌────────────┐
-│            │      │            │      │            │
-│   WebUI    │─────►│ Repository │─────►│  Database  │
-│            │      │            │      │            │
-└────────────┘      └────────────┘      └────────────┘
-
-
-Adapter Pattern (Intermediate):
-┌────────────┐      ┌────────────┐      ┌────────────┐      ┌────────────┐      ┌────────────┐
-│            │      │  Service   │      │ Admin API  │      │            │      │            │
-│   WebUI    │─────►│  Adapter   │─────►│   Client   │─────►│ Admin API  │─────►│  Database  │
-│            │      │            │      │            │      │            │      │            │
-└────────────┘      └────────────┘      └────────────┘      └────────────┘      └────────────┘
-
-
-After Migration (Current):
+Current Architecture:
 ┌────────────┐      ┌────────────┐      ┌────────────┐      ┌────────────┐
 │            │      │ Admin API  │      │            │      │            │
 │   WebUI    │─────►│   Client   │─────►│ Admin API  │─────►│  Database  │
 │            │      │            │      │            │      │            │
 └────────────┘      └────────────┘      └────────────┘      └────────────┘
 ```
+
+The WebUI follows clean architecture principles by:
+- Using the Admin API Client SDK for all database operations
+- No direct database access from the WebUI
+- All business logic handled by the Admin API layer
+- Type-safe communication through generated TypeScript clients
+
+**Note**: Configuration Adapters still exist in the HTTP/Admin APIs for internal layer mapping between Core interfaces and Configuration services, but these are architectural adapters within the backend, not the WebUI access pattern that was migrated.
 
 ## Container Deployment Architecture
 

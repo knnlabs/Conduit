@@ -29,6 +29,10 @@ These files are **AUTOMATICALLY GENERATED** from the running services. Any manua
    ```
 3. **Regenerate OpenAPI specs and TypeScript types**:
    ```bash
+   # Option 1: Use the convenient wrapper from project root
+   ./scripts/generate-api-clients.sh
+   
+   # Option 2: Run directly from SDK scripts directory
    cd SDKs/Node/scripts
    ./generate-openapi-from-build.sh
    ```
@@ -46,8 +50,8 @@ This script will:
 - `SDKs/Node/Admin/src/generated/admin-api.ts` - Admin SDK types
 
 ### Manual updates required:
-- `SDKs/Node/Core/src/constants/endpoints.ts` - Update endpoint constants
-- `SDKs/Node/Admin/src/constants/endpoints.ts` - Update endpoint constants
+- `SDKs/Node/Core/src/constants/endpoints.ts` - Update Core SDK endpoint constants
+- `SDKs/Node/Admin/src/constants.ts` - Update Admin SDK endpoint constants
 - Any client service classes that use removed/changed endpoints
 
 ### Common scenarios:
@@ -64,5 +68,11 @@ This script will:
 2. Run `./generate-openapi-from-build.sh`
 3. Add to endpoint constants
 4. Add client methods if needed
+
+### Alternative Scripts Available:
+
+- `./scripts/generate-api-clients.sh` - Convenient wrapper for the main generation script
+- `./scripts/fix-sdk-errors.sh` - Comprehensive script that fixes ESLint errors and builds SDKs
+- `./scripts/dev-workflow.sh build-sdks` - Modern development workflow for building all SDKs
 
 ## Remember: This is a COMMON task we do HUNDREDS of times!

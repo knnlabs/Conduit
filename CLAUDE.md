@@ -37,25 +37,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # First time setup or after package.json changes
 ./scripts/start-dev.sh
 
-# Daily development (starts in seconds)
-./scripts/start-dev.sh --fast
-
 # After adding/removing npm packages
-./scripts/start-dev.sh --rebuild
-
-# If you get permission errors
-./scripts/start-dev.sh --fix
+./scripts/start-dev.sh --webui
 
 # Complete reset (removes everything)
 ./scripts/start-dev.sh --clean
 ```
 
 #### What Each Flag Does:
-- **--fast**: Skips npm install checks, starts containers immediately (use daily)
-- **--rebuild**: Forces complete reinstall of all dependencies
+- **--webui**: Forces rebuild of the WebUI container
 - **--fix**: Fixes permissions and restarts containers
 - **--clean**: Removes all containers/volumes and starts fresh
-- **--build**: Rebuilds container images (rarely needed)
+- **--build**: Rebuilds container images, retains volumes.
 
 #### Key Improvements:
 - ✅ Node modules exist on HOST - Claude Code works perfectly

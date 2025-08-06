@@ -2,16 +2,38 @@
 
 ## Overview
 
-This reference documents all API endpoints exposed by the Conduit WebUI, including request/response formats, authentication requirements, and SDK usage examples.
+This reference documents all API endpoints exposed by the Conduit WebUI. The WebUI is a Next.js administrative project that provides API endpoints serving as abstractions for the Node SDK functions, enabling seamless integration between the frontend and the Conduit backend services.
 
 ## Table of Contents
 
-1. [Authentication](#authentication)
-2. [Core API Endpoints](#core-api-endpoints)
-3. [Admin API Endpoints](#admin-api-endpoints)
-4. [Utility Functions](#utility-functions)
-5. [Types and Interfaces](#types-and-interfaces)
-6. [Error Responses](#error-responses)
+1. [Architecture Overview](#architecture-overview)
+2. [Authentication](#authentication)
+3. [Core API Endpoints](#core-api-endpoints)
+4. [Admin API Endpoints](#admin-api-endpoints)
+5. [Media & Asset Management](#media--asset-management)
+6. [Monitoring & Analytics](#monitoring--analytics)
+7. [Configuration Management](#configuration-management)
+8. [Security & Access Control](#security--access-control)
+9. [Real-time Features](#real-time-features)
+10. [Error Handling](#error-handling)
+11. [Types and Interfaces](#types-and-interfaces)
+
+## Architecture Overview
+
+The WebUI API serves as a thin abstraction layer over the Node SDK, providing:
+
+- **Centralized SDK Management**: Singleton pattern for Admin and Core clients
+- **Automatic Authentication**: WebUI virtual key auto-creation and management
+- **Enhanced Error Handling**: Standardized error responses via `handleSDKError`
+- **Session Integration**: NextAuth session management
+- **Real-time Updates**: SignalR integration for live data
+
+```typescript
+// SDK Client Architecture
+WebUI API → Node SDK → Backend Services
+    ↓           ↓            ↓
+  Next.js   Admin/Core   Admin/Core APIs
+```
 
 ## Authentication
 
@@ -20,31 +42,29 @@ This reference documents all API endpoints exposed by the Conduit WebUI, includi
 All endpoints require authentication via NextAuth session unless otherwise specified.
 
 ```typescript
-// Authentication middleware usage
-export const GET = withSDKAuth(
-  async (request, { auth }) => {
-    // auth.session contains user session
-    // auth.adminClient available if requireAdmin: true
-    // auth.coreClient available if virtual key present
-  },
-  { requireAdmin: true }
-);
+// Session-based authentication (default)
+export async function GET(request: NextRequest) {
+  // Session automatically validated
+  const adminClient = getServerAdminClient();
+  // ...
+}
 ```
 
 ### Virtual Key Authentication
 
-Core API endpoints accept virtual keys via multiple methods:
+Core API endpoints support multiple virtual key authentication methods:
 
 ```typescript
 // 1. Request body
 {
   "virtual_key": "vk_abc123...",
-  "prompt": "Hello"
+  "model": "gpt-4",
+  "messages": [...]
 }
 
-// 2. Header
+// 2. X-Virtual-Key header
 headers: {
-  "x-virtual-key": "vk_abc123..."
+  "X-Virtual-Key": "vk_abc123..."
 }
 
 // 3. Authorization header
@@ -53,13 +73,30 @@ headers: {
 }
 ```
 
+### Master Key Authentication
+
+Backend communication uses master key authentication:
+
+```typescript
+// Automatic master key handling
+const adminClient = getServerAdminClient(); // Uses CONDUIT_API_TO_API_BACKEND_AUTH_KEY
+```
+
 ## Core API Endpoints
+
+Core API endpoints provide direct access to AI capabilities via the Core SDK.
 
 ### Chat Completions
 
-#### `POST /api/core/chat/completions`
+#### `POST /api/chat/completions`
 
-Create chat completions with optional streaming.
+Create chat completions with enhanced streaming support and real-time metrics.
+
+**Features:**
+- Enhanced streaming with real-time metrics events
+- Support for tools and function calling
+- Multiple authentication methods
+- Automatic error handling and retry logic
 
 **Request:**
 ```typescript
@@ -68,7 +105,7 @@ interface ChatCompletionRequest {
   model: string;
   messages: Array<{
     role: 'system' | 'user' | 'assistant';
-    content: string;
+    content: string | Array<TextContent | ImageContent>;
   }>;
   stream?: boolean;
   temperature?: number;
@@ -78,12 +115,6 @@ interface ChatCompletionRequest {
   presence_penalty?: number;
   stop?: string | string[];
   user?: string;
-  functions?: Array<{
-    name: string;
-    description?: string;
-    parameters?: object;
-  }>;
-  function_call?: 'none' | 'auto' | { name: string };
   tools?: Array<{
     type: 'function';
     function: {
@@ -143,13 +174,36 @@ interface ChatCompletionResponse {
 }
 ```
 
-**Response (Streaming):**
-```
+**Response (Enhanced Streaming):**
+
+The WebUI provides enhanced streaming with multiple event types:
+
+```typescript
+// Content events (standard chat completion chunks)
+event: content
 data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1234567890,"model":"gpt-4","choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":null}]}
-data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1234567890,"model":"gpt-4","choices":[{"index":0,"delta":{"content":" world"},"finish_reason":null}]}
-data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1234567890,"model":"gpt-4","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+
+// Real-time metrics events
+event: metrics
+data: {"tokensPerSecond":45.2,"responseTime":1250,"providerLatency":890}
+
+// Final metrics event
+event: metrics-final
+data: {"totalTokens":150,"promptTokens":20,"completionTokens":130,"totalCost":0.0045,"duration":3200}
+
+// Error events
+event: error
+data: {"error":"Rate limit exceeded","statusCode":429}
+
+// Stream completion
 data: [DONE]
 ```
+
+**Event Types:**
+- `content`: Standard OpenAI-compatible completion chunks
+- `metrics`: Real-time performance metrics during generation
+- `metrics-final`: Final usage and cost metrics
+- `error`: Error events with detailed information
 
 **SDK Example:**
 ```typescript
@@ -178,23 +232,36 @@ while (true) {
 
 ### Image Generation
 
-#### `POST /api/core/images/generations`
+#### `POST /api/images/generate`
 
-Generate images from text prompts.
+Generate images with support for both synchronous and asynchronous generation.
+
+**Features:**
+- Synchronous and asynchronous generation modes
+- Multiple provider support (OpenAI, MiniMax, etc.)
+- Webhook support for async operations
+- Provider-specific parameters
 
 **Request:**
 ```typescript
 interface ImageGenerationRequest {
-  virtual_key?: string;
+  virtual_key?: string; // Required if not in headers/session
   prompt: string;
   model?: string; // Default: 'dall-e-3'
   n?: number; // Number of images (1-10)
-  size?: '256x256' | '512x512' | '1024x1024' | '1792x1024' | '1024x1792';
   quality?: 'standard' | 'hd';
-  style?: 'vivid' | 'natural';
   response_format?: 'url' | 'b64_json';
+  size?: '256x256' | '512x512' | '1024x1024' | '1792x1024' | '1024x1792';
+  style?: 'vivid' | 'natural';
   user?: string;
-  // Provider-specific
+  
+  // Async generation options
+  async?: boolean; // Enable async generation
+  webhook_url?: string; // Webhook for completion notification
+  webhook_metadata?: Record<string, unknown>; // Custom webhook data
+  timeout_seconds?: number; // Request timeout
+  
+  // Provider-specific parameters
   aspect_ratio?: string; // For MiniMax: '1:1', '16:9', etc.
   seed?: number;
   steps?: number;
@@ -242,23 +309,34 @@ const imageUrl = result.data.data[0].url;
 
 ### Video Generation
 
-#### `POST /api/core/videos/generations`
+#### `POST /api/videos/generate`
 
-Generate videos from text prompts (async operation).
+Generate videos asynchronously with progress tracking support.
+
+**Features:**
+- Asynchronous generation with task tracking
+- Progress tracking via SignalR (client-side)
+- Webhook support for completion notifications
+- Multiple video model support
 
 **Request:**
 ```typescript
-interface VideoGenerationRequest {
-  virtual_key?: string;
+interface AsyncVideoGenerationRequest {
+  virtual_key?: string; // Required if not in headers/session
   prompt: string;
-  model?: string; // Default: 'video-01'
-  duration?: number; // Seconds (max: 6)
-  resolution?: '720x480' | '1280x720' | '1920x1080' | '720x1280' | '1080x1920';
-  fps?: number; // Frames per second
-  aspect_ratio?: string;
+  model?: string; // Default model based on provider
+  size?: string; // Video resolution
   style?: string;
   user?: string;
-  // Provider-specific
+  
+  // Progress tracking
+  useProgressTracking?: boolean; // Enable client-side progress tracking
+  
+  // Webhook options
+  webhook_url?: string;
+  webhook_metadata?: Record<string, unknown>;
+  
+  // Provider-specific parameters
   seed?: number;
   guidance_scale?: number;
   negative_prompt?: string;
@@ -445,20 +523,22 @@ X-Checked-At: 2024-01-01T12:00:00Z
 
 ## Admin API Endpoints
 
-### Virtual Keys
+Admin API endpoints provide access to system management capabilities via the Admin SDK.
 
-#### `GET /api/admin/virtual-keys`
+### Virtual Keys Management
 
-List all virtual keys.
+#### `GET /api/virtualkeys`
+
+List all virtual keys with pagination support.
 
 **Query Parameters:**
 ```
 page: number (default: 1)
-pageSize: number (default: 20, max: 100)
-search: string
-includeDisabled: boolean
-sortBy: string
-sortOrder: 'asc' | 'desc'
+pageSize: number (default: 100, max: 100)
+search?: string
+includeDisabled?: boolean
+sortBy?: string
+sortOrder?: 'asc' | 'desc'
 ```
 
 **Response:**
@@ -489,7 +569,7 @@ interface VirtualKeyListResponse {
 }
 ```
 
-#### `POST /api/admin/virtual-keys`
+#### `POST /api/virtualkeys`
 
 Create a new virtual key.
 
@@ -497,8 +577,9 @@ Create a new virtual key.
 ```typescript
 interface CreateVirtualKeyRequest {
   keyName: string;
+  virtualKeyGroupId: number; // Required: Virtual key group ID
   maxBudget?: number;
-  allowedModels?: string[];
+  allowedModels?: string; // Comma-separated model names
   metadata?: object;
   isEnabled?: boolean; // Default: true
 }
@@ -638,6 +719,329 @@ interface ProviderTestResponse {
     timestamp: string;
   };
 }
+```
+
+### Virtual Key Groups
+
+#### `GET /api/virtualkeys/groups`
+
+List all virtual key groups with balance tracking.
+
+**Response:**
+```typescript
+interface VirtualKeyGroupListResponse {
+  data: Array<{
+    id: number;
+    name: string;
+    description?: string;
+    balance: number;
+    isEnabled: boolean;
+    createdAt: string;
+    updatedAt: string;
+    virtualKeyCount: number;
+    totalSpend: number;
+  }>;
+  meta: {
+    timestamp: string;
+    total: number;
+  };
+}
+```
+
+#### `POST /api/virtualkeys/groups`
+
+Create a new virtual key group.
+
+**Request:**
+```typescript
+interface CreateVirtualKeyGroupRequest {
+  name: string;
+  description?: string;
+  initialBalance?: number;
+  isEnabled?: boolean;
+}
+```
+
+## Media & Asset Management
+
+### Media Assets
+
+#### `GET /api/media`
+
+Retrieve media assets by virtual key.
+
+**Query Parameters:**
+```
+virtualKeyId: string (required)
+```
+
+**Response:**
+```typescript
+interface MediaListResponse {
+  data: Array<{
+    id: string;
+    virtualKeyId: string;
+    fileName: string;
+    fileSize: number;
+    mimeType: string;
+    url: string;
+    createdAt: string;
+    metadata?: object;
+  }>;
+  meta: {
+    timestamp: string;
+    total: number;
+  };
+}
+```
+
+#### `DELETE /api/media`
+
+Delete a media asset.
+
+**Request:**
+```typescript
+interface DeleteMediaRequest {
+  mediaId: string;
+}
+```
+
+#### `POST /api/media/cleanup`
+
+Cleanup old or unused media assets.
+
+**Request:**
+```typescript
+interface MediaCleanupRequest {
+  olderThanDays?: number;
+  virtualKeyId?: string;
+  dryRun?: boolean;
+}
+```
+
+## Monitoring & Analytics
+
+### Cache Monitoring
+
+#### `GET /api/cache/monitoring/status`
+
+Get cache monitoring status and health metrics.
+
+**Response:**
+```typescript
+interface CacheMonitoringResponse {
+  data: {
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    caches: Array<{
+      name: string;
+      status: string;
+      hitRate: number;
+      memoryUsage: number;
+      keyCount: number;
+    }>;
+    alerts: Array<{
+      level: 'warning' | 'critical';
+      message: string;
+      timestamp: string;
+    }>;
+  };
+  meta: {
+    timestamp: string;
+  };
+}
+```
+
+### Error Queue Management
+
+#### `GET /api/error-queues`
+
+List all error queues with statistics.
+
+**Response:**
+```typescript
+interface ErrorQueueListResponse {
+  data: Array<{
+    name: string;
+    messageCount: number;
+    errorRate: number;
+    lastError?: string;
+    lastErrorTime?: string;
+    status: 'healthy' | 'warning' | 'critical';
+  }>;
+  meta: {
+    timestamp: string;
+    totalQueues: number;
+    totalMessages: number;
+  };
+}
+```
+
+#### `POST /api/error-queues/{queueName}/clear`
+
+Clear all messages from an error queue.
+
+#### `POST /api/error-queues/{queueName}/replay-all`
+
+Replay all messages in an error queue.
+
+## Configuration Management
+
+### Routing Configuration
+
+#### `GET /api/config/routing`
+
+Get current routing configuration.
+
+**Response:**
+```typescript
+interface RoutingConfigResponse {
+  data: {
+    rules: Array<{
+      id: string;
+      name: string;
+      conditions: Array<{
+        field: string;
+        operator: string;
+        value: string;
+      }>;
+      actions: Array<{
+        type: string;
+        parameters: object;
+      }>;
+      priority: number;
+      isEnabled: boolean;
+    }>;
+    fallbackProvider?: string;
+    loadBalancing: {
+      strategy: 'round_robin' | 'weighted' | 'least_connections';
+      healthCheckInterval: number;
+    };
+  };
+  meta: {
+    timestamp: string;
+  };
+}
+```
+
+#### `PUT /api/config/routing`
+
+Update routing configuration.
+
+### Caching Configuration
+
+#### `GET /api/config/caching`
+
+Get caching configuration for all cache instances.
+
+#### `POST /api/config/caching/{cacheId}/clear`
+
+Clear a specific cache instance.
+
+## Security & Access Control
+
+### IP Filtering
+
+#### `GET /api/admin/security/ip-rules`
+
+List all IP filtering rules.
+
+**Response:**
+```typescript
+interface IpRuleListResponse {
+  data: Array<{
+    id: string;
+    ipAddress: string;
+    cidrRange?: string;
+    action: 'allow' | 'deny';
+    description?: string;
+    isEnabled: boolean;
+    createdAt: string;
+    lastMatchedAt?: string;
+    matchCount: number;
+  }>;
+  meta: {
+    timestamp: string;
+    total: number;
+  };
+}
+```
+
+#### `POST /api/admin/security/ip-rules`
+
+Create a new IP filtering rule.
+
+**Request:**
+```typescript
+interface CreateIpRuleRequest {
+  ipAddress?: string;
+  cidrRange?: string;
+  action: 'allow' | 'deny';
+  description?: string;
+  isEnabled?: boolean;
+}
+```
+
+### System Information
+
+#### `GET /api/admin/system/info`
+
+Get system information and health status.
+
+**Response:**
+```typescript
+interface SystemInfoResponse {
+  data: {
+    version: string;
+    environment: string;
+    uptime: number;
+    memoryUsage: {
+      used: number;
+      total: number;
+      percentage: number;
+    };
+    cpuUsage: number;
+    diskUsage: {
+      used: number;
+      total: number;
+      percentage: number;
+    };
+    databaseStatus: 'connected' | 'disconnected';
+    redisStatus: 'connected' | 'disconnected';
+    dependencies: Array<{
+      name: string;
+      status: 'healthy' | 'unhealthy';
+      version?: string;
+      latency?: number;
+    }>;
+  };
+  meta: {
+    timestamp: string;
+  };
+}
+```
+
+## Real-time Features
+
+### SignalR Integration
+
+The WebUI supports real-time updates via SignalR for:
+
+- **Video Generation Progress**: Real-time progress updates for video generation tasks
+- **Navigation State Updates**: Live updates for model mappings, providers, and virtual keys
+- **Spend Updates**: Real-time spending notifications and alerts
+- **System Health**: Live system health and performance metrics
+
+**Client-side Usage:**
+```typescript
+// Enable progress tracking for video generation
+const response = await fetch('/api/videos/generate', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    prompt: 'A beautiful sunset',
+    useProgressTracking: true // Enable SignalR progress tracking
+  })
+});
 ```
 
 ### Model Mappings
@@ -974,7 +1378,11 @@ interface SpendLimitAlert {
 }
 ```
 
-## Error Responses
+## Error Handling
+
+The WebUI API provides standardized error handling via the `handleSDKError` utility.
+
+### Error Response Format
 
 All error responses follow a consistent format:
 
@@ -984,6 +1392,22 @@ interface ErrorResponse {
   code?: string; // Machine-readable error code
   details?: any; // Additional error context
   timestamp: string;
+  statusCode?: number; // HTTP status code
+}
+```
+
+### SDK Error Abstraction
+
+The WebUI automatically handles and transforms SDK errors:
+
+```typescript
+// Automatic error handling in API routes
+try {
+  const adminClient = getServerAdminClient();
+  const result = await adminClient.virtualKeys.list(page, pageSize);
+  return NextResponse.json(result);
+} catch (error) {
+  return handleSDKError(error); // Standardized error transformation
 }
 ```
 
@@ -1054,12 +1478,44 @@ Retry-After: 45 (when rate limited)
 
 ## Conclusion
 
-This API reference provides comprehensive documentation for all Conduit WebUI endpoints. Key features:
+This API reference provides comprehensive documentation for all Conduit WebUI endpoints. The WebUI serves as a powerful abstraction layer over the Node SDK, offering:
 
-1. **Consistent patterns** across all endpoints
-2. **Multiple authentication methods** for flexibility
-3. **Comprehensive error handling** with meaningful messages
-4. **Real-time support** via SignalR
-5. **Type-safe** with full TypeScript definitions
+### Key Features
+
+1. **SDK Abstraction**: Thin wrapper over Node SDK functions with centralized client management
+2. **Enhanced Streaming**: Real-time metrics and progress tracking for AI operations
+3. **Comprehensive Management**: Full CRUD operations for virtual keys, providers, and configurations
+4. **Advanced Monitoring**: Cache monitoring, error queue management, and system health tracking
+5. **Security & Access Control**: IP filtering, audit logging, and access policies
+6. **Real-time Updates**: SignalR integration for live data and progress tracking
+7. **Media Management**: Asset lifecycle management with cleanup capabilities
+8. **Standardized Error Handling**: Consistent error responses via `handleSDKError`
+9. **Type Safety**: Full TypeScript definitions for all endpoints and responses
+10. **Flexible Authentication**: Multiple authentication methods including session, virtual key, and master key
+
+### Architecture Benefits
+
+- **Centralized Configuration**: Single point of SDK client management
+- **Automatic Authentication**: WebUI virtual key auto-creation and management
+- **Error Consistency**: Standardized error handling across all endpoints
+- **Performance Optimization**: Singleton pattern for SDK clients
+- **Real-time Capabilities**: Built-in SignalR support for live updates
+
+### Integration Patterns
+
+The WebUI API follows consistent patterns:
+
+```typescript
+// Standard API route pattern
+export async function GET(request: NextRequest) {
+  try {
+    const adminClient = getServerAdminClient();
+    const result = await adminClient.service.method();
+    return NextResponse.json(result);
+  } catch (error) {
+    return handleSDKError(error);
+  }
+}
+```
 
 For additional examples and integration guides, see the [Integration Examples](./INTEGRATION-EXAMPLES.md) documentation.

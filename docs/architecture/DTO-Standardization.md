@@ -27,49 +27,9 @@ For example:
 - `/ConduitLLM.Configuration/DTOs/VirtualKey/` - DTOs related to virtual keys
 - `/ConduitLLM.Configuration/DTOs/IpFilter/` - DTOs related to IP filtering
 
-## Backward Compatibility
+## NO Backward Compatibility!
 
-When moving DTOs from other projects (such as WebUI or Http) to the Configuration project, backward compatibility should be maintained using property aliases. This allows existing code to continue working while the migration to the new standardized DTOs is completed.
-
-Example:
-
-```csharp
-/// <summary>
-/// Cost data for a specific model
-/// </summary>
-public class ModelCostDataDto
-{
-    /// <summary>
-    /// Model name
-    /// </summary>
-    public string ModelName { get; set; } = string.Empty;
-    
-    /// <summary>
-    /// Number of requests
-    /// </summary>
-    public int RequestCount { get; set; }
-    
-    // Backward compatibility alias
-    /// <summary>
-    /// Model name (alias for backwards compatibility)
-    /// </summary>
-    public string Model
-    {
-        get => ModelName;
-        set => ModelName = value;
-    }
-    
-    // Backward compatibility alias
-    /// <summary>
-    /// Number of requests (alias for backwards compatibility)
-    /// </summary>
-    public int Requests
-    {
-        get => RequestCount;
-        set => RequestCount = value;
-    }
-}
-```
+When moving DTOs from other projects (such as WebUI or Http) to the Configuration project, revise the consuming code to use the new DTOs. DO NOT allow backward compatibility to proliferate through the codebase. We do not want tech debt! 
 
 ## Naming Conventions
 

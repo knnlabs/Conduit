@@ -1,10 +1,10 @@
 # ConduitLLM Admin API Endpoints
 
-This document describes the proposed endpoints for the ConduitLLM Admin API. The Admin API provides a centralized interface for administrative operations, replacing direct database access from the WebUI.
+This document describes the current endpoints for the ConduitLLM Admin API. The Admin API provides a centralized interface for administrative operations, replacing direct database access from the WebUI.
 
 ## Authentication
 
-All Admin API endpoints require authentication using the master key. The authentication scheme uses the `X-API-Key` header.
+All Admin API endpoints require authentication using the master key. The authentication scheme uses the `X-API-Key` header with the `MasterKeyPolicy` authorization policy.
 
 **Example:**
 ```
@@ -23,17 +23,15 @@ X-API-Key: your-master-key
     "id": 1,
     "keyName": "Test Key",
     "allowedModels": "gpt-4*,claude-*",
-    "maxBudget": 100.00,
-    "currentSpend": 25.50,
-    "budgetDuration": "Monthly",
-    "budgetStartDate": "2024-05-01T00:00:00Z",
+    "virtualKeyGroupId": 1,
     "isEnabled": true,
     "expiresAt": "2025-05-01T00:00:00Z",
     "createdAt": "2024-04-15T14:30:00Z",
     "updatedAt": "2024-05-08T09:15:00Z",
     "metadata": "Project: Research",
     "rateLimitRpm": 60,
-    "rateLimitRpd": 1000
+    "rateLimitRpd": 1000,
+    "description": "Key for research project"
   }
 ]
 ```
@@ -42,80 +40,17 @@ X-API-Key: your-master-key
 **GET** `/api/virtualkeys/{id}`
 
 **Response:** VirtualKeyDto object
-```json
-{
-  "id": 1,
-  "keyName": "Test Key",
-  "allowedModels": "gpt-4*,claude-*",
-  "maxBudget": 100.00,
-  "currentSpend": 25.50,
-  "budgetDuration": "Monthly",
-  "budgetStartDate": "2024-05-01T00:00:00Z",
-  "isEnabled": true,
-  "expiresAt": "2025-05-01T00:00:00Z",
-  "createdAt": "2024-04-15T14:30:00Z",
-  "updatedAt": "2024-05-08T09:15:00Z",
-  "metadata": "Project: Research",
-  "rateLimitRpm": 60,
-  "rateLimitRpd": 1000
-}
-```
 
 ### Create Virtual Key
 **POST** `/api/virtualkeys`
 
 **Request Body:** CreateVirtualKeyRequestDto
-```json
-{
-  "keyName": "New Test Key",
-  "allowedModels": "gpt-4*,claude-*",
-  "maxBudget": 50.00,
-  "budgetDuration": "Monthly",
-  "expiresAt": "2025-05-01T00:00:00Z",
-  "metadata": "Project: Development",
-  "rateLimitRpm": 30,
-  "rateLimitRpd": 500
-}
-```
-
-**Response:** CreateVirtualKeyResponseDto
-```json
-{
-  "virtualKey": "vk-abc123def456...",
-  "keyInfo": {
-    "id": 2,
-    "keyName": "New Test Key",
-    "allowedModels": "gpt-4*,claude-*",
-    "maxBudget": 50.00,
-    "currentSpend": 0.00,
-    "budgetDuration": "Monthly",
-    "budgetStartDate": "2024-05-01T00:00:00Z",
-    "isEnabled": true,
-    "expiresAt": "2025-05-01T00:00:00Z",
-    "createdAt": "2024-05-10T10:30:00Z",
-    "updatedAt": "2024-05-10T10:30:00Z",
-    "metadata": "Project: Development",
-    "rateLimitRpm": 30,
-    "rateLimitRpd": 500
-  }
-}
-```
+**Response:** CreateVirtualKeyResponseDto (201 Created)
 
 ### Update Virtual Key
 **PUT** `/api/virtualkeys/{id}`
 
 **Request Body:** UpdateVirtualKeyRequestDto
-```json
-{
-  "keyName": "Updated Test Key",
-  "allowedModels": "gpt-4*,claude-*,llama-*",
-  "maxBudget": 75.00,
-  "isEnabled": true,
-  "metadata": "Project: Updated Project",
-  "rateLimitRpm": 45
-}
-```
-
 **Response:** 204 No Content
 
 ### Delete Virtual Key
@@ -123,17 +58,107 @@ X-API-Key: your-master-key
 
 **Response:** 204 No Content
 
-### Reset Virtual Key Spend
-**POST** `/api/virtualkeys/{id}/reset-spend`
+### Validate Virtual Key
+**POST** `/api/virtualkeys/validate`
+
+**Request Body:** VirtualKeyValidationRequest
+**Response:** VirtualKeyValidationResult
+
+### Get Validation Info
+**GET** `/api/virtualkeys/{id}/validation-info`
+
+**Response:** VirtualKeyValidationInfo
+
+### Perform Maintenance
+**POST** `/api/virtualkeys/maintenance`
 
 **Response:** 204 No Content
+
+Performs maintenance tasks including disabling expired keys.
+
+### Preview Discovery
+**GET** `/api/virtualkeys/{id}/discovery-preview`
+
+**Query Parameters:**
+- `capability`: Optional capability filter (e.g., "chat", "vision", "audio_transcription")
+
+**Response:** VirtualKeyDiscoveryPreviewDto
+
+### Get Key Group
+**GET** `/api/virtualkeys/{id}/group`
+
+**Response:** VirtualKeyGroupDto
+
+## Virtual Key Groups Management
+
+### Get All Groups
+**GET** `/api/virtualkeygroups`
+
+**Response:** Array of VirtualKeyGroupDto objects
+```json
+[
+  {
+    "id": 1,
+    "externalGroupId": "ext-group-123",
+    "groupName": "Research Team",
+    "balance": 500.00,
+    "lifetimeCreditsAdded": 1000.00,
+    "lifetimeSpent": 500.00,
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-05-01T00:00:00Z",
+    "virtualKeyCount": 5
+  }
+]
+```
+
+### Get Group by ID
+**GET** `/api/virtualkeygroups/{id}`
+
+**Response:** VirtualKeyGroupDto object
+
+### Create Group
+**POST** `/api/virtualkeygroups`
+
+**Request Body:** CreateVirtualKeyGroupDto
+**Response:** VirtualKeyGroupDto (201 Created)
+
+### Update Group
+**PUT** `/api/virtualkeygroups/{id}`
+
+**Request Body:** UpdateVirtualKeyGroupDto
+**Response:** 204 No Content
+
+### Adjust Balance
+**POST** `/api/virtualkeygroups/{id}/adjust-balance`
+
+**Request Body:** AdjustBalanceDto
+**Response:** 204 No Content
+
+### Delete Group
+**DELETE** `/api/virtualkeygroups/{id}`
+
+**Response:** 204 No Content
+
+### Get Transaction History
+**GET** `/api/virtualkeygroups/{id}/transactions`
+
+**Query Parameters:**
+- `page`: Page number (default: 1)
+- `pageSize`: Page size (default: 50, max: 100)
+
+**Response:** PagedResult<VirtualKeyGroupTransactionDto>
+
+### Get Keys in Group
+**GET** `/api/virtualkeygroups/{id}/keys`
+
+**Response:** Array of VirtualKeyDto objects
 
 ## Model Provider Mappings
 
 ### Get All Mappings
 **GET** `/api/modelprovider`
 
-**Response:** Array of ModelProviderMapping objects
+**Response:** Array of ModelProviderMappingDto objects
 ```json
 [
   {
@@ -150,25 +175,18 @@ X-API-Key: your-master-key
 ### Get Mapping by ID
 **GET** `/api/modelprovider/{id}`
 
-**Response:** ModelProviderMapping object
-
-### Get Mapping by Alias
-**GET** `/api/modelprovider/by-alias/{modelAlias}`
-
-**Response:** ModelProviderMapping object
+**Response:** ModelProviderMappingDto object
 
 ### Create Mapping
 **POST** `/api/modelprovider`
 
-**Request Body:** ModelProviderMapping object
-
+**Request Body:** ModelProviderMappingDto object
 **Response:** 201 Created with the created mapping
 
 ### Update Mapping
 **PUT** `/api/modelprovider/{id}`
 
-**Request Body:** ModelProviderMapping object
-
+**Request Body:** ModelProviderMappingDto object
 **Response:** 204 No Content
 
 ### Delete Mapping
@@ -181,6 +199,26 @@ X-API-Key: your-master-key
 
 **Response:** List of provider names and IDs
 
+### Create Bulk Mappings
+**POST** `/api/modelprovider/bulk`
+
+**Request Body:** Array of ModelProviderMappingDto objects
+**Response:** BulkMappingResult object
+```json
+{
+  "created": [...],
+  "errors": [...],
+  "totalProcessed": 10,
+  "successCount": 8,
+  "failureCount": 2
+}
+```
+
+### Discover Models
+**GET** `/api/modelprovider/discover/{providerId}`
+
+**Response:** Array of DiscoveredModel objects
+
 ## Router Configuration
 
 ### Get Router Config
@@ -192,13 +230,12 @@ X-API-Key: your-master-key
 **PUT** `/api/router/config`
 
 **Request Body:** RouterConfig object
-
 **Response:** 200 OK
 
 ### Get Model Deployments
 **GET** `/api/router/deployments`
 
-**Response:** List of ModelDeployment objects
+**Response:** Array of ModelDeployment objects
 
 ### Get Model Deployment
 **GET** `/api/router/deployments/{deploymentName}`
@@ -209,7 +246,6 @@ X-API-Key: your-master-key
 **POST** `/api/router/deployments`
 
 **Request Body:** ModelDeployment object
-
 **Response:** 200 OK
 
 ### Delete Model Deployment
@@ -220,19 +256,308 @@ X-API-Key: your-master-key
 ### Get Fallback Configurations
 **GET** `/api/router/fallbacks`
 
-**Response:** Dictionary mapping primary models to their fallback models
+**Response:** Dictionary<string, List<string>> mapping primary models to their fallback models
 
 ### Set Fallback Configuration
 **POST** `/api/router/fallbacks/{primaryModel}`
 
-**Request Body:** List of fallback model strings
-
+**Request Body:** Array of fallback model strings
 **Response:** 200 OK
 
 ### Remove Fallback Configuration
 **DELETE** `/api/router/fallbacks/{primaryModel}`
 
 **Response:** 200 OK
+
+## Global Settings Management
+
+### Get All Settings
+**GET** `/api/globalsettings`
+
+**Response:** Array of GlobalSettingDto objects
+
+### Get Setting by ID
+**GET** `/api/globalsettings/{id}`
+
+**Response:** GlobalSettingDto object
+
+### Get Setting by Key
+**GET** `/api/globalsettings/by-key/{key}`
+
+**Response:** GlobalSettingDto object
+
+### Create Setting
+**POST** `/api/globalsettings`
+
+**Request Body:** CreateGlobalSettingDto object
+**Response:** GlobalSettingDto (201 Created)
+
+### Update Setting
+**PUT** `/api/globalsettings/{id}`
+
+**Request Body:** UpdateGlobalSettingDto object
+**Response:** 204 No Content
+
+### Update Setting by Key
+**PUT** `/api/globalsettings/by-key`
+
+**Request Body:** UpdateGlobalSettingByKeyDto object
+**Response:** 204 No Content
+
+### Delete Setting
+**DELETE** `/api/globalsettings/{id}`
+
+**Response:** 204 No Content
+
+### Delete Setting by Key
+**DELETE** `/api/globalsettings/by-key/{key}`
+
+**Response:** 204 No Content
+
+## Audio Configuration Management
+
+### Provider Configuration
+
+#### Get All Audio Providers
+**GET** `/api/admin/audio/providers`
+
+**Response:** Array of AudioProviderConfigDto objects
+
+#### Get Audio Provider by ID
+**GET** `/api/admin/audio/providers/{id}`
+
+**Response:** AudioProviderConfigDto object
+
+#### Get Providers by Provider ID
+**GET** `/api/admin/audio/providers/by-id/{providerId}`
+
+**Response:** Array of AudioProviderConfigDto objects
+
+#### Get Enabled Providers
+**GET** `/api/admin/audio/providers/enabled/{operationType}`
+
+**Parameters:**
+- `operationType`: The operation type (transcription, tts, realtime)
+
+**Response:** Array of AudioProviderConfigDto objects
+
+#### Create Audio Provider
+**POST** `/api/admin/audio/providers`
+
+**Request Body:** AudioProviderConfigDto object
+**Response:** AudioProviderConfigDto (201 Created)
+
+#### Update Audio Provider
+**PUT** `/api/admin/audio/providers/{id}`
+
+**Request Body:** AudioProviderConfigDto object
+**Response:** AudioProviderConfigDto (200 OK)
+
+#### Delete Audio Provider
+**DELETE** `/api/admin/audio/providers/{id}`
+
+**Response:** 204 No Content
+
+#### Test Audio Provider
+**POST** `/api/admin/audio/providers/{id}/test`
+
+**Query Parameters:**
+- `operationType`: The operation type to test
+
+**Response:** Test results object
+
+### Audio Cost Configuration
+
+#### Get All Audio Costs
+**GET** `/api/admin/audio/costs`
+
+**Response:** Array of AudioCostConfigDto objects
+
+#### Get Audio Cost by ID
+**GET** `/api/admin/audio/costs/{id}`
+
+**Response:** AudioCostConfigDto object
+
+#### Get Costs by Provider
+**GET** `/api/admin/audio/costs/by-provider/{providerId}`
+
+**Response:** Array of AudioCostConfigDto objects
+
+#### Create Audio Cost
+**POST** `/api/admin/audio/costs`
+
+**Request Body:** AudioCostConfigDto object
+**Response:** AudioCostConfigDto (201 Created)
+
+#### Update Audio Cost
+**PUT** `/api/admin/audio/costs/{id}`
+
+**Request Body:** AudioCostConfigDto object
+**Response:** AudioCostConfigDto (200 OK)
+
+#### Delete Audio Cost
+**DELETE** `/api/admin/audio/costs/{id}`
+
+**Response:** 204 No Content
+
+### Audio Usage Analytics
+
+#### Get Usage Summary
+**GET** `/api/admin/audio/usage/summary`
+
+**Query Parameters:**
+- `startDate`: Start date (optional)
+- `endDate`: End date (optional)
+
+**Response:** AudioUsageSummaryDto object
+
+#### Get Usage by Key
+**GET** `/api/admin/audio/usage/by-key/{virtualKey}`
+
+**Query Parameters:**
+- `startDate`: Start date (optional)
+- `endDate`: End date (optional)
+
+**Response:** AudioKeyUsageDto object
+
+#### Get Usage by Provider
+**GET** `/api/admin/audio/usage/by-provider/{providerId}`
+
+**Query Parameters:**
+- `startDate`: Start date (optional)
+- `endDate`: End date (optional)
+
+**Response:** AudioProviderUsageDto object
+
+### Real-time Session Management
+
+#### Get Session Metrics
+**GET** `/api/admin/audio/sessions/metrics`
+
+**Response:** RealtimeSessionMetricsDto object
+
+#### Get Active Sessions
+**GET** `/api/admin/audio/sessions`
+
+**Response:** Array of RealtimeSessionDto objects
+
+#### Get Session Details
+**GET** `/api/admin/audio/sessions/{sessionId}`
+
+**Response:** RealtimeSessionDto object
+
+#### Terminate Session
+**DELETE** `/api/admin/audio/sessions/{sessionId}`
+
+**Response:** 204 No Content
+
+## Media Management
+
+### Storage Statistics
+
+#### Get Overall Stats
+**GET** `/api/admin/media/stats`
+
+**Response:** Overall storage statistics object
+
+#### Get Stats by Virtual Key
+**GET** `/api/admin/media/stats/virtual-key/{virtualKeyId}`
+
+**Response:** Storage statistics for virtual key
+
+#### Get Stats by Provider
+**GET** `/api/admin/media/stats/by-provider`
+
+**Response:** Dictionary of provider names to storage size
+
+#### Get Stats by Media Type
+**GET** `/api/admin/media/stats/by-type`
+
+**Response:** Dictionary of media types to storage size
+
+### Media Operations
+
+#### Get Media by Virtual Key
+**GET** `/api/admin/media/virtual-key/{virtualKeyId}`
+
+**Response:** Array of media records
+
+#### Search Media
+**GET** `/api/admin/media/search`
+
+**Query Parameters:**
+- `pattern`: Pattern to search for in storage keys
+
+**Response:** Array of matching media records
+
+#### Delete Media
+**DELETE** `/api/admin/media/{mediaId}`
+
+**Response:** Success status object
+
+### Media Cleanup
+
+#### Cleanup Expired Media
+**POST** `/api/admin/media/cleanup/expired`
+
+**Response:** Cleanup result with count
+
+#### Cleanup Orphaned Media
+**POST** `/api/admin/media/cleanup/orphaned`
+
+**Response:** Cleanup result with count
+
+#### Prune Old Media
+**POST** `/api/admin/media/cleanup/prune`
+
+**Request Body:** PruneMediaRequest object
+```json
+{
+  "daysToKeep": 30
+}
+```
+
+**Response:** Prune result with count
+
+## Health Monitoring
+
+### Get Service Health
+**GET** `/api/health/services`
+
+**Response:** Array of service health objects
+```json
+[
+  {
+    "id": "core-api",
+    "name": "Core API",
+    "status": "healthy",
+    "uptime": "P1DT2H30M",
+    "lastCheck": "2024-05-08T10:30:00Z",
+    "responseTime": 15,
+    "details": {
+      "version": "1.0.0",
+      "environment": "Production",
+      "requestsHandled": 1250
+    }
+  }
+]
+```
+
+### Get Incidents
+**GET** `/api/health/incidents`
+
+**Query Parameters:**
+- `days`: Number of days to look back (default: 7)
+
+**Response:** Incident history data
+
+### Get Health History
+**GET** `/api/health/history`
+
+**Query Parameters:**
+- `hours`: Number of hours to look back (default: 24)
+
+**Response:** Health history time series data
 
 ## IP Filtering
 
@@ -356,54 +681,45 @@ X-API-Key: your-master-key
 ## Database Backup
 
 ### Create Backup
-**POST** `/api/database/backup`
+**POST** `/api/databasebackup`
 
-**Response:** 200 OK with backup file information
+**Response:** Backup file information object
 
 ### Get Backups
-**GET** `/api/database/backups`
+**GET** `/api/databasebackup`
 
-**Response:** List of available backups
+**Response:** Array of available backup objects
 
 ### Restore Backup
-**POST** `/api/database/restore`
+**POST** `/api/databasebackup/restore`
 
-**Request Body:** Backup identifier
-
+**Request Body:** Backup identifier object
 **Response:** 200 OK
 
 ## System Information
 
 ### Get System Info
-**GET** `/api/system/info`
+**GET** `/api/systeminfo`
 
-**Response:** System information object with details about the environment, database, and runtime
+**Response:** System information object with environment, database, and runtime details
 
-### Get Health Status
-**GET** `/api/health`
+## Additional Controllers
 
-**Response:** Health status object with overall system health and component statuses
+The following controllers provide additional administrative functionality:
 
-## Provider Health
+- **CacheMonitoringController** (`/api/cachemonitoring`): Cache performance monitoring
+- **ConfigurationController** (`/api/configuration`): System configuration management  
+- **ErrorQueueController** (`/api/errorqueue`): Error queue management
+- **MetricsController** (`/api/metrics`): System metrics and analytics
+- **NotificationsController** (`/api/notifications`): Admin notification management
+- **ProviderCredentialsController** (`/api/providercredentials`): Provider credential management
+- **SecurityMonitoringController** (`/api/securitymonitoring`): Security event monitoring
+- **TasksController** (`/api/tasks`): Background task management
 
-### Get Provider Health Status
-**GET** `/api/providerhealth`
+## Notes
 
-**Response:** List of provider health records
-
-### Get Provider Health Config
-**GET** `/api/providerhealth/config`
-
-**Response:** Provider health configuration settings
-
-### Update Provider Health Config
-**PUT** `/api/providerhealth/config`
-
-**Request Body:** Updated provider health configuration settings
-
-**Response:** 204 No Content
-
-### Run Provider Health Check
-**POST** `/api/providerhealth/check/{providerName}`
-
-**Response:** 200 OK with health check results
+- All endpoints require the `MasterKeyPolicy` authorization policy unless otherwise specified
+- Response formats use standard HTTP status codes (200, 201, 204, 400, 404, 500)
+- Date/time values are in ISO 8601 format (UTC)
+- Pagination is supported on list endpoints where applicable
+- The API uses standard REST conventions for CRUD operations
