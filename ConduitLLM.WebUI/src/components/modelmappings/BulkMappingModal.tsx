@@ -132,9 +132,12 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
     const provider = providers?.find((p: ProviderCredentialDto) => p.id?.toString() === providerId);
     if (!provider) return;
     
+    console.warn('[BulkMappingModal] Selected provider:', provider);
+    
     try {
       const providerType = getProviderTypeFromDto(provider as { providerType?: number; providerName?: string });
       const providerName = providerTypeToName(providerType);
+      console.warn('[BulkMappingModal] Provider type:', providerType, 'Name:', providerName);
       const result = await discoverModels(providerId, providerName);
       setDiscoveredModels(result.models.map(model => ({
         ...model,

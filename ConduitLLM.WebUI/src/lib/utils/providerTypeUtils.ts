@@ -20,6 +20,7 @@ export const PROVIDER_TYPE_DISPLAY_NAMES: Record<ProviderType, string> = {
   [ProviderType.Ultravox]: 'Ultravox',
   [ProviderType.ElevenLabs]: 'ElevenLabs',
   [ProviderType.Cerebras]: 'Cerebras',
+  [ProviderType.SambaNova]: 'SambaNova',
 };
 
 // Convert ProviderType to display name
@@ -76,6 +77,8 @@ const PROVIDER_NAME_TO_TYPE_MAP: Record<string, ProviderType> = {
   ultravox: ProviderType.Ultravox,
   elevenlabs: ProviderType.ElevenLabs,
   cerebras: ProviderType.Cerebras,
+  sambanova: ProviderType.SambaNova,
+  samba: ProviderType.SambaNova, // Alternative short name
 };
 
 // Convert provider name string to ProviderType enum
@@ -101,6 +104,7 @@ const PROVIDER_TYPE_TO_NAME_MAP: Record<ProviderType, string> = {
   [ProviderType.Ultravox]: 'ultravox',
   [ProviderType.ElevenLabs]: 'elevenlabs',
   [ProviderType.Cerebras]: 'cerebras',
+  [ProviderType.SambaNova]: 'sambanova',
 };
 
 // Get provider name string from ProviderType

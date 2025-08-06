@@ -28,6 +28,9 @@ namespace ConduitLLM.Providers.Extensions
 
             // Register model list service
             services.AddScoped<ModelListService>();
+            
+            // Register provider model discovery
+            services.AddScoped<IProviderModelDiscovery, ProviderModelDiscovery>();
 
             // Ensure memory cache is registered
             services.AddMemoryCache();

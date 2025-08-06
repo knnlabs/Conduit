@@ -37,7 +37,9 @@ export async function POST(req: NextRequest) {
     console.warn('[Bulk Discover] Starting discovery for provider:', body.providerName, 'ID:', body.providerId);
     
     // Discover all models from the provider using provider ID
+    console.warn('[Bulk Discover] Calling adminClient.modelMappings.discoverProviderModels with ID:', parseInt(body.providerId, 10));
     const discoveryResponse = await adminClient.modelMappings.discoverProviderModels(parseInt(body.providerId, 10));
+    console.warn('[Bulk Discover] Discovery response:', discoveryResponse);
     
     // Handle different response formats from the API
     const discoveredModels: DiscoveredModel[] = Array.isArray(discoveryResponse) 

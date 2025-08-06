@@ -19,6 +19,7 @@ export const PROVIDER_DISPLAY_NAMES: Record<ProviderType, string> = {
   [ProviderType.Ultravox]: 'Ultravox',
   [ProviderType.ElevenLabs]: 'ElevenLabs',
   [ProviderType.Cerebras]: 'Cerebras',
+  [ProviderType.SambaNova]: 'SambaNova Cloud',
 };
 
 // Provider categories for grouping in UI
@@ -42,6 +43,7 @@ export const PROVIDER_CATEGORIES: Record<ProviderType, ProviderCategory[]> = {
   [ProviderType.Ultravox]: [ProviderCategory.Audio],
   [ProviderType.ElevenLabs]: [ProviderCategory.Audio],
   [ProviderType.Cerebras]: [ProviderCategory.Chat],
+  [ProviderType.SambaNova]: [ProviderCategory.Chat],
 };
 
 // Provider-specific configuration requirements
@@ -123,6 +125,14 @@ export const PROVIDER_CONFIG_REQUIREMENTS: Record<ProviderType, ProviderConfigRe
     supportsCustomEndpoint: true,
     helpUrl: 'https://cloud.cerebras.ai',
     helpText: 'Get your API key from cloud.cerebras.ai - offers high-performance inference',
+  },
+  [ProviderType.SambaNova]: {
+    requiresApiKey: true,
+    requiresEndpoint: false,
+    requiresOrganizationId: false,
+    supportsCustomEndpoint: true,
+    helpUrl: 'https://cloud.sambanova.ai/plans/pricing',
+    helpText: 'Get your API key from cloud.sambanova.ai - ultra-fast inference with 250+ tokens/second',
   },
 };
 

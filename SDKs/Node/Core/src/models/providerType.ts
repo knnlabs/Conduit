@@ -28,5 +28,8 @@ export enum ProviderType {
   ElevenLabs = 8,
   
   /** Cerebras (high-performance inference) */
-  Cerebras = 9
+  Cerebras = 9,
+  
+  /** SambaNova Cloud (ultra-fast inference provider) */
+  SambaNova = 10
 }

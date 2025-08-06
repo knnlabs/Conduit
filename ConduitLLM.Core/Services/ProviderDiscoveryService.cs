@@ -255,7 +255,8 @@ namespace ConduitLLM.Core.Services
             var providerTypesThatSupportDiscovery = new HashSet<ProviderType> { 
                 ProviderType.OpenAI, 
                 ProviderType.MiniMax, 
-                ProviderType.Replicate 
+                ProviderType.Replicate,
+                ProviderType.SambaNova 
             };
 
             // BULK OPTIMIZATION: Load all providers and mappings in parallel to avoid N+1 queries

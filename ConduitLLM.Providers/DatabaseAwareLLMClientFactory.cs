@@ -18,6 +18,7 @@ using ConduitLLM.Providers.Providers.MiniMax;
 using ConduitLLM.Providers.Providers.Ultravox;
 using ConduitLLM.Providers.Providers.ElevenLabs;
 using ConduitLLM.Providers.Providers.Cerebras;
+using ConduitLLM.Providers.Providers.SambaNova;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers
@@ -300,6 +301,12 @@ namespace ConduitLLM.Providers
                 case ProviderType.Cerebras:
                     var cerebrasLogger = _loggerFactory.CreateLogger<CerebrasClient>();
                     client = new CerebrasClient(provider, keyCredential, modelId, cerebrasLogger, 
+                        _httpClientFactory, defaultModels);
+                    break;
+
+                case ProviderType.SambaNova:
+                    var sambaNovaLogger = _loggerFactory.CreateLogger<SambaNovaClient>();
+                    client = new SambaNovaClient(provider, keyCredential, modelId, sambaNovaLogger, 
                         _httpClientFactory, defaultModels);
                     break;
 

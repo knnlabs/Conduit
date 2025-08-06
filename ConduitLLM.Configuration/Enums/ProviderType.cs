@@ -51,6 +51,11 @@ namespace ConduitLLM.Configuration
         /// <summary>
         /// Cerebras (high-performance inference)
         /// </summary>
-        Cerebras = 9
+        Cerebras = 9,
+
+        /// <summary>
+        /// SambaNova Cloud (ultra-fast inference provider)
+        /// </summary>
+        SambaNova = 10
     }
 }

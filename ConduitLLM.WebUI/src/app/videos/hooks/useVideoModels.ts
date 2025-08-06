@@ -14,6 +14,7 @@ function getProviderName(providerType: ProviderType): string {
     [ProviderType.Ultravox]: 'Ultravox',
     [ProviderType.ElevenLabs]: 'ElevenLabs',
     [ProviderType.Cerebras]: 'Cerebras',
+    [ProviderType.SambaNova]: 'SambaNova',
   };
   return providerNames[providerType] || `Provider ${providerType}`;
 }
