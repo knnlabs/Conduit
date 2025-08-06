@@ -16,21 +16,40 @@ namespace ConduitLLM.Providers.Providers.MiniMax
     {
         private string MapModelName(string modelName)
         {
-            // Map user-friendly names to MiniMax model IDs
+            // Map user-friendly names to MiniMax official model IDs
             return modelName switch
             {
-                "minimax-chat" => "MiniMax-Text-01",
-                "abab6.5-chat" => "MiniMax-Text-01",
-                "abab6.5s-chat" => "MiniMax-Text-01",
-                "abab5.5-chat" => "MiniMax-Text-01",
-                "minimax-image" => "image-01",
-                "minimax-video" => "video-01",
-                "MiniMax-Text-01" => "MiniMax-Text-01", // Pass through if already mapped
+                // Current official models
+                "minimax-hailuo" => "MiniMax-Hailuo-02",
+                "minimax-hailuo-02" => "MiniMax-Hailuo-02",
+                "minimax-m1" => "MiniMax-M1",
+                "MiniMax-M1" => "MiniMax-M1",
+                
+                // Legacy "abab" names - map to MiniMax-M1 (their flagship model)
+                "abab6.5-chat" => "MiniMax-M1",
+                "abab6.5s-chat" => "MiniMax-M1",
+                "abab5.5-chat" => "MiniMax-M1",
+                "minimax-chat" => "MiniMax-M1",
+                
+                // Audio models
+                "speech-02-sense" => "speech-02-Sense",
+                "speech-02" => "speech-02-Sense",
+                "speech-01" => "speech-01",
+                
+                // Video models
+                "minimax-video" => "MiniMax-Video-01",
+                "video-01" => "MiniMax-Video-01",
+                "T2V-01" => "T2V-01-Director",
+                
+                // Image models  
+                "minimax-image" => "MiniMax-Image-01",
+                "image-01" => "MiniMax-Image-01",
+                
                 _ => modelName // Pass through if already a valid model ID
             };
         }
 
-        private List<MiniMaxMessage> ConvertMessages(List<Message> messages)
+        private List<MiniMaxMessage> ConvertMessages(List<Message> messages, bool includeNames = false)
         {
             var miniMaxMessages = new List<MiniMaxMessage>();
             
@@ -41,6 +60,18 @@ namespace ConduitLLM.Providers.Providers.MiniMax
                     Role = message.Role,
                     Content = ConvertMessageContent(message.Content ?? string.Empty)
                 };
+
+                // The v2 streaming API requires name fields
+                if (includeNames)
+                {
+                    miniMaxMessage.Name = message.Role switch
+                    {
+                        "system" => "MiniMax AI",
+                        "user" => "user", 
+                        "assistant" => "assistant",
+                        _ => message.Role
+                    };
+                }
                 
                 if (message.Role == "assistant" && message.ToolCalls != null && message.ToolCalls.Count > 0)
                 {

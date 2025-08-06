@@ -121,13 +121,22 @@ namespace ConduitLLM.Core.Services
             // Use actual token count from usage if available, otherwise use our count
             var completionTokens = usage?.CompletionTokens ?? _tokensGenerated;
             
+            // Check if this was actually streaming or if all tokens arrived at once
+            var isActuallyStreaming = _tokenTimestamps.Count > 1 && 
+                (_tokenTimestamps.Last() - _tokenTimestamps.First()) > 100; // More than 100ms between first and last token
+            
             if (totalSeconds > 0 && completionTokens > 0)
             {
-                metrics.TokensPerSecond = completionTokens / totalSeconds;
+                // Only calculate tokens/second for actual streaming responses
+                if (isActuallyStreaming)
+                {
+                    metrics.TokensPerSecond = completionTokens / totalSeconds;
+                }
+                // For non-streaming, don't report tokens/second as it's misleading
                 
                 // For CompletionTokensPerSecond, exclude prompt processing time
                 // Generation time = total time - prompt processing time
-                if (_timeToFirstTokenMs.HasValue)
+                if (_timeToFirstTokenMs.HasValue && isActuallyStreaming)
                 {
                     var generationSeconds = totalSeconds - (_timeToFirstTokenMs.Value / 1000.0);
                     if (generationSeconds > 0)
@@ -140,7 +149,7 @@ namespace ConduitLLM.Core.Services
                         metrics.CompletionTokensPerSecond = completionTokens / totalSeconds;
                     }
                 }
-                else
+                else if (isActuallyStreaming)
                 {
                     // No time to first token recorded, use total time
                     metrics.CompletionTokensPerSecond = completionTokens / totalSeconds;

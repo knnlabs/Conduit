@@ -81,14 +81,6 @@ namespace ConduitLLM.Http.Middleware
                 return;
             }
 
-            // For streaming responses, we can't intercept the body
-            if (IsStreamingRequest(context))
-            {
-                await _next(context);
-                await TrackStreamingUsageAsync(context, costCalculationService, batchSpendService, requestLogService, virtualKeyService);
-                return;
-            }
-
             // For non-streaming responses, intercept the response body
             var originalBodyStream = context.Response.Body;
 
@@ -99,7 +91,19 @@ namespace ConduitLLM.Http.Middleware
 
                 await _next(context);
 
-                // Process the response
+                // After the controller has run, check if this is a streaming response
+                // by checking the Content-Type that was set by the controller
+                if (context.Response.ContentType?.Contains("text/event-stream") == true)
+                {
+                    _logger.LogDebug("Detected streaming response, skipping JSON parsing");
+                    // For streaming, just copy the stream directly without parsing
+                    responseBody.Seek(0, SeekOrigin.Begin);
+                    await responseBody.CopyToAsync(originalBodyStream);
+                    await TrackStreamingUsageAsync(context, costCalculationService, batchSpendService, requestLogService, virtualKeyService);
+                    return;
+                }
+
+                // Process non-streaming response
                 await ProcessResponseAsync(
                     context,
                     responseBody,

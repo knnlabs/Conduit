@@ -10,7 +10,7 @@ namespace ConduitLLM.Providers.Providers.MiniMax
         private class MiniMaxChatCompletionRequest
         {
             [System.Text.Json.Serialization.JsonPropertyName("model")]
-            public string Model { get; set; } = "abab6.5-chat";
+            public string Model { get; set; } = "MiniMax-M1";
 
             [System.Text.Json.Serialization.JsonPropertyName("messages")]
             public List<MiniMaxMessage> Messages { get; set; } = new();
@@ -187,15 +187,17 @@ namespace ConduitLLM.Providers.Providers.MiniMax
             [System.Text.Json.Serialization.JsonPropertyName("content")]
             public string? Content { get; set; }
 
-            [System.Text.Json.Serialization.JsonPropertyName("function_call")]
-            public MiniMaxFunctionCall? FunctionCall { get; set; }
-
-            // MiniMax specific fields that appear in streaming responses
             [System.Text.Json.Serialization.JsonPropertyName("name")]
             public string? Name { get; set; }
 
             [System.Text.Json.Serialization.JsonPropertyName("audio_content")]
-            public object? AudioContent { get; set; }
+            public string? AudioContent { get; set; }
+
+            [System.Text.Json.Serialization.JsonPropertyName("reasoning_content")]
+            public string? ReasoningContent { get; set; }
+
+            [System.Text.Json.Serialization.JsonPropertyName("function_call")]
+            public MiniMaxFunctionCall? FunctionCall { get; set; }
         }
 
         private class MiniMaxUsage

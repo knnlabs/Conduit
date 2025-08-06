@@ -34,8 +34,8 @@ namespace ConduitLLM.Providers.Providers.MiniMax
                 var miniMaxRequest = new MiniMaxChatCompletionRequest
                 {
                     Model = MapModelName(request.Model ?? ProviderModelId),
-                    Messages = ConvertMessages(request.Messages),
-                    Stream = false,
+                    Messages = ConvertMessages(request.Messages, includeNames: request.Stream == true),
+                    Stream = request.Stream ?? false,
                     MaxTokens = request.MaxTokens,
                     Temperature = request.Temperature,
                     TopP = request.TopP,
@@ -48,7 +48,11 @@ namespace ConduitLLM.Providers.Providers.MiniMax
                     } : null
                 };
 
-                var endpoint = $"{_baseUrl}/v1/chat/completions";
+                // MiniMax uses different endpoints for streaming vs non-streaming
+                // Streaming uses the v2 API which requires name fields in messages
+                var endpoint = request.Stream == true 
+                    ? $"{_baseUrl}/v1/text/chatcompletion_v2"
+                    : $"{_baseUrl}/v1/chat/completions";
                 // Log the request for debugging
                 var requestJson = JsonSerializer.Serialize(miniMaxRequest);
                 Logger.LogInformation("MiniMax request: {Request}", requestJson);

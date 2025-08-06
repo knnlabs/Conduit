@@ -39,6 +39,7 @@ namespace ConduitLLM.Providers.Providers.MiniMax
             : base(provider, keyCredential, modelId, logger, httpClientFactory, "minimax", defaultModels)
         {
             _baseUrl = string.IsNullOrWhiteSpace(provider.BaseUrl) ? DefaultBaseUrl : provider.BaseUrl.TrimEnd('/');
+            logger.LogInformation("MiniMax client initialized with base URL: {BaseUrl}, Model: {Model}", _baseUrl, modelId);
         }
 
         /// <inheritdoc />
@@ -47,6 +48,8 @@ namespace ConduitLLM.Providers.Providers.MiniMax
             client.DefaultRequestHeaders.Clear();
             client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
             client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
+            // Add Accept header for SSE streaming
+            client.DefaultRequestHeaders.Add("Accept", "text/event-stream");
             client.Timeout = TimeSpan.FromMinutes(10); // Long timeout for video processing
         }
 

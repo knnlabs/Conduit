@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -296,8 +297,16 @@ namespace ConduitLLM.Core.Utilities
 
             try
             {
-                var request = CreateJsonRequest(method, endpoint, requestData, headers, options);
+                var request = CreateJsonRequest(method, endpoint, requestData, headers, options, logger);
+                
+                // Add Accept header for SSE if not already present
+                if (!request.Headers.Accept.Any(h => h.MediaType == "text/event-stream"))
+                {
+                    request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("text/event-stream"));
+                }
+                
                 logger?.LogDebug("Sending streaming {Method} request to {Endpoint}", method, endpoint);
+                logger?.LogDebug("Request headers: {Headers}", request.Headers.ToString());
 
                 var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 
