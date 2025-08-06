@@ -34,35 +34,41 @@ public class ModelCost
     public string CostName { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the cost per input token for chat/completion requests.
+    /// Gets or sets the cost per million input tokens for chat/completion requests.
     /// </summary>
     /// <remarks>
-    /// This represents the cost in USD for processing each input token.
-    /// Stored with high precision (decimal 18,10) to accommodate very small per-token costs.
+    /// This represents the cost in USD for processing one million input tokens.
+    /// This format aligns with industry standard pricing from providers like Anthropic and OpenAI.
+    /// Example: 15.00 means $15 per million input tokens.
+    /// Stored with high precision (decimal 18,10) to accommodate fractional costs.
     /// </remarks>
     [Column(TypeName = "decimal(18, 10)")]
-    public decimal InputTokenCost { get; set; } = 0;
+    public decimal InputCostPerMillionTokens { get; set; } = 0;
 
     /// <summary>
-    /// Gets or sets the cost per output token for chat/completion requests.
+    /// Gets or sets the cost per million output tokens for chat/completion requests.
     /// </summary>
     /// <remarks>
-    /// This represents the cost in USD for generating each output token.
-    /// Stored with high precision (decimal 18,10) to accommodate very small per-token costs.
+    /// This represents the cost in USD for generating one million output tokens.
+    /// This format aligns with industry standard pricing from providers like Anthropic and OpenAI.
+    /// Example: 75.00 means $75 per million output tokens.
+    /// Stored with high precision (decimal 18,10) to accommodate fractional costs.
     /// </remarks>
     [Column(TypeName = "decimal(18, 10)")]
-    public decimal OutputTokenCost { get; set; } = 0;
+    public decimal OutputCostPerMillionTokens { get; set; } = 0;
 
     /// <summary>
-    /// Gets or sets the cost per token for embedding requests, if applicable.
+    /// Gets or sets the cost per million tokens for embedding requests, if applicable.
     /// </summary>
     /// <remarks>
-    /// This represents the cost in USD for processing each token in embedding requests.
+    /// This represents the cost in USD for processing one million tokens in embedding requests.
+    /// This format aligns with industry standard pricing from providers like Anthropic and OpenAI.
+    /// Example: 0.10 means $0.10 per million embedding tokens.
     /// Nullable because not all models support embedding operations.
-    /// Stored with high precision (decimal 18,10) to accommodate very small per-token costs.
+    /// Stored with high precision (decimal 18,10) to accommodate fractional costs.
     /// </remarks>
     [Column(TypeName = "decimal(18, 10)")]
-    public decimal? EmbeddingTokenCost { get; set; }
+    public decimal? EmbeddingCostPerMillionTokens { get; set; }
 
     /// <summary>
     /// Gets or sets the cost per image for image generation requests, if applicable.
@@ -248,31 +254,33 @@ public class ModelCost
     public string? ImageQualityMultipliers { get; set; }
 
     /// <summary>
-    /// Gets or sets the cost per cached input token for prompt caching, if applicable.
+    /// Gets or sets the cost per million cached input tokens for prompt caching, if applicable.
     /// </summary>
     /// <remarks>
-    /// This represents the cost in USD for processing each cached input token (reading from cache).
+    /// This represents the cost in USD for processing one million cached input tokens (reading from cache).
     /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
     /// Typically much lower than standard input token costs (e.g., 10% of regular cost).
+    /// Example: 1.50 means $1.50 per million cached tokens.
     /// Nullable because not all models support prompt caching.
-    /// Stored with high precision (decimal 18,10) to accommodate very small per-token costs.
+    /// Stored with high precision (decimal 18,10) to accommodate fractional costs.
     /// </remarks>
     [Column(TypeName = "decimal(18, 10)")]
-    public decimal? CachedInputTokenCost { get; set; }
+    public decimal? CachedInputCostPerMillionTokens { get; set; }
 
     /// <summary>
-    /// Gets or sets the cost per token for writing to the prompt cache, if applicable.
+    /// Gets or sets the cost per million tokens for writing to the prompt cache, if applicable.
     /// </summary>
     /// <remarks>
-    /// This represents the cost in USD for writing tokens to the prompt cache.
+    /// This represents the cost in USD for writing one million tokens to the prompt cache.
     /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
     /// Typically higher than cached read costs but may be lower than standard input costs.
     /// The write cost is incurred when new content is added to the cache.
+    /// Example: 3.75 means $3.75 per million tokens written to cache.
     /// Nullable because not all models support prompt caching.
-    /// Stored with high precision (decimal 18,10) to accommodate very small per-token costs.
+    /// Stored with high precision (decimal 18,10) to accommodate fractional costs.
     /// </remarks>
     [Column(TypeName = "decimal(18, 10)")]
-    public decimal? CachedInputWriteCost { get; set; }
+    public decimal? CachedInputWriteCostPerMillionTokens { get; set; }
 
     /// <summary>
     /// Gets or sets the cost per search unit for reranking models, if applicable.

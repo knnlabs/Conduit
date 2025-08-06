@@ -131,17 +131,17 @@ export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: M
   };
 
   const getCostDisplay = (cost: ModelCost): React.ReactNode => {
-    if (cost.inputTokenCost !== undefined && cost.outputTokenCost !== undefined) {
-      const hasCachedRates = cost.cachedInputTokenCost !== undefined || 
-                            cost.cachedInputWriteCost !== undefined;
+    if (cost.inputCostPerMillionTokens !== undefined && cost.outputCostPerMillionTokens !== undefined) {
+      const hasCachedRates = cost.cachedInputCostPerMillionTokens !== undefined || 
+                            cost.cachedInputWriteCostPerMillionTokens !== undefined;
       
       return (
         <Stack gap={2}>
           <Text size="xs">
-            Input: {formatters.currency((cost.inputTokenCost * 1000), { currency: 'USD', precision: 4 })}/1K
+            Input: {formatters.currency(cost.inputCostPerMillionTokens, { currency: 'USD', precision: 2 })}/M
           </Text>
           <Text size="xs">
-            Output: {formatters.currency((cost.outputTokenCost * 1000), { currency: 'USD', precision: 4 })}/1K
+            Output: {formatters.currency(cost.outputCostPerMillionTokens, { currency: 'USD', precision: 2 })}/M
           </Text>
           {hasCachedRates && (
             <Group gap="xs">
@@ -316,7 +316,7 @@ export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: M
                           <Badge variant="outline" size="sm">
                             {getCostTypeLabel(cost.modelType)}
                           </Badge>
-                          {(cost.cachedInputTokenCost ?? cost.cachedInputWriteCost) && (
+                          {(cost.cachedInputCostPerMillionTokens ?? cost.cachedInputWriteCostPerMillionTokens) && (
                             <Tooltip label="Supports prompt caching">
                               <IconDatabase size={14} style={{ opacity: 0.7 }} />
                             </Tooltip>

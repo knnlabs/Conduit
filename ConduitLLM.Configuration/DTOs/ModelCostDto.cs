@@ -34,21 +34,21 @@ namespace ConduitLLM.Configuration.DTOs
         public List<string> AssociatedModelAliases { get; set; } = new List<string>();
 
         /// <summary>
-        /// Cost per input token for chat/completion requests in USD
+        /// Cost per million input tokens for chat/completion requests in USD
         /// </summary>
         [Range(0, double.MaxValue)]
-        public decimal InputTokenCost { get; set; } = 0;
+        public decimal InputCostPerMillionTokens { get; set; } = 0;
 
         /// <summary>
-        /// Cost per output token for chat/completion requests in USD
+        /// Cost per million output tokens for chat/completion requests in USD
         /// </summary>
         [Range(0, double.MaxValue)]
-        public decimal OutputTokenCost { get; set; } = 0;
+        public decimal OutputCostPerMillionTokens { get; set; } = 0;
 
         /// <summary>
-        /// Cost per token for embedding requests in USD, if applicable
+        /// Cost per million tokens for embedding requests in USD, if applicable
         /// </summary>
-        public decimal? EmbeddingTokenCost { get; set; }
+        public decimal? EmbeddingCostPerMillionTokens { get; set; }
 
         /// <summary>
         /// Cost per image for image generation requests in USD, if applicable
@@ -166,24 +166,24 @@ namespace ConduitLLM.Configuration.DTOs
         public string? ImageQualityMultipliers { get; set; }
 
         /// <summary>
-        /// Cost per cached input token for prompt caching in USD, if applicable
+        /// Cost per million cached input tokens for prompt caching in USD, if applicable
         /// </summary>
         /// <remarks>
-        /// This represents the cost for processing cached input tokens (reading from cache).
+        /// This represents the cost for processing one million cached input tokens (reading from cache).
         /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
         /// Typically much lower than standard input token costs (e.g., 10% of regular cost).
         /// </remarks>
-        public decimal? CachedInputTokenCost { get; set; }
+        public decimal? CachedInputCostPerMillionTokens { get; set; }
 
         /// <summary>
-        /// Cost per token for writing to the prompt cache in USD, if applicable
+        /// Cost per million tokens for writing to the prompt cache in USD, if applicable
         /// </summary>
         /// <remarks>
-        /// This represents the cost for writing tokens to the prompt cache.
+        /// This represents the cost for writing one million tokens to the prompt cache.
         /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
         /// The write cost is incurred when new content is added to the cache.
         /// </remarks>
-        public decimal? CachedInputWriteCost { get; set; }
+        public decimal? CachedInputWriteCostPerMillionTokens { get; set; }
 
         /// <summary>
         /// Cost per search unit for reranking models in USD per 1000 units, if applicable
@@ -259,21 +259,21 @@ namespace ConduitLLM.Configuration.DTOs
         public string? Description { get; set; }
 
         /// <summary>
-        /// Cost per input token for chat/completion requests in USD
+        /// Cost per million input tokens for chat/completion requests in USD
         /// </summary>
         [Range(0, double.MaxValue)]
-        public decimal InputTokenCost { get; set; } = 0;
+        public decimal InputCostPerMillionTokens { get; set; } = 0;
 
         /// <summary>
-        /// Cost per output token for chat/completion requests in USD
+        /// Cost per million output tokens for chat/completion requests in USD
         /// </summary>
         [Range(0, double.MaxValue)]
-        public decimal OutputTokenCost { get; set; } = 0;
+        public decimal OutputCostPerMillionTokens { get; set; } = 0;
 
         /// <summary>
-        /// Cost per token for embedding requests in USD, if applicable
+        /// Cost per million tokens for embedding requests in USD, if applicable
         /// </summary>
-        public decimal? EmbeddingTokenCost { get; set; }
+        public decimal? EmbeddingCostPerMillionTokens { get; set; }
 
         /// <summary>
         /// Cost per image for image generation requests in USD, if applicable
@@ -342,24 +342,24 @@ namespace ConduitLLM.Configuration.DTOs
         public string? ImageQualityMultipliers { get; set; }
 
         /// <summary>
-        /// Cost per cached input token for prompt caching in USD, if applicable
+        /// Cost per million cached input tokens for prompt caching in USD, if applicable
         /// </summary>
         /// <remarks>
-        /// This represents the cost for processing cached input tokens (reading from cache).
+        /// This represents the cost for processing one million cached input tokens (reading from cache).
         /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
         /// Typically much lower than standard input token costs (e.g., 10% of regular cost).
         /// </remarks>
-        public decimal? CachedInputTokenCost { get; set; }
+        public decimal? CachedInputCostPerMillionTokens { get; set; }
 
         /// <summary>
-        /// Cost per token for writing to the prompt cache in USD, if applicable
+        /// Cost per million tokens for writing to the prompt cache in USD, if applicable
         /// </summary>
         /// <remarks>
-        /// This represents the cost for writing tokens to the prompt cache.
+        /// This represents the cost for writing one million tokens to the prompt cache.
         /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
         /// The write cost is incurred when new content is added to the cache.
         /// </remarks>
-        public decimal? CachedInputWriteCost { get; set; }
+        public decimal? CachedInputWriteCostPerMillionTokens { get; set; }
 
         /// <summary>
         /// Cost per search unit for reranking models in USD per 1000 units, if applicable
@@ -445,21 +445,21 @@ namespace ConduitLLM.Configuration.DTOs
         public bool IsActive { get; set; } = true;
 
         /// <summary>
-        /// Cost per input token for chat/completion requests in USD
+        /// Cost per million input tokens for chat/completion requests in USD
         /// </summary>
         [Range(0, double.MaxValue)]
-        public decimal InputTokenCost { get; set; } = 0;
+        public decimal InputCostPerMillionTokens { get; set; } = 0;
 
         /// <summary>
-        /// Cost per output token for chat/completion requests in USD
+        /// Cost per million output tokens for chat/completion requests in USD
         /// </summary>
         [Range(0, double.MaxValue)]
-        public decimal OutputTokenCost { get; set; } = 0;
+        public decimal OutputCostPerMillionTokens { get; set; } = 0;
 
         /// <summary>
-        /// Cost per token for embedding requests in USD, if applicable
+        /// Cost per million tokens for embedding requests in USD, if applicable
         /// </summary>
-        public decimal? EmbeddingTokenCost { get; set; }
+        public decimal? EmbeddingCostPerMillionTokens { get; set; }
 
         /// <summary>
         /// Cost per image for image generation requests in USD, if applicable
@@ -528,24 +528,24 @@ namespace ConduitLLM.Configuration.DTOs
         public string? ImageQualityMultipliers { get; set; }
 
         /// <summary>
-        /// Cost per cached input token for prompt caching in USD, if applicable
+        /// Cost per million cached input tokens for prompt caching in USD, if applicable
         /// </summary>
         /// <remarks>
-        /// This represents the cost for processing cached input tokens (reading from cache).
+        /// This represents the cost for processing one million cached input tokens (reading from cache).
         /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
         /// Typically much lower than standard input token costs (e.g., 10% of regular cost).
         /// </remarks>
-        public decimal? CachedInputTokenCost { get; set; }
+        public decimal? CachedInputCostPerMillionTokens { get; set; }
 
         /// <summary>
-        /// Cost per token for writing to the prompt cache in USD, if applicable
+        /// Cost per million tokens for writing to the prompt cache in USD, if applicable
         /// </summary>
         /// <remarks>
-        /// This represents the cost for writing tokens to the prompt cache.
+        /// This represents the cost for writing one million tokens to the prompt cache.
         /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
         /// The write cost is incurred when new content is added to the cache.
         /// </remarks>
-        public decimal? CachedInputWriteCost { get; set; }
+        public decimal? CachedInputWriteCostPerMillionTokens { get; set; }
 
         /// <summary>
         /// Cost per search unit for reranking models in USD per 1000 units, if applicable

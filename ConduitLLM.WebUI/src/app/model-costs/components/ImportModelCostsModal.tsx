@@ -81,11 +81,11 @@ export function ImportModelCostsModal({ isOpen, onClose, onSuccess }: ImportMode
         costName: cost.costName,
         modelAliases: cost.modelAliases,
         modelType: cost.modelType,
-        inputTokenCost: cost.inputCostPer1K / 1000, // Convert to per token
-        outputTokenCost: cost.outputCostPer1K / 1000,
-        cachedInputTokenCost: cost.cachedInputCostPer1K ? cost.cachedInputCostPer1K / 1000 : undefined,
-        cachedInputWriteCost: cost.cachedInputWriteCostPer1K ? cost.cachedInputWriteCostPer1K / 1000 : undefined,
-        embeddingTokenCost: cost.embeddingCostPer1K ? cost.embeddingCostPer1K / 1000 : undefined,
+        inputCostPerMillionTokens: cost.inputCostPerMillion, // Already per million
+        outputCostPerMillionTokens: cost.outputCostPerMillion,
+        cachedInputCostPerMillionTokens: cost.cachedInputCostPerMillion,
+        cachedInputWriteCostPerMillionTokens: cost.cachedInputWriteCostPerMillion,
+        embeddingCostPerMillionTokens: cost.embeddingCostPerMillion,
         imageCostPerImage: cost.imageCostPerImage,
         audioCostPerMinute: cost.audioCostPerMinute,
         audioCostPerKCharacters: cost.audioCostPerKCharacters,
@@ -232,7 +232,7 @@ export function ImportModelCostsModal({ isOpen, onClose, onSuccess }: ImportMode
                       <Table.Td>
                         {cost.modelType === 'chat' && (
                           <Text size="xs">
-                            ${cost.inputCostPer1K}/1K • ${cost.outputCostPer1K}/1K
+                            ${cost.inputCostPerMillion}/M • ${cost.outputCostPerMillion}/M
                           </Text>
                         )}
                         {cost.modelType === 'image' && cost.imageCostPerImage && (

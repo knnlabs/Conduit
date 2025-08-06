@@ -53,8 +53,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00001m, // $0.01 per 1K tokens
-                OutputTokenCost = 0.00003m  // $0.03 per 1K tokens
+                InputCostPerMillionTokens = 10.00m, // $10 per million tokens
+                OutputCostPerMillionTokens = 30.00m  // $30 per million tokens
             };
 
             _modelCostServiceMock
@@ -65,7 +65,7 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.CalculateCostAsync(modelId, usage);
 
             // Assert
-            // Expected: (1000 * 0.00001) + (500 * 0.00003) = 0.01 + 0.015 = 0.025
+            // Expected: (1000 * 10.00 / 1_000_000) + (500 * 30.00 / 1_000_000) = 0.01 + 0.015 = 0.025
             result.Should().Be(0.025m);
         }
 
@@ -83,9 +83,9 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00001m,
-                OutputTokenCost = 0.00001m,
-                EmbeddingTokenCost = 0.0000001m // $0.0001 per 1K tokens
+                InputCostPerMillionTokens = 10.00m,
+                OutputCostPerMillionTokens = 10.00m,
+                EmbeddingCostPerMillionTokens = 0.10m // $0.10 per million tokens
             };
 
             _modelCostServiceMock
@@ -96,7 +96,7 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.CalculateCostAsync(modelId, usage);
 
             // Assert
-            // Expected: 2000 * 0.0000001 = 0.0002
+            // Expected: 2000 * 0.10 / 1_000_000 = 0.0002
             result.Should().Be(0.0002m);
         }
 
@@ -115,8 +115,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0m,
-                OutputTokenCost = 0m,
+                InputCostPerMillionTokens = 0m,
+                OutputCostPerMillionTokens = 0m,
                 ImageCostPerImage = 0.04m // $0.04 per image
             };
 
@@ -148,8 +148,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0m,
-                OutputTokenCost = 0m,
+                InputCostPerMillionTokens = 0m,
+                OutputCostPerMillionTokens = 0m,
                 VideoCostPerSecond = 0.05m, // $0.05 per second
                 VideoResolutionMultipliers = new Dictionary<string, decimal>
                 {
@@ -187,8 +187,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0m,
-                OutputTokenCost = 0m,
+                InputCostPerMillionTokens = 0m,
+                OutputCostPerMillionTokens = 0m,
                 VideoCostPerSecond = 0.05m,
                 VideoResolutionMultipliers = null // No multipliers defined
             };
@@ -222,8 +222,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00001m,
-                OutputTokenCost = 0.00002m,
+                InputCostPerMillionTokens = 10.00m,
+                OutputCostPerMillionTokens = 20.00m,
                 ImageCostPerImage = 0.05m,
                 VideoCostPerSecond = 0.1m,
                 VideoResolutionMultipliers = new Dictionary<string, decimal>
@@ -240,7 +240,7 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.CalculateCostAsync(modelId, usage);
 
             // Assert
-            // Expected: Text: (1000 * 0.00001) + (500 * 0.00002) = 0.01 + 0.01 = 0.02
+            // Expected: Text: (1000 * 10.00 / 1_000_000) + (500 * 20.00 / 1_000_000) = 0.01 + 0.01 = 0.02
             //          Images: 2 * 0.05 = 0.1
             //          Video: 3 * 0.1 * 0.8 = 0.24
             //          Total: 0.02 + 0.1 + 0.24 = 0.36
@@ -342,8 +342,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00001m,
-                OutputTokenCost = 0.00003m
+                InputCostPerMillionTokens = 10.00m,
+                OutputCostPerMillionTokens = 30.00m
             };
 
             _modelCostServiceMock
@@ -371,8 +371,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.000012345m,
-                OutputTokenCost = 0.000098765m
+                InputCostPerMillionTokens = 12345.00m,
+                OutputCostPerMillionTokens = 98765.00m
             };
 
             _modelCostServiceMock
@@ -383,8 +383,8 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.CalculateCostAsync(modelId, usage);
 
             // Assert
-            // Expected: (123456 * 0.000012345) + (789012 * 0.000098765) = 1.52428320 + 77.926551180 = 79.450834500
-            result.Should().Be(79.450834500m);
+            // Expected: (123456 * 12345.00 / 1_000_000) + (789012 * 98765.00 / 1_000_000) = 1524.28320 + 77926.55118 = 79450.83438
+            result.Should().Be(79450.83450m);
         }
 
         [Fact]
@@ -405,8 +405,8 @@ namespace ConduitLLM.Tests.Core.Services
                 .ReturnsAsync(new ModelCostInfo
                 {
                     ModelIdPattern = modelId,
-                    InputTokenCost = 0.001m,
-                    OutputTokenCost = 0.002m
+                    InputCostPerMillionTokens = 1000.00m,
+                    OutputCostPerMillionTokens = 2000.00m
                 });
 
             // Act
@@ -433,8 +433,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.001m,
-                OutputTokenCost = 0.002m,
+                InputCostPerMillionTokens = 1000.00m,
+                OutputCostPerMillionTokens = 2000.00m,
                 ImageCostPerImage = 0.05m,
                 VideoCostPerSecond = 0.1m
             };
@@ -466,8 +466,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0m,
-                OutputTokenCost = 0m,
+                InputCostPerMillionTokens = 0m,
+                OutputCostPerMillionTokens = 0m,
                 VideoCostPerSecond = 0.1m,
                 VideoResolutionMultipliers = new Dictionary<string, decimal>
                 {
@@ -504,8 +504,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0m,
-                OutputTokenCost = 0m,
+                InputCostPerMillionTokens = 0m,
+                OutputCostPerMillionTokens = 0m,
                 VideoCostPerSecond = 0.1m,
                 VideoResolutionMultipliers = new Dictionary<string, decimal>
                 {
@@ -539,8 +539,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0m,
-                OutputTokenCost = 0m
+                InputCostPerMillionTokens = 0m,
+                OutputCostPerMillionTokens = 0m
             };
 
             _modelCostServiceMock
@@ -571,9 +571,9 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00001m,
-                OutputTokenCost = 0.00001m,
-                EmbeddingTokenCost = 0.0000001m,  // This is now USED for embeddings
+                InputCostPerMillionTokens = 10.00m,
+                OutputCostPerMillionTokens = 10.00m,
+                EmbeddingCostPerMillionTokens = 0.10m,  // This is now USED for embeddings
                 ImageCostPerImage = 0.05m
             };
 
@@ -586,7 +586,7 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             // NEW BEHAVIOR (correct):
-            // Text: 1000 * 0.0000001 (embedding cost) = 0.0001
+            // Text: 1000 * 0.10 / 1_000_000 (embedding cost) = 0.0001
             // Image: 1 * 0.05 = 0.05
             // Total: 0.0001 + 0.05 = 0.0501
             result.Should().Be(0.0501m);
@@ -609,9 +609,9 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.0001m,       // Regular text processing cost
-                OutputTokenCost = 0.0002m,      // Not used for embeddings
-                EmbeddingTokenCost = 0.00001m,  // Specialized embedding cost (10x cheaper)
+                InputCostPerMillionTokens = 100.00m,       // Regular text processing cost
+                OutputCostPerMillionTokens = 200.00m,      // Not used for embeddings
+                EmbeddingCostPerMillionTokens = 10.00m,  // Specialized embedding cost (10x cheaper)
                 ImageCostPerImage = 0.02m       // Image generation cost
             };
 
@@ -622,8 +622,8 @@ namespace ConduitLLM.Tests.Core.Services
             // Act
             var result = await _service.CalculateCostAsync(modelId, usage);
 
-            // Assert - New behavior correctly uses EmbeddingTokenCost
-            // Text: 5000 * 0.00001 = 0.05 (using embedding cost)
+            // Assert - New behavior correctly uses EmbeddingCostPerMillionTokens
+            // Text: 5000 * 10.00 / 1_000_000 = 0.05 (using embedding cost)
             // Images: 2 * 0.02 = 0.04
             // Total: 0.09
             result.Should().Be(0.09m);
@@ -652,9 +652,9 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.0001m,
-                OutputTokenCost = 0.0002m,
-                EmbeddingTokenCost = 0.00001m,  // 10x cheaper than regular
+                InputCostPerMillionTokens = 100.00m,
+                OutputCostPerMillionTokens = 200.00m,
+                EmbeddingCostPerMillionTokens = 10.00m,  // 10x cheaper than regular
                 ImageCostPerImage = 0.05m
             };
 
@@ -670,7 +670,7 @@ namespace ConduitLLM.Tests.Core.Services
             if (shouldUseEmbeddingCost)
             {
                 // Embedding case: promptTokens * embeddingCost + images if present
-                expectedCost = promptTokens * modelCost.EmbeddingTokenCost.Value;
+                expectedCost = promptTokens * modelCost.EmbeddingCostPerMillionTokens.Value / 1_000_000m;
                 if (imageCount.HasValue)
                 {
                     expectedCost += imageCount.Value * modelCost.ImageCostPerImage.Value;
@@ -679,8 +679,8 @@ namespace ConduitLLM.Tests.Core.Services
             else
             {
                 // Regular case: (prompt * input) + (completion * output) + (images * imageCost)
-                expectedCost = (promptTokens * modelCost.InputTokenCost) + 
-                              (completionTokens * modelCost.OutputTokenCost) +
+                expectedCost = (promptTokens * modelCost.InputCostPerMillionTokens / 1_000_000m) + 
+                              (completionTokens * modelCost.OutputCostPerMillionTokens / 1_000_000m) +
                               (imageCount ?? 0) * modelCost.ImageCostPerImage.Value;
             }
             
@@ -704,9 +704,9 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00002m,       // Regular input cost
-                OutputTokenCost = 0.00004m,      // Regular output cost
-                EmbeddingTokenCost = 0.0000001m, // Embedding cost (not used in this case)
+                InputCostPerMillionTokens = 20.00m,       // Regular input cost
+                OutputCostPerMillionTokens = 40.00m,      // Regular output cost
+                EmbeddingCostPerMillionTokens = 0.10m, // Embedding cost (not used in this case)
                 ImageCostPerImage = 0.03m
             };
 
@@ -719,8 +719,8 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             // Should use regular costs because CompletionTokens > 0:
-            // Input: 1000 * 0.00002 = 0.02
-            // Output: 500 * 0.00004 = 0.02
+            // Input: 1000 * 20.00 / 1_000_000 = 0.02
+            // Output: 500 * 40.00 / 1_000_000 = 0.02
             // Image: 1 * 0.03 = 0.03
             // Total: 0.07
             result.Should().Be(0.07m);

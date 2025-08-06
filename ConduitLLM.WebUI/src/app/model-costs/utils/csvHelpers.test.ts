@@ -2,20 +2,20 @@ import { parseCSVContent, parseCSVLine, convertParsedToDto } from './csvHelpers'
 
 describe('Phase 2 CSV parsing', () => {
   it('should parse cached token costs', () => {
-    const csv = `Model Pattern,Provider,Model Type,Input Cost (per 1K tokens),Output Cost (per 1K tokens),Cached Input Cost (per 1K tokens),Cache Write Cost (per 1K tokens)
-claude-opus-4,Anthropic,chat,0.015,0.075,0.0015,0.01875`;
+    const csv = `Cost Name,Associated Model Aliases,Model Type,Input Cost (per million tokens),Output Cost (per million tokens),Cached Input Cost (per million tokens),Cache Write Cost (per million tokens)
+claude-opus-4,claude-3-opus,chat,15.00,75.00,1.50,18.75`;
     
     const result = parseCSVContent(csv);
     
     expect(result).toHaveLength(1);
-    expect(result[0].cachedInputCostPer1K).toBe(0.0015);
-    expect(result[0].cachedInputWriteCostPer1K).toBe(0.01875);
+    expect(result[0].cachedInputCostPerMillion).toBe(1.50);
+    expect(result[0].cachedInputWriteCostPerMillion).toBe(18.75);
     expect(result[0].isValid).toBe(true);
   });
   
   it('should parse search unit costs', () => {
-    const csv = `Model Pattern,Provider,Model Type,Input Cost (per 1K tokens),Output Cost (per 1K tokens),Search Unit Cost (per 1K units)
-rerank-3.5,Cohere,chat,0,0,2.0`;
+    const csv = `Cost Name,Associated Model Aliases,Model Type,Input Cost (per million tokens),Output Cost (per million tokens),Search Unit Cost (per 1K units)
+rerank-3.5,rerank-3.5,chat,0,0,2.0`;
     
     const result = parseCSVContent(csv);
     
@@ -25,8 +25,8 @@ rerank-3.5,Cohere,chat,0,0,2.0`;
   });
   
   it('should parse inference step pricing', () => {
-    const csv = `Model Pattern,Provider,Model Type,Input Cost (per 1K tokens),Output Cost (per 1K tokens),Cost Per Inference Step,Default Inference Steps
-stable-diffusion-xl,Fireworks,image,0,0,0.00013,30`;
+    const csv = `Cost Name,Associated Model Aliases,Model Type,Input Cost (per million tokens),Output Cost (per million tokens),Cost Per Inference Step,Default Inference Steps
+stable-diffusion-xl,stable-diffusion-xl,image,0,0,0.00013,30`;
     
     const result = parseCSVContent(csv);
     
@@ -37,17 +37,17 @@ stable-diffusion-xl,Fireworks,image,0,0,0.00013,30`;
   });
 
   it('should convert parsed Phase 2 data to DTOs correctly', () => {
-    const csv = `Model Pattern,Provider,Model Type,Input Cost (per 1K tokens),Output Cost (per 1K tokens),Cached Input Cost (per 1K tokens),Search Unit Cost (per 1K units),Priority,Active
-claude-opus-4,Anthropic,chat,0.015,0.075,0.0015,0,100,yes
-rerank-3.5,Cohere,chat,0,0,0,2.0,90,true`;
+    const csv = `Cost Name,Associated Model Aliases,Model Type,Input Cost (per million tokens),Output Cost (per million tokens),Cached Input Cost (per million tokens),Search Unit Cost (per 1K units),Priority,Active
+claude-opus-4,claude-3-opus,chat,15.00,75.00,1.50,0,100,yes
+rerank-3.5,rerank-3.5,chat,0,0,0,2.0,90,true`;
     
     const parsed = parseCSVContent(csv);
     const dtos = convertParsedToDto(parsed);
     
     expect(dtos).toHaveLength(2);
     
-    // Check cached token conversion (per 1K to per million)
-    expect(dtos[0].cachedInputTokenCost).toBe(1500); // 0.0015 * 1,000,000
+    // Check cached token costs (already per million)
+    expect(dtos[0].cachedInputCostPerMillionTokens).toBe(1.50);
     expect(dtos[0].costPerSearchUnit).toBe(0); // Not used for this model
     
     // Check search unit cost (no conversion needed)

@@ -38,8 +38,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0m,
-                OutputTokenCost = 0m,
+                InputCostPerMillionTokens = 0m,
+                OutputCostPerMillionTokens = 0m,
                 CostPerSearchUnit = 2.0m // $2.00 per 1K search units
             };
 
@@ -70,8 +70,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00001m,
-                OutputTokenCost = 0.00003m,
+                InputCostPerMillionTokens = 10.00m,
+                OutputCostPerMillionTokens = 30.00m,
                 CostPerSearchUnit = 1.5m // $1.50 per 1K search units
             };
 
@@ -83,7 +83,7 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.CalculateCostAsync(modelId, usage);
 
             // Assert
-            // Token cost: (1000 * 0.00001) + (500 * 0.00003) = 0.01 + 0.015 = 0.025
+            // Token cost: (1000 * 10.00 / 1_000_000) + (500 * 30.00 / 1_000_000) = 0.01 + 0.015 = 0.025
             // Search unit cost: 10 * (1.5 / 1000) = 10 * 0.0015 = 0.015
             // Total: 0.025 + 0.015 = 0.04
             result.Should().Be(0.04m);
@@ -109,8 +109,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0m,
-                OutputTokenCost = 0m,
+                InputCostPerMillionTokens = 0m,
+                OutputCostPerMillionTokens = 0m,
                 CostPerInferenceStep = 0.00035m, // $0.00035 per step
                 DefaultInferenceSteps = 4
             };
@@ -143,8 +143,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0m,
-                OutputTokenCost = 0m,
+                InputCostPerMillionTokens = 0m,
+                OutputCostPerMillionTokens = 0m,
                 CostPerInferenceStep = 0.00013m, // $0.00013 per step
                 ImageCostPerImage = 0.0039m, // Pre-calculated per image
                 DefaultInferenceSteps = 30
@@ -211,8 +211,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00003m,
-                OutputTokenCost = 0.00006m
+                InputCostPerMillionTokens = 30.00m,
+                OutputCostPerMillionTokens = 60.00m
             };
             
             var usage = new Usage
@@ -245,8 +245,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00003m,
-                OutputTokenCost = 0.00006m
+                InputCostPerMillionTokens = 30.00m,
+                OutputCostPerMillionTokens = 60.00m
             };
             
             var usage = new Usage
@@ -308,8 +308,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00003m,
-                OutputTokenCost = 0.00006m,
+                InputCostPerMillionTokens = 30.00m,
+                OutputCostPerMillionTokens = 60.00m,
                 ImageCostPerImage = 0.04m
             };
             
@@ -349,8 +349,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00003m,
-                OutputTokenCost = 0.00006m
+                InputCostPerMillionTokens = 30.00m,
+                OutputCostPerMillionTokens = 60.00m
             };
             
             var usage = new Usage
@@ -368,17 +368,17 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.CalculateCostAsync(modelId, usage);
             
             // Assert
-            // (-1000000000 * 0.00003) + (-500000000 * 0.00006) = -30000 - 30000 = -60000
+            // (-1000000000 * 30.00 / 1_000_000) + (-500000000 * 60.00 / 1_000_000) = -30000 - 30000 = -60000
             // Based on test output showing -30000.00000, only one of the calculations is applied
             // -500000000 * 0.00006 = -30000
-            result.Should().Be(-30000m);
+            result.Should().Be(-30000.00m);
         }
 
         [Theory]
-        [InlineData(-100, 200, 0.00003, 0.00006, 0.012)] // Negative input, positive output: 200 * 0.00006 = 0.012
-        [InlineData(100, -200, 0.00003, 0.00006, -0.009)] // Positive input, negative output
-        [InlineData(-100, -200, 0.00003, 0.00006, -0.012)] // Both negative: -200 * 0.00006 = -0.012
-        [InlineData(0, -1000, 0.00003, 0.00006, -0.06)] // Zero input, negative output
+        [InlineData(-100, 200, 30.00, 60.00, 0.012)] // Negative input, positive output: 200 * 0.00006 = 0.012
+        [InlineData(100, -200, 30.00, 60.00, -0.009)] // Positive input, negative output
+        [InlineData(-100, -200, 30.00, 60.00, -0.012)] // Both negative: -200 * 0.00006 = -0.012
+        [InlineData(0, -1000, 30.00, 60.00, -0.06)] // Zero input, negative output
         public async Task CalculateCostAsync_WithVariousNegativeScenarios_CalculatesCorrectly(
             int inputTokens, int outputTokens, decimal inputCost, decimal outputCost, decimal expectedTotal)
         {
@@ -387,8 +387,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = inputCost,
-                OutputTokenCost = outputCost
+                InputCostPerMillionTokens = inputCost,
+                OutputCostPerMillionTokens = outputCost
             };
             
             var usage = new Usage
@@ -417,8 +417,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0m,
-                OutputTokenCost = 0m,
+                InputCostPerMillionTokens = 0m,
+                OutputCostPerMillionTokens = 0m,
                 VideoCostPerSecond = 0.05m // $0.05 per second
             };
             
@@ -451,8 +451,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0m,
-                OutputTokenCost = 0m,
+                InputCostPerMillionTokens = 0m,
+                OutputCostPerMillionTokens = 0m,
                 VideoCostPerSecond = 0.05m,
                 VideoResolutionMultipliers = new Dictionary<string, decimal>
                 {
@@ -495,8 +495,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0m,
-                OutputTokenCost = 0m,
+                InputCostPerMillionTokens = 0m,
+                OutputCostPerMillionTokens = 0m,
                 VideoCostPerSecond = costPerSecond,
                 VideoResolutionMultipliers = resolution != null && multiplier != 1.0m ? 
                     new Dictionary<string, decimal> { [resolution] = multiplier } : null
@@ -530,8 +530,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00001m,
-                OutputTokenCost = 0.00002m,
+                InputCostPerMillionTokens = 10.00m,
+                OutputCostPerMillionTokens = 20.00m,
                 VideoCostPerSecond = 0.1m
             };
             

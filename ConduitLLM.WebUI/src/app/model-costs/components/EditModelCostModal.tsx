@@ -47,12 +47,12 @@ interface FormValues {
   costName: string;
   modelProviderMappingIds: number[];
   modelType: 'chat' | 'embedding' | 'image' | 'audio' | 'video';
-  // Token-based costs (per 1K tokens for display)
-  inputCostPer1K: number;
-  outputCostPer1K: number;
-  cachedInputCostPer1K: number;
-  cachedInputWriteCostPer1K: number;
-  embeddingCostPer1K: number;
+  // Token-based costs (per million tokens)
+  inputCostPerMillion: number;
+  outputCostPerMillion: number;
+  cachedInputCostPerMillion: number;
+  cachedInputWriteCostPerMillion: number;
+  embeddingCostPerMillion: number;
   // Other cost types
   searchUnitCostPer1K: number;
   inferenceStepCost: number;
@@ -97,12 +97,12 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
     costName: modelCost.costName,
     modelProviderMappingIds: getMappingIds(),
     modelType: modelCost.modelType,
-    // Token costs are already per token, convert to per 1K for display
-    inputCostPer1K: (modelCost.inputTokenCost ?? 0) * 1000,
-    outputCostPer1K: (modelCost.outputTokenCost ?? 0) * 1000,
-    cachedInputCostPer1K: (modelCost.cachedInputTokenCost ?? 0) * 1000,
-    cachedInputWriteCostPer1K: (modelCost.cachedInputWriteCost ?? 0) * 1000,
-    embeddingCostPer1K: (modelCost.embeddingTokenCost ?? 0) * 1000,
+    // Token costs are already per million tokens
+    inputCostPerMillion: modelCost.inputCostPerMillionTokens ?? 0,
+    outputCostPerMillion: modelCost.outputCostPerMillionTokens ?? 0,
+    cachedInputCostPerMillion: modelCost.cachedInputCostPerMillionTokens ?? 0,
+    cachedInputWriteCostPerMillion: modelCost.cachedInputWriteCostPerMillionTokens ?? 0,
+    embeddingCostPerMillion: modelCost.embeddingCostPerMillionTokens ?? 0,
     searchUnitCostPer1K: modelCost.costPerSearchUnit ?? 0,
     inferenceStepCost: modelCost.costPerInferenceStep ?? 0,
     defaultInferenceSteps: modelCost.defaultInferenceSteps ?? 0,
@@ -127,11 +127,11 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
       costName: (value) => !value?.trim() ? 'Cost name is required' : null,
       modelProviderMappingIds: (value) => !value || value.length === 0 ? 'At least one model must be selected' : null,
       priority: (value) => value < 0 ? 'Priority must be non-negative' : null,
-      inputCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
-      outputCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
-      cachedInputCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
-      cachedInputWriteCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
-      embeddingCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
+      inputCostPerMillion: (value) => value < 0 ? 'Cost must be non-negative' : null,
+      outputCostPerMillion: (value) => value < 0 ? 'Cost must be non-negative' : null,
+      cachedInputCostPerMillion: (value) => value < 0 ? 'Cost must be non-negative' : null,
+      cachedInputWriteCostPerMillion: (value) => value < 0 ? 'Cost must be non-negative' : null,
+      embeddingCostPerMillion: (value) => value < 0 ? 'Cost must be non-negative' : null,
       searchUnitCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
       inferenceStepCost: (value) => value < 0 ? 'Cost must be non-negative' : null,
       defaultInferenceSteps: (value) => value < 0 ? 'Steps must be non-negative' : null,
@@ -184,27 +184,22 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
       modelProviderMappingIds: values.modelProviderMappingIds
     };
     
-    // Convert from per 1K back to per token
-    const inputTokenCost = values.inputCostPer1K / 1000;
-    const outputTokenCost = values.outputCostPer1K / 1000;
-    const cachedInputTokenCost = values.cachedInputCostPer1K / 1000;
-    const cachedInputWriteTokenCost = values.cachedInputWriteCostPer1K / 1000;
-    
-    if (inputTokenCost !== modelCost.inputTokenCost) {
-      updates.inputTokenCost = inputTokenCost;
+    // Values are already per million tokens
+    if (values.inputCostPerMillion !== modelCost.inputCostPerMillionTokens) {
+      updates.inputCostPerMillionTokens = values.inputCostPerMillion;
     }
-    if (outputTokenCost !== modelCost.outputTokenCost) {
-      updates.outputTokenCost = outputTokenCost;
+    if (values.outputCostPerMillion !== modelCost.outputCostPerMillionTokens) {
+      updates.outputCostPerMillionTokens = values.outputCostPerMillion;
     }
-    if (cachedInputTokenCost !== modelCost.cachedInputTokenCost) {
-      updates.cachedInputTokenCost = cachedInputTokenCost || undefined;
+    if (values.cachedInputCostPerMillion !== modelCost.cachedInputCostPerMillionTokens) {
+      updates.cachedInputCostPerMillionTokens = values.cachedInputCostPerMillion || undefined;
     }
-    if (cachedInputWriteTokenCost !== modelCost.cachedInputWriteCost) {
-      updates.cachedInputWriteCost = cachedInputWriteTokenCost || undefined;
+    if (values.cachedInputWriteCostPerMillion !== modelCost.cachedInputWriteCostPerMillionTokens) {
+      updates.cachedInputWriteCostPerMillionTokens = values.cachedInputWriteCostPerMillion || undefined;
     }
     
-    if (values.embeddingCostPer1K > 0) {
-      updates.embeddingTokenCost = values.embeddingCostPer1K / 1000;
+    if (values.embeddingCostPerMillion > 0) {
+      updates.embeddingCostPerMillionTokens = values.embeddingCostPerMillion;
     }
     
     if (values.searchUnitCostPer1K !== modelCost.costPerSearchUnit) {
@@ -281,7 +276,7 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="md">
           <Alert icon={<IconInfoCircle size={16} />} color="blue">
-            Update pricing for {modelCost.costName}. Token costs are displayed per 1,000 tokens.
+            Update pricing for {modelCost.costName}. Token costs are displayed per million tokens.
           </Alert>
 
           <TextInput
@@ -325,34 +320,34 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
                       {modelType === 'chat' && (
                         <Group grow>
                           <NumberInput
-                            label="Input Cost (per 1K tokens)"
-                            placeholder="0.0000"
-                            decimalScale={4}
+                            label="Input Cost (per million tokens)"
+                            placeholder="15.00"
+                            decimalScale={2}
                             min={0}
-                            step={0.0001}
+                            step={0.50}
                             leftSection="$"
-                            {...form.getInputProps('inputCostPer1K')}
+                            {...form.getInputProps('inputCostPerMillion')}
                           />
                           <NumberInput
-                            label="Output Cost (per 1K tokens)"
-                            placeholder="0.0000"
-                            decimalScale={4}
+                            label="Output Cost (per million tokens)"
+                            placeholder="75.00"
+                            decimalScale={2}
                             min={0}
-                            step={0.0001}
+                            step={0.50}
                             leftSection="$"
-                            {...form.getInputProps('outputCostPer1K')}
+                            {...form.getInputProps('outputCostPerMillion')}
                           />
                         </Group>
                       )}
                       {modelType === 'embedding' && (
                         <NumberInput
-                          label="Embedding Cost (per 1K tokens)"
-                          placeholder="0.0000"
-                          decimalScale={4}
+                          label="Embedding Cost (per million tokens)"
+                          placeholder="1.00"
+                          decimalScale={2}
                           min={0}
-                          step={0.0001}
+                          step={0.10}
                           leftSection="$"
-                          {...form.getInputProps('embeddingCostPer1K')}
+                          {...form.getInputProps('embeddingCostPerMillion')}
                         />
                       )}
                     </Stack>
@@ -371,24 +366,24 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
                         </Alert>
                         <Group grow>
                           <NumberInput
-                            label="Cached Read Cost (per 1K tokens)"
-                            placeholder="0.0000"
+                            label="Cached Read Cost (per million tokens)"
+                            placeholder="0.50"
                             description="Cost for reading from cache"
-                            decimalScale={4}
+                            decimalScale={2}
                             min={0}
-                            step={0.0001}
+                            step={0.10}
                             leftSection="$"
-                            {...form.getInputProps('cachedInputCostPer1K')}
+                            {...form.getInputProps('cachedInputCostPerMillion')}
                           />
                           <NumberInput
-                            label="Cache Write Cost (per 1K tokens)"
-                            placeholder="0.0000"
+                            label="Cache Write Cost (per million tokens)"
+                            placeholder="15.00"
                             description="Cost for writing to cache"
-                            decimalScale={4}
+                            decimalScale={2}
                             min={0}
-                            step={0.0001}
+                            step={0.50}
                             leftSection="$"
-                            {...form.getInputProps('cachedInputWriteCostPer1K')}
+                            {...form.getInputProps('cachedInputWriteCostPerMillion')}
                           />
                         </Group>
                       </Stack>

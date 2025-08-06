@@ -2,12 +2,12 @@ import { ModelCost } from '../types/modelCost';
 
 export const formatCostPerMillionTokens = (cost?: number): string => {
   if (!cost) return '-';
-  return `$${(cost / 1000).toFixed(3)}`;
+  return `$${cost.toFixed(2)}`;
 };
 
 export const formatCostPerThousandTokens = (cost?: number): string => {
   if (!cost) return '-';
-  return `$${(cost / 1000000).toFixed(6)}`;
+  return `$${(cost / 1000).toFixed(3)}`;
 };
 
 export const formatCostPerImage = (cost?: number): string => {
@@ -67,17 +67,14 @@ export const formatModelPattern = (pattern: string): string => {
 export const getCostDisplayForModelType = (cost: ModelCost): string => {
   switch (cost.modelType) {
     case 'chat':
-      if (cost.inputTokenCost !== undefined && cost.outputTokenCost !== undefined) {
-        // Convert from per token to per million for display
-        const inputPerMillion = cost.inputTokenCost * 1000000;
-        const outputPerMillion = cost.outputTokenCost * 1000000;
-        return `${formatCostPerMillionTokens(inputPerMillion)} / ${formatCostPerMillionTokens(outputPerMillion)}`;
+      if (cost.inputCostPerMillionTokens !== undefined && cost.outputCostPerMillionTokens !== undefined) {
+        // Cost is already per million tokens
+        return `${formatCostPerMillionTokens(cost.inputCostPerMillionTokens)} / ${formatCostPerMillionTokens(cost.outputCostPerMillionTokens)}`;
       }
       return '-';
     case 'embedding':
-      if (cost.embeddingTokenCost !== undefined) {
-        const perMillion = cost.embeddingTokenCost * 1000000;
-        return formatCostPerMillionTokens(perMillion);
+      if (cost.embeddingCostPerMillionTokens !== undefined) {
+        return formatCostPerMillionTokens(cost.embeddingCostPerMillionTokens);
       }
       return '-';
     case 'image':
@@ -94,9 +91,9 @@ export const getCostDisplayForModelType = (cost: ModelCost): string => {
 export const getCostTypeLabel = (modelType: string): string => {
   switch (modelType) {
     case 'chat':
-      return 'Input / Output (per 1K tokens)';
+      return 'Input / Output (per million tokens)';
     case 'embedding':
-      return 'Per 1K tokens';
+      return 'Per million tokens';
     case 'image':
       return 'Per image';
     case 'audio':

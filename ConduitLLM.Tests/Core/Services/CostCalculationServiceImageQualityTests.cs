@@ -37,8 +37,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0m,
-                OutputTokenCost = 0m,
+                InputCostPerMillionTokens = 0m,
+                OutputCostPerMillionTokens = 0m,
                 ImageCostPerImage = 0.04m, // Standard quality price
                 ImageQualityMultipliers = new Dictionary<string, decimal>
                 {
@@ -75,8 +75,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0m,
-                OutputTokenCost = 0m,
+                InputCostPerMillionTokens = 0m,
+                OutputCostPerMillionTokens = 0m,
                 ImageCostPerImage = 0.04m,
                 ImageQualityMultipliers = new Dictionary<string, decimal>
                 {
@@ -113,8 +113,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0m,
-                OutputTokenCost = 0m,
+                InputCostPerMillionTokens = 0m,
+                OutputCostPerMillionTokens = 0m,
                 ImageCostPerImage = 0.02m,
                 ImageQualityMultipliers = new Dictionary<string, decimal>
                 {
@@ -151,8 +151,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0m,
-                OutputTokenCost = 0m,
+                InputCostPerMillionTokens = 0m,
+                OutputCostPerMillionTokens = 0m,
                 ImageCostPerImage = 0.04m,
                 ImageQualityMultipliers = new Dictionary<string, decimal>
                 {
@@ -189,8 +189,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0m,
-                OutputTokenCost = 0m,
+                InputCostPerMillionTokens = 0m,
+                OutputCostPerMillionTokens = 0m,
                 ImageCostPerImage = 0.04m,
                 ImageQualityMultipliers = new Dictionary<string, decimal>
                 {

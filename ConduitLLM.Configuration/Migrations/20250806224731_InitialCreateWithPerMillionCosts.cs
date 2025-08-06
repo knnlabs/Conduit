@@ -7,7 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ConduitLLM.Configuration.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialCreateWithPerMillionCosts : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -110,9 +110,9 @@ namespace ConduitLLM.Configuration.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     CostName = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    InputTokenCost = table.Column<decimal>(type: "numeric(18,10)", nullable: false),
-                    OutputTokenCost = table.Column<decimal>(type: "numeric(18,10)", nullable: false),
-                    EmbeddingTokenCost = table.Column<decimal>(type: "numeric(18,10)", nullable: true),
+                    InputCostPerMillionTokens = table.Column<decimal>(type: "numeric(18,10)", nullable: false),
+                    OutputCostPerMillionTokens = table.Column<decimal>(type: "numeric(18,10)", nullable: false),
+                    EmbeddingCostPerMillionTokens = table.Column<decimal>(type: "numeric(18,10)", nullable: true),
                     ImageCostPerImage = table.Column<decimal>(type: "numeric(18,4)", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
@@ -131,8 +131,8 @@ namespace ConduitLLM.Configuration.Migrations
                     BatchProcessingMultiplier = table.Column<decimal>(type: "numeric(18,4)", nullable: true),
                     SupportsBatchProcessing = table.Column<bool>(type: "boolean", nullable: false),
                     ImageQualityMultipliers = table.Column<string>(type: "text", nullable: true),
-                    CachedInputTokenCost = table.Column<decimal>(type: "numeric(18,10)", nullable: true),
-                    CachedInputWriteCost = table.Column<decimal>(type: "numeric(18,10)", nullable: true),
+                    CachedInputCostPerMillionTokens = table.Column<decimal>(type: "numeric(18,10)", nullable: true),
+                    CachedInputWriteCostPerMillionTokens = table.Column<decimal>(type: "numeric(18,10)", nullable: true),
                     CostPerSearchUnit = table.Column<decimal>(type: "numeric(18,8)", nullable: true),
                     CostPerInferenceStep = table.Column<decimal>(type: "numeric(18,8)", nullable: true),
                     DefaultInferenceSteps = table.Column<int>(type: "integer", nullable: true)

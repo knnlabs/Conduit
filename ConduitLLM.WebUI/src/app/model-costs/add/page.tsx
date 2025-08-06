@@ -40,12 +40,12 @@ interface FormValues {
   costName: string;
   modelProviderMappingIds: number[];
   modelType: 'chat' | 'embedding' | 'image' | 'audio' | 'video';
-  // Token-based costs (per 1K tokens for display)
-  inputCostPer1K: number;
-  outputCostPer1K: number;
-  cachedInputCostPer1K: number;
-  cachedInputWriteCostPer1K: number;
-  embeddingCostPer1K: number;
+  // Token-based costs (per million tokens)
+  inputCostPerMillion: number;
+  outputCostPerMillion: number;
+  cachedInputCostPerMillion: number;
+  cachedInputWriteCostPerMillion: number;
+  embeddingCostPerMillion: number;
   // Other cost types
   searchUnitCostPer1K: number;
   inferenceStepCost: number;
@@ -77,11 +77,11 @@ export default function AddModelCostPage() {
       costName: '',
       modelProviderMappingIds: [],
       modelType: 'chat',
-      inputCostPer1K: 0,
-      outputCostPer1K: 0,
-      cachedInputCostPer1K: 0,
-      cachedInputWriteCostPer1K: 0,
-      embeddingCostPer1K: 0,
+      inputCostPerMillion: 0,
+      outputCostPerMillion: 0,
+      cachedInputCostPerMillion: 0,
+      cachedInputWriteCostPerMillion: 0,
+      embeddingCostPerMillion: 0,
       searchUnitCostPer1K: 0,
       inferenceStepCost: 0,
       defaultInferenceSteps: 0,
@@ -103,11 +103,11 @@ export default function AddModelCostPage() {
       costName: (value) => !value?.trim() ? 'Cost name is required' : null,
       modelProviderMappingIds: (value) => !value || value.length === 0 ? 'At least one model must be selected' : null,
       priority: (value) => value < 0 ? 'Priority must be non-negative' : null,
-      inputCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
-      outputCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
-      cachedInputCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
-      cachedInputWriteCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
-      embeddingCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
+      inputCostPerMillion: (value) => value < 0 ? 'Cost must be non-negative' : null,
+      outputCostPerMillion: (value) => value < 0 ? 'Cost must be non-negative' : null,
+      cachedInputCostPerMillion: (value) => value < 0 ? 'Cost must be non-negative' : null,
+      cachedInputWriteCostPerMillion: (value) => value < 0 ? 'Cost must be non-negative' : null,
+      embeddingCostPerMillion: (value) => value < 0 ? 'Cost must be non-negative' : null,
       searchUnitCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
       inferenceStepCost: (value) => value < 0 ? 'Cost must be non-negative' : null,
       defaultInferenceSteps: (value) => value < 0 ? 'Steps must be non-negative' : null,
@@ -160,12 +160,12 @@ export default function AddModelCostPage() {
       costName: values.costName,
       modelProviderMappingIds: values.modelProviderMappingIds,
       modelType: values.modelType,
-      // Convert from per 1K to per token
-      inputTokenCost: values.inputCostPer1K / 1000,
-      outputTokenCost: values.outputCostPer1K / 1000,
-      cachedInputTokenCost: values.cachedInputCostPer1K > 0 ? values.cachedInputCostPer1K / 1000 : undefined,
-      cachedInputWriteCost: values.cachedInputWriteCostPer1K > 0 ? values.cachedInputWriteCostPer1K / 1000 : undefined,
-      embeddingTokenCost: values.embeddingCostPer1K > 0 ? values.embeddingCostPer1K / 1000 : undefined,
+      // Values are already per million tokens
+      inputCostPerMillionTokens: values.inputCostPerMillion,
+      outputCostPerMillionTokens: values.outputCostPerMillion,
+      cachedInputCostPerMillionTokens: values.cachedInputCostPerMillion > 0 ? values.cachedInputCostPerMillion : undefined,
+      cachedInputWriteCostPerMillionTokens: values.cachedInputWriteCostPerMillion > 0 ? values.cachedInputWriteCostPerMillion : undefined,
+      embeddingCostPerMillionTokens: values.embeddingCostPerMillion > 0 ? values.embeddingCostPerMillion : undefined,
       costPerSearchUnit: values.searchUnitCostPer1K > 0 ? values.searchUnitCostPer1K : undefined,
       costPerInferenceStep: values.inferenceStepCost > 0 ? values.inferenceStepCost : undefined,
       defaultInferenceSteps: values.defaultInferenceSteps > 0 ? values.defaultInferenceSteps : undefined,
@@ -298,34 +298,34 @@ export default function AddModelCostPage() {
                         {modelType === 'chat' && (
                           <Group grow>
                             <NumberInput
-                              label="Input Cost (per 1K tokens)"
-                              placeholder="0.0000"
-                              decimalScale={4}
+                              label="Input Cost (per million tokens)"
+                              placeholder="15.00"
+                              decimalScale={2}
                               min={0}
-                              step={0.0001}
+                              step={0.50}
                               leftSection="$"
-                              {...form.getInputProps('inputCostPer1K')}
+                              {...form.getInputProps('inputCostPerMillion')}
                             />
                             <NumberInput
-                              label="Output Cost (per 1K tokens)"
-                              placeholder="0.0000"
-                              decimalScale={4}
+                              label="Output Cost (per million tokens)"
+                              placeholder="75.00"
+                              decimalScale={2}
                               min={0}
-                              step={0.0001}
+                              step={0.50}
                               leftSection="$"
-                              {...form.getInputProps('outputCostPer1K')}
+                              {...form.getInputProps('outputCostPerMillion')}
                             />
                           </Group>
                         )}
                         {modelType === 'embedding' && (
                           <NumberInput
-                            label="Embedding Cost (per 1K tokens)"
-                            placeholder="0.0000"
-                            decimalScale={4}
+                            label="Embedding Cost (per million tokens)"
+                            placeholder="1.00"
+                            decimalScale={2}
                             min={0}
-                            step={0.0001}
+                            step={0.10}
                             leftSection="$"
-                            {...form.getInputProps('embeddingCostPer1K')}
+                            {...form.getInputProps('embeddingCostPerMillion')}
                           />
                         )}
                       </Stack>
@@ -344,24 +344,24 @@ export default function AddModelCostPage() {
                           </Alert>
                           <Group grow>
                             <NumberInput
-                              label="Cached Read Cost (per 1K tokens)"
-                              placeholder="0.0000"
+                              label="Cached Read Cost (per million tokens)"
+                              placeholder="0.50"
                               description="Cost for reading from cache"
-                              decimalScale={4}
+                              decimalScale={2}
                               min={0}
-                              step={0.0001}
+                              step={0.10}
                               leftSection="$"
-                              {...form.getInputProps('cachedInputCostPer1K')}
+                              {...form.getInputProps('cachedInputCostPerMillion')}
                             />
                             <NumberInput
-                              label="Cache Write Cost (per 1K tokens)"
-                              placeholder="0.0000"
+                              label="Cache Write Cost (per million tokens)"
+                              placeholder="15.00"
                               description="Cost for writing to cache"
-                              decimalScale={4}
+                              decimalScale={2}
                               min={0}
-                              step={0.0001}
+                              step={0.50}
                               leftSection="$"
-                              {...form.getInputProps('cachedInputWriteCostPer1K')}
+                              {...form.getInputProps('cachedInputWriteCostPerMillion')}
                             />
                           </Group>
                         </Stack>

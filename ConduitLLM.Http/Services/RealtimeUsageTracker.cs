@@ -180,15 +180,15 @@ namespace ConduitLLM.Http.Services
 
             decimal totalCost = 0;
 
-            // Calculate token costs (costs are typically per 1K tokens)
+            // Calculate token costs (costs are now per million tokens)
             if (session.InputTokens > 0)
             {
-                totalCost += (session.InputTokens / 1000m) * modelCost.InputTokenCost;
+                totalCost += (session.InputTokens * modelCost.InputCostPerMillionTokens) / 1_000_000m;
             }
 
             if (session.OutputTokens > 0)
             {
-                totalCost += (session.OutputTokens / 1000m) * modelCost.OutputTokenCost;
+                totalCost += (session.OutputTokens * modelCost.OutputCostPerMillionTokens) / 1_000_000m;
             }
 
             // For audio, we'll use a simple approximation
@@ -196,21 +196,23 @@ namespace ConduitLLM.Http.Services
             if (session.InputAudioSeconds > 0)
             {
                 var inputMinutes = (decimal)(session.InputAudioSeconds / 60.0);
-                totalCost += inputMinutes * modelCost.InputTokenCost; // 1 minute ≈ 1K tokens worth
+                var estimatedTokens = inputMinutes * 1000; // 1 minute ≈ 1K tokens
+                totalCost += (estimatedTokens * modelCost.InputCostPerMillionTokens) / 1_000_000m;
             }
 
             if (session.OutputAudioSeconds > 0)
             {
                 var outputMinutes = (decimal)(session.OutputAudioSeconds / 60.0);
-                totalCost += outputMinutes * modelCost.OutputTokenCost; // 1 minute ≈ 1K tokens worth
+                var estimatedTokens = outputMinutes * 1000; // 1 minute ≈ 1K tokens
+                totalCost += (estimatedTokens * modelCost.OutputCostPerMillionTokens) / 1_000_000m;
             }
 
             // Add function call costs
             // Assuming each function call costs approximately 100 tokens worth
             if (session.FunctionCalls > 0)
             {
-                var functionCallCost = (session.FunctionCalls * 100m / 1000m) * modelCost.OutputTokenCost;
-                totalCost += functionCallCost;
+                var estimatedTokens = session.FunctionCalls * 100m; // Each call ≈ 100 tokens
+                totalCost += (estimatedTokens * modelCost.OutputCostPerMillionTokens) / 1_000_000m;
             }
 
             return totalCost;
@@ -278,12 +280,12 @@ namespace ConduitLLM.Http.Services
                 // Calculate cost breakdown
                 details.Costs = new CostBreakdown
                 {
-                    InputAudioCost = (decimal)(session.InputAudioSeconds / 60.0) * modelCost.InputTokenCost,
-                    OutputAudioCost = (decimal)(session.OutputAudioSeconds / 60.0) * modelCost.OutputTokenCost,
-                    TokenCost = (session.InputTokens / 1000m * modelCost.InputTokenCost) +
-                                (session.OutputTokens / 1000m * modelCost.OutputTokenCost),
+                    InputAudioCost = (decimal)(session.InputAudioSeconds / 60.0 * 1000) * modelCost.InputCostPerMillionTokens / 1_000_000m,
+                    OutputAudioCost = (decimal)(session.OutputAudioSeconds / 60.0 * 1000) * modelCost.OutputCostPerMillionTokens / 1_000_000m,
+                    TokenCost = (session.InputTokens * modelCost.InputCostPerMillionTokens / 1_000_000m) +
+                                (session.OutputTokens * modelCost.OutputCostPerMillionTokens / 1_000_000m),
                     FunctionCallCost = session.FunctionCalls > 0 
-                        ? (session.FunctionCalls * 100m / 1000m) * modelCost.OutputTokenCost 
+                        ? (session.FunctionCalls * 100m * modelCost.OutputCostPerMillionTokens) / 1_000_000m
                         : 0,
                     AdditionalFees = 0
                 };

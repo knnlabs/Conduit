@@ -161,20 +161,20 @@ namespace ConduitLLM.Http.EventHandlers
                         var pricingCacheKey = $"{PricingCacheKeyPrefix}provider_{message.ProviderId}_{modelId}";
                         var previousCost = _cache.Get<decimal?>(pricingCacheKey);
                         
-                        if (previousCost.HasValue && previousCost.Value != currentCost.InputTokenCost)
+                        if (previousCost.HasValue && previousCost.Value != currentCost.InputCostPerMillionTokens)
                         {
                             updates.Add(new ModelPricingUpdate
                             {
                                 ModelId = modelId,
                                 ProviderId = message.ProviderId,
                                 PreviousCost = previousCost.Value,
-                                NewCost = currentCost.InputTokenCost,
+                                NewCost = currentCost.InputCostPerMillionTokens,
                                 CostDetails = currentCost
                             });
                         }
                         
                         // Update cache
-                        _cache.Set(pricingCacheKey, currentCost.InputTokenCost, TimeSpan.FromDays(7));
+                        _cache.Set(pricingCacheKey, currentCost.InputCostPerMillionTokens, TimeSpan.FromDays(7));
                     }
                 }
                 catch (Exception ex)

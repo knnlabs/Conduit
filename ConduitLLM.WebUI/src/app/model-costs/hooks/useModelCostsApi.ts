@@ -173,8 +173,8 @@ export function useModelCostsApi() {
       costName: string;
       modelAliases: string[];
       modelType: string;
-      inputTokenCost: number;
-      outputTokenCost: number;
+      inputCostPerMillionTokens: number;
+      outputCostPerMillionTokens: number;
       [key: string]: unknown;
     }>
   ): Promise<{ success: number; failed: number; errors: Array<{ costName: string; error: string }> }> => {

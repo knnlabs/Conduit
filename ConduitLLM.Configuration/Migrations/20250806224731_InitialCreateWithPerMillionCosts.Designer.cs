@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ConduitLLM.Configuration.Migrations
 {
     [DbContext(typeof(ConduitDbContext))]
-    [Migration("20250806031100_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20250806224731_InitialCreateWithPerMillionCosts")]
+    partial class InitialCreateWithPerMillionCosts
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -895,10 +895,10 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<decimal?>("BatchProcessingMultiplier")
                         .HasColumnType("decimal(18, 4)");
 
-                    b.Property<decimal?>("CachedInputTokenCost")
+                    b.Property<decimal?>("CachedInputCostPerMillionTokens")
                         .HasColumnType("decimal(18, 10)");
 
-                    b.Property<decimal?>("CachedInputWriteCost")
+                    b.Property<decimal?>("CachedInputWriteCostPerMillionTokens")
                         .HasColumnType("decimal(18, 10)");
 
                     b.Property<string>("CostName")
@@ -925,7 +925,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<DateTime>("EffectiveDate")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<decimal?>("EmbeddingTokenCost")
+                    b.Property<decimal?>("EmbeddingCostPerMillionTokens")
                         .HasColumnType("decimal(18, 10)");
 
                     b.Property<DateTime?>("ExpiryDate")
@@ -937,7 +937,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<string>("ImageQualityMultipliers")
                         .HasColumnType("text");
 
-                    b.Property<decimal>("InputTokenCost")
+                    b.Property<decimal>("InputCostPerMillionTokens")
                         .HasColumnType("decimal(18, 10)");
 
                     b.Property<bool>("IsActive")
@@ -948,7 +948,7 @@ namespace ConduitLLM.Configuration.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<decimal>("OutputTokenCost")
+                    b.Property<decimal>("OutputCostPerMillionTokens")
                         .HasColumnType("decimal(18, 10)");
 
                     b.Property<int>("Priority")

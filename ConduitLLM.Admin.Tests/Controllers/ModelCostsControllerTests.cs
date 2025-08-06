@@ -66,8 +66,8 @@ namespace ConduitLLM.Admin.Tests.Controllers
             // Arrange
             var costs = new List<ModelCostDto>
             {
-                new() { Id = 1, CostName = "GPT-4 Pricing", InputTokenCost = 0.03m, OutputTokenCost = 0.06m },
-                new() { Id = 2, CostName = "Claude-3 Pricing", InputTokenCost = 0.02m, OutputTokenCost = 0.04m }
+                new() { Id = 1, CostName = "GPT-4 Pricing", InputCostPerMillionTokens = 30.00m, OutputCostPerMillionTokens = 60.00m },
+                new() { Id = 2, CostName = "Claude-3 Pricing", InputCostPerMillionTokens = 20.00m, OutputCostPerMillionTokens = 40.00m }
             };
 
             _mockService.Setup(x => x.GetAllModelCostsAsync())
@@ -112,8 +112,8 @@ namespace ConduitLLM.Admin.Tests.Controllers
             {
                 Id = 1,
                 CostName = "GPT-4 Pricing",
-                InputTokenCost = 0.03m,
-                OutputTokenCost = 0.06m
+                InputCostPerMillionTokens = 30.00m,
+                OutputCostPerMillionTokens = 60.00m
             };
 
             _mockService.Setup(x => x.GetModelCostByIdAsync(1))
@@ -126,7 +126,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             var okResult = Assert.IsType<OkObjectResult>(result);
             var returnedCost = Assert.IsType<ModelCostDto>(okResult.Value);
             returnedCost.Id.Should().Be(1);
-            returnedCost.InputTokenCost.Should().Be(0.03m);
+            returnedCost.InputCostPerMillionTokens.Should().Be(30.00m);
         }
 
         [DynamicObjectIssue("Test expects string response but controller may return object")]
@@ -154,8 +154,8 @@ namespace ConduitLLM.Admin.Tests.Controllers
             // Arrange
             var costs = new List<ModelCostDto>
             {
-                new() { Id = 1, CostName = "GPT-3.5 Pricing", InputTokenCost = 0.001m },
-                new() { Id = 2, CostName = "GPT-4 Pricing", InputTokenCost = 0.03m }
+                new() { Id = 1, CostName = "GPT-3.5 Pricing", InputCostPerMillionTokens = 1.00m },
+                new() { Id = 2, CostName = "GPT-4 Pricing", InputCostPerMillionTokens = 30.00m }
             };
 
             _mockService.Setup(x => x.GetModelCostsByProviderAsync(1))
@@ -198,7 +198,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             {
                 Id = 1,
                 CostName = "GPT-4 Turbo Pricing",
-                InputTokenCost = 0.01m
+                InputCostPerMillionTokens = 10.00m
             };
 
             _mockService.Setup(x => x.GetModelCostByCostNameAsync("GPT-4 Turbo Pricing"))
@@ -239,16 +239,16 @@ namespace ConduitLLM.Admin.Tests.Controllers
             var createDto = new CreateModelCostDto
             {
                 CostName = "New Model Pricing",
-                InputTokenCost = 0.01m,
-                OutputTokenCost = 0.02m
+                InputCostPerMillionTokens = 10.00m,
+                OutputCostPerMillionTokens = 20.00m
             };
 
             var createdDto = new ModelCostDto
             {
                 Id = 10,
                 CostName = createDto.CostName,
-                InputTokenCost = createDto.InputTokenCost,
-                OutputTokenCost = createDto.OutputTokenCost
+                InputCostPerMillionTokens = createDto.InputCostPerMillionTokens,
+                OutputCostPerMillionTokens = createDto.OutputCostPerMillionTokens
             };
 
             _mockService.Setup(x => x.CreateModelCostAsync(It.IsAny<CreateModelCostDto>()))
@@ -273,7 +273,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             var createDto = new CreateModelCostDto
             {
                 CostName = "Existing Cost",
-                InputTokenCost = 0.01m
+                InputCostPerMillionTokens = 10.00m
             };
 
             _mockService.Setup(x => x.CreateModelCostAsync(It.IsAny<CreateModelCostDto>()))
@@ -299,8 +299,8 @@ namespace ConduitLLM.Admin.Tests.Controllers
             {
                 Id = 1,
                 CostName = "GPT-4 Updated Pricing",
-                InputTokenCost = 0.02m,
-                OutputTokenCost = 0.04m
+                InputCostPerMillionTokens = 20.00m,
+                OutputCostPerMillionTokens = 40.00m
             };
 
             _mockService.Setup(x => x.UpdateModelCostAsync(It.IsAny<UpdateModelCostDto>()))
@@ -321,7 +321,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             {
                 Id = 2,
                 CostName = "Model Pricing",
-                InputTokenCost = 0.02m
+                InputCostPerMillionTokens = 20.00m
             };
 
             // Act
@@ -340,7 +340,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             {
                 Id = 999,
                 CostName = "Non-existent Model",
-                InputTokenCost = 0.02m
+                InputCostPerMillionTokens = 20.00m
             };
 
             _mockService.Setup(x => x.UpdateModelCostAsync(It.IsAny<UpdateModelCostDto>()))
@@ -442,8 +442,8 @@ namespace ConduitLLM.Admin.Tests.Controllers
             // Arrange
             var modelCosts = new List<CreateModelCostDto>
             {
-                new() { CostName = "Model 1 Pricing", InputTokenCost = 0.01m },
-                new() { CostName = "Model 2 Pricing", InputTokenCost = 0.02m }
+                new() { CostName = "Model 1 Pricing", InputCostPerMillionTokens = 10.00m },
+                new() { CostName = "Model 2 Pricing", InputCostPerMillionTokens = 20.00m }
             };
 
             _mockService.Setup(x => x.ImportModelCostsAsync(It.IsAny<IEnumerable<CreateModelCostDto>>()))
@@ -476,7 +476,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
         public async Task ExportCsv_ShouldReturnCsvFile()
         {
             // Arrange
-            var csvData = "CostName,InputTokenCost,OutputTokenCost\nGPT-4 Pricing,0.03,0.06";
+            var csvData = "CostName,InputCostPerMillionTokens,OutputCostPerMillionTokens\nGPT-4 Pricing,0.03,0.06";
             _mockService.Setup(x => x.ExportModelCostsAsync("csv", null))
                 .ReturnsAsync(csvData);
 
@@ -519,7 +519,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
         public async Task ImportCsv_WithValidFile_ShouldReturnImportResult()
         {
             // Arrange
-            var csvContent = "CostName,InputTokenCost,OutputTokenCost\nGPT-4 Pricing,0.03,0.06";
+            var csvContent = "CostName,InputCostPerMillionTokens,OutputCostPerMillionTokens\nGPT-4 Pricing,0.03,0.06";
             var stream = new MemoryStream(Encoding.UTF8.GetBytes(csvContent));
             var formFile = new FormFile(stream, 0, stream.Length, "file", "costs.csv")
             {

@@ -181,9 +181,11 @@ public class ModelCostService : IModelCostService
 
             // Update properties
             existingCost.CostName = modelCost.CostName;
-            existingCost.InputTokenCost = modelCost.InputTokenCost;
-            existingCost.OutputTokenCost = modelCost.OutputTokenCost;
-            existingCost.EmbeddingTokenCost = modelCost.EmbeddingTokenCost;
+            existingCost.InputCostPerMillionTokens = modelCost.InputCostPerMillionTokens;
+            existingCost.OutputCostPerMillionTokens = modelCost.OutputCostPerMillionTokens;
+            existingCost.EmbeddingCostPerMillionTokens = modelCost.EmbeddingCostPerMillionTokens;
+            existingCost.CachedInputCostPerMillionTokens = modelCost.CachedInputCostPerMillionTokens;
+            existingCost.CachedInputWriteCostPerMillionTokens = modelCost.CachedInputWriteCostPerMillionTokens;
             existingCost.ImageCostPerImage = modelCost.ImageCostPerImage;
             existingCost.UpdatedAt = DateTime.UtcNow;
 

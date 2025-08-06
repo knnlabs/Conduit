@@ -4,11 +4,11 @@ export interface ParsedModelCost {
   costName: string;
   modelAliases: string[];
   modelType: string;
-  inputCostPer1K: number;
-  outputCostPer1K: number;
-  cachedInputCostPer1K?: number;
-  cachedInputWriteCostPer1K?: number;
-  embeddingCostPer1K?: number;
+  inputCostPerMillion: number;
+  outputCostPerMillion: number;
+  cachedInputCostPerMillion?: number;
+  cachedInputWriteCostPerMillion?: number;
+  embeddingCostPerMillion?: number;
   imageCostPerImage?: number;
   audioCostPerMinute?: number;
   audioCostPerKCharacters?: number;
@@ -90,8 +90,8 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
         costName: '',
         modelAliases: [],
         modelType: '',
-        inputCostPer1K: 0,
-        outputCostPer1K: 0,
+        inputCostPerMillion: 0,
+        outputCostPerMillion: 0,
         priority: 0,
         active: false,
         supportsBatchProcessing: false,
@@ -121,11 +121,11 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
       costName: row['cost name']?.trim() ?? '',
       modelAliases: row['associated model aliases']?.split(',').map(a => a.trim()).filter(a => a) ?? [],
       modelType: row['model type']?.trim().toLowerCase() ?? 'chat',
-      inputCostPer1K: parseNumericValue(row['input cost (per 1k tokens)'], 0) ?? 0,
-      outputCostPer1K: parseNumericValue(row['output cost (per 1k tokens)'], 0) ?? 0,
-      cachedInputCostPer1K: parseNumericValue(row['cached input cost (per 1k tokens)']),
-      cachedInputWriteCostPer1K: parseNumericValue(row['cache write cost (per 1k tokens)']),
-      embeddingCostPer1K: parseNumericValue(row['embedding cost (per 1k tokens)']),
+      inputCostPerMillion: parseNumericValue(row['input cost (per million tokens)'], 0) ?? 0,
+      outputCostPerMillion: parseNumericValue(row['output cost (per million tokens)'], 0) ?? 0,
+      cachedInputCostPerMillion: parseNumericValue(row['cached input cost (per million tokens)']),
+      cachedInputWriteCostPerMillion: parseNumericValue(row['cache write cost (per million tokens)']),
+      embeddingCostPerMillion: parseNumericValue(row['embedding cost (per million tokens)']),
       imageCostPerImage: parseNumericValue(row['image cost (per image)']),
       audioCostPerMinute: parseNumericValue(row['audio cost (per minute)']),
       audioCostPerKCharacters: parseNumericValue(row['audio cost (per 1k characters)']),
@@ -157,11 +157,11 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
     if (cost.priority < 0) errors.push('Priority must be non-negative');
     
     // Cost validation
-    if (cost.inputCostPer1K < 0) errors.push('Input cost cannot be negative');
-    if (cost.outputCostPer1K < 0) errors.push('Output cost cannot be negative');
-    if (cost.cachedInputCostPer1K !== undefined && cost.cachedInputCostPer1K < 0) errors.push('Cached input cost cannot be negative');
-    if (cost.cachedInputWriteCostPer1K !== undefined && cost.cachedInputWriteCostPer1K < 0) errors.push('Cache write cost cannot be negative');
-    if (cost.embeddingCostPer1K !== undefined && cost.embeddingCostPer1K < 0) errors.push('Embedding cost cannot be negative');
+    if (cost.inputCostPerMillion < 0) errors.push('Input cost cannot be negative');
+    if (cost.outputCostPerMillion < 0) errors.push('Output cost cannot be negative');
+    if (cost.cachedInputCostPerMillion !== undefined && cost.cachedInputCostPerMillion < 0) errors.push('Cached input cost cannot be negative');
+    if (cost.cachedInputWriteCostPerMillion !== undefined && cost.cachedInputWriteCostPerMillion < 0) errors.push('Cache write cost cannot be negative');
+    if (cost.embeddingCostPerMillion !== undefined && cost.embeddingCostPerMillion < 0) errors.push('Embedding cost cannot be negative');
     if (cost.imageCostPerImage !== undefined && cost.imageCostPerImage < 0) errors.push('Image cost cannot be negative');
     if (cost.audioCostPerMinute !== undefined && cost.audioCostPerMinute < 0) errors.push('Audio cost per minute cannot be negative');
     if (cost.audioCostPerKCharacters !== undefined && cost.audioCostPerKCharacters < 0) errors.push('Audio cost per 1k characters cannot be negative');
@@ -219,8 +219,8 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
     }
     
     // Reasonable upper bounds validation
-    if (cost.inputCostPer1K > 1000) errors.push('Input cost seems unreasonably high (>$1000 per 1K tokens)');
-    if (cost.outputCostPer1K > 1000) errors.push('Output cost seems unreasonably high (>$1000 per 1K tokens)');
+    if (cost.inputCostPerMillion > 1000000) errors.push('Input cost seems unreasonably high (>$1,000,000 per million tokens)');
+    if (cost.outputCostPerMillion > 1000000) errors.push('Output cost seems unreasonably high (>$1,000,000 per million tokens)');
 
     cost.isValid = errors.length === 0;
     cost.errors = errors;
@@ -249,11 +249,11 @@ export const convertParsedToDto = (parsedData: ParsedModelCost[]): CreateModelCo
       costName: cost.costName,
       modelProviderMappingIds: [], // Will be resolved during import
       modelType: cost.modelType as 'chat' | 'embedding' | 'image' | 'audio' | 'video',
-      inputTokenCost: cost.inputCostPer1K / 1000, // Convert to per token
-      outputTokenCost: cost.outputCostPer1K / 1000,
-      cachedInputTokenCost: cost.cachedInputCostPer1K ? cost.cachedInputCostPer1K / 1000 : undefined,
-      cachedInputWriteCost: cost.cachedInputWriteCostPer1K ? cost.cachedInputWriteCostPer1K / 1000 : undefined,
-      embeddingTokenCost: cost.embeddingCostPer1K ? cost.embeddingCostPer1K / 1000 : undefined,
+      inputCostPerMillionTokens: cost.inputCostPerMillion, // Already per million
+      outputCostPerMillionTokens: cost.outputCostPerMillion,
+      cachedInputCostPerMillionTokens: cost.cachedInputCostPerMillion,
+      cachedInputWriteCostPerMillionTokens: cost.cachedInputWriteCostPerMillion,
+      embeddingCostPerMillionTokens: cost.embeddingCostPerMillion,
       imageCostPerImage: cost.imageCostPerImage,
       audioCostPerMinute: cost.audioCostPerMinute,
       videoCostPerSecond: cost.videoCostPerSecond,

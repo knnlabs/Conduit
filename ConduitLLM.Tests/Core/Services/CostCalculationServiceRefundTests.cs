@@ -34,8 +34,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00001m, // $0.01 per 1K tokens
-                OutputTokenCost = 0.00003m  // $0.03 per 1K tokens
+                InputCostPerMillionTokens = 10.00m, // $0.01 per 1K tokens
+                OutputCostPerMillionTokens = 30.00m  // $0.03 per 1K tokens
             };
 
             _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
@@ -50,7 +50,7 @@ namespace ConduitLLM.Tests.Core.Services
             result.ModelId.Should().Be(modelId);
             result.RefundReason.Should().Be(refundReason);
             result.OriginalTransactionId.Should().Be(originalTransactionId);
-            result.RefundAmount.Should().Be(0.0125m); // (500 * 0.00001) + (250 * 0.00003)
+            result.RefundAmount.Should().Be(0.0125m); // (500 * 10.00 / 1_000_000) + (250 * 30.00 / 1_000_000)
             result.Breakdown.Should().NotBeNull();
             result.Breakdown!.InputTokenRefund.Should().Be(0.005m);
             result.Breakdown.OutputTokenRefund.Should().Be(0.0075m);
@@ -116,8 +116,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00001m,
-                OutputTokenCost = 0.00003m
+                InputCostPerMillionTokens = 10.00m,
+                OutputCostPerMillionTokens = 30.00m
             };
 
             _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
@@ -146,8 +146,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0m,
-                OutputTokenCost = 0m,
+                InputCostPerMillionTokens = 0m,
+                OutputCostPerMillionTokens = 0m,
                 ImageCostPerImage = 0.04m // $0.04 per image
             };
 
@@ -189,8 +189,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0m,
-                OutputTokenCost = 0m,
+                InputCostPerMillionTokens = 0m,
+                OutputCostPerMillionTokens = 0m,
                 VideoCostPerSecond = 0.1m,
                 VideoResolutionMultipliers = new Dictionary<string, decimal>
                 {
@@ -222,9 +222,9 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00001m,
-                OutputTokenCost = 0m,
-                EmbeddingTokenCost = 0.0001m // $0.0001 per token
+                InputCostPerMillionTokens = 10.00m,
+                OutputCostPerMillionTokens = 0m,
+                EmbeddingCostPerMillionTokens = 100.00m // $0.0001 per token
             };
 
             _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
@@ -251,9 +251,9 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.0001m,       // Regular cost (expensive)
-                OutputTokenCost = 0m,
-                EmbeddingTokenCost = 0.00001m,  // Embedding cost (10x cheaper)
+                InputCostPerMillionTokens = 100.00m,       // Regular cost (expensive)
+                OutputCostPerMillionTokens = 0m,
+                EmbeddingCostPerMillionTokens = 10.00m,  // Embedding cost (10x cheaper)
                 ImageCostPerImage = 0.02m
             };
 
@@ -286,8 +286,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00001m,
-                OutputTokenCost = 0.00003m
+                InputCostPerMillionTokens = 10.00m,
+                OutputCostPerMillionTokens = 30.00m
             };
 
             _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
@@ -351,8 +351,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00001m,
-                OutputTokenCost = 0.00003m,
+                InputCostPerMillionTokens = 10.00m,
+                OutputCostPerMillionTokens = 30.00m,
                 ImageCostPerImage = 0.04m,
                 VideoCostPerSecond = 0.1m,
                 VideoResolutionMultipliers = new Dictionary<string, decimal>
@@ -402,10 +402,10 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00001m,
-                OutputTokenCost = 0.00003m,
-                CachedInputTokenCost = 0.000001m,
-                CachedInputWriteCost = 0.000025m
+                InputCostPerMillionTokens = 10.00m,
+                OutputCostPerMillionTokens = 30.00m,
+                CachedInputCostPerMillionTokens = 1.00m,
+                CachedInputWriteCostPerMillionTokens = 25.00m
             };
 
             _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
@@ -448,8 +448,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0m,
-                OutputTokenCost = 0m,
+                InputCostPerMillionTokens = 0m,
+                OutputCostPerMillionTokens = 0m,
                 CostPerSearchUnit = 2.0m // $2.00 per 1K search units
             };
 
@@ -490,8 +490,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0m,
-                OutputTokenCost = 0m,
+                InputCostPerMillionTokens = 0m,
+                OutputCostPerMillionTokens = 0m,
                 CostPerSearchUnit = 2.0m
             };
 
@@ -532,8 +532,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0m,
-                OutputTokenCost = 0m,
+                InputCostPerMillionTokens = 0m,
+                OutputCostPerMillionTokens = 0m,
                 CostPerInferenceStep = 0.0005m
             };
 
@@ -574,8 +574,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0m,
-                OutputTokenCost = 0m,
+                InputCostPerMillionTokens = 0m,
+                OutputCostPerMillionTokens = 0m,
                 CostPerInferenceStep = 0.00013m
             };
 
@@ -613,8 +613,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.001m,
-                OutputTokenCost = 0.002m,
+                InputCostPerMillionTokens = 1000.00m,
+                OutputCostPerMillionTokens = 2000.00m,
                 SupportsBatchProcessing = true,
                 BatchProcessingMultiplier = 0.5m // 50% discount
             };
@@ -665,8 +665,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0m,
-                OutputTokenCost = 0m,
+                InputCostPerMillionTokens = 0m,
+                OutputCostPerMillionTokens = 0m,
                 ImageCostPerImage = 0.04m,
                 ImageQualityMultipliers = new Dictionary<string, decimal>
                 {

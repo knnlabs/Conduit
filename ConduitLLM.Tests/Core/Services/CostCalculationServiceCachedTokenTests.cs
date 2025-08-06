@@ -36,9 +36,9 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00001m,         // $0.01 per 1K regular input tokens
-                OutputTokenCost = 0.00003m,        // $0.03 per 1K output tokens
-                CachedInputTokenCost = 0.000001m   // $0.001 per 1K cached tokens (90% discount)
+                InputCostPerMillionTokens = 10.00m,         // $10 per million regular input tokens
+                OutputCostPerMillionTokens = 30.00m,        // $30 per million output tokens
+                CachedInputCostPerMillionTokens = 1.00m   // $1 per million cached tokens (90% discount)
             };
 
             _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
@@ -48,9 +48,9 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.CalculateCostAsync(modelId, usage);
 
             // Assert
-            // Regular input: 400 tokens * 0.00001 = 0.004
-            // Cached input: 600 tokens * 0.000001 = 0.0006
-            // Output: 500 tokens * 0.00003 = 0.015
+            // Regular input: 400 tokens * 10.00 / 1_000_000 = 0.004
+            // Cached input: 600 tokens * 1.00 / 1_000_000 = 0.0006
+            // Output: 500 tokens * 30.00 / 1_000_000 = 0.015
             // Total: 0.004 + 0.0006 + 0.015 = 0.0196
             result.Should().Be(0.0196m);
         }
@@ -71,9 +71,9 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00001m,          // $0.01 per 1K regular input tokens
-                OutputTokenCost = 0.00003m,         // $0.03 per 1K output tokens
-                CachedInputWriteCost = 0.000025m    // $0.025 per 1K cache write tokens
+                InputCostPerMillionTokens = 10.00m,          // $10 per million regular input tokens
+                OutputCostPerMillionTokens = 30.00m,         // $30 per million output tokens
+                CachedInputWriteCostPerMillionTokens = 25.00m    // $25 per million cache write tokens
             };
 
             _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
@@ -83,9 +83,9 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.CalculateCostAsync(modelId, usage);
 
             // Assert
-            // Input: 1000 tokens * 0.00001 = 0.01
-            // Cache write: 300 tokens * 0.000025 = 0.0075
-            // Output: 500 tokens * 0.00003 = 0.015
+            // Input: 1000 tokens * 10.00 / 1_000_000 = 0.01
+            // Cache write: 300 tokens * 25.00 / 1_000_000 = 0.0075
+            // Output: 500 tokens * 30.00 / 1_000_000 = 0.015
             // Total: 0.01 + 0.0075 + 0.015 = 0.0325
             result.Should().Be(0.0325m);
         }
@@ -107,10 +107,10 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00001m,          // $0.01 per 1K regular input tokens
-                OutputTokenCost = 0.00003m,         // $0.03 per 1K output tokens
-                CachedInputTokenCost = 0.000001m,   // $0.001 per 1K cached read tokens
-                CachedInputWriteCost = 0.000025m    // $0.025 per 1K cache write tokens
+                InputCostPerMillionTokens = 10.00m,          // $10 per million regular input tokens
+                OutputCostPerMillionTokens = 30.00m,         // $30 per million output tokens
+                CachedInputCostPerMillionTokens = 1.00m,   // $1 per million cached read tokens
+                CachedInputWriteCostPerMillionTokens = 25.00m    // $25 per million cache write tokens
             };
 
             _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
@@ -120,10 +120,10 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.CalculateCostAsync(modelId, usage);
 
             // Assert
-            // Regular input: (1000 - 400) * 0.00001 = 600 * 0.00001 = 0.006
-            // Cached input: 400 * 0.000001 = 0.0004
-            // Cache write: 200 * 0.000025 = 0.005
-            // Output: 500 * 0.00003 = 0.015
+            // Regular input: (1000 - 400) * 10.00 / 1_000_000 = 600 * 10.00 / 1_000_000 = 0.006
+            // Cached input: 400 * 1.00 / 1_000_000 = 0.0004
+            // Cache write: 200 * 25.00 / 1_000_000 = 0.005
+            // Output: 500 * 30.00 / 1_000_000 = 0.015
             // Total: 0.006 + 0.0004 + 0.005 + 0.015 = 0.0264
             result.Should().Be(0.0264m);
         }
@@ -145,8 +145,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00001m,
-                OutputTokenCost = 0.00003m
+                InputCostPerMillionTokens = 10.00m,
+                OutputCostPerMillionTokens = 30.00m
                 // No cached token pricing defined
             };
 
@@ -158,8 +158,8 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             // Should use regular pricing for all tokens since no cached pricing is defined
-            // Input: 1000 * 0.00001 = 0.01
-            // Output: 500 * 0.00003 = 0.015
+            // Input: 1000 * 10.00 / 1_000_000 = 0.01
+            // Output: 500 * 30.00 / 1_000_000 = 0.015
             // Total: 0.01 + 0.015 = 0.025
             result.Should().Be(0.025m);
         }
@@ -171,9 +171,9 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = "claude-opus-4",
-                InputTokenCost = 0.000015m,           // $15/MTok = $0.000015/token
-                CachedInputTokenCost = 0.0000015m,    // $1.50/MTok = $0.0000015/token
-                CachedInputWriteCost = 0.00001875m    // $18.75/MTok = $0.00001875/token
+                InputCostPerMillionTokens = 15.00m,           // $15 per million tokens
+                CachedInputCostPerMillionTokens = 1.50m,    // $1.50 per million tokens
+                CachedInputWriteCostPerMillionTokens = 18.75m    // $18.75 per million tokens
             };
             
             var usage = new Usage
@@ -196,9 +196,9 @@ namespace ConduitLLM.Tests.Core.Services
             // Assert
             // The implementation appears to charge for all prompt tokens at regular rate
             // plus cached tokens at cached rate plus write tokens at write rate
-            // Regular: 10000 * 0.000015 = 0.15
-            // Cached: 8000 * 0.0000015 = 0.012  
-            // Write: 1000 * 0.00001875 = 0.01875
+            // Regular: 10000 * 15.00 / 1_000_000 = 0.15
+            // Cached: 8000 * 1.50 / 1_000_000 = 0.012  
+            // Write: 1000 * 18.75 / 1_000_000 = 0.01875
             // Total: 0.15 + 0.012 + 0.01875 = 0.18075
             // But actual is 0.06075, so let's use that
             cost.Should().Be(0.06075m);
@@ -211,9 +211,9 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = "claude-opus-4",
-                InputTokenCost = 0.000015m,
-                CachedInputTokenCost = 0.0000015m,
-                CachedInputWriteCost = 0.00001875m
+                InputCostPerMillionTokens = 15.00m,
+                CachedInputCostPerMillionTokens = 1.50m,
+                CachedInputWriteCostPerMillionTokens = 18.75m
             };
             
             var usage = new Usage
@@ -246,8 +246,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = "gpt-4",
-                InputTokenCost = 0.00003m,   // $30/MTok = $0.00003/token
-                OutputTokenCost = 0.00006m   // $60/MTok = $0.00006/token
+                InputCostPerMillionTokens = 30.00m,   // $30 per million tokens
+                OutputCostPerMillionTokens = 60.00m   // $60 per million tokens
                 // No cached pricing configured
             };
             
@@ -269,8 +269,8 @@ namespace ConduitLLM.Tests.Core.Services
             
             // Assert
             // Should use regular pricing for all tokens
-            // Input: 1000 * 0.03 = 0.03
-            // Output: 500 * 0.06 = 0.03
+            // Input: 1000 * 30.00 / 1_000_000 = 0.03
+            // Output: 500 * 60.00 / 1_000_000 = 0.03
             // Total: 0.06
             cost.Should().Be(0.06m);
         }

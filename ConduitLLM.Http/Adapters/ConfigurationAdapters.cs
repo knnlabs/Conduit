@@ -125,17 +125,17 @@ namespace ConduitLLM.Http.Adapters
                 return new ModelCostInfo
                 {
                     ModelIdPattern = modelCost.CostName, // Using CostName as the identifier
-                    InputTokenCost = modelCost.InputTokenCost,
-                    OutputTokenCost = modelCost.OutputTokenCost,
-                    EmbeddingTokenCost = modelCost.EmbeddingTokenCost,
+                    InputCostPerMillionTokens = modelCost.InputCostPerMillionTokens,
+                    OutputCostPerMillionTokens = modelCost.OutputCostPerMillionTokens,
+                    EmbeddingCostPerMillionTokens = modelCost.EmbeddingCostPerMillionTokens,
                     ImageCostPerImage = modelCost.ImageCostPerImage,
                     VideoCostPerSecond = modelCost.VideoCostPerSecond,
                     VideoResolutionMultipliers = videoResolutionMultipliers,
                     BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
                     SupportsBatchProcessing = modelCost.SupportsBatchProcessing,
                     ImageQualityMultipliers = imageQualityMultipliers,
-                    CachedInputTokenCost = modelCost.CachedInputTokenCost,
-                    CachedInputWriteCost = modelCost.CachedInputWriteCost,
+                    CachedInputCostPerMillionTokens = modelCost.CachedInputCostPerMillionTokens,
+                    CachedInputWriteCostPerMillionTokens = modelCost.CachedInputWriteCostPerMillionTokens,
                     CostPerSearchUnit = modelCost.CostPerSearchUnit,
                     CostPerInferenceStep = modelCost.CostPerInferenceStep,
                     DefaultInferenceSteps = modelCost.DefaultInferenceSteps

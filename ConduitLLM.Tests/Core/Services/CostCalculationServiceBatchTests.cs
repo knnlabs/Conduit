@@ -36,8 +36,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.001m,
-                OutputTokenCost = 0.002m,
+                InputCostPerMillionTokens = 1000.00m,
+                OutputCostPerMillionTokens = 2000.00m,
                 SupportsBatchProcessing = true,
                 BatchProcessingMultiplier = 0.5m // 50% discount
             };
@@ -50,7 +50,7 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.CalculateCostAsync(modelId, usage);
 
             // Assert
-            // Expected without batch: (1000 * 0.001) + (500 * 0.002) = 1.0 + 1.0 = 2.0
+            // Expected without batch: (1000 * 1000.00 / 1_000_000) + (500 * 2000.00 / 1_000_000) = 1.0 + 1.0 = 2.0
             // Expected with 50% batch discount: 2.0 * 0.5 = 1.0
             result.Should().Be(1.0m);
         }
@@ -70,8 +70,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.001m,
-                OutputTokenCost = 0.002m,
+                InputCostPerMillionTokens = 1000.00m,
+                OutputCostPerMillionTokens = 2000.00m,
                 SupportsBatchProcessing = false, // Model doesn't support batch
                 BatchProcessingMultiplier = 0.5m
             };
@@ -85,7 +85,7 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             // Expected: No discount applied since model doesn't support batch
-            // (1000 * 0.001) + (500 * 0.002) = 1.0 + 1.0 = 2.0
+            // (1000 * 1000.00 / 1_000_000) + (500 * 2000.00 / 1_000_000) = 1.0 + 1.0 = 2.0
             result.Should().Be(2.0m);
         }
 
@@ -104,8 +104,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.001m,
-                OutputTokenCost = 0.002m,
+                InputCostPerMillionTokens = 1000.00m,
+                OutputCostPerMillionTokens = 2000.00m,
                 SupportsBatchProcessing = true,
                 BatchProcessingMultiplier = 0.5m
             };
@@ -119,7 +119,7 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             // Expected: No discount since IsBatch is false
-            // (1000 * 0.001) + (500 * 0.002) = 1.0 + 1.0 = 2.0
+            // (1000 * 1000.00 / 1_000_000) + (500 * 2000.00 / 1_000_000) = 1.0 + 1.0 = 2.0
             result.Should().Be(2.0m);
         }
 
@@ -138,8 +138,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.001m,
-                OutputTokenCost = 0.002m,
+                InputCostPerMillionTokens = 1000.00m,
+                OutputCostPerMillionTokens = 2000.00m,
                 SupportsBatchProcessing = true,
                 BatchProcessingMultiplier = null // No multiplier defined
             };
@@ -153,7 +153,7 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             // Expected: No discount since multiplier is null
-            // (1000 * 0.001) + (500 * 0.002) = 1.0 + 1.0 = 2.0
+            // (1000 * 1000.00 / 1_000_000) + (500 * 2000.00 / 1_000_000) = 1.0 + 1.0 = 2.0
             result.Should().Be(2.0m);
         }
 
@@ -175,8 +175,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00001m,
-                OutputTokenCost = 0.00002m,
+                InputCostPerMillionTokens = 10.00m,
+                OutputCostPerMillionTokens = 20.00m,
                 ImageCostPerImage = 0.05m,
                 VideoCostPerSecond = 0.1m,
                 VideoResolutionMultipliers = new Dictionary<string, decimal>
@@ -196,7 +196,7 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             // Expected without batch: 
-            // Text: (1000 * 0.00001) + (500 * 0.00002) = 0.01 + 0.01 = 0.02
+            // Text: (1000 * 10.00 / 1_000_000) + (500 * 20.00 / 1_000_000) = 0.01 + 0.01 = 0.02
             // Images: 2 * 0.05 = 0.1
             // Video: 3 * 0.1 * 0.8 = 0.24
             // Total before batch: 0.02 + 0.1 + 0.24 = 0.36
@@ -223,8 +223,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.001m,
-                OutputTokenCost = 0.002m,
+                InputCostPerMillionTokens = 1000.00m,
+                OutputCostPerMillionTokens = 2000.00m,
                 SupportsBatchProcessing = true,
                 BatchProcessingMultiplier = multiplier
             };
@@ -257,9 +257,9 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00001m,
-                OutputTokenCost = 0.00003m,
-                CachedInputTokenCost = 0.000001m,
+                InputCostPerMillionTokens = 10.00m,
+                OutputCostPerMillionTokens = 30.00m,
+                CachedInputCostPerMillionTokens = 1.00m,
                 SupportsBatchProcessing = true,
                 BatchProcessingMultiplier = 0.5m  // 50% discount for batch
             };
@@ -271,9 +271,9 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.CalculateCostAsync(modelId, usage);
 
             // Assert
-            // Regular input: 400 * 0.00001 = 0.004
-            // Cached input: 600 * 0.000001 = 0.0006
-            // Output: 500 * 0.00003 = 0.015
+            // Regular input: 400 * 10.00 / 1_000_000 = 0.004
+            // Cached input: 600 * 1.00 / 1_000_000 = 0.0006
+            // Output: 500 * 30.00 / 1_000_000 = 0.015
             // Subtotal: 0.004 + 0.0006 + 0.015 = 0.0196
             // With batch discount: 0.0196 * 0.5 = 0.0098
             result.Should().Be(0.0098m);
@@ -295,8 +295,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00001m,
-                OutputTokenCost = 0m,
+                InputCostPerMillionTokens = 10.00m,
+                OutputCostPerMillionTokens = 0m,
                 CostPerSearchUnit = 2.0m,
                 SupportsBatchProcessing = true,
                 BatchProcessingMultiplier = 0.5m // 50% discount
@@ -310,7 +310,7 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.CalculateCostAsync(modelId, usage);
 
             // Assert
-            // Token cost: 1000 * 0.00001 = 0.01
+            // Token cost: 1000 * 10.00 / 1_000_000 = 0.01
             // Search unit cost: 100 * (2.0 / 1000) = 0.2
             // Total before discount: 0.01 + 0.2 = 0.21
             // After 50% discount: 0.21 * 0.5 = 0.105
@@ -333,8 +333,8 @@ namespace ConduitLLM.Tests.Core.Services
             var modelCost = new ModelCostInfo
             {
                 ModelIdPattern = modelId,
-                InputTokenCost = 0.00001m,
-                OutputTokenCost = 0.00002m,
+                InputCostPerMillionTokens = 10.00m,
+                OutputCostPerMillionTokens = 20.00m,
                 CostPerInferenceStep = 0.0002m,
                 SupportsBatchProcessing = true,
                 BatchProcessingMultiplier = 0.5m // 50% discount
@@ -348,7 +348,7 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.CalculateCostAsync(modelId, usage);
 
             // Assert
-            // Token cost: (1000 * 0.00001) + (500 * 0.00002) = 0.01 + 0.01 = 0.02
+            // Token cost: (1000 * 10.00 / 1_000_000) + (500 * 20.00 / 1_000_000) = 0.01 + 0.01 = 0.02
             // Step cost: 10 * 0.0002 = 0.002
             // Total before discount: 0.022
             // After 50% discount: 0.011

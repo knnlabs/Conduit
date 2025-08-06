@@ -6,9 +6,9 @@ namespace ConduitLLM.Configuration.DTOs
     public class ModelCostExportDto
     {
         public string CostName { get; set; } = string.Empty;
-        public decimal InputTokenCost { get; set; }
-        public decimal OutputTokenCost { get; set; }
-        public decimal? EmbeddingTokenCost { get; set; }
+        public decimal InputCostPerMillionTokens { get; set; }
+        public decimal OutputCostPerMillionTokens { get; set; }
+        public decimal? EmbeddingCostPerMillionTokens { get; set; }
         public decimal? ImageCostPerImage { get; set; }
         public decimal? AudioCostPerMinute { get; set; }
         public decimal? AudioCostPerKCharacters { get; set; }

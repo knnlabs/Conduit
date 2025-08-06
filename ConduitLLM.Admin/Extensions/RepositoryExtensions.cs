@@ -331,9 +331,9 @@ namespace ConduitLLM.Admin.Extensions
                     .Select(mcm => mcm.ModelProviderMapping?.ProviderModelId ?? "")
                     .Where(alias => !string.IsNullOrEmpty(alias))
                     .ToList() ?? new List<string>(),
-                InputTokenCost = modelCost.InputTokenCost,
-                OutputTokenCost = modelCost.OutputTokenCost,
-                EmbeddingTokenCost = modelCost.EmbeddingTokenCost,
+                InputCostPerMillionTokens = modelCost.InputCostPerMillionTokens,
+                OutputCostPerMillionTokens = modelCost.OutputCostPerMillionTokens,
+                EmbeddingCostPerMillionTokens = modelCost.EmbeddingCostPerMillionTokens,
                 ImageCostPerImage = modelCost.ImageCostPerImage,
                 AudioCostPerMinute = modelCost.AudioCostPerMinute,
                 AudioCostPerKCharacters = modelCost.AudioCostPerKCharacters,
@@ -344,8 +344,8 @@ namespace ConduitLLM.Admin.Extensions
                 BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
                 SupportsBatchProcessing = modelCost.SupportsBatchProcessing,
                 ImageQualityMultipliers = modelCost.ImageQualityMultipliers,
-                CachedInputTokenCost = modelCost.CachedInputTokenCost,
-                CachedInputWriteCost = modelCost.CachedInputWriteCost,
+                CachedInputCostPerMillionTokens = modelCost.CachedInputCostPerMillionTokens,
+                CachedInputWriteCostPerMillionTokens = modelCost.CachedInputWriteCostPerMillionTokens,
                 CostPerSearchUnit = modelCost.CostPerSearchUnit,
                 CostPerInferenceStep = modelCost.CostPerInferenceStep,
                 DefaultInferenceSteps = modelCost.DefaultInferenceSteps,
@@ -375,9 +375,9 @@ namespace ConduitLLM.Admin.Extensions
             return new ModelCost
             {
                 CostName = dto.CostName,
-                InputTokenCost = dto.InputTokenCost,
-                OutputTokenCost = dto.OutputTokenCost,
-                EmbeddingTokenCost = dto.EmbeddingTokenCost,
+                InputCostPerMillionTokens = dto.InputCostPerMillionTokens,
+                OutputCostPerMillionTokens = dto.OutputCostPerMillionTokens,
+                EmbeddingCostPerMillionTokens = dto.EmbeddingCostPerMillionTokens,
                 ImageCostPerImage = dto.ImageCostPerImage,
                 AudioCostPerMinute = dto.AudioCostPerMinute,
                 AudioCostPerKCharacters = dto.AudioCostPerKCharacters,
@@ -388,8 +388,8 @@ namespace ConduitLLM.Admin.Extensions
                 BatchProcessingMultiplier = dto.BatchProcessingMultiplier,
                 SupportsBatchProcessing = dto.SupportsBatchProcessing,
                 ImageQualityMultipliers = dto.ImageQualityMultipliers,
-                CachedInputTokenCost = dto.CachedInputTokenCost,
-                CachedInputWriteCost = dto.CachedInputWriteCost,
+                CachedInputCostPerMillionTokens = dto.CachedInputCostPerMillionTokens,
+                CachedInputWriteCostPerMillionTokens = dto.CachedInputWriteCostPerMillionTokens,
                 CostPerSearchUnit = dto.CostPerSearchUnit,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -415,9 +415,9 @@ namespace ConduitLLM.Admin.Extensions
             }
 
             entity.CostName = dto.CostName;
-            entity.InputTokenCost = dto.InputTokenCost;
-            entity.OutputTokenCost = dto.OutputTokenCost;
-            entity.EmbeddingTokenCost = dto.EmbeddingTokenCost;
+            entity.InputCostPerMillionTokens = dto.InputCostPerMillionTokens;
+            entity.OutputCostPerMillionTokens = dto.OutputCostPerMillionTokens;
+            entity.EmbeddingCostPerMillionTokens = dto.EmbeddingCostPerMillionTokens;
             entity.ImageCostPerImage = dto.ImageCostPerImage;
             entity.AudioCostPerMinute = dto.AudioCostPerMinute;
             entity.AudioCostPerKCharacters = dto.AudioCostPerKCharacters;
@@ -428,8 +428,8 @@ namespace ConduitLLM.Admin.Extensions
             entity.BatchProcessingMultiplier = dto.BatchProcessingMultiplier;
             entity.SupportsBatchProcessing = dto.SupportsBatchProcessing;
             entity.ImageQualityMultipliers = dto.ImageQualityMultipliers;
-            entity.CachedInputTokenCost = dto.CachedInputTokenCost;
-            entity.CachedInputWriteCost = dto.CachedInputWriteCost;
+            entity.CachedInputCostPerMillionTokens = dto.CachedInputCostPerMillionTokens;
+            entity.CachedInputWriteCostPerMillionTokens = dto.CachedInputWriteCostPerMillionTokens;
             entity.CostPerSearchUnit = dto.CostPerSearchUnit;
             entity.UpdatedAt = DateTime.UtcNow;
 

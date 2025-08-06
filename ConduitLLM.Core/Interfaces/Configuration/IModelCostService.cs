@@ -27,19 +27,19 @@ namespace ConduitLLM.Core.Interfaces.Configuration
         public string ModelIdPattern { get; set; } = string.Empty;
 
         /// <summary>
-        /// Cost per input token for chat/completion requests.
+        /// Cost per million input tokens for chat/completion requests.
         /// </summary>
-        public decimal InputTokenCost { get; set; }
+        public decimal InputCostPerMillionTokens { get; set; }
 
         /// <summary>
-        /// Cost per output token for chat/completion requests.
+        /// Cost per million output tokens for chat/completion requests.
         /// </summary>
-        public decimal OutputTokenCost { get; set; }
+        public decimal OutputCostPerMillionTokens { get; set; }
 
         /// <summary>
-        /// Cost per token for embedding requests, if applicable.
+        /// Cost per million tokens for embedding requests, if applicable.
         /// </summary>
-        public decimal? EmbeddingTokenCost { get; set; }
+        public decimal? EmbeddingCostPerMillionTokens { get; set; }
 
         /// <summary>
         /// Cost per image for image generation requests, if applicable.
@@ -76,18 +76,18 @@ namespace ConduitLLM.Core.Interfaces.Configuration
         public Dictionary<string, decimal>? ImageQualityMultipliers { get; set; }
 
         /// <summary>
-        /// Cost per cached input token for prompt caching, if applicable.
+        /// Cost per million cached input tokens for prompt caching, if applicable.
         /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
         /// Typically much lower than standard input token costs (e.g., 10% of regular cost).
         /// </summary>
-        public decimal? CachedInputTokenCost { get; set; }
+        public decimal? CachedInputCostPerMillionTokens { get; set; }
 
         /// <summary>
-        /// Cost per token for writing to the prompt cache, if applicable.
+        /// Cost per million tokens for writing to the prompt cache, if applicable.
         /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
         /// The write cost is incurred when new content is added to the cache.
         /// </summary>
-        public decimal? CachedInputWriteCost { get; set; }
+        public decimal? CachedInputWriteCostPerMillionTokens { get; set; }
 
         /// <summary>
         /// Cost per search unit for reranking models, if applicable.

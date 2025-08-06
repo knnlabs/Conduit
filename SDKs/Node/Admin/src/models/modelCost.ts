@@ -37,9 +37,9 @@ export interface ModelCostDto {
   costName: string; // User-friendly name like "GPT-4 Standard Pricing"
   associatedModelAliases: string[]; // Model aliases using this cost
   modelType: 'chat' | 'embedding' | 'image' | 'audio' | 'video';
-  inputTokenCost: number; // Cost per token in USD
-  outputTokenCost: number; // Cost per token in USD
-  embeddingTokenCost?: number;
+  inputCostPerMillionTokens: number; // Cost per million tokens in USD
+  outputCostPerMillionTokens: number; // Cost per million tokens in USD
+  embeddingCostPerMillionTokens?: number; // Cost per million tokens in USD
   imageCostPerImage?: number;
   audioCostPerMinute?: number;
   audioCostPerKCharacters?: number;
@@ -59,8 +59,8 @@ export interface ModelCostDto {
   supportsBatchProcessing: boolean;
   imageQualityMultipliers?: string; // JSON string
   // Phase 2 fields
-  cachedInputTokenCost?: number;
-  cachedInputWriteCost?: number;
+  cachedInputCostPerMillionTokens?: number; // Cost per million tokens in USD
+  cachedInputWriteCostPerMillionTokens?: number; // Cost per million tokens in USD
   costPerSearchUnit?: number;
   costPerInferenceStep?: number;
   defaultInferenceSteps?: number;
@@ -72,9 +72,9 @@ export interface CreateModelCostDto {
   modelType?: string; // Default: "chat"
   priority?: number; // Default: 0
   description?: string;
-  inputTokenCost: number;
-  outputTokenCost: number;
-  embeddingTokenCost?: number;
+  inputCostPerMillionTokens: number; // Cost per million tokens in USD
+  outputCostPerMillionTokens: number; // Cost per million tokens in USD
+  embeddingCostPerMillionTokens?: number; // Cost per million tokens in USD
   imageCostPerImage?: number;
   audioCostPerMinute?: number;
   audioCostPerKCharacters?: number;
@@ -87,8 +87,8 @@ export interface CreateModelCostDto {
   supportsBatchProcessing?: boolean;
   imageQualityMultipliers?: string; // JSON string
   // Phase 2 fields
-  cachedInputTokenCost?: number;
-  cachedInputWriteCost?: number;
+  cachedInputCostPerMillionTokens?: number; // Cost per million tokens in USD
+  cachedInputWriteCostPerMillionTokens?: number; // Cost per million tokens in USD
   costPerSearchUnit?: number;
   costPerInferenceStep?: number;
   defaultInferenceSteps?: number;
@@ -102,9 +102,9 @@ export interface UpdateModelCostDto {
   priority?: number;
   description?: string;
   isActive?: boolean;
-  inputTokenCost?: number;
-  outputTokenCost?: number;
-  embeddingTokenCost?: number;
+  inputCostPerMillionTokens?: number; // Cost per million tokens in USD
+  outputCostPerMillionTokens?: number; // Cost per million tokens in USD
+  embeddingCostPerMillionTokens?: number; // Cost per million tokens in USD
   imageCostPerImage?: number;
   audioCostPerMinute?: number;
   audioCostPerKCharacters?: number;
@@ -117,8 +117,8 @@ export interface UpdateModelCostDto {
   supportsBatchProcessing?: boolean;
   imageQualityMultipliers?: string; // JSON string
   // Phase 2 fields
-  cachedInputTokenCost?: number;
-  cachedInputWriteCost?: number;
+  cachedInputCostPerMillionTokens?: number; // Cost per million tokens in USD
+  cachedInputWriteCostPerMillionTokens?: number; // Cost per million tokens in USD
   costPerSearchUnit?: number;
   costPerInferenceStep?: number;
   defaultInferenceSteps?: number;
@@ -145,8 +145,8 @@ export interface ModelCostCalculation {
   outputCost: number;
   totalCost: number;
   currency: string;
-  costPerThousandInputTokens: number;
-  costPerThousandOutputTokens: number;
+  costPerMillionInputTokens: number;
+  costPerMillionOutputTokens: number;
 }
 
 export interface BulkModelCostUpdate {
@@ -164,8 +164,8 @@ export interface ModelCostHistory {
   modelId: string;
   history: {
     id: number;
-    inputTokenCost: number;
-    outputTokenCost: number;
+    inputCostPerMillionTokens: number;
+    outputCostPerMillionTokens: number;
     effectiveDate: string;
     expiryDate?: string;
     changeReason?: string;

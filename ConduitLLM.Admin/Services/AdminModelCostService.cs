@@ -292,9 +292,9 @@ namespace ConduitLLM.Admin.Services
                             {
                                 Id = existingModelCost.Id,
                                 CostName = modelCost.CostName,
-                                InputTokenCost = modelCost.InputTokenCost,
-                                OutputTokenCost = modelCost.OutputTokenCost,
-                                EmbeddingTokenCost = modelCost.EmbeddingTokenCost,
+                                InputCostPerMillionTokens = modelCost.InputCostPerMillionTokens,
+                                OutputCostPerMillionTokens = modelCost.OutputCostPerMillionTokens,
+                                EmbeddingCostPerMillionTokens = modelCost.EmbeddingCostPerMillionTokens,
                                 ImageCostPerImage = modelCost.ImageCostPerImage,
                                 AudioCostPerMinute = modelCost.AudioCostPerMinute,
                                 AudioCostPerKCharacters = modelCost.AudioCostPerKCharacters,
@@ -399,12 +399,12 @@ namespace ConduitLLM.Admin.Services
                 var changedProperties = new List<string>();
                 if (existingModelCost.CostName != modelCost.CostName)
                     changedProperties.Add(nameof(modelCost.CostName));
-                if (existingModelCost.InputTokenCost != modelCost.InputTokenCost)
-                    changedProperties.Add(nameof(modelCost.InputTokenCost));
-                if (existingModelCost.OutputTokenCost != modelCost.OutputTokenCost)
-                    changedProperties.Add(nameof(modelCost.OutputTokenCost));
-                if (existingModelCost.EmbeddingTokenCost != modelCost.EmbeddingTokenCost)
-                    changedProperties.Add(nameof(modelCost.EmbeddingTokenCost));
+                if (existingModelCost.InputCostPerMillionTokens != modelCost.InputCostPerMillionTokens)
+                    changedProperties.Add(nameof(modelCost.InputCostPerMillionTokens));
+                if (existingModelCost.OutputCostPerMillionTokens != modelCost.OutputCostPerMillionTokens)
+                    changedProperties.Add(nameof(modelCost.OutputCostPerMillionTokens));
+                if (existingModelCost.EmbeddingCostPerMillionTokens != modelCost.EmbeddingCostPerMillionTokens)
+                    changedProperties.Add(nameof(modelCost.EmbeddingCostPerMillionTokens));
                 if (existingModelCost.ImageCostPerImage != modelCost.ImageCostPerImage)
                     changedProperties.Add(nameof(modelCost.ImageCostPerImage));
 
@@ -508,9 +508,9 @@ namespace ConduitLLM.Admin.Services
                             {
                                 Id = existingModelCost.Id,
                                 CostName = modelCost.CostName,
-                                InputTokenCost = modelCost.InputTokenCost,
-                                OutputTokenCost = modelCost.OutputTokenCost,
-                                EmbeddingTokenCost = modelCost.EmbeddingTokenCost,
+                                InputCostPerMillionTokens = modelCost.InputCostPerMillionTokens,
+                                OutputCostPerMillionTokens = modelCost.OutputCostPerMillionTokens,
+                                EmbeddingCostPerMillionTokens = modelCost.EmbeddingCostPerMillionTokens,
                                 ImageCostPerImage = modelCost.ImageCostPerImage,
                                 AudioCostPerMinute = modelCost.AudioCostPerMinute,
                                 AudioCostPerKCharacters = modelCost.AudioCostPerKCharacters,
@@ -558,9 +558,9 @@ namespace ConduitLLM.Admin.Services
             var exportData = modelCosts.Select(mc => new ModelCostExportDto
             {
                 CostName = mc.CostName,
-                InputTokenCost = mc.InputTokenCost,
-                OutputTokenCost = mc.OutputTokenCost,
-                EmbeddingTokenCost = mc.EmbeddingTokenCost,
+                InputCostPerMillionTokens = mc.InputCostPerMillionTokens,
+                OutputCostPerMillionTokens = mc.OutputCostPerMillionTokens,
+                EmbeddingCostPerMillionTokens = mc.EmbeddingCostPerMillionTokens,
                 ImageCostPerImage = mc.ImageCostPerImage,
                 AudioCostPerMinute = mc.AudioCostPerMinute,
                 AudioCostPerKCharacters = mc.AudioCostPerKCharacters,
@@ -584,14 +584,14 @@ namespace ConduitLLM.Admin.Services
         private string GenerateCsvExport(List<ModelCost> modelCosts)
         {
             var csv = new StringBuilder();
-            csv.AppendLine("Cost Name,Input Cost (per 1K tokens),Output Cost (per 1K tokens),Embedding Cost (per 1K tokens),Image Cost (per image),Audio Cost (per minute),Audio Cost (per 1K chars),Audio Input Cost (per minute),Audio Output Cost (per minute),Video Cost (per second),Video Resolution Multipliers,Batch Processing Multiplier,Supports Batch Processing,Search Unit Cost (per 1K units),Inference Step Cost,Default Inference Steps");
+            csv.AppendLine("Cost Name,Input Cost (per million tokens),Output Cost (per million tokens),Embedding Cost (per million tokens),Image Cost (per image),Audio Cost (per minute),Audio Cost (per 1K chars),Audio Input Cost (per minute),Audio Output Cost (per minute),Video Cost (per second),Video Resolution Multipliers,Batch Processing Multiplier,Supports Batch Processing,Search Unit Cost (per 1K units),Inference Step Cost,Default Inference Steps");
 
             foreach (var modelCost in modelCosts.OrderBy(mc => mc.CostName))
             {
                 csv.AppendLine($"{EscapeCsvValue(modelCost.CostName)}," +
-                    $"{(modelCost.InputTokenCost * 1000):F6}," +
-                    $"{(modelCost.OutputTokenCost * 1000):F6}," +
-                    $"{(modelCost.EmbeddingTokenCost.HasValue ? (modelCost.EmbeddingTokenCost.Value * 1000).ToString("F6") : "")}," +
+                    $"{modelCost.InputCostPerMillionTokens:F6}," +
+                    $"{modelCost.OutputCostPerMillionTokens:F6}," +
+                    $"{(modelCost.EmbeddingCostPerMillionTokens.HasValue ? modelCost.EmbeddingCostPerMillionTokens.Value.ToString("F6") : "")}," +
                     $"{(modelCost.ImageCostPerImage?.ToString("F4") ?? "")}," +
                     $"{(modelCost.AudioCostPerMinute?.ToString("F4") ?? "")}," +
                     $"{(modelCost.AudioCostPerKCharacters?.ToString("F4") ?? "")}," +
@@ -619,9 +619,9 @@ namespace ConduitLLM.Admin.Services
                 return importData.Select(d => new CreateModelCostDto
                 {
                     CostName = d.CostName,
-                    InputTokenCost = d.InputTokenCost,
-                    OutputTokenCost = d.OutputTokenCost,
-                    EmbeddingTokenCost = d.EmbeddingTokenCost,
+                    InputCostPerMillionTokens = d.InputCostPerMillionTokens,
+                    OutputCostPerMillionTokens = d.OutputCostPerMillionTokens,
+                    EmbeddingCostPerMillionTokens = d.EmbeddingCostPerMillionTokens,
                     ImageCostPerImage = d.ImageCostPerImage,
                     AudioCostPerMinute = d.AudioCostPerMinute,
                     AudioCostPerKCharacters = d.AudioCostPerKCharacters,
@@ -668,9 +668,9 @@ namespace ConduitLLM.Admin.Services
                     var modelCost = new CreateModelCostDto
                     {
                         CostName = UnescapeCsvValue(parts[0]),
-                        InputTokenCost = decimal.TryParse(parts[1], out var inputCost) ? inputCost / 1000 : 0,
-                        OutputTokenCost = decimal.TryParse(parts[2], out var outputCost) ? outputCost / 1000 : 0,
-                        EmbeddingTokenCost = decimal.TryParse(parts[3], out var embeddingCost) ? embeddingCost / 1000 : null,
+                        InputCostPerMillionTokens = decimal.TryParse(parts[1], out var inputCost) ? inputCost : 0,
+                        OutputCostPerMillionTokens = decimal.TryParse(parts[2], out var outputCost) ? outputCost : 0,
+                        EmbeddingCostPerMillionTokens = decimal.TryParse(parts[3], out var embeddingCost) ? embeddingCost : null,
                         ImageCostPerImage = decimal.TryParse(parts[4], out var imageCost) ? imageCost : null,
                         AudioCostPerMinute = decimal.TryParse(parts[5], out var audioCost) ? audioCost : null,
                         AudioCostPerKCharacters = decimal.TryParse(parts[6], out var audioKCharCost) ? audioKCharCost : null,

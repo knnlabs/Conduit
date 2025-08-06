@@ -36,8 +36,8 @@ export function ViewModelCostModal({ isOpen, modelCost, onClose }: ViewModelCost
     return labels[type] || type;
   };
 
-  const hasTokenCosts = modelCost.inputTokenCost !== undefined || 
-                       modelCost.outputTokenCost !== undefined;
+  const hasTokenCosts = modelCost.inputCostPerMillionTokens !== undefined || 
+                       modelCost.outputCostPerMillionTokens !== undefined;
   
   const hasImageCosts = modelCost.imageCostPerImage !== undefined;
   const hasVideoCosts = modelCost.videoCostPerSecond !== undefined;
@@ -112,53 +112,53 @@ export function ViewModelCostModal({ isOpen, modelCost, onClose }: ViewModelCost
             <Divider label="Token Pricing" labelPosition="center" />
             <Card withBorder>
               <Stack gap="sm">
-                {modelCost.inputTokenCost !== undefined && (
+                {modelCost.inputCostPerMillionTokens !== undefined && (
                   <Group justify="space-between">
                     <Text>Input Cost</Text>
                     <Group gap="xs">
                       <Text fw={500}>
-                        {formatters.currency((modelCost.inputTokenCost ?? 0) * 1000, { currency: 'USD', precision: 4 })}
+                        {formatters.currency(modelCost.inputCostPerMillionTokens ?? 0, { currency: 'USD', precision: 2 })}
                       </Text>
-                      <Text size="sm" c="dimmed">per 1K tokens</Text>
+                      <Text size="sm" c="dimmed">per million tokens</Text>
                     </Group>
                   </Group>
                 )}
                 
-                {modelCost.outputTokenCost !== undefined && (
+                {modelCost.outputCostPerMillionTokens !== undefined && (
                   <Group justify="space-between">
                     <Text>Output Cost</Text>
                     <Group gap="xs">
                       <Text fw={500}>
-                        {formatters.currency((modelCost.outputTokenCost ?? 0) * 1000, { currency: 'USD', precision: 4 })}
+                        {formatters.currency(modelCost.outputCostPerMillionTokens ?? 0, { currency: 'USD', precision: 2 })}
                       </Text>
-                      <Text size="sm" c="dimmed">per 1K tokens</Text>
+                      <Text size="sm" c="dimmed">per million tokens</Text>
                     </Group>
                   </Group>
                 )}
                 
-                {modelCost.cachedInputTokenCost !== undefined && (
+                {modelCost.cachedInputCostPerMillionTokens !== undefined && (
                   <>
                     <Divider variant="dashed" />
                     <Group justify="space-between">
                       <Text>Cached Input Cost</Text>
                       <Group gap="xs">
                         <Text fw={500}>
-                          {formatters.currency((modelCost.cachedInputTokenCost ?? 0) * 1000, { currency: 'USD', precision: 4 })}
+                          {formatters.currency(modelCost.cachedInputCostPerMillionTokens ?? 0, { currency: 'USD', precision: 2 })}
                         </Text>
-                        <Text size="sm" c="dimmed">per 1K tokens</Text>
+                        <Text size="sm" c="dimmed">per million tokens</Text>
                       </Group>
                     </Group>
                   </>
                 )}
                 
-                {modelCost.cachedInputWriteCost !== undefined && (
+                {modelCost.cachedInputWriteCostPerMillionTokens !== undefined && (
                   <Group justify="space-between">
                     <Text>Cache Write Cost</Text>
                     <Group gap="xs">
                       <Text fw={500}>
-                        {formatters.currency((modelCost.cachedInputWriteCost ?? 0) * 1000, { currency: 'USD', precision: 4 })}
+                        {formatters.currency(modelCost.cachedInputWriteCostPerMillionTokens ?? 0, { currency: 'USD', precision: 2 })}
                       </Text>
-                      <Text size="sm" c="dimmed">per 1K tokens</Text>
+                      <Text size="sm" c="dimmed">per million tokens</Text>
                     </Group>
                   </Group>
                 )}

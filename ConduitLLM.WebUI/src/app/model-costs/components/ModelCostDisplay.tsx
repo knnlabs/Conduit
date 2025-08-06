@@ -21,36 +21,36 @@ export const ModelCostDisplay: React.FC<ModelCostDisplayProps> = ({
   return (
     <Stack gap={compact ? 'xs' : 'sm'}>
       {/* Token costs */}
-      {(modelCost.inputTokenCost ?? modelCost.outputTokenCost) && (
+      {(modelCost.inputCostPerMillionTokens ?? modelCost.outputCostPerMillionTokens) && (
         <>
-          {modelCost.inputTokenCost && (
+          {modelCost.inputCostPerMillionTokens && (
             <Group gap="xs">
               <Text size={compact ? 'xs' : 'sm'} c="dimmed">Input:</Text>
               <Text size={compact ? 'xs' : 'sm'} fw={500}>
-                {formatCost(modelCost.inputTokenCost * 1000)}/1K tokens
+                {formatCost(modelCost.inputCostPerMillionTokens, 2)}/M tokens
               </Text>
-              {modelCost.cachedInputTokenCost && (
+              {modelCost.cachedInputCostPerMillionTokens && (
                 <Text size="xs" c="teal">
-                  (Cached: {formatCost(modelCost.cachedInputTokenCost * 1000)})
+                  (Cached: {formatCost(modelCost.cachedInputCostPerMillionTokens, 2)})
                 </Text>
               )}
             </Group>
           )}
           
-          {modelCost.outputTokenCost && (
+          {modelCost.outputCostPerMillionTokens && (
             <Group gap="xs">
               <Text size={compact ? 'xs' : 'sm'} c="dimmed">Output:</Text>
               <Text size={compact ? 'xs' : 'sm'} fw={500}>
-                {formatCost(modelCost.outputTokenCost * 1000)}/1K tokens
+                {formatCost(modelCost.outputCostPerMillionTokens, 2)}/M tokens
               </Text>
             </Group>
           )}
 
-          {modelCost.cachedInputWriteCost && (
+          {modelCost.cachedInputWriteCostPerMillionTokens && (
             <Group gap="xs">
               <Text size={compact ? 'xs' : 'sm'} c="dimmed">Cache Write:</Text>
               <Text size={compact ? 'xs' : 'sm'} fw={500}>
-                {formatCost(modelCost.cachedInputWriteCost * 1000)}/1K tokens
+                {formatCost(modelCost.cachedInputWriteCostPerMillionTokens, 2)}/M tokens
               </Text>
               <Badge size="xs" variant="light" color="blue">Write</Badge>
             </Group>
@@ -59,11 +59,11 @@ export const ModelCostDisplay: React.FC<ModelCostDisplayProps> = ({
       )}
 
       {/* Embedding cost */}
-      {modelCost.embeddingTokenCost && (
+      {modelCost.embeddingCostPerMillionTokens && (
         <Group gap="xs">
           <Text size={compact ? 'xs' : 'sm'} c="dimmed">Embedding:</Text>
           <Text size={compact ? 'xs' : 'sm'} fw={500}>
-            {formatCost(modelCost.embeddingTokenCost * 1000)}/1K tokens
+            {formatCost(modelCost.embeddingCostPerMillionTokens, 2)}/M tokens
           </Text>
         </Group>
       )}
