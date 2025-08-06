@@ -9,7 +9,7 @@ export class ModelNotFoundException extends ConduitError {
 
   constructor(modelName: string, message?: string) {
     super(
-      message || `Model '${modelName}' not found. Please check your model configuration.`,
+      message ?? `Model '${modelName}' not found. Please check your model configuration.`,
       404,
       'model_not_found',
       {

@@ -47,7 +47,7 @@ export function parseErrorResponse(response: Response, body: unknown): ConduitEr
   }
   
   const error = errorData?.error;
-  const message = error?.message || 'An error occurred';
+  const message = error?.message ?? 'An error occurred';
   const code = error?.code;
   const param = error?.param;
   
@@ -88,15 +88,16 @@ export function parseErrorResponse(response: Response, body: unknown): ConduitEr
       return new RateLimitError(message, retryAfter, { code, param });
     }
       
-    case 503:
+    case 503: {
       // Extract service name from error details if available
-      const serviceName = (body as any)?.service || undefined;
+      const serviceName = (body as Record<string, unknown>)?.service as string ?? undefined;
       const retryAfter = response.headers.get('Retry-After');
       return new ServiceUnavailableException(
         message, 
         serviceName, 
         retryAfter ? parseInt(retryAfter, 10) : undefined
       );
+    }
       
     case 500:
     case 502:
@@ -107,7 +108,7 @@ export function parseErrorResponse(response: Response, body: unknown): ConduitEr
       if (status >= 500) {
         return new ServerError(message, { code, param, status });
       }
-      return new ConduitError(message, status, code || 'unknown_error', { param });
+      return new ConduitError(message, status, code ?? 'unknown_error', { param });
   }
 }
 

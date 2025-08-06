@@ -12,7 +12,7 @@ export class InvalidRequestException extends ConduitError {
     super(
       message,
       400,
-      errorCode || 'invalid_request',
+      errorCode ?? 'invalid_request',
       {
         type: 'invalid_request_error',
         errorCode,
