@@ -7,7 +7,7 @@ import { useVideoModels } from '../hooks/useVideoModels';
 import { ErrorDisplay } from '@/components/common/ErrorDisplay';
 import { createEnhancedError } from '@/lib/utils/error-enhancement';
 import VideoSettings from './VideoSettings';
-import VideoPromptInput from './VideoPromptInput';
+import EnhancedVideoPromptInput from './EnhancedVideoPromptInput';
 import VideoGallery from './VideoGallery';
 import VideoQueue from './VideoQueue';
 
@@ -141,7 +141,7 @@ export default function VideoInterface() {
       )}
 
       {/* Prompt Input */}
-      <VideoPromptInput models={models || []} />
+      <EnhancedVideoPromptInput models={models || []} />
 
       {/* Video Gallery */}
       <VideoGallery />

@@ -2,11 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 import { ProviderSettings } from '@knn_labs/conduit-admin-client';
-import { providerNameToType } from '@/lib/utils/providerTypeUtils';
 
 interface RequestBody {
-  providerType?: number;
-  providerName?: string; // For backward compatibility
+  providerType: number;
   apiKey: string;
   apiEndpoint?: string;
   organizationId?: string;
@@ -19,15 +17,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json() as RequestBody;
     const adminClient = getServerAdminClient();
     
-    // Handle both providerType and providerName for backward compatibility
-    let providerType: number;
-    if (body.providerType !== undefined) {
-      providerType = body.providerType;
-    } else if (body.providerName) {
-      providerType = providerNameToType(body.providerName);
-    } else {
-      throw new Error('Either providerType or providerName must be provided');
-    }
+    const { providerType } = body;
     
     const testRequest = {
       providerType,

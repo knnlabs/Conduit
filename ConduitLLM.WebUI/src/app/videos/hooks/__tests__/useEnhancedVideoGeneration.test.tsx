@@ -65,7 +65,6 @@ describe('useEnhancedVideoGeneration', () => {
 
       const hook = renderHook(() =>
         useEnhancedVideoGeneration({
-          useProgressTracking: true,
           fallbackToPolling: true,
         })
       );
@@ -136,9 +135,7 @@ describe('useEnhancedVideoGeneration', () => {
       });
 
       const hook = renderHook(() =>
-        useEnhancedVideoGeneration({
-          useProgressTracking: true,
-        })
+        useEnhancedVideoGeneration()
       );
 
       await act(async () => {
@@ -206,9 +203,7 @@ describe('useEnhancedVideoGeneration', () => {
       });
 
       const hook = renderHook(() =>
-        useEnhancedVideoGeneration({
-          useProgressTracking: true,
-        })
+        useEnhancedVideoGeneration()
       );
 
       await act(async () => {
@@ -260,9 +255,7 @@ describe('useEnhancedVideoGeneration', () => {
       });
 
       const hook = renderHook(() =>
-        useEnhancedVideoGeneration({
-          useProgressTracking: true,
-        })
+        useEnhancedVideoGeneration()
       );
 
       await act(async () => {
@@ -335,7 +328,6 @@ describe('useEnhancedVideoGeneration', () => {
 
       const hook = renderHook(() =>
         useEnhancedVideoGeneration({
-          useProgressTracking: false,
           fallbackToPolling: true,
         })
       );
@@ -385,7 +377,6 @@ describe('useEnhancedVideoGeneration', () => {
 
       const hook = renderHook(() =>
         useEnhancedVideoGeneration({
-          useProgressTracking: false,
           fallbackToPolling: true,
         })
       );
@@ -421,9 +412,7 @@ describe('useEnhancedVideoGeneration', () => {
       });
 
       const hook = renderHook(() =>
-        useEnhancedVideoGeneration({
-          useProgressTracking: true,
-        })
+        useEnhancedVideoGeneration()
       );
 
       await act(async () => {
@@ -465,9 +454,7 @@ describe('useEnhancedVideoGeneration', () => {
 
     it('should handle cancellation', async () => {
       const hook = renderHook(() =>
-        useEnhancedVideoGeneration({
-          useProgressTracking: true,
-        })
+        useEnhancedVideoGeneration()
       );
 
       // Mock the fetch call for cancellation
@@ -499,9 +486,7 @@ describe('useEnhancedVideoGeneration', () => {
   describe('Settings validation', () => {
     it('should validate required settings', async () => {
       const hook = renderHook(() =>
-        useEnhancedVideoGeneration({
-          useProgressTracking: true,
-        })
+        useEnhancedVideoGeneration()
       );
 
       await act(async () => {
@@ -525,9 +510,7 @@ describe('useEnhancedVideoGeneration', () => {
 
     it('should validate duration limits', async () => {
       const hook = renderHook(() =>
-        useEnhancedVideoGeneration({
-          useProgressTracking: true,
-        })
+        useEnhancedVideoGeneration()
       );
 
       await act(async () => {

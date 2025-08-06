@@ -1,37 +1,23 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useVideoStore } from '../hooks/useVideoStore';
-import { useVideoGeneration } from '../hooks/useVideoGeneration';
 import { useEnhancedVideoGeneration } from '../hooks/useEnhancedVideoGeneration';
-import { isVideoProgressTrackingEnabled, toggleVideoProgressTracking } from '@/lib/features/video-progress';
 import type { VideoModel } from '../types';
 
 interface VideoPromptInputProps {
   models: VideoModel[];
 }
 
-export default function EnhancedVideoPromptInput({}: VideoPromptInputProps) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export default function EnhancedVideoPromptInput({ models }: VideoPromptInputProps) {
   const [prompt, setPrompt] = useState('');
-  const [progressTrackingEnabled, setProgressTrackingEnabled] = useState(false);
   const { settings, currentTask, setError } = useVideoStore();
   
-  // Use legacy hook
-  const legacyHook = useVideoGeneration();
-  
-  // Use enhanced hook
-  const enhancedHook = useEnhancedVideoGeneration({
-    useProgressTracking: progressTrackingEnabled,
+  // Use enhanced hook with fallback to polling
+  const { generateVideo, isGenerating } = useEnhancedVideoGeneration({
     fallbackToPolling: true,
   });
-  
-  // Select which hook to use based on feature flag
-  const { generateVideo, isGenerating } = progressTrackingEnabled ? enhancedHook : legacyHook;
-  
-  // Check feature flag on mount
-  useEffect(() => {
-    setProgressTrackingEnabled(isVideoProgressTrackingEnabled());
-  }, []);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,11 +54,6 @@ export default function EnhancedVideoPromptInput({}: VideoPromptInputProps) {
     }
   };
 
-  const handleToggleProgressTracking = () => {
-    const newValue = toggleVideoProgressTracking();
-    setProgressTrackingEnabled(newValue);
-    setError(null); // Clear any errors
-  };
 
   const isDisabled = isGenerating || !!currentTask;
 
@@ -99,20 +80,6 @@ export default function EnhancedVideoPromptInput({}: VideoPromptInputProps) {
         </div>
         
         <div className="prompt-actions">
-          {/* Feature toggle for testing */}
-          <label className="feature-toggle" style={{ marginRight: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <input
-              type="checkbox"
-              checked={progressTrackingEnabled}
-              onChange={handleToggleProgressTracking}
-              disabled={isGenerating}
-            />
-            <span style={{ fontSize: '0.875rem' }}>
-              Real-time progress
-              {enhancedHook.signalRConnected && ' ✓'}
-            </span>
-          </label>
-          
           <button
             type="submit"
             className="btn btn-primary"

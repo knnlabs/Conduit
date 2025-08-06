@@ -819,69 +819,116 @@
         }
       }
     },
-    "/v1/completions": {
-      "post": {
-        "tags": [
-          "ConduitLLM.Http"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/v1/embeddings": {
-      "post": {
-        "tags": [
-          "ConduitLLM.Http"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EmbeddingRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/v1/models": {
-      "get": {
-        "tags": [
-          "ConduitLLM.Http"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
     "/v1/chat/completions": {
       "post": {
         "tags": [
-          "ConduitLLM.Http"
+          "Chat"
         ],
+        "summary": "Creates a chat completion.",
         "requestBody": {
+          "description": "The chat completion request.",
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ChatCompletionRequest"
               }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatCompletionRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatCompletionRequest"
+              }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatCompletionResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatCompletionResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatCompletionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/completions": {
+      "post": {
+        "tags": [
+          "Completions"
+        ],
+        "summary": "Legacy completions endpoint - not implemented.",
+        "responses": {
+          "501": {
+            "description": "Not Implemented",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
+              }
+            }
           }
         }
       }
@@ -1030,6 +1077,96 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/embeddings": {
+      "post": {
+        "tags": [
+          "Embeddings"
+        ],
+        "summary": "Creates embeddings for the given input.",
+        "requestBody": {
+          "description": "The embedding request.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmbeddingRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmbeddingRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmbeddingRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmbeddingResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmbeddingResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmbeddingResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -1482,208 +1619,6 @@
         }
       }
     },
-    "/api/v1/images/optimal-provider": {
-      "get": {
-        "tags": [
-          "ImageGeneration"
-        ],
-        "summary": "Gets the optimal provider for image generation based on current performance metrics.",
-        "parameters": [
-          {
-            "name": "imageCount",
-            "in": "query",
-            "description": "Number of images to generate (default 1).",
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 1
-            }
-          },
-          {
-            "name": "maxWaitTime",
-            "in": "query",
-            "description": "Maximum acceptable wait time in seconds (optional).",
-            "schema": {
-              "type": "number",
-              "format": "double"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/OptimalProviderResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OptimalProviderResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OptimalProviderResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/images/provider-stats": {
-      "get": {
-        "tags": [
-          "ImageGeneration"
-        ],
-        "summary": "Gets performance statistics for all image generation providers.",
-        "parameters": [
-          {
-            "name": "windowMinutes",
-            "in": "query",
-            "description": "Time window in minutes for statistics (default 60).",
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 60
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ImageGenerationProviderStats"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ImageGenerationProviderStats"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ImageGenerationProviderStats"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/images/provider-stats/{provider}/{model}": {
-      "get": {
-        "tags": [
-          "ImageGeneration"
-        ],
-        "summary": "Gets performance statistics for a specific provider.",
-        "parameters": [
-          {
-            "name": "provider",
-            "in": "path",
-            "description": "Provider name.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "model",
-            "in": "path",
-            "description": "Model name.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "windowMinutes",
-            "in": "query",
-            "description": "Time window in minutes for statistics (default 60).",
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 60
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ImageGenerationProviderStats"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ImageGenerationProviderStats"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ImageGenerationProviderStats"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/v1/images/generations": {
       "post": {
         "tags": [
@@ -1868,7 +1803,126 @@
         }
       }
     },
-    "/api/provider-models/{providerName}": {
+    "/v1/models": {
+      "get": {
+        "tags": [
+          "Models"
+        ],
+        "summary": "Lists available models.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/models/{modelId}/metadata": {
+      "get": {
+        "tags": [
+          "Models"
+        ],
+        "summary": "Gets metadata for a specific model.",
+        "parameters": [
+          {
+            "name": "modelId",
+            "in": "path",
+            "description": "The model ID.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/provider-models/{providerId}": {
       "get": {
         "tags": [
           "ProviderModels"
@@ -1876,12 +1930,13 @@
         "summary": "Gets available models for a specified provider",
         "parameters": [
           {
-            "name": "providerName",
+            "name": "providerId",
             "in": "path",
-            "description": "Name of the provider",
+            "description": "ID of the provider",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int32"
             }
           },
           {
@@ -2739,7 +2794,7 @@
             }
           },
           "404": {
-            "description": "Task not found.",
+            "description": "Task not found or access denied.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2860,7 +2915,7 @@
             }
           },
           "404": {
-            "description": "Task not found.",
+            "description": "Task not found or access denied.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2944,7 +2999,7 @@
             }
           },
           "404": {
-            "description": "Task not found.",
+            "description": "Task not found or access denied.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3017,7 +3072,6 @@
           3
         ],
         "type": "integer",
-        "description": "Alert severity levels",
         "format": "int32"
       },
       "AudioTranscriptionResponse": {
@@ -3102,27 +3156,22 @@
         "properties": {
           "operationId": {
             "type": "string",
-            "description": "Unique identifier for tracking the operation",
             "nullable": true
           },
           "operationType": {
             "type": "string",
-            "description": "Type of batch operation",
             "nullable": true
           },
           "totalItems": {
             "type": "integer",
-            "description": "Total number of items in the batch",
             "format": "int32"
           },
           "statusUrl": {
             "type": "string",
-            "description": "URL to check operation status",
             "nullable": true
           },
           "taskId": {
             "type": "string",
-            "description": "SignalR task ID to subscribe to for real-time updates",
             "nullable": true
           },
           "signalREvents": {
@@ -3130,88 +3179,71 @@
             "items": {
               "type": "string"
             },
-            "description": "SignalR event names to listen for",
             "nullable": true
           },
           "message": {
             "type": "string",
-            "description": "Informational message",
             "nullable": true
           }
         },
-        "additionalProperties": false,
-        "description": "Response when starting a batch operation"
+        "additionalProperties": false
       },
       "BatchOperationStatusResponse": {
         "type": "object",
         "properties": {
           "operationId": {
             "type": "string",
-            "description": "Operation identifier",
             "nullable": true
           },
           "operationType": {
             "type": "string",
-            "description": "Type of operation",
             "nullable": true
           },
           "status": {
             "type": "string",
-            "description": "Current status",
             "nullable": true
           },
           "totalItems": {
             "type": "integer",
-            "description": "Total items in batch",
             "format": "int32"
           },
           "processedCount": {
             "type": "integer",
-            "description": "Items processed so far",
             "format": "int32"
           },
           "successCount": {
             "type": "integer",
-            "description": "Successful items",
             "format": "int32"
           },
           "failedCount": {
             "type": "integer",
-            "description": "Failed items",
             "format": "int32"
           },
           "progressPercentage": {
             "type": "integer",
-            "description": "Progress percentage (0-100)",
             "format": "int32"
           },
           "elapsedTime": {
             "type": "string",
-            "description": "Time elapsed",
             "format": "date-span"
           },
           "estimatedTimeRemaining": {
             "type": "string",
-            "description": "Estimated time remaining",
             "format": "date-span"
           },
           "itemsPerSecond": {
             "type": "number",
-            "description": "Processing rate",
             "format": "double"
           },
           "currentItem": {
             "type": "string",
-            "description": "Current item being processed",
             "nullable": true
           },
           "canCancel": {
-            "type": "boolean",
-            "description": "Whether operation can be cancelled"
+            "type": "boolean"
           }
         },
-        "additionalProperties": false,
-        "description": "Current status of a batch operation"
+        "additionalProperties": false
       },
       "BatchSpendUpdateRequest": {
         "required": [
@@ -3223,12 +3255,10 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/SpendUpdateDto"
-            },
-            "description": "List of spend updates to process"
+            }
           }
         },
-        "additionalProperties": false,
-        "description": "Request to update spend for multiple virtual keys"
+        "additionalProperties": false
       },
       "BatchVirtualKeyUpdateRequest": {
         "required": [
@@ -3240,12 +3270,10 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/VirtualKeyUpdateDto"
-            },
-            "description": "List of virtual key updates"
+            }
           }
         },
-        "additionalProperties": false,
-        "description": "Request to update multiple virtual keys"
+        "additionalProperties": false
       },
       "BatchWebhookSendRequest": {
         "required": [
@@ -3257,12 +3285,10 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/WebhookSendDto"
-            },
-            "description": "List of webhooks to send"
+            }
           }
         },
-        "additionalProperties": false,
-        "description": "Request to send webhooks in batch"
+        "additionalProperties": false
       },
       "BatchingStatistics": {
         "type": "object",
@@ -3410,6 +3436,82 @@
           },
           "system_fingerprint": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ChatCompletionResponse": {
+        "required": [
+          "choices",
+          "created",
+          "id",
+          "model",
+          "object"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "choices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Choice"
+            },
+            "nullable": true
+          },
+          "created": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "model": {
+            "type": "string",
+            "nullable": true
+          },
+          "system_fingerprint": {
+            "type": "string",
+            "nullable": true
+          },
+          "object": {
+            "type": "string",
+            "nullable": true
+          },
+          "usage": {
+            "$ref": "#/components/schemas/Usage"
+          },
+          "seed": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "performance_metrics": {
+            "$ref": "#/components/schemas/PerformanceMetrics"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Choice": {
+        "required": [
+          "finish_reason",
+          "index",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "finish_reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "index": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "$ref": "#/components/schemas/Message"
+          },
+          "logprobs": {
             "nullable": true
           }
         },
@@ -3627,6 +3729,32 @@
         },
         "additionalProperties": false
       },
+      "EmbeddingData": {
+        "required": [
+          "embedding",
+          "object"
+        ],
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "nullable": true
+          },
+          "embedding": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "nullable": true
+          },
+          "index": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "EmbeddingRequest": {
         "required": [
           "encoding_format",
@@ -3654,6 +3782,36 @@
           "user": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "EmbeddingResponse": {
+        "required": [
+          "data",
+          "model",
+          "object",
+          "usage"
+        ],
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EmbeddingData"
+            },
+            "nullable": true
+          },
+          "model": {
+            "type": "string",
+            "nullable": true
+          },
+          "usage": {
+            "$ref": "#/components/schemas/Usage"
           }
         },
         "additionalProperties": false
@@ -3805,59 +3963,6 @@
         },
         "additionalProperties": false
       },
-      "ImageGenerationProviderStats": {
-        "type": "object",
-        "properties": {
-          "provider": {
-            "type": "string",
-            "nullable": true
-          },
-          "model": {
-            "type": "string",
-            "nullable": true
-          },
-          "avg_generation_time_ms": {
-            "type": "number",
-            "format": "double"
-          },
-          "p95_generation_time_ms": {
-            "type": "number",
-            "format": "double"
-          },
-          "success_rate": {
-            "type": "number",
-            "format": "double"
-          },
-          "request_count": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "current_queue_depth": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "estimated_wait_time_seconds": {
-            "type": "number",
-            "format": "double"
-          },
-          "health_score": {
-            "type": "number",
-            "format": "double"
-          },
-          "is_healthy": {
-            "type": "boolean"
-          },
-          "last_updated": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "window_minutes": {
-            "type": "integer",
-            "format": "int32"
-          }
-        },
-        "additionalProperties": false
-      },
       "ImageGenerationRequest": {
         "required": [
           "model",
@@ -3967,47 +4072,93 @@
         },
         "additionalProperties": false
       },
-      "OptimalProviderResponse": {
+      "OpenAIError": {
+        "required": [
+          "message",
+          "type"
+        ],
         "type": "object",
         "properties": {
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "param": {
+            "type": "string",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "OpenAIErrorResponse": {
+        "required": [
+          "error"
+        ],
+        "type": "object",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/OpenAIError"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PerformanceMetrics": {
+        "type": "object",
+        "properties": {
+          "total_latency_ms": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "time_to_first_token_ms": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tokens_per_second": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "prompt_tokens_per_second": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "completion_tokens_per_second": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
           "provider": {
             "type": "string",
-            "description": "Selected provider name.",
             "nullable": true
           },
           "model": {
             "type": "string",
-            "description": "Selected model name.",
             "nullable": true
           },
-          "estimatedWaitTimeSeconds": {
-            "type": "number",
-            "description": "Estimated wait time in seconds.",
-            "format": "double"
+          "streaming": {
+            "type": "boolean"
           },
-          "averageGenerationTimeMs": {
-            "type": "number",
-            "description": "Average generation time in milliseconds.",
-            "format": "double"
-          },
-          "successRate": {
-            "type": "number",
-            "description": "Success rate (0.0 to 1.0).",
-            "format": "double"
-          },
-          "healthScore": {
-            "type": "number",
-            "description": "Provider health score (0.0 to 1.0).",
-            "format": "double"
-          },
-          "currentQueueDepth": {
+          "retry_attempts": {
             "type": "integer",
-            "description": "Current queue depth.",
             "format": "int32"
+          },
+          "avg_inter_token_latency_ms": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
           }
         },
-        "additionalProperties": false,
-        "description": "Response for optimal provider selection."
+        "additionalProperties": false
       },
       "ProblemDetails": {
         "type": "object",
@@ -4047,19 +4198,7 @@
           7,
           8,
           9,
-          10,
-          11,
-          12,
-          13,
-          14,
-          15,
-          16,
-          17,
-          18,
-          19,
-          20,
-          21,
-          22
+          10
         ],
         "type": "integer",
         "format": "int32"
@@ -4108,6 +4247,24 @@
         },
         "additionalProperties": false
       },
+      "SearchUsageMetadata": {
+        "type": "object",
+        "properties": {
+          "query_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "document_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "chunked_document_count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "ServiceStatus": {
         "type": "object",
         "properties": {
@@ -4133,20 +4290,17 @@
         "properties": {
           "virtualKeyId": {
             "type": "integer",
-            "description": "Virtual key to update",
             "format": "int32"
           },
           "amount": {
             "maximum": 1000000,
             "minimum": 0.0001,
             "type": "number",
-            "description": "Amount to add to spend",
             "format": "double"
           },
           "model": {
             "minLength": 1,
-            "type": "string",
-            "description": "Model used"
+            "type": "string"
           },
           "providerType": {
             "$ref": "#/components/schemas/ProviderType"
@@ -4154,12 +4308,10 @@
           "metadata": {
             "type": "object",
             "additionalProperties": { },
-            "description": "Additional metadata",
             "nullable": true
           }
         },
-        "additionalProperties": false,
-        "description": "Individual spend update item"
+        "additionalProperties": false
       },
       "TextToSpeechRequestDto": {
         "required": [
@@ -4193,8 +4345,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": false,
-        "description": "DTO for text-to-speech requests."
+        "additionalProperties": false
       },
       "Tool": {
         "required": [
@@ -4311,6 +4462,82 @@
           },
           "speaker": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "Usage": {
+        "type": "object",
+        "properties": {
+          "prompt_tokens": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "completion_tokens": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "total_tokens": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "image_count": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "video_duration_seconds": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "video_resolution": {
+            "type": "string",
+            "nullable": true
+          },
+          "is_batch": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "image_quality": {
+            "type": "string",
+            "nullable": true
+          },
+          "cached_input_tokens": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "cached_write_tokens": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "search_units": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "search_metadata": {
+            "$ref": "#/components/schemas/SearchUsageMetadata"
+          },
+          "inference_steps": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "audio_duration_seconds": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": { },
             "nullable": true
           }
         },
@@ -4584,14 +4811,12 @@
         "properties": {
           "virtualKeyId": {
             "type": "integer",
-            "description": "Virtual key ID to update",
             "format": "int32"
           },
           "maxBudget": {
             "maximum": 1000000,
             "minimum": 0,
             "type": "number",
-            "description": "New budget limit (optional)",
             "format": "double",
             "nullable": true
           },
@@ -4600,34 +4825,28 @@
             "items": {
               "type": "string"
             },
-            "description": "New allowed models list (optional)",
             "nullable": true
           },
           "rateLimits": {
             "type": "object",
             "additionalProperties": { },
-            "description": "New rate limits (optional)",
             "nullable": true
           },
           "isEnabled": {
             "type": "boolean",
-            "description": "Enable/disable key (optional)",
             "nullable": true
           },
           "expiresAt": {
             "type": "string",
-            "description": "New expiry date (optional)",
             "format": "date-time",
             "nullable": true
           },
           "notes": {
             "type": "string",
-            "description": "Notes about the update",
             "nullable": true
           }
         },
-        "additionalProperties": false,
-        "description": "Individual virtual key update"
+        "additionalProperties": false
       },
       "WebhookSendDto": {
         "required": [
@@ -4640,33 +4859,26 @@
           "url": {
             "minLength": 1,
             "type": "string",
-            "description": "Webhook URL",
             "format": "uri"
           },
           "eventType": {
             "minLength": 1,
-            "type": "string",
-            "description": "Event type"
+            "type": "string"
           },
-          "payload": {
-            "description": "Payload to send"
-          },
+          "payload": { },
           "headers": {
             "type": "object",
             "additionalProperties": {
               "type": "string"
             },
-            "description": "Custom headers",
             "nullable": true
           },
           "secret": {
             "type": "string",
-            "description": "Webhook secret for signature",
             "nullable": true
           }
         },
-        "additionalProperties": false,
-        "description": "Individual webhook to send"
+        "additionalProperties": false
       }
     },
     "securitySchemes": {

@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 import { ProviderType, type ProviderCredentialDto, type CreateProviderCredentialDto } from '@knn_labs/conduit-admin-client';
-import { providerNameToType } from '@/lib/utils/providerTypeUtils';
 
 // GET /api/providers - List all providers
 export async function GET() {
@@ -68,17 +67,8 @@ export async function POST(request: Request) {
       throw new Error('Providers service not available');
     }
     
-    // Ensure isEnabled has a value (default to true if not provided)
-    // Convert providerName to providerType if needed
-    let providerType: number | undefined;
-    const bodyWithType = body as { providerType?: number; providerName?: string; isEnabled?: boolean; apiKey?: string; apiEndpoint?: string; organizationId?: string };
-    
-    if (bodyWithType.providerType !== undefined) {
-      providerType = bodyWithType.providerType;
-    } else if (bodyWithType.providerName) {
-      // Backward compatibility - convert name to type
-      providerType = providerNameToType(bodyWithType.providerName);
-    }
+    const bodyWithType = body as { providerType: number; isEnabled?: boolean; apiKey?: string; apiEndpoint?: string; organizationId?: string };
+    const { providerType } = bodyWithType;
     
     // Extract API key from request (it's not part of provider creation)
     const apiKey = bodyWithType.apiKey;
@@ -87,8 +77,8 @@ export async function POST(request: Request) {
     
     // Create provider data without API key
     const createData = {
-      providerType: (providerType ?? ProviderType.OpenAI) as ProviderType,
-      providerName: bodyWithType.providerName ?? '',
+      providerType: providerType as ProviderType,
+      providerName: `Provider ${providerType}`, // Generate a default name
       baseUrl: apiEndpoint,
       isEnabled: bodyWithType.isEnabled ?? true,
     };

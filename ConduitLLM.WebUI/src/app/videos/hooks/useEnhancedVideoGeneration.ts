@@ -27,8 +27,6 @@ interface GenerateVideoParams {
 }
 
 interface UseEnhancedVideoGenerationOptions {
-  /** Whether to use the new progress tracking method */
-  useProgressTracking?: boolean;
   /** Fallback to polling if SignalR fails */
   fallbackToPolling?: boolean;
 }
@@ -39,7 +37,6 @@ interface UseEnhancedVideoGenerationOptions {
  */
 export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOptions = {}) {
   const {
-    useProgressTracking = true,
     fallbackToPolling = true,
   } = options;
 
@@ -71,8 +68,8 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
     setError(null);
 
     try {
-      // Check if we should use progress tracking
-      const shouldUseProgressTracking = useProgressTracking && signalRErrorCount.current < maxSignalRErrors;
+      // Check if we should use progress tracking (always try, but fall back if errors)
+      const shouldUseProgressTracking = signalRErrorCount.current < maxSignalRErrors;
 
       if (shouldUseProgressTracking) {
         // Try to use the new progress tracking method
@@ -279,7 +276,6 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
     addTask,
     updateTask,
     setError,
-    useProgressTracking,
     fallbackToPolling,
     handleError
   ]);
@@ -308,12 +304,54 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
     }
   }, [updateTask, setError]);
 
+  const retryGeneration = useCallback(async (task: VideoTask) => {
+    try {
+      // Add to retry history
+      const retryHistoryEntry = {
+        attemptNumber: task.retryCount + 1,
+        timestamp: new Date().toISOString(),
+        error: task.error ?? 'Unknown error',
+      };
+
+      // Update task with retry status
+      updateTask(task.id, {
+        status: 'pending',
+        retryCount: task.retryCount + 1,
+        lastRetryAt: new Date().toISOString(),
+        retryHistory: [...task.retryHistory, retryHistoryEntry],
+        error: undefined,
+        progress: 0,
+        message: `Retrying (attempt ${task.retryCount + 2})...`,
+        updatedAt: new Date().toISOString(),
+      });
+
+      // Retry the generation with the same settings
+      await generateVideo({
+        prompt: task.prompt,
+        settings: task.settings,
+      });
+    } catch (error) {
+      console.error('Error retrying video generation:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to retry generation';
+      
+      updateTask(task.id, {
+        status: 'failed',
+        error: errorMessage,
+        message: 'Retry failed',
+        updatedAt: new Date().toISOString(),
+      });
+      
+      setError(errorMessage);
+    }
+  }, [generateVideo, updateTask, setError]);
+
   return {
     generateVideo,
     cancelGeneration,
+    retryGeneration,
     isGenerating,
     isRetrying,
     signalRConnected,
-    isProgressTrackingEnabled: useProgressTracking && signalRErrorCount.current < maxSignalRErrors,
+    isProgressTrackingEnabled: signalRErrorCount.current < maxSignalRErrors,
   };
 }

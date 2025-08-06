@@ -580,109 +580,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/completions": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/embeddings": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: {
-        content: {
-          "application/json": components["schemas"]["EmbeddingRequest"];
-        };
-      };
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/models": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/v1/chat/completions": {
     parameters: {
       query?: never;
@@ -692,6 +589,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
+    /** Creates a chat completion. */
     post: {
       parameters: {
         query?: never;
@@ -699,9 +597,12 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody: {
+      /** @description The chat completion request. */
+      requestBody?: {
         content: {
           "application/json": components["schemas"]["ChatCompletionRequest"];
+          "text/json": components["schemas"]["ChatCompletionRequest"];
+          "application/*+json": components["schemas"]["ChatCompletionRequest"];
         };
       };
       responses: {
@@ -710,7 +611,71 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            "text/plain": components["schemas"]["ChatCompletionResponse"];
+            "application/json": components["schemas"]["ChatCompletionResponse"];
+            "text/json": components["schemas"]["ChatCompletionResponse"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["OpenAIErrorResponse"];
+            "application/json": components["schemas"]["OpenAIErrorResponse"];
+            "text/json": components["schemas"]["OpenAIErrorResponse"];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["OpenAIErrorResponse"];
+            "application/json": components["schemas"]["OpenAIErrorResponse"];
+            "text/json": components["schemas"]["OpenAIErrorResponse"];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/completions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Legacy completions endpoint - not implemented. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Not Implemented */
+        501: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": unknown;
+            "application/json": unknown;
+            "text/json": unknown;
+          };
         };
       };
     };
@@ -921,6 +886,73 @@ export interface paths {
             [name: string]: unknown;
           };
           content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/embeddings": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Creates embeddings for the given input. */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      /** @description The embedding request. */
+      requestBody?: {
+        content: {
+          "application/json": components["schemas"]["EmbeddingRequest"];
+          "text/json": components["schemas"]["EmbeddingRequest"];
+          "application/*+json": components["schemas"]["EmbeddingRequest"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["EmbeddingResponse"];
+            "application/json": components["schemas"]["EmbeddingResponse"];
+            "text/json": components["schemas"]["EmbeddingResponse"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["OpenAIErrorResponse"];
+            "application/json": components["schemas"]["OpenAIErrorResponse"];
+            "text/json": components["schemas"]["OpenAIErrorResponse"];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["OpenAIErrorResponse"];
+            "application/json": components["schemas"]["OpenAIErrorResponse"];
+            "text/json": components["schemas"]["OpenAIErrorResponse"];
+          };
         };
       };
     };
@@ -1399,158 +1431,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/v1/images/optimal-provider": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets the optimal provider for image generation based on current performance metrics. */
-    get: {
-      parameters: {
-        query?: {
-          /** @description Number of images to generate (default 1). */
-          imageCount?: number;
-          /** @description Maximum acceptable wait time in seconds (optional). */
-          maxWaitTime?: number;
-        };
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["OptimalProviderResponse"];
-            "application/json": components["schemas"]["OptimalProviderResponse"];
-            "text/json": components["schemas"]["OptimalProviderResponse"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ProblemDetails"];
-            "application/json": components["schemas"]["ProblemDetails"];
-            "text/json": components["schemas"]["ProblemDetails"];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/v1/images/provider-stats": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets performance statistics for all image generation providers. */
-    get: {
-      parameters: {
-        query?: {
-          /** @description Time window in minutes for statistics (default 60). */
-          windowMinutes?: number;
-        };
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ImageGenerationProviderStats"][];
-            "application/json": components["schemas"]["ImageGenerationProviderStats"][];
-            "text/json": components["schemas"]["ImageGenerationProviderStats"][];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/v1/images/provider-stats/{provider}/{model}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets performance statistics for a specific provider. */
-    get: {
-      parameters: {
-        query?: {
-          /** @description Time window in minutes for statistics (default 60). */
-          windowMinutes?: number;
-        };
-        header?: never;
-        path: {
-          /** @description Provider name. */
-          provider: string;
-          /** @description Model name. */
-          model: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ImageGenerationProviderStats"];
-            "application/json": components["schemas"]["ImageGenerationProviderStats"];
-            "text/json": components["schemas"]["ImageGenerationProviderStats"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ProblemDetails"];
-            "application/json": components["schemas"]["ProblemDetails"];
-            "text/json": components["schemas"]["ProblemDetails"];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/v1/images/generations": {
     parameters: {
       query?: never;
@@ -1802,7 +1682,119 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/provider-models/{providerName}": {
+  "/v1/models": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Lists available models. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": unknown;
+            "application/json": unknown;
+            "text/json": unknown;
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["OpenAIErrorResponse"];
+            "application/json": components["schemas"]["OpenAIErrorResponse"];
+            "text/json": components["schemas"]["OpenAIErrorResponse"];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/models/{modelId}/metadata": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets metadata for a specific model. */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The model ID. */
+          modelId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": unknown;
+            "application/json": unknown;
+            "text/json": unknown;
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["OpenAIErrorResponse"];
+            "application/json": components["schemas"]["OpenAIErrorResponse"];
+            "text/json": components["schemas"]["OpenAIErrorResponse"];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/provider-models/{providerId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -1818,8 +1810,8 @@ export interface paths {
         };
         header?: never;
         path: {
-          /** @description Name of the provider */
-          providerName: string;
+          /** @description ID of the provider */
+          providerId: number;
         };
         cookie?: never;
       };
@@ -2809,7 +2801,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Task not found. */
+        /** @description Task not found or access denied. */
         404: {
           headers: {
             [name: string]: unknown;
@@ -2896,7 +2888,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Task not found. */
+        /** @description Task not found or access denied. */
         404: {
           headers: {
             [name: string]: unknown;
@@ -2967,7 +2959,7 @@ export interface paths {
             "text/json": components["schemas"]["ProblemDetails"];
           };
         };
-        /** @description Task not found. */
+        /** @description Task not found or access denied. */
         404: {
           headers: {
             [name: string]: unknown;
@@ -3013,7 +3005,6 @@ export interface components {
   schemas: {
     /**
      * Format: int32
-     * @description Alert severity levels
      * @enum {integer}
      */
     AlertSeverity: 0 | 1 | 2 | 3;
@@ -3042,92 +3033,46 @@ export interface components {
         [key: string]: unknown;
       } | null;
     };
-    /** @description Response when starting a batch operation */
     BatchOperationStartResponse: {
-      /** @description Unique identifier for tracking the operation */
       operationId?: string | null;
-      /** @description Type of batch operation */
       operationType?: string | null;
-      /**
-       * Format: int32
-       * @description Total number of items in the batch
-       */
+      /** Format: int32 */
       totalItems?: number;
-      /** @description URL to check operation status */
       statusUrl?: string | null;
-      /** @description SignalR task ID to subscribe to for real-time updates */
       taskId?: string | null;
-      /** @description SignalR event names to listen for */
       signalREvents?: string[] | null;
-      /** @description Informational message */
       message?: string | null;
     };
-    /** @description Current status of a batch operation */
     BatchOperationStatusResponse: {
-      /** @description Operation identifier */
       operationId?: string | null;
-      /** @description Type of operation */
       operationType?: string | null;
-      /** @description Current status */
       status?: string | null;
-      /**
-       * Format: int32
-       * @description Total items in batch
-       */
+      /** Format: int32 */
       totalItems?: number;
-      /**
-       * Format: int32
-       * @description Items processed so far
-       */
+      /** Format: int32 */
       processedCount?: number;
-      /**
-       * Format: int32
-       * @description Successful items
-       */
+      /** Format: int32 */
       successCount?: number;
-      /**
-       * Format: int32
-       * @description Failed items
-       */
+      /** Format: int32 */
       failedCount?: number;
-      /**
-       * Format: int32
-       * @description Progress percentage (0-100)
-       */
+      /** Format: int32 */
       progressPercentage?: number;
-      /**
-       * Format: date-span
-       * @description Time elapsed
-       */
+      /** Format: date-span */
       elapsedTime?: string;
-      /**
-       * Format: date-span
-       * @description Estimated time remaining
-       */
+      /** Format: date-span */
       estimatedTimeRemaining?: string;
-      /**
-       * Format: double
-       * @description Processing rate
-       */
+      /** Format: double */
       itemsPerSecond?: number;
-      /** @description Current item being processed */
       currentItem?: string | null;
-      /** @description Whether operation can be cancelled */
       canCancel?: boolean;
     };
-    /** @description Request to update spend for multiple virtual keys */
     BatchSpendUpdateRequest: {
-      /** @description List of spend updates to process */
       updates: components["schemas"]["SpendUpdateDto"][];
     };
-    /** @description Request to update multiple virtual keys */
     BatchVirtualKeyUpdateRequest: {
-      /** @description List of virtual key updates */
       updates: components["schemas"]["VirtualKeyUpdateDto"][];
     };
-    /** @description Request to send webhooks in batch */
     BatchWebhookSendRequest: {
-      /** @description List of webhooks to send */
       webhooks: components["schemas"]["WebhookSendDto"][];
     };
     /** @description Statistics about message batching */
@@ -3182,6 +3127,26 @@ export interface components {
         [key: string]: number;
       } | null;
       system_fingerprint?: string | null;
+    };
+    ChatCompletionResponse: {
+      id: string | null;
+      choices: components["schemas"]["Choice"][] | null;
+      /** Format: int64 */
+      created: number;
+      model: string | null;
+      system_fingerprint?: string | null;
+      object: string | null;
+      usage?: components["schemas"]["Usage"];
+      /** Format: int32 */
+      seed?: number | null;
+      performance_metrics?: components["schemas"]["PerformanceMetrics"];
+    };
+    Choice: {
+      finish_reason: string | null;
+      /** Format: int32 */
+      index: number;
+      message: components["schemas"]["Message"];
+      logprobs?: unknown;
     };
     /**
      * Format: int32
@@ -3270,6 +3235,12 @@ export interface components {
       component?: string | null;
       suggestedActions?: string[] | null;
     };
+    EmbeddingData: {
+      object: string | null;
+      embedding: number[] | null;
+      /** Format: int32 */
+      index?: number;
+    };
     EmbeddingRequest: {
       input: unknown;
       model: string | null;
@@ -3277,6 +3248,12 @@ export interface components {
       /** Format: int32 */
       dimensions?: number | null;
       user?: string | null;
+    };
+    EmbeddingResponse: {
+      object: string | null;
+      data: components["schemas"]["EmbeddingData"][] | null;
+      model: string | null;
+      usage: components["schemas"]["Usage"];
     };
     FunctionCall: {
       name: string | null;
@@ -3332,29 +3309,6 @@ export interface components {
         [key: string]: string;
       } | null;
     };
-    ImageGenerationProviderStats: {
-      provider?: string | null;
-      model?: string | null;
-      /** Format: double */
-      avg_generation_time_ms?: number;
-      /** Format: double */
-      p95_generation_time_ms?: number;
-      /** Format: double */
-      success_rate?: number;
-      /** Format: int32 */
-      request_count?: number;
-      /** Format: int32 */
-      current_queue_depth?: number;
-      /** Format: double */
-      estimated_wait_time_seconds?: number;
-      /** Format: double */
-      health_score?: number;
-      is_healthy?: boolean;
-      /** Format: date-time */
-      last_updated?: string;
-      /** Format: int32 */
-      window_minutes?: number;
-    };
     ImageGenerationRequest: {
       prompt: string | null;
       model: string | null;
@@ -3384,37 +3338,33 @@ export interface components {
       tool_calls?: components["schemas"]["ToolCall"][] | null;
       tool_call_id?: string | null;
     };
-    /** @description Response for optimal provider selection. */
-    OptimalProviderResponse: {
-      /** @description Selected provider name. */
+    OpenAIError: {
+      message: string | null;
+      type: string | null;
+      param?: string | null;
+      code?: string | null;
+    };
+    OpenAIErrorResponse: {
+      error: components["schemas"]["OpenAIError"];
+    };
+    PerformanceMetrics: {
+      /** Format: int64 */
+      total_latency_ms?: number;
+      /** Format: int64 */
+      time_to_first_token_ms?: number | null;
+      /** Format: double */
+      tokens_per_second?: number | null;
+      /** Format: double */
+      prompt_tokens_per_second?: number | null;
+      /** Format: double */
+      completion_tokens_per_second?: number | null;
       provider?: string | null;
-      /** @description Selected model name. */
       model?: string | null;
-      /**
-       * Format: double
-       * @description Estimated wait time in seconds.
-       */
-      estimatedWaitTimeSeconds?: number;
-      /**
-       * Format: double
-       * @description Average generation time in milliseconds.
-       */
-      averageGenerationTimeMs?: number;
-      /**
-       * Format: double
-       * @description Success rate (0.0 to 1.0).
-       */
-      successRate?: number;
-      /**
-       * Format: double
-       * @description Provider health score (0.0 to 1.0).
-       */
-      healthScore?: number;
-      /**
-       * Format: int32
-       * @description Current queue depth.
-       */
-      currentQueueDepth?: number;
+      streaming?: boolean;
+      /** Format: int32 */
+      retry_attempts?: number;
+      /** Format: double */
+      avg_inter_token_latency_ms?: number | null;
     };
     ProblemDetails: {
       type?: string | null;
@@ -3430,29 +3380,7 @@ export interface components {
      * Format: int32
      * @enum {integer}
      */
-    ProviderType:
-      | 1
-      | 2
-      | 3
-      | 4
-      | 5
-      | 6
-      | 7
-      | 8
-      | 9
-      | 10
-      | 11
-      | 12
-      | 13
-      | 14
-      | 15
-      | 16
-      | 17
-      | 18
-      | 19
-      | 20
-      | 21
-      | 22;
+    ProviderType: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
     /** @description Statistics about the message queue */
     QueueStatistics: {
       /** Format: int32 */
@@ -3472,33 +3400,31 @@ export interface components {
     ResponseFormat: {
       type?: string | null;
     };
+    SearchUsageMetadata: {
+      /** Format: int32 */
+      query_count?: number;
+      /** Format: int32 */
+      document_count?: number;
+      /** Format: int32 */
+      chunked_document_count?: number;
+    };
     /** @description Service status response. */
     ServiceStatus: {
       /** @description Gets or sets whether the service is available. */
       available?: boolean;
       latencyMetrics?: components["schemas"]["HybridLatencyMetrics"];
     };
-    /** @description Individual spend update item */
     SpendUpdateDto: {
-      /**
-       * Format: int32
-       * @description Virtual key to update
-       */
+      /** Format: int32 */
       virtualKeyId: number;
-      /**
-       * Format: double
-       * @description Amount to add to spend
-       */
+      /** Format: double */
       amount: number;
-      /** @description Model used */
       model: string;
       providerType: components["schemas"]["ProviderType"];
-      /** @description Additional metadata */
       metadata?: {
         [key: string]: unknown;
       } | null;
     };
-    /** @description DTO for text-to-speech requests. */
     TextToSpeechRequestDto: {
       model: string;
       input: string;
@@ -3544,6 +3470,35 @@ export interface components {
       /** Format: double */
       confidence?: number | null;
       speaker?: string | null;
+    };
+    Usage: {
+      /** Format: int32 */
+      prompt_tokens?: number | null;
+      /** Format: int32 */
+      completion_tokens?: number | null;
+      /** Format: int32 */
+      total_tokens?: number | null;
+      /** Format: int32 */
+      image_count?: number | null;
+      /** Format: double */
+      video_duration_seconds?: number | null;
+      video_resolution?: string | null;
+      is_batch?: boolean | null;
+      image_quality?: string | null;
+      /** Format: int32 */
+      cached_input_tokens?: number | null;
+      /** Format: int32 */
+      cached_write_tokens?: number | null;
+      /** Format: int32 */
+      search_units?: number | null;
+      search_metadata?: components["schemas"]["SearchUsageMetadata"];
+      /** Format: int32 */
+      inference_steps?: number | null;
+      /** Format: double */
+      audio_duration_seconds?: number | null;
+      metadata?: {
+        [key: string]: unknown;
+      } | null;
     };
     VideoData: {
       url?: string | null;
@@ -3655,50 +3610,28 @@ export interface components {
       mime_type?: string | null;
       format?: string | null;
     };
-    /** @description Individual virtual key update */
     VirtualKeyUpdateDto: {
-      /**
-       * Format: int32
-       * @description Virtual key ID to update
-       */
+      /** Format: int32 */
       virtualKeyId: number;
-      /**
-       * Format: double
-       * @description New budget limit (optional)
-       */
+      /** Format: double */
       maxBudget?: number | null;
-      /** @description New allowed models list (optional) */
       allowedModels?: string[] | null;
-      /** @description New rate limits (optional) */
       rateLimits?: {
         [key: string]: unknown;
       } | null;
-      /** @description Enable/disable key (optional) */
       isEnabled?: boolean | null;
-      /**
-       * Format: date-time
-       * @description New expiry date (optional)
-       */
+      /** Format: date-time */
       expiresAt?: string | null;
-      /** @description Notes about the update */
       notes?: string | null;
     };
-    /** @description Individual webhook to send */
     WebhookSendDto: {
-      /**
-       * Format: uri
-       * @description Webhook URL
-       */
+      /** Format: uri */
       url: string;
-      /** @description Event type */
       eventType: string;
-      /** @description Payload to send */
       payload: unknown;
-      /** @description Custom headers */
       headers?: {
         [key: string]: string;
       } | null;
-      /** @description Webhook secret for signature */
       secret?: string | null;
     };
   };

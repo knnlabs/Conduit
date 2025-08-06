@@ -263,10 +263,11 @@ export class FetchVirtualKeyService {
   }
 
   /**
-   * Helper method to check if a key is active and within budget
+   * Helper method to check if a key is active and not expired
    */
   isKeyValid(key: VirtualKeyDto): boolean {
-    if (!key.isActive) return false;
+    // Check if key is enabled
+    if (!key.isEnabled) return false;
     
     const now = new Date();
     const expiresAt = key.expiresAt ? new Date(key.expiresAt) : null;
@@ -275,45 +276,6 @@ export class FetchVirtualKeyService {
       return false;
     }
     
-    if (key.maxBudget !== null && key.maxBudget !== undefined) {
-      const currentSpend = key.currentSpend ?? 0;
-      if (currentSpend >= key.maxBudget) {
-        return false;
-      }
-    }
-    
     return true;
-  }
-
-  /**
-   * Helper method to calculate remaining budget
-   */
-  getRemainingBudget(key: VirtualKeyDto): number | null {
-    if (key.maxBudget === null || key.maxBudget === undefined) {
-      return null;
-    }
-    
-    const currentSpend = key.currentSpend ?? 0;
-    return Math.max(0, key.maxBudget - currentSpend);
-  }
-
-  /**
-   * Helper method to format budget duration
-   */
-  formatBudgetDuration(duration: VirtualKeyDto['budgetDuration']): string {
-    switch (duration) {
-      case 'Daily':
-        return 'per day';
-      case 'Weekly':
-        return 'per week';
-      case 'Monthly':
-        return 'per month';
-      case 'Yearly':
-        return 'per year';
-      case 'OneTime':
-        return 'one-time';
-      default:
-        return 'unknown';
-    }
   }
 }

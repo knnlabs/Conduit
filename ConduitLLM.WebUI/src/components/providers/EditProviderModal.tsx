@@ -75,19 +75,12 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
   // Update form when provider changes
   useEffect(() => {
     if (provider && opened) {
-      // Define a type that matches the actual API response
-      type ApiProviderResponse = ProviderCredentialDto & {
-        providerName?: string;
-        baseUrl?: string;
-        apiBase?: string;
-      };
-      
-      const apiProvider = provider as ApiProviderResponse;
+      const apiProvider = provider;
       
       form.setValues({
         providerName: typeof apiProvider.providerName === 'string' ? apiProvider.providerName : '',
         apiKey: '', // Don't show existing key for security
-        apiEndpoint: apiProvider.baseUrl ?? apiProvider.apiBase ?? '',
+        apiEndpoint: apiProvider.baseUrl ?? '',
         organizationId: typeof provider.organization === 'string' ? provider.organization : '',
         isEnabled: provider.isEnabled === true,
       });
@@ -159,11 +152,7 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
     providerDisplayName = getProviderDisplayName(providerType);
   } catch {
     // Fallback to provider name if available
-    // Define a type that matches the actual API response
-    type ApiProviderResponse = ProviderCredentialDto & {
-      providerName?: string;
-    };
-    const apiProvider = provider as ApiProviderResponse;
+    const apiProvider = provider;
     providerDisplayName = typeof apiProvider.providerName === 'string' ? apiProvider.providerName : 'Unknown Provider';
   }
 

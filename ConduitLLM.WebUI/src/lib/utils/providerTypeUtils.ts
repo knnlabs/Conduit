@@ -65,33 +65,7 @@ export const isValidProviderType = (value: unknown): value is ProviderType => {
   return typeof value === 'number' && value in ProviderType;
 };
 
-// Map of provider names (as they come from the API) to ProviderType enum values
-const PROVIDER_NAME_TO_TYPE_MAP: Record<string, ProviderType> = {
-  openai: ProviderType.OpenAI,
-  groq: ProviderType.Groq,
-  replicate: ProviderType.Replicate,
-  fireworks: ProviderType.Fireworks,
-  openaicompatible: ProviderType.OpenAICompatible,
-  openaiCompatible: ProviderType.OpenAICompatible, // Alternative casing
-  minimax: ProviderType.MiniMax,
-  ultravox: ProviderType.Ultravox,
-  elevenlabs: ProviderType.ElevenLabs,
-  cerebras: ProviderType.Cerebras,
-  sambanova: ProviderType.SambaNova,
-  samba: ProviderType.SambaNova, // Alternative short name
-};
 
-// Convert provider name string to ProviderType enum
-export const providerNameToType = (providerName: string): ProviderType => {
-  const normalized = providerName.toLowerCase().replace(/[\s_-]/g, '');
-  const type = PROVIDER_NAME_TO_TYPE_MAP[normalized];
-  
-  if (type === undefined) {
-    throw new Error(`Unknown provider name: ${providerName}`);
-  }
-  
-  return type;
-};
 
 // Reverse map of ProviderType enum values to provider names
 const PROVIDER_TYPE_TO_NAME_MAP: Record<ProviderType, string> = {
@@ -116,17 +90,7 @@ export const providerTypeToName = (providerType: ProviderType): string => {
   return name;
 };
 
-// Helper to get ProviderType from a DTO that may have providerType or providerName
-export const getProviderTypeFromDto = (dto: { providerType?: number; providerName?: string | null }): ProviderType => {
-  // Prefer providerType if available
-  if (dto.providerType !== undefined) {
-    return dto.providerType as ProviderType;
-  }
-  
-  // Fall back to providerName if needed
-  if (dto.providerName) {
-    return providerNameToType(dto.providerName);
-  }
-  
-  throw new Error('DTO must have either providerType or providerName');
+// Helper to get ProviderType from a DTO
+export const getProviderTypeFromDto = (dto: { providerType: number }): ProviderType => {
+  return dto.providerType as ProviderType;
 };

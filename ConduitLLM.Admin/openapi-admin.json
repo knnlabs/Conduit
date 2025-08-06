@@ -1360,7 +1360,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CacheMonitoringStatusDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.CacheMonitoringStatusDto"
                 }
               }
             }
@@ -1383,7 +1383,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CacheAlertThresholdsDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.CacheAlertThresholdsDto"
                 }
               }
             }
@@ -1400,17 +1400,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateThresholdsRequest"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.UpdateThresholdsRequestDto"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateThresholdsRequest"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.UpdateThresholdsRequestDto"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateThresholdsRequest"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.UpdateThresholdsRequestDto"
               }
             }
           }
@@ -1421,7 +1421,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CacheAlertThresholdsDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.CacheAlertThresholdsDto"
                 }
               }
             }
@@ -1465,7 +1465,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CacheAlertDto"
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.CacheAlertDto"
                   }
                 }
               }
@@ -1497,7 +1497,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CacheMonitoringStatusDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.CacheMonitoringStatusDto"
                 }
               }
             }
@@ -1519,7 +1519,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.AlertDefinitionDto"
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.AlertDefinitionDto"
                   }
                 }
               }
@@ -1540,7 +1540,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CacheHealthSummaryDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.CacheHealthSummaryDto"
                 }
               }
             }
@@ -1570,17 +1570,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateRoutingConfigDto"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Routing.UpdateRoutingConfigDto"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateRoutingConfigDto"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Routing.UpdateRoutingConfigDto"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateRoutingConfigDto"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Routing.UpdateRoutingConfigDto"
               }
             }
           }
@@ -1614,17 +1614,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Admin.Models.UpdateCacheConfigDto"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Cache.UpdateCacheConfigDto"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Admin.Models.UpdateCacheConfigDto"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Cache.UpdateCacheConfigDto"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Admin.Models.UpdateCacheConfigDto"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Cache.UpdateCacheConfigDto"
               }
             }
           }
@@ -1794,17 +1794,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Admin.Models.UpdateCachePolicyDto"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Cache.UpdateCachePolicyDto"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Admin.Models.UpdateCachePolicyDto"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Cache.UpdateCachePolicyDto"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Admin.Models.UpdateCachePolicyDto"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Cache.UpdateCachePolicyDto"
               }
             }
           }
@@ -5277,7 +5277,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
                   }
                 }
               },
@@ -5285,7 +5285,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
                   }
                 }
               },
@@ -5293,7 +5293,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
                   }
                 }
               }
@@ -5314,17 +5314,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
               }
             }
           }
@@ -5335,17 +5335,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
                 }
               }
             }
@@ -5420,17 +5420,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
                 }
               }
             }
@@ -5482,17 +5482,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
               }
             }
           }
@@ -5648,7 +5648,7 @@
               "schema": {
                 "type": "array",
                 "items": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
                 }
               }
             },
@@ -5656,7 +5656,7 @@
               "schema": {
                 "type": "array",
                 "items": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
                 }
               }
             },
@@ -5664,7 +5664,7 @@
               "schema": {
                 "type": "array",
                 "items": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
                 }
               }
             }
@@ -6227,895 +6227,10 @@
         }
       }
     },
-    "/api/ProviderHealth/configurations": {
+    "/api/ProviderCredentials": {
       "get": {
         "tags": [
-          "ProviderHealth"
-        ],
-        "summary": "Gets health configurations for all providers",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "ProviderHealth"
-        ],
-        "summary": "Creates a new provider health configuration",
-        "requestBody": {
-          "description": "The configuration to create",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "ProviderHealth"
-        ],
-        "summary": "Updates a provider health configuration",
-        "requestBody": {
-          "description": "The configuration to update",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
-              }
-            }
-          }
-        },
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/ProviderHealth/configurations/{providerId}": {
-      "get": {
-        "tags": [
-          "ProviderHealth"
-        ],
-        "summary": "Gets health configuration for a specific provider",
-        "parameters": [
-          {
-            "name": "providerId",
-            "in": "path",
-            "description": "The provider ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/ProviderHealth/statuses": {
-      "get": {
-        "tags": [
-          "ProviderHealth"
-        ],
-        "summary": "Gets the latest health status for all providers",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/ProviderHealth/statuses/{providerId}": {
-      "get": {
-        "tags": [
-          "ProviderHealth"
-        ],
-        "summary": "Gets the latest health status for a specific provider",
-        "parameters": [
-          {
-            "name": "providerId",
-            "in": "path",
-            "description": "The ID of the provider",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/ProviderHealth/history/{providerId}": {
-      "get": {
-        "tags": [
-          "ProviderHealth"
-        ],
-        "summary": "Gets health status history for a provider",
-        "parameters": [
-          {
-            "name": "providerId",
-            "in": "path",
-            "description": "The ID of the provider",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "hours",
-            "in": "query",
-            "description": "Number of hours to look back (default: 24)",
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 24
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "Maximum number of records to return (default: 100)",
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 100
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/ProviderHealth/summary": {
-      "get": {
-        "tags": [
-          "ProviderHealth"
-        ],
-        "summary": "Gets health summary for all providers",
-        "parameters": [
-          {
-            "name": "hours",
-            "in": "query",
-            "description": "Number of hours to include in the summary (default: 24)",
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 24
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthSummaryDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthSummaryDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthSummaryDto"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/ProviderHealth/statistics": {
-      "get": {
-        "tags": [
-          "ProviderHealth"
-        ],
-        "summary": "Gets health statistics across all providers",
-        "parameters": [
-          {
-            "name": "hours",
-            "in": "query",
-            "description": "Number of hours to include in the statistics (default: 24)",
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 24
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthStatisticsDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthStatisticsDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderHealthStatisticsDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/ProviderHealth/check/{providerId}": {
-      "post": {
-        "tags": [
-          "ProviderHealth"
-        ],
-        "summary": "Triggers an immediate health check for a provider",
-        "parameters": [
-          {
-            "name": "providerId",
-            "in": "path",
-            "description": "The ID of the provider to check",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/ProviderHealth/purge": {
-      "delete": {
-        "tags": [
-          "ProviderHealth"
-        ],
-        "summary": "Purges health records older than the specified time",
-        "parameters": [
-          {
-            "name": "days",
-            "in": "query",
-            "description": "Number of days to keep records for (default: 30)",
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 30
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "integer",
-                  "format": "int32"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "integer",
-                  "format": "int32"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "integer",
-                  "format": "int32"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/ProviderHealth/records": {
-      "get": {
-        "tags": [
-          "ProviderHealth"
-        ],
-        "summary": "Gets all provider health records",
-        "parameters": [
-          {
-            "name": "providerId",
-            "in": "query",
-            "description": "Optional provider ID to filter records",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord"
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/ProviderHealth/status": {
-      "get": {
-        "tags": [
-          "ProviderHealth"
-        ],
-        "summary": "Gets provider status for all providers that have been checked",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.Models.ProviderStatus"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.Models.ProviderStatus"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.Models.ProviderStatus"
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/ProviderHealth/status/{providerId}": {
-      "get": {
-        "tags": [
-          "ProviderHealth"
-        ],
-        "summary": "Gets provider status for a specific provider",
-        "parameters": [
-          {
-            "name": "providerId",
-            "in": "path",
-            "description": "The ID of the provider",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.Models.ProviderStatus"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.Models.ProviderStatus"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.Models.ProviderStatus"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/Providers": {
-      "get": {
-        "tags": [
-          "Providers"
+          "ProviderCredentials"
         ],
         "summary": "Gets all provider configurations",
         "responses": {
@@ -7149,7 +6264,7 @@
       },
       "post": {
         "tags": [
-          "Providers"
+          "ProviderCredentials"
         ],
         "summary": "Creates a new provider",
         "requestBody": {
@@ -7212,10 +6327,10 @@
         }
       }
     },
-    "/api/Providers/{id}": {
+    "/api/ProviderCredentials/{id}": {
       "get": {
         "tags": [
-          "Providers"
+          "ProviderCredentials"
         ],
         "summary": "Gets a provider by ID",
         "parameters": [
@@ -7272,7 +6387,7 @@
       },
       "put": {
         "tags": [
-          "Providers"
+          "ProviderCredentials"
         ],
         "summary": "Updates a provider",
         "parameters": [
@@ -7358,7 +6473,7 @@
       },
       "delete": {
         "tags": [
-          "Providers"
+          "ProviderCredentials"
         ],
         "summary": "Deletes a provider",
         "parameters": [
@@ -7403,10 +6518,10 @@
         }
       }
     },
-    "/api/Providers/test/{id}": {
+    "/api/ProviderCredentials/test/{id}": {
       "post": {
         "tags": [
-          "Providers"
+          "ProviderCredentials"
         ],
         "summary": "Tests the connection to a provider",
         "parameters": [
@@ -7462,10 +6577,10 @@
         }
       }
     },
-    "/api/Providers/test": {
+    "/api/ProviderCredentials/test": {
       "post": {
         "tags": [
-          "Providers"
+          "ProviderCredentials"
         ],
         "summary": "Tests a provider connection without saving",
         "requestBody": {
@@ -7528,10 +6643,10 @@
         }
       }
     },
-    "/api/Providers/{providerId}/keys": {
+    "/api/ProviderCredentials/{providerId}/keys": {
       "get": {
         "tags": [
-          "Providers"
+          "ProviderCredentials"
         ],
         "summary": "Gets all key credentials for a specific provider",
         "parameters": [
@@ -7597,7 +6712,7 @@
       },
       "post": {
         "tags": [
-          "Providers"
+          "ProviderCredentials"
         ],
         "summary": "Creates a new key credential for a provider",
         "parameters": [
@@ -7693,10 +6808,10 @@
         }
       }
     },
-    "/api/Providers/{providerId}/keys/{keyId}": {
+    "/api/ProviderCredentials/{providerId}/keys/{keyId}": {
       "get": {
         "tags": [
-          "Providers"
+          "ProviderCredentials"
         ],
         "summary": "Gets a specific key credential",
         "parameters": [
@@ -7763,7 +6878,7 @@
       },
       "put": {
         "tags": [
-          "Providers"
+          "ProviderCredentials"
         ],
         "summary": "Updates a key credential",
         "parameters": [
@@ -7859,7 +6974,7 @@
       },
       "delete": {
         "tags": [
-          "Providers"
+          "ProviderCredentials"
         ],
         "summary": "Deletes a key credential",
         "parameters": [
@@ -7914,10 +7029,10 @@
         }
       }
     },
-    "/api/Providers/{providerId}/keys/{keyId}/set-primary": {
+    "/api/ProviderCredentials/{providerId}/keys/{keyId}/set-primary": {
       "post": {
         "tags": [
-          "Providers"
+          "ProviderCredentials"
         ],
         "summary": "Sets a key as the primary key for a provider",
         "parameters": [
@@ -7992,10 +7107,10 @@
         }
       }
     },
-    "/api/Providers/{providerId}/keys/{keyId}/test": {
+    "/api/ProviderCredentials/{providerId}/keys/{keyId}/test": {
       "post": {
         "tags": [
-          "Providers"
+          "ProviderCredentials"
         ],
         "summary": "Tests a specific key credential",
         "parameters": [
@@ -8788,17 +7903,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.SystemInfoDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.SystemInfoDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.SystemInfoDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.SystemInfoDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.SystemInfoDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.SystemInfoDto"
                 }
               }
             }
@@ -8821,17 +7936,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.HealthStatusDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.HealthStatusDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.HealthStatusDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.HealthStatusDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.HealthStatusDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.HealthStatusDto"
                 }
               }
             }
@@ -8864,6 +7979,388 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VirtualKeyGroups": {
+      "get": {
+        "tags": [
+          "VirtualKeyGroups"
+        ],
+        "summary": "Get all virtual key groups",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "VirtualKeyGroups"
+        ],
+        "summary": "Create a new virtual key group",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyGroupRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyGroupRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyGroupRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/VirtualKeyGroups/{id}": {
+      "get": {
+        "tags": [
+          "VirtualKeyGroups"
+        ],
+        "summary": "Get a specific virtual key group by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "VirtualKeyGroups"
+        ],
+        "summary": "Update a virtual key group",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.UpdateVirtualKeyGroupRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.UpdateVirtualKeyGroupRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.UpdateVirtualKeyGroupRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "VirtualKeyGroups"
+        ],
+        "summary": "Delete a virtual key group",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/VirtualKeyGroups/{id}/adjust-balance": {
+      "post": {
+        "tags": [
+          "VirtualKeyGroups"
+        ],
+        "summary": "Adjust the balance of a virtual key group",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.AdjustBalanceDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.AdjustBalanceDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.AdjustBalanceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/VirtualKeyGroups/{id}/transactions": {
+      "get": {
+        "tags": [
+          "VirtualKeyGroups"
+        ],
+        "summary": "Get transaction history for a virtual key group",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null]]"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null]]"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null]]"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/VirtualKeyGroups/{id}/keys": {
+      "get": {
+        "tags": [
+          "VirtualKeyGroups"
+        ],
+        "summary": "Get virtual keys in a group",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -9299,94 +8796,6 @@
         }
       }
     },
-    "/api/VirtualKeys/{id}/reset-spend": {
-      "post": {
-        "tags": [
-          "VirtualKeys"
-        ],
-        "summary": "Resets the spend for a virtual key",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The ID of the key to reset",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
     "/api/VirtualKeys/validate": {
       "post": {
         "tags": [
@@ -9436,159 +8845,6 @@
           },
           "400": {
             "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/VirtualKeys/{id}/spend": {
-      "post": {
-        "tags": [
-          "VirtualKeys"
-        ],
-        "summary": "Updates the spend amount for a virtual key",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The ID of the virtual key",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "requestBody": {
-          "description": "The request containing the cost to add",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.UpdateSpendRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.UpdateSpendRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.UpdateSpendRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/VirtualKeys/{id}/check-budget": {
-      "post": {
-        "tags": [
-          "VirtualKeys"
-        ],
-        "summary": "Checks if the budget period has expired and resets if needed",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The ID of the virtual key",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.BudgetCheckResult"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.BudgetCheckResult"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.BudgetCheckResult"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
             "content": {
               "text/plain": {
                 "schema": {
@@ -9684,7 +8940,7 @@
           "VirtualKeys"
         ],
         "summary": "Performs maintenance tasks on all virtual keys",
-        "description": "This endpoint performs the following maintenance tasks:\n- Resets budgets for keys with expired budget periods (daily/monthly)\n- Disables keys that have passed their expiration date\nThis is typically called by a background service.",
+        "description": "This endpoint performs the following maintenance tasks:\n- Disables keys that have passed their expiration date\nBudget resets are no longer performed in the bank account model.\nThis is typically called by a background service.",
         "responses": {
           "204": {
             "description": "No Content"
@@ -9807,61 +9063,82 @@
           }
         }
       }
+    },
+    "/api/VirtualKeys/{id}/group": {
+      "get": {
+        "tags": [
+          "VirtualKeys"
+        ],
+        "summary": "Get the virtual key group for a specific key",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The ID of the virtual key",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
-      "ConduitLLM.Admin.Controllers.AlertDefinitionDto": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "description": "Unique identifier for the alert type (e.g., `cache_high_memory`).",
-            "nullable": true
-          },
-          "name": {
-            "type": "string",
-            "description": "Human-readable name for the alert.",
-            "nullable": true
-          },
-          "defaultSeverity": {
-            "type": "string",
-            "description": "The default severity level (e.g., `warning`, `critical`).",
-            "nullable": true
-          },
-          "description": {
-            "type": "string",
-            "description": "Detailed description of what the alert means.",
-            "nullable": true
-          },
-          "recommendedActions": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Suggested remediation steps when the alert is triggered.",
-            "nullable": true
-          },
-          "notificationEnabled": {
-            "type": "boolean",
-            "description": "Indicates whether notifications for this alert are enabled."
-          },
-          "cooldownPeriodMinutes": {
-            "type": "integer",
-            "description": "Minimum number of minutes between successive notifications of the same alert.",
-            "format": "int32"
-          }
-        },
-        "additionalProperties": false,
-        "description": "Alert definition DTO"
-      },
       "ConduitLLM.Admin.Controllers.BulkMappingResult": {
         "type": "object",
         "properties": {
           "created": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
+              "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
             },
             "description": "Successfully created mappings",
             "nullable": true
@@ -9892,183 +9169,6 @@
         },
         "additionalProperties": false,
         "description": "Result of a bulk mapping operation"
-      },
-      "ConduitLLM.Admin.Controllers.CacheAlertDto": {
-        "type": "object",
-        "properties": {
-          "alertType": {
-            "type": "string",
-            "description": "Machine-readable alert identifier (e.g., `cache_high_memory`).",
-            "nullable": true
-          },
-          "message": {
-            "type": "string",
-            "description": "Human-readable explanation of the alert.",
-            "nullable": true
-          },
-          "severity": {
-            "type": "string",
-            "description": "Severity level of the alert (`info`, `warning`, `critical`).",
-            "nullable": true
-          },
-          "region": {
-            "type": "string",
-            "description": "Optional cache region associated with the alert.",
-            "nullable": true
-          },
-          "details": {
-            "type": "object",
-            "additionalProperties": { },
-            "description": "Additional structured data providing context for the alert.",
-            "nullable": true
-          },
-          "timestamp": {
-            "type": "string",
-            "description": "Time when the alert occurred (UTC).",
-            "format": "date-time"
-          }
-        },
-        "additionalProperties": false,
-        "description": "Cache alert DTO"
-      },
-      "ConduitLLM.Admin.Controllers.CacheAlertThresholdsDto": {
-        "type": "object",
-        "properties": {
-          "minHitRate": {
-            "type": "number",
-            "description": "Minimum acceptable cache hit rate percentage before an alert is raised.",
-            "format": "double"
-          },
-          "maxMemoryUsage": {
-            "type": "number",
-            "description": "Maximum allowed memory usage percentage before an alert is raised.",
-            "format": "double"
-          },
-          "maxEvictionRate": {
-            "type": "number",
-            "description": "Maximum allowed percentage of evictions over the sampling window.",
-            "format": "double"
-          },
-          "maxResponseTimeMs": {
-            "type": "number",
-            "description": "Maximum average cache response time (in milliseconds) before an alert is raised.",
-            "format": "double"
-          },
-          "minRequestsForHitRateAlert": {
-            "type": "integer",
-            "description": "Minimum number of requests required before evaluating hit-rate alert logic.",
-            "format": "int64"
-          }
-        },
-        "additionalProperties": false,
-        "description": "Cache monitoring alert thresholds DTO"
-      },
-      "ConduitLLM.Admin.Controllers.CacheHealthSummaryDto": {
-        "type": "object",
-        "properties": {
-          "overallHealth": {
-            "type": "string",
-            "description": "Overall cache health status (e.g., `healthy`, `degraded`, `unhealthy`).",
-            "nullable": true
-          },
-          "hitRate": {
-            "type": "number",
-            "description": "Fraction of cache look-ups that resulted in a hit (0-100).",
-            "format": "double"
-          },
-          "memoryUsagePercent": {
-            "type": "number",
-            "description": "Percentage of allocated memory currently used by the cache.",
-            "format": "double"
-          },
-          "responseTimeMs": {
-            "type": "number",
-            "description": "Average cache response time in milliseconds.",
-            "format": "double"
-          },
-          "evictionRate": {
-            "type": "number",
-            "description": "Percentage of entries evicted over the sampling period.",
-            "format": "double"
-          },
-          "activeAlerts": {
-            "type": "integer",
-            "description": "Number of alerts currently active.",
-            "format": "int32"
-          },
-          "totalCacheSize": {
-            "type": "integer",
-            "description": "Total size of cache in bytes.",
-            "format": "int64"
-          },
-          "totalEntries": {
-            "type": "integer",
-            "description": "Total number of cache entries.",
-            "format": "int64"
-          },
-          "lastCheck": {
-            "type": "string",
-            "description": "Timestamp of the last check (UTC).",
-            "format": "date-time"
-          },
-          "recentAlerts": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CacheAlertDto"
-            },
-            "description": "List of recent cache alerts.",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false,
-        "description": "Cache health summary DTO"
-      },
-      "ConduitLLM.Admin.Controllers.CacheMonitoringStatusDto": {
-        "type": "object",
-        "properties": {
-          "lastCheck": {
-            "type": "string",
-            "description": "Timestamp of the last check (UTC).",
-            "format": "date-time"
-          },
-          "isHealthy": {
-            "type": "boolean",
-            "description": "Indicates overall cache health status at the time of the check."
-          },
-          "currentHitRate": {
-            "type": "number",
-            "description": "Current cache hit rate percentage.",
-            "format": "double"
-          },
-          "currentMemoryUsagePercent": {
-            "type": "number",
-            "description": "Current memory usage percentage.",
-            "format": "double"
-          },
-          "currentEvictionRate": {
-            "type": "number",
-            "description": "Current eviction rate percentage.",
-            "format": "double"
-          },
-          "currentResponseTimeMs": {
-            "type": "number",
-            "description": "Current average response time in milliseconds.",
-            "format": "double"
-          },
-          "activeAlerts": {
-            "type": "integer",
-            "description": "Number of alerts currently active.",
-            "format": "int32"
-          },
-          "details": {
-            "type": "object",
-            "additionalProperties": { },
-            "description": "Additional structured data providing context for the alert.",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false,
-        "description": "Cache monitoring status DTO"
       },
       "ConduitLLM.Admin.Controllers.CreateKeyRequest": {
         "type": "object",
@@ -10149,46 +9249,6 @@
         },
         "additionalProperties": false,
         "description": "Request model for replay operations."
-      },
-      "ConduitLLM.Admin.Controllers.Models.ProviderStatus": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.Models.ProviderStatus.StatusType"
-          },
-          "statusMessage": {
-            "type": "string",
-            "description": "A descriptive message about the status",
-            "nullable": true
-          },
-          "responseTimeMs": {
-            "type": "number",
-            "description": "The response time in milliseconds",
-            "format": "double"
-          },
-          "lastCheckedUtc": {
-            "type": "string",
-            "description": "When the status was last checked",
-            "format": "date-time"
-          },
-          "errorCategory": {
-            "type": "string",
-            "description": "Error category if the provider is offline",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false,
-        "description": "Represents the current status of a provider"
-      },
-      "ConduitLLM.Admin.Controllers.Models.ProviderStatus.StatusType": {
-        "enum": [
-          0,
-          1,
-          2
-        ],
-        "type": "integer",
-        "description": "Status types for providers",
-        "format": "int32"
       },
       "ConduitLLM.Admin.Controllers.PruneMediaRequest": {
         "type": "object",
@@ -10292,68 +9352,6 @@
         "additionalProperties": false,
         "description": "Request model for updating a provider"
       },
-      "ConduitLLM.Admin.Controllers.UpdateRoutingConfigDto": {
-        "type": "object",
-        "properties": {
-          "enableFailover": {
-            "type": "boolean",
-            "description": "Enable or disable failover."
-          },
-          "enableLoadBalancing": {
-            "type": "boolean",
-            "description": "Enable or disable load balancing."
-          },
-          "requestTimeoutSeconds": {
-            "type": "integer",
-            "description": "Request timeout in seconds.",
-            "format": "int32"
-          },
-          "circuitBreakerThreshold": {
-            "type": "integer",
-            "description": "Circuit breaker threshold.",
-            "format": "int32"
-          }
-        },
-        "additionalProperties": false,
-        "description": "DTO for updating routing configuration."
-      },
-      "ConduitLLM.Admin.Controllers.UpdateThresholdsRequest": {
-        "type": "object",
-        "properties": {
-          "minHitRate": {
-            "type": "number",
-            "description": "Updated minimum hit rate; `null` to keep current value.",
-            "format": "double",
-            "nullable": true
-          },
-          "maxMemoryUsage": {
-            "type": "number",
-            "description": "Updated maximum memory usage; `null` to keep current value.",
-            "format": "double",
-            "nullable": true
-          },
-          "maxEvictionRate": {
-            "type": "number",
-            "description": "Updated maximum eviction rate; `null` to keep current value.",
-            "format": "double",
-            "nullable": true
-          },
-          "maxResponseTimeMs": {
-            "type": "number",
-            "description": "Updated maximum response time in ms; `null` to keep current value.",
-            "format": "double",
-            "nullable": true
-          },
-          "minRequestsForHitRateAlert": {
-            "type": "integer",
-            "description": "Updated minimum requests threshold; `null` to keep current value.",
-            "format": "int64",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false,
-        "description": "Update thresholds request"
-      },
       "ConduitLLM.Admin.Interfaces.AudioProviderTestResult": {
         "type": "object",
         "properties": {
@@ -10440,216 +9438,6 @@
         },
         "additionalProperties": false,
         "description": "Result of bulk cost import operation."
-      },
-      "ConduitLLM.Admin.Interfaces.ComponentHealth": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "description": "Component status",
-            "nullable": true
-          },
-          "description": {
-            "type": "string",
-            "description": "Component description",
-            "nullable": true
-          },
-          "duration": {
-            "type": "number",
-            "description": "Duration of the health check in milliseconds",
-            "format": "double",
-            "nullable": true
-          },
-          "error": {
-            "type": "string",
-            "description": "Error message if the health check failed",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false,
-        "description": "Component health information"
-      },
-      "ConduitLLM.Admin.Interfaces.DatabaseInfo": {
-        "type": "object",
-        "properties": {
-          "provider": {
-            "type": "string",
-            "description": "Database provider name",
-            "nullable": true
-          },
-          "version": {
-            "type": "string",
-            "description": "Database version",
-            "nullable": true
-          },
-          "connected": {
-            "type": "boolean",
-            "description": "Connection status"
-          },
-          "connectionString": {
-            "type": "string",
-            "description": "Masked connection string",
-            "nullable": true
-          },
-          "location": {
-            "type": "string",
-            "description": "Database file location (for file-based databases)",
-            "nullable": true
-          },
-          "size": {
-            "type": "string",
-            "description": "Database size",
-            "nullable": true
-          },
-          "tableCount": {
-            "type": "integer",
-            "description": "Number of tables in the database",
-            "format": "int32"
-          }
-        },
-        "additionalProperties": false,
-        "description": "Database information"
-      },
-      "ConduitLLM.Admin.Interfaces.HealthStatusDto": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "description": "Overall system status",
-            "nullable": true
-          },
-          "timestamp": {
-            "type": "string",
-            "description": "Timestamp when the health check was performed",
-            "format": "date-time"
-          },
-          "checks": {
-            "type": "object",
-            "additionalProperties": {
-              "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.ComponentHealth"
-            },
-            "description": "Individual component health statuses",
-            "nullable": true
-          },
-          "totalDuration": {
-            "type": "number",
-            "description": "Total duration of all health checks in milliseconds",
-            "format": "double"
-          }
-        },
-        "additionalProperties": false,
-        "description": "DTO containing health status information"
-      },
-      "ConduitLLM.Admin.Interfaces.OsInfo": {
-        "type": "object",
-        "properties": {
-          "description": {
-            "type": "string",
-            "description": "Operating system description",
-            "nullable": true
-          },
-          "architecture": {
-            "type": "string",
-            "description": "Process architecture",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false,
-        "description": "Operating system information"
-      },
-      "ConduitLLM.Admin.Interfaces.RecordCountsDto": {
-        "type": "object",
-        "properties": {
-          "virtualKeys": {
-            "type": "integer",
-            "description": "Number of virtual keys",
-            "format": "int32"
-          },
-          "requests": {
-            "type": "integer",
-            "description": "Number of request logs",
-            "format": "int32"
-          },
-          "settings": {
-            "type": "integer",
-            "description": "Number of global settings",
-            "format": "int32"
-          },
-          "providers": {
-            "type": "integer",
-            "description": "Number of provider credentials",
-            "format": "int32"
-          },
-          "modelMappings": {
-            "type": "integer",
-            "description": "Number of model provider mappings",
-            "format": "int32"
-          }
-        },
-        "additionalProperties": false,
-        "description": "Record counts from database tables"
-      },
-      "ConduitLLM.Admin.Interfaces.RuntimeInfo": {
-        "type": "object",
-        "properties": {
-          "runtimeVersion": {
-            "type": "string",
-            "description": ".NET runtime version",
-            "nullable": true
-          },
-          "startTime": {
-            "type": "string",
-            "description": "Process start time",
-            "format": "date-time"
-          },
-          "uptime": {
-            "type": "string",
-            "description": "Total process uptime",
-            "format": "date-span"
-          }
-        },
-        "additionalProperties": false,
-        "description": "Runtime information"
-      },
-      "ConduitLLM.Admin.Interfaces.SystemInfoDto": {
-        "type": "object",
-        "properties": {
-          "version": {
-            "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.VersionInfo"
-          },
-          "operatingSystem": {
-            "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.OsInfo"
-          },
-          "database": {
-            "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.DatabaseInfo"
-          },
-          "runtime": {
-            "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.RuntimeInfo"
-          },
-          "recordCounts": {
-            "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.RecordCountsDto"
-          }
-        },
-        "additionalProperties": false,
-        "description": "DTO containing system information"
-      },
-      "ConduitLLM.Admin.Interfaces.VersionInfo": {
-        "type": "object",
-        "properties": {
-          "appVersion": {
-            "type": "string",
-            "description": "Application version",
-            "nullable": true
-          },
-          "buildDate": {
-            "type": "string",
-            "description": "Build date",
-            "format": "date-time",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false,
-        "description": "Version information"
       },
       "ConduitLLM.Admin.Models.ErrorQueue.ErrorDetails": {
         "type": "object",
@@ -11147,93 +9935,6 @@
         },
         "additionalProperties": false,
         "description": "Queue growth pattern information."
-      },
-      "ConduitLLM.Admin.Models.UpdateCacheConfigDto": {
-        "type": "object",
-        "properties": {
-          "defaultTTLSeconds": {
-            "maximum": 86400,
-            "minimum": 0,
-            "type": "integer",
-            "description": "Default TTL in seconds.",
-            "format": "int32",
-            "nullable": true
-          },
-          "maxMemorySize": {
-            "pattern": "^\\d+(\\.\\d+)?\\s*(B|KB|MB|GB|TB)$",
-            "type": "string",
-            "description": "Maximum memory size.",
-            "nullable": true
-          },
-          "evictionPolicy": {
-            "pattern": "^(LRU|LFU|FIFO|Random|Priority|TTL)$",
-            "type": "string",
-            "description": "Eviction policy.",
-            "nullable": true
-          },
-          "enableCompression": {
-            "type": "boolean",
-            "description": "Enable or disable compression."
-          },
-          "clearAffectedCaches": {
-            "type": "boolean",
-            "description": "Clear affected caches after update."
-          },
-          "applyGlobally": {
-            "type": "boolean",
-            "description": "Apply configuration globally to all regions."
-          },
-          "regionId": {
-            "type": "string",
-            "description": "Specific region ID to update (if not applying globally).",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false,
-        "description": "DTO for updating cache configuration."
-      },
-      "ConduitLLM.Admin.Models.UpdateCachePolicyDto": {
-        "required": [
-          "reason"
-        ],
-        "type": "object",
-        "properties": {
-          "ttl": {
-            "maximum": 86400,
-            "minimum": 0,
-            "type": "integer",
-            "description": "New TTL in seconds.",
-            "format": "int32",
-            "nullable": true
-          },
-          "maxSize": {
-            "maximum": 2147483647,
-            "minimum": 1,
-            "type": "integer",
-            "description": "New maximum size.",
-            "format": "int32",
-            "nullable": true
-          },
-          "strategy": {
-            "pattern": "^(LRU|LFU|FIFO|Random|Priority|TTL)$",
-            "type": "string",
-            "description": "New eviction strategy.",
-            "nullable": true
-          },
-          "enabled": {
-            "type": "boolean",
-            "description": "Enable or disable the policy.",
-            "nullable": true
-          },
-          "reason": {
-            "maxLength": 500,
-            "minLength": 0,
-            "type": "string",
-            "description": "Reason for the policy change."
-          }
-        },
-        "additionalProperties": false,
-        "description": "DTO for updating cache policy."
       },
       "ConduitLLM.Configuration.DTOs.Audio.AudioCostDto": {
         "required": [
@@ -12038,6 +10739,79 @@
         },
         "additionalProperties": false
       },
+      "ConduitLLM.Configuration.DTOs.Cache.UpdateCacheConfigDto": {
+        "type": "object",
+        "properties": {
+          "defaultTTLSeconds": {
+            "maximum": 86400,
+            "minimum": 0,
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "maxMemorySize": {
+            "pattern": "^\\d+(\\.\\d+)?\\s*(B|KB|MB|GB|TB)$",
+            "type": "string",
+            "nullable": true
+          },
+          "evictionPolicy": {
+            "pattern": "^(LRU|LFU|FIFO|Random|Priority|TTL)$",
+            "type": "string",
+            "nullable": true
+          },
+          "enableCompression": {
+            "type": "boolean"
+          },
+          "clearAffectedCaches": {
+            "type": "boolean"
+          },
+          "applyGlobally": {
+            "type": "boolean"
+          },
+          "regionId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.DTOs.Cache.UpdateCachePolicyDto": {
+        "required": [
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "ttl": {
+            "maximum": 86400,
+            "minimum": 0,
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "maxSize": {
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "strategy": {
+            "pattern": "^(LRU|LFU|FIFO|Random|Priority|TTL)$",
+            "type": "string",
+            "nullable": true
+          },
+          "enabled": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 0,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "ConduitLLM.Configuration.DTOs.Costs.CostDashboardDto": {
         "type": "object",
         "properties": {
@@ -12265,17 +11039,17 @@
             "type": "string",
             "nullable": true
           },
-          "inputTokenCost": {
+          "inputCostPerMillionTokens": {
             "minimum": 0,
             "type": "number",
             "format": "double"
           },
-          "outputTokenCost": {
+          "outputCostPerMillionTokens": {
             "minimum": 0,
             "type": "number",
             "format": "double"
           },
-          "embeddingTokenCost": {
+          "embeddingCostPerMillionTokens": {
             "type": "number",
             "format": "double",
             "nullable": true
@@ -12326,12 +11100,12 @@
             "type": "string",
             "nullable": true
           },
-          "cachedInputTokenCost": {
+          "cachedInputCostPerMillionTokens": {
             "type": "number",
             "format": "double",
             "nullable": true
           },
-          "cachedInputWriteCost": {
+          "cachedInputWriteCostPerMillionTokens": {
             "type": "number",
             "format": "double",
             "nullable": true
@@ -12386,10 +11160,6 @@
             "type": "string",
             "nullable": true
           },
-          "modelName": {
-            "type": "string",
-            "nullable": true
-          },
           "requestCount": {
             "type": "integer",
             "format": "int32"
@@ -12403,10 +11173,6 @@
             "format": "int32"
           },
           "cost": {
-            "type": "number",
-            "format": "double"
-          },
-          "totalCost": {
             "type": "number",
             "format": "double"
           }
@@ -12489,10 +11255,6 @@
             "minLength": 0,
             "type": "string"
           },
-          "ipAddress": {
-            "type": "string",
-            "nullable": true
-          },
           "name": {
             "maxLength": 100,
             "minLength": 0,
@@ -12544,10 +11306,6 @@
             "maxLength": 50,
             "minLength": 0,
             "type": "string"
-          },
-          "ipAddress": {
-            "type": "string",
-            "nullable": true
           },
           "name": {
             "maxLength": 100,
@@ -12636,10 +11394,6 @@
             "maxLength": 50,
             "minLength": 0,
             "type": "string"
-          },
-          "ipAddress": {
-            "type": "string",
-            "nullable": true
           },
           "name": {
             "maxLength": 100,
@@ -12756,7 +11510,8 @@
           },
           "successRate": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "readOnly": true
           },
           "lastRequestDate": {
             "type": "string",
@@ -12793,22 +11548,6 @@
               "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.DailyUsageStatsDto"
             },
             "nullable": true
-          },
-          "totalCost": {
-            "type": "number",
-            "format": "double"
-          },
-          "totalInputTokens": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "totalOutputTokens": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "averageResponseTimeMs": {
-            "type": "number",
-            "format": "double"
           }
         },
         "additionalProperties": false
@@ -12836,17 +11575,17 @@
             },
             "nullable": true
           },
-          "inputTokenCost": {
+          "inputCostPerMillionTokens": {
             "minimum": 0,
             "type": "number",
             "format": "double"
           },
-          "outputTokenCost": {
+          "outputCostPerMillionTokens": {
             "minimum": 0,
             "type": "number",
             "format": "double"
           },
-          "embeddingTokenCost": {
+          "embeddingCostPerMillionTokens": {
             "type": "number",
             "format": "double",
             "nullable": true
@@ -12931,12 +11670,12 @@
             "type": "string",
             "nullable": true
           },
-          "cachedInputTokenCost": {
+          "cachedInputCostPerMillionTokens": {
             "type": "number",
             "format": "double",
             "nullable": true
           },
-          "cachedInputWriteCost": {
+          "cachedInputWriteCostPerMillionTokens": {
             "type": "number",
             "format": "double",
             "nullable": true
@@ -12981,6 +11720,540 @@
           "outputTokens": {
             "type": "integer",
             "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.DTOs.ModelProviderMappingDto": {
+        "required": [
+          "modelId",
+          "providerId",
+          "providerModelId"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "modelId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "providerModelId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "providerId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderReferenceDto"
+          },
+          "priority": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "capabilities": {
+            "type": "string",
+            "nullable": true
+          },
+          "maxContextLength": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "supportsVision": {
+            "type": "boolean"
+          },
+          "supportsAudioTranscription": {
+            "type": "boolean"
+          },
+          "supportsTextToSpeech": {
+            "type": "boolean"
+          },
+          "supportsRealtimeAudio": {
+            "type": "boolean"
+          },
+          "supportsImageGeneration": {
+            "type": "boolean"
+          },
+          "supportsVideoGeneration": {
+            "type": "boolean"
+          },
+          "supportsEmbeddings": {
+            "type": "boolean"
+          },
+          "supportsChat": {
+            "type": "boolean"
+          },
+          "supportsFunctionCalling": {
+            "type": "boolean"
+          },
+          "supportsStreaming": {
+            "type": "boolean"
+          },
+          "tokenizerType": {
+            "type": "string",
+            "nullable": true
+          },
+          "supportedVoices": {
+            "type": "string",
+            "nullable": true
+          },
+          "supportedLanguages": {
+            "type": "string",
+            "nullable": true
+          },
+          "supportedFormats": {
+            "type": "string",
+            "nullable": true
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "defaultCapabilityType": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.DTOs.Monitoring.AlertDefinitionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "severity": {
+            "type": "string",
+            "nullable": true
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "thresholds": {
+            "type": "object",
+            "additionalProperties": { },
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "defaultSeverity": {
+            "type": "string",
+            "nullable": true
+          },
+          "recommendedActions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "notificationEnabled": {
+            "type": "boolean"
+          },
+          "cooldownPeriodMinutes": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.DTOs.Monitoring.CacheAlertDto": {
+        "type": "object",
+        "properties": {
+          "alertType": {
+            "type": "string",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "severity": {
+            "type": "string",
+            "nullable": true
+          },
+          "region": {
+            "type": "string",
+            "nullable": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": { },
+            "nullable": true
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": { },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.DTOs.Monitoring.CacheAlertThresholdsDto": {
+        "type": "object",
+        "properties": {
+          "minHitRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxMemoryUsage": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxEvictionRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxResponseTimeMs": {
+            "type": "number",
+            "format": "double"
+          },
+          "minRequestsForHitRateAlert": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.DTOs.Monitoring.CacheHealthSummaryDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "checkTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.CacheMonitoringStatusDto"
+          },
+          "recentAlerts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.CacheAlertDto"
+            },
+            "nullable": true
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": { },
+            "nullable": true
+          },
+          "overallHealth": {
+            "type": "string",
+            "nullable": true
+          },
+          "hitRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "memoryUsagePercent": {
+            "type": "number",
+            "format": "double"
+          },
+          "responseTimeMs": {
+            "type": "number",
+            "format": "double"
+          },
+          "evictionRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "activeAlerts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCacheSize": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalEntries": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lastCheck": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.DTOs.Monitoring.CacheMonitoringStatusDto": {
+        "type": "object",
+        "properties": {
+          "lastCheck": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isHealthy": {
+            "type": "boolean"
+          },
+          "currentHitRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "currentMemoryUsagePercent": {
+            "type": "number",
+            "format": "double"
+          },
+          "currentEvictionRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "currentResponseTimeMs": {
+            "type": "number",
+            "format": "double"
+          },
+          "activeAlerts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": { },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.DTOs.Monitoring.ComponentHealth": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "duration": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.DTOs.Monitoring.DatabaseInfo": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "nullable": true
+          },
+          "version": {
+            "type": "string",
+            "nullable": true
+          },
+          "connected": {
+            "type": "boolean"
+          },
+          "connectionString": {
+            "type": "string",
+            "nullable": true
+          },
+          "location": {
+            "type": "string",
+            "nullable": true
+          },
+          "size": {
+            "type": "string",
+            "nullable": true
+          },
+          "tableCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.DTOs.Monitoring.HealthStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "checks": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.ComponentHealth"
+            },
+            "nullable": true
+          },
+          "totalDuration": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.DTOs.Monitoring.OsInfo": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "architecture": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.DTOs.Monitoring.RecordCountsDto": {
+        "type": "object",
+        "properties": {
+          "virtualKeys": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "requests": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "settings": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "providers": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "modelMappings": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.DTOs.Monitoring.RuntimeInfo": {
+        "type": "object",
+        "properties": {
+          "runtimeVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "startTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "uptime": {
+            "type": "string",
+            "format": "date-span"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.DTOs.Monitoring.SystemInfoDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.VersionInfo"
+          },
+          "operatingSystem": {
+            "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.OsInfo"
+          },
+          "database": {
+            "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.DatabaseInfo"
+          },
+          "runtime": {
+            "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.RuntimeInfo"
+          },
+          "recordCounts": {
+            "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.RecordCountsDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.DTOs.Monitoring.UpdateThresholdsRequestDto": {
+        "type": "object",
+        "properties": {
+          "minHitRate": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "maxMemoryUsage": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "maxEvictionRate": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "maxResponseTimeMs": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "minRequestsForHitRateAlert": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.DTOs.Monitoring.VersionInfo": {
+        "type": "object",
+        "properties": {
+          "appVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "buildDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -13111,89 +12384,87 @@
         },
         "additionalProperties": false
       },
-      "ConduitLLM.Configuration.DTOs.ProviderHealthStatisticsDto": {
+      "ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null]]": {
         "type": "object",
         "properties": {
-          "totalProviders": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "onlineProviders": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "offlineProviders": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "unknownProviders": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "averageResponseTimeMs": {
-            "type": "number",
-            "format": "double"
-          },
-          "totalErrors": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "errorCategoryDistribution": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "integer",
-              "format": "int32"
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto"
             },
             "nullable": true
           },
-          "timePeriodHours": {
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "currentPage": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasPreviousPage": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "hasNextPage": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalItems": {
             "type": "integer",
             "format": "int32"
           }
         },
         "additionalProperties": false
       },
-      "ConduitLLM.Configuration.DTOs.ProviderHealthSummaryDto": {
+      "ConduitLLM.Configuration.DTOs.ProviderReferenceDto": {
         "type": "object",
         "properties": {
-          "providerId": {
+          "id": {
             "type": "integer",
             "format": "int32"
           },
-          "status": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord.StatusType"
+          "providerType": {
+            "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
           },
-          "statusMessage": {
+          "displayName": {
             "type": "string",
             "nullable": true
           },
-          "uptimePercentage": {
-            "type": "number",
-            "format": "double"
-          },
-          "averageResponseTimeMs": {
-            "type": "number",
-            "format": "double"
-          },
-          "errorCount": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "errorCategories": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "integer",
-              "format": "int32"
-            },
-            "nullable": true
-          },
-          "lastCheckedUtc": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "monitoringEnabled": {
+          "isEnabled": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.DTOs.Routing.UpdateRoutingConfigDto": {
+        "type": "object",
+        "properties": {
+          "enableFailover": {
+            "type": "boolean"
+          },
+          "enableLoadBalancing": {
+            "type": "boolean"
+          },
+          "requestTimeoutSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "circuitBreakerThreshold": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -13287,17 +12558,17 @@
           "isActive": {
             "type": "boolean"
           },
-          "inputTokenCost": {
+          "inputCostPerMillionTokens": {
             "minimum": 0,
             "type": "number",
             "format": "double"
           },
-          "outputTokenCost": {
+          "outputCostPerMillionTokens": {
             "minimum": 0,
             "type": "number",
             "format": "double"
           },
-          "embeddingTokenCost": {
+          "embeddingCostPerMillionTokens": {
             "type": "number",
             "format": "double",
             "nullable": true
@@ -13348,12 +12619,12 @@
             "type": "string",
             "nullable": true
           },
-          "cachedInputTokenCost": {
+          "cachedInputCostPerMillionTokens": {
             "type": "number",
             "format": "double",
             "nullable": true
           },
-          "cachedInputWriteCost": {
+          "cachedInputWriteCostPerMillionTokens": {
             "type": "number",
             "format": "double",
             "nullable": true
@@ -13393,15 +12664,41 @@
         },
         "additionalProperties": false
       },
-      "ConduitLLM.Configuration.DTOs.VirtualKey.BudgetCheckResult": {
+      "ConduitLLM.Configuration.DTOs.VirtualKey.AdjustBalanceDto": {
         "type": "object",
         "properties": {
-          "wasReset": {
-            "type": "boolean"
+          "amount": {
+            "type": "number",
+            "format": "double"
           },
-          "newBudgetStartDate": {
+          "description": {
             "type": "string",
-            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyGroupRequestDto": {
+        "required": [
+          "groupName"
+        ],
+        "type": "object",
+        "properties": {
+          "groupName": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "externalGroupId": {
+            "maxLength": 100,
+            "type": "string",
+            "nullable": true
+          },
+          "initialBalance": {
+            "maximum": 1000000000,
+            "minimum": 0,
+            "type": "number",
+            "format": "double",
             "nullable": true
           }
         },
@@ -13409,7 +12706,8 @@
       },
       "ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyRequestDto": {
         "required": [
-          "keyName"
+          "keyName",
+          "virtualKeyGroupId"
         ],
         "type": "object",
         "properties": {
@@ -13422,17 +12720,11 @@
             "type": "string",
             "nullable": true
           },
-          "maxBudget": {
-            "maximum": 1000000,
-            "minimum": 0,
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "budgetDuration": {
-            "maxLength": 20,
-            "type": "string",
-            "nullable": true
+          "virtualKeyGroupId": {
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32"
           },
           "expiresAt": {
             "type": "string",
@@ -13469,15 +12761,18 @@
         },
         "additionalProperties": false
       },
-      "ConduitLLM.Configuration.DTOs.VirtualKey.UpdateSpendRequest": {
-        "required": [
-          "cost"
-        ],
+      "ConduitLLM.Configuration.DTOs.VirtualKey.UpdateVirtualKeyGroupRequestDto": {
         "type": "object",
         "properties": {
-          "cost": {
-            "type": "number",
-            "format": "double"
+          "groupName": {
+            "maxLength": 200,
+            "type": "string",
+            "nullable": true
+          },
+          "externalGroupId": {
+            "maxLength": 100,
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -13494,16 +12789,9 @@
             "type": "string",
             "nullable": true
           },
-          "maxBudget": {
-            "maximum": 1000000,
-            "minimum": 0,
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "budgetDuration": {
-            "maxLength": 20,
-            "type": "string",
+          "virtualKeyGroupId": {
+            "type": "integer",
+            "format": "int32",
             "nullable": true
           },
           "isEnabled": {
@@ -13571,23 +12859,9 @@
             "type": "string",
             "nullable": true
           },
-          "maxBudget": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "currentSpend": {
-            "type": "number",
-            "format": "double"
-          },
-          "budgetDuration": {
-            "type": "string",
-            "nullable": true
-          },
-          "budgetStartDate": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+          "virtualKeyGroupId": {
+            "type": "integer",
+            "format": "int32"
           },
           "isEnabled": {
             "type": "boolean"
@@ -13622,23 +12896,96 @@
           "description": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
           },
-          "name": {
+          "externalGroupId": {
             "type": "string",
             "nullable": true
           },
-          "isActive": {
-            "type": "boolean"
+          "groupName": {
+            "type": "string",
+            "nullable": true
           },
-          "usageLimit": {
+          "balance": {
             "type": "number",
-            "format": "double",
+            "format": "double"
+          },
+          "lifetimeCreditsAdded": {
+            "type": "number",
+            "format": "double"
+          },
+          "lifetimeSpent": {
+            "type": "number",
+            "format": "double"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "virtualKeyCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "virtualKeyGroupId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "transactionType": {
+            "$ref": "#/components/schemas/ConduitLLM.Configuration.Enums.TransactionType"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "balanceAfter": {
+            "type": "number",
+            "format": "double"
+          },
+          "referenceType": {
+            "$ref": "#/components/schemas/ConduitLLM.Configuration.Enums.ReferenceType"
+          },
+          "referenceId": {
+            "type": "string",
             "nullable": true
           },
-          "rateLimit": {
-            "type": "integer",
-            "format": "int32",
+          "description": {
+            "type": "string",
             "nullable": true
+          },
+          "initiatedBy": {
+            "type": "string",
+            "nullable": true
+          },
+          "initiatedByUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "additionalProperties": false
@@ -13658,23 +13005,9 @@
             "type": "string",
             "nullable": true
           },
-          "maxBudget": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "currentSpend": {
-            "type": "number",
-            "format": "double"
-          },
-          "budgetDuration": {
-            "type": "string",
-            "nullable": true
-          },
-          "budgetStartDate": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
+          "virtualKeyGroupId": {
+            "type": "integer",
+            "format": "int32"
           },
           "isEnabled": {
             "type": "boolean"
@@ -13716,15 +13049,6 @@
             "type": "string",
             "nullable": true
           },
-          "maxBudget": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "currentSpend": {
-            "type": "number",
-            "format": "double"
-          },
           "errorMessage": {
             "type": "string",
             "nullable": true
@@ -13745,290 +13069,6 @@
           "count": {
             "type": "integer",
             "format": "int32"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.Entities.ModelCost": {
-        "required": [
-          "costName",
-          "modelType"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "costName": {
-            "maxLength": 255,
-            "minLength": 1,
-            "type": "string"
-          },
-          "inputTokenCost": {
-            "type": "number",
-            "format": "double"
-          },
-          "outputTokenCost": {
-            "type": "number",
-            "format": "double"
-          },
-          "embeddingTokenCost": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "imageCostPerImage": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "modelType": {
-            "maxLength": 50,
-            "minLength": 1,
-            "type": "string"
-          },
-          "isActive": {
-            "type": "boolean"
-          },
-          "effectiveDate": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "expiryDate": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "description": {
-            "maxLength": 500,
-            "type": "string",
-            "nullable": true
-          },
-          "priority": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "audioCostPerMinute": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "audioCostPerKCharacters": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "audioInputCostPerMinute": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "audioOutputCostPerMinute": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "videoCostPerSecond": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "videoResolutionMultipliers": {
-            "type": "string",
-            "nullable": true
-          },
-          "batchProcessingMultiplier": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "supportsBatchProcessing": {
-            "type": "boolean"
-          },
-          "imageQualityMultipliers": {
-            "type": "string",
-            "nullable": true
-          },
-          "cachedInputTokenCost": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "cachedInputWriteCost": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "costPerSearchUnit": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "costPerInferenceStep": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "defaultInferenceSteps": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "modelCostMappings": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelCostMapping"
-            },
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.Entities.ModelCostMapping": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "modelCostId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "modelCost": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelCost"
-          },
-          "modelProviderMappingId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "modelProviderMapping": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelProviderMapping"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "isActive": {
-            "type": "boolean"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.Entities.ModelProviderMapping": {
-        "required": [
-          "modelAlias",
-          "providerModelId"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "modelAlias": {
-            "maxLength": 100,
-            "minLength": 1,
-            "type": "string"
-          },
-          "providerModelId": {
-            "maxLength": 100,
-            "minLength": 1,
-            "type": "string"
-          },
-          "providerId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "provider": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.Provider"
-          },
-          "isEnabled": {
-            "type": "boolean"
-          },
-          "maxContextTokens": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "supportsVision": {
-            "type": "boolean"
-          },
-          "supportsAudioTranscription": {
-            "type": "boolean"
-          },
-          "supportsTextToSpeech": {
-            "type": "boolean"
-          },
-          "supportsRealtimeAudio": {
-            "type": "boolean"
-          },
-          "supportsImageGeneration": {
-            "type": "boolean"
-          },
-          "supportsVideoGeneration": {
-            "type": "boolean"
-          },
-          "supportsEmbeddings": {
-            "type": "boolean"
-          },
-          "supportsChat": {
-            "type": "boolean"
-          },
-          "supportsFunctionCalling": {
-            "type": "boolean"
-          },
-          "supportsStreaming": {
-            "type": "boolean"
-          },
-          "tokenizerType": {
-            "maxLength": 50,
-            "type": "string",
-            "nullable": true
-          },
-          "supportedVoices": {
-            "type": "string",
-            "nullable": true
-          },
-          "supportedLanguages": {
-            "type": "string",
-            "nullable": true
-          },
-          "supportedFormats": {
-            "type": "string",
-            "nullable": true
-          },
-          "isDefault": {
-            "type": "boolean"
-          },
-          "defaultCapabilityType": {
-            "maxLength": 50,
-            "type": "string",
-            "nullable": true
-          },
-          "modelCostMappings": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ModelCostMapping"
-            },
-            "nullable": true
           }
         },
         "additionalProperties": false
@@ -14095,106 +13135,6 @@
         },
         "additionalProperties": false
       },
-      "ConduitLLM.Configuration.Entities.ProviderHealthConfiguration": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "providerId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "provider": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.Provider"
-          },
-          "monitoringEnabled": {
-            "type": "boolean"
-          },
-          "checkIntervalMinutes": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "timeoutSeconds": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "consecutiveFailuresThreshold": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "notificationsEnabled": {
-            "type": "boolean"
-          },
-          "customEndpointUrl": {
-            "type": "string",
-            "nullable": true
-          },
-          "lastCheckedUtc": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.Entities.ProviderHealthRecord": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "providerId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "provider": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.Provider"
-          },
-          "status": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.ProviderHealthRecord.StatusType"
-          },
-          "isOnline": {
-            "type": "boolean"
-          },
-          "statusMessage": {
-            "type": "string",
-            "nullable": true
-          },
-          "timestampUtc": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "responseTimeMs": {
-            "type": "number",
-            "format": "double"
-          },
-          "errorCategory": {
-            "type": "string",
-            "nullable": true
-          },
-          "errorDetails": {
-            "type": "string",
-            "nullable": true
-          },
-          "endpointUrl": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.Entities.ProviderHealthRecord.StatusType": {
-        "enum": [
-          0,
-          1,
-          2
-        ],
-        "type": "integer",
-        "format": "int32"
-      },
       "ConduitLLM.Configuration.Entities.ProviderKeyCredential": {
         "required": [
           "providerId"
@@ -14251,6 +13191,26 @@
         },
         "additionalProperties": false
       },
+      "ConduitLLM.Configuration.Enums.ReferenceType": {
+        "enum": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "ConduitLLM.Configuration.Enums.TransactionType": {
+        "enum": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
       "ConduitLLM.Configuration.ProviderType": {
         "enum": [
           1,
@@ -14262,19 +13222,7 @@
           7,
           8,
           9,
-          10,
-          11,
-          12,
-          13,
-          14,
-          15,
-          16,
-          17,
-          18,
-          19,
-          20,
-          21,
-          22
+          10
         ],
         "type": "integer",
         "format": "int32"

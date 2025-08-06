@@ -138,20 +138,13 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
           const provider = await response.json() as ProviderCredentialDto;
           setExistingProvider(provider);
           
-          // Define a type that matches the actual API response
-          type ApiProviderResponse = ProviderCredentialDto & {
-            providerName?: string;
-            baseUrl?: string;
-            apiBase?: string;
-          };
-          
-          const apiProvider = provider as ApiProviderResponse;
+          const apiProvider = provider;
           
           form.setValues({
             providerType: provider.providerType?.toString() ?? '',
             providerName: typeof apiProvider.providerName === 'string' ? apiProvider.providerName : '',
             apiKey: '', // Don't show existing key for security
-            apiEndpoint: apiProvider.baseUrl ?? apiProvider.apiBase ?? '',
+            apiEndpoint: apiProvider.baseUrl ?? '',
             organizationId: typeof provider.organization === 'string' ? provider.organization : '',
             isEnabled: provider.isEnabled === true,
           });
@@ -364,10 +357,7 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
       providerDisplayName = getProviderDisplayName(providerType);
     } catch {
       // Fallback to provider name if available
-      type ApiProviderResponse = ProviderCredentialDto & {
-        providerName?: string;
-      };
-      const apiProvider = existingProvider as ApiProviderResponse;
+      const apiProvider = existingProvider;
       providerDisplayName = typeof apiProvider.providerName === 'string' ? apiProvider.providerName : 'Unknown Provider';
     }
   }

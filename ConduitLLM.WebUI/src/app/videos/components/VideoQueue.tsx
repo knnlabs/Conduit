@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useVideoStore } from '../hooks/useVideoStore';
-import { useVideoGeneration } from '../hooks/useVideoGeneration';
+import { useEnhancedVideoGeneration } from '../hooks/useEnhancedVideoGeneration';
 import { canRetry, type VideoTask } from '../types';
 import { TimeDisplay } from '@/components/common/TimeDisplay';
 
@@ -33,7 +33,9 @@ function RetryButton({ task, onRetry }: { task: VideoTask; onRetry: (task: Video
 
 export default function VideoQueue() {
   const { currentTask } = useVideoStore();
-  const { cancelGeneration, retryGeneration } = useVideoGeneration();
+  const { cancelGeneration, retryGeneration } = useEnhancedVideoGeneration({
+    fallbackToPolling: true,
+  });
 
   if (!currentTask) {
     return null;
@@ -91,7 +93,7 @@ export default function VideoQueue() {
           )}
           
           {(currentTask.status === 'failed' || currentTask.status === 'timedout') && (
-            <RetryButton task={currentTask} onRetry={retryGeneration} />
+            <RetryButton task={currentTask} onRetry={(task: VideoTask) => retryGeneration(task)} />
           )}
           
           {(currentTask.status === 'failed' || currentTask.status === 'timedout' || currentTask.status === 'cancelled') && currentTask.error && (

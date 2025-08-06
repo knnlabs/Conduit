@@ -111,21 +111,21 @@ function convertToCSV(modelCosts: EnrichedModelCost[]): string {
 
   // Build CSV rows
   const rows = modelCosts.map(cost => {
-    // Note: SDK costs are already in USD per token, not per million
-    const inputCostPer1K = cost.inputTokenCost 
-      ? (cost.inputTokenCost * 1000).toFixed(4) 
+    // Note: SDK costs are now per million tokens, convert to per 1K for export
+    const inputCostPer1K = cost.inputCostPerMillionTokens 
+      ? (cost.inputCostPerMillionTokens / 1000).toFixed(4) 
       : '';
-    const outputCostPer1K = cost.outputTokenCost 
-      ? (cost.outputTokenCost * 1000).toFixed(4) 
+    const outputCostPer1K = cost.outputCostPerMillionTokens 
+      ? (cost.outputCostPerMillionTokens / 1000).toFixed(4) 
       : '';
-    const cachedInputCostPer1K = cost.cachedInputTokenCost 
-      ? (cost.cachedInputTokenCost * 1000).toFixed(4) 
+    const cachedInputCostPer1K = cost.cachedInputCostPerMillionTokens 
+      ? (cost.cachedInputCostPerMillionTokens / 1000).toFixed(4) 
       : '';
-    const cachedInputWriteCostPer1K = cost.cachedInputWriteCost 
-      ? (cost.cachedInputWriteCost * 1000).toFixed(4) 
+    const cachedInputWriteCostPer1K = cost.cachedInputWriteCostPerMillionTokens 
+      ? (cost.cachedInputWriteCostPerMillionTokens / 1000).toFixed(4) 
       : '';
-    const embeddingCostPer1K = cost.embeddingTokenCost 
-      ? (cost.embeddingTokenCost * 1000).toFixed(4) 
+    const embeddingCostPer1K = cost.embeddingCostPerMillionTokens 
+      ? (cost.embeddingCostPerMillionTokens / 1000).toFixed(4) 
       : '';
     const searchUnitCostPer1K = cost.costPerSearchUnit 
       ? cost.costPerSearchUnit.toFixed(4) 

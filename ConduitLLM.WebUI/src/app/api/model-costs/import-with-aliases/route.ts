@@ -74,11 +74,11 @@ export async function POST(req: NextRequest) {
         costName: item.costName,
         modelProviderMappingIds: mappingIds,
         modelType: item.modelType as 'chat' | 'embedding' | 'image' | 'audio' | 'video',
-        inputTokenCost: item.inputTokenCost,
-        outputTokenCost: item.outputTokenCost,
-        cachedInputTokenCost: item.cachedInputTokenCost as number | undefined,
-        cachedInputWriteCost: item.cachedInputWriteCost as number | undefined,
-        embeddingTokenCost: item.embeddingTokenCost as number | undefined,
+        inputCostPerMillionTokens: (item.inputTokenCost ?? 0) * 1000, // Convert from per-1K to per-million
+        outputCostPerMillionTokens: (item.outputTokenCost ?? 0) * 1000, // Convert from per-1K to per-million
+        cachedInputCostPerMillionTokens: item.cachedInputTokenCost && typeof item.cachedInputTokenCost === 'number' ? (item.cachedInputTokenCost * 1000) : undefined,
+        cachedInputWriteCostPerMillionTokens: item.cachedInputWriteCost && typeof item.cachedInputWriteCost === 'number' ? (item.cachedInputWriteCost * 1000) : undefined,
+        embeddingCostPerMillionTokens: item.embeddingTokenCost && typeof item.embeddingTokenCost === 'number' ? (item.embeddingTokenCost * 1000) : undefined,
         imageCostPerImage: item.imageCostPerImage as number | undefined,
         audioCostPerMinute: item.audioCostPerMinute as number | undefined,
         audioCostPerKCharacters: item.audioCostPerKCharacters as number | undefined,

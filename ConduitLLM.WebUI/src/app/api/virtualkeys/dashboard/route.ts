@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
           status: key.isEnabled ? 'active' : 'inactive',
           requests: 0,
           cost: 0,
-          budget: key.maxBudget ?? 0,
+          budget: 0, // Budget is managed at group level, not individual key level
           budgetUsed: 0,
         };
       });
@@ -92,7 +92,7 @@ export async function GET(req: NextRequest) {
         status: key.isEnabled ? 'active' : 'inactive',
         requests: 0,
         cost: 0,
-        budget: key.maxBudget ?? 0,
+        budget: 0, // Budget is managed at group level, not individual key level
         budgetUsed: 0,
       }));
       

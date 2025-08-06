@@ -244,9 +244,9 @@ export class FetchModelCostService {
     inputTokens: number,
     outputTokens: number
   ): { inputCost: number; outputCost: number; totalCost: number } {
-    // Costs are now stored as cost per token (not per million)
-    const inputCost = inputTokens * cost.inputTokenCost;
-    const outputCost = outputTokens * cost.outputTokenCost;
+    // Costs are now stored as cost per million tokens
+    const inputCost = (inputTokens / 1_000_000) * cost.inputCostPerMillionTokens;
+    const outputCost = (outputTokens / 1_000_000) * cost.outputCostPerMillionTokens;
     
     return {
       inputCost,

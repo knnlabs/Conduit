@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
 import { ApiKeyTestResult, type ProviderSettings } from '@knn_labs/conduit-admin-client';
-import { providerNameToType } from '@/lib/utils/providerTypeUtils';
 
 interface TestProviderRequest {
-  providerName: string;
+  providerType: number;
   apiKey: string;
   apiEndpoint?: string;
   organizationId?: string;
@@ -24,11 +23,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json() as TestProviderRequest;
     
     // Validate required fields
-    if (!body.providerName || !body.apiKey) {
+    if (!body.providerType || !body.apiKey) {
       return NextResponse.json(
         { 
           error: 'Missing required fields',
-          details: 'providerName and apiKey are required'
+          details: 'providerType and apiKey are required'
         },
         { status: 400 }
       );
@@ -38,7 +37,7 @@ export async function POST(request: NextRequest) {
     
     // Use the SDK's testConfig method with ProviderConfig interface
     const testResult = await adminClient.providers.testConfig({
-      providerType: providerNameToType(body.providerName),
+      providerType: body.providerType,
       apiKey: body.apiKey,
       baseUrl: body.apiEndpoint,
       organizationId: body.organizationId,

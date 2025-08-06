@@ -1017,7 +1017,7 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.CacheMonitoringStatusDto"];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.CacheMonitoringStatusDto"];
           };
         };
         /** @description Internal Server Error */
@@ -1060,7 +1060,7 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.CacheAlertThresholdsDto"];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.CacheAlertThresholdsDto"];
           };
         };
       };
@@ -1076,9 +1076,9 @@ export interface paths {
       /** @description New threshold values */
       requestBody?: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateThresholdsRequest"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateThresholdsRequest"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateThresholdsRequest"];
+          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.UpdateThresholdsRequestDto"];
+          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.UpdateThresholdsRequestDto"];
+          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.UpdateThresholdsRequestDto"];
         };
       };
       responses: {
@@ -1088,7 +1088,7 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.CacheAlertThresholdsDto"];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.CacheAlertThresholdsDto"];
           };
         };
         /** @description Bad Request */
@@ -1135,7 +1135,7 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.CacheAlertDto"][];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.CacheAlertDto"][];
           };
         };
       };
@@ -1191,7 +1191,7 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.CacheMonitoringStatusDto"];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.CacheMonitoringStatusDto"];
           };
         };
       };
@@ -1225,7 +1225,7 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.AlertDefinitionDto"][];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.AlertDefinitionDto"][];
           };
         };
       };
@@ -1261,7 +1261,7 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.CacheHealthSummaryDto"];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.CacheHealthSummaryDto"];
           };
         };
       };
@@ -1311,9 +1311,9 @@ export interface paths {
       /** @description Updated routing configuration. */
       requestBody?: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateRoutingConfigDto"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateRoutingConfigDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateRoutingConfigDto"];
+          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Routing.UpdateRoutingConfigDto"];
+          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Routing.UpdateRoutingConfigDto"];
+          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.Routing.UpdateRoutingConfigDto"];
         };
       };
       responses: {
@@ -1370,9 +1370,9 @@ export interface paths {
       /** @description Updated caching configuration. */
       requestBody?: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Models.UpdateCacheConfigDto"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Models.UpdateCacheConfigDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Models.UpdateCacheConfigDto"];
+          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Cache.UpdateCacheConfigDto"];
+          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Cache.UpdateCacheConfigDto"];
+          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.Cache.UpdateCacheConfigDto"];
         };
       };
       responses: {
@@ -1604,9 +1604,9 @@ export interface paths {
       /** @description Policy update details. */
       requestBody?: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Models.UpdateCachePolicyDto"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Models.UpdateCachePolicyDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Models.UpdateCachePolicyDto"];
+          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Cache.UpdateCachePolicyDto"];
+          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Cache.UpdateCachePolicyDto"];
+          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.Cache.UpdateCachePolicyDto"];
         };
       };
       responses: {
@@ -4815,9 +4815,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"][];
+            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"][];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"][];
+            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"][];
           };
         };
         /** @description Internal Server Error */
@@ -4841,9 +4841,9 @@ export interface paths {
       /** @description The mapping to create */
       requestBody?: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"];
+          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
+          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
+          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
         };
       };
       responses: {
@@ -4853,9 +4853,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"];
+            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
+            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
           };
         };
         /** @description Bad Request */
@@ -4921,9 +4921,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"];
+            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
+            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
           };
         };
         /** @description Not Found */
@@ -4960,9 +4960,9 @@ export interface paths {
       /** @description The updated mapping data */
       requestBody?: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"];
+          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
+          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
+          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"];
         };
       };
       responses: {
@@ -5115,9 +5115,9 @@ export interface paths {
       /** @description The mappings to create */
       requestBody?: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"][];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"][];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"][];
+          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"][];
+          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"][];
+          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"][];
         };
       };
       responses: {
@@ -5609,792 +5609,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ProviderHealth/configurations": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets health configurations for all providers */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"][];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    /** Updates a provider health configuration */
-    put: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      /** @description The configuration to update */
-      requestBody?: {
-        content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"];
-        };
-      };
-      responses: {
-        /** @description No Content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    /** Creates a new provider health configuration */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      /** @description The configuration to create */
-      requestBody?: {
-        content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"];
-        };
-      };
-      responses: {
-        /** @description Created */
-        201: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"];
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ProviderHealth/configurations/{providerId}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets health configuration for a specific provider */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The provider ID */
-          providerId: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthConfiguration"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ProviderHealth/statuses": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets the latest health status for all providers */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": {
-              [
-                key: string
-              ]: components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"];
-            };
-            "application/json": {
-              [
-                key: string
-              ]: components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"];
-            };
-            "text/json": {
-              [
-                key: string
-              ]: components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"];
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ProviderHealth/statuses/{providerId}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets the latest health status for a specific provider */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The ID of the provider */
-          providerId: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ProviderHealth/history/{providerId}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets health status history for a provider */
-    get: {
-      parameters: {
-        query?: {
-          /** @description Number of hours to look back (default: 24) */
-          hours?: number;
-          /** @description Maximum number of records to return (default: 100) */
-          limit?: number;
-        };
-        header?: never;
-        path: {
-          /** @description The ID of the provider */
-          providerId: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"][];
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ProviderHealth/summary": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets health summary for all providers */
-    get: {
-      parameters: {
-        query?: {
-          /** @description Number of hours to include in the summary (default: 24) */
-          hours?: number;
-        };
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthSummaryDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthSummaryDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthSummaryDto"][];
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ProviderHealth/statistics": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets health statistics across all providers */
-    get: {
-      parameters: {
-        query?: {
-          /** @description Number of hours to include in the statistics (default: 24) */
-          hours?: number;
-        };
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthStatisticsDto"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthStatisticsDto"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderHealthStatisticsDto"];
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ProviderHealth/check/{providerId}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Triggers an immediate health check for a provider */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The ID of the provider to check */
-          providerId: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"];
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ProviderHealth/purge": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post?: never;
-    /** Purges health records older than the specified time */
-    delete: {
-      parameters: {
-        query?: {
-          /** @description Number of days to keep records for (default: 30) */
-          days?: number;
-        };
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": number;
-            "application/json": number;
-            "text/json": number;
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ProviderHealth/records": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets all provider health records */
-    get: {
-      parameters: {
-        query?: {
-          /** @description Optional provider ID to filter records */
-          providerId?: number;
-        };
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"][];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"][];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord"][];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ProviderHealth/status": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets provider status for all providers that have been checked */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": {
-              [
-                key: string
-              ]: components["schemas"]["ConduitLLM.Admin.Controllers.Models.ProviderStatus"];
-            };
-            "application/json": {
-              [
-                key: string
-              ]: components["schemas"]["ConduitLLM.Admin.Controllers.Models.ProviderStatus"];
-            };
-            "text/json": {
-              [
-                key: string
-              ]: components["schemas"]["ConduitLLM.Admin.Controllers.Models.ProviderStatus"];
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ProviderHealth/status/{providerId}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets provider status for a specific provider */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The ID of the provider */
-          providerId: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.Models.ProviderStatus"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.Models.ProviderStatus"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.Models.ProviderStatus"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/Providers": {
+  "/api/ProviderCredentials": {
     parameters: {
       query?: never;
       header?: never;
@@ -6485,7 +5700,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Providers/{id}": {
+  "/api/ProviderCredentials/{id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -6640,7 +5855,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Providers/test/{id}": {
+  "/api/ProviderCredentials/test/{id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -6699,7 +5914,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Providers/test": {
+  "/api/ProviderCredentials/test": {
     parameters: {
       query?: never;
       header?: never;
@@ -6761,7 +5976,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Providers/{providerId}/keys": {
+  "/api/ProviderCredentials/{providerId}/keys": {
     parameters: {
       query?: never;
       header?: never;
@@ -6881,7 +6096,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Providers/{providerId}/keys/{keyId}": {
+  "/api/ProviderCredentials/{providerId}/keys/{keyId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -7042,7 +6257,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Providers/{providerId}/keys/{keyId}/set-primary": {
+  "/api/ProviderCredentials/{providerId}/keys/{keyId}/set-primary": {
     parameters: {
       query?: never;
       header?: never;
@@ -7110,7 +6325,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Providers/{providerId}/keys/{keyId}/test": {
+  "/api/ProviderCredentials/{providerId}/keys/{keyId}/test": {
     parameters: {
       query?: never;
       header?: never;
@@ -7835,9 +7050,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Interfaces.SystemInfoDto"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Interfaces.SystemInfoDto"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Interfaces.SystemInfoDto"];
+            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.SystemInfoDto"];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.SystemInfoDto"];
+            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.SystemInfoDto"];
           };
         };
         /** @description Internal Server Error */
@@ -7880,9 +7095,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Interfaces.HealthStatusDto"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Interfaces.HealthStatusDto"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Interfaces.HealthStatusDto"];
+            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.HealthStatusDto"];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.HealthStatusDto"];
+            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.HealthStatusDto"];
           };
         };
         /** @description Internal Server Error */
@@ -7938,6 +7153,305 @@ export interface paths {
         };
       };
     };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/VirtualKeyGroups": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get all virtual key groups */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"][];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"][];
+            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"][];
+          };
+        };
+      };
+    };
+    put?: never;
+    /** Create a new virtual key group */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: {
+        content: {
+          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyGroupRequestDto"];
+          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyGroupRequestDto"];
+          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyGroupRequestDto"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"];
+            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/VirtualKeyGroups/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get a specific virtual key group by ID */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"];
+            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"];
+          };
+        };
+      };
+    };
+    /** Update a virtual key group */
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: {
+        content: {
+          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.UpdateVirtualKeyGroupRequestDto"];
+          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.UpdateVirtualKeyGroupRequestDto"];
+          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.UpdateVirtualKeyGroupRequestDto"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    post?: never;
+    /** Delete a virtual key group */
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/VirtualKeyGroups/{id}/adjust-balance": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Adjust the balance of a virtual key group */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: {
+        content: {
+          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.AdjustBalanceDto"];
+          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.AdjustBalanceDto"];
+          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.AdjustBalanceDto"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"];
+            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/VirtualKeyGroups/{id}/transactions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get transaction history for a virtual key group */
+    get: {
+      parameters: {
+        query?: {
+          page?: number;
+          pageSize?: number;
+        };
+        header?: never;
+        path: {
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null]]"];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null]]"];
+            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null]]"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/VirtualKeyGroups/{id}/keys": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get virtual keys in a group */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto"][];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto"][];
+            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto"][];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -8215,83 +7729,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/VirtualKeys/{id}/reset-spend": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Resets the spend for a virtual key */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The ID of the key to reset */
-          id: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description No Content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Forbidden */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/api/VirtualKeys/validate": {
     parameters: {
       query?: never;
@@ -8331,138 +7768,6 @@ export interface paths {
         };
         /** @description Bad Request */
         400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/VirtualKeys/{id}/spend": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Updates the spend amount for a virtual key */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The ID of the virtual key */
-          id: number;
-        };
-        cookie?: never;
-      };
-      /** @description The request containing the cost to add */
-      requestBody?: {
-        content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.UpdateSpendRequest"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.UpdateSpendRequest"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.UpdateSpendRequest"];
-        };
-      };
-      responses: {
-        /** @description No Content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/VirtualKeys/{id}/check-budget": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Checks if the budget period has expired and resets if needed */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The ID of the virtual key */
-          id: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.BudgetCheckResult"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.BudgetCheckResult"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.BudgetCheckResult"];
-          };
-        };
-        /** @description Not Found */
-        404: {
           headers: {
             [name: string]: unknown;
           };
@@ -8558,8 +7863,8 @@ export interface paths {
     /**
      * Performs maintenance tasks on all virtual keys
      * @description This endpoint performs the following maintenance tasks:
-     *     - Resets budgets for keys with expired budget periods (daily/monthly)
      *     - Disables keys that have passed their expiration date
+     *     Budget resets are no longer performed in the bank account model.
      *     This is typically called by a background service.
      */
     post: {
@@ -8677,35 +7982,74 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/VirtualKeys/{id}/group": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get the virtual key group for a specific key */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The ID of the virtual key */
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"];
+            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
-    /** @description Alert definition DTO */
-    "ConduitLLM.Admin.Controllers.AlertDefinitionDto": {
-      /** @description Unique identifier for the alert type (e.g., `cache_high_memory`). */
-      type?: string | null;
-      /** @description Human-readable name for the alert. */
-      name?: string | null;
-      /** @description The default severity level (e.g., `warning`, `critical`). */
-      defaultSeverity?: string | null;
-      /** @description Detailed description of what the alert means. */
-      description?: string | null;
-      /** @description Suggested remediation steps when the alert is triggered. */
-      recommendedActions?: string[] | null;
-      /** @description Indicates whether notifications for this alert are enabled. */
-      notificationEnabled?: boolean;
-      /**
-       * Format: int32
-       * @description Minimum number of minutes between successive notifications of the same alert.
-       */
-      cooldownPeriodMinutes?: number;
-    };
     /** @description Result of a bulk mapping operation */
     "ConduitLLM.Admin.Controllers.BulkMappingResult": {
       /** @description Successfully created mappings */
       created?:
-        | components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"][]
+        | components["schemas"]["ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"][]
         | null;
       /** @description Error messages for failed mappings */
       errors?: string[] | null;
@@ -8724,142 +8068,6 @@ export interface components {
        * @description Number of failed mappings
        */
       failureCount?: number;
-    };
-    /** @description Cache alert DTO */
-    "ConduitLLM.Admin.Controllers.CacheAlertDto": {
-      /** @description Machine-readable alert identifier (e.g., `cache_high_memory`). */
-      alertType?: string | null;
-      /** @description Human-readable explanation of the alert. */
-      message?: string | null;
-      /** @description Severity level of the alert (`info`, `warning`, `critical`). */
-      severity?: string | null;
-      /** @description Optional cache region associated with the alert. */
-      region?: string | null;
-      /** @description Additional structured data providing context for the alert. */
-      details?: {
-        [key: string]: unknown;
-      } | null;
-      /**
-       * Format: date-time
-       * @description Time when the alert occurred (UTC).
-       */
-      timestamp?: string;
-    };
-    /** @description Cache monitoring alert thresholds DTO */
-    "ConduitLLM.Admin.Controllers.CacheAlertThresholdsDto": {
-      /**
-       * Format: double
-       * @description Minimum acceptable cache hit rate percentage before an alert is raised.
-       */
-      minHitRate?: number;
-      /**
-       * Format: double
-       * @description Maximum allowed memory usage percentage before an alert is raised.
-       */
-      maxMemoryUsage?: number;
-      /**
-       * Format: double
-       * @description Maximum allowed percentage of evictions over the sampling window.
-       */
-      maxEvictionRate?: number;
-      /**
-       * Format: double
-       * @description Maximum average cache response time (in milliseconds) before an alert is raised.
-       */
-      maxResponseTimeMs?: number;
-      /**
-       * Format: int64
-       * @description Minimum number of requests required before evaluating hit-rate alert logic.
-       */
-      minRequestsForHitRateAlert?: number;
-    };
-    /** @description Cache health summary DTO */
-    "ConduitLLM.Admin.Controllers.CacheHealthSummaryDto": {
-      /** @description Overall cache health status (e.g., `healthy`, `degraded`, `unhealthy`). */
-      overallHealth?: string | null;
-      /**
-       * Format: double
-       * @description Fraction of cache look-ups that resulted in a hit (0-100).
-       */
-      hitRate?: number;
-      /**
-       * Format: double
-       * @description Percentage of allocated memory currently used by the cache.
-       */
-      memoryUsagePercent?: number;
-      /**
-       * Format: double
-       * @description Average cache response time in milliseconds.
-       */
-      responseTimeMs?: number;
-      /**
-       * Format: double
-       * @description Percentage of entries evicted over the sampling period.
-       */
-      evictionRate?: number;
-      /**
-       * Format: int32
-       * @description Number of alerts currently active.
-       */
-      activeAlerts?: number;
-      /**
-       * Format: int64
-       * @description Total size of cache in bytes.
-       */
-      totalCacheSize?: number;
-      /**
-       * Format: int64
-       * @description Total number of cache entries.
-       */
-      totalEntries?: number;
-      /**
-       * Format: date-time
-       * @description Timestamp of the last check (UTC).
-       */
-      lastCheck?: string;
-      /** @description List of recent cache alerts. */
-      recentAlerts?:
-        | components["schemas"]["ConduitLLM.Admin.Controllers.CacheAlertDto"][]
-        | null;
-    };
-    /** @description Cache monitoring status DTO */
-    "ConduitLLM.Admin.Controllers.CacheMonitoringStatusDto": {
-      /**
-       * Format: date-time
-       * @description Timestamp of the last check (UTC).
-       */
-      lastCheck?: string;
-      /** @description Indicates overall cache health status at the time of the check. */
-      isHealthy?: boolean;
-      /**
-       * Format: double
-       * @description Current cache hit rate percentage.
-       */
-      currentHitRate?: number;
-      /**
-       * Format: double
-       * @description Current memory usage percentage.
-       */
-      currentMemoryUsagePercent?: number;
-      /**
-       * Format: double
-       * @description Current eviction rate percentage.
-       */
-      currentEvictionRate?: number;
-      /**
-       * Format: double
-       * @description Current average response time in milliseconds.
-       */
-      currentResponseTimeMs?: number;
-      /**
-       * Format: int32
-       * @description Number of alerts currently active.
-       */
-      activeAlerts?: number;
-      /** @description Additional structured data providing context for the alert. */
-      details?: {
-        [key: string]: unknown;
-      } | null;
     };
     /** @description Request model for creating a key credential */
     "ConduitLLM.Admin.Controllers.CreateKeyRequest": {
@@ -8897,30 +8105,6 @@ export interface components {
        *     If null or empty, all messages are replayed. */
       messageIds?: string[] | null;
     };
-    /** @description Represents the current status of a provider */
-    "ConduitLLM.Admin.Controllers.Models.ProviderStatus": {
-      status?: components["schemas"]["ConduitLLM.Admin.Controllers.Models.ProviderStatus.StatusType"];
-      /** @description A descriptive message about the status */
-      statusMessage?: string | null;
-      /**
-       * Format: double
-       * @description The response time in milliseconds
-       */
-      responseTimeMs?: number;
-      /**
-       * Format: date-time
-       * @description When the status was last checked
-       */
-      lastCheckedUtc?: string;
-      /** @description Error category if the provider is offline */
-      errorCategory?: string | null;
-    };
-    /**
-     * Format: int32
-     * @description Status types for providers
-     * @enum {integer}
-     */
-    "ConduitLLM.Admin.Controllers.Models.ProviderStatus.StatusType": 0 | 1 | 2;
     /** @description Request model for pruning old media. */
     "ConduitLLM.Admin.Controllers.PruneMediaRequest": {
       /**
@@ -8967,51 +8151,6 @@ export interface components {
       baseUrl?: string | null;
       /** @description Whether the provider is enabled */
       isEnabled?: boolean;
-    };
-    /** @description DTO for updating routing configuration. */
-    "ConduitLLM.Admin.Controllers.UpdateRoutingConfigDto": {
-      /** @description Enable or disable failover. */
-      enableFailover?: boolean;
-      /** @description Enable or disable load balancing. */
-      enableLoadBalancing?: boolean;
-      /**
-       * Format: int32
-       * @description Request timeout in seconds.
-       */
-      requestTimeoutSeconds?: number;
-      /**
-       * Format: int32
-       * @description Circuit breaker threshold.
-       */
-      circuitBreakerThreshold?: number;
-    };
-    /** @description Update thresholds request */
-    "ConduitLLM.Admin.Controllers.UpdateThresholdsRequest": {
-      /**
-       * Format: double
-       * @description Updated minimum hit rate; `null` to keep current value.
-       */
-      minHitRate?: number | null;
-      /**
-       * Format: double
-       * @description Updated maximum memory usage; `null` to keep current value.
-       */
-      maxMemoryUsage?: number | null;
-      /**
-       * Format: double
-       * @description Updated maximum eviction rate; `null` to keep current value.
-       */
-      maxEvictionRate?: number | null;
-      /**
-       * Format: double
-       * @description Updated maximum response time in ms; `null` to keep current value.
-       */
-      maxResponseTimeMs?: number | null;
-      /**
-       * Format: int64
-       * @description Updated minimum requests threshold; `null` to keep current value.
-       */
-      minRequestsForHitRateAlert?: number | null;
     };
     /** @description Result of audio provider connectivity test. */
     "ConduitLLM.Admin.Interfaces.AudioProviderTestResult": {
@@ -9062,129 +8201,6 @@ export interface components {
       failureCount?: number;
       /** @description Error messages for failed imports. */
       errors?: string[] | null;
-    };
-    /** @description Component health information */
-    "ConduitLLM.Admin.Interfaces.ComponentHealth": {
-      /** @description Component status */
-      status?: string | null;
-      /** @description Component description */
-      description?: string | null;
-      /**
-       * Format: double
-       * @description Duration of the health check in milliseconds
-       */
-      duration?: number | null;
-      /** @description Error message if the health check failed */
-      error?: string | null;
-    };
-    /** @description Database information */
-    "ConduitLLM.Admin.Interfaces.DatabaseInfo": {
-      /** @description Database provider name */
-      provider?: string | null;
-      /** @description Database version */
-      version?: string | null;
-      /** @description Connection status */
-      connected?: boolean;
-      /** @description Masked connection string */
-      connectionString?: string | null;
-      /** @description Database file location (for file-based databases) */
-      location?: string | null;
-      /** @description Database size */
-      size?: string | null;
-      /**
-       * Format: int32
-       * @description Number of tables in the database
-       */
-      tableCount?: number;
-    };
-    /** @description DTO containing health status information */
-    "ConduitLLM.Admin.Interfaces.HealthStatusDto": {
-      /** @description Overall system status */
-      status?: string | null;
-      /**
-       * Format: date-time
-       * @description Timestamp when the health check was performed
-       */
-      timestamp?: string;
-      /** @description Individual component health statuses */
-      checks?: {
-        [
-          key: string
-        ]: components["schemas"]["ConduitLLM.Admin.Interfaces.ComponentHealth"];
-      } | null;
-      /**
-       * Format: double
-       * @description Total duration of all health checks in milliseconds
-       */
-      totalDuration?: number;
-    };
-    /** @description Operating system information */
-    "ConduitLLM.Admin.Interfaces.OsInfo": {
-      /** @description Operating system description */
-      description?: string | null;
-      /** @description Process architecture */
-      architecture?: string | null;
-    };
-    /** @description Record counts from database tables */
-    "ConduitLLM.Admin.Interfaces.RecordCountsDto": {
-      /**
-       * Format: int32
-       * @description Number of virtual keys
-       */
-      virtualKeys?: number;
-      /**
-       * Format: int32
-       * @description Number of request logs
-       */
-      requests?: number;
-      /**
-       * Format: int32
-       * @description Number of global settings
-       */
-      settings?: number;
-      /**
-       * Format: int32
-       * @description Number of provider credentials
-       */
-      providers?: number;
-      /**
-       * Format: int32
-       * @description Number of model provider mappings
-       */
-      modelMappings?: number;
-    };
-    /** @description Runtime information */
-    "ConduitLLM.Admin.Interfaces.RuntimeInfo": {
-      /** @description .NET runtime version */
-      runtimeVersion?: string | null;
-      /**
-       * Format: date-time
-       * @description Process start time
-       */
-      startTime?: string;
-      /**
-       * Format: date-span
-       * @description Total process uptime
-       */
-      uptime?: string;
-    };
-    /** @description DTO containing system information */
-    "ConduitLLM.Admin.Interfaces.SystemInfoDto": {
-      version?: components["schemas"]["ConduitLLM.Admin.Interfaces.VersionInfo"];
-      operatingSystem?: components["schemas"]["ConduitLLM.Admin.Interfaces.OsInfo"];
-      database?: components["schemas"]["ConduitLLM.Admin.Interfaces.DatabaseInfo"];
-      runtime?: components["schemas"]["ConduitLLM.Admin.Interfaces.RuntimeInfo"];
-      recordCounts?: components["schemas"]["ConduitLLM.Admin.Interfaces.RecordCountsDto"];
-    };
-    /** @description Version information */
-    "ConduitLLM.Admin.Interfaces.VersionInfo": {
-      /** @description Application version */
-      appVersion?: string | null;
-      /**
-       * Format: date-time
-       * @description Build date
-       */
-      buildDate?: string | null;
     };
     /** @description Error details within a message. */
     "ConduitLLM.Admin.Models.ErrorQueue.ErrorDetails": {
@@ -9499,45 +8515,6 @@ export interface components {
        */
       currentCount?: number;
     };
-    /** @description DTO for updating cache configuration. */
-    "ConduitLLM.Admin.Models.UpdateCacheConfigDto": {
-      /**
-       * Format: int32
-       * @description Default TTL in seconds.
-       */
-      defaultTTLSeconds?: number | null;
-      /** @description Maximum memory size. */
-      maxMemorySize?: string | null;
-      /** @description Eviction policy. */
-      evictionPolicy?: string | null;
-      /** @description Enable or disable compression. */
-      enableCompression?: boolean;
-      /** @description Clear affected caches after update. */
-      clearAffectedCaches?: boolean;
-      /** @description Apply configuration globally to all regions. */
-      applyGlobally?: boolean;
-      /** @description Specific region ID to update (if not applying globally). */
-      regionId?: string | null;
-    };
-    /** @description DTO for updating cache policy. */
-    "ConduitLLM.Admin.Models.UpdateCachePolicyDto": {
-      /**
-       * Format: int32
-       * @description New TTL in seconds.
-       */
-      ttl?: number | null;
-      /**
-       * Format: int32
-       * @description New maximum size.
-       */
-      maxSize?: number | null;
-      /** @description New eviction strategy. */
-      strategy?: string | null;
-      /** @description Enable or disable the policy. */
-      enabled?: boolean | null;
-      /** @description Reason for the policy change. */
-      reason: string;
-    };
     "ConduitLLM.Configuration.DTOs.Audio.AudioCostDto": {
       /** Format: int32 */
       id?: number;
@@ -9823,6 +8800,25 @@ export interface components {
       /** Format: double */
       totalCost?: number;
     };
+    "ConduitLLM.Configuration.DTOs.Cache.UpdateCacheConfigDto": {
+      /** Format: int32 */
+      defaultTTLSeconds?: number | null;
+      maxMemorySize?: string | null;
+      evictionPolicy?: string | null;
+      enableCompression?: boolean;
+      clearAffectedCaches?: boolean;
+      applyGlobally?: boolean;
+      regionId?: string | null;
+    };
+    "ConduitLLM.Configuration.DTOs.Cache.UpdateCachePolicyDto": {
+      /** Format: int32 */
+      ttl?: number | null;
+      /** Format: int32 */
+      maxSize?: number | null;
+      strategy?: string | null;
+      enabled?: boolean | null;
+      reason: string;
+    };
     "ConduitLLM.Configuration.DTOs.Costs.CostDashboardDto": {
       timeFrame?: string | null;
       /** Format: date-time */
@@ -9907,11 +8903,11 @@ export interface components {
       priority?: number;
       description?: string | null;
       /** Format: double */
-      inputTokenCost?: number;
+      inputCostPerMillionTokens?: number;
       /** Format: double */
-      outputTokenCost?: number;
+      outputCostPerMillionTokens?: number;
       /** Format: double */
-      embeddingTokenCost?: number | null;
+      embeddingCostPerMillionTokens?: number | null;
       /** Format: double */
       imageCostPerImage?: number | null;
       /** Format: double */
@@ -9930,9 +8926,9 @@ export interface components {
       supportsBatchProcessing?: boolean;
       imageQualityMultipliers?: string | null;
       /** Format: double */
-      cachedInputTokenCost?: number | null;
+      cachedInputCostPerMillionTokens?: number | null;
       /** Format: double */
-      cachedInputWriteCost?: number | null;
+      cachedInputWriteCostPerMillionTokens?: number | null;
       /** Format: double */
       costPerSearchUnit?: number | null;
       /** Format: double */
@@ -9951,7 +8947,6 @@ export interface components {
       /** Format: date-time */
       date?: string;
       modelId?: string | null;
-      modelName?: string | null;
       /** Format: int32 */
       requestCount?: number;
       /** Format: int32 */
@@ -9960,8 +8955,6 @@ export interface components {
       outputTokens?: number;
       /** Format: double */
       cost?: number;
-      /** Format: double */
-      totalCost?: number;
     };
     "ConduitLLM.Configuration.DTOs.DiscoveredModelDto": {
       id?: string | null;
@@ -9985,7 +8978,6 @@ export interface components {
     "ConduitLLM.Configuration.DTOs.IpFilter.CreateIpFilterDto": {
       filterType: string;
       ipAddressOrCidr: string;
-      ipAddress?: string | null;
       name?: string | null;
       description?: string | null;
       isEnabled?: boolean;
@@ -9999,7 +8991,6 @@ export interface components {
       id?: number;
       filterType: string;
       ipAddressOrCidr: string;
-      ipAddress?: string | null;
       name?: string | null;
       description?: string | null;
       isEnabled?: boolean;
@@ -10026,7 +9017,6 @@ export interface components {
       id: number;
       filterType: string;
       ipAddressOrCidr: string;
-      ipAddress?: string | null;
       name?: string | null;
       description?: string | null;
       isEnabled?: boolean;
@@ -10072,7 +9062,7 @@ export interface components {
       /** Format: int32 */
       failedRequests?: number;
       /** Format: double */
-      successRate?: number;
+      readonly successRate?: number;
       /** Format: date-time */
       lastRequestDate?: string | null;
       requestsByModel?: {
@@ -10087,14 +9077,6 @@ export interface components {
       dailyStats?:
         | components["schemas"]["ConduitLLM.Configuration.DTOs.DailyUsageStatsDto"][]
         | null;
-      /** Format: double */
-      totalCost?: number;
-      /** Format: int32 */
-      totalInputTokens?: number;
-      /** Format: int32 */
-      totalOutputTokens?: number;
-      /** Format: double */
-      averageResponseTimeMs?: number;
     };
     "ConduitLLM.Configuration.DTOs.ModelCostDto": {
       /** Format: int32 */
@@ -10102,11 +9084,11 @@ export interface components {
       costName: string;
       associatedModelAliases?: string[] | null;
       /** Format: double */
-      inputTokenCost?: number;
+      inputCostPerMillionTokens?: number;
       /** Format: double */
-      outputTokenCost?: number;
+      outputCostPerMillionTokens?: number;
       /** Format: double */
-      embeddingTokenCost?: number | null;
+      embeddingCostPerMillionTokens?: number | null;
       /** Format: double */
       imageCostPerImage?: number | null;
       /** Format: date-time */
@@ -10138,9 +9120,9 @@ export interface components {
       supportsBatchProcessing?: boolean;
       imageQualityMultipliers?: string | null;
       /** Format: double */
-      cachedInputTokenCost?: number | null;
+      cachedInputCostPerMillionTokens?: number | null;
       /** Format: double */
-      cachedInputWriteCost?: number | null;
+      cachedInputWriteCostPerMillionTokens?: number | null;
       /** Format: double */
       costPerSearchUnit?: number | null;
       /** Format: double */
@@ -10158,6 +9140,207 @@ export interface components {
       inputTokens?: number;
       /** Format: int64 */
       outputTokens?: number;
+    };
+    "ConduitLLM.Configuration.DTOs.ModelProviderMappingDto": {
+      /** Format: int32 */
+      id?: number;
+      modelId: string;
+      providerModelId: string;
+      /** Format: int32 */
+      providerId: number;
+      provider?: components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderReferenceDto"];
+      /** Format: int32 */
+      priority?: number;
+      isEnabled?: boolean;
+      capabilities?: string | null;
+      /** Format: int32 */
+      maxContextLength?: number | null;
+      supportsVision?: boolean;
+      supportsAudioTranscription?: boolean;
+      supportsTextToSpeech?: boolean;
+      supportsRealtimeAudio?: boolean;
+      supportsImageGeneration?: boolean;
+      supportsVideoGeneration?: boolean;
+      supportsEmbeddings?: boolean;
+      supportsChat?: boolean;
+      supportsFunctionCalling?: boolean;
+      supportsStreaming?: boolean;
+      tokenizerType?: string | null;
+      supportedVoices?: string | null;
+      supportedLanguages?: string | null;
+      supportedFormats?: string | null;
+      isDefault?: boolean;
+      defaultCapabilityType?: string | null;
+      /** Format: date-time */
+      createdAt?: string;
+      /** Format: date-time */
+      updatedAt?: string;
+      notes?: string | null;
+    };
+    "ConduitLLM.Configuration.DTOs.Monitoring.AlertDefinitionDto": {
+      id?: string | null;
+      name?: string | null;
+      description?: string | null;
+      severity?: string | null;
+      enabled?: boolean;
+      thresholds?: {
+        [key: string]: unknown;
+      } | null;
+      type?: string | null;
+      defaultSeverity?: string | null;
+      recommendedActions?: string[] | null;
+      notificationEnabled?: boolean;
+      /** Format: int32 */
+      cooldownPeriodMinutes?: number;
+    };
+    "ConduitLLM.Configuration.DTOs.Monitoring.CacheAlertDto": {
+      alertType?: string | null;
+      message?: string | null;
+      severity?: string | null;
+      region?: string | null;
+      /** Format: date-time */
+      timestamp?: string;
+      context?: {
+        [key: string]: unknown;
+      } | null;
+      details?: {
+        [key: string]: unknown;
+      } | null;
+    };
+    "ConduitLLM.Configuration.DTOs.Monitoring.CacheAlertThresholdsDto": {
+      /** Format: double */
+      minHitRate?: number;
+      /** Format: double */
+      maxMemoryUsage?: number;
+      /** Format: double */
+      maxEvictionRate?: number;
+      /** Format: double */
+      maxResponseTimeMs?: number;
+      /** Format: int64 */
+      minRequestsForHitRateAlert?: number;
+    };
+    "ConduitLLM.Configuration.DTOs.Monitoring.CacheHealthSummaryDto": {
+      status?: string | null;
+      /** Format: date-time */
+      checkTime?: string;
+      metrics?: components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.CacheMonitoringStatusDto"];
+      recentAlerts?:
+        | components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.CacheAlertDto"][]
+        | null;
+      details?: {
+        [key: string]: unknown;
+      } | null;
+      overallHealth?: string | null;
+      /** Format: double */
+      hitRate?: number;
+      /** Format: double */
+      memoryUsagePercent?: number;
+      /** Format: double */
+      responseTimeMs?: number;
+      /** Format: double */
+      evictionRate?: number;
+      /** Format: int32 */
+      activeAlerts?: number;
+      /** Format: int64 */
+      totalCacheSize?: number;
+      /** Format: int64 */
+      totalEntries?: number;
+      /** Format: date-time */
+      lastCheck?: string;
+    };
+    "ConduitLLM.Configuration.DTOs.Monitoring.CacheMonitoringStatusDto": {
+      /** Format: date-time */
+      lastCheck?: string;
+      isHealthy?: boolean;
+      /** Format: double */
+      currentHitRate?: number;
+      /** Format: double */
+      currentMemoryUsagePercent?: number;
+      /** Format: double */
+      currentEvictionRate?: number;
+      /** Format: double */
+      currentResponseTimeMs?: number;
+      /** Format: int32 */
+      activeAlerts?: number;
+      details?: {
+        [key: string]: unknown;
+      } | null;
+    };
+    "ConduitLLM.Configuration.DTOs.Monitoring.ComponentHealth": {
+      status?: string | null;
+      description?: string | null;
+      /** Format: double */
+      duration?: number | null;
+      error?: string | null;
+    };
+    "ConduitLLM.Configuration.DTOs.Monitoring.DatabaseInfo": {
+      provider?: string | null;
+      version?: string | null;
+      connected?: boolean;
+      connectionString?: string | null;
+      location?: string | null;
+      size?: string | null;
+      /** Format: int32 */
+      tableCount?: number;
+    };
+    "ConduitLLM.Configuration.DTOs.Monitoring.HealthStatusDto": {
+      status?: string | null;
+      /** Format: date-time */
+      timestamp?: string;
+      checks?: {
+        [
+          key: string
+        ]: components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.ComponentHealth"];
+      } | null;
+      /** Format: double */
+      totalDuration?: number;
+    };
+    "ConduitLLM.Configuration.DTOs.Monitoring.OsInfo": {
+      description?: string | null;
+      architecture?: string | null;
+    };
+    "ConduitLLM.Configuration.DTOs.Monitoring.RecordCountsDto": {
+      /** Format: int32 */
+      virtualKeys?: number;
+      /** Format: int32 */
+      requests?: number;
+      /** Format: int32 */
+      settings?: number;
+      /** Format: int32 */
+      providers?: number;
+      /** Format: int32 */
+      modelMappings?: number;
+    };
+    "ConduitLLM.Configuration.DTOs.Monitoring.RuntimeInfo": {
+      runtimeVersion?: string | null;
+      /** Format: date-time */
+      startTime?: string;
+      /** Format: date-span */
+      uptime?: string;
+    };
+    "ConduitLLM.Configuration.DTOs.Monitoring.SystemInfoDto": {
+      version?: components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.VersionInfo"];
+      operatingSystem?: components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.OsInfo"];
+      database?: components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.DatabaseInfo"];
+      runtime?: components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.RuntimeInfo"];
+      recordCounts?: components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.RecordCountsDto"];
+    };
+    "ConduitLLM.Configuration.DTOs.Monitoring.UpdateThresholdsRequestDto": {
+      /** Format: double */
+      minHitRate?: number | null;
+      /** Format: double */
+      maxMemoryUsage?: number | null;
+      /** Format: double */
+      maxEvictionRate?: number | null;
+      /** Format: double */
+      maxResponseTimeMs?: number | null;
+      /** Format: int64 */
+      minRequestsForHitRateAlert?: number | null;
+    };
+    "ConduitLLM.Configuration.DTOs.Monitoring.VersionInfo": {
+      appVersion?: string | null;
+      /** Format: date-time */
+      buildDate?: string | null;
     };
     "ConduitLLM.Configuration.DTOs.NotificationDto": {
       /** Format: int32 */
@@ -10210,42 +9393,39 @@ export interface components {
       /** Format: int32 */
       totalItems?: number;
     };
-    "ConduitLLM.Configuration.DTOs.ProviderHealthStatisticsDto": {
+    "ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null]]": {
+      items?:
+        | components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto"][]
+        | null;
       /** Format: int32 */
-      totalProviders?: number;
+      totalCount?: number;
       /** Format: int32 */
-      onlineProviders?: number;
+      currentPage?: number;
       /** Format: int32 */
-      offlineProviders?: number;
+      pageSize?: number;
       /** Format: int32 */
-      unknownProviders?: number;
-      /** Format: double */
-      averageResponseTimeMs?: number;
+      totalPages?: number;
+      readonly hasPreviousPage?: boolean;
+      readonly hasNextPage?: boolean;
       /** Format: int32 */
-      totalErrors?: number;
-      errorCategoryDistribution?: {
-        [key: string]: number;
-      } | null;
+      page?: number;
       /** Format: int32 */
-      timePeriodHours?: number;
+      totalItems?: number;
     };
-    "ConduitLLM.Configuration.DTOs.ProviderHealthSummaryDto": {
+    "ConduitLLM.Configuration.DTOs.ProviderReferenceDto": {
       /** Format: int32 */
-      providerId?: number;
-      status?: components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord.StatusType"];
-      statusMessage?: string | null;
-      /** Format: double */
-      uptimePercentage?: number;
-      /** Format: double */
-      averageResponseTimeMs?: number;
+      id?: number;
+      providerType?: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
+      displayName?: string | null;
+      isEnabled?: boolean;
+    };
+    "ConduitLLM.Configuration.DTOs.Routing.UpdateRoutingConfigDto": {
+      enableFailover?: boolean;
+      enableLoadBalancing?: boolean;
       /** Format: int32 */
-      errorCount?: number;
-      errorCategories?: {
-        [key: string]: number;
-      } | null;
-      /** Format: date-time */
-      lastCheckedUtc?: string | null;
-      monitoringEnabled?: boolean;
+      requestTimeoutSeconds?: number;
+      /** Format: int32 */
+      circuitBreakerThreshold?: number;
     };
     "ConduitLLM.Configuration.DTOs.UpdateGlobalSettingByKeyDto": {
       key: string;
@@ -10269,11 +9449,11 @@ export interface components {
       description?: string | null;
       isActive?: boolean;
       /** Format: double */
-      inputTokenCost?: number;
+      inputCostPerMillionTokens?: number;
       /** Format: double */
-      outputTokenCost?: number;
+      outputCostPerMillionTokens?: number;
       /** Format: double */
-      embeddingTokenCost?: number | null;
+      embeddingCostPerMillionTokens?: number | null;
       /** Format: double */
       imageCostPerImage?: number | null;
       /** Format: double */
@@ -10292,9 +9472,9 @@ export interface components {
       supportsBatchProcessing?: boolean;
       imageQualityMultipliers?: string | null;
       /** Format: double */
-      cachedInputTokenCost?: number | null;
+      cachedInputCostPerMillionTokens?: number | null;
       /** Format: double */
-      cachedInputWriteCost?: number | null;
+      cachedInputWriteCostPerMillionTokens?: number | null;
       /** Format: double */
       costPerSearchUnit?: number | null;
       /** Format: double */
@@ -10308,16 +9488,22 @@ export interface components {
       isRead?: boolean;
       message?: string | null;
     };
-    "ConduitLLM.Configuration.DTOs.VirtualKey.BudgetCheckResult": {
-      wasReset?: boolean;
-      /** Format: date-time */
-      newBudgetStartDate?: string | null;
+    "ConduitLLM.Configuration.DTOs.VirtualKey.AdjustBalanceDto": {
+      /** Format: double */
+      amount?: number;
+      description?: string | null;
+    };
+    "ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyGroupRequestDto": {
+      groupName: string;
+      externalGroupId?: string | null;
+      /** Format: double */
+      initialBalance?: number | null;
     };
     "ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyRequestDto": {
       keyName: string;
+      allowedModels?: string | null;
       /** Format: int32 */
       virtualKeyGroupId: number;
-      allowedModels?: string | null;
       /** Format: date-time */
       expiresAt?: string | null;
       metadata?: string | null;
@@ -10330,16 +9516,15 @@ export interface components {
       virtualKey?: string | null;
       keyInfo?: components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto"];
     };
-    "ConduitLLM.Configuration.DTOs.VirtualKey.UpdateSpendRequest": {
-      /** Format: double */
-      cost: number;
+    "ConduitLLM.Configuration.DTOs.VirtualKey.UpdateVirtualKeyGroupRequestDto": {
+      groupName?: string | null;
+      externalGroupId?: string | null;
     };
     "ConduitLLM.Configuration.DTOs.VirtualKey.UpdateVirtualKeyRequestDto": {
       keyName?: string | null;
       allowedModels?: string | null;
-      /** Format: double */
-      maxBudget?: number | null;
-      budgetDuration?: string | null;
+      /** Format: int32 */
+      virtualKeyGroupId?: number | null;
       isEnabled?: boolean | null;
       /** Format: date-time */
       expiresAt?: string | null;
@@ -10359,13 +9544,8 @@ export interface components {
       keyName: string;
       keyPrefix?: string | null;
       allowedModels?: string | null;
-      /** Format: double */
-      maxBudget?: number | null;
-      /** Format: double */
-      currentSpend?: number;
-      budgetDuration?: string | null;
-      /** Format: date-time */
-      budgetStartDate?: string | null;
+      /** Format: int32 */
+      virtualKeyGroupId?: number;
       isEnabled?: boolean;
       /** Format: date-time */
       expiresAt?: string | null;
@@ -10379,25 +9559,50 @@ export interface components {
       /** Format: int32 */
       rateLimitRpd?: number | null;
       description?: string | null;
-      name?: string | null;
-      isActive?: boolean;
-      /** Format: double */
-      usageLimit?: number | null;
+    };
+    "ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupDto": {
       /** Format: int32 */
-      rateLimit?: number | null;
+      id?: number;
+      externalGroupId?: string | null;
+      groupName?: string | null;
+      /** Format: double */
+      balance?: number;
+      /** Format: double */
+      lifetimeCreditsAdded?: number;
+      /** Format: double */
+      lifetimeSpent?: number;
+      /** Format: date-time */
+      createdAt?: string;
+      /** Format: date-time */
+      updatedAt?: string;
+      /** Format: int32 */
+      virtualKeyCount?: number;
+    };
+    "ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto": {
+      /** Format: int64 */
+      id?: number;
+      /** Format: int32 */
+      virtualKeyGroupId?: number;
+      transactionType?: components["schemas"]["ConduitLLM.Configuration.Enums.TransactionType"];
+      /** Format: double */
+      amount?: number;
+      /** Format: double */
+      balanceAfter?: number;
+      referenceType?: components["schemas"]["ConduitLLM.Configuration.Enums.ReferenceType"];
+      referenceId?: string | null;
+      description?: string | null;
+      initiatedBy?: string | null;
+      initiatedByUserId?: string | null;
+      /** Format: date-time */
+      createdAt?: string;
     };
     "ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyValidationInfoDto": {
       /** Format: int32 */
       id?: number;
       keyName?: string | null;
       allowedModels?: string | null;
-      /** Format: double */
-      maxBudget?: number | null;
-      /** Format: double */
-      currentSpend?: number;
-      budgetDuration?: string | null;
-      /** Format: date-time */
-      budgetStartDate?: string | null;
+      /** Format: int32 */
+      virtualKeyGroupId?: number;
       isEnabled?: boolean;
       /** Format: date-time */
       expiresAt?: string | null;
@@ -10412,10 +9617,6 @@ export interface components {
       virtualKeyId?: number | null;
       keyName?: string | null;
       allowedModels?: string | null;
-      /** Format: double */
-      maxBudget?: number | null;
-      /** Format: double */
-      currentSpend?: number;
       errorMessage?: string | null;
     };
     "ConduitLLM.Configuration.DTOs.VirtualKeyDiscoveryPreviewDto": {
@@ -10424,108 +9625,6 @@ export interface components {
         | null;
       /** Format: int32 */
       count?: number;
-    };
-    "ConduitLLM.Configuration.Entities.ModelCost": {
-      /** Format: int32 */
-      id?: number;
-      costName: string;
-      /** Format: double */
-      inputTokenCost?: number;
-      /** Format: double */
-      outputTokenCost?: number;
-      /** Format: double */
-      embeddingTokenCost?: number | null;
-      /** Format: double */
-      imageCostPerImage?: number | null;
-      /** Format: date-time */
-      createdAt?: string;
-      /** Format: date-time */
-      updatedAt?: string;
-      modelType: string;
-      isActive?: boolean;
-      /** Format: date-time */
-      effectiveDate?: string;
-      /** Format: date-time */
-      expiryDate?: string | null;
-      description?: string | null;
-      /** Format: int32 */
-      priority?: number;
-      /** Format: double */
-      audioCostPerMinute?: number | null;
-      /** Format: double */
-      audioCostPerKCharacters?: number | null;
-      /** Format: double */
-      audioInputCostPerMinute?: number | null;
-      /** Format: double */
-      audioOutputCostPerMinute?: number | null;
-      /** Format: double */
-      videoCostPerSecond?: number | null;
-      videoResolutionMultipliers?: string | null;
-      /** Format: double */
-      batchProcessingMultiplier?: number | null;
-      supportsBatchProcessing?: boolean;
-      imageQualityMultipliers?: string | null;
-      /** Format: double */
-      cachedInputTokenCost?: number | null;
-      /** Format: double */
-      cachedInputWriteCost?: number | null;
-      /** Format: double */
-      costPerSearchUnit?: number | null;
-      /** Format: double */
-      costPerInferenceStep?: number | null;
-      /** Format: int32 */
-      defaultInferenceSteps?: number | null;
-      modelCostMappings?:
-        | components["schemas"]["ConduitLLM.Configuration.Entities.ModelCostMapping"][]
-        | null;
-    };
-    "ConduitLLM.Configuration.Entities.ModelCostMapping": {
-      /** Format: int32 */
-      id?: number;
-      /** Format: int32 */
-      modelCostId?: number;
-      modelCost?: components["schemas"]["ConduitLLM.Configuration.Entities.ModelCost"];
-      /** Format: int32 */
-      modelProviderMappingId?: number;
-      modelProviderMapping?: components["schemas"]["ConduitLLM.Configuration.Entities.ModelProviderMapping"];
-      /** Format: date-time */
-      createdAt?: string;
-      isActive?: boolean;
-    };
-    "ConduitLLM.Configuration.Entities.ModelProviderMapping": {
-      /** Format: int32 */
-      id?: number;
-      modelAlias: string;
-      providerModelId: string;
-      /** Format: int32 */
-      providerId?: number;
-      provider?: components["schemas"]["ConduitLLM.Configuration.Entities.Provider"];
-      isEnabled?: boolean;
-      /** Format: int32 */
-      maxContextTokens?: number | null;
-      /** Format: date-time */
-      createdAt?: string;
-      /** Format: date-time */
-      updatedAt?: string;
-      supportsVision?: boolean;
-      supportsAudioTranscription?: boolean;
-      supportsTextToSpeech?: boolean;
-      supportsRealtimeAudio?: boolean;
-      supportsImageGeneration?: boolean;
-      supportsVideoGeneration?: boolean;
-      supportsEmbeddings?: boolean;
-      supportsChat?: boolean;
-      supportsFunctionCalling?: boolean;
-      supportsStreaming?: boolean;
-      tokenizerType?: string | null;
-      supportedVoices?: string | null;
-      supportedLanguages?: string | null;
-      supportedFormats?: string | null;
-      isDefault?: boolean;
-      defaultCapabilityType?: string | null;
-      modelCostMappings?:
-        | components["schemas"]["ConduitLLM.Configuration.Entities.ModelCostMapping"][]
-        | null;
     };
     /**
      * Format: int32
@@ -10552,49 +9651,6 @@ export interface components {
         | components["schemas"]["ConduitLLM.Configuration.Entities.ProviderKeyCredential"][]
         | null;
     };
-    "ConduitLLM.Configuration.Entities.ProviderHealthConfiguration": {
-      /** Format: int32 */
-      id?: number;
-      /** Format: int32 */
-      providerId?: number;
-      provider?: components["schemas"]["ConduitLLM.Configuration.Entities.Provider"];
-      monitoringEnabled?: boolean;
-      /** Format: int32 */
-      checkIntervalMinutes?: number;
-      /** Format: int32 */
-      timeoutSeconds?: number;
-      /** Format: int32 */
-      consecutiveFailuresThreshold?: number;
-      notificationsEnabled?: boolean;
-      customEndpointUrl?: string | null;
-      /** Format: date-time */
-      lastCheckedUtc?: string | null;
-    };
-    "ConduitLLM.Configuration.Entities.ProviderHealthRecord": {
-      /** Format: int32 */
-      id?: number;
-      /** Format: int32 */
-      providerId?: number;
-      provider?: components["schemas"]["ConduitLLM.Configuration.Entities.Provider"];
-      status?: components["schemas"]["ConduitLLM.Configuration.Entities.ProviderHealthRecord.StatusType"];
-      isOnline?: boolean;
-      statusMessage?: string | null;
-      /** Format: date-time */
-      timestampUtc?: string;
-      /** Format: double */
-      responseTimeMs?: number;
-      errorCategory?: string | null;
-      errorDetails?: string | null;
-      endpointUrl?: string | null;
-    };
-    /**
-     * Format: int32
-     * @enum {integer}
-     */
-    "ConduitLLM.Configuration.Entities.ProviderHealthRecord.StatusType":
-      | 0
-      | 1
-      | 2;
     "ConduitLLM.Configuration.Entities.ProviderKeyCredential": {
       /** Format: int32 */
       id?: number;
@@ -10618,6 +9674,16 @@ export interface components {
      * Format: int32
      * @enum {integer}
      */
+    "ConduitLLM.Configuration.Enums.ReferenceType": 1 | 2 | 3 | 4;
+    /**
+     * Format: int32
+     * @enum {integer}
+     */
+    "ConduitLLM.Configuration.Enums.TransactionType": 1 | 2 | 3 | 4;
+    /**
+     * Format: int32
+     * @enum {integer}
+     */
     "ConduitLLM.Configuration.ProviderType":
       | 1
       | 2
@@ -10628,19 +9694,7 @@ export interface components {
       | 7
       | 8
       | 9
-      | 10
-      | 11
-      | 12
-      | 13
-      | 14
-      | 15
-      | 16
-      | 17
-      | 18
-      | 19
-      | 20
-      | 21
-      | 22;
+      | 10;
     "ConduitLLM.Core.Interfaces.DiscoveredModel": {
       modelId: string | null;
       provider: string | null;

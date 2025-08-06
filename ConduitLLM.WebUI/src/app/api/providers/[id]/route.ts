@@ -38,7 +38,6 @@ export async function PUT(
       providerType?: number;
       providerName?: string;
       baseUrl?: string;
-      apiBase?: string;
       isEnabled?: boolean;
       organization?: string;
     };
@@ -49,7 +48,7 @@ export async function PUT(
     const updateData: Record<string, unknown> = {
       id: parseInt(id, 10),
       // Handle different field names from frontend
-      baseUrl: ((body.apiEndpoint as string | undefined) ?? (body.apiBase as string | undefined) ?? (body.baseUrl as string | undefined) ?? typedProvider.baseUrl ?? typedProvider.apiBase) as string,
+      baseUrl: ((body.apiEndpoint as string | undefined) ?? (body.baseUrl as string | undefined) ?? typedProvider.baseUrl) as string,
       isEnabled: (body.isEnabled as boolean | undefined) ?? typedProvider.isEnabled,
       organization: ((body.organizationId as string | undefined) ?? (body.organization as string | undefined) ?? typedProvider.organization),
     };

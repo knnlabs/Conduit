@@ -52,7 +52,7 @@ rerank-3.5,rerank-3.5,chat,0,0,0,2.0,90,true`;
     
     // Check search unit cost (no conversion needed)
     expect(dtos[1].costPerSearchUnit).toBe(2.0);
-    expect(dtos[1].cachedInputTokenCost).toBeUndefined();
+    expect(dtos[1].cachedInputCostPerMillionTokens).toBeUndefined();
   });
 
   it('should validate negative Phase 2 costs', () => {
@@ -73,8 +73,8 @@ gpt-4,OpenAI,chat,0.03,0.06`;
     const result = parseCSVContent(csv);
     
     expect(result[0].isValid).toBe(true);
-    expect(result[0].cachedInputCostPer1K).toBeUndefined();
-    expect(result[0].cachedInputWriteCostPer1K).toBeUndefined();
+    expect(result[0].cachedInputCostPerMillion).toBeUndefined();
+    expect(result[0].cachedInputWriteCostPerMillion).toBeUndefined();
     expect(result[0].searchUnitCostPer1K).toBeUndefined();
   });
 
@@ -89,13 +89,13 @@ stable-diffusion-xl,Fireworks,image,0,0,0,0,0,0,0,0.00013,30,false,0,"{""standar
     expect(result).toHaveLength(3);
     
     // Claude model with caching
-    expect(result[0].cachedInputCostPer1K).toBe(0.0015);
-    expect(result[0].cachedInputWriteCostPer1K).toBe(0.01875);
+    expect(result[0].cachedInputCostPerMillion).toBe(1.5); // 0.0015 * 1000 = 1.5 per million
+    expect(result[0].cachedInputWriteCostPerMillion).toBe(18.75); // 0.01875 * 1000 = 18.75 per million
     expect(result[0].supportsBatchProcessing).toBe(true);
     expect(result[0].batchProcessingMultiplier).toBe(0.5);
     
     // Cohere embedding
-    expect(result[1].embeddingCostPer1K).toBe(0.0001);
+    expect(result[1].embeddingCostPerMillion).toBe(0.1); // 0.0001 * 1000 = 0.1 per million
     expect(result[1].modelType).toBe('embedding');
     
     // SDXL with inference steps
@@ -143,6 +143,6 @@ claude-batch,Anthropic,chat,0.015,0.075,0.0015,yes,0.5`;
     
     expect(dtos[0].supportsBatchProcessing).toBe(true);
     expect(dtos[0].batchProcessingMultiplier).toBe(0.5);
-    expect(dtos[0].cachedInputTokenCost).toBe(1500); // Cached costs work with batch
+    expect(dtos[0].cachedInputCostPerMillionTokens).toBe(1500); // Cached costs work with batch
   });
 });
