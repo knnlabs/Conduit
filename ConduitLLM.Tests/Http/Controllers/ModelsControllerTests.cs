@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Http.Controllers;
 using ConduitLLM.Http.Models;
 using ConduitLLM.Http.Services;

@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Http.Models;
 using ConduitLLM.Http.Services;
 

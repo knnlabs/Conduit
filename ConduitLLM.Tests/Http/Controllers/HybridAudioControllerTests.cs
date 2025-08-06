@@ -622,7 +622,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Assert
             Assert.NotNull(authorizeAttribute);
             var authAttribute = (Microsoft.AspNetCore.Authorization.AuthorizeAttribute)authorizeAttribute;
-            Assert.Equal("MasterKeyOrVirtualKey", authAttribute.Policy);
+            Assert.Equal("VirtualKey", authAttribute.AuthenticationSchemes);
         }
 
         #endregion

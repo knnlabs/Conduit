@@ -1,31 +1,9 @@
-using System.Text.Json.Serialization;
+// Type aliases to use the Core models
+using OpenAIErrorResponse = ConduitLLM.Core.Models.OpenAIErrorResponse;
+using OpenAIError = ConduitLLM.Core.Models.OpenAIError;
 
 namespace ConduitLLM.Http.Models
 {
-    /// <summary>
-    /// OpenAI-compatible error response.
-    /// </summary>
-    public class OpenAIErrorResponse
-    {
-        [JsonPropertyName("error")]
-        public required OpenAIError Error { get; set; }
-    }
-
-    /// <summary>
-    /// OpenAI-compatible error details.
-    /// </summary>
-    public class OpenAIError
-    {
-        [JsonPropertyName("message")]
-        public required string Message { get; set; }
-        
-        [JsonPropertyName("type")]
-        public required string Type { get; set; }
-        
-        [JsonPropertyName("param")]
-        public string? Param { get; set; }
-        
-        [JsonPropertyName("code")]
-        public string? Code { get; set; }
-    }
+    // This namespace now uses the Core models via type aliases
+    // to maintain backward compatibility while avoiding duplication
 }

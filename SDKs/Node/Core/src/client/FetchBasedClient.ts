@@ -1,11 +1,9 @@
 import type { ClientConfig, RequestOptions, RetryConfig, RequestConfig, ResponseInfo } from './types';
-import type { ErrorResponse } from '../models/common';
 import { 
   ConduitError, 
-  AuthError, 
-  RateLimitError, 
   NetworkError,
 } from '../utils/errors';
+import { parseErrorResponse, shouldRetry as shouldRetryError, getRetryDelay } from '../utils/errorParser';
 import { HTTP_HEADERS, CONTENT_TYPES, CLIENT_INFO, ERROR_CODES } from '../constants';
 import { ResponseParser, type ExtendedRequestInit } from './FetchOptions';
 import { HttpMethod } from './HttpMethod';
@@ -240,7 +238,10 @@ export abstract class FetchBasedClient {
       }
 
       if (this.shouldRetry(error) && attempt <= this.retryConfig.maxRetries) {
-        const delay = this.calculateDelay(attempt);
+        // Use error-specific delay if available (e.g., from rate limit headers)
+        const delay = error instanceof ConduitError 
+          ? getRetryDelay(error, attempt)
+          : this.calculateDelay(attempt);
         if (this.config.debug) {
           console.warn(`[Conduit] Retrying request (attempt ${attempt + 1}) after ${delay}ms`);
         }
@@ -253,55 +254,26 @@ export abstract class FetchBasedClient {
   }
 
   private async handleErrorResponse(response: Response): Promise<Error> {
-    let errorData: ErrorResponse | undefined;
+    let errorData: unknown;
     
     try {
       const contentType = response.headers.get('content-type');
       if (contentType?.includes('application/json')) {
-        errorData = await response.json() as unknown as ErrorResponse;
+        errorData = await response.json();
       }
     } catch {
-      // Ignore JSON parsing errors
+      // If JSON parsing fails, use empty object
+      errorData = {};
     }
 
-    const status = response.status;
-    
-    if (status === 401) {
-      return new AuthError(
-        errorData?.error?.message ?? 'Authentication failed',
-        { code: errorData?.error?.code ?? 'auth_error' }
-      );
-    } else if (status === 429) {
-      const retryAfter = response.headers.get('retry-after');
-      return new RateLimitError(
-        errorData?.error?.message ?? 'Rate limit exceeded',
-        retryAfter ? parseInt(retryAfter, 10) : undefined
-      );
-    } else if (status === 400) {
-      return new ConduitError(
-        errorData?.error?.message ?? 'Bad request',
-        status,
-        errorData?.error?.code ?? 'bad_request'
-      );
-    } else if (errorData?.error) {
-      return new ConduitError(
-        errorData.error.message,
-        status,
-        errorData.error.code ?? undefined
-      );
-    } else {
-      return new ConduitError(
-        `Request failed with status ${status}`,
-        status,
-        'http_error'
-      );
-    }
+    // Use the new parseErrorResponse function to get the appropriate error type
+    return parseErrorResponse(response, errorData);
   }
 
   private shouldRetry(error: unknown): boolean {
+    // Use the new shouldRetry function from errorParser
     if (error instanceof ConduitError) {
-      const status = error.statusCode;
-      return status === 429 || status === 503 || status === 504;
+      return shouldRetryError(error);
     }
     
     if (error instanceof Error) {

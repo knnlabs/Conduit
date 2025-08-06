@@ -77,7 +77,7 @@ namespace ConduitLLM.Providers
             if (mapping == null)
             {
                 _logger.LogWarning("No model mapping found in database for alias: {ModelAlias}", modelName);
-                throw new ConfigurationException($"No model mapping found for alias '{modelName}'. Please check your Conduit configuration.");
+                throw new ModelNotFoundException(modelName, $"Model '{modelName}' not found. Please check your model configuration.");
             }
             
             _logger.LogDebug("Found mapping in database: {ModelAlias} -> ProviderId:{ProviderId}/{ProviderModelId}", 
@@ -87,10 +87,16 @@ namespace ConduitLLM.Providers
             var provider = Task.Run(async () => 
                 await _credentialService.GetProviderByIdAsync(mapping.ProviderId)).Result;
             
-            if (provider == null || !provider.IsEnabled)
+            if (provider == null)
             {
-                _logger.LogWarning("Provider {ProviderId} not found or disabled", mapping.ProviderId);
-                throw new ConfigurationException($"Provider for model '{modelName}' is not available.");
+                _logger.LogWarning("Provider {ProviderId} not found", mapping.ProviderId);
+                throw new ServiceUnavailableException($"Provider for model '{modelName}' is not available.", "Provider");
+            }
+            
+            if (!provider.IsEnabled)
+            {
+                _logger.LogWarning("Provider {ProviderId} is disabled", mapping.ProviderId);
+                throw new ServiceUnavailableException($"Provider '{provider.ProviderName}' is currently disabled.", provider.ProviderName);
             }
             
             // Get key credentials for this provider
@@ -121,10 +127,16 @@ namespace ConduitLLM.Providers
             var provider = Task.Run(async () => 
                 await _credentialService.GetProviderByIdAsync(providerId)).Result;
 
-            if (provider == null || !provider.IsEnabled)
+            if (provider == null)
             {
-                _logger.LogWarning("No enabled provider found for provider ID {ProviderId} in database", providerId);
-                throw new ConfigurationException($"No provider found for provider ID '{providerId}'.");
+                _logger.LogWarning("No provider found for provider ID {ProviderId} in database", providerId);
+                throw new InvalidRequestException($"Provider with ID '{providerId}' not found.", "provider_not_found", "providerId");
+            }
+            
+            if (!provider.IsEnabled)
+            {
+                _logger.LogWarning("Provider {ProviderId} is disabled", providerId);
+                throw new ServiceUnavailableException($"Provider '{provider.ProviderName}' is currently disabled.", provider.ProviderName);
             }
             
             // Get key credentials for this provider
@@ -165,10 +177,16 @@ namespace ConduitLLM.Providers
                 return allProviders.FirstOrDefault(p => p.ProviderType == providerType);
             }).Result;
 
-            if (provider == null || !provider.IsEnabled)
+            if (provider == null)
             {
-                _logger.LogWarning("No enabled provider found for provider type {ProviderType} in database", providerType);
-                throw new ConfigurationException($"No provider found for provider type '{providerType}'.");
+                _logger.LogWarning("No provider found for provider type {ProviderType} in database", providerType);
+                throw new InvalidRequestException($"No provider configured for type '{providerType}'.", "provider_type_not_found", "providerType");
+            }
+            
+            if (!provider.IsEnabled)
+            {
+                _logger.LogWarning("Provider {ProviderId} of type {ProviderType} is disabled", provider.Id, providerType);
+                throw new ServiceUnavailableException($"Provider '{provider.ProviderName}' of type '{providerType}' is currently disabled.", provider.ProviderName);
             }
             
             // Get key credentials for this provider

@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Core.Middleware;
 using ConduitLLM.Http.Extensions;
 using ConduitLLM.Http.Middleware;
 
@@ -51,6 +52,10 @@ public partial class Program
 
         // Note: VirtualKeyAuthenticationHandler is now used instead of middleware
         // The authentication handler is registered with the "VirtualKey" scheme above
+
+        // Add OpenAI error handling middleware to map exceptions to proper HTTP status codes
+        app.UseOpenAIErrorHandling();
+        Console.WriteLine("[Conduit] OpenAI error handling middleware configured");
 
         // Add usage tracking middleware to capture LLM usage from responses
         app.UseUsageTracking();

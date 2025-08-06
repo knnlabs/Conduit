@@ -25,7 +25,7 @@ namespace ConduitLLM.Http.Controllers
     /// </remarks>
     [ApiController]
     [Route("v1/audio/hybrid")]
-    [Authorize(Policy = "MasterKeyOrVirtualKey")]
+    [Authorize(AuthenticationSchemes = "VirtualKey")]
     public class HybridAudioController : ControllerBase
     {
         private readonly IHybridAudioService _hybridAudioService;

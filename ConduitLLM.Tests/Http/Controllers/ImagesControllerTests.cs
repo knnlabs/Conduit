@@ -85,10 +85,10 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var errorResponse = badRequestResult.Value as dynamic;
+            var errorResponse = badRequestResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
-            Assert.Equal("Prompt is required", errorResponse.error.message.ToString());
-            Assert.Equal("invalid_request_error", errorResponse.error.type.ToString());
+            Assert.Equal("Prompt is required", errorResponse.Error.Message);
+            Assert.Equal("invalid_request_error", errorResponse.Error.Type);
         }
 
         [Fact]
@@ -118,10 +118,10 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var errorResponse = badRequestResult.Value as dynamic;
+            var errorResponse = badRequestResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
-            Assert.Equal("Model gpt-4 does not support image generation", errorResponse.error.message.ToString());
-            Assert.Equal("invalid_request_error", errorResponse.error.type.ToString());
+            Assert.Equal("Model gpt-4 does not support image generation", errorResponse.Error.Message);
+            Assert.Equal("invalid_request_error", errorResponse.Error.Type);
         }
 
         [Fact]
@@ -143,10 +143,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Assert
             var objectResult = Assert.IsType<ObjectResult>(result);
             Assert.Equal(500, objectResult.StatusCode);
-            var errorResponse = objectResult.Value as dynamic;
+            var errorResponse = objectResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
-            Assert.Equal("An error occurred while generating images", errorResponse.error.message.ToString());
-            Assert.Equal("server_error", errorResponse.error.type.ToString());
+            Assert.Equal("An error occurred while generating images", errorResponse.Error.Message);
+            Assert.Equal("server_error", errorResponse.Error.Type);
         }
 
         #endregion
@@ -168,9 +168,9 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var errorResponse = badRequestResult.Value as dynamic;
+            var errorResponse = badRequestResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
-            Assert.Equal("Prompt is required", errorResponse.error.message.ToString());
+            Assert.Equal("Prompt is required", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -202,10 +202,10 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var errorResponse = badRequestResult.Value as dynamic;
+            var errorResponse = badRequestResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
-            Assert.Equal("Model gpt-4 does not support image generation", errorResponse.error.message.ToString());
-            Assert.Equal("invalid_request_error", errorResponse.error.type.ToString());
+            Assert.Equal("Model gpt-4 does not support image generation", errorResponse.Error.Message);
+            Assert.Equal("invalid_request_error", errorResponse.Error.Type);
         }
 
         #endregion
@@ -226,10 +226,10 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorResponse = notFoundResult.Value as dynamic;
+            var errorResponse = notFoundResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
-            Assert.Equal("Task not found", errorResponse.error.message.ToString());
-            Assert.Equal("not_found_error", errorResponse.error.type.ToString());
+            Assert.Equal("Task not found", errorResponse.Error.Message);
+            Assert.Equal("invalid_request_error", errorResponse.Error.Type);
         }
 
         [Fact]
@@ -247,9 +247,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Assert
             var objectResult = Assert.IsType<ObjectResult>(result);
             Assert.Equal(500, objectResult.StatusCode);
-            var errorResponse = objectResult.Value as dynamic;
+            var errorResponse = objectResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
-            Assert.Equal("An error occurred while getting task status", errorResponse.error.message.ToString());
+            Assert.Equal("An error occurred while getting task status", errorResponse.Error.Message);
         }
 
         #endregion
@@ -270,9 +270,9 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorResponse = notFoundResult.Value as dynamic;
+            var errorResponse = notFoundResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
-            Assert.Equal("Task not found", errorResponse.error.message.ToString());
+            Assert.Equal("Task not found", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -323,10 +323,10 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var errorResponse = badRequestResult.Value as dynamic;
+            var errorResponse = badRequestResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
-            Assert.Equal("Task has already completed", errorResponse.error.message.ToString());
-            Assert.Equal("invalid_request_error", errorResponse.error.type.ToString());
+            Assert.Equal("Task has already completed", errorResponse.Error.Message);
+            Assert.Equal("invalid_request_error", errorResponse.Error.Type);
         }
 
         #endregion

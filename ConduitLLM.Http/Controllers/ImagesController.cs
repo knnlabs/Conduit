@@ -72,13 +72,31 @@ namespace ConduitLLM.Http.Controllers
                 // Validate request
                 if (string.IsNullOrWhiteSpace(request.Prompt))
                 {
-                    return BadRequest(new { error = new { message = "Prompt is required", type = "invalid_request_error" } });
+                    return BadRequest(new OpenAIErrorResponse
+                    {
+                        Error = new OpenAIError
+                        {
+                            Message = "Prompt is required",
+                            Type = "invalid_request_error",
+                            Code = "missing_parameter",
+                            Param = "prompt"
+                        }
+                    });
                 }
 
                 // Model parameter is required
                 if (string.IsNullOrWhiteSpace(request.Model))
                 {
-                    return BadRequest(new { error = new { message = "Model is required", type = "invalid_request_error" } });
+                    return BadRequest(new OpenAIErrorResponse
+                    {
+                        Error = new OpenAIError
+                        {
+                            Message = "Model is required",
+                            Type = "invalid_request_error",
+                            Code = "missing_parameter",
+                            Param = "model"
+                        }
+                    });
                 }
                 
                 var modelName = request.Model;
@@ -108,7 +126,16 @@ namespace ConduitLLM.Http.Controllers
                 
                 if (!supportsImageGen)
                 {
-                    return BadRequest(new { error = new { message = $"Model {modelName} does not support image generation", type = "invalid_request_error" } });
+                    return BadRequest(new OpenAIErrorResponse
+                    {
+                        Error = new OpenAIError
+                        {
+                            Message = $"Model {modelName} does not support image generation",
+                            Type = "invalid_request_error",
+                            Code = "unsupported_model",
+                            Param = "model"
+                        }
+                    });
                 }
 
                 // If we don't have a mapping, try to create a client anyway (for direct model names)
@@ -330,7 +357,15 @@ namespace ConduitLLM.Http.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error generating images");
-                return StatusCode(500, new { error = new { message = "An error occurred while generating images", type = "server_error" } });
+                return StatusCode(500, new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = "An error occurred while generating images",
+                        Type = "server_error",
+                        Code = "internal_error"
+                    }
+                });
             }
         }
 
@@ -347,13 +382,31 @@ namespace ConduitLLM.Http.Controllers
                 // Validate request
                 if (string.IsNullOrWhiteSpace(request.Prompt))
                 {
-                    return BadRequest(new { error = new { message = "Prompt is required", type = "invalid_request_error" } });
+                    return BadRequest(new OpenAIErrorResponse
+                    {
+                        Error = new OpenAIError
+                        {
+                            Message = "Prompt is required",
+                            Type = "invalid_request_error",
+                            Code = "missing_parameter",
+                            Param = "prompt"
+                        }
+                    });
                 }
 
                 // Model parameter is required
                 if (string.IsNullOrWhiteSpace(request.Model))
                 {
-                    return BadRequest(new { error = new { message = "Model is required", type = "invalid_request_error" } });
+                    return BadRequest(new OpenAIErrorResponse
+                    {
+                        Error = new OpenAIError
+                        {
+                            Message = "Model is required",
+                            Type = "invalid_request_error",
+                            Code = "missing_parameter",
+                            Param = "model"
+                        }
+                    });
                 }
                 
                 var modelName = request.Model;
@@ -376,21 +429,46 @@ namespace ConduitLLM.Http.Controllers
                 
                 if (!supportsImageGen)
                 {
-                    return BadRequest(new { error = new { message = $"Model {modelName} does not support image generation", type = "invalid_request_error" } });
+                    return BadRequest(new OpenAIErrorResponse
+                    {
+                        Error = new OpenAIError
+                        {
+                            Message = $"Model {modelName} does not support image generation",
+                            Type = "invalid_request_error",
+                            Code = "unsupported_model",
+                            Param = "model"
+                        }
+                    });
                 }
 
                 // Get virtual key ID from authenticated user claims
                 var virtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
                 if (string.IsNullOrEmpty(virtualKeyIdClaim) || !int.TryParse(virtualKeyIdClaim, out var virtualKeyId))
                 {
-                    return Unauthorized(new { error = new { message = "Invalid authentication", type = "authentication_error" } });
+                    return Unauthorized(new OpenAIErrorResponse
+                    {
+                        Error = new OpenAIError
+                        {
+                            Message = "Invalid authentication",
+                            Type = "invalid_request_error",
+                            Code = "unauthorized"
+                        }
+                    });
                 }
 
                 // Get virtual key information from service
                 var virtualKey = await _virtualKeyService.GetVirtualKeyInfoForValidationAsync(virtualKeyId);
                 if (virtualKey == null)
                 {
-                    return Unauthorized(new { error = new { message = "Virtual key not found", type = "authentication_error" } });
+                    return Unauthorized(new OpenAIErrorResponse
+                    {
+                        Error = new OpenAIError
+                        {
+                            Message = "Virtual key not found",
+                            Type = "invalid_request_error",
+                            Code = "unauthorized"
+                        }
+                    });
                 }
 
                 // Create correlation ID
@@ -457,7 +535,15 @@ namespace ConduitLLM.Http.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating async image generation task");
-                return StatusCode(500, new { error = new { message = "An error occurred while creating the task", type = "server_error" } });
+                return StatusCode(500, new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = "An error occurred while creating the task",
+                        Type = "server_error",
+                        Code = "internal_error"
+                    }
+                });
             }
         }
 
@@ -478,7 +564,16 @@ namespace ConduitLLM.Http.Controllers
                 if (task == null)
                 {
                     _logger.LogWarning("Task {TaskId} not found by task service", taskId);
-                    return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
+                    return NotFound(new OpenAIErrorResponse
+                    {
+                        Error = new OpenAIError
+                        {
+                            Message = "Task not found",
+                            Type = "invalid_request_error",
+                            Code = "not_found",
+                            Param = "task_id"
+                        }
+                    });
                 }
                 
                 _logger.LogInformation("Task {TaskId} retrieved, State: {State}, HasMetadata: {HasMetadata}", 
@@ -501,7 +596,16 @@ namespace ConduitLLM.Http.Controllers
                         {
                             _logger.LogWarning("Virtual key ID mismatch for task {TaskId} - Expected: {Expected}, Got: {Got}", 
                                 taskId, taskVirtualKeyId, userVirtualKeyId);
-                            return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
+                            return NotFound(new OpenAIErrorResponse
+                    {
+                        Error = new OpenAIError
+                        {
+                            Message = "Task not found",
+                            Type = "invalid_request_error",
+                            Code = "not_found",
+                            Param = "task_id"
+                        }
+                    });
                         }
                         
                         _logger.LogInformation("Virtual key validation successful for task {TaskId}", taskId);
@@ -525,7 +629,15 @@ namespace ConduitLLM.Http.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting task status for {TaskId}", taskId);
-                return StatusCode(500, new { error = new { message = "An error occurred while getting task status", type = "server_error" } });
+                return StatusCode(500, new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = "An error occurred while getting task status",
+                        Type = "server_error",
+                        Code = "internal_error"
+                    }
+                });
             }
         }
 
@@ -543,7 +655,16 @@ namespace ConduitLLM.Http.Controllers
                 var task = await _taskService.GetTaskStatusAsync(taskId);
                 if (task == null)
                 {
-                    return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
+                    return NotFound(new OpenAIErrorResponse
+                    {
+                        Error = new OpenAIError
+                        {
+                            Message = "Task not found",
+                            Type = "invalid_request_error",
+                            Code = "not_found",
+                            Param = "task_id"
+                        }
+                    });
                 }
 
                 // Verify user owns this task by comparing virtual key IDs
@@ -563,7 +684,16 @@ namespace ConduitLLM.Http.Controllers
                         {
                             _logger.LogWarning("Virtual key ID mismatch for task {TaskId} - Expected: {Expected}, Got: {Got}", 
                                 taskId, taskVirtualKeyId, userVirtualKeyId);
-                            return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
+                            return NotFound(new OpenAIErrorResponse
+                    {
+                        Error = new OpenAIError
+                        {
+                            Message = "Task not found",
+                            Type = "invalid_request_error",
+                            Code = "not_found",
+                            Param = "task_id"
+                        }
+                    });
                         }
                         
                         _logger.LogInformation("Virtual key validation successful for task {TaskId}", taskId);
@@ -573,7 +703,15 @@ namespace ConduitLLM.Http.Controllers
                 // Check if task can be cancelled
                 if (task.State == TaskState.Completed || task.State == TaskState.Failed || task.State == TaskState.Cancelled)
                 {
-                    return BadRequest(new { error = new { message = "Task has already completed", type = "invalid_request_error" } });
+                    return BadRequest(new OpenAIErrorResponse
+                    {
+                        Error = new OpenAIError
+                        {
+                            Message = "Task has already completed",
+                            Type = "invalid_request_error",
+                            Code = "invalid_operation"
+                        }
+                    });
                 }
 
                 // Get virtual key ID from metadata for event publishing
@@ -605,7 +743,15 @@ namespace ConduitLLM.Http.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error cancelling task {TaskId}", taskId);
-                return StatusCode(500, new { error = new { message = "An error occurred while cancelling the task", type = "server_error" } });
+                return StatusCode(500, new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = "An error occurred while cancelling the task",
+                        Type = "server_error",
+                        Code = "internal_error"
+                    }
+                });
             }
         }
 
