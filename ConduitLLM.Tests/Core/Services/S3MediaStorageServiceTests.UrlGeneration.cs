@@ -48,6 +48,7 @@ namespace ConduitLLM.Tests.Core.Services
                 AccessKey = "test-access-key",
                 SecretKey = "test-secret-key",
                 BucketName = "test-bucket",
+                Region = "us-east-1", // Add default region to prevent AWS client error
                 DefaultUrlExpiration = TimeSpan.FromHours(1)
             };
 
@@ -86,6 +87,7 @@ namespace ConduitLLM.Tests.Core.Services
                 AccessKey = "test-access-key",
                 SecretKey = "test-secret-key",
                 BucketName = "test-bucket",
+                Region = "us-east-1", // Add default region to prevent AWS client error
                 DefaultUrlExpiration = TimeSpan.FromHours(1)
             };
 

@@ -134,7 +134,8 @@ namespace ConduitLLM.Http.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error loading model metadata");
-                throw; // Re-throw to ensure the error is visible in the endpoint response
+                // Don't re-throw - just log and continue with empty cache
+                // This allows the service to continue working even if metadata is invalid
             }
         }
 

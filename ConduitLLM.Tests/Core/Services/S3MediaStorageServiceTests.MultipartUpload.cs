@@ -61,8 +61,8 @@ namespace ConduitLLM.Tests.Core.Services
             // Verify initiate request
             _mockS3Client.Verify(x => x.InitiateMultipartUploadAsync(It.Is<InitiateMultipartUploadRequest>(req =>
                 req.BucketName == _options.BucketName &&
-                req.ContentType == "video/mp4" &&
-                req.ServerSideEncryptionMethod == ServerSideEncryptionMethod.AES256
+                req.ContentType == "video/mp4"
+                // ServerSideEncryptionMethod removed for R2 compatibility
             ), default), Times.Once);
         }
 
