@@ -232,15 +232,6 @@ The WebUI maintains a queue of video generation tasks:
 - Download completed videos
 - Retry failed generations
 
-## Migration from Blazor WebUI
-
-This project is a complete rewrite of the Blazor WebUI with enhanced features:
-- Better real-time capabilities
-- Modern React patterns
-- Improved developer experience
-- Enhanced performance
-- Mobile-friendly responsive design
-
 ## Docker Deployment
 
 The WebUI is configured to run as part of the ConduitLLM Docker stack:
