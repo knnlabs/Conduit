@@ -2,23 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-using ConduitLLM.Configuration.Services.Dtos;
 
-#pragma warning disable CS0618 // Type or member is obsolete - We're managing the migration process
 namespace ConduitLLM.Configuration.DTOs
 {
     /// <summary>
     /// Data transfer object for logs summary statistics
     /// </summary>
-    /// <remarks>
-    /// IMPORTANT: There are two LogsSummaryDto classes in the project:
-    /// 1. ConduitLLM.Configuration.DTOs.LogsSummaryDto (this one)
-    /// 2. ConduitLLM.Configuration.Services.Dtos.LogsSummaryDto
-    ///
-    /// When referencing either class, use the fully qualified name to avoid ambiguity.
-    /// This class is primarily for API/client consumption, while the Services.Dtos version
-    /// is used internally by the RequestLogService.
-    /// </remarks>
     public class LogsSummaryDto
     {
         /// <summary>
@@ -64,11 +53,7 @@ namespace ConduitLLM.Configuration.DTOs
         /// <summary>
         /// Success rate percentage
         /// </summary>
-        public double SuccessRate
-        {
-            get => TotalRequests > 0 ? (double)SuccessfulRequests / TotalRequests * 100 : 0;
-            set { /* Setter for backward compatibility */ }
-        }
+        public double SuccessRate => TotalRequests > 0 ? (double)SuccessfulRequests / TotalRequests * 100 : 0;
 
         /// <summary>
         /// Date of the most recent request
@@ -95,43 +80,6 @@ namespace ConduitLLM.Configuration.DTOs
         /// </summary>
         public List<DailyUsageStatsDto> DailyStats { get; set; } = new List<DailyUsageStatsDto>();
 
-        // Backwards compatibility properties for Services.Dtos.LogsSummaryDto
-
-        /// <summary>
-        /// Total cost (alias for EstimatedCost)
-        /// </summary>
-        public decimal TotalCost
-        {
-            get => EstimatedCost;
-            set => EstimatedCost = value;
-        }
-
-        /// <summary>
-        /// Total input tokens (alias for InputTokens)
-        /// </summary>
-        public int TotalInputTokens
-        {
-            get => InputTokens;
-            set => InputTokens = value;
-        }
-
-        /// <summary>
-        /// Total output tokens (alias for OutputTokens)
-        /// </summary>
-        public int TotalOutputTokens
-        {
-            get => OutputTokens;
-            set => OutputTokens = value;
-        }
-
-        /// <summary>
-        /// Average response time (alias for AverageResponseTime)
-        /// </summary>
-        public double AverageResponseTimeMs
-        {
-            get => AverageResponseTime;
-            set => AverageResponseTime = value;
-        }
 
     }
 
@@ -150,14 +98,6 @@ namespace ConduitLLM.Configuration.DTOs
         /// </summary>
         public string ModelId { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Model name (compatibility property)
-        /// </summary>
-        public string ModelName
-        {
-            get => ModelId;
-            set => ModelId = value;
-        }
 
         /// <summary>
         /// Number of requests on this date
@@ -179,14 +119,5 @@ namespace ConduitLLM.Configuration.DTOs
         /// </summary>
         public decimal Cost { get; set; }
 
-        /// <summary>
-        /// Total cost (compatibility property)
-        /// </summary>
-        public decimal TotalCost
-        {
-            get => Cost;
-            set => Cost = value;
-        }
     }
 }
-#pragma warning restore CS0618 // Type or member is obsolete

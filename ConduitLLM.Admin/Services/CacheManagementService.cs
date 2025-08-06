@@ -8,7 +8,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Configuration.Models;
-using ConduitLLM.Admin.Models;
+using ConduitLLM.Configuration.DTOs.Cache;
 using MassTransit;
 using ConduitLLM.Configuration.Events;
 

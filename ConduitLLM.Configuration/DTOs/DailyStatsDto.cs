@@ -1,6 +1,6 @@
 using System;
 
-namespace ConduitLLM.Configuration.Services.Dtos
+namespace ConduitLLM.Configuration.DTOs
 {
     /// <summary>
     /// Data transfer object for daily log statistics

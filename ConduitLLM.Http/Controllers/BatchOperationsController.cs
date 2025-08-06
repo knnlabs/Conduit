@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services.BatchOperations;
-using ConduitLLM.Http.DTOs;
+using ConduitLLM.Configuration.DTOs.BatchOperations;
 
 namespace ConduitLLM.Http.Controllers
 {

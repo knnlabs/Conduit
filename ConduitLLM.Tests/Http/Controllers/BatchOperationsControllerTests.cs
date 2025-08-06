@@ -9,7 +9,7 @@ using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Http.Controllers;
-using ConduitLLM.Http.DTOs;
+using ConduitLLM.Configuration.DTOs.BatchOperations;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;

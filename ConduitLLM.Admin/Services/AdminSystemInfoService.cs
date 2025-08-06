@@ -12,6 +12,7 @@ using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Configuration.DTOs.Monitoring;
 
 using Microsoft.EntityFrameworkCore;
 

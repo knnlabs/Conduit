@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration.DTOs.Monitoring;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

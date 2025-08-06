@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
-using ConduitLLM.Http.DTOs.Metrics;
+using ConduitLLM.Configuration.DTOs.Metrics;
 using Microsoft.AspNetCore.Authorization;
 using System.Threading.Channels;
 using System.Threading;

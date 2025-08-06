@@ -79,34 +79,4 @@ public class VirtualKeyDto
     /// </summary>
     public string? Description { get; set; }
 
-    #region Compatibility Properties
-
-    /// <summary>
-    /// Compatibility property for Name - maps to KeyName
-    /// </summary>
-    public string Name
-    {
-        get => KeyName;
-        set => KeyName = value;
-    }
-
-    /// <summary>
-    /// Compatibility property for IsActive - maps to IsEnabled
-    /// </summary>
-    public bool IsActive
-    {
-        get => IsEnabled;
-        set => IsEnabled = value;
-    }
-
-    /// <summary>
-    /// Compatibility property for RateLimit - maps to RateLimitRpm
-    /// </summary>
-    public int? RateLimit
-    {
-        get => RateLimitRpm;
-        set => RateLimitRpm = value;
-    }
-
-    #endregion
 }

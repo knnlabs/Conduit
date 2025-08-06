@@ -611,10 +611,6 @@ namespace ConduitLLM.Http.Services
                 RateLimitRpm = virtualKey.RateLimitRpm,
                 RateLimitRpd = virtualKey.RateLimitRpd,
                 Description = virtualKey.Description,
-                // Compatibility properties
-                Name = virtualKey.KeyName,
-                IsActive = virtualKey.IsEnabled,
-                RateLimit = virtualKey.RateLimitRpm
             };
         }
     }

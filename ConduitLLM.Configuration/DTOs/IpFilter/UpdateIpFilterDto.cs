@@ -29,14 +29,6 @@ public class UpdateIpFilterDto
     [StringLength(50)]
     public string IpAddressOrCidr { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Alias for IpAddressOrCidr for backward compatibility
-    /// </summary>
-    public string IpAddress
-    {
-        get => IpAddressOrCidr;
-        set => IpAddressOrCidr = value;
-    }
 
     /// <summary>
     /// Name of the IP filter rule

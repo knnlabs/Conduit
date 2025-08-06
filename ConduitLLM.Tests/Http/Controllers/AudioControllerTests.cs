@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration.Services;
+using ConduitLLM.Configuration.DTOs.Audio;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Http.Controllers;
@@ -14,7 +15,6 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
-using static ConduitLLM.Http.Controllers.AudioController;
 
 namespace ConduitLLM.Tests.Http.Controllers
 {

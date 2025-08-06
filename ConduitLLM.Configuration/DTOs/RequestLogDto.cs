@@ -27,14 +27,6 @@ namespace ConduitLLM.Configuration.DTOs
         /// </summary>
         public string ModelId { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Name of the model (alias for ModelId for backward compatibility)
-        /// </summary>
-        public string ModelName
-        {
-            get => ModelId;
-            set => ModelId = value;
-        }
 
         /// <summary>
         /// Type of the request (chat, completion, embedding, etc.)

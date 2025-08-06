@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Configuration.Services.Dtos;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -318,7 +317,7 @@ namespace ConduitLLM.Configuration.Services
         }
 
         /// <inheritdoc/>
-        public async Task<DTOs.LogsSummaryDto> GetLogsSummaryAsync(DateTime startDate, DateTime endDate)
+        public async Task<LogsSummaryDto> GetLogsSummaryAsync(DateTime startDate, DateTime endDate)
         {
             try
             {
@@ -328,13 +327,13 @@ namespace ConduitLLM.Configuration.Services
                     .Where(r => r.Timestamp >= startDate && r.Timestamp <= endDate)
                     .ToListAsync();
 
-                var summary = new DTOs.LogsSummaryDto
+                var summary = new LogsSummaryDto
                 {
                     TotalRequests = logs.Count,
-                    TotalCost = logs.Sum(r => r.Cost),
-                    TotalInputTokens = logs.Sum(r => r.InputTokens),
-                    TotalOutputTokens = logs.Sum(r => r.OutputTokens),
-                    AverageResponseTimeMs = logs.Any() ? logs.Average(r => r.ResponseTimeMs) : 0,
+                    EstimatedCost = logs.Sum(r => r.Cost),
+                    InputTokens = logs.Sum(r => r.InputTokens),
+                    OutputTokens = logs.Sum(r => r.OutputTokens),
+                    AverageResponseTime = logs.Any() ? logs.Average(r => r.ResponseTimeMs) : 0,
                     LastRequestDate = logs.Any() ? logs.Max(r => r.Timestamp) : null
                 };
 
@@ -377,7 +376,7 @@ namespace ConduitLLM.Configuration.Services
                 // Group by day and model for daily stats
                 var dailyStats = logs
                     .GroupBy(r => new { Date = r.Timestamp.Date, Model = r.ModelName })
-                    .Select(g => new DTOs.DailyUsageStatsDto
+                    .Select(g => new DailyUsageStatsDto
                     {
                         Date = g.Key.Date,
                         ModelId = g.Key.Model,

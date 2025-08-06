@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.SignalR;
 using Prometheus;
 using StackExchange.Redis;
 using Microsoft.EntityFrameworkCore;
-using ConduitLLM.Http.DTOs.Metrics;
+using ConduitLLM.Configuration.DTOs.Metrics;
 using ConduitLLM.Http.Hubs;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Repositories;

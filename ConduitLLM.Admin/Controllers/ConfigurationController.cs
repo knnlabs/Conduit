@@ -11,7 +11,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using ConduitLLM.Admin.Services;
-using ConduitLLM.Admin.Models;
+using ConduitLLM.Configuration.DTOs.Cache;
+using ConduitLLM.Configuration.DTOs.Routing;
 
 namespace ConduitLLM.Admin.Controllers
 {
@@ -452,32 +453,6 @@ namespace ConduitLLM.Admin.Controllers
                 }
             };
         }
-    }
-
-    /// <summary>
-    /// DTO for updating routing configuration.
-    /// </summary>
-    public class UpdateRoutingConfigDto
-    {
-        /// <summary>
-        /// Enable or disable failover.
-        /// </summary>
-        public bool EnableFailover { get; set; }
-
-        /// <summary>
-        /// Enable or disable load balancing.
-        /// </summary>
-        public bool EnableLoadBalancing { get; set; }
-
-        /// <summary>
-        /// Request timeout in seconds.
-        /// </summary>
-        public int RequestTimeoutSeconds { get; set; }
-
-        /// <summary>
-        /// Circuit breaker threshold.
-        /// </summary>
-        public int CircuitBreakerThreshold { get; set; }
     }
 
 }
