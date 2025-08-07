@@ -25,6 +25,10 @@ public partial class Program
         app.MapHub<ConduitLLM.Http.Hubs.VideoGenerationHub>("/hubs/video-generation")
             .RequireAuthorization();
         Console.WriteLine("[Conduit API] SignalR VideoGenerationHub registered at /hubs/video-generation (requires authentication)");
+        
+        // Public video generation hub using task-scoped tokens (no virtual key required)
+        app.MapHub<ConduitLLM.Http.Hubs.PublicVideoGenerationHub>("/hubs/public/video-generation");
+        Console.WriteLine("[Conduit API] SignalR PublicVideoGenerationHub registered at /hubs/public/video-generation (token-based auth)");
 
         app.MapHub<ConduitLLM.Http.Hubs.ImageGenerationHub>("/hubs/image-generation")
             .RequireAuthorization();

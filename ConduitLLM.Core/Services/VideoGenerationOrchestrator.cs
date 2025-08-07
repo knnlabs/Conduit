@@ -133,48 +133,61 @@ namespace ConduitLLM.Core.Services
                 }
                 
                 // Extract the virtual key from task metadata
-                string? virtualKey;
+                string? virtualKey = null;
                 try
                 {
                     if (task.Metadata is TaskMetadata taskMetadata)
                     {
-                        // Try to get virtual key from extension data
-                        virtualKey = null;
+                        // The VirtualKey is stored in the ExtensionData dictionary
+                        // When deserialized from JSON, the values might be JsonElement objects
                         
                         if (taskMetadata.ExtensionData != null)
                         {
-                            // First try direct VirtualKey property
-                            if (taskMetadata.ExtensionData.TryGetValue("VirtualKey", out var virtualKeyObj) &&
-                                virtualKeyObj is string vk)
+                            _logger.LogDebug("ExtensionData has {Count} keys: {Keys}", 
+                                taskMetadata.ExtensionData.Count, 
+                                string.Join(", ", taskMetadata.ExtensionData.Keys));
+                            
+                            // Try to get VirtualKey from ExtensionData
+                            if (taskMetadata.ExtensionData.TryGetValue("VirtualKey", out var virtualKeyObj))
                             {
-                                virtualKey = vk;
-                                _logger.LogDebug("Extracted virtual key from TaskMetadata.ExtensionData['VirtualKey']");
+                                // Handle different types the value might be
+                                if (virtualKeyObj is string vk)
+                                {
+                                    virtualKey = vk;
+                                    _logger.LogInformation("Extracted virtual key as string from ExtensionData");
+                                }
+                                else if (virtualKeyObj is System.Text.Json.JsonElement jsonElement)
+                                {
+                                    if (jsonElement.ValueKind == System.Text.Json.JsonValueKind.String)
+                                    {
+                                        virtualKey = jsonElement.GetString();
+                                        _logger.LogInformation("Extracted virtual key as JsonElement string from ExtensionData");
+                                    }
+                                    else
+                                    {
+                                        _logger.LogError("VirtualKey in ExtensionData is JsonElement but not a string. ValueKind: {ValueKind}", jsonElement.ValueKind);
+                                    }
+                                }
+                                else
+                                {
+                                    _logger.LogError("VirtualKey in ExtensionData is of unexpected type: {Type}", virtualKeyObj?.GetType().FullName ?? "null");
+                                }
                             }
-                            // Then try wrapped format with originalMetadata (for backward compatibility)
-                            else if (taskMetadata.ExtensionData.TryGetValue("originalMetadata", out var originalMetadataObj))
+                            else
                             {
-                                if (originalMetadataObj is IDictionary<string, object> originalMetadata &&
-                                    originalMetadata.TryGetValue("VirtualKey", out var wrappedVirtualKeyObj) &&
-                                    wrappedVirtualKeyObj is string wrappedVk)
-                                {
-                                    virtualKey = wrappedVk;
-                                    _logger.LogDebug("Extracted virtual key from wrapped originalMetadata");
-                                }
-                                else if (originalMetadataObj is System.Text.Json.JsonElement jsonElement &&
-                                         jsonElement.TryGetProperty("VirtualKey", out var vkElement) &&
-                                         vkElement.GetString() is string jsonVk)
-                                {
-                                    virtualKey = jsonVk;
-                                    _logger.LogDebug("Extracted virtual key from JSON originalMetadata");
-                                }
+                                _logger.LogError("VirtualKey not found in ExtensionData. Available keys: {Keys}", 
+                                    string.Join(", ", taskMetadata.ExtensionData.Keys));
                             }
+                        }
+                        else
+                        {
+                            _logger.LogError("ExtensionData is null for task {TaskId}", request.RequestId);
                         }
                         
                         if (string.IsNullOrEmpty(virtualKey))
                         {
-                            // Virtual key not stored in metadata - this is actually better for security
-                            // We should retrieve it based on the VirtualKeyId
-                            _logger.LogError("Virtual key not found in TaskMetadata. VirtualKeyId: {VirtualKeyId}", taskMetadata.VirtualKeyId);
+                            _logger.LogError("Failed to extract virtual key from task metadata. VirtualKeyId: {VirtualKeyId}", 
+                                taskMetadata.VirtualKeyId);
                             throw new InvalidOperationException($"Virtual key not found in task metadata. VirtualKeyId: {taskMetadata.VirtualKeyId}");
                         }
                     }
@@ -329,38 +342,15 @@ namespace ConduitLLM.Core.Services
                 // Declare originalModelAlias for proper scope
                 string originalModelAlias = request.Model;
 
-                // Extract the virtual key and request from metadata
-                string? virtualKey;
+                // Extract the request from metadata
                 VideoGenerationRequest? videoRequest;
                 try
                 {
                     if (taskStatus.Metadata is TaskMetadata taskMetadata)
                     {
-                        // Try to get virtual key from extension data
-                        virtualKey = null;
-                        
-                        if (taskMetadata.ExtensionData != null)
-                        {
-                            // First try direct VirtualKey property
-                            if (taskMetadata.ExtensionData.TryGetValue("VirtualKey", out var virtualKeyObj) &&
-                                virtualKeyObj is string vk)
-                            {
-                                virtualKey = vk;
-                            }
-                            // Then try wrapped format with originalMetadata (for backward compatibility)
-                            else if (taskMetadata.ExtensionData.TryGetValue("originalMetadata", out var originalMetadataObj) &&
-                                     originalMetadataObj is IDictionary<string, object> originalMetadata &&
-                                     originalMetadata.TryGetValue("VirtualKey", out var wrappedVirtualKeyObj) &&
-                                     wrappedVirtualKeyObj is string wrappedVk)
-                            {
-                                virtualKey = wrappedVk;
-                            }
-                        }
-                        
-                        if (string.IsNullOrEmpty(virtualKey))
-                        {
-                            throw new InvalidOperationException($"Virtual key not found in task metadata. VirtualKeyId: {taskMetadata.VirtualKeyId}");
-                        }
+                        // We already have the virtualKeyInfo from the database lookup
+                        // No need to extract the virtual key string from metadata
+                        _logger.LogDebug("Using VirtualKeyId {VirtualKeyId} from database for video generation", virtualKeyInfo.Id);
                         
                         // Extract request from extension data
                         videoRequest = null;

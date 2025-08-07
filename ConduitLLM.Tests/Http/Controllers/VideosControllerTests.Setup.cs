@@ -8,6 +8,7 @@ using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Http.Controllers;
+using ConduitLLM.Http.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -26,6 +27,7 @@ namespace ConduitLLM.Tests.Http.Controllers
         private readonly Mock<IAsyncTaskService> _mockTaskService;
         private readonly Mock<IOperationTimeoutProvider> _mockTimeoutProvider;
         private readonly Mock<ICancellableTaskRegistry> _mockTaskRegistry;
+        private readonly Mock<ITaskAuthenticationService> _mockTaskAuthService;
         private readonly Mock<ILogger<VideosController>> _mockLogger;
         private readonly VideosController _controller;
 
@@ -35,6 +37,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             _mockTaskService = new Mock<IAsyncTaskService>();
             _mockTimeoutProvider = new Mock<IOperationTimeoutProvider>();
             _mockTaskRegistry = new Mock<ICancellableTaskRegistry>();
+            _mockTaskAuthService = new Mock<ITaskAuthenticationService>();
             _mockLogger = CreateLogger<VideosController>();
             var mockModelMappingService = new Mock<ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService>();
 
@@ -43,6 +46,7 @@ namespace ConduitLLM.Tests.Http.Controllers
                 _mockTaskService.Object,
                 _mockTimeoutProvider.Object,
                 _mockTaskRegistry.Object,
+                _mockTaskAuthService.Object,
                 _mockLogger.Object,
                 mockModelMappingService.Object);
 

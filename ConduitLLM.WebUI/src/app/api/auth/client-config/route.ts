@@ -20,7 +20,8 @@ export async function GET() {
     // In production, you might want to create user-specific virtual keys
     // For now, we'll use the WebUI virtual key from environment
     const apiKey = process.env.NEXT_PUBLIC_CONDUIT_API_KEY ?? process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY;
-    const baseURL = process.env.NEXT_PUBLIC_CONDUIT_API_BASE_URL ?? process.env.CONDUIT_API_BASE_URL ?? 'http://localhost:5000';
+    // Use CONDUIT_API_EXTERNAL_URL for browser-accessible API endpoints
+    const baseURL = process.env.CONDUIT_API_EXTERNAL_URL ?? 'http://localhost:5000';
     
     if (!apiKey) {
       console.error('No API key available for client configuration');

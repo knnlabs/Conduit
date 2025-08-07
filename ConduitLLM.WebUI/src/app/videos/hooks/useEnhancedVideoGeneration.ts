@@ -1,10 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useVideoStore } from './useVideoStore';
-import { generateVideoWithProgress, cleanupClientCore } from '@/lib/client/coreClient';
+import { videoSignalRClient } from '@/lib/client/videoSignalRClient';
 import type { 
   VideoSettings, 
   VideoTask, 
-  VideoGenerationResult, 
   AsyncVideoGenerationResponse
 } from '../types';
 import { 
@@ -12,13 +11,6 @@ import {
   shouldShowBalanceWarning,
   handleApiError
 } from '@knn_labs/conduit-core-client';
-
-// Define VideoProgress type locally since SDK is broken
-interface VideoProgress {
-  percentage?: number;
-  status?: string;
-  message?: string;
-}
 import { notifications } from '@mantine/notifications';
 
 interface GenerateVideoParams {
@@ -37,6 +29,8 @@ interface UseEnhancedVideoGenerationOptions {
  */
 export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOptions = {}) {
   const {
+    // fallbackToPolling is reserved for future use
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     fallbackToPolling = true,
   } = options;
 
@@ -59,7 +53,7 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
       }
-      cleanupClientCore();
+      void videoSignalRClient.disconnect();
     };
   }, []);
 
@@ -68,95 +62,7 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
     setError(null);
 
     try {
-      // Check if we should use progress tracking (always try, but fall back if errors)
-      const shouldUseProgressTracking = signalRErrorCount.current < maxSignalRErrors;
-
-      if (shouldUseProgressTracking) {
-        // Try to use the new progress tracking method
-        try {
-          // Create new task in store
-          const tempTaskId = `temp_${Date.now()}`;
-          const newTask: VideoTask = {
-            id: tempTaskId,
-            prompt,
-            status: 'pending',
-            progress: 0,
-            message: 'Initializing video generation...',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            settings,
-            retryCount: 0,
-            retryHistory: [],
-          };
-          addTask(newTask);
-
-          // Generate with progress tracking
-          const { taskId } = await generateVideoWithProgress(
-            {
-              prompt,
-              model: settings.model,
-              duration: settings.duration,
-              size: settings.size,
-              fps: settings.fps,
-              style: settings.style,
-            },
-            {
-              onProgress: (progress: VideoProgress) => {
-                updateTask(taskId, {
-                  progress: progress.percentage ?? 0,
-                  status: progress.status === 'Processing' ? 'running' : (progress.status?.toLowerCase() ?? 'pending') as VideoTask['status'],
-                  message: progress.message,
-                  updatedAt: new Date().toISOString(),
-                });
-              },
-              onStarted: (actualTaskId: string, estimatedSeconds?: number) => {
-                // Update the temporary task ID with the actual one
-                updateTask(tempTaskId, {
-                  id: actualTaskId,
-                  status: 'running',
-                  estimatedTimeToCompletion: estimatedSeconds,
-                  message: estimatedSeconds ? `Started. Estimated time: ${estimatedSeconds}s` : 'Video generation started',
-                });
-                setSignalRConnected(true);
-              },
-              onCompleted: (result: VideoGenerationResult) => {
-                updateTask(taskId, {
-                  status: 'completed',
-                  progress: 100,
-                  result,
-                  updatedAt: new Date().toISOString(),
-                });
-                setIsGenerating(false);
-              },
-              onFailed: (error: string, isRetryable: boolean) => {
-                updateTask(taskId, {
-                  status: 'failed',
-                  error,
-                  message: isRetryable ? 'Failed (retryable)' : 'Failed',
-                  updatedAt: new Date().toISOString(),
-                });
-                setError(error);
-                setIsGenerating(false);
-              },
-            }
-          );
-
-          // Reset SignalR error count on success
-          signalRErrorCount.current = 0;
-          return;
-        } catch (error) {
-          console.warn('Failed to use progress tracking, falling back to polling:', error);
-          signalRErrorCount.current++;
-          setSignalRConnected(false);
-          
-          if (!fallbackToPolling) {
-            throw error;
-          }
-          // Continue with fallback
-        }
-      }
-
-      // Fallback to traditional polling approach
+      // Call the API to start video generation and get task ID + token
       const response = await fetch('/api/videos/generate', {
         method: 'POST',
         headers: {
@@ -196,15 +102,15 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
         handleApiError(httpError, '/api/videos/generate', 'POST');
       }
 
-      const data = await response.json() as AsyncVideoGenerationResponse;
+      const data = await response.json() as AsyncVideoGenerationResponse & { signalr_token?: string };
       
-      // Create task and start polling
+      // Create task in store
       const newTask: VideoTask = {
         id: data.task_id,
         prompt,
         status: 'pending',
         progress: 0,
-        message: data.message,
+        message: data.message ?? 'Initializing video generation...',
         estimatedTimeToCompletion: data.estimated_time_to_completion,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -214,6 +120,56 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
       };
       
       addTask(newTask);
+
+      // Try to use SignalR with token if available
+      if (data.signalr_token) {
+        try {
+          await videoSignalRClient.connect(
+            data.task_id,
+            data.signalr_token,
+            {
+              onProgress: (update) => {
+                updateTask(data.task_id, {
+                  status: update.status === 'Processing' ? 'running' : update.status.toLowerCase() as VideoTask['status'],
+                  progress: update.progress ?? 0,
+                  message: update.message,
+                  updatedAt: new Date().toISOString(),
+                });
+              },
+              onCompleted: (videoUrl) => {
+                updateTask(data.task_id, {
+                  status: 'completed',
+                  progress: 100,
+                  result: {
+                    created: Date.now(),
+                    data: [{ url: videoUrl }]
+                  },
+                  updatedAt: new Date().toISOString(),
+                });
+                setIsGenerating(false);
+              },
+              onFailed: (error) => {
+                updateTask(data.task_id, {
+                  status: 'failed',
+                  error,
+                  message: 'Video generation failed',
+                  updatedAt: new Date().toISOString(),
+                });
+                setError(error);
+                setIsGenerating(false);
+              },
+            }
+          );
+          setSignalRConnected(true);
+          signalRErrorCount.current = 0;
+          return; // SignalR will handle updates
+        } catch (signalRError) {
+          console.warn('Failed to connect to SignalR, falling back to polling:', signalRError);
+          signalRErrorCount.current++;
+          setSignalRConnected(false);
+          // Continue with polling fallback
+        }
+      }
 
       // Start legacy polling
       pollingIntervalRef.current = setInterval(() => {
@@ -276,7 +232,6 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
     addTask,
     updateTask,
     setError,
-    fallbackToPolling,
     handleError
   ]);
 

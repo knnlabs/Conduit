@@ -11,6 +11,7 @@ public partial class Program
             options.AddDefaultPolicy(policy =>
             {
                 policy.WithOrigins(
+                        "http://localhost:3000",  // WebUI development server
                         "http://localhost:5001",  // WebUI access
                         "http://webui:8080",      // Docker internal
                         "http://localhost:8080",  // Alternative local access

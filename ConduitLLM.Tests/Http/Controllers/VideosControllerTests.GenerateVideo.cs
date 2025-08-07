@@ -50,6 +50,10 @@ namespace ConduitLLM.Tests.Http.Controllers
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(videoResponse);
 
+            // Setup token generation
+            _mockTaskAuthService.Setup(x => x.CreateTaskTokenAsync(taskId, 123))
+                .ReturnsAsync("test-token-123456");
+
             _controller.ControllerContext = CreateControllerContext();
             _controller.ControllerContext.HttpContext.Items["VirtualKey"] = virtualKey;
             _controller.ControllerContext.HttpContext.User = new System.Security.Claims.ClaimsPrincipal(
@@ -67,7 +71,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             Assert.Equal(taskId, taskResponse.TaskId);
             Assert.Equal(TaskStateConstants.Pending, taskResponse.Status);
             Assert.Contains(taskId, taskResponse.CheckStatusUrl);
+            Assert.Equal("test-token-123456", taskResponse.SignalRToken);
             _mockTaskRegistry.Verify(x => x.RegisterTask(taskId, It.IsAny<CancellationTokenSource>()), Times.Once);
+            _mockTaskAuthService.Verify(x => x.CreateTaskTokenAsync(taskId, 123), Times.Once);
         }
 
         [Fact]

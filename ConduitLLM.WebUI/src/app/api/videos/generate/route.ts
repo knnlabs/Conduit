@@ -14,9 +14,50 @@ export async function POST(request: NextRequest) {
     // The client will need to establish its own SignalR connection for real-time updates
     const result = await coreClient.videos.generateAsync(body);
     
-    // Return the task information so client can track progress
+    // Log the actual response structure for debugging
+    console.warn('Video generation API response:', JSON.stringify(result, null, 2));
+    
+    // Define proper types for both PascalCase (from Core API) and snake_case (expected by SDK)
+    interface CoreApiResponse {
+      TaskId?: string;
+      Status?: string;
+      CreatedAt?: string;
+      EstimatedCompletionTime?: number;
+      SignalRToken?: string;
+      // Snake case variants that SDK might return
+      task_id?: string;
+      status?: string;
+      created_at?: string;
+      estimated_time_to_completion?: number;
+      signalr_token?: string;
+      message?: string;
+    }
+    
+    // Cast to our known response type
+    const typedResult = result as unknown as CoreApiResponse;
+    
+    // The Core API returns PascalCase fields (TaskId, Status, etc.)
+    // but the SDK might not be converting them properly
+    // We need to handle both cases
+    const taskId = typedResult.task_id ?? typedResult.TaskId;
+    const status = typedResult.status ?? typedResult.Status ?? 'pending';
+    const createdAt = typedResult.created_at ?? typedResult.CreatedAt;
+    const signalRToken = typedResult.SignalRToken ?? typedResult.signalr_token;
+    
+    if (!taskId) {
+      console.error('Invalid response from Core API, missing task_id:', result);
+      throw new Error('Invalid response from video generation API - no task ID');
+    }
+    
+    // Return a normalized response with snake_case fields
     return NextResponse.json({
-      ...result,
+      task_id: taskId,
+      status: status,
+      created_at: createdAt,
+      message: typedResult.message ?? 'Video generation started',
+      estimated_time_to_completion: typedResult.estimated_time_to_completion ?? typedResult.EstimatedCompletionTime,
+      // Pass through the SignalR token if present
+      signalr_token: signalRToken,
       // Add a flag to indicate that client-side progress tracking is available
       supportsProgressTracking: body.useProgressTracking ?? false
     });

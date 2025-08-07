@@ -47,7 +47,6 @@ const navigationSections = [
     title: 'Caching & Performance',
     items: [
       { id: 'caching-settings', label: 'Caching Settings', href: '/caching-settings', icon: IconDatabase },
-      { id: 'cache-monitoring', label: 'Cache Monitoring', href: '/cache-monitoring', icon: IconDatabase },
       { id: 'error-queues', label: 'Error Queues', href: '/error-queues', icon: IconBugOff },
     ]
   },
