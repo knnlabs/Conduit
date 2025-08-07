@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Last Reviewed**: 2025-07-29 (Enhanced development workflow)
+**Last Reviewed**: 2025-08-07 (Corrected to match actual codebase implementation)
 
 ## Collaboration Guidelines
 - **Challenge and question**: Don't immediately agree or proceed with requests that seem suboptimal, unclear, or potentially problematic
@@ -30,39 +30,41 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Development Workflow - CRITICAL
 **⚠️ CANONICAL DEVELOPMENT STARTUP: Always use `./scripts/start-dev.sh` for development**
 
-### Starting Development Environment - UPDATED WORKFLOW
+### Starting Development Environment
 
-#### Common Usage Patterns:
+#### Available Flags:
 ```bash
-# First time setup or after package.json changes
+# Standard startup (builds containers if needed)
 ./scripts/start-dev.sh
 
-# After adding/removing npm packages
+# Rebuild WebUI container (fixes Next.js issues)
 ./scripts/start-dev.sh --webui
 
-# Complete reset (removes everything)
+# Complete reset (removes all volumes and containers)
 ./scripts/start-dev.sh --clean
+
+# Force rebuild containers with no cache
+./scripts/start-dev.sh --build
 ```
 
-#### What Each Flag Does:
-- **--webui**: Forces rebuild of the WebUI container
-- **--fix**: Fixes permissions and restarts containers
-- **--clean**: Removes all containers/volumes and starts fresh
-- **--build**: Rebuilds container images, retains volumes.
+#### What Each Flag Actually Does:
+- **--webui**: Restarts WebUI container, cleans .next build artifacts
+- **--clean**: Removes all containers, volumes, node_modules, and build artifacts for fresh start
+- **--build**: Rebuilds containers with `--no-cache` flag
+- **--help**: Shows usage information
 
-#### Key Improvements:
-- ✅ Node modules exist on HOST - Claude Code works perfectly
-- ✅ Run npm/build/lint commands directly on host
-- ✅ Fast startup with --fast flag (seconds not minutes)
-- ✅ No more anonymous volumes blocking access
-- ✅ Shared dependencies between host and container
+#### Key Features:
+- ✅ Node modules exist on HOST - direct npm command access
+- ✅ WebUI directory mounted for hot reloading
+- ✅ User ID mapping prevents permission issues (uses your UID/GID)
+- ✅ Development containers use node:22-alpine directly
 
-### Alternative Build Commands
-- Build solution: `dotnet build`
-- Run tests: `dotnet test`
+### Build Commands
+- Build entire solution: `dotnet build`
+- Run all tests: `dotnet test`
 - Run specific test: `dotnet test --filter "FullyQualifiedName=ConduitLLM.Tests.TestClassName.TestMethodName"`
-- Start API server only: `dotnet run --project ConduitLLM.Http`
-- Start web UI only: `dotnet run --project ConduitLLM.WebUI`
+- Build Core API: `dotnet build ConduitLLM.Http`
+- Build Admin API: `dotnet build ConduitLLM.Admin`
 
 ### ⚠️ Production Testing Only
 ```bash
@@ -72,59 +74,44 @@ docker compose up -d
 
 **Note**: Using `docker compose up -d` will create permission conflicts with development. If you accidentally use it, run `docker compose down --volumes --remove-orphans` before using `./scripts/start-dev.sh`.
 
-## Migration Guide: From `docker compose` to `start-dev.sh`
+## Docker Development Setup
 
-### 🚨 IMPORTANT: Read This If You've Been Using `docker compose up -d`
-
-If you've been using `docker compose up -d` for development, you **MUST** migrate to `./scripts/start-dev.sh` to avoid permission issues and get proper hot reloading.
-
-#### Step 1: Clean Your Current Setup
+### Starting Development Environment
 ```bash
-# Stop all containers and remove problematic volumes
-docker compose down --volumes --remove-orphans
-
-# Verify containers are stopped
-docker ps -a --filter "name=conduit"
-```
-
-#### Step 2: Switch to Development Script
-```bash
-# Start development environment with the new script
+# Always use the development script for local development
 ./scripts/start-dev.sh
 
-# If you encounter any issues:
+# If switching from production docker-compose:
+docker compose down --volumes --remove-orphans
 ./scripts/start-dev.sh --clean
 ```
 
-#### Step 3: Verify Everything Works
+### Verifying Services
 ```bash
-# Check that all services are running
+# Check running containers
 docker ps
 
-# Test WebUI at http://localhost:3000
-# Test API Swagger at http://localhost:5000/swagger
-# Test Admin API at http://localhost:5002/swagger
+# View logs
+docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f [service]
 ```
 
-### Key Differences: Old vs New Workflow
+### Development vs Production
 
-| Old Workflow | New Workflow | Benefit |
-|-------------|-------------|---------|
-| `docker compose up -d` | `./scripts/start-dev.sh` | Permission conflict detection |
-| Manual permission fixes | Automatic user ID mapping | No more EACCES errors |
-| Production-like containers | Development containers | Hot reloading works |
-| Manual cleanup when broken | `--clean` flag available | Easy recovery |
-| No validation | Comprehensive health checks | Catch issues early |
+| Aspect | Development (`start-dev.sh`) | Production (`docker compose up`) |
+|--------|------------------------------|----------------------------------|
+| WebUI Container | `node:22-alpine` with mounted source | Built Next.js app in container |
+| Hot Reloading | ✅ Enabled via volume mounts | ❌ Static build |
+| User Permissions | Maps to host UID/GID | Runs as container user |
+| Node Modules | Shared with host | Container-only |
+| Performance | Optimized for development | Optimized for production |
 
-### What Changed and Why
+### How Development Environment Works
 
-**Volume Ownership**: The new script ensures Docker volumes are owned by your user (1000:1000) instead of root, preventing permission denied errors when npm tries to install dependencies.
+**Volume Mounting**: WebUI source code is mounted directly into container, allowing hot reloading.
 
-**Container Strategy**: 
-- **Old**: Used production Dockerfile with built WebUI 
-- **New**: Uses `node:20-alpine` with source code mounted for hot reloading
+**Permission Handling**: Container starts as root, fixes ownership to match host user (${DOCKER_USER_ID}:${DOCKER_GROUP_ID}), then switches to that user for all operations.
 
-**User Mapping**: The development containers now run as your host user, so files created in containers have correct ownership on the host.
+**Dependency Management**: Node modules are installed in mounted volumes, making them accessible from both host and container.
 
 ## Development Troubleshooting
 
@@ -133,59 +120,51 @@ docker ps
 #### Permission Denied Errors
 ```bash
 # Symptom: npm EACCES errors, cannot write to node_modules
-# Solution: Use the fix flag
-./scripts/start-dev.sh --fix
+# Solution: Clean restart with proper permissions
+./scripts/start-dev.sh --clean
 ```
 
 #### After Adding New Packages
 ```bash
 # When you add packages to package.json
-./scripts/start-dev.sh --rebuild
-```
-
-#### Daily Development
-```bash
-# For fast startup when dependencies haven't changed
-./scripts/start-dev.sh --fast
+# Restart WebUI container to install new dependencies
+./scripts/start-dev.sh --webui
 ```
 
 #### Container Conflicts
 ```bash
-# Symptom: "Found production containers that conflict with development setup"
-# Solution: Stop production containers first
+# Symptom: Containers already exist or port conflicts
+# Solution: Stop all containers and restart
 docker compose down --volumes --remove-orphans
-./scripts/start-dev.sh
+./scripts/start-dev.sh --clean
 ```
 
-#### Volume Permission Issues
+#### Next.js Build Issues
 ```bash
-# Symptom: "Volume permission mismatch detected"
-# Solution 1: Fix permissions without removing volumes (RECOMMENDED)
-./scripts/start-dev.sh --fix-perms
-
-# Solution 2: Use the clean flag to remove and recreate volumes
-./scripts/start-dev.sh --clean
+# Symptom: WebUI not updating, stale builds
+# Solution: Restart WebUI container
+./scripts/start-dev.sh --webui
 ```
 
 #### WebUI Not Starting
 ```bash
 # Check container logs
-docker logs conduit-webui-1
+docker compose -f docker-compose.yml -f docker-compose.dev.yml logs webui
 
 # Common causes:
-# 1. Permission issues (use --clean)
-# 2. Port conflicts (check if port 3000 is in use)
-# 3. Dependency installation failed (check logs for npm errors)
+# 1. Port 3000 already in use
+# 2. Missing environment variables in .env
+# 3. Node modules corruption (use --clean)
 ```
 
-#### File Watching Not Working
+#### Hot Reload Not Working
 ```bash
-# Symptom: Changes not triggering hot reload
-# Check if container can see file changes:
-docker exec conduit-webui-1 ls -la /app/ConduitLLM.WebUI/
+# Verify file mounting
+docker compose -f docker-compose.yml -f docker-compose.dev.yml exec webui ls -la /app/ConduitLLM.WebUI/
 
-# Solution: Restart development environment
-./scripts/start-dev.sh --clean
+# Restart with clean build artifacts
+rm -rf ConduitLLM.WebUI/.next
+./scripts/start-dev.sh --webui
 ```
 
 ### Development Services
@@ -195,7 +174,7 @@ After successful startup, these services are available:
 - 🔧 **Admin API Swagger**: http://localhost:5002/swagger
 - 🐰 **RabbitMQ Management**: http://localhost:15672 (conduit/conduitpass)
 
-### Advanced Development Commands
+### Development Helper Commands (dev-workflow.sh)
 ```bash
 # Show WebUI logs in real-time
 ./scripts/dev-workflow.sh logs
@@ -203,43 +182,39 @@ After successful startup, these services are available:
 # Open shell in WebUI container
 ./scripts/dev-workflow.sh shell
 
-# Build WebUI manually
+# Build WebUI in container
 ./scripts/dev-workflow.sh build-webui
 
-# Fix ESLint errors
+# Run ESLint with --fix
 ./scripts/dev-workflow.sh lint-fix-webui
+
+# Build SDKs
+./scripts/dev-workflow.sh build-sdks
+
+# Execute any command in WebUI container
+./scripts/dev-workflow.sh exec [command]
 ```
 
 ### Technical Implementation Notes
 
-#### Volume Ownership Solution
-The development script solves Docker volume permission issues using this approach:
+#### How Permission Handling Works
+The development environment uses user ID mapping to prevent permission issues:
 
 1. **Container starts as root** - Allows initial setup and ownership changes
-2. **Install su-exec** - Lightweight tool for secure user switching (`apk add su-exec`)
-3. **Fix volume ownership** - Set volumes to host user ID: `chown -R ${DOCKER_USER_ID}:${DOCKER_GROUP_ID}`
-4. **Switch to host user** - All development operations run as mapped user: `su-exec ${DOCKER_USER_ID}:${DOCKER_GROUP_ID}`
+2. **Installs su-exec** - Lightweight tool for user switching in Alpine Linux
+3. **Fixes volume ownership** - Changes ownership to match host user (${DOCKER_USER_ID}:${DOCKER_GROUP_ID})
+4. **Switches to host user** - All operations run as the mapped user
 
-#### Why su-exec vs alternatives?
-- **su-exec**: Lightweight, Alpine-friendly, designed for containers
-- **gosu**: Heavier alternative, more dependencies
-- **USER directive**: Cannot fix existing volume ownership
+#### Volume Mounting Strategy
+- WebUI source is mounted directly: `./ConduitLLM.WebUI:/app/ConduitLLM.WebUI`
+- SDKs are mounted for development: `./SDKs:/app/SDKs`
+- Node modules are accessible from both host and container
+- No anonymous volumes that would block host access
 
-#### Volume Mapping Strategy
-```yaml
-# docker-compose.dev.yml uses named volumes to cache dependencies
-volumes:
-  - webui_node_modules:/app/ConduitLLM.WebUI/node_modules
-  - admin_sdk_node_modules:/app/SDKs/Node/Admin/node_modules
-  # This avoids slow dependency installation on every container restart
-```
-
-#### User ID Environment Variables
+#### Environment Variables Set by start-dev.sh
 ```bash
-# start-dev.sh automatically detects and exports:
-export DOCKER_USER_ID=$(id -u)    # Usually 1000
-export DOCKER_GROUP_ID=$(id -g)   # Usually 1000
-# These are used in docker-compose.dev.yml for user mapping
+export DOCKER_USER_ID=$(id -u)    # Your user ID
+export DOCKER_GROUP_ID=$(id -g)   # Your group ID
 ```
 
 ## Database Migrations - CRITICAL
@@ -252,10 +227,13 @@ export DOCKER_GROUP_ID=$(id -g)   # Usually 1000
 **ALWAYS VERIFY BUILDS BEFORE COMPLETING WORK:**
 
 ### Project-Specific Build Commands
-- **WebUI**: `./scripts/start-web.sh --webui`
+- **WebUI (in container)**: `./scripts/dev-workflow.sh build-webui`
+- **WebUI (on host)**: `cd ConduitLLM.WebUI && npm run build`
 - **Core API**: `dotnet build ConduitLLM.Http`
-- **Admin Client**: `cd SDKs/Node/Admin && npm run build`
-- **Core Client**: `cd SDKs/Node/Core && npm run build`
+- **Admin API**: `dotnet build ConduitLLM.Admin`
+- **Admin SDK**: `cd SDKs/Node/Admin && npm run build`
+- **Core SDK**: `cd SDKs/Node/Core && npm run build`
+- **Common SDK**: `cd SDKs/Node/Common && npm run build`
 - **Full Solution**: `dotnet build`
 
 ### Incremental Development Rules
@@ -265,7 +243,7 @@ export DOCKER_GROUP_ID=$(id -g)   # Usually 1000
 4. **Never commit code that doesn't build cleanly**
 
 ### TypeScript/React Specific Rules
-- When replacing `any` types, test immediately with `./scripts/fix-web-errors.sh` or `./scripts/fix-sdk-errors.sh`
+- When replacing `any` types, test immediately with `./scripts/fix-webui-errors.sh` or `./scripts/fix-sdk-errors.sh`
 - Check existing error handling patterns before creating new ones
 - Use small, incremental changes (1-3 files at a time)
 - Follow established import patterns in the codebase
@@ -315,34 +293,46 @@ The WebUI uses very strict ESLint rules that will cause build failures:
 
 ## Development Workflow
 - After implementing features, always run: `dotnet build` to check for compilation errors
-- **For WebUI changes**: Run `cd ConduitLLM.WebUI && npm run build` directly on host
-- **For ESLint**: Run `cd ConduitLLM.WebUI && npm run lint` directly on host
-- **For TypeScript checks**: Run `cd ConduitLLM.WebUI && npm run type-check` directly on host
+- **For WebUI changes**: Run `cd ConduitLLM.WebUI && npm run lint` to check for ESLint errors
+- **For TypeScript checks**: Run `cd ConduitLLM.WebUI && npm run type-check` to verify types
+- **For production build verification**: Run `cd ConduitLLM.WebUI && npm run build`
 - Test your changes locally before committing
-- When working with API changes, test with curl or a REST client
+- When working with API changes, test with Swagger UI or curl
 - For UI changes, verify in the browser with developer tools open
 - Clean up temporary test files and scripts after completing features
 
-### WebUI Development - NEW SIMPLIFIED WORKFLOW
-You can now run npm commands DIRECTLY on the host filesystem:
-- ✅ `cd ConduitLLM.WebUI && npm run lint` - Works directly!
-- ✅ `cd SDKs/Node/Admin && npm run build` - Works directly!
+### Available Helper Scripts
+- **fix-webui-errors.sh**: Automated fixes for common WebUI TypeScript/ESLint errors
+- **fix-sdk-errors.sh**: Fixes SDK TypeScript compilation issues
+- **validate-eslint.sh**: Validates ESLint configuration
+- **dev-workflow.sh**: Helper commands for development tasks (see above)
+- **create-webui-key.sh**: Creates virtual keys for WebUI testing
+- **test-webui-connection.sh**: Tests WebUI connectivity
 
-The development environment now shares node_modules between host and container.
+### WebUI Development
+You can run npm commands DIRECTLY on the host filesystem:
+- ✅ `cd ConduitLLM.WebUI && npm run lint` - Run ESLint
+- ✅ `cd ConduitLLM.WebUI && npm run type-check` - Check TypeScript types
+- ✅ `cd SDKs/Node/Admin && npm run build` - Build SDKs
 
-⚠️ **CRITICAL WARNING: WebUI Build Commands**
-- **NEVER run `npm run build` in the ConduitLLM.WebUI directory during development**
-- The WebUI container runs Next.js dev server which hot-reloads automatically
-- Running `npm run build` will conflict with the dev server and break the container
-- If you accidentally break the WebUI: `./scripts/start-dev.sh --restart-webui`
-- Only run build to verify TypeScript compilation: `cd ConduitLLM.WebUI && npx tsc --noEmit`
+The development environment shares node_modules between host and container.
+
+💡 **Development Notes**:
+- The WebUI container runs Next.js dev server with hot-reloading
+- Changes to source files are immediately reflected
+- To verify production build: `cd ConduitLLM.WebUI && npm run build`
+- To check types without building: `cd ConduitLLM.WebUI && npx tsc --noEmit`
 
 ## Git Branching Rules
-- **NEVER push to origin/master** - The master branch is protected
-- **ALWAYS push to origin/dev** - All development work goes to the dev branch
-- Create feature branches from dev when working on new features
-- Pull requests should target the dev branch, not master
-- The dev branch will be merged to master through proper release processes
+- **Protected branch**: `master` - Never push directly to master
+- **Development branch**: `dev` - All development work should be pushed here
+- **Feature branches**: Create from `dev` for new features
+- **Pull requests**: Should target the `dev` branch
+- **Release process**: `dev` is merged to `master` through controlled releases
+
+### Current Branch Status
+- Main branch: `master`
+- Active development: `dev`
 
 ## Code Style Guidelines
 - **Naming**: 
@@ -379,39 +369,29 @@ The development environment now shares node_modules between host and container.
 - **ModelCost**: Flexible cost configurations that can apply to multiple models via ModelCostMapping
 
 ### Migration Notes:
-- **ProviderType enum**: Used for categorization, stored as integers in database (OpenAI=1, Anthropic=2, etc.)
-- **Backward compatibility**: Read-only `ProviderName` properties exist for compatibility but are marked `[Obsolete]`
-- **Audio Migration (Issue #654)**: AudioCost and AudioUsageLog entities now use ProviderType enum for categorization
+- **ProviderType enum**: Used for categorization, stored as integers in database
+- **Provider instances**: Multiple providers of the same type can exist (e.g., multiple OpenAI configs)
+- **Backward compatibility**: Some legacy properties may be marked `[Obsolete]`
 
 ### Documentation:
 - See `/docs/architecture/provider-multi-instance.md` for detailed provider architecture
 - See `/docs/architecture/model-cost-mapping.md` for cost configuration details
+- See `/docs/architecture/provider-system-analysis.md` for system analysis
 
 ### Available Provider Types:
 ```csharp
 public enum ProviderType
 {
     OpenAI = 1,
-    Anthropic = 2,
-    AzureOpenAI = 3,
-    Gemini = 4,
-    VertexAI = 5,
-    Cohere = 6,
-    Mistral = 7,
-    Groq = 8,
-    Ollama = 9,
-    Replicate = 10,
-    Fireworks = 11,
-    Bedrock = 12,
-    HuggingFace = 13,
-    SageMaker = 14,
-    OpenRouter = 15,
-    OpenAICompatible = 16,
-    MiniMax = 17,
-    Ultravox = 18,
-    ElevenLabs = 19,
-    GoogleCloud = 20,
-    Cerebras = 21
+    Groq = 2,
+    Replicate = 3,
+    Fireworks = 4,
+    OpenAICompatible = 5,
+    MiniMax = 6,
+    Ultravox = 7,
+    ElevenLabs = 8,  // Audio provider
+    Cerebras = 9,     // High-performance inference
+    SambaNova = 10    // Ultra-fast inference
 }
 ```
 
@@ -419,20 +399,24 @@ public enum ProviderType
 
 For comprehensive documentation on specific topics, see:
 
-- **[XML Documentation Standards](docs/claude/xml-documentation-standards.md)** - Comprehensive XML documentation requirements and examples
-- **[Media Storage Configuration](docs/claude/media-storage-configuration.md)** - S3/CDN setup, Docker SignalR configuration, lifecycle management
-- **[Event-Driven Architecture](docs/claude/event-driven-architecture.md)** - MassTransit events, domain events, troubleshooting
-- **[SignalR Configuration](docs/claude/signalr-configuration.md)** - Real-time updates, Redis backplane, multi-instance setup
-- **[RabbitMQ High-Throughput](docs/claude/rabbitmq-high-throughput.md)** - Production scaling, 1000+ tasks/minute configuration
-- **[Provider Models](docs/claude/provider-models.md)** - Supported models by provider (MiniMax, OpenAI, Replicate)
-- **[R2 Health Check](docs/claude/r2-health-check.md)** - Cloudflare R2 health monitoring and connectivity checks
+- **[Database Migration Guide](docs/claude/database-migration-guide.md)** - PostgreSQL migration requirements and validation
+- **[XML Documentation Standards](docs/claude/xml-documentation-standards.md)** - Comprehensive XML documentation requirements
+- **[Media Storage Configuration](docs/claude/media-storage-configuration.md)** - S3/CDN setup, Docker SignalR configuration
+- **[Event-Driven Architecture](docs/claude/event-driven-architecture.md)** - MassTransit events, domain events
+- **[SignalR Configuration](docs/claude/signalr-configuration.md)** - Real-time updates, Redis backplane
+- **[RabbitMQ High-Throughput](docs/claude/rabbitmq-high-throughput.md)** - Production scaling configuration
+- **[Provider Models](docs/claude/provider-models.md)** - Supported models by provider
+- **[R2 Health Check](docs/claude/r2-health-check.md)** - Cloudflare R2 health monitoring
+- **[SDK Generation Workflow](docs/claude/sdk-generation-workflow.md)** - SDK generation from OpenAPI specs
+- **[Batch Cache Invalidation](docs/claude/batch-cache-invalidation.md)** - Cache invalidation batching
+- **[Workflow Concurrency Strategy](docs/claude/workflow-concurrency-strategy.md)** - Concurrent execution patterns
 
 ## Key Points from Detailed Docs
 
 ### Media Storage
-- Development uses in-memory storage by default
+- Development defaults to S3-compatible storage (configure in .env)
 - Production requires S3-compatible storage (AWS S3, Cloudflare R2)
-- **WARNING**: Media files are not cleaned up when virtual keys are deleted (see `docs/TODO-Media-Lifecycle-Management.md`)
+- **WARNING**: Media files are not automatically cleaned up when virtual keys are deleted
 
 ### Cloudflare R2 Specific Configuration
 - **Automatic Detection**: The system automatically detects R2 based on the service URL
