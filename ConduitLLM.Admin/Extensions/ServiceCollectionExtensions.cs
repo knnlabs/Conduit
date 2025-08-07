@@ -2,6 +2,7 @@ using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Options;
 using ConduitLLM.Admin.Security;
 using ConduitLLM.Admin.Services;
+using ConduitLLM.Core.Extensions; // For AddMediaServices extension method
 using ConduitLLM.Core.Interfaces; // For IVirtualKeyCache and ILLMClientFactory
 using ConduitLLM.Configuration.Interfaces; // For repository interfaces  
 using ConduitLLM.Configuration.Repositories; // For repository interfaces
@@ -192,29 +193,8 @@ public static class ServiceCollectionExtensions
                 providerModelDiscovery);
         });
 
-        // Register Media Lifecycle Service (optional - for virtual key cleanup)
-        // Only register if we have a media storage service configured
-        // Check both configuration key and environment variable (same as Core API)
-        var configProvider = configuration.GetValue<string>("ConduitLLM:Storage:Provider");
-        var configEnvVar = configuration.GetValue<string>("CONDUIT_MEDIA_STORAGE_TYPE");
-        var directEnvVar = Environment.GetEnvironmentVariable("CONDUIT_MEDIA_STORAGE_TYPE");
-        
-        var storageProvider = configProvider ?? configEnvVar ?? directEnvVar;
-        if (!string.IsNullOrEmpty(storageProvider))
-        {
-            services.Configure<ConduitLLM.Core.Services.MediaManagementOptions>(
-                configuration.GetSection("ConduitLLM:MediaManagement"));
-            
-            // Register media storage service based on configuration
-            if (storageProvider.Equals("S3", StringComparison.OrdinalIgnoreCase))
-            {
-                services.Configure<ConduitLLM.Core.Options.S3StorageOptions>(
-                    configuration.GetSection(ConduitLLM.Core.Options.S3StorageOptions.SectionName));
-                services.AddSingleton<IMediaStorageService, ConduitLLM.Core.Services.S3MediaStorageService>();
-            }
-            
-            services.AddScoped<IMediaLifecycleService, ConduitLLM.Core.Services.MediaLifecycleService>();
-        }
+        // Register Media Services using shared configuration from Core
+        services.AddMediaServices(configuration);
 
 
         // Register SignalR admin notification service

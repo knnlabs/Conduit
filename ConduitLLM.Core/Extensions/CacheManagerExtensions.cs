@@ -10,6 +10,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using StackExchange.Redis;
+using ConduitLLM.Core.Caching;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Core.Models;
@@ -325,7 +326,7 @@ namespace ConduitLLM.Core.Extensions
 
                 return cacheManager;
             });
-
+            
             // Health checks removed per YAGNI principle
 
             return services;

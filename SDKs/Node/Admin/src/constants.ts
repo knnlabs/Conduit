@@ -164,16 +164,6 @@ export const ENDPOINTS = {
     },
   },
 
-  // Cache Monitoring
-  CACHE_MONITORING: {
-    STATUS: '/api/cache/monitoring/status',
-    THRESHOLDS: '/api/cache/monitoring/thresholds',
-    ALERTS: '/api/cache/monitoring/alerts',
-    CHECK: '/api/cache/monitoring/check',
-    ALERT_DEFINITIONS: '/api/cache/monitoring/alert-definitions',
-    HEALTH: '/api/cache/monitoring/health',
-  },
-
   // Database Management
   DATABASE: {
     BACKUP: '/api/database/backup',
