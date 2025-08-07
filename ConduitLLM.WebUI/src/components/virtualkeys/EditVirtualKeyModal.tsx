@@ -16,7 +16,7 @@ import { useForm } from '@mantine/form';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { validators } from '@/lib/utils/form-validators';
 import { notifications } from '@mantine/notifications';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
 
@@ -37,15 +37,16 @@ interface EditVirtualKeyForm {
 
 export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: EditVirtualKeyModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [initialFormValues, setInitialFormValues] = useState<EditVirtualKeyForm>(() => ({
+    keyName: '',
+    description: '',
+    virtualKeyGroupId: undefined,
+    isEnabled: true,
+    allowedModels: [],
+  }));
 
   const form = useForm<EditVirtualKeyForm>({
-    initialValues: {
-      keyName: '',
-      description: '',
-      virtualKeyGroupId: undefined,
-      isEnabled: true,
-      allowedModels: [],
-    },
+    initialValues: initialFormValues,
     validate: {
       keyName: (value) => {
         const requiredError = validators.required('Key name')(value);
@@ -63,6 +64,13 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
     },
   });
 
+  // Stable callback for form updates
+  const updateForm = useCallback((newFormValues: EditVirtualKeyForm) => {
+    setInitialFormValues(newFormValues);
+    form.setValues(newFormValues);
+    form.resetDirty();
+  }, [form]);
+
   // Update form when virtualKey changes
   useEffect(() => {
     if (virtualKey) {
@@ -71,15 +79,17 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
         ? virtualKey.allowedModels.split(',').map(m => m.trim()).filter(m => m)
         : ['*']; // Default to all models if none specified
       
-      form.setValues({
+      const newFormValues: EditVirtualKeyForm = {
         keyName: virtualKey.keyName,
         description: virtualKey.metadata ? JSON.stringify(virtualKey.metadata) : '',
         virtualKeyGroupId: virtualKey.virtualKeyGroupId ?? undefined,
         isEnabled: virtualKey.isEnabled,
         allowedModels: models,
-      });
+      };
+      
+      updateForm(newFormValues);
     }
-  }, [virtualKey, form]);
+  }, [virtualKey, updateForm]);
 
   const handleSubmit = async (values: EditVirtualKeyForm) => {
     if (!virtualKey) return;

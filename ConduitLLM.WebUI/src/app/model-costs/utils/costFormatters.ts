@@ -1,4 +1,5 @@
 import { ModelCost } from '../types/modelCost';
+import { ModelType } from '@knn_labs/conduit-admin-client';
 
 export const formatCostPerMillionTokens = (cost?: number): string => {
   if (!cost) return '-';
@@ -30,17 +31,17 @@ export const formatCostPerRequest = (cost?: number): string => {
   return `$${cost.toFixed(6)}`;
 };
 
-export const formatModelType = (type: string): string => {
+export const formatModelType = (type: ModelType): string => {
   switch (type) {
-    case 'chat':
+    case ModelType.Chat:
       return 'Chat';
-    case 'embedding':
+    case ModelType.Embedding:
       return 'Embedding';
-    case 'image':
+    case ModelType.Image:
       return 'Image';
-    case 'audio':
+    case ModelType.Audio:
       return 'Audio';
-    case 'video':
+    case ModelType.Video:
       return 'Video';
     default:
       return type;
@@ -66,39 +67,39 @@ export const formatModelPattern = (pattern: string): string => {
 
 export const getCostDisplayForModelType = (cost: ModelCost): string => {
   switch (cost.modelType) {
-    case 'chat':
+    case ModelType.Chat:
       if (cost.inputCostPerMillionTokens !== undefined && cost.outputCostPerMillionTokens !== undefined) {
         // Cost is already per million tokens
         return `${formatCostPerMillionTokens(cost.inputCostPerMillionTokens)} / ${formatCostPerMillionTokens(cost.outputCostPerMillionTokens)}`;
       }
       return '-';
-    case 'embedding':
+    case ModelType.Embedding:
       if (cost.embeddingCostPerMillionTokens !== undefined) {
         return formatCostPerMillionTokens(cost.embeddingCostPerMillionTokens);
       }
       return '-';
-    case 'image':
+    case ModelType.Image:
       return formatCostPerImage(cost.imageCostPerImage);
-    case 'audio':
+    case ModelType.Audio:
       return formatCostPerSecond(cost.audioCostPerMinute ? cost.audioCostPerMinute / 60 : undefined);
-    case 'video':
+    case ModelType.Video:
       return formatCostPerSecond(cost.videoCostPerSecond);
     default:
       return '-';
   }
 };
 
-export const getCostTypeLabel = (modelType: string): string => {
+export const getCostTypeLabel = (modelType: ModelType): string => {
   switch (modelType) {
-    case 'chat':
+    case ModelType.Chat:
       return 'Input / Output (per million tokens)';
-    case 'embedding':
+    case ModelType.Embedding:
       return 'Per million tokens';
-    case 'image':
+    case ModelType.Image:
       return 'Per image';
-    case 'audio':
+    case ModelType.Audio:
       return 'Per second';
-    case 'video':
+    case ModelType.Video:
       return 'Per second';
     default:
       return 'Cost';

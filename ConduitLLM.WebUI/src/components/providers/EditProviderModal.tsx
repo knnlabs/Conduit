@@ -17,7 +17,7 @@ import {
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconInfoCircle } from '@tabler/icons-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { validators } from '@/lib/utils/form-validators';
 import { 
   ProviderType, 
@@ -46,16 +46,16 @@ interface EditProviderForm {
 
 export function EditProviderModal({ opened, onClose, provider, onSuccess }: EditProviderModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  const [initialFormValues, setInitialFormValues] = useState<EditProviderForm>(() => ({
+    providerName: '',
+    apiKey: '',
+    apiEndpoint: '',
+    organizationId: '',
+    isEnabled: true,
+  }));
 
   const form = useForm<EditProviderForm>({
-    initialValues: {
-      providerName: '',
-      apiKey: '',
-      apiEndpoint: '',
-      organizationId: '',
-      isEnabled: true,
-    },
+    initialValues: initialFormValues,
     validate: {
       providerName: (value) => {
         if (!value) {
@@ -72,20 +72,29 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
     },
   });
 
+  // Stable callback for form updates
+  const updateForm = useCallback((newFormValues: EditProviderForm) => {
+    setInitialFormValues(newFormValues);
+    form.setValues(newFormValues);
+    form.resetDirty();
+  }, [form]);
+
   // Update form when provider changes
   useEffect(() => {
     if (provider && opened) {
       const apiProvider = provider;
       
-      form.setValues({
+      const newFormValues: EditProviderForm = {
         providerName: typeof apiProvider.providerName === 'string' ? apiProvider.providerName : '',
         apiKey: '', // Don't show existing key for security
         apiEndpoint: apiProvider.baseUrl ?? '',
         organizationId: typeof provider.organization === 'string' ? provider.organization : '',
         isEnabled: provider.isEnabled === true,
-      });
+      };
+      
+      updateForm(newFormValues);
     }
-  }, [provider, opened, form]);
+  }, [provider, opened, updateForm]);
 
   const handleSubmit = async (values: EditProviderForm) => {
     if (!provider) return;

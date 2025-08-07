@@ -60,14 +60,14 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
   const [isLoadingProviders, setIsLoadingProviders] = useState(mode === 'add');
   const [existingProvider, setExistingProvider] = useState<ProviderCredentialDto | null>(null);
   const [isLoadingProvider, setIsLoadingProvider] = useState(mode === 'edit');
-  const [initialFormValues, setInitialFormValues] = useState<ProviderFormData>({
+  const [initialFormValues, setInitialFormValues] = useState<ProviderFormData>(() => ({
     providerType: '',
     providerName: '',
     apiKey: '',
     apiEndpoint: '',
     organizationId: '',
     isEnabled: true,
-  });
+  }));
 
   const form = useForm<ProviderFormData>({
     initialValues: initialFormValues,
@@ -126,7 +126,7 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
     }
   }, [mode, router]);
 
-  // Fetch existing provider for edit mode
+  // Fetch existing provider for edit mode and reinitialize form
   useEffect(() => {
     if (mode === 'edit' && providerId) {
       const loadProvider = async () => {
@@ -141,7 +141,8 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
           
           const apiProvider = provider;
           
-          const formValues: ProviderFormData = {
+          // Create new form values
+          const newFormValues: ProviderFormData = {
             providerType: provider.providerType?.toString() ?? '',
             providerName: typeof apiProvider.providerName === 'string' ? apiProvider.providerName : '',
             apiKey: '', // Don't show existing key for security
@@ -150,7 +151,8 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
             isEnabled: provider.isEnabled === true,
           };
           
-          setInitialFormValues(formValues);
+          // Update initial values - form will reinitialize via key prop
+          setInitialFormValues(newFormValues);
         } catch (error) {
           console.error('Error fetching provider:', error);
           notifications.show({
@@ -166,7 +168,7 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
       
       void loadProvider();
     }
-  }, [mode, providerId, router, form.setValues]);
+  }, [mode, providerId, router]);
 
   const handleSubmit = async (values: ProviderFormData) => {
     setIsSubmitting(true);

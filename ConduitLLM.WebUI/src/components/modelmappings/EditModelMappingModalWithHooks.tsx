@@ -12,7 +12,7 @@ import {
   Divider,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useUpdateModelMapping, useModelMappings } from '@/hooks/useModelMappingsApi';
 import { useProviders } from '@/hooks/useProviderApi';
 import type { ProviderCredentialDto, ModelProviderMappingDto, UpdateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
@@ -58,27 +58,29 @@ export function EditModelMappingModal({
   const { providers } = useProviders();
   const { mappings } = useModelMappings();
 
+  const [initialFormValues, setInitialFormValues] = useState<FormValues>(() => ({
+    modelId: '',
+    providerId: '',
+    providerModelId: '',
+    priority: 100,
+    isEnabled: true,
+    supportsVision: false,
+    supportsImageGeneration: false,
+    supportsAudioTranscription: false,
+    supportsTextToSpeech: false,
+    supportsRealtimeAudio: false,
+    supportsFunctionCalling: false,
+    supportsStreaming: false,
+    supportsVideoGeneration: false,
+    supportsEmbeddings: false,
+    supportsChat: false,
+    maxContextLength: undefined,
+    maxOutputTokens: undefined,
+    isDefault: false,
+  }));
+
   const form = useForm<FormValues>({
-    initialValues: {
-      modelId: '',
-      providerId: '',
-      providerModelId: '',
-      priority: 100,
-      isEnabled: true,
-      supportsVision: false,
-      supportsImageGeneration: false,
-      supportsAudioTranscription: false,
-      supportsTextToSpeech: false,
-      supportsRealtimeAudio: false,
-      supportsFunctionCalling: false,
-      supportsStreaming: false,
-      supportsVideoGeneration: false,
-      supportsEmbeddings: false,
-      supportsChat: false,
-      maxContextLength: undefined,
-      maxOutputTokens: undefined,
-      isDefault: false,
-    },
+    initialValues: initialFormValues,
     validate: {
       modelId: (value) => {
         if (!value?.trim()) return 'Model alias is required';
@@ -97,6 +99,13 @@ export function EditModelMappingModal({
     },
   });
 
+  // Stable callback for form updates
+  const updateForm = useCallback((newFormValues: FormValues) => {
+    setInitialFormValues(newFormValues);
+    form.setValues(newFormValues);
+    form.resetDirty();
+  }, [form]);
+
   // Update form when mapping changes
   useEffect(() => {
     if (mapping && providers) {
@@ -105,7 +114,7 @@ export function EditModelMappingModal({
       const providerIdForForm = mapping.providerId?.toString() ?? '';
       
       
-      const formData = {
+      const newFormValues: FormValues = {
         modelId: mapping.modelId,
         providerId: providerIdForForm, // Use the numeric ID for the form
         providerModelId: mapping.providerModelId,
@@ -125,9 +134,10 @@ export function EditModelMappingModal({
         maxOutputTokens: mapping.maxOutputTokens,
         isDefault: mapping.isDefault ?? false,
       };
-      form.setValues(formData);
+      
+      updateForm(newFormValues);
     }
-  }, [mapping, providers, form]);
+  }, [mapping, providers, updateForm]);
 
   const handleSubmit = async (values: FormValues) => {
     if (!mapping) return;
