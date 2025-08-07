@@ -277,6 +277,7 @@ export class SystemService extends FetchBaseApiClient {
     
     const settingsService = new SettingsService(baseConfig);
     const virtualKeyService = new VirtualKeyService(this);
+    const virtualKeyGroupService = new VirtualKeyGroupService(this);
     
     let existingKey: string | null = null;
     
@@ -314,7 +315,6 @@ export class SystemService extends FetchBaseApiClient {
     this.log('info', 'Creating new WebUI virtual key with group and $1000 balance');
     
     // First, create a virtual key group with $1000 initial balance
-    const virtualKeyGroupService = new VirtualKeyGroupService(this);
     const group = await virtualKeyGroupService.create({
       groupName: 'WebUI Internal Group',
       externalGroupId: 'webui-internal',
@@ -345,13 +345,30 @@ export class SystemService extends FetchBaseApiClient {
     }
 
     // Store the unhashed key in GlobalSettings
-    await settingsService.createGlobalSetting({
-      key: 'WebUI_VirtualKey',
-      value: response.virtualKey,
-      isSecret: true,
-      category: 'WebUI',
-      description: 'Virtual key for WebUI Core API access'
-    });
+    try {
+      await settingsService.createGlobalSetting({
+        key: 'WebUI_VirtualKey',
+        value: response.virtualKey,
+        isSecret: true,
+        category: 'WebUI',
+        description: 'Virtual key for WebUI Core API access'
+      });
+    } catch (createError: unknown) {
+      // If the setting already exists, update it instead
+      // Check both 'details' and 'message' fields for the error text
+      const error = createError as { statusCode?: number; details?: string; message?: string };
+      const errorMessage = error?.details ?? error?.message ?? '';
+      if (error?.statusCode === 400 && errorMessage.includes('already exists')) {
+        this.log('info', 'WebUI_VirtualKey already exists, updating it');
+        await settingsService.updateGlobalSetting('WebUI_VirtualKey', {
+          value: response.virtualKey,
+          category: 'WebUI',
+          description: 'Virtual key for WebUI Core API access'
+        });
+      } else {
+        throw createError;
+      }
+    }
     
     this.log('info', 'Created new WebUI virtual key and stored in GlobalSettings');
     return response.virtualKey;

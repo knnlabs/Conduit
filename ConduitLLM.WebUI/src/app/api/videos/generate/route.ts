@@ -20,29 +20,33 @@ export async function POST(request: NextRequest) {
     // Define proper types for both PascalCase (from Core API) and snake_case (expected by SDK)
     interface CoreApiResponse {
       TaskId?: string;
+      taskId?: string;  // camelCase variant
       Status?: string;
+      status?: string;
       CreatedAt?: string;
+      createdAt?: string;  // camelCase variant
       EstimatedCompletionTime?: number;
+      estimatedCompletionTime?: number;  // camelCase variant
       SignalRToken?: string;
+      signalRToken?: string;  // camelCase variant
       // Snake case variants that SDK might return
       task_id?: string;
-      status?: string;
       created_at?: string;
       estimated_time_to_completion?: number;
       signalr_token?: string;
       message?: string;
+      checkStatusUrl?: string;
     }
     
     // Cast to our known response type
     const typedResult = result as unknown as CoreApiResponse;
     
-    // The Core API returns PascalCase fields (TaskId, Status, etc.)
-    // but the SDK might not be converting them properly
-    // We need to handle both cases
-    const taskId = typedResult.task_id ?? typedResult.TaskId;
+    // The Core API returns various casing formats depending on the SDK version
+    // We need to handle all cases: PascalCase, camelCase, and snake_case
+    const taskId = typedResult.task_id ?? typedResult.taskId ?? typedResult.TaskId;
     const status = typedResult.status ?? typedResult.Status ?? 'pending';
-    const createdAt = typedResult.created_at ?? typedResult.CreatedAt;
-    const signalRToken = typedResult.SignalRToken ?? typedResult.signalr_token;
+    const createdAt = typedResult.created_at ?? typedResult.createdAt ?? typedResult.CreatedAt;
+    const signalRToken = typedResult.signalr_token ?? typedResult.signalRToken ?? typedResult.SignalRToken;
     
     if (!taskId) {
       console.error('Invalid response from Core API, missing task_id:', result);
@@ -55,7 +59,7 @@ export async function POST(request: NextRequest) {
       status: status,
       created_at: createdAt,
       message: typedResult.message ?? 'Video generation started',
-      estimated_time_to_completion: typedResult.estimated_time_to_completion ?? typedResult.EstimatedCompletionTime,
+      estimated_time_to_completion: typedResult.estimated_time_to_completion ?? typedResult.estimatedCompletionTime ?? typedResult.EstimatedCompletionTime,
       // Pass through the SignalR token if present
       signalr_token: signalRToken,
       // Add a flag to indicate that client-side progress tracking is available

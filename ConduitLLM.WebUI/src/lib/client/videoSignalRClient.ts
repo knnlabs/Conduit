@@ -31,8 +31,11 @@ export class VideoSignalRClient {
     }
 
     // Create a new connection to the public hub
+    // Connect directly to the Core API - CORS is properly configured
+    const hubUrl = 'http://localhost:5000/hubs/public/video-generation';
+    
     this.connection = new signalR.HubConnectionBuilder()
-      .withUrl('http://localhost:5000/hubs/public/video-generation', {
+      .withUrl(hubUrl, {
         // Don't send auth headers, we'll use the token in the subscribe call
         skipNegotiation: false,
         transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.ServerSentEvents | signalR.HttpTransportType.LongPolling

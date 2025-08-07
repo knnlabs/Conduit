@@ -4,7 +4,8 @@ import { videoSignalRClient } from '@/lib/client/videoSignalRClient';
 import type { 
   VideoSettings, 
   VideoTask, 
-  AsyncVideoGenerationResponse
+  AsyncVideoGenerationResponse,
+  VideoGenerationResult
 } from '../types';
 import { 
   createToastErrorHandler, 
@@ -189,19 +190,59 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
               updatedAt: status.updated_at,
             });
 
-            if (['Completed', 'Failed', 'Cancelled', 'TimedOut'].includes(status.status)) {
+            // Check for both uppercase and lowercase status values
+            const normalizedStatus = status.status.toLowerCase();
+            if (['completed', 'failed', 'cancelled', 'timedout'].includes(normalizedStatus)) {
               if (pollingIntervalRef.current) {
                 clearInterval(pollingIntervalRef.current);
                 pollingIntervalRef.current = null;
               }
               setIsGenerating(false);
               
-              if (status.status === 'Completed' && status.result) {
+              if (normalizedStatus === 'completed' && status.result) {
+                // Parse the result JSON string
+                interface VideoResultData {
+                  VideoUrl?: string;
+                  videoUrl?: string;
+                  Duration?: number;
+                  Resolution?: string;
+                  FileSize?: number;
+                  Model?: string;
+                }
+                
+                let parsedResult: VideoResultData;
+                try {
+                  parsedResult = typeof status.result === 'string' 
+                    ? JSON.parse(status.result) as VideoResultData
+                    : status.result as VideoResultData;
+                } catch (e) {
+                  console.error('Failed to parse video result:', e);
+                  parsedResult = status.result as VideoResultData;
+                }
+                
+                console.warn('Parsed video result:', parsedResult);
+                
+                // Transform to expected VideoGenerationResult format
+                const videoResult: VideoGenerationResult = {
+                  created: Date.now() / 1000,
+                  data: [{
+                    url: parsedResult.VideoUrl ?? parsedResult.videoUrl ?? '',
+                    metadata: {
+                      duration: parsedResult.Duration ?? 0,
+                      resolution: parsedResult.Resolution ?? '',
+                      file_size_bytes: parsedResult.FileSize ?? 0,
+                    }
+                  }],
+                  model: parsedResult.Model ?? '',
+                };
+                
+                console.warn('Transformed video result:', videoResult);
+                
                 updateTask(data.task_id, {
                   status: 'completed',
-                  result: status.result,
+                  result: videoResult,
                 });
-              } else if (status.status === 'Failed') {
+              } else if (normalizedStatus === 'failed') {
                 setError(status.error ?? 'Video generation failed');
               }
             }

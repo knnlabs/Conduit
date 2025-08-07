@@ -856,17 +856,11 @@ namespace ConduitLLM.Tests.Core.Services
                 ["minimax"] = 2000000
             };
 
-            var byMediaType = new Dictionary<string, long>
-            {
-                ["image"] = 500000,
-                ["video"] = 2500000
-            };
-
             var allMedia = new List<MediaRecord>
             {
-                new MediaRecord { Id = Guid.NewGuid() },
-                new MediaRecord { Id = Guid.NewGuid() },
-                new MediaRecord { Id = Guid.NewGuid() }
+                new MediaRecord { Id = Guid.NewGuid(), MediaType = "image", SizeBytes = 200000 },
+                new MediaRecord { Id = Guid.NewGuid(), MediaType = "image", SizeBytes = 300000 },
+                new MediaRecord { Id = Guid.NewGuid(), MediaType = "video", SizeBytes = 2500000 }
             };
 
             var orphanedMedia = new List<MediaRecord>
@@ -876,9 +870,6 @@ namespace ConduitLLM.Tests.Core.Services
 
             _mockMediaRepository.Setup(x => x.GetStorageStatsByProviderAsync())
                 .ReturnsAsync(byProvider);
-
-            _mockMediaRepository.Setup(x => x.GetStorageStatsByMediaTypeAsync())
-                .ReturnsAsync(byMediaType);
 
             _mockMediaRepository.Setup(x => x.GetMediaOlderThanAsync(It.IsAny<DateTime>()))
                 .ReturnsAsync(allMedia);
@@ -891,11 +882,17 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(3000000, result.TotalSizeBytes); // Sum of byMediaType values
+            Assert.Equal(3000000, result.TotalSizeBytes); // Sum of all media sizes
             Assert.Equal(3, result.TotalFiles);
             Assert.Equal(1, result.OrphanedFiles);
             Assert.Equal(byProvider, result.ByProvider);
-            Assert.Equal(byMediaType, result.ByMediaType);
+            
+            // Check byMediaType structure
+            Assert.Equal(2, result.ByMediaType.Count);
+            Assert.Equal(2, result.ByMediaType["image"].FileCount);
+            Assert.Equal(500000, result.ByMediaType["image"].SizeBytes);
+            Assert.Equal(1, result.ByMediaType["video"].FileCount);
+            Assert.Equal(2500000, result.ByMediaType["video"].SizeBytes);
         }
 
         #endregion
