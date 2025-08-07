@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using ConduitLLM.Configuration;
 
 namespace ConduitLLM.Core.Interfaces.Configuration
 {
@@ -25,6 +26,23 @@ namespace ConduitLLM.Core.Interfaces.Configuration
         /// The model identification pattern.
         /// </summary>
         public string ModelIdPattern { get; set; } = string.Empty;
+
+        /// <summary>
+        /// The pricing model type that determines how costs are calculated.
+        /// </summary>
+        public PricingModel PricingModel { get; set; } = PricingModel.Standard;
+
+        /// <summary>
+        /// JSON configuration for complex pricing models.
+        /// Structure depends on PricingModel type.
+        /// </summary>
+        public string? PricingConfiguration { get; set; }
+
+        /// <summary>
+        /// Pre-parsed pricing configuration object for performance.
+        /// Type depends on PricingModel.
+        /// </summary>
+        public object? ParsedPricingConfiguration { get; set; }
 
         /// <summary>
         /// Cost per million input tokens for chat/completion requests.
@@ -74,6 +92,12 @@ namespace ConduitLLM.Core.Interfaces.Configuration
         /// Key is quality level (e.g., "standard", "hd"), value is multiplier.
         /// </summary>
         public Dictionary<string, decimal>? ImageQualityMultipliers { get; set; }
+
+        /// <summary>
+        /// Additional cost multipliers for different image resolutions.
+        /// Key is resolution (e.g., "1024x1024", "1792x1024"), value is multiplier.
+        /// </summary>
+        public Dictionary<string, decimal>? ImageResolutionMultipliers { get; set; }
 
         /// <summary>
         /// Cost per million cached input tokens for prompt caching, if applicable.

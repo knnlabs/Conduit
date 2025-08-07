@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import type { CreateModelCostDto } from '@/app/model-costs/types/modelCost';
-import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
+import type { CreateModelCostDto, ModelType, ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 
 interface ImportWithAliasesRequest {
   costName: string;
@@ -73,7 +72,7 @@ export async function POST(req: NextRequest) {
       const costDto: CreateModelCostDto = {
         costName: item.costName,
         modelProviderMappingIds: mappingIds,
-        modelType: item.modelType as 'chat' | 'embedding' | 'image' | 'audio' | 'video',
+        modelType: item.modelType as ModelType,
         inputCostPerMillionTokens: (item.inputTokenCost ?? 0) * 1000, // Convert from per-1K to per-million
         outputCostPerMillionTokens: (item.outputTokenCost ?? 0) * 1000, // Convert from per-1K to per-million
         cachedInputCostPerMillionTokens: item.cachedInputTokenCost && typeof item.cachedInputTokenCost === 'number' ? (item.cachedInputTokenCost * 1000) : undefined,

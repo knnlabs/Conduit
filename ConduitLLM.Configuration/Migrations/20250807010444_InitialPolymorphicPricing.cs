@@ -7,7 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ConduitLLM.Configuration.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreateWithPerMillionCosts : Migration
+    public partial class InitialPolymorphicPricing : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -110,6 +110,8 @@ namespace ConduitLLM.Configuration.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     CostName = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    PricingModel = table.Column<int>(type: "integer", nullable: false),
+                    PricingConfiguration = table.Column<string>(type: "text", nullable: true),
                     InputCostPerMillionTokens = table.Column<decimal>(type: "numeric(18,10)", nullable: false),
                     OutputCostPerMillionTokens = table.Column<decimal>(type: "numeric(18,10)", nullable: false),
                     EmbeddingCostPerMillionTokens = table.Column<decimal>(type: "numeric(18,10)", nullable: true),
@@ -131,6 +133,7 @@ namespace ConduitLLM.Configuration.Migrations
                     BatchProcessingMultiplier = table.Column<decimal>(type: "numeric(18,4)", nullable: true),
                     SupportsBatchProcessing = table.Column<bool>(type: "boolean", nullable: false),
                     ImageQualityMultipliers = table.Column<string>(type: "text", nullable: true),
+                    ImageResolutionMultipliers = table.Column<string>(type: "text", nullable: true),
                     CachedInputCostPerMillionTokens = table.Column<decimal>(type: "numeric(18,10)", nullable: true),
                     CachedInputWriteCostPerMillionTokens = table.Column<decimal>(type: "numeric(18,10)", nullable: true),
                     CostPerSearchUnit = table.Column<decimal>(type: "numeric(18,8)", nullable: true),

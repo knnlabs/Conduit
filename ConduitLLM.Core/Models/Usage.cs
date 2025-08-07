@@ -71,6 +71,17 @@ public class Usage
     public string? ImageQuality { get; set; }
 
     /// <summary>
+    /// Resolution for image generation (e.g., "1024x1024", "1792x1024").
+    /// </summary>
+    /// <remarks>
+    /// Used to apply resolution-based multipliers to image generation costs.
+    /// Format is typically "widthxheight" in pixels.
+    /// </remarks>
+    [JsonPropertyName("image_resolution")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ImageResolution { get; set; }
+
+    /// <summary>
     /// Number of cached input tokens used (read from cache).
     /// </summary>
     /// <remarks>

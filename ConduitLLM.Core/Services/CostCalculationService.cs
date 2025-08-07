@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
+using ConduitLLM.Configuration;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Models.Pricing;
 
 using Microsoft.Extensions.Logging;
 
@@ -95,6 +98,58 @@ public class CostCalculationService : ICostCalculationService
             return 0m;
         }
 
+        decimal calculatedCost = 0m;
+
+        // Handle polymorphic pricing models
+        switch (modelCost.PricingModel)
+        {
+            case PricingModel.Standard:
+                calculatedCost = await CalculateStandardCostAsync(modelId, modelCost, usage);
+                break;
+            case PricingModel.PerVideo:
+                calculatedCost = await CalculatePerVideoCostAsync(modelId, modelCost, usage);
+                break;
+            case PricingModel.PerSecondVideo:
+                calculatedCost = await CalculatePerSecondVideoCostAsync(modelId, modelCost, usage);
+                break;
+            case PricingModel.InferenceSteps:
+                calculatedCost = await CalculateInferenceStepsCostAsync(modelId, modelCost, usage);
+                break;
+            case PricingModel.TieredTokens:
+                calculatedCost = await CalculateTieredTokensCostAsync(modelId, modelCost, usage);
+                break;
+            case PricingModel.PerImage:
+                calculatedCost = await CalculatePerImageCostAsync(modelId, modelCost, usage);
+                break;
+            case PricingModel.PerMinuteAudio:
+                calculatedCost = await CalculatePerMinuteAudioCostAsync(modelId, modelCost, usage);
+                break;
+            case PricingModel.PerThousandCharacters:
+                calculatedCost = await CalculatePerThousandCharactersCostAsync(modelId, modelCost, usage);
+                break;
+            default:
+                _logger.LogWarning("Unknown pricing model {PricingModel} for model {ModelId}. Using standard calculation.", modelCost.PricingModel, modelId);
+                calculatedCost = await CalculateStandardCostAsync(modelId, modelCost, usage);
+                break;
+        }
+
+        // Apply batch processing discount if applicable (works across all pricing models)
+        if (usage.IsBatch == true && modelCost.SupportsBatchProcessing && modelCost.BatchProcessingMultiplier.HasValue)
+        {
+            var originalCost = calculatedCost;
+            calculatedCost *= modelCost.BatchProcessingMultiplier!.Value;
+            _logger.LogDebug("Applied batch processing discount for model {ModelId}. Original cost: {OriginalCost}, Discounted cost: {DiscountedCost}, Multiplier: {Multiplier}",
+                modelId, originalCost, calculatedCost, modelCost.BatchProcessingMultiplier.Value);
+        }
+
+        _logger.LogDebug("Calculated cost for model {ModelId} using pricing model {PricingModel} is {CalculatedCost}",
+            modelId, modelCost.PricingModel, calculatedCost);
+
+        return calculatedCost;
+    }
+
+    private async Task<decimal> CalculateStandardCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
+    {
         decimal calculatedCost = 0m;
 
         // Calculate cost based on token usage
@@ -207,14 +262,7 @@ public class CostCalculationService : ICostCalculationService
                 stepCost);
         }
 
-        // Apply batch processing discount if applicable
-        if (usage.IsBatch == true && modelCost.SupportsBatchProcessing && modelCost.BatchProcessingMultiplier.HasValue)
-        {
-            var originalCost = calculatedCost;
-            calculatedCost *= modelCost.BatchProcessingMultiplier!.Value;
-            _logger.LogDebug("Applied batch processing discount for model {ModelId}. Original cost: {OriginalCost}, Discounted cost: {DiscountedCost}, Multiplier: {Multiplier}",
-                modelId, originalCost, calculatedCost, modelCost.BatchProcessingMultiplier.Value);
-        }
+        // Batch processing discount is now applied in the main CalculateCostAsync method for all pricing models
 
         _logger.LogDebug("Calculated cost for model {ModelId} with usage (Prompt: {PromptTokens}, Completion: {CompletionTokens}, CachedInput: {CachedInputTokens}, CachedWrite: {CachedWriteTokens}, Images: {ImageCount}, Video: {VideoDuration}s, SearchUnits: {SearchUnits}, InferenceSteps: {InferenceSteps}, IsBatch: {IsBatch}) is {CalculatedCost}",
             modelId, usage.PromptTokens, usage.CompletionTokens, usage.CachedInputTokens ?? 0, usage.CachedWriteTokens ?? 0, usage.ImageCount ?? 0, usage.VideoDurationSeconds ?? 0, usage.SearchUnits ?? 0, usage.InferenceSteps ?? 0, usage.IsBatch ?? false, calculatedCost);
@@ -509,5 +557,279 @@ public class CostCalculationService : ICostCalculationService
         }
 
         return messages;
+    }
+
+    private async Task<decimal> CalculatePerVideoCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
+    {
+        if (!usage.VideoDurationSeconds.HasValue || string.IsNullOrEmpty(usage.VideoResolution))
+        {
+            _logger.LogDebug("No video usage data for per-video pricing model {ModelId}", modelId);
+            return 0m;
+        }
+
+        // Parse configuration or use pre-parsed
+        PerVideoPricingConfig? config = null;
+        if (modelCost.ParsedPricingConfiguration is PerVideoPricingConfig parsed)
+        {
+            config = parsed;
+        }
+        else if (!string.IsNullOrEmpty(modelCost.PricingConfiguration))
+        {
+            try
+            {
+                config = JsonSerializer.Deserialize<PerVideoPricingConfig>(modelCost.PricingConfiguration);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to parse per-video pricing configuration for model {ModelId}", modelId);
+                throw new InvalidOperationException($"Invalid per-video pricing configuration for model {modelId}");
+            }
+        }
+
+        if (config == null || config.Rates == null || config.Rates.Count == 0)
+        {
+            _logger.LogError("No per-video pricing rates configured for model {ModelId}", modelId);
+            throw new InvalidOperationException($"No per-video pricing rates configured for model {modelId}");
+        }
+
+        // Build lookup key (e.g., "720p_6" for 720p resolution, 6 seconds)
+        var duration = (int)Math.Round(usage.VideoDurationSeconds.Value);
+        var lookupKey = $"{usage.VideoResolution}_{duration}";
+
+        if (!config.Rates.TryGetValue(lookupKey, out var flatRate))
+        {
+            _logger.LogError("No pricing found for video {Resolution} {Duration}s for model {ModelId}", 
+                usage.VideoResolution, duration, modelId);
+            throw new InvalidOperationException($"No pricing available for {usage.VideoResolution} {duration}s video on model {modelId}");
+        }
+
+        _logger.LogDebug("Per-video cost for model {ModelId}: {Resolution} {Duration}s = ${Cost}",
+            modelId, usage.VideoResolution, duration, flatRate);
+
+        return flatRate;
+    }
+
+    private async Task<decimal> CalculatePerSecondVideoCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
+    {
+        if (!usage.VideoDurationSeconds.HasValue)
+        {
+            _logger.LogDebug("No video duration for per-second video pricing model {ModelId}", modelId);
+            return 0m;
+        }
+
+        // Parse configuration or use pre-parsed
+        PerSecondVideoPricingConfig? config = null;
+        if (modelCost.ParsedPricingConfiguration is PerSecondVideoPricingConfig parsed)
+        {
+            config = parsed;
+        }
+        else if (!string.IsNullOrEmpty(modelCost.PricingConfiguration))
+        {
+            try
+            {
+                config = JsonSerializer.Deserialize<PerSecondVideoPricingConfig>(modelCost.PricingConfiguration);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to parse per-second video pricing configuration for model {ModelId}", modelId);
+                throw new InvalidOperationException($"Invalid per-second video pricing configuration for model {modelId}");
+            }
+        }
+
+        if (config == null)
+        {
+            _logger.LogError("No per-second video pricing configuration for model {ModelId}", modelId);
+            throw new InvalidOperationException($"No per-second video pricing configuration for model {modelId}");
+        }
+
+        var baseCost = (decimal)usage.VideoDurationSeconds.Value * config.BaseRate;
+
+        // Apply resolution multiplier if available
+        if (!string.IsNullOrEmpty(usage.VideoResolution) && 
+            config.ResolutionMultipliers != null &&
+            config.ResolutionMultipliers.TryGetValue(usage.VideoResolution, out var multiplier))
+        {
+            baseCost *= multiplier;
+            _logger.LogDebug("Applied video resolution multiplier {Multiplier} for {Resolution}", multiplier, usage.VideoResolution);
+        }
+
+        _logger.LogDebug("Per-second video cost for model {ModelId}: {Duration}s × ${BaseRate} = ${Cost}",
+            modelId, usage.VideoDurationSeconds.Value, config.BaseRate, baseCost);
+
+        return baseCost;
+    }
+
+    private async Task<decimal> CalculateInferenceStepsCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
+    {
+        // Parse configuration or use pre-parsed
+        InferenceStepsPricingConfig? config = null;
+        if (modelCost.ParsedPricingConfiguration is InferenceStepsPricingConfig parsed)
+        {
+            config = parsed;
+        }
+        else if (!string.IsNullOrEmpty(modelCost.PricingConfiguration))
+        {
+            try
+            {
+                config = JsonSerializer.Deserialize<InferenceStepsPricingConfig>(modelCost.PricingConfiguration);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to parse inference steps pricing configuration for model {ModelId}", modelId);
+                throw new InvalidOperationException($"Invalid inference steps pricing configuration for model {modelId}");
+            }
+        }
+
+        if (config == null)
+        {
+            _logger.LogError("No inference steps pricing configuration for model {ModelId}", modelId);
+            throw new InvalidOperationException($"No inference steps pricing configuration for model {modelId}");
+        }
+
+        // Use provided steps or default
+        var steps = usage.InferenceSteps ?? config.DefaultSteps;
+        if (steps <= 0)
+        {
+            _logger.LogDebug("No inference steps for model {ModelId}", modelId);
+            return 0m;
+        }
+
+        var cost = steps * config.CostPerStep;
+
+        _logger.LogDebug("Inference steps cost for model {ModelId}: {Steps} steps × ${CostPerStep} = ${Cost}",
+            modelId, steps, config.CostPerStep, cost);
+
+        return cost;
+    }
+
+    private async Task<decimal> CalculateTieredTokensCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
+    {
+        // Parse configuration or use pre-parsed
+        TieredTokensPricingConfig? config = null;
+        if (modelCost.ParsedPricingConfiguration is TieredTokensPricingConfig parsed)
+        {
+            config = parsed;
+        }
+        else if (!string.IsNullOrEmpty(modelCost.PricingConfiguration))
+        {
+            try
+            {
+                config = JsonSerializer.Deserialize<TieredTokensPricingConfig>(modelCost.PricingConfiguration);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to parse tiered tokens pricing configuration for model {ModelId}", modelId);
+                throw new InvalidOperationException($"Invalid tiered tokens pricing configuration for model {modelId}");
+            }
+        }
+
+        if (config == null || config.Tiers == null || config.Tiers.Count == 0)
+        {
+            _logger.LogError("No tiered tokens pricing configuration for model {ModelId}", modelId);
+            throw new InvalidOperationException($"No tiered tokens pricing configuration for model {modelId}");
+        }
+
+        var inputTokens = usage.PromptTokens ?? 0;
+        var outputTokens = usage.CompletionTokens ?? 0;
+
+        // Find the appropriate tier based on total context length
+        var totalTokens = inputTokens + outputTokens;
+        TokenPricingTier? tier = null;
+
+        foreach (var t in config.Tiers.OrderBy(t => t.MaxContext ?? int.MaxValue))
+        {
+            if (!t.MaxContext.HasValue || totalTokens <= t.MaxContext.Value)
+            {
+                tier = t;
+                break;
+            }
+        }
+
+        if (tier == null)
+        {
+            tier = config.Tiers.Last(); // Use highest tier if none match
+        }
+
+        var inputCost = (inputTokens * tier.InputCost) / 1_000_000m;
+        var outputCost = (outputTokens * tier.OutputCost) / 1_000_000m;
+
+        _logger.LogDebug("Tiered tokens cost for model {ModelId}: Context {TotalTokens}, Tier ≤{MaxContext}, " +
+            "Input: {InputTokens} × ${InputRate} + Output: {OutputTokens} × ${OutputRate} = ${TotalCost}",
+            modelId, totalTokens, tier.MaxContext, inputTokens, tier.InputCost, outputTokens, tier.OutputCost, inputCost + outputCost);
+
+        return inputCost + outputCost;
+    }
+
+    private async Task<decimal> CalculatePerImageCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
+    {
+        if (!usage.ImageCount.HasValue || usage.ImageCount.Value <= 0)
+        {
+            _logger.LogDebug("No image count for per-image pricing model {ModelId}", modelId);
+            return 0m;
+        }
+
+        // Parse configuration or use pre-parsed
+        PerImagePricingConfig? config = null;
+        if (modelCost.ParsedPricingConfiguration is PerImagePricingConfig parsed)
+        {
+            config = parsed;
+        }
+        else if (!string.IsNullOrEmpty(modelCost.PricingConfiguration))
+        {
+            try
+            {
+                config = JsonSerializer.Deserialize<PerImagePricingConfig>(modelCost.PricingConfiguration);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to parse per-image pricing configuration for model {ModelId}", modelId);
+                throw new InvalidOperationException($"Invalid per-image pricing configuration for model {modelId}");
+            }
+        }
+
+        if (config == null)
+        {
+            _logger.LogError("No per-image pricing configuration for model {ModelId}", modelId);
+            throw new InvalidOperationException($"No per-image pricing configuration for model {modelId}");
+        }
+
+        var cost = usage.ImageCount.Value * config.BaseRate;
+
+        // Apply quality multiplier
+        if (!string.IsNullOrEmpty(usage.ImageQuality) && 
+            config.QualityMultipliers != null &&
+            config.QualityMultipliers.TryGetValue(usage.ImageQuality.ToLowerInvariant(), out var qualityMultiplier))
+        {
+            cost *= qualityMultiplier;
+            _logger.LogDebug("Applied image quality multiplier {Multiplier} for {Quality}", qualityMultiplier, usage.ImageQuality);
+        }
+
+        // Apply resolution multiplier
+        if (!string.IsNullOrEmpty(usage.ImageResolution) && 
+            config.ResolutionMultipliers != null &&
+            config.ResolutionMultipliers.TryGetValue(usage.ImageResolution, out var resolutionMultiplier))
+        {
+            cost *= resolutionMultiplier;
+            _logger.LogDebug("Applied image resolution multiplier {Multiplier} for {Resolution}", resolutionMultiplier, usage.ImageResolution);
+        }
+
+        _logger.LogDebug("Per-image cost for model {ModelId}: {Count} images × ${BaseRate} = ${Cost}",
+            modelId, usage.ImageCount.Value, config.BaseRate, cost);
+
+        return cost;
+    }
+
+    private async Task<decimal> CalculatePerMinuteAudioCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
+    {
+        // This pricing model is for audio transcription/realtime
+        // Delegate to standard calculation which already handles audio costs
+        return await CalculateStandardCostAsync(modelId, modelCost, usage);
+    }
+
+    private async Task<decimal> CalculatePerThousandCharactersCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
+    {
+        // This pricing model is for text-to-speech
+        // The standard calculation already handles AudioCostPerKCharacters
+        return await CalculateStandardCostAsync(modelId, modelCost, usage);
     }
 }

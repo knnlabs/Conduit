@@ -28,11 +28,16 @@ import {
   IconAdjustments,
   IconDatabase,
   IconStairs,
+  IconVideo,
+  IconPhoto,
+  IconMicrophone,
+  IconLetterT,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
 import { useModelCostsApi } from '../hooks/useModelCostsApi';
 import { ModelCost } from '../types/modelCost';
-import { EditModelCostModal } from './EditModelCostModal';
+import { PricingModel } from '@knn_labs/conduit-admin-client';
+import { EditModelCostModalV2 } from './EditModelCostModalV2';
 import { ViewModelCostModal } from './ViewModelCostModal';
 import { formatters } from '@/lib/utils/formatters';
 import { CallToActionEmpty } from './CallToActionEmpty';
@@ -128,6 +133,33 @@ export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: M
       video: 'Video',
     };
     return labels[type] || type;
+  };
+
+  const getPricingModelBadge = (model?: PricingModel): React.ReactNode => {
+    if (model === undefined || model === PricingModel.Standard) return null;
+    
+    const badges: Record<PricingModel, { label: string; color: string; icon?: React.ReactNode }> = {
+      [PricingModel.Standard]: { label: 'Standard', color: 'gray' },
+      [PricingModel.PerVideo]: { label: 'Per Video', color: 'purple', icon: <IconVideo size={14} /> },
+      [PricingModel.PerSecondVideo]: { label: 'Per Second', color: 'indigo', icon: <IconVideo size={14} /> },
+      [PricingModel.InferenceSteps]: { label: 'Steps', color: 'teal', icon: <IconStairs size={14} /> },
+      [PricingModel.TieredTokens]: { label: 'Tiered', color: 'orange' },
+      [PricingModel.PerImage]: { label: 'Per Image', color: 'pink', icon: <IconPhoto size={14} /> },
+      [PricingModel.PerMinuteAudio]: { label: 'Per Minute', color: 'cyan', icon: <IconMicrophone size={14} /> },
+      [PricingModel.PerThousandCharacters]: { label: 'Per 1K Chars', color: 'lime', icon: <IconLetterT size={14} /> },
+    };
+    
+    const badge = badges[model];
+    if (!badge) return null;
+    
+    return (
+      <Badge size="xs" variant="light" color={badge.color}>
+        <Group gap={2}>
+          {badge.icon}
+          {badge.label}
+        </Group>
+      </Badge>
+    );
   };
 
   const getCostDisplay = (cost: ModelCost): React.ReactNode => {
@@ -262,6 +294,7 @@ export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: M
                     <Table.Th>Model Aliases</Table.Th>
                     <Table.Th>Providers</Table.Th>
                     <Table.Th>Type</Table.Th>
+                    <Table.Th>Pricing Model</Table.Th>
                     <Table.Th>Pricing</Table.Th>
                     <Table.Th>Batch</Table.Th>
                     <Table.Th>Priority</Table.Th>
@@ -332,6 +365,9 @@ export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: M
                             </Tooltip>
                           )}
                         </Group>
+                      </Table.Td>
+                      <Table.Td>
+                        {getPricingModelBadge(cost.pricingModel)}
                       </Table.Td>
                       <Table.Td>{getCostDisplay(cost)}</Table.Td>
                       <Table.Td>
@@ -412,7 +448,7 @@ export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: M
       </Card>
 
       {editingCost && (
-        <EditModelCostModal
+        <EditModelCostModalV2
           isOpen={!!editingCost}
           modelCost={editingCost}
           onClose={() => setEditingCost(null)}

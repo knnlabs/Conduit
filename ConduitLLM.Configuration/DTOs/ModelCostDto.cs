@@ -25,6 +25,24 @@ namespace ConduitLLM.Configuration.DTOs
         public string CostName { get; set; } = string.Empty;
 
         /// <summary>
+        /// The pricing model type that determines how costs are calculated
+        /// </summary>
+        [Required]
+        public PricingModel PricingModel { get; set; } = PricingModel.Standard;
+
+        /// <summary>
+        /// JSON configuration for complex pricing models
+        /// </summary>
+        /// <remarks>
+        /// Structure depends on PricingModel:
+        /// - PerVideo: {"rates": {"512p_6": 0.10, "720p_10": 0.15}}
+        /// - PerSecondVideo: {"baseRate": 0.09, "resolutionMultipliers": {"720p": 1.0}}
+        /// - InferenceSteps: {"costPerStep": 0.00013, "defaultSteps": 30}
+        /// - TieredTokens: {"tiers": [{"maxContext": 200000, "inputCost": 400}]}
+        /// </remarks>
+        public string? PricingConfiguration { get; set; }
+
+        /// <summary>
         /// List of model aliases that use this cost configuration
         /// </summary>
         /// <remarks>
@@ -166,6 +184,15 @@ namespace ConduitLLM.Configuration.DTOs
         public string? ImageQualityMultipliers { get; set; }
 
         /// <summary>
+        /// Resolution-based cost multipliers for image generation as JSON string
+        /// </summary>
+        /// <remarks>
+        /// JSON object containing resolution-to-multiplier mappings.
+        /// Example: {"1024x1024": 1.0, "1792x1024": 1.5, "1024x1792": 1.5}
+        /// </remarks>
+        public string? ImageResolutionMultipliers { get; set; }
+
+        /// <summary>
         /// Cost per million cached input tokens for prompt caching in USD, if applicable
         /// </summary>
         /// <remarks>
@@ -231,6 +258,17 @@ namespace ConduitLLM.Configuration.DTOs
         [Required]
         [MaxLength(255)]
         public string CostName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// The pricing model type that determines how costs are calculated
+        /// </summary>
+        [Required]
+        public PricingModel PricingModel { get; set; } = PricingModel.Standard;
+
+        /// <summary>
+        /// JSON configuration for complex pricing models
+        /// </summary>
+        public string? PricingConfiguration { get; set; }
 
         /// <summary>
         /// List of model mapping IDs to associate with this cost
@@ -342,6 +380,15 @@ namespace ConduitLLM.Configuration.DTOs
         public string? ImageQualityMultipliers { get; set; }
 
         /// <summary>
+        /// Resolution-based cost multipliers for image generation as JSON string
+        /// </summary>
+        /// <remarks>
+        /// JSON object containing resolution-to-multiplier mappings.
+        /// Example: {"1024x1024": 1.0, "1792x1024": 1.5, "1024x1792": 1.5}
+        /// </remarks>
+        public string? ImageResolutionMultipliers { get; set; }
+
+        /// <summary>
         /// Cost per million cached input tokens for prompt caching in USD, if applicable
         /// </summary>
         /// <remarks>
@@ -412,6 +459,17 @@ namespace ConduitLLM.Configuration.DTOs
         [Required]
         [MaxLength(255)]
         public string CostName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// The pricing model type that determines how costs are calculated
+        /// </summary>
+        [Required]
+        public PricingModel PricingModel { get; set; } = PricingModel.Standard;
+
+        /// <summary>
+        /// JSON configuration for complex pricing models
+        /// </summary>
+        public string? PricingConfiguration { get; set; }
 
         /// <summary>
         /// List of model mapping IDs to associate with this cost
@@ -526,6 +584,15 @@ namespace ConduitLLM.Configuration.DTOs
         /// Example: {"standard": 1.0, "hd": 2.0}
         /// </remarks>
         public string? ImageQualityMultipliers { get; set; }
+
+        /// <summary>
+        /// Resolution-based cost multipliers for image generation as JSON string
+        /// </summary>
+        /// <remarks>
+        /// JSON object containing resolution-to-multiplier mappings.
+        /// Example: {"1024x1024": 1.0, "1792x1024": 1.5, "1024x1792": 1.5}
+        /// </remarks>
+        public string? ImageResolutionMultipliers { get; set; }
 
         /// <summary>
         /// Cost per million cached input tokens for prompt caching in USD, if applicable

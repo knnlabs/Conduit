@@ -60,16 +60,17 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
   const [isLoadingProviders, setIsLoadingProviders] = useState(mode === 'add');
   const [existingProvider, setExistingProvider] = useState<ProviderCredentialDto | null>(null);
   const [isLoadingProvider, setIsLoadingProvider] = useState(mode === 'edit');
+  const [initialFormValues, setInitialFormValues] = useState<ProviderFormData>({
+    providerType: '',
+    providerName: '',
+    apiKey: '',
+    apiEndpoint: '',
+    organizationId: '',
+    isEnabled: true,
+  });
 
   const form = useForm<ProviderFormData>({
-    initialValues: {
-      providerType: '',
-      providerName: '',
-      apiKey: '',
-      apiEndpoint: '',
-      organizationId: '',
-      isEnabled: true,
-    },
+    initialValues: initialFormValues,
     validate: {
       providerType: (value) => (mode === 'add' && !value ? 'Provider type is required' : null),
       providerName: (value) => {
@@ -140,14 +141,16 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
           
           const apiProvider = provider;
           
-          form.setValues({
+          const formValues: ProviderFormData = {
             providerType: provider.providerType?.toString() ?? '',
             providerName: typeof apiProvider.providerName === 'string' ? apiProvider.providerName : '',
             apiKey: '', // Don't show existing key for security
             apiEndpoint: apiProvider.baseUrl ?? '',
             organizationId: typeof provider.organization === 'string' ? provider.organization : '',
             isEnabled: provider.isEnabled === true,
-          });
+          };
+          
+          setInitialFormValues(formValues);
         } catch (error) {
           console.error('Error fetching provider:', error);
           notifications.show({
@@ -163,7 +166,7 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
       
       void loadProvider();
     }
-  }, [mode, providerId, router, form]);
+  }, [mode, providerId, router, form.setValues]);
 
   const handleSubmit = async (values: ProviderFormData) => {
     setIsSubmitting(true);

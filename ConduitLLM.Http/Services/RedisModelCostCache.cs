@@ -6,8 +6,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using StackExchange.Redis;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Models.Pricing;
 
 namespace ConduitLLM.Http.Services
 {
@@ -414,7 +417,10 @@ namespace ConduitLLM.Http.Services
         private async Task SetModelCostAsync(ModelCost cost)
         {
             var patternKey = PatternKeyPrefix + cost.CostName.ToLowerInvariant();
-            var serialized = JsonSerializer.Serialize(cost, _jsonOptions);
+            
+            // Create cached version with pre-parsed configuration
+            var cachedCost = ConvertToCachedModelCost(cost);
+            var serialized = JsonSerializer.Serialize(cachedCost, _jsonOptions);
             
             await _database.StringSetAsync(patternKey, serialized, _defaultExpiry);
             
@@ -615,6 +621,100 @@ namespace ConduitLLM.Http.Services
         {
             public string[] CostIds { get; set; } = Array.Empty<string>();
             public DateTime Timestamp { get; set; }
+        }
+
+        /// <summary>
+        /// Converts a ModelCost entity to a CachedModelCost with pre-parsed configuration.
+        /// </summary>
+        private CachedModelCost ConvertToCachedModelCost(ModelCost cost)
+        {
+            var cached = new CachedModelCost
+            {
+                Id = cost.Id,
+                CostName = cost.CostName,
+                PricingModel = cost.PricingModel,
+                InputCostPerMillionTokens = cost.InputCostPerMillionTokens,
+                OutputCostPerMillionTokens = cost.OutputCostPerMillionTokens,
+                EmbeddingCostPerMillionTokens = cost.EmbeddingCostPerMillionTokens,
+                ImageCostPerImage = cost.ImageCostPerImage,
+                VideoCostPerSecond = cost.VideoCostPerSecond,
+                BatchProcessingMultiplier = cost.BatchProcessingMultiplier,
+                SupportsBatchProcessing = cost.SupportsBatchProcessing,
+                CachedInputCostPerMillionTokens = cost.CachedInputCostPerMillionTokens,
+                CachedInputWriteCostPerMillionTokens = cost.CachedInputWriteCostPerMillionTokens,
+                CostPerSearchUnit = cost.CostPerSearchUnit,
+                CostPerInferenceStep = cost.CostPerInferenceStep,
+                DefaultInferenceSteps = cost.DefaultInferenceSteps,
+                AudioCostPerMinute = cost.AudioCostPerMinute,
+                AudioCostPerKCharacters = cost.AudioCostPerKCharacters,
+                AudioInputCostPerMinute = cost.AudioInputCostPerMinute,
+                AudioOutputCostPerMinute = cost.AudioOutputCostPerMinute,
+                ModelType = cost.ModelType,
+                IsActive = cost.IsActive,
+                Priority = cost.Priority,
+                Description = cost.Description
+            };
+
+            // Parse JSON multipliers
+            if (!string.IsNullOrEmpty(cost.VideoResolutionMultipliers))
+            {
+                try
+                {
+                    cached.VideoResolutionMultipliers = JsonSerializer.Deserialize<Dictionary<string, decimal>>(cost.VideoResolutionMultipliers);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse VideoResolutionMultipliers for cost {CostName}", cost.CostName);
+                }
+            }
+
+            if (!string.IsNullOrEmpty(cost.ImageQualityMultipliers))
+            {
+                try
+                {
+                    cached.ImageQualityMultipliers = JsonSerializer.Deserialize<Dictionary<string, decimal>>(cost.ImageQualityMultipliers);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse ImageQualityMultipliers for cost {CostName}", cost.CostName);
+                }
+            }
+
+            if (!string.IsNullOrEmpty(cost.ImageResolutionMultipliers))
+            {
+                try
+                {
+                    cached.ImageResolutionMultipliers = JsonSerializer.Deserialize<Dictionary<string, decimal>>(cost.ImageResolutionMultipliers);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse ImageResolutionMultipliers for cost {CostName}", cost.CostName);
+                }
+            }
+
+            // Parse pricing configuration based on pricing model
+            if (!string.IsNullOrEmpty(cost.PricingConfiguration))
+            {
+                try
+                {
+                    cached.ParsedPricingConfiguration = cost.PricingModel switch
+                    {
+                        PricingModel.PerVideo => JsonSerializer.Deserialize<PerVideoPricingConfig>(cost.PricingConfiguration, _jsonOptions),
+                        PricingModel.PerSecondVideo => JsonSerializer.Deserialize<PerSecondVideoPricingConfig>(cost.PricingConfiguration, _jsonOptions),
+                        PricingModel.InferenceSteps => JsonSerializer.Deserialize<InferenceStepsPricingConfig>(cost.PricingConfiguration, _jsonOptions),
+                        PricingModel.TieredTokens => JsonSerializer.Deserialize<TieredTokensPricingConfig>(cost.PricingConfiguration, _jsonOptions),
+                        PricingModel.PerImage => JsonSerializer.Deserialize<PerImagePricingConfig>(cost.PricingConfiguration, _jsonOptions),
+                        _ => null
+                    };
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse PricingConfiguration for cost {CostName} with model {PricingModel}", 
+                        cost.CostName, cost.PricingModel);
+                }
+            }
+
+            return cached;
         }
     }
 }

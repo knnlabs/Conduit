@@ -292,6 +292,8 @@ namespace ConduitLLM.Admin.Services
                             {
                                 Id = existingModelCost.Id,
                                 CostName = modelCost.CostName,
+                                PricingModel = modelCost.PricingModel,
+                                PricingConfiguration = modelCost.PricingConfiguration,
                                 InputCostPerMillionTokens = modelCost.InputCostPerMillionTokens,
                                 OutputCostPerMillionTokens = modelCost.OutputCostPerMillionTokens,
                                 EmbeddingCostPerMillionTokens = modelCost.EmbeddingCostPerMillionTokens,
@@ -302,6 +304,7 @@ namespace ConduitLLM.Admin.Services
                                 AudioOutputCostPerMinute = modelCost.AudioOutputCostPerMinute,
                                 VideoCostPerSecond = modelCost.VideoCostPerSecond,
                                 VideoResolutionMultipliers = modelCost.VideoResolutionMultipliers,
+                                ImageResolutionMultipliers = modelCost.ImageResolutionMultipliers,
                                 BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
                                 SupportsBatchProcessing = modelCost.SupportsBatchProcessing,
                                 CostPerSearchUnit = modelCost.CostPerSearchUnit,
@@ -508,6 +511,8 @@ namespace ConduitLLM.Admin.Services
                             {
                                 Id = existingModelCost.Id,
                                 CostName = modelCost.CostName,
+                                PricingModel = modelCost.PricingModel,
+                                PricingConfiguration = modelCost.PricingConfiguration,
                                 InputCostPerMillionTokens = modelCost.InputCostPerMillionTokens,
                                 OutputCostPerMillionTokens = modelCost.OutputCostPerMillionTokens,
                                 EmbeddingCostPerMillionTokens = modelCost.EmbeddingCostPerMillionTokens,
@@ -518,6 +523,7 @@ namespace ConduitLLM.Admin.Services
                                 AudioOutputCostPerMinute = modelCost.AudioOutputCostPerMinute,
                                 VideoCostPerSecond = modelCost.VideoCostPerSecond,
                                 VideoResolutionMultipliers = modelCost.VideoResolutionMultipliers,
+                                ImageResolutionMultipliers = modelCost.ImageResolutionMultipliers,
                                 BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
                                 SupportsBatchProcessing = modelCost.SupportsBatchProcessing,
                                 CostPerSearchUnit = modelCost.CostPerSearchUnit,
@@ -558,6 +564,8 @@ namespace ConduitLLM.Admin.Services
             var exportData = modelCosts.Select(mc => new ModelCostExportDto
             {
                 CostName = mc.CostName,
+                PricingModel = mc.PricingModel,
+                PricingConfiguration = mc.PricingConfiguration,
                 InputCostPerMillionTokens = mc.InputCostPerMillionTokens,
                 OutputCostPerMillionTokens = mc.OutputCostPerMillionTokens,
                 EmbeddingCostPerMillionTokens = mc.EmbeddingCostPerMillionTokens,
@@ -568,6 +576,7 @@ namespace ConduitLLM.Admin.Services
                 AudioOutputCostPerMinute = mc.AudioOutputCostPerMinute,
                 VideoCostPerSecond = mc.VideoCostPerSecond,
                 VideoResolutionMultipliers = mc.VideoResolutionMultipliers,
+                ImageResolutionMultipliers = mc.ImageResolutionMultipliers,
                 BatchProcessingMultiplier = mc.BatchProcessingMultiplier,
                 SupportsBatchProcessing = mc.SupportsBatchProcessing,
                 CostPerSearchUnit = mc.CostPerSearchUnit,
@@ -584,11 +593,13 @@ namespace ConduitLLM.Admin.Services
         private string GenerateCsvExport(List<ModelCost> modelCosts)
         {
             var csv = new StringBuilder();
-            csv.AppendLine("Cost Name,Input Cost (per million tokens),Output Cost (per million tokens),Embedding Cost (per million tokens),Image Cost (per image),Audio Cost (per minute),Audio Cost (per 1K chars),Audio Input Cost (per minute),Audio Output Cost (per minute),Video Cost (per second),Video Resolution Multipliers,Batch Processing Multiplier,Supports Batch Processing,Search Unit Cost (per 1K units),Inference Step Cost,Default Inference Steps");
+            csv.AppendLine("Cost Name,Pricing Model,Pricing Configuration,Input Cost (per million tokens),Output Cost (per million tokens),Embedding Cost (per million tokens),Image Cost (per image),Audio Cost (per minute),Audio Cost (per 1K chars),Audio Input Cost (per minute),Audio Output Cost (per minute),Video Cost (per second),Video Resolution Multipliers,Image Resolution Multipliers,Batch Processing Multiplier,Supports Batch Processing,Search Unit Cost (per 1K units),Inference Step Cost,Default Inference Steps");
 
             foreach (var modelCost in modelCosts.OrderBy(mc => mc.CostName))
             {
                 csv.AppendLine($"{EscapeCsvValue(modelCost.CostName)}," +
+                    $"{modelCost.PricingModel}," +
+                    $"{EscapeCsvValue(modelCost.PricingConfiguration ?? "")}," +
                     $"{modelCost.InputCostPerMillionTokens:F6}," +
                     $"{modelCost.OutputCostPerMillionTokens:F6}," +
                     $"{(modelCost.EmbeddingCostPerMillionTokens.HasValue ? modelCost.EmbeddingCostPerMillionTokens.Value.ToString("F6") : "")}," +
@@ -599,6 +610,7 @@ namespace ConduitLLM.Admin.Services
                     $"{(modelCost.AudioOutputCostPerMinute?.ToString("F4") ?? "")}," +
                     $"{(modelCost.VideoCostPerSecond?.ToString("F4") ?? "")}," +
                     $"{EscapeCsvValue(modelCost.VideoResolutionMultipliers ?? "")}," +
+                    $"{EscapeCsvValue(modelCost.ImageResolutionMultipliers ?? "")}," +
                     $"{(modelCost.BatchProcessingMultiplier?.ToString("F4") ?? "")}," +
                     $"{(modelCost.SupportsBatchProcessing ? "Yes" : "No")}," +
                     $"{(modelCost.CostPerSearchUnit?.ToString("F6") ?? "")}," +
@@ -619,6 +631,8 @@ namespace ConduitLLM.Admin.Services
                 return importData.Select(d => new CreateModelCostDto
                 {
                     CostName = d.CostName,
+                    PricingModel = d.PricingModel,
+                    PricingConfiguration = d.PricingConfiguration,
                     InputCostPerMillionTokens = d.InputCostPerMillionTokens,
                     OutputCostPerMillionTokens = d.OutputCostPerMillionTokens,
                     EmbeddingCostPerMillionTokens = d.EmbeddingCostPerMillionTokens,
@@ -629,6 +643,7 @@ namespace ConduitLLM.Admin.Services
                     AudioOutputCostPerMinute = d.AudioOutputCostPerMinute,
                     VideoCostPerSecond = d.VideoCostPerSecond,
                     VideoResolutionMultipliers = d.VideoResolutionMultipliers,
+                    ImageResolutionMultipliers = d.ImageResolutionMultipliers,
                     BatchProcessingMultiplier = d.BatchProcessingMultiplier,
                     SupportsBatchProcessing = d.SupportsBatchProcessing,
                     CostPerSearchUnit = d.CostPerSearchUnit,
@@ -668,21 +683,24 @@ namespace ConduitLLM.Admin.Services
                     var modelCost = new CreateModelCostDto
                     {
                         CostName = UnescapeCsvValue(parts[0]),
-                        InputCostPerMillionTokens = decimal.TryParse(parts[1], out var inputCost) ? inputCost : 0,
-                        OutputCostPerMillionTokens = decimal.TryParse(parts[2], out var outputCost) ? outputCost : 0,
-                        EmbeddingCostPerMillionTokens = decimal.TryParse(parts[3], out var embeddingCost) ? embeddingCost : null,
-                        ImageCostPerImage = decimal.TryParse(parts[4], out var imageCost) ? imageCost : null,
-                        AudioCostPerMinute = decimal.TryParse(parts[5], out var audioCost) ? audioCost : null,
-                        AudioCostPerKCharacters = decimal.TryParse(parts[6], out var audioKCharCost) ? audioKCharCost : null,
-                        AudioInputCostPerMinute = decimal.TryParse(parts[7], out var audioInputCost) ? audioInputCost : null,
-                        AudioOutputCostPerMinute = decimal.TryParse(parts[8], out var audioOutputCost) ? audioOutputCost : null,
-                        VideoCostPerSecond = decimal.TryParse(parts[9], out var videoCost) ? videoCost : null,
-                        VideoResolutionMultipliers = parts.Length > 10 ? UnescapeCsvValue(parts[10]) : null,
-                        BatchProcessingMultiplier = parts.Length > 11 && decimal.TryParse(parts[11], out var batchMultiplier) ? batchMultiplier : null,
-                        SupportsBatchProcessing = parts.Length > 12 && (parts[12].Trim().ToLower() == "yes" || parts[12].Trim().ToLower() == "true"),
-                        CostPerSearchUnit = parts.Length > 13 && decimal.TryParse(parts[13], out var searchUnitCost) ? searchUnitCost : null,
-                        CostPerInferenceStep = parts.Length > 14 && decimal.TryParse(parts[14], out var inferenceStepCost) ? inferenceStepCost : null,
-                        DefaultInferenceSteps = parts.Length > 15 && int.TryParse(parts[15], out var defaultSteps) ? defaultSteps : null
+                        PricingModel = parts.Length > 1 && Enum.TryParse<PricingModel>(parts[1], out var pricingModel) ? pricingModel : PricingModel.Standard,
+                        PricingConfiguration = parts.Length > 2 ? UnescapeCsvValue(parts[2]) : null,
+                        InputCostPerMillionTokens = parts.Length > 3 && decimal.TryParse(parts[3], out var inputCost) ? inputCost : 0,
+                        OutputCostPerMillionTokens = parts.Length > 4 && decimal.TryParse(parts[4], out var outputCost) ? outputCost : 0,
+                        EmbeddingCostPerMillionTokens = parts.Length > 5 && decimal.TryParse(parts[5], out var embeddingCost) ? embeddingCost : null,
+                        ImageCostPerImage = parts.Length > 6 && decimal.TryParse(parts[6], out var imageCost) ? imageCost : null,
+                        AudioCostPerMinute = parts.Length > 7 && decimal.TryParse(parts[7], out var audioCost) ? audioCost : null,
+                        AudioCostPerKCharacters = parts.Length > 8 && decimal.TryParse(parts[8], out var audioKCharCost) ? audioKCharCost : null,
+                        AudioInputCostPerMinute = parts.Length > 9 && decimal.TryParse(parts[9], out var audioInputCost) ? audioInputCost : null,
+                        AudioOutputCostPerMinute = parts.Length > 10 && decimal.TryParse(parts[10], out var audioOutputCost) ? audioOutputCost : null,
+                        VideoCostPerSecond = parts.Length > 11 && decimal.TryParse(parts[11], out var videoCost) ? videoCost : null,
+                        VideoResolutionMultipliers = parts.Length > 12 ? UnescapeCsvValue(parts[12]) : null,
+                        ImageResolutionMultipliers = parts.Length > 13 ? UnescapeCsvValue(parts[13]) : null,
+                        BatchProcessingMultiplier = parts.Length > 14 && decimal.TryParse(parts[14], out var batchMultiplier) ? batchMultiplier : null,
+                        SupportsBatchProcessing = parts.Length > 15 && (parts[15].Trim().ToLower() == "yes" || parts[15].Trim().ToLower() == "true"),
+                        CostPerSearchUnit = parts.Length > 16 && decimal.TryParse(parts[16], out var searchUnitCost) ? searchUnitCost : null,
+                        CostPerInferenceStep = parts.Length > 17 && decimal.TryParse(parts[17], out var inferenceStepCost) ? inferenceStepCost : null,
+                        DefaultInferenceSteps = parts.Length > 18 && int.TryParse(parts[18], out var defaultSteps) ? defaultSteps : null
                     };
 
                     modelCosts.Add(modelCost);

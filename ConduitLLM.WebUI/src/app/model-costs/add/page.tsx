@@ -32,14 +32,15 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useModelCostsApi } from '../hooks/useModelCostsApi';
-import { CreateModelCostDto } from '../types/modelCost';
+import { CreateModelCostDto, ModelType } from '@knn_labs/conduit-admin-client';
+import { getModelTypeSelectOptions } from '@/lib/constants/modelTypes';
 import { formatters } from '@/lib/utils/formatters';
 import { ModelMappingSelector } from '../components/ModelMappingSelector';
 
 interface FormValues {
   costName: string;
   modelProviderMappingIds: number[];
-  modelType: 'chat' | 'embedding' | 'image' | 'audio' | 'video';
+  modelType: ModelType;
   // Token-based costs (per million tokens)
   inputCostPerMillion: number;
   outputCostPerMillion: number;
@@ -76,7 +77,7 @@ export default function AddModelCostPage() {
     initialValues: {
       costName: '',
       modelProviderMappingIds: [],
-      modelType: 'chat',
+      modelType: ModelType.Chat,
       inputCostPerMillion: 0,
       outputCostPerMillion: 0,
       cachedInputCostPerMillion: 0,
@@ -239,13 +240,7 @@ export default function AddModelCostPage() {
 
                   <Select
                     label="Model Type"
-                    data={[
-                      { value: 'chat', label: 'Chat / Completion' },
-                      { value: 'embedding', label: 'Embedding' },
-                      { value: 'image', label: 'Image Generation' },
-                      { value: 'audio', label: 'Audio (Speech/Transcription)' },
-                      { value: 'video', label: 'Video Generation' },
-                    ]}
+                    data={getModelTypeSelectOptions()}
                     required
                     {...form.getInputProps('modelType')}
                   />
@@ -287,7 +282,7 @@ export default function AddModelCostPage() {
           {/* Right Column - Pricing Configuration */}
           <Grid.Col span={{ base: 12, lg: 6 }}>
             <Accordion variant="contained" defaultValue="basic">
-              {(modelType === 'chat' || modelType === 'embedding') && (
+              {(modelType === ModelType.Chat || modelType === ModelType.Embedding) && (
                 <>
                   <Accordion.Item value="basic">
                     <Accordion.Control icon={<IconCurrencyDollar size={20} />}>
@@ -295,7 +290,7 @@ export default function AddModelCostPage() {
                     </Accordion.Control>
                     <Accordion.Panel>
                       <Stack gap="sm">
-                        {modelType === 'chat' && (
+                        {modelType === ModelType.Chat && (
                           <Group grow>
                             <NumberInput
                               label="Input Cost (per million tokens)"
@@ -317,7 +312,7 @@ export default function AddModelCostPage() {
                             />
                           </Group>
                         )}
-                        {modelType === 'embedding' && (
+                        {modelType === ModelType.Embedding && (
                           <NumberInput
                             label="Embedding Cost (per million tokens)"
                             placeholder="1.00"
@@ -332,7 +327,7 @@ export default function AddModelCostPage() {
                     </Accordion.Panel>
                   </Accordion.Item>
 
-                  {modelType === 'chat' && (
+                  {modelType === ModelType.Chat && (
                     <Accordion.Item value="caching">
                       <Accordion.Control icon={<IconDatabase size={20} />}>
                         Prompt Caching
@@ -371,7 +366,7 @@ export default function AddModelCostPage() {
                 </>
               )}
 
-              {modelType === 'image' && (
+              {modelType === ModelType.Image && (
                 <Accordion.Item value="basic">
                   <Accordion.Control icon={<IconCurrencyDollar size={20} />}>
                     Image Generation Pricing
@@ -402,7 +397,7 @@ export default function AddModelCostPage() {
                 </Accordion.Item>
               )}
 
-              {modelType === 'audio' && (
+              {modelType === ModelType.Audio && (
                 <Accordion.Item value="basic">
                   <Accordion.Control icon={<IconCurrencyDollar size={20} />}>
                     Audio Pricing
@@ -456,7 +451,7 @@ export default function AddModelCostPage() {
                 </Accordion.Item>
               )}
 
-              {modelType === 'video' && (
+              {modelType === ModelType.Video && (
                 <Accordion.Item value="basic">
                   <Accordion.Control icon={<IconCurrencyDollar size={20} />}>
                     Video Generation Pricing

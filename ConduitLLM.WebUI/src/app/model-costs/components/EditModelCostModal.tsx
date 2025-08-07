@@ -25,11 +25,11 @@ import {
 } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useModelCostsApi } from '../hooks/useModelCostsApi';
-import { ModelCost, UpdateModelCostDto } from '../types/modelCost';
+import { ModelCostDto, UpdateModelCostDto, type ModelProviderMappingDto, ModelType } from '@knn_labs/conduit-admin-client';
+import { getModelTypeSelectOptions } from '@/lib/constants/modelTypes';
 import { formatters } from '@/lib/utils/formatters';
 import { ModelMappingSelector } from './ModelMappingSelector';
 import { useModelMappings } from '@/hooks/useModelMappingsApi';
-import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 
 // Extended type to include additional fields from API response
 interface ExtendedModelProviderMappingDto extends ModelProviderMappingDto {
@@ -38,7 +38,7 @@ interface ExtendedModelProviderMappingDto extends ModelProviderMappingDto {
 
 interface EditModelCostModalProps {
   isOpen: boolean;
-  modelCost: ModelCost;
+  modelCost: ModelCostDto;
   onClose: () => void;
   onSuccess?: () => void;
 }
@@ -46,7 +46,7 @@ interface EditModelCostModalProps {
 interface FormValues {
   costName: string;
   modelProviderMappingIds: number[];
-  modelType: 'chat' | 'embedding' | 'image' | 'audio' | 'video';
+  modelType: ModelType;
   // Token-based costs (per million tokens)
   inputCostPerMillion: number;
   outputCostPerMillion: number;
@@ -82,13 +82,14 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
 
   // Find mapping IDs from associated model aliases
   const getMappingIds = (): number[] => {
-    if (!modelCost.associatedModelAliases || modelCost.associatedModelAliases.length === 0) {
+    const aliases = modelCost.associatedModelAliases;
+    if (!aliases || aliases.length === 0) {
       return [];
     }
     // Match aliases to mapping IDs
     const extendedMappings = mappings as ExtendedModelProviderMappingDto[];
     return extendedMappings
-      .filter(m => m?.modelAlias && modelCost.associatedModelAliases.includes(m.modelAlias))
+      .filter(m => m?.modelAlias && aliases.includes(m.modelAlias))
       .map(m => m.id);
   };
 
@@ -98,26 +99,26 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
     modelProviderMappingIds: getMappingIds(),
     modelType: modelCost.modelType,
     // Token costs are already per million tokens
-    inputCostPerMillion: modelCost.inputCostPerMillionTokens ?? 0,
-    outputCostPerMillion: modelCost.outputCostPerMillionTokens ?? 0,
-    cachedInputCostPerMillion: modelCost.cachedInputCostPerMillionTokens ?? 0,
-    cachedInputWriteCostPerMillion: modelCost.cachedInputWriteCostPerMillionTokens ?? 0,
-    embeddingCostPerMillion: modelCost.embeddingCostPerMillionTokens ?? 0,
-    searchUnitCostPer1K: modelCost.costPerSearchUnit ?? 0,
-    inferenceStepCost: modelCost.costPerInferenceStep ?? 0,
-    defaultInferenceSteps: modelCost.defaultInferenceSteps ?? 0,
-    imageCostPerImage: modelCost.imageCostPerImage ?? 0,
-    audioCostPerMinute: modelCost.audioCostPerMinute ?? 0,
-    audioCostPerKCharacters: modelCost.audioCostPerKCharacters ?? 0,
-    audioInputCostPerMinute: modelCost.audioInputCostPerMinute ?? 0,
-    audioOutputCostPerMinute: modelCost.audioOutputCostPerMinute ?? 0,
-    videoCostPerSecond: modelCost.videoCostPerSecond ?? 0,
-    videoResolutionMultipliers: modelCost.videoResolutionMultipliers ?? '',
-    supportsBatchProcessing: modelCost.supportsBatchProcessing ?? false,
-    batchProcessingMultiplier: modelCost.batchProcessingMultiplier ?? 0.5,
-    imageQualityMultipliers: modelCost.imageQualityMultipliers ?? '',
+    inputCostPerMillion: (modelCost.inputCostPerMillionTokens) ?? 0,
+    outputCostPerMillion: (modelCost.outputCostPerMillionTokens) ?? 0,
+    cachedInputCostPerMillion: (modelCost.cachedInputCostPerMillionTokens as number) ?? 0,
+    cachedInputWriteCostPerMillion: (modelCost.cachedInputWriteCostPerMillionTokens as number) ?? 0,
+    embeddingCostPerMillion: (modelCost.embeddingCostPerMillionTokens as number) ?? 0,
+    searchUnitCostPer1K: (modelCost.costPerSearchUnit as number) ?? 0,
+    inferenceStepCost: (modelCost.costPerInferenceStep as number) ?? 0,
+    defaultInferenceSteps: (modelCost.defaultInferenceSteps as number) ?? 0,
+    imageCostPerImage: (modelCost.imageCostPerImage as number) ?? 0,
+    audioCostPerMinute: (modelCost.audioCostPerMinute as number) ?? 0,
+    audioCostPerKCharacters: (modelCost.audioCostPerKCharacters as number) ?? 0,
+    audioInputCostPerMinute: (modelCost.audioInputCostPerMinute as number) ?? 0,
+    audioOutputCostPerMinute: (modelCost.audioOutputCostPerMinute as number) ?? 0,
+    videoCostPerSecond: (modelCost.videoCostPerSecond as number) ?? 0,
+    videoResolutionMultipliers: (modelCost.videoResolutionMultipliers as string) ?? '',
+    supportsBatchProcessing: (modelCost.supportsBatchProcessing) ?? false,
+    batchProcessingMultiplier: (modelCost.batchProcessingMultiplier as number) ?? 0.5,
+    imageQualityMultipliers: (modelCost.imageQualityMultipliers as string) ?? '',
     priority: modelCost.priority,
-    description: modelCost.description ?? '',
+    description: (modelCost.description as string) ?? '',
     isActive: modelCost.isActive,
   };
 
@@ -296,20 +297,14 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
 
           <Select
             label="Model Type"
-            data={[
-              { value: 'chat', label: 'Chat / Completion' },
-              { value: 'embedding', label: 'Embedding' },
-              { value: 'image', label: 'Image Generation' },
-              { value: 'audio', label: 'Audio (Speech/Transcription)' },
-              { value: 'video', label: 'Video Generation' },
-            ]}
+            data={getModelTypeSelectOptions()}
             required
             disabled
             {...form.getInputProps('modelType')}
           />
 
           <Accordion variant="contained" defaultValue="basic">
-            {(modelType === 'chat' || modelType === 'embedding') && (
+            {(modelType === ModelType.Chat || modelType === ModelType.Embedding) && (
               <>
                 <Accordion.Item value="basic">
                   <Accordion.Control icon={<IconCurrencyDollar size={20} />}>
@@ -317,7 +312,7 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
                   </Accordion.Control>
                   <Accordion.Panel>
                     <Stack gap="sm">
-                      {modelType === 'chat' && (
+                      {modelType === ModelType.Chat && (
                         <Group grow>
                           <NumberInput
                             label="Input Cost (per million tokens)"
@@ -339,7 +334,7 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
                           />
                         </Group>
                       )}
-                      {modelType === 'embedding' && (
+                      {modelType === ModelType.Embedding && (
                         <NumberInput
                           label="Embedding Cost (per million tokens)"
                           placeholder="1.00"
@@ -354,7 +349,7 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
                   </Accordion.Panel>
                 </Accordion.Item>
 
-                {modelType === 'chat' && (
+                {modelType === ModelType.Chat && (
                   <Accordion.Item value="caching">
                     <Accordion.Control icon={<IconDatabase size={20} />}>
                       Prompt Caching
@@ -393,7 +388,7 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
               </>
             )}
 
-            {modelType === 'image' && (
+            {modelType === ModelType.Image && (
               <Accordion.Item value="basic">
                 <Accordion.Control icon={<IconCurrencyDollar size={20} />}>
                   Image Generation Pricing
@@ -424,7 +419,7 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
               </Accordion.Item>
             )}
 
-            {modelType === 'audio' && (
+            {modelType === ModelType.Audio && (
               <Accordion.Item value="basic">
                 <Accordion.Control icon={<IconCurrencyDollar size={20} />}>
                   Audio Pricing
@@ -478,7 +473,7 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
               </Accordion.Item>
             )}
 
-            {modelType === 'video' && (
+            {modelType === ModelType.Video && (
               <Accordion.Item value="basic">
                 <Accordion.Control icon={<IconCurrencyDollar size={20} />}>
                   Video Generation Pricing

@@ -11,12 +11,15 @@ export * from './models/common';
 export * from './models/virtualKey';
 export * from './models/provider';
 export * from './models/providerType';
+export * from './models/modelType';
+export * from './models/providerConfiguration';
 export * from './models/providerModels';
 export * from './models/settings';
 export * from './models/ipFilter';
 export * from './models/media';
 // Re-export modelCost types except CostTrend (conflicts with analytics)
 export {
+  PricingModel,
   ModelCost,
   ModelCostDto,
   CreateModelCostDto,

@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ConduitLLM.Configuration.Migrations
 {
     [DbContext(typeof(ConduitDbContext))]
-    [Migration("20250806224731_InitialCreateWithPerMillionCosts")]
-    partial class InitialCreateWithPerMillionCosts
+    [Migration("20250807010444_InitialPolymorphicPricing")]
+    partial class InitialPolymorphicPricing
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -937,6 +937,9 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<string>("ImageQualityMultipliers")
                         .HasColumnType("text");
 
+                    b.Property<string>("ImageResolutionMultipliers")
+                        .HasColumnType("text");
+
                     b.Property<decimal>("InputCostPerMillionTokens")
                         .HasColumnType("decimal(18, 10)");
 
@@ -950,6 +953,12 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.Property<decimal>("OutputCostPerMillionTokens")
                         .HasColumnType("decimal(18, 10)");
+
+                    b.Property<string>("PricingConfiguration")
+                        .HasColumnType("text");
+
+                    b.Property<int>("PricingModel")
+                        .HasColumnType("integer");
 
                     b.Property<int>("Priority")
                         .HasColumnType("integer");

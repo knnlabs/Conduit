@@ -1,13 +1,26 @@
 import { FilterOptions } from './common';
 import type { ModelConfigMetadata } from './metadata';
 import { ProviderType } from './providerType';
+import { ModelType } from './modelType';
+
+/** Pricing model type that determines how costs are calculated */
+export enum PricingModel {
+  Standard = 0,
+  PerVideo = 1,
+  PerSecondVideo = 2,
+  InferenceSteps = 3,
+  TieredTokens = 4,
+  PerImage = 5,
+  PerMinuteAudio = 6,
+  PerThousandCharacters = 7
+}
 
 /** @deprecated Use ModelCostDto instead - pattern matching has been removed */
 export interface ModelCost {
   id: number;
   modelIdPattern: string; // @deprecated - no longer used
   providerType: ProviderType; // @deprecated - costs are now mapped to specific models
-  modelType: 'chat' | 'embedding' | 'image' | 'audio' | 'video';
+  modelType: ModelType;
   inputCostPerMillionTokens?: number;
   outputCostPerMillionTokens?: number;
   costPerRequest?: number;
@@ -36,7 +49,9 @@ export interface ModelCostDto {
   id: number;
   costName: string; // User-friendly name like "GPT-4 Standard Pricing"
   associatedModelAliases: string[]; // Model aliases using this cost
-  modelType: 'chat' | 'embedding' | 'image' | 'audio' | 'video';
+  pricingModel: PricingModel; // The pricing model type
+  pricingConfiguration?: string; // JSON configuration for polymorphic pricing
+  modelType: ModelType;
   inputCostPerMillionTokens: number; // Cost per million tokens in USD
   outputCostPerMillionTokens: number; // Cost per million tokens in USD
   embeddingCostPerMillionTokens?: number; // Cost per million tokens in USD
@@ -47,6 +62,7 @@ export interface ModelCostDto {
   audioOutputCostPerMinute?: number;
   videoCostPerSecond?: number;
   videoResolutionMultipliers?: string; // JSON string
+  imageResolutionMultipliers?: string; // JSON string for image resolution multipliers
   isActive: boolean;
   priority: number;
   effectiveDate: string;
@@ -69,7 +85,9 @@ export interface ModelCostDto {
 export interface CreateModelCostDto {
   costName: string; // Required: User-friendly name
   modelProviderMappingIds: number[]; // IDs of ModelProviderMapping entities
-  modelType?: string; // Default: "chat"
+  pricingModel?: PricingModel; // Default: Standard
+  pricingConfiguration?: string; // JSON configuration for polymorphic pricing
+  modelType?: ModelType; // Default: ModelType.Chat
   priority?: number; // Default: 0
   description?: string;
   inputCostPerMillionTokens: number; // Cost per million tokens in USD
@@ -82,6 +100,7 @@ export interface CreateModelCostDto {
   audioOutputCostPerMinute?: number;
   videoCostPerSecond?: number;
   videoResolutionMultipliers?: string; // JSON string
+  imageResolutionMultipliers?: string; // JSON string for image resolution multipliers
   // Phase 1 fields
   batchProcessingMultiplier?: number;
   supportsBatchProcessing?: boolean;
@@ -98,7 +117,9 @@ export interface UpdateModelCostDto {
   id: number; // Required for update
   costName: string; // Required: User-friendly name
   modelProviderMappingIds: number[]; // IDs of ModelProviderMapping entities
-  modelType?: string;
+  pricingModel?: PricingModel;
+  pricingConfiguration?: string; // JSON configuration for polymorphic pricing
+  modelType?: ModelType;
   priority?: number;
   description?: string;
   isActive?: boolean;
@@ -112,6 +133,7 @@ export interface UpdateModelCostDto {
   audioOutputCostPerMinute?: number;
   videoCostPerSecond?: number;
   videoResolutionMultipliers?: string; // JSON string
+  imageResolutionMultipliers?: string; // JSON string for image resolution multipliers
   // Phase 1 fields
   batchProcessingMultiplier?: number;
   supportsBatchProcessing?: boolean;
@@ -236,7 +258,7 @@ export interface ModelCostComparison {
 export interface ModelCostOverview {
   modelName: string;
   providerType: ProviderType;
-  modelType: string;
+  modelType: ModelType;
   totalRequests: number;
   totalTokens: number;
   totalCost: number;

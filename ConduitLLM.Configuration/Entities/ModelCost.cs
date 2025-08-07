@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -34,6 +35,31 @@ public class ModelCost
     public string CostName { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets the pricing model type that determines how costs are calculated.
+    /// </summary>
+    /// <remarks>
+    /// This field determines which pricing strategy to use for cost calculation.
+    /// Different providers use different pricing models (per-token, per-video, per-step, etc.).
+    /// Defaults to Standard (token-based) for backward compatibility.
+    /// </remarks>
+    [Required]
+    public PricingModel PricingModel { get; set; } = PricingModel.Standard;
+
+    /// <summary>
+    /// Gets or sets the JSON configuration for complex pricing models.
+    /// </summary>
+    /// <remarks>
+    /// Contains model-specific pricing configuration based on PricingModel:
+    /// - PerVideo: {"rates": {"512p_6": 0.10, "720p_10": 0.15}}
+    /// - PerSecondVideo: {"baseRate": 0.09, "resolutionMultipliers": {"720p": 1.0}}
+    /// - InferenceSteps: {"costPerStep": 0.00013, "defaultSteps": 30}
+    /// - TieredTokens: {"tiers": [{"maxContext": 200000, "inputCost": 400}]}
+    /// Null for Standard pricing model which uses direct fields.
+    /// </remarks>
+    [Column(TypeName = "text")]
+    public string? PricingConfiguration { get; set; }
+
+    /// <summary>
     /// Gets or sets the cost per million input tokens for chat/completion requests.
     /// </summary>
     /// <remarks>
@@ -41,6 +67,7 @@ public class ModelCost
     /// This format aligns with industry standard pricing from providers like Anthropic and OpenAI.
     /// Example: 15.00 means $15 per million input tokens.
     /// Stored with high precision (decimal 18,10) to accommodate fractional costs.
+    /// Used primarily when PricingModel is Standard.
     /// </remarks>
     [Column(TypeName = "decimal(18, 10)")]
     public decimal InputCostPerMillionTokens { get; set; } = 0;
@@ -252,6 +279,17 @@ public class ModelCost
     /// Stored as JSON text in the database.
     /// </remarks>
     public string? ImageQualityMultipliers { get; set; }
+
+    /// <summary>
+    /// Gets or sets the resolution-based cost multipliers for image generation.
+    /// </summary>
+    /// <remarks>
+    /// JSON object containing resolution-to-multiplier mappings.
+    /// Example: {"1024x1024": 1.0, "1792x1024": 1.5, "1024x1792": 1.5}
+    /// The base ImageCostPerImage is multiplied by these values based on the requested resolution.
+    /// Stored as JSON text in the database.
+    /// </remarks>
+    public string? ImageResolutionMultipliers { get; set; }
 
     /// <summary>
     /// Gets or sets the cost per million cached input tokens for prompt caching, if applicable.

@@ -934,6 +934,9 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<string>("ImageQualityMultipliers")
                         .HasColumnType("text");
 
+                    b.Property<string>("ImageResolutionMultipliers")
+                        .HasColumnType("text");
+
                     b.Property<decimal>("InputCostPerMillionTokens")
                         .HasColumnType("decimal(18, 10)");
 
@@ -947,6 +950,12 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.Property<decimal>("OutputCostPerMillionTokens")
                         .HasColumnType("decimal(18, 10)");
+
+                    b.Property<string>("PricingConfiguration")
+                        .HasColumnType("text");
+
+                    b.Property<int>("PricingModel")
+                        .HasColumnType("integer");
 
                     b.Property<int>("Priority")
                         .HasColumnType("integer");

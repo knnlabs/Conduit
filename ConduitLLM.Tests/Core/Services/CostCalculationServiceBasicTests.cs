@@ -447,7 +447,8 @@ namespace ConduitLLM.Tests.Core.Services
             await _service.CalculateCostAsync(modelId, usage);
 
             // Assert
-            _loggerMock.VerifyLog(LogLevel.Debug, "Calculated cost");
+            // With polymorphic pricing, we now log twice - once in the specific calculation method and once in the main method
+            _loggerMock.VerifyLog(LogLevel.Debug, "Calculated cost", Times.Exactly(2));
         }
 
         [Fact]

@@ -68,7 +68,7 @@ export default function ModelCostsPage() {
             </Button>
             <Button
               leftSection={<IconPlus size={16} />}
-              onClick={() => router.push('/model-costs/add')}
+              onClick={() => router.push('/model-costs/add-v2')}
             >
               Add Pricing
             </Button>
