@@ -14,9 +14,9 @@ export async function GET(request: NextRequest) {
     const adminClient = getServerAdminClient();
     const data = await adminClient.media.searchMedia(pattern);
     
-    return NextResponse.json(data);
+    return NextResponse.json(data ?? []);
   } catch (error) {
-    console.error('Error searching media:', error);
+    console.warn('Error searching media:', error);
     return handleSDKError(error);
   }
 }

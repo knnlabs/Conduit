@@ -14,9 +14,9 @@ export async function GET(request: NextRequest) {
     const adminClient = getServerAdminClient();
     const data = await adminClient.media.getMediaByVirtualKey(parseInt(virtualKeyId, 10));
     
-    return NextResponse.json(data);
+    return NextResponse.json(data ?? []);
   } catch (error) {
-    console.error('Error fetching media:', error);
+    console.warn('Error fetching media:', error);
     return handleSDKError(error);
   }
 }
@@ -35,7 +35,7 @@ export async function DELETE(request: NextRequest) {
     
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error deleting media:', error);
+    console.warn('Error deleting media:', error);
     return handleSDKError(error);
   }
 }

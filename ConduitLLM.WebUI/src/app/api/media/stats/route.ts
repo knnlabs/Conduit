@@ -22,9 +22,9 @@ export async function GET(request: NextRequest) {
       data = await adminClient.media.getMediaStats('overall');
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(data ?? {});
   } catch (error) {
-    console.error('Error fetching media stats:', error);
+    console.warn('Error fetching media stats:', error);
     return handleSDKError(error);
   }
 }
