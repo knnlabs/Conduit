@@ -194,7 +194,12 @@ public static class ServiceCollectionExtensions
 
         // Register Media Lifecycle Service (optional - for virtual key cleanup)
         // Only register if we have a media storage service configured
-        var storageProvider = configuration.GetValue<string>("ConduitLLM:Storage:Provider");
+        // Check both configuration key and environment variable (same as Core API)
+        var configProvider = configuration.GetValue<string>("ConduitLLM:Storage:Provider");
+        var configEnvVar = configuration.GetValue<string>("CONDUIT_MEDIA_STORAGE_TYPE");
+        var directEnvVar = Environment.GetEnvironmentVariable("CONDUIT_MEDIA_STORAGE_TYPE");
+        
+        var storageProvider = configProvider ?? configEnvVar ?? directEnvVar;
         if (!string.IsNullOrEmpty(storageProvider))
         {
             services.Configure<ConduitLLM.Core.Services.MediaManagementOptions>(

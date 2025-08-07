@@ -292,7 +292,7 @@ namespace ConduitLLM.Http.Controllers
                                     {
                                         ContentType = contentType,
                                         SizeBytes = storageResult.SizeBytes,
-                                        Provider = mapping?.ProviderId.ToString() ?? "unknown",
+                                        Provider = mapping?.Provider?.ProviderType.ToString() ?? "unknown",
                                         Model = request.Model ?? "unknown",
                                         Prompt = request.Prompt,
                                         StorageUrl = storageResult.Url,

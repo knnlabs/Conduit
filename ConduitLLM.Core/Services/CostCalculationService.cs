@@ -148,7 +148,7 @@ public class CostCalculationService : ICostCalculationService
         return calculatedCost;
     }
 
-    private async Task<decimal> CalculateStandardCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
+    private Task<decimal> CalculateStandardCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
     {
         decimal calculatedCost = 0m;
 
@@ -267,7 +267,7 @@ public class CostCalculationService : ICostCalculationService
         _logger.LogDebug("Calculated cost for model {ModelId} with usage (Prompt: {PromptTokens}, Completion: {CompletionTokens}, CachedInput: {CachedInputTokens}, CachedWrite: {CachedWriteTokens}, Images: {ImageCount}, Video: {VideoDuration}s, SearchUnits: {SearchUnits}, InferenceSteps: {InferenceSteps}, IsBatch: {IsBatch}) is {CalculatedCost}",
             modelId, usage.PromptTokens, usage.CompletionTokens, usage.CachedInputTokens ?? 0, usage.CachedWriteTokens ?? 0, usage.ImageCount ?? 0, usage.VideoDurationSeconds ?? 0, usage.SearchUnits ?? 0, usage.InferenceSteps ?? 0, usage.IsBatch ?? false, calculatedCost);
 
-        return calculatedCost;
+        return Task.FromResult(calculatedCost);
     }
 
     /// <inheritdoc />
@@ -559,12 +559,12 @@ public class CostCalculationService : ICostCalculationService
         return messages;
     }
 
-    private async Task<decimal> CalculatePerVideoCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
+    private Task<decimal> CalculatePerVideoCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
     {
         if (!usage.VideoDurationSeconds.HasValue || string.IsNullOrEmpty(usage.VideoResolution))
         {
             _logger.LogDebug("No video usage data for per-video pricing model {ModelId}", modelId);
-            return 0m;
+            return Task.FromResult(0m);
         }
 
         // Parse configuration or use pre-parsed
@@ -606,15 +606,15 @@ public class CostCalculationService : ICostCalculationService
         _logger.LogDebug("Per-video cost for model {ModelId}: {Resolution} {Duration}s = ${Cost}",
             modelId, usage.VideoResolution, duration, flatRate);
 
-        return flatRate;
+        return Task.FromResult(flatRate);
     }
 
-    private async Task<decimal> CalculatePerSecondVideoCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
+    private Task<decimal> CalculatePerSecondVideoCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
     {
         if (!usage.VideoDurationSeconds.HasValue)
         {
             _logger.LogDebug("No video duration for per-second video pricing model {ModelId}", modelId);
-            return 0m;
+            return Task.FromResult(0m);
         }
 
         // Parse configuration or use pre-parsed
@@ -656,10 +656,10 @@ public class CostCalculationService : ICostCalculationService
         _logger.LogDebug("Per-second video cost for model {ModelId}: {Duration}s × ${BaseRate} = ${Cost}",
             modelId, usage.VideoDurationSeconds.Value, config.BaseRate, baseCost);
 
-        return baseCost;
+        return Task.FromResult(baseCost);
     }
 
-    private async Task<decimal> CalculateInferenceStepsCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
+    private Task<decimal> CalculateInferenceStepsCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
     {
         // Parse configuration or use pre-parsed
         InferenceStepsPricingConfig? config = null;
@@ -691,7 +691,7 @@ public class CostCalculationService : ICostCalculationService
         if (steps <= 0)
         {
             _logger.LogDebug("No inference steps for model {ModelId}", modelId);
-            return 0m;
+            return Task.FromResult(0m);
         }
 
         var cost = steps * config.CostPerStep;
@@ -699,10 +699,10 @@ public class CostCalculationService : ICostCalculationService
         _logger.LogDebug("Inference steps cost for model {ModelId}: {Steps} steps × ${CostPerStep} = ${Cost}",
             modelId, steps, config.CostPerStep, cost);
 
-        return cost;
+        return Task.FromResult(cost);
     }
 
-    private async Task<decimal> CalculateTieredTokensCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
+    private Task<decimal> CalculateTieredTokensCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
     {
         // Parse configuration or use pre-parsed
         TieredTokensPricingConfig? config = null;
@@ -757,15 +757,15 @@ public class CostCalculationService : ICostCalculationService
             "Input: {InputTokens} × ${InputRate} + Output: {OutputTokens} × ${OutputRate} = ${TotalCost}",
             modelId, totalTokens, tier.MaxContext, inputTokens, tier.InputCost, outputTokens, tier.OutputCost, inputCost + outputCost);
 
-        return inputCost + outputCost;
+        return Task.FromResult(inputCost + outputCost);
     }
 
-    private async Task<decimal> CalculatePerImageCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
+    private Task<decimal> CalculatePerImageCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
     {
         if (!usage.ImageCount.HasValue || usage.ImageCount.Value <= 0)
         {
             _logger.LogDebug("No image count for per-image pricing model {ModelId}", modelId);
-            return 0m;
+            return Task.FromResult(0m);
         }
 
         // Parse configuration or use pre-parsed
@@ -816,7 +816,7 @@ public class CostCalculationService : ICostCalculationService
         _logger.LogDebug("Per-image cost for model {ModelId}: {Count} images × ${BaseRate} = ${Cost}",
             modelId, usage.ImageCount.Value, config.BaseRate, cost);
 
-        return cost;
+        return Task.FromResult(cost);
     }
 
     private async Task<decimal> CalculatePerMinuteAudioCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
