@@ -58,9 +58,22 @@ namespace ConduitLLM.Http.Controllers
                     });
                 }
 
-                // Create ephemeral key
+                // Get the actual virtual key value from claims
+                var virtualKey = HttpContext.User.FindFirst("VirtualKey")?.Value;
+                if (string.IsNullOrEmpty(virtualKey))
+                {
+                    _logger.LogWarning("Failed to extract virtual key from claims");
+                    return Unauthorized(new ProblemDetails
+                    {
+                        Title = "Unauthorized",
+                        Detail = "Virtual key not found in request context"
+                    });
+                }
+
+                // Create ephemeral key with the actual virtual key
                 var response = await _ephemeralKeyService.CreateEphemeralKeyAsync(
                     virtualKeyId, 
+                    virtualKey,
                     request?.Metadata);
 
                 _logger.LogInformation("Generated ephemeral key for virtual key {VirtualKeyId}", virtualKeyId);

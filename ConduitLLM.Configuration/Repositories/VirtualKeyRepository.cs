@@ -82,6 +82,7 @@ namespace ConduitLLM.Configuration.Repositories
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.VirtualKeys
                     .AsNoTracking()
+                    .Include(vk => vk.VirtualKeyGroup)
                     .FirstOrDefaultAsync(vk => vk.Id == id, cancellationToken);
             }
             catch (Exception ex)

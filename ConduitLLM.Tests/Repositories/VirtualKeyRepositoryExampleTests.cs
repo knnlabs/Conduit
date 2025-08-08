@@ -56,11 +56,23 @@ namespace ConduitLLM.Tests.Repositories
         public async Task GetByIdAsync_WithExistingKey_ShouldReturnKey()
         {
             // Arrange
+            // Create a VirtualKeyGroup first since GetByIdAsync now includes it
+            var keyGroup = new VirtualKeyGroup
+            {
+                GroupName = "Test Group",
+                Balance = 100.0m,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _context.VirtualKeyGroups.Add(keyGroup);
+            await _context.SaveChangesAsync();
+            
             var key = new VirtualKey
             {
                 KeyName = "Test Key",
                 KeyHash = "test-hash-123",
                 IsEnabled = true,
+                VirtualKeyGroupId = keyGroup.Id,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -75,6 +87,8 @@ namespace ConduitLLM.Tests.Repositories
             result!.Id.Should().Be(key.Id);
             result.KeyName.Should().Be("Test Key");
             result.KeyHash.Should().Be("test-hash-123");
+            result.VirtualKeyGroup.Should().NotBeNull();
+            result.VirtualKeyGroup!.Id.Should().Be(keyGroup.Id);
         }
 
         [Fact]

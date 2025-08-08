@@ -36,9 +36,10 @@ namespace ConduitLLM.Http.Authorization
             {
                 var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<RequireBalanceAttribute>>();
                 var virtualKeyService = context.HttpContext.RequestServices.GetRequiredService<IVirtualKeyService>();
-
-                // Get virtual key from claims
+                
+                // Get the virtual key claim - this now works for both regular and ephemeral keys
                 var virtualKeyClaim = context.HttpContext.User.FindFirst("VirtualKey");
+                
                 if (virtualKeyClaim == null)
                 {
                     logger.LogWarning("No virtual key claim found in authenticated user for balance check");
@@ -56,6 +57,7 @@ namespace ConduitLLM.Http.Authorization
                 }
                 
                 // Validate the virtual key with full balance check
+                // This works for both regular virtual keys and ephemeral keys (which now provide the real virtual key)
                 var keyEntity = await virtualKeyService.ValidateVirtualKeyAsync(virtualKey, requestedModel);
                 if (keyEntity == null)
                 {
@@ -77,8 +79,22 @@ namespace ConduitLLM.Http.Authorization
                 // Store validated key entity in HttpContext for potential use by controllers
                 context.HttpContext.Items["ValidatedVirtualKey"] = keyEntity;
                 
-                logger.LogDebug("Balance check passed for virtual key: {KeyName} (ID: {KeyId})", 
-                    keyEntity.KeyName?.Replace(Environment.NewLine, "") ?? "Unknown", keyEntity.Id);
+                // Check if this was originally an ephemeral key (for logging purposes)
+                var isEphemeralKey = context.HttpContext.Items.ContainsKey("IsEphemeralKey") && 
+                                    (bool)context.HttpContext.Items["IsEphemeralKey"]!;
+                
+                if (isEphemeralKey)
+                {
+                    logger.LogDebug("Balance check passed for ephemeral key using virtual key: {KeyName} (ID: {KeyId}), Balance: {Balance}", 
+                        keyEntity.KeyName?.Replace(Environment.NewLine, "") ?? "Unknown", 
+                        keyEntity.Id,
+                        keyEntity.VirtualKeyGroup?.Balance ?? 0);
+                }
+                else
+                {
+                    logger.LogDebug("Balance check passed for virtual key: {KeyName} (ID: {KeyId})", 
+                        keyEntity.KeyName?.Replace(Environment.NewLine, "") ?? "Unknown", keyEntity.Id);
+                }
             }
             catch (Exception ex)
             {

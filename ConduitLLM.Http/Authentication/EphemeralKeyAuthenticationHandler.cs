@@ -93,6 +93,14 @@ namespace ConduitLLM.Http.Authentication
                 Context.Items["DeleteEphemeralKey"] = true;
             }
 
+            // Retrieve the actual virtual key from the ephemeral key data
+            var actualVirtualKey = await _ephemeralKeyService.GetVirtualKeyAsync(ephemeralKey);
+            if (string.IsNullOrEmpty(actualVirtualKey))
+            {
+                Logger.LogError("Failed to retrieve virtual key for ephemeral key");
+                return AuthenticateResult.Fail("Failed to retrieve associated virtual key");
+            }
+
             // Get the virtual key details
             Logger.LogInformation("Looking up virtual key {VirtualKeyId} for ephemeral key validation", virtualKeyId.Value);
             var virtualKeyInfo = await _virtualKeyService.GetVirtualKeyInfoForValidationAsync(virtualKeyId.Value);
@@ -116,19 +124,22 @@ namespace ConduitLLM.Http.Authentication
                 return AuthenticateResult.Fail("Associated virtual key is inactive");
             }
 
-            // Store virtual key in context for middleware
-            Context.Items["VirtualKey"] = "ephemeral-key-proxy"; // We don't store the actual key for ephemeral
+            // Store the REAL virtual key in context - this makes ephemeral keys transparent to the rest of the system
+            Context.Items["VirtualKey"] = actualVirtualKey; // Use the real virtual key
             Context.Items["VirtualKeyId"] = virtualKeyInfo.Id;
             Context.Items["VirtualKeyName"] = virtualKeyInfo.KeyName;
-            Context.Items["AuthType"] = "EphemeralKey";
+            Context.Items["AuthType"] = "VirtualKey"; // Pretend this is regular virtual key auth
+            Context.Items["IsEphemeralKey"] = true; // Keep this for logging/auditing purposes
 
-            // Create claims
+            // Create claims that match regular virtual key authentication
             var claims = new[]
             {
                 new Claim(ClaimTypes.NameIdentifier, virtualKeyInfo.Id.ToString()),
                 new Claim("VirtualKeyId", virtualKeyInfo.Id.ToString()),
                 new Claim("VirtualKeyName", virtualKeyInfo.KeyName),
-                new Claim("AuthType", "EphemeralKey"),
+                new Claim("AuthType", "VirtualKey"), // Make it look like regular virtual key auth
+                // Use the REAL virtual key in the claim
+                new Claim("VirtualKey", actualVirtualKey),
                 // VirtualKey doesn't have IsAdmin, so we set it to false for ephemeral keys
                 new Claim("IsAdmin", "false"),
                 // VirtualKey doesn't have Permissions field directly

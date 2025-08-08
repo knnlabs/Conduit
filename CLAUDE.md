@@ -442,3 +442,4 @@ For comprehensive documentation on specific topics, see:
 - Optimized settings: 25 prefetch, 30 partitions, 50 concurrent messages
 - HTTP client connection pooling: 50 connections per server
 - Circuit breakers and rate limiting prevent overload
+- Don't run "npm run build" after making WebUI changes. That is not needed and will break the development container.

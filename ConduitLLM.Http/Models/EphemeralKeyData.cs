@@ -36,6 +36,12 @@ namespace ConduitLLM.Http.Models
         /// Optional metadata about the ephemeral key
         /// </summary>
         public EphemeralKeyMetadata? Metadata { get; set; }
+
+        /// <summary>
+        /// The encrypted virtual key value (base64 encoded)
+        /// This allows the ephemeral key to be converted back to a regular virtual key authentication
+        /// </summary>
+        public string? EncryptedVirtualKey { get; set; }
     }
 
     /// <summary>
