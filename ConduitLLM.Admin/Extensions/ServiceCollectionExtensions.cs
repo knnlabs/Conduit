@@ -49,6 +49,9 @@ public static class ServiceCollectionExtensions
         // Add memory cache if not already registered
         services.AddMemoryCache();
 
+        // Register Ephemeral Master Key Service
+        services.AddSingleton<IEphemeralMasterKeyService, EphemeralMasterKeyService>();
+
         // Add authentication with a custom scheme
         services.AddAuthentication("MasterKey")
             .AddScheme<MasterKeyAuthenticationSchemeOptions, MasterKeyAuthenticationHandler>("MasterKey", null);

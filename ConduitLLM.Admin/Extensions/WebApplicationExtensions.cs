@@ -23,6 +23,9 @@ public static class WebApplicationExtensions
         // Add unified security middleware (replaces AdminAuthenticationMiddleware)
         app.UseAdminSecurity();
 
+        // Add Ephemeral Master Key cleanup middleware
+        app.UseMiddleware<EphemeralMasterKeyCleanupMiddleware>();
+
         // Add HTTP metrics middleware
         app.UseMiddleware<AdminHttpMetricsMiddleware>();
 
