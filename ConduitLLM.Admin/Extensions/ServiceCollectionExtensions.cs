@@ -213,12 +213,21 @@ public static class ServiceCollectionExtensions
         {
             options.AddPolicy("AdminCorsPolicy", policy =>
             {
-                policy.WithOrigins(
-                        configuration.GetSection("AdminApi:AllowedOrigins").Get<string[]>() ??
-                        new[] { "http://localhost:5000", "https://localhost:5001" })
-                    .AllowAnyMethod()
-                    .AllowAnyHeader()
-                    .AllowCredentials(); // Required for SignalR
+                var allowedOrigins = configuration.GetSection("AdminApi:AllowedOrigins").Get<string[]>();
+                if (allowedOrigins != null && allowedOrigins.Length > 0)
+                {
+                    policy.WithOrigins(allowedOrigins)
+                        .AllowAnyMethod()
+                        .AllowAnyHeader()
+                        .AllowCredentials();
+                }
+                else
+                {
+                    policy.SetIsOriginAllowed(_ => true)
+                        .AllowAnyMethod()
+                        .AllowAnyHeader()
+                        .AllowCredentials();
+                }
             });
         });
 

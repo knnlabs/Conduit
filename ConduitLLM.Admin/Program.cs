@@ -135,6 +135,23 @@ public partial class Program
 
         builder.Services.AddRedisDataProtection(redisConnectionString, "Conduit");
 
+        // Add Redis as distributed cache for ephemeral key storage
+        if (!string.IsNullOrEmpty(redisConnectionString))
+        {
+            builder.Services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = redisConnectionString;
+                options.InstanceName = "conduit:";
+            });
+            Console.WriteLine("[ConduitLLM.Admin] Distributed cache configured with Redis");
+        }
+        else
+        {
+            // Fallback to in-memory cache if Redis is not configured
+            builder.Services.AddDistributedMemoryCache();
+            Console.WriteLine("[ConduitLLM.Admin] WARNING: Using in-memory cache - ephemeral keys will not work across instances");
+        }
+
         // Add SignalR with configuration
         var signalRBuilder = builder.Services.AddSignalR(options =>
         {

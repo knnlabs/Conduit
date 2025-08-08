@@ -111,9 +111,9 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc />
         public async Task<bool> ValidateAndConsumeKeyAsync(string key)
         {
-            if (string.IsNullOrEmpty(key))
+            if (string.IsNullOrWhiteSpace(key))
             {
-                _logger.LogDebug("Ephemeral master key validation failed: empty key");
+                _logger.LogDebug("Ephemeral master key validation failed: empty or whitespace key");
                 return false;
             }
 
@@ -180,7 +180,7 @@ namespace ConduitLLM.Admin.Services
         {
             // Similar to ValidateAndConsumeKeyAsync but doesn't delete
             // Used for streaming where we need to maintain the connection
-            if (string.IsNullOrEmpty(key))
+            if (string.IsNullOrWhiteSpace(key))
             {
                 return false;
             }
@@ -231,7 +231,7 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc />
         public async Task DeleteKeyAsync(string key)
         {
-            if (string.IsNullOrEmpty(key))
+            if (string.IsNullOrWhiteSpace(key))
             {
                 return;
             }
@@ -245,7 +245,7 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc />
         public async Task<bool> KeyExistsAsync(string key)
         {
-            if (string.IsNullOrEmpty(key))
+            if (string.IsNullOrWhiteSpace(key))
             {
                 return false;
             }
