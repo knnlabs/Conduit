@@ -8,28 +8,28 @@ using ConduitLLM.Http.Services;
 namespace ConduitLLM.Http.Hubs
 {
     /// <summary>
-    /// Public SignalR hub for video generation status updates using task-scoped tokens.
+    /// Public SignalR hub for video generation status updates using ephemeral keys.
     /// This hub allows browser clients to receive real-time updates without exposing virtual keys.
     /// </summary>
     public class PublicVideoGenerationHub : Hub
     {
         private readonly ILogger<PublicVideoGenerationHub> _logger;
-        private readonly ITaskAuthenticationService _taskAuthService;
+        private readonly IEphemeralKeyService _ephemeralKeyService;
 
         public PublicVideoGenerationHub(
             ILogger<PublicVideoGenerationHub> logger,
-            ITaskAuthenticationService taskAuthService)
+            IEphemeralKeyService ephemeralKeyService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _taskAuthService = taskAuthService ?? throw new ArgumentNullException(nameof(taskAuthService));
+            _ephemeralKeyService = ephemeralKeyService ?? throw new ArgumentNullException(nameof(ephemeralKeyService));
         }
 
         /// <summary>
-        /// Subscribe to updates for a specific video generation task using a task token
+        /// Subscribe to updates for a specific video generation task using an ephemeral key
         /// </summary>
         /// <param name="taskId">The task ID to subscribe to</param>
-        /// <param name="token">The authentication token for this task</param>
-        public async Task SubscribeToTask(string taskId, string token)
+        /// <param name="ephemeralKey">The ephemeral key for authentication</param>
+        public async Task SubscribeToTask(string taskId, string ephemeralKey)
         {
             if (string.IsNullOrEmpty(taskId))
             {
@@ -37,18 +37,18 @@ namespace ConduitLLM.Http.Hubs
                 throw new HubException("Task ID is required");
             }
 
-            if (string.IsNullOrEmpty(token))
+            if (string.IsNullOrEmpty(ephemeralKey))
             {
-                _logger.LogWarning("Invalid subscription attempt without token for task {TaskId}", taskId);
-                throw new HubException("Authentication token is required");
+                _logger.LogWarning("Invalid subscription attempt without ephemeral key for task {TaskId}", taskId);
+                throw new HubException("Ephemeral key is required");
             }
 
-            // Validate the token
-            var virtualKeyId = await _taskAuthService.ValidateTaskTokenAsync(taskId, token);
+            // Validate the ephemeral key
+            var virtualKeyId = await _ephemeralKeyService.ValidateAndConsumeKeyAsync(ephemeralKey);
             if (!virtualKeyId.HasValue)
             {
-                _logger.LogWarning("Invalid token provided for task {TaskId}", taskId);
-                throw new HubException("Invalid or expired token");
+                _logger.LogWarning("Invalid ephemeral key provided for task {TaskId}", taskId);
+                throw new HubException("Invalid or expired ephemeral key");
             }
 
             // Add to task-specific group

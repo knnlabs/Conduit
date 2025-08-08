@@ -1,7 +1,7 @@
 'use client';
 
-import { Modal, Image, Stack, Group, Text, Badge, Button, CopyButton, Divider } from '@mantine/core';
-import { IconDownload, IconCopy } from '@tabler/icons-react';
+import { Modal, Image, Stack, Group, Text, Badge, Button, CopyButton, Divider, Anchor } from '@mantine/core';
+import { IconDownload, IconCopy, IconExternalLink } from '@tabler/icons-react';
 import { MediaRecord } from '../types';
 import { formatBytes, formatDate, getProviderColor } from '../utils/formatters';
 
@@ -114,6 +114,18 @@ export default function MediaDetailModal({
             <Text size="sm" c="dimmed">Virtual Key ID:</Text>
             <Text size="sm">{media.virtualKeyId}</Text>
           </Group>
+          {media.virtualKeyGroupId && (
+            <Group justify="space-between">
+              <Text size="sm" c="dimmed">Virtual Key Group ID:</Text>
+              <Text size="sm">{media.virtualKeyGroupId}</Text>
+            </Group>
+          )}
+          {media.virtualKeyGroupName && (
+            <Group justify="space-between">
+              <Text size="sm" c="dimmed">Virtual Key Group:</Text>
+              <Text size="sm" fw={500}>{media.virtualKeyGroupName}</Text>
+            </Group>
+          )}
           <Group justify="space-between">
             <Text size="sm" c="dimmed">Access Count:</Text>
             <Text size="sm">{media.accessCount}</Text>
@@ -136,6 +148,28 @@ export default function MediaDetailModal({
               {media.storageKey}
             </Text>
           </Group>
+          {media.storageUrl && (
+            <Group justify="space-between">
+              <Text size="sm" c="dimmed">S3 URL:</Text>
+              <Anchor 
+                href={media.storageUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                size="sm"
+                style={{ wordBreak: 'break-all' }}
+              >
+                <Group gap="xs">
+                  <Text size="xs" style={{ fontFamily: 'monospace' }}>
+                    {media.storageUrl.length > 50 
+                      ? `${media.storageUrl.substring(0, 30)}...${media.storageUrl.substring(media.storageUrl.length - 20)}`
+                      : media.storageUrl
+                    }
+                  </Text>
+                  <IconExternalLink size={12} />
+                </Group>
+              </Anchor>
+            </Group>
+          )}
         </Stack>
 
         <Divider />

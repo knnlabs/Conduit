@@ -27,13 +27,10 @@ export async function POST(request: NextRequest) {
       createdAt?: string;  // camelCase variant
       EstimatedCompletionTime?: number;
       estimatedCompletionTime?: number;  // camelCase variant
-      SignalRToken?: string;
-      signalRToken?: string;  // camelCase variant
       // Snake case variants that SDK might return
       task_id?: string;
       created_at?: string;
       estimated_time_to_completion?: number;
-      signalr_token?: string;
       message?: string;
       checkStatusUrl?: string;
     }
@@ -46,7 +43,6 @@ export async function POST(request: NextRequest) {
     const taskId = typedResult.task_id ?? typedResult.taskId ?? typedResult.TaskId;
     const status = typedResult.status ?? typedResult.Status ?? 'pending';
     const createdAt = typedResult.created_at ?? typedResult.createdAt ?? typedResult.CreatedAt;
-    const signalRToken = typedResult.signalr_token ?? typedResult.signalRToken ?? typedResult.SignalRToken;
     
     if (!taskId) {
       console.error('Invalid response from Core API, missing task_id:', result);
@@ -60,8 +56,7 @@ export async function POST(request: NextRequest) {
       created_at: createdAt,
       message: typedResult.message ?? 'Video generation started',
       estimated_time_to_completion: typedResult.estimated_time_to_completion ?? typedResult.estimatedCompletionTime ?? typedResult.EstimatedCompletionTime,
-      // Pass through the SignalR token if present
-      signalr_token: signalRToken,
+      // SignalR token removed - clients will use ephemeral keys
       // Add a flag to indicate that client-side progress tracking is available
       supportsProgressTracking: body.useProgressTracking ?? false
     });

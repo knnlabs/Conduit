@@ -8,16 +8,13 @@ import {
   rem,
   Box,
   Paper,
-  Tooltip,
   Stack,
   ActionIcon,
   Table,
+  Tooltip,
 } from '@mantine/core';
 import {
   IconTestPipe,
-  IconCircleCheck,
-  IconCircleX,
-  IconClock,
   IconEdit,
   IconTrash,
   IconDotsVertical,
@@ -64,28 +61,6 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
     });
   };
 
-  const getHealthIcon = (status: string) => {
-    switch (status) {
-      case 'healthy':
-        return <IconCircleCheck size={16} />;
-      case 'unhealthy':
-        return <IconCircleX size={16} />;
-      default:
-        return <IconClock size={16} />;
-    }
-  };
-
-  const getHealthColor = (status: string) => {
-    switch (status) {
-      case 'healthy':
-        return 'green';
-      case 'unhealthy':
-        return 'red';
-      default:
-        return 'gray';
-    }
-  };
-
   const rows = providers.map((provider) => (
     <Table.Tr key={`provider-${provider.id}`}>
       <Table.Td>
@@ -97,23 +72,22 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
 
       <Table.Td>
         <Badge
+          color="blue"
+          variant="light"
+          size="sm"
+        >
+          {provider.providerType ? getProviderDisplayName(provider.providerType) : 'Unknown'}
+        </Badge>
+      </Table.Td>
+
+      <Table.Td>
+        <Badge
           color={provider.isEnabled ? 'green' : 'gray'}
           variant="light"
           size="sm"
         >
           {provider.isEnabled ? 'Enabled' : 'Disabled'}
         </Badge>
-      </Table.Td>
-
-      <Table.Td>
-        <Tooltip label={`Last checked: ${provider.lastHealthCheck ? formatters.date(provider.lastHealthCheck) : 'Never'}`}>
-          <Group gap="xs">
-            {getHealthIcon(provider.healthStatus)}
-            <Text size="sm" c={getHealthColor(provider.healthStatus)}>
-              {provider.healthStatus}
-            </Text>
-          </Group>
-        </Tooltip>
       </Table.Td>
 
       <Table.Td>
@@ -214,8 +188,8 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Provider</Table.Th>
+                <Table.Th>Type</Table.Th>
                 <Table.Th>Status</Table.Th>
-                <Table.Th>Health</Table.Th>
                 <Table.Th>API Keys</Table.Th>
                 <Table.Th>Models</Table.Th>
                 <Table.Th>Created</Table.Th>

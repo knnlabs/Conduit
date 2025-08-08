@@ -154,11 +154,51 @@ namespace ConduitLLM.Providers.Providers.MiniMax
             {
                 foreach (var choice in miniMaxChunk.Choices)
                 {
-                    var content = choice.Delta?.Content;
-                    var role = choice.Delta?.Role;
+                    // DEVIATION FROM OPENAI SPEC: MiniMax sends a non-standard final chunk
+                    // OpenAI spec: All chunks should only use 'delta' field for content
+                    // MiniMax behavior: Final chunk with finish_reason="stop" contains:
+                    //   - A complete 'message' field with the full assembled content
+                    //   - object: "chat.completion" instead of "chat.completion.chunk"
+                    // This is redundant (content was already streamed) and breaks OpenAI compatibility.
+                    // We must check both delta and message fields to handle this non-standard format.
                     
-                    Logger.LogDebug("MiniMax choice: Index={Index}, Content={Content}, Role={Role}, FinishReason={FinishReason}", 
-                        choice.Index, content, role, choice.FinishReason);
+                    string? content = null;
+                    string? role = null;
+                    MiniMaxFunctionCall? functionCall = null;
+                    
+                    if (choice.Message != null)
+                    {
+                        // MiniMax's non-standard final chunk with complete message
+                        // This should NOT exist in OpenAI-compliant streaming
+                        Logger.LogDebug("MiniMax non-standard final chunk detected with complete message");
+                        
+                        // Extract content from the message field
+                        // MiniMax's Message.Content can be string or object, so handle accordingly
+                        content = choice.Message.Content?.ToString();
+                        role = choice.Message.Role;
+                        functionCall = choice.Message.FunctionCall;
+                        
+                        // Since this is the complete message, we only send the final piece
+                        // to avoid duplicating what was already streamed
+                        // This is a workaround for MiniMax's protocol violation
+                        if (!string.IsNullOrEmpty(content) && choice.FinishReason == "stop")
+                        {
+                            // Skip the complete message in final chunk to avoid duplication
+                            // The content has already been streamed incrementally
+                            Logger.LogDebug("Skipping redundant complete message in MiniMax final chunk");
+                            content = null; // Don't send the complete message again
+                        }
+                    }
+                    else if (choice.Delta != null)
+                    {
+                        // Standard OpenAI-compliant streaming chunk with delta
+                        content = choice.Delta.Content;
+                        role = choice.Delta.Role;
+                        functionCall = choice.Delta.FunctionCall;
+                    }
+                    
+                    Logger.LogDebug("MiniMax choice: Index={Index}, Content={Content}, Role={Role}, FinishReason={FinishReason}, HasMessage={HasMessage}", 
+                        choice.Index, content, role, choice.FinishReason, choice.Message != null);
                     
                     chunk.Choices.Add(new StreamingChoice
                     {
@@ -167,7 +207,7 @@ namespace ConduitLLM.Providers.Providers.MiniMax
                         {
                             Role = role,
                             Content = content,
-                            ToolCalls = ConvertDeltaFunctionCallToToolCalls(choice.Delta?.FunctionCall)
+                            ToolCalls = ConvertDeltaFunctionCallToToolCalls(functionCall)
                         },
                         FinishReason = choice.FinishReason
                     });

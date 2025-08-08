@@ -27,6 +27,8 @@ public partial class Program
         builder.Services.AddAuthentication("VirtualKey")
             .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, VirtualKeyAuthenticationHandler>(
                 "VirtualKey", options => { })
+            .AddScheme<EphemeralKeyAuthenticationOptions, EphemeralKeyAuthenticationHandler>(
+                "EphemeralKey", options => { })
             .AddScheme<BackendAuthenticationSchemeOptions, BackendAuthenticationHandler>(
                 "Backend", options => { });
 

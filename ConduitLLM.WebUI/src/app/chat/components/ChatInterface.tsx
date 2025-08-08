@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { 
   Container, 
   Paper, 
@@ -42,6 +42,7 @@ import { useChatStore } from '../hooks/useChatStore';
 import { useModels } from '../hooks/useModels';
 import { notifications } from '@mantine/notifications';
 import Link from 'next/link';
+import { ephemeralKeyClient } from '@/lib/client/ephemeralKeyClient';
 
 export function ChatInterface() {
   const { data: modelData, isLoading: modelsLoading } = useModels();
@@ -52,6 +53,7 @@ export function ChatInterface() {
   const [streamingContent, setStreamingContent] = useState('');
   const [tokensPerSecond, setTokensPerSecond] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
   
   // Create error handler with toast notifications
   const handleError = createToastErrorHandler(notifications.show);
@@ -85,6 +87,16 @@ export function ChatInterface() {
       createSession(selectedModel);
     }
   }, [selectedModel, activeSessionId, createSession]);
+
+  // Cleanup on unmount - abort any pending requests
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, []);
 
   const sendMessage = useCallback(async (inputMessage: string, images?: ImageAttachment[]) => {
     if (!inputMessage.trim() && (!images || images.length === 0)) return;
@@ -153,13 +165,34 @@ export function ChatInterface() {
         });
       }
       
-      const response = await fetch('/api/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
+      // Cancel any previous request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      
+      // Create new abort controller for this request
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      
+      // Set a generous timeout for streaming responses (5 minutes)
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+        console.warn('Request timed out after 5 minutes');
+      }, 300000);
+      
+      // Always use direct API with ephemeral keys
+      const response = await ephemeralKeyClient.createStreamingRequest(
+        '/v1/chat/completions',
+        requestBody,
+        controller.signal
+      );
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Using direct streaming to Core API');
+      }
+      
+      // Clear the timeout once we get a response
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         // This will throw the appropriate ConduitError subclass (including InsufficientBalanceError for 402)
@@ -337,6 +370,29 @@ export function ChatInterface() {
         setMessages(prev => [...prev, assistantMessage]);
       }
     } catch (err) {
+      // Check if the error is due to an abort (timeout or user cancellation)
+      if (err instanceof Error && err.name === 'AbortError') {
+        const errorMessage = 'Request timed out. The response took too long to generate. Please try a shorter prompt or simpler request.';
+        
+        const abortError = new Error(errorMessage);
+        setError(abortError);
+        
+        // Show error in chat
+        const errorMsg: ChatMessage = {
+          id: uuidv4(),
+          role: 'assistant',
+          content: errorMessage,
+          timestamp: new Date(),
+          metadata: {
+            tokensUsed: 0,
+            tokensPerSecond: 0,
+            latency: 0,
+          }
+        };
+        setMessages(prev => [...prev, errorMsg]);
+        return; // Early return for abort errors
+      }
+      
       // Use the enhanced error handler from SDK for notifications
       handleError(err, 'send chat message');
       const errorInstance = err instanceof Error ? err : new Error(String(err));
@@ -368,6 +424,10 @@ export function ChatInterface() {
       setIsLoading(false);
       setStreamingContent('');
       setTokensPerSecond(null);
+      // Clean up abort controller reference
+      if (abortControllerRef.current) {
+        abortControllerRef.current = null;
+      }
     }
   }, [selectedModel, messages, isLoading, getActiveSession, performanceSettings.showTokensPerSecond, performanceSettings.trackPerformanceMetrics, performanceSettings.useServerMetrics, handleError]);
 

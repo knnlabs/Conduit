@@ -32,7 +32,7 @@ namespace ConduitLLM.Http.Controllers
     /// </summary>
     [ApiController]
     [Route("v1/chat")]
-    [Authorize(AuthenticationSchemes = "VirtualKey")]
+    [Authorize(AuthenticationSchemes = "VirtualKey,EphemeralKey")]
     [RequireBalance]
     [Tags("Chat")]
     public class ChatController : EventPublishingControllerBase

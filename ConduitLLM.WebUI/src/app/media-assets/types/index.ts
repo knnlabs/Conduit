@@ -2,6 +2,8 @@ export interface MediaRecord {
   id: string;
   storageKey: string;
   virtualKeyId: number;
+  virtualKeyGroupId?: number;
+  virtualKeyGroupName?: string;
   mediaType: 'image' | 'video';
   contentType?: string;
   sizeBytes?: number;

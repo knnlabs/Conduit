@@ -103,7 +103,7 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
         handleApiError(httpError, '/api/videos/generate', 'POST');
       }
 
-      const data = await response.json() as AsyncVideoGenerationResponse & { signalr_token?: string };
+      const data = await response.json() as AsyncVideoGenerationResponse;
       
       // Create task in store
       const newTask: VideoTask = {
@@ -122,54 +122,53 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
       
       addTask(newTask);
 
-      // Try to use SignalR with token if available
-      if (data.signalr_token) {
-        try {
-          await videoSignalRClient.connect(
-            data.task_id,
-            data.signalr_token,
-            {
-              onProgress: (update) => {
-                updateTask(data.task_id, {
-                  status: update.status === 'Processing' ? 'running' : update.status.toLowerCase() as VideoTask['status'],
-                  progress: update.progress ?? 0,
-                  message: update.message,
-                  updatedAt: new Date().toISOString(),
-                });
-              },
-              onCompleted: (videoUrl) => {
-                updateTask(data.task_id, {
-                  status: 'completed',
-                  progress: 100,
-                  result: {
-                    created: Date.now(),
-                    data: [{ url: videoUrl }]
-                  },
-                  updatedAt: new Date().toISOString(),
-                });
-                setIsGenerating(false);
-              },
-              onFailed: (error) => {
-                updateTask(data.task_id, {
-                  status: 'failed',
-                  error,
-                  message: 'Video generation failed',
-                  updatedAt: new Date().toISOString(),
-                });
-                setError(error);
-                setIsGenerating(false);
-              },
-            }
-          );
-          setSignalRConnected(true);
-          signalRErrorCount.current = 0;
-          return; // SignalR will handle updates
-        } catch (signalRError) {
-          console.warn('Failed to connect to SignalR, falling back to polling:', signalRError);
-          signalRErrorCount.current++;
-          setSignalRConnected(false);
-          // Continue with polling fallback
-        }
+      // Try to use SignalR with ephemeral key
+      // The client will get its own ephemeral key internally
+      try {
+        await videoSignalRClient.connect(
+          data.task_id,
+          undefined, // Let the client get its own ephemeral key
+          {
+            onProgress: (update) => {
+              updateTask(data.task_id, {
+                status: update.status === 'Processing' ? 'running' : update.status.toLowerCase() as VideoTask['status'],
+                progress: update.progress ?? 0,
+                message: update.message,
+                updatedAt: new Date().toISOString(),
+              });
+            },
+            onCompleted: (videoUrl) => {
+              updateTask(data.task_id, {
+                status: 'completed',
+                progress: 100,
+                result: {
+                  created: Date.now(),
+                  data: [{ url: videoUrl }]
+                },
+                updatedAt: new Date().toISOString(),
+              });
+              setIsGenerating(false);
+            },
+            onFailed: (error) => {
+              updateTask(data.task_id, {
+                status: 'failed',
+                error,
+                message: 'Video generation failed',
+                updatedAt: new Date().toISOString(),
+              });
+              setError(error);
+              setIsGenerating(false);
+            },
+          }
+        );
+        setSignalRConnected(true);
+        signalRErrorCount.current = 0;
+        return; // SignalR will handle updates
+      } catch (signalRError) {
+        console.warn('Failed to connect to SignalR, falling back to polling:', signalRError);
+        signalRErrorCount.current++;
+        setSignalRConnected(false);
+        // Continue with polling fallback
       }
 
       // Start legacy polling

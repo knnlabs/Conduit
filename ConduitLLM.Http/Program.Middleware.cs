@@ -50,6 +50,9 @@ public partial class Program
         app.UseAuthentication();
         app.UseAuthorization();
 
+        // Add ephemeral key cleanup middleware (must be after authentication)
+        app.UseMiddleware<EphemeralKeyCleanupMiddleware>();
+
         // Note: VirtualKeyAuthenticationHandler is now used instead of middleware
         // The authentication handler is registered with the "VirtualKey" scheme above
 

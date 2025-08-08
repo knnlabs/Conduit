@@ -49,8 +49,9 @@ public partial class Program
         // Model costs tracking service
         builder.Services.AddScoped<ConduitLLM.Configuration.Services.IModelCostService, ConduitLLM.Configuration.Services.ModelCostService>();
         
-        // Task authentication service for SignalR
-        builder.Services.AddScoped<ITaskAuthenticationService, TaskAuthenticationService>();
+        // Ephemeral key service for direct browser-to-API authentication (used for all direct access including SignalR)
+        builder.Services.AddScoped<IEphemeralKeyService, EphemeralKeyService>();
+        
         builder.Services.AddScoped<ConduitLLM.Core.Interfaces.ICostCalculationService, ConduitLLM.Core.Services.CostCalculationService>();
 
         // Virtual key service (Configuration layer - used by RealtimeUsageTracker)

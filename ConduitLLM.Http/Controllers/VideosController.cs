@@ -30,7 +30,6 @@ namespace ConduitLLM.Http.Controllers
         private readonly IAsyncTaskService _taskService;
         private readonly IOperationTimeoutProvider _timeoutProvider;
         private readonly ICancellableTaskRegistry _taskRegistry;
-        private readonly ITaskAuthenticationService _taskAuthService;
         private readonly ILogger<VideosController> _logger;
         private readonly ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService _modelMappingService;
 
@@ -42,7 +41,6 @@ namespace ConduitLLM.Http.Controllers
             IAsyncTaskService taskService,
             IOperationTimeoutProvider timeoutProvider,
             ICancellableTaskRegistry taskRegistry,
-            ITaskAuthenticationService taskAuthService,
             ILogger<VideosController> logger,
             ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService modelMappingService)
         {
@@ -50,7 +48,6 @@ namespace ConduitLLM.Http.Controllers
             _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
             _timeoutProvider = timeoutProvider ?? throw new ArgumentNullException(nameof(timeoutProvider));
             _taskRegistry = taskRegistry ?? throw new ArgumentNullException(nameof(taskRegistry));
-            _taskAuthService = taskAuthService ?? throw new ArgumentNullException(nameof(taskAuthService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _modelMappingService = modelMappingService ?? throw new ArgumentNullException(nameof(modelMappingService));
         }
@@ -133,19 +130,16 @@ namespace ConduitLLM.Http.Controllers
                 _taskRegistry.RegisterTask(taskId, cts);
                 _logger.LogDebug("Registered task {TaskId} for cancellation", taskId);
 
-                // Generate task authentication token for SignalR
-                var taskToken = await _taskAuthService.CreateTaskTokenAsync(taskId, virtualKeyId);
-                _logger.LogDebug("Generated authentication token for task {TaskId}", taskId);
-
-                // Create task response with token
+                // Create task response
+                // Note: Client will use ephemeral keys for SignalR authentication
                 var taskResponse = new VideoGenerationTaskResponse
                 {
                     TaskId = taskId,
                     Status = TaskStateConstants.Pending,
                     CreatedAt = DateTimeOffset.UtcNow,
                     EstimatedCompletionTime = DateTimeOffset.UtcNow.AddSeconds(60), // Default estimate
-                    CheckStatusUrl = $"/v1/videos/generations/tasks/{taskId}",
-                    SignalRToken = taskToken // Include token for SignalR authentication
+                    CheckStatusUrl = $"/v1/videos/generations/tasks/{taskId}"
+                    // SignalRToken removed - clients will use ephemeral keys
                 };
 
                 return Accepted(taskResponse);
@@ -560,10 +554,7 @@ namespace ConduitLLM.Http.Controllers
         /// </summary>
         public string CheckStatusUrl { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Authentication token for SignalR connections to receive real-time updates for this task.
-        /// </summary>
-        public string? SignalRToken { get; set; }
+        // SignalRToken removed - clients will use ephemeral keys for SignalR authentication
     }
 
     /// <summary>

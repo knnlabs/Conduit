@@ -1,4 +1,5 @@
 import * as signalR from '@microsoft/signalr';
+import { ephemeralKeyClient } from '@/lib/client/ephemeralKeyClient';
 
 interface VideoProgressUpdate {
   taskId: string;
@@ -14,12 +15,12 @@ export class VideoSignalRClient {
   private connectionPromise: Promise<void> | null = null;
   
   /**
-   * Connect to the public video generation SignalR hub using a task token
+   * Connect to the public video generation SignalR hub using an ephemeral key
    */
   async connect(
     taskId: string, 
-    token: string,
-    callbacks: {
+    ephemeralKey?: string, // Made optional, will get one if not provided
+    callbacks?: {
       onProgress?: (update: VideoProgressUpdate) => void;
       onCompleted?: (videoUrl: string) => void;
       onFailed?: (error: string) => void;
@@ -30,9 +31,19 @@ export class VideoSignalRClient {
       await this.disconnect();
     }
 
+    // Get ephemeral key if not provided
+    let keyToUse = ephemeralKey;
+    let coreApiUrl = 'http://localhost:5000'; // default
+    
+    if (!keyToUse) {
+      const keyData = await ephemeralKeyClient.getKey('video-generation');
+      keyToUse = keyData.key;
+      coreApiUrl = keyData.coreApiUrl;
+    }
+
     // Create a new connection to the public hub
     // Connect directly to the Core API - CORS is properly configured
-    const hubUrl = 'http://localhost:5000/hubs/public/video-generation';
+    const hubUrl = `${coreApiUrl}/hubs/public/video-generation`;
     
     this.connection = new signalR.HubConnectionBuilder()
       .withUrl(hubUrl, {
@@ -44,28 +55,30 @@ export class VideoSignalRClient {
       .configureLogging(signalR.LogLevel.Information)
       .build();
 
-    // Set up event handlers
-    this.connection.on('taskProgress', (update: VideoProgressUpdate) => {
-      if (update.taskId === taskId && callbacks.onProgress) {
-        callbacks.onProgress(update);
-      }
-    });
+    // Set up event handlers (only if callbacks provided)
+    if (callbacks) {
+      this.connection.on('taskProgress', (update: VideoProgressUpdate) => {
+        if (update.taskId === taskId && callbacks.onProgress) {
+          callbacks.onProgress(update);
+        }
+      });
 
-    this.connection.on('taskCompleted', (data: { taskId: string; videoUrl: string }) => {
-      if (data.taskId === taskId && callbacks.onCompleted) {
-        callbacks.onCompleted(data.videoUrl);
-        // Auto-disconnect after completion
-        void this.disconnect();
-      }
-    });
+      this.connection.on('taskCompleted', (data: { taskId: string; videoUrl: string }) => {
+        if (data.taskId === taskId && callbacks.onCompleted) {
+          callbacks.onCompleted(data.videoUrl);
+          // Auto-disconnect after completion
+          void this.disconnect();
+        }
+      });
 
-    this.connection.on('taskFailed', (data: { taskId: string; error: string }) => {
-      if (data.taskId === taskId && callbacks.onFailed) {
-        callbacks.onFailed(data.error);
-        // Auto-disconnect after failure
-        void this.disconnect();
-      }
-    });
+      this.connection.on('taskFailed', (data: { taskId: string; error: string }) => {
+        if (data.taskId === taskId && callbacks.onFailed) {
+          callbacks.onFailed(data.error);
+          // Auto-disconnect after failure
+          void this.disconnect();
+        }
+      });
+    }
 
     this.connection.on('taskSubscribed', (data: { taskId: string; message: string }) => {
       console.warn(`Successfully subscribed to task ${data.taskId}: ${data.message}`);
@@ -78,9 +91,9 @@ export class VideoSignalRClient {
 
     this.connection.onreconnected((connectionId) => {
       console.warn('SignalR reconnected', connectionId);
-      // Re-subscribe to the task after reconnection
+      // Re-subscribe to the task after reconnection with ephemeral key
       if (this.connection) {
-        void this.connection.invoke('SubscribeToTask', taskId, token);
+        void this.connection.invoke('SubscribeToTask', taskId, keyToUse);
       }
     });
 
@@ -100,8 +113,8 @@ export class VideoSignalRClient {
       await this.connectionPromise;
       console.warn('SignalR connected successfully');
 
-      // Subscribe to the task with the token
-      await this.connection.invoke('SubscribeToTask', taskId, token);
+      // Subscribe to the task with the ephemeral key
+      await this.connection.invoke('SubscribeToTask', taskId, keyToUse);
       console.warn(`Subscribed to task ${taskId}`);
     } catch (error) {
       console.error('Failed to connect to SignalR:', error);

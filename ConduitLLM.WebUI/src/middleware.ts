@@ -5,13 +5,10 @@ import { NextResponse } from 'next/server';
 const isPublicRoute = createRouteMatcher([
   '/access-denied',
   '/api/health',
-  '/api/chat/completions',
   '/api/model-mappings',
   '/api/discovery/models',
   '/api/videos/generate',
-  '/api/videos/tasks/(.*)',
-  '/api/images/generate',
-  '/api/images/tasks/(.*)'
+  '/api/videos/tasks/(.*)'
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

@@ -50,9 +50,7 @@ namespace ConduitLLM.Tests.Http.Controllers
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(videoResponse);
 
-            // Setup token generation
-            _mockTaskAuthService.Setup(x => x.CreateTaskTokenAsync(taskId, 123))
-                .ReturnsAsync("test-token-123456");
+            // Token generation removed - using ephemeral keys
 
             _controller.ControllerContext = CreateControllerContext();
             _controller.ControllerContext.HttpContext.Items["VirtualKey"] = virtualKey;
@@ -71,9 +69,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             Assert.Equal(taskId, taskResponse.TaskId);
             Assert.Equal(TaskStateConstants.Pending, taskResponse.Status);
             Assert.Contains(taskId, taskResponse.CheckStatusUrl);
-            Assert.Equal("test-token-123456", taskResponse.SignalRToken);
+            // SignalRToken removed - clients use ephemeral keys
             _mockTaskRegistry.Verify(x => x.RegisterTask(taskId, It.IsAny<CancellationTokenSource>()), Times.Once);
-            _mockTaskAuthService.Verify(x => x.CreateTaskTokenAsync(taskId, 123), Times.Once);
         }
 
         [Fact]

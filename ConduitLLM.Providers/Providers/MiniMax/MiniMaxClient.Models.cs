@@ -175,6 +175,16 @@ namespace ConduitLLM.Providers.Providers.MiniMax
             [System.Text.Json.Serialization.JsonPropertyName("delta")]
             public MiniMaxDelta? Delta { get; set; }
 
+            // DEVIATION FROM OPENAI SPEC: MiniMax sends a non-standard final chunk that includes
+            // a complete 'message' field instead of using 'delta' consistently throughout the stream.
+            // OpenAI spec requires all streaming chunks to use 'delta' fields only.
+            // MiniMax's final chunk has:
+            // - object: "chat.completion" (should be "chat.completion.chunk")
+            // - message: {complete message} (should use delta with empty content)
+            // This violates the OpenAI streaming protocol but must be handled for compatibility.
+            [System.Text.Json.Serialization.JsonPropertyName("message")]
+            public MiniMaxMessage? Message { get; set; }
+
             [System.Text.Json.Serialization.JsonPropertyName("finish_reason")]
             public string? FinishReason { get; set; }
         }
