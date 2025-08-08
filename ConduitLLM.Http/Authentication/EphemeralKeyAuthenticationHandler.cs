@@ -94,10 +94,18 @@ namespace ConduitLLM.Http.Authentication
             }
 
             // Get the virtual key details
+            Logger.LogInformation("Looking up virtual key {VirtualKeyId} for ephemeral key validation", virtualKeyId.Value);
             var virtualKeyInfo = await _virtualKeyService.GetVirtualKeyInfoForValidationAsync(virtualKeyId.Value);
             if (virtualKeyInfo == null)
             {
-                Logger.LogError("Virtual key {VirtualKeyId} not found for ephemeral key", virtualKeyId.Value);
+                Logger.LogError("Virtual key {VirtualKeyId} not found for ephemeral key. This likely means the virtual key exists but has no hash stored.", virtualKeyId.Value);
+                // Try to get basic info for debugging
+                var basicInfo = await _virtualKeyService.GetVirtualKeyInfoAsync(virtualKeyId.Value);
+                if (basicInfo != null)
+                {
+                    Logger.LogWarning("Virtual key {VirtualKeyId} exists with name '{KeyName}' but validation failed - likely missing hash", 
+                        virtualKeyId.Value, basicInfo.KeyName);
+                }
                 return AuthenticateResult.Fail("Associated virtual key not found");
             }
 

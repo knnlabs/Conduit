@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
+import { getServerAdminClient } from '@/lib/server/sdk-config';
 
 interface EphemeralKeyRequest {
   purpose?: string; // Optional purpose for logging/tracking
@@ -17,12 +18,16 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as EphemeralKeyRequest;
     
-    // Get the backend auth key from environment
-    const backendAuthKey = process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY;
-    if (!backendAuthKey) {
-      console.error('CONDUIT_API_TO_API_BACKEND_AUTH_KEY not configured');
+    // Get the WebUI's virtual key
+    const adminClient = getServerAdminClient();
+    let webuiVirtualKey: string;
+    
+    try {
+      webuiVirtualKey = await adminClient.system.getWebUIVirtualKey();
+    } catch (error) {
+      console.error('Failed to get WebUI virtual key:', error);
       return NextResponse.json(
-        { error: 'Server configuration error' },
+        { error: 'Failed to get WebUI virtual key' },
         { status: 500 }
       );
     }
@@ -36,12 +41,12 @@ export async function POST(request: NextRequest) {
                      'unknown';
     const userAgent = request.headers.get('user-agent') ?? 'unknown';
     
-    // Call Core API to generate ephemeral key
+    // Call Core API to generate ephemeral key using the WebUI's virtual key
     const response = await fetch(`${coreApiUrl}/v1/auth/ephemeral-key`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${backendAuthKey}`,
+        'Authorization': `Bearer ${webuiVirtualKey}`,
       },
       body: JSON.stringify({
         metadata: {
