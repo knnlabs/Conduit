@@ -26,9 +26,14 @@ import {
 } from '@/hooks/useModelMappingsApi';
 import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 
-// Extend the DTO type to include providerName which is returned by the backend
+// Extend the DTO type to ensure provider property is available
 interface ExtendedModelProviderMappingDto extends ModelProviderMappingDto {
-  providerName?: string;
+  provider?: {
+    id: number;
+    providerType: number;
+    displayName: string;
+    isEnabled: boolean;
+  };
 }
 
 interface ModelMappingsTableProps {
@@ -132,7 +137,7 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
       
       <Table.Td>
         <Text size="sm">
-          {mapping.providerName ?? mapping.providerId}
+          {mapping.provider?.displayName ?? mapping.providerId}
         </Text>
       </Table.Td>
 

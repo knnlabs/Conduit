@@ -59,6 +59,10 @@ namespace ConduitLLM.Providers.Providers.MiniMax
             [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
             public string? AudioContent { get; set; }
 
+            [System.Text.Json.Serialization.JsonPropertyName("reasoning_content")]
+            [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+            public string? ReasoningContent { get; set; }
+
             [System.Text.Json.Serialization.JsonPropertyName("function_call")]
             [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
             public MiniMaxFunctionCall? FunctionCall { get; set; }

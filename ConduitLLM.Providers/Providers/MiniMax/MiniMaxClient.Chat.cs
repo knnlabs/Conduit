@@ -78,7 +78,8 @@ namespace ConduitLLM.Providers.Providers.MiniMax
                 {
                     response = JsonSerializer.Deserialize<MiniMaxChatCompletionResponse>(rawContent, new JsonSerializerOptions
                     {
-                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                        // MiniMax uses snake_case, not camelCase
+                        PropertyNameCaseInsensitive = true,
                         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
                     })!;
                 }
@@ -102,6 +103,12 @@ namespace ConduitLLM.Providers.Providers.MiniMax
                 {
                     Logger.LogInformation("First choice message: {Message}", 
                         JsonSerializer.Serialize(response.Choices[0].Message));
+                    if (response.Choices[0].Message != null)
+                    {
+                        Logger.LogInformation("Message content: '{Content}', ReasoningContent: '{Reasoning}'", 
+                            response.Choices[0].Message.Content, 
+                            response.Choices[0].Message.ReasoningContent);
+                    }
                 }
 
                 // Check for MiniMax error response

@@ -105,6 +105,10 @@ namespace ConduitLLM.Http.Controllers
                 {
                     _logger.LogInformation("Handling streaming request.");
                     
+                    // Disable response buffering for true streaming
+                    var bufferingFeature = HttpContext.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpResponseBodyFeature>();
+                    bufferingFeature?.DisableBuffering();
+                    
                     // Use enhanced SSE writer for performance metrics support
                     var response = HttpContext.Response;
                     var sseWriter = response.CreateEnhancedSSEWriter(_jsonSerializerOptions);
@@ -141,8 +145,17 @@ namespace ConduitLLM.Http.Controllers
                         ConduitLLM.Core.Models.Usage? streamingUsage = null;
                         string? streamingModel = null;
                         
+                        var chunkCount = 0;
+                        var firstChunkTime = DateTime.UtcNow;
+                        
                         await foreach (var chunk in _conduit.StreamChatCompletionAsync(request, null, cancellationToken))
                         {
+                            chunkCount++;
+                            if (chunkCount == 1)
+                            {
+                                _logger.LogInformation("First chunk received at {Time}ms", (DateTime.UtcNow - firstChunkTime).TotalMilliseconds);
+                            }
+                            
                             // Check for usage data in chunk (comes in final chunk for OpenAI-compatible APIs)
                             if (chunk.Usage != null)
                             {
@@ -195,6 +208,9 @@ namespace ConduitLLM.Http.Controllers
 
                         // Write [DONE] to signal the end of the stream
                         await sseWriter.WriteDoneEventAsync();
+                        
+                        _logger.LogInformation("Streaming completed: {ChunkCount} chunks over {Duration}ms", 
+                            chunkCount, (DateTime.UtcNow - firstChunkTime).TotalMilliseconds);
                     }
                     catch (Exception streamEx)
                     {

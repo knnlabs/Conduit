@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
 import { getServerAdminClient } from '@/lib/server/adminClient';
-import type { UpdateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
+import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 
 // GET /api/model-mappings/[id] - Get a single model mapping
 export async function GET(
@@ -28,37 +28,19 @@ export async function PUT(
   try {
     const { id } = await params;
     const adminClient = getServerAdminClient();
-    const body = await req.json() as UpdateModelProviderMappingDto & { supportsChat?: boolean };
+    const body = await req.json() as unknown as Partial<ModelProviderMappingDto>;
     
     // First get the existing mapping to preserve required fields
     const existingMapping = await adminClient.modelMappings.getById(parseInt(id, 10));
     
-    // The backend expects the ID in the body to match the route ID
-    const transformedBody: UpdateModelProviderMappingDto & { supportsChat?: boolean } = {
-      id: parseInt(id, 10), // Backend requires ID in body to match route ID
-      modelId: body.modelId ?? existingMapping.modelId, // Backend requires modelId even for updates
-      providerId: body.providerId, // Already a number from frontend
-      providerModelId: body.providerModelId,
-      priority: body.priority,
-      isEnabled: body.isEnabled,
-      supportsVision: body.supportsVision,
-      supportsImageGeneration: body.supportsImageGeneration,
-      supportsAudioTranscription: body.supportsAudioTranscription,
-      supportsTextToSpeech: body.supportsTextToSpeech,
-      supportsRealtimeAudio: body.supportsRealtimeAudio,
-      supportsFunctionCalling: body.supportsFunctionCalling,
-      supportsStreaming: body.supportsStreaming,
-      supportsVideoGeneration: body.supportsVideoGeneration,
-      supportsEmbeddings: body.supportsEmbeddings,
-      supportsChat: body.supportsChat,
-      maxContextLength: body.maxContextLength,
-      maxOutputTokens: body.maxOutputTokens,
-      isDefault: body.isDefault,
-      metadata: body.metadata,
+    // Simple merge strategy - existing values + incoming changes
+    const transformedBody: ModelProviderMappingDto = {
+      ...existingMapping, // Start with all existing values
+      ...body,            // Overlay the changes
+      id: parseInt(id, 10) // Ensure ID matches route
     };
     
-    
-    // Update returns void (204 No Content), so we need to fetch the updated mapping
+    // Update via Admin SDK (now fixed)
     await adminClient.modelMappings.update(parseInt(id, 10), transformedBody);
     const updatedMapping = await adminClient.modelMappings.getById(parseInt(id, 10));
     

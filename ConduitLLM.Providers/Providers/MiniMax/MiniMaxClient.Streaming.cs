@@ -174,7 +174,10 @@ namespace ConduitLLM.Providers.Providers.MiniMax
                         
                         // Extract content from the message field
                         // MiniMax's Message.Content can be string or object, so handle accordingly
-                        content = choice.Message.Content?.ToString();
+                        // Also check ReasoningContent for models that use reasoning tokens
+                        content = !string.IsNullOrEmpty(choice.Message.Content?.ToString()) 
+                            ? choice.Message.Content.ToString()
+                            : choice.Message.ReasoningContent;
                         role = choice.Message.Role;
                         functionCall = choice.Message.FunctionCall;
                         
@@ -192,7 +195,10 @@ namespace ConduitLLM.Providers.Providers.MiniMax
                     else if (choice.Delta != null)
                     {
                         // Standard OpenAI-compliant streaming chunk with delta
-                        content = choice.Delta.Content;
+                        // MiniMax may use ReasoningContent for models with reasoning tokens
+                        content = !string.IsNullOrEmpty(choice.Delta.Content) 
+                            ? choice.Delta.Content
+                            : choice.Delta.ReasoningContent;
                         role = choice.Delta.Role;
                         functionCall = choice.Delta.FunctionCall;
                     }

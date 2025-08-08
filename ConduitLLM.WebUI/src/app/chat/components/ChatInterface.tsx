@@ -261,7 +261,8 @@ export function ChatInterface() {
             
             if (delta?.content) {
               fullContent += delta.content;
-              setStreamingContent(fullContent);
+              // Update streaming content incrementally for progressive rendering
+              setStreamingContent(prev => prev + delta.content);
             }
 
             // Check for inline performance metrics (backward compatibility)

@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 const isPublicRoute = createRouteMatcher([
   '/access-denied',
   '/api/health',
-  '/api/model-mappings',
+  '/api/model-mappings(.*)',  // Allow all model-mappings API routes including PUT
   '/api/discovery/models',
   '/api/videos/generate',
   '/api/videos/tasks/(.*)'

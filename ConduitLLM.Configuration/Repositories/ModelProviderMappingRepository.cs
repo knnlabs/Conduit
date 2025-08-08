@@ -200,6 +200,11 @@ namespace ConduitLLM.Configuration.Repositories
                 existingEntity.SupportsTextToSpeech = modelProviderMapping.SupportsTextToSpeech;
                 existingEntity.SupportsRealtimeAudio = modelProviderMapping.SupportsRealtimeAudio;
                 existingEntity.SupportsImageGeneration = modelProviderMapping.SupportsImageGeneration;
+                existingEntity.SupportsVideoGeneration = modelProviderMapping.SupportsVideoGeneration;
+                existingEntity.SupportsEmbeddings = modelProviderMapping.SupportsEmbeddings;
+                existingEntity.SupportsChat = modelProviderMapping.SupportsChat;
+                existingEntity.SupportsFunctionCalling = modelProviderMapping.SupportsFunctionCalling;
+                existingEntity.SupportsStreaming = modelProviderMapping.SupportsStreaming;
                 existingEntity.TokenizerType = modelProviderMapping.TokenizerType;
                 existingEntity.SupportedVoices = modelProviderMapping.SupportedVoices;
                 existingEntity.SupportedLanguages = modelProviderMapping.SupportedLanguages;

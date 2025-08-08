@@ -50,11 +50,19 @@ namespace ConduitLLM.Http.Authentication
             // Check if this is a streaming request
             bool isStreaming = IsStreamingRequest();
             
+            // First, get the virtual key BEFORE consuming/deleting
+            var actualVirtualKey = await _ephemeralKeyService.GetVirtualKeyAsync(ephemeralKey);
+            if (string.IsNullOrEmpty(actualVirtualKey))
+            {
+                Logger.LogWarning("Ephemeral key not found or invalid: {Key}", SanitizeKeyForLogging(ephemeralKey));
+                return AuthenticateResult.Fail("Ephemeral key not found");
+            }
+            
             int? virtualKeyId;
             
             if (isStreaming)
             {
-                // For streaming, consume and delete immediately
+                // For streaming, consume and delete immediately (after we've already retrieved the virtual key)
                 virtualKeyId = await _ephemeralKeyService.ConsumeKeyAsync(ephemeralKey);
                 
                 if (!virtualKeyId.HasValue)
@@ -93,13 +101,7 @@ namespace ConduitLLM.Http.Authentication
                 Context.Items["DeleteEphemeralKey"] = true;
             }
 
-            // Retrieve the actual virtual key from the ephemeral key data
-            var actualVirtualKey = await _ephemeralKeyService.GetVirtualKeyAsync(ephemeralKey);
-            if (string.IsNullOrEmpty(actualVirtualKey))
-            {
-                Logger.LogError("Failed to retrieve virtual key for ephemeral key");
-                return AuthenticateResult.Fail("Failed to retrieve associated virtual key");
-            }
+            // We already have the actual virtual key from above
 
             // Get the virtual key details
             Logger.LogInformation("Looking up virtual key {VirtualKeyId} for ephemeral key validation", virtualKeyId.Value);

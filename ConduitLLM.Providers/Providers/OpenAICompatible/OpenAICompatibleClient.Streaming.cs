@@ -47,11 +47,8 @@ namespace ConduitLLM.Providers.Providers.OpenAICompatible
         {
             ValidateRequest(request, "StreamChatCompletion");
 
-            // Get all chunks outside of try/catch to avoid the "yield in try" issue
-            var chunks = await FetchStreamChunksAsync(request, apiKey, cancellationToken);
-
-            // Now yield the chunks outside of any try blocks
-            foreach (var chunk in chunks)
+            // Stream chunks progressively without buffering
+            await foreach (var chunk in StreamChunksProgressivelyAsync(request, apiKey, cancellationToken).WithCancellation(cancellationToken))
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
@@ -59,6 +56,65 @@ namespace ConduitLLM.Providers.Providers.OpenAICompatible
                 }
 
                 yield return chunk;
+            }
+        }
+
+        /// <summary>
+        /// Streams chunks progressively without buffering them into a list
+        /// </summary>
+        private async IAsyncEnumerable<CoreModels.ChatCompletionChunk> StreamChunksProgressivelyAsync(
+            CoreModels.ChatCompletionRequest request,
+            string? apiKey = null,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            HttpClient? client = null;
+            HttpResponseMessage? response = null;
+            
+            try
+            {
+                client = CreateHttpClient(apiKey);
+                var openAiRequest = PrepareStreamingRequest(request);
+                var endpoint = GetChatCompletionEndpoint();
+
+                Logger.LogDebug("Sending streaming chat completion request to {Provider} at {Endpoint}", ProviderName, endpoint);
+
+                response = await SendStreamingRequestAsync(client, endpoint, openAiRequest, apiKey, cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // Process the error with enhanced error extraction
+                var enhancedErrorMessage = ExtractEnhancedErrorMessage(ex);
+                Logger.LogError(ex, "Error in streaming chat completion from {Provider}: {Message}", ProviderName, enhancedErrorMessage);
+
+                var error = CoreUtils.ExceptionHandler.HandleLlmException(ex, Logger, ProviderName, request.Model ?? ProviderModelId);
+                
+                // Clean up resources
+                response?.Dispose();
+                client?.Dispose();
+                
+                throw error;
+            }
+            
+            // If we get here, we have a response to stream
+            if (response != null)
+            {
+                // Stream chunks progressively using StreamHelper
+                await foreach (var chunk in CoreUtils.StreamHelper.ProcessSseStreamAsync<OpenAIModels.OpenAIChatCompletionChunk>(
+                    response, Logger, DefaultJsonOptions, cancellationToken))
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        response.Dispose();
+                        client?.Dispose();
+                        yield break;
+                    }
+
+                    yield return MapFromOpenAIChunk(chunk, request.Model);
+                }
+                
+                // Clean up after successful streaming
+                response.Dispose();
+                client?.Dispose();
             }
         }
 

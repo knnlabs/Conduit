@@ -201,7 +201,12 @@ namespace ConduitLLM.Providers.Providers.MiniMax
                         Message = new Message
                         {
                             Role = choice.Message?.Role ?? "assistant",
-                            Content = choice.Message?.Content ?? string.Empty,
+                            // MiniMax sometimes returns content in ReasoningContent field instead of Content
+                            // This appears to be for models that support reasoning tokens (similar to OpenAI o1)
+                            // Check if Content is null, empty string, or whitespace
+                            Content = !string.IsNullOrWhiteSpace(choice.Message?.Content?.ToString()) 
+                                ? choice.Message.Content.ToString()!
+                                : (choice.Message?.ReasoningContent ?? string.Empty),
                             ToolCalls = ConvertFunctionCallToToolCalls(choice.Message?.FunctionCall)
                         },
                         FinishReason = choice.FinishReason ?? "stop"
