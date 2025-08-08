@@ -34,7 +34,8 @@ import { useRouter } from 'next/navigation';
 import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/export';
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
-import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+import { ApiKeyTestResult, type ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+import { withAdminClient } from '@/lib/client/adminClient';
 import { getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 
 // Use SDK types directly with health extensions
@@ -62,14 +63,11 @@ export default function ProvidersPage() {
   const fetchProviders = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/providers');
-      if (!response.ok) {
-        throw new Error('Failed to fetch providers');
-      }
-      const data = await response.json() as ProviderCredentialDto[] | { items?: ProviderCredentialDto[]; providers?: ProviderCredentialDto[] };
+      const result = await withAdminClient(client => 
+        client.providers.list(1, 1000)
+      );
       
-      // Check if data is an array or if it's wrapped in a response object
-      const providersList = Array.isArray(data) ? data : (data.items ?? data.providers ?? []);
+      const providersList = result.items;
       
       // Fetch key counts for each provider
       const providersWithKeyCount = await Promise.all(
@@ -77,11 +75,10 @@ export default function ProvidersPage() {
           let keyCount = 0;
           if (provider.id) {
             try {
-              const keysResponse = await fetch(`/api/providers/${provider.id}/keys`);
-              if (keysResponse.ok) {
-                const keys = await keysResponse.json() as unknown[];
-                keyCount = Array.isArray(keys) ? keys.length : 0;
-              }
+              const keys = await withAdminClient(client => 
+                client.providers.listKeys(provider.id)
+              ) as unknown as ProviderCredentialDto[];
+              keyCount = Array.isArray(keys) ? keys.length : 0;
             } catch {
               // Silently fail, keyCount remains 0
             }
@@ -109,18 +106,14 @@ export default function ProvidersPage() {
   const handleTestProvider = async (providerId: number) => {
     setTestingProviders(prev => new Set(prev).add(providerId));
     try {
-      const response = await fetch(`/api/providers/${providerId}/test-connection`, {
-        method: 'POST',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to test provider');
-      }
-      const result = await response.json() as { success?: boolean; message?: string };
+      const result = await withAdminClient(client => 
+        client.providers.testConnectionById(providerId)
+      );
       
       notifications.show({
-        title: result.success ? 'Connection Successful' : 'Connection Failed',
-        message: result.message ?? (result.success ? 'Provider is working correctly' : 'Failed to connect to provider'),
-        color: result.success ? 'green' : 'red',
+        title: result.result === ApiKeyTestResult.SUCCESS ? 'Connection Successful' : 'Connection Failed',
+        message: result.message ?? (result.result === ApiKeyTestResult.SUCCESS ? 'Provider is working correctly' : 'Failed to connect to provider'),
+        color: result.result === ApiKeyTestResult.SUCCESS ? 'green' : 'red',
       });
       
       // Refresh providers to get updated health status
@@ -142,12 +135,9 @@ export default function ProvidersPage() {
 
   const handleDelete = async (providerId: number) => {
     try {
-      const response = await fetch(`/api/providers/${providerId}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete provider');
-      }
+      await withAdminClient(client => 
+        client.providers.deleteById(providerId)
+      );
       notifications.show({
         title: 'Success',
         message: 'Provider deleted successfully',

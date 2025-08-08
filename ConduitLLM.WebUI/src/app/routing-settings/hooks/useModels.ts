@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { withAdminClient } from '@/lib/client/adminClient';
 import type { DiscoveredModel, ModelsDiscoveryResponse } from '../types/models';
 
 
@@ -16,12 +17,16 @@ export function useModels() {
         setLoading(true);
         setError(null);
         
-        const response = await fetch('/api/discovery/models');
-        if (!response.ok) {
-          throw new Error(`Failed to fetch models: ${response.statusText}`);
-        }
+        const discoveredModels = await withAdminClient(client => 
+          client.modelMappings.discoverProviderModels(1)
+        );
         
-        const modelsData = await response.json() as ModelsDiscoveryResponse;
+        // Transform to expected format
+        const modelsData: ModelsDiscoveryResponse = {
+          models: discoveredModels as unknown as DiscoveredModel[],
+          totalCount: Array.isArray(discoveredModels) ? discoveredModels.length : 0,
+          providers: []
+        };
         
         // Extract models array from response
         const modelsArray = modelsData.models ?? [];

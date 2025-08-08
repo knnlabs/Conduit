@@ -185,7 +185,8 @@ export default function VirtualKeysAnalyticsPage() {
   };
 
   const getChangeIcon = (change: number) => {
-    return change >= 0 ? IconArrowUpRight : IconArrowDownRight;
+    const Icon = change >= 0 ? IconArrowUpRight : IconArrowDownRight;
+    return <Icon size={12} />;
   };
 
   const getQuotaColor = (used: number, limit: number): string => {
@@ -425,7 +426,7 @@ export default function VirtualKeysAnalyticsPage() {
                             variant="subtle" 
                             color={getChangeColor(key.usage.requestsChange)}
                           >
-                            {getChangeIcon(key.usage.requestsChange)({ size: 12 })}
+                            {getChangeIcon(key.usage.requestsChange)}
                           </ThemeIcon>
                           <Text size="xs" c={getChangeColor(key.usage.requestsChange)}>
                             {Math.abs(key.usage.requestsChange)}%
@@ -440,7 +441,7 @@ export default function VirtualKeysAnalyticsPage() {
                             variant="subtle" 
                             color={getChangeColor(key.usage.tokensChange)}
                           >
-                            {getChangeIcon(key.usage.tokensChange)({ size: 12 })}
+                            {getChangeIcon(key.usage.tokensChange)}
                           </ThemeIcon>
                           <Text size="xs" c={getChangeColor(key.usage.tokensChange)}>
                             {Math.abs(key.usage.tokensChange)}%
@@ -455,7 +456,7 @@ export default function VirtualKeysAnalyticsPage() {
                             variant="subtle" 
                             color={getChangeColor(key.usage.costChange)}
                           >
-                            {getChangeIcon(key.usage.costChange)({ size: 12 })}
+                            {getChangeIcon(key.usage.costChange)}
                           </ThemeIcon>
                           <Text size="xs" c={getChangeColor(key.usage.costChange)}>
                             {Math.abs(key.usage.costChange)}%

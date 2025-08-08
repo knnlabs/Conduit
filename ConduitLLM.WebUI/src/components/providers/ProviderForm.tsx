@@ -29,6 +29,7 @@ import {
   PROVIDER_CONFIG_REQUIREMENTS
 } from '@/lib/constants/providers';
 import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+import { withAdminClient } from '@/lib/client/adminClient';
 import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 import { validators } from '@/lib/utils/form-validators';
 
@@ -95,11 +96,15 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
       const loadProviders = async () => {
         setIsLoadingProviders(true);
         try {
-          const response = await fetch('/api/providers/available?llmOnly=true');
-          if (!response.ok) {
-            throw new Error('Failed to fetch available providers');
-          }
-          const providers = await response.json() as ProviderOption[];
+          const providerTypes = await withAdminClient(client => 
+            client.providers.getAvailableProviderTypes()
+          );
+          
+          const providers: ProviderOption[] = providerTypes.map(type => ({
+            value: type.toString(),
+            label: getProviderDisplayName(type)
+          }));
+          
           setAvailableProviders(providers);
           
           if (providers.length === 0) {
@@ -132,11 +137,9 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
       const loadProvider = async () => {
         setIsLoadingProvider(true);
         try {
-          const response = await fetch(`/api/providers/${providerId}`);
-          if (!response.ok) {
-            throw new Error('Failed to fetch provider');
-          }
-          const provider = await response.json() as ProviderCredentialDto;
+          const provider = await withAdminClient(client => 
+            client.providers.getById(providerId)
+          );
           setExistingProvider(provider);
           
           const apiProvider = provider;
@@ -147,7 +150,8 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
             providerName: typeof apiProvider.providerName === 'string' ? apiProvider.providerName : '',
             apiKey: '', // Don't show existing key for security
             apiEndpoint: apiProvider.baseUrl ?? '',
-            organizationId: typeof provider.organization === 'string' ? provider.organization : '',
+            organizationId: (provider as unknown as { organization?: string; organizationId?: string }).organization ?? 
+                          (provider as unknown as { organization?: string; organizationId?: string }).organizationId ?? '',
             isEnabled: provider.isEnabled === true,
           };
           
@@ -184,24 +188,14 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
           providerType: parseInt(values.providerType, 10),
           providerName: providerName,
           apiKey: values.apiKey,
-          apiEndpoint: values.apiEndpoint ?? undefined,
-          organizationId: values.organizationId ?? undefined,
+          baseUrl: values.apiEndpoint ?? undefined,
+          organization: values.organizationId ?? undefined,
           isEnabled: values.isEnabled,
         };
 
-        const response = await fetch('/api/providers', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: 'Failed to parse error response' })) as { error?: string; message?: string };
-          console.error('Provider creation failed:', errorData);
-          throw new Error(errorData.error ?? errorData.message ?? `Failed to create provider: ${response.status}`);
-        }
+        await withAdminClient(client => 
+          client.providers.create(payload)
+        );
 
         notifications.show({
           title: 'Success',
@@ -212,23 +206,14 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
         // Edit mode - Note: API keys cannot be updated here, only through the keys management page
         const payload = {
           providerName: values.providerName ?? undefined,
-          apiEndpoint: values.apiEndpoint ?? undefined,
-          organizationId: values.organizationId ?? undefined,
+          baseUrl: values.apiEndpoint ?? undefined,
+          organization: values.organizationId ?? undefined,
           isEnabled: values.isEnabled,
         };
 
-        const response = await fetch(`/api/providers/${providerId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: 'Failed to parse error response' })) as { error?: string; message?: string };
-          throw new Error(errorData.error ?? errorData.message ?? `Failed to update provider: ${response.status}`);
-        }
+        await withAdminClient(client => 
+          client.providers.update(providerId as number, payload)
+        );
 
         notifications.show({
           title: 'Success',
@@ -269,53 +254,30 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
     setTestResult(null);
 
     try {
-      const endpoint = mode === 'add' ? '/api/providers/test-config' : `/api/providers/${providerId}/test-connection`;
-      const method = mode === 'add' ? 'POST' : 'POST';
-      const body = mode === 'add' ? JSON.stringify({
-        providerType: parseInt(form.values.providerType, 10),
-        apiKey: form.values.apiKey,
-        apiEndpoint: form.values.apiEndpoint ?? undefined,
-        organizationId: form.values.organizationId ?? undefined,
-      }) : undefined;
-
-      const response = await fetch(endpoint, {
-        method,
-        headers: body ? {
-          'Content-Type': 'application/json',
-        } : undefined,
-        body,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}` })) as { error?: string; message?: string };
-        console.error('Provider test failed:', errorData);
-        setTestResult({
-          success: false,
-          message: errorData.error ?? errorData.message ?? `Connection failed: ${response.status}`,
-        });
+      let result;
+      
+      if (mode === 'add') {
+        result = await withAdminClient(client => 
+          client.providers.testConfig({
+            providerType: parseInt(form.values.providerType, 10),
+            apiKey: form.values.apiKey,
+            baseUrl: form.values.apiEndpoint ?? undefined,
+            organizationId: form.values.organizationId ?? undefined,
+          })
+        );
       } else {
-        const result = await response.json() as { 
-          result?: 'success' | 'invalid_key' | 'ignored' | 'provider_down' | 'rate_limited' | 'unknown_error';
-          message?: string;
-          details?: {
-            responseTimeMs?: number;
-            modelsAvailable?: string[];
-            providerMessage?: string;
-            errorCode?: string;
-            statusCode?: number;
-          };
-          // Legacy fields for backward compatibility
-          success?: boolean; 
-        };
-        
-        // Handle new response format with backward compatibility
-        const isSuccess = result.result === 'success' || result.success === true;
-        
-        setTestResult({
-          success: isSuccess,
-          message: result.message ?? (isSuccess ? 'Connection successful' : 'Connection failed'),
-        });
+        result = await withAdminClient(client => 
+          client.providers.testConnectionById(providerId as number)
+        );
       }
+      
+      // Handle new response format
+      const isSuccess = (result.result as string) === 'success';
+      
+      setTestResult({
+        success: isSuccess,
+        message: result.message ?? (isSuccess ? 'Connection successful' : 'Connection failed'),
+      });
     } catch (error) {
       console.error('Connection test error:', error);
       setTestResult({

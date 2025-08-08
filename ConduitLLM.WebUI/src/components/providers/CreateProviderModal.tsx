@@ -20,6 +20,8 @@ import {
   ProviderType, 
   PROVIDER_CONFIG_REQUIREMENTS
 } from '@/lib/constants/providers';
+import { withAdminClient } from '@/lib/client/adminClient';
+import { getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 
 interface CreateProviderModalProps {
   opened: boolean;
@@ -75,11 +77,14 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
     const loadProviders = async () => {
       setIsLoadingProviders(true);
       try {
-        const response = await fetch('/api/providers/available?llmOnly=true');
-        if (!response.ok) {
-          throw new Error('Failed to fetch available providers');
-        }
-        const providers = await response.json() as ProviderOption[];
+        const providerTypes = await withAdminClient(client => 
+          client.providers.getAvailableProviderTypes()
+        );
+        
+        const providers: ProviderOption[] = providerTypes.map(type => ({
+          value: type.toString(),
+          label: getProviderDisplayName(type)
+        }));
         setAvailableProviders(providers);
         
         // If no providers are available, show a notification
@@ -129,24 +134,14 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
         providerType: parseInt(values.providerType, 10), // Send numeric provider type
         providerName: providerName,
         apiKey: values.apiKey,
-        apiEndpoint: values.apiEndpoint ?? undefined,
-        organizationId: values.organizationId ?? undefined,
+        baseUrl: values.apiEndpoint ?? undefined,
+        organization: values.organizationId ?? undefined,
         isEnabled: values.isEnabled,
       };
 
-      const response = await fetch('/api/providers', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Failed to parse error response' })) as { error?: string; message?: string };
-        console.error('Provider creation failed:', errorData);
-        throw new Error(errorData.error ?? errorData.message ?? `Failed to create provider: ${response.status}`);
-      }
+      await withAdminClient(client => 
+        client.providers.create(payload)
+      );
 
       notifications.show({
         title: 'Success',
@@ -190,33 +185,22 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
     setTestResult(null);
 
     try {
-      const response = await fetch('/api/providers/test-config', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          providerType: parseInt(form.values.providerType, 10), // Send numeric provider type
+      const result = await withAdminClient(client => 
+        client.providers.testConfig({
+          providerType: parseInt(form.values.providerType, 10),
           apiKey: form.values.apiKey,
-          apiEndpoint: form.values.apiEndpoint ?? undefined, // Changed from baseUrl to apiEndpoint
+          baseUrl: form.values.apiEndpoint ?? undefined,
           organizationId: form.values.organizationId ?? undefined,
-        }),
+        })
+      );
+      
+      // Handle new response format  
+      const isSuccess = (result.result as string) === 'success';
+      
+      setTestResult({
+        success: isSuccess,
+        message: result.message ?? (isSuccess ? 'Connection successful' : 'Connection failed'),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}` })) as { error?: string; message?: string };
-        console.error('Provider test failed:', errorData);
-        setTestResult({
-          success: false,
-          message: errorData.error ?? errorData.message ?? `Connection failed: ${response.status}`,
-        });
-      } else {
-        const result = await response.json() as { success?: boolean; message?: string };
-        setTestResult({
-          success: result.success ?? false,
-          message: result.message ?? 'Connection successful',
-        });
-      }
     } catch (error) {
       console.error('Connection test error:', error);
       setTestResult({

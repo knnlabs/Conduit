@@ -32,6 +32,20 @@ import { useErrorQueues } from '@/hooks/useErrorQueues';
 import { ErrorQueueTable } from './components/ErrorQueueTable';
 import { ErrorQueueCharts } from './components/ErrorQueueCharts';
 import { formatRelativeTime } from '@/utils/formatters';
+import type { ErrorQueueInfo } from '@knn_labs/conduit-admin-client';
+
+interface ErrorQueueSummary {
+  totalQueues: number;
+  totalMessages: number;
+  totalErrors: number;
+  activeQueues: number;
+  criticalQueues?: ErrorQueueInfo[];
+}
+
+interface ErrorQueuesResponse {
+  summary: ErrorQueueSummary;
+  queues: ErrorQueueInfo[];
+}
 // SDK types are now properly handled in useErrorQueues hook
 
 interface SummaryCardProps {
@@ -120,15 +134,16 @@ export default function ErrorQueuesPage() {
     );
   }
 
-  const summary = data?.summary;
-  const queues = data?.queues ?? [];
+  const response = Array.isArray(data) ? { summary: undefined, queues: [] } : (data as unknown as ErrorQueuesResponse);
+  const summary = response?.summary;
+  const queues = response?.queues ?? [];
 
-  // Filter queues by status if selected
-  const filteredQueues = statusFilter
-    ? queues.filter((q) => q.status === statusFilter)
+  // Filter queues by name if search query exists
+  const filteredQueues = searchQuery
+    ? queues.filter((q) => q.queueName?.toLowerCase().includes(searchQuery.toLowerCase()))
     : queues;
 
-  // Calculate oldest message across all queues
+  // Calculate oldest message across all queues  
   const oldestMessage = queues.reduce((oldest: Date | null, queue) => {
     if (!queue.oldestMessageTimestamp) return oldest;
     const queueOldest = new Date(queue.oldestMessageTimestamp);

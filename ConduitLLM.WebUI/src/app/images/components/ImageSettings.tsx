@@ -5,6 +5,13 @@ import { useImageStore } from '../hooks/useImageStore';
 import { ImageModel } from '../hooks/useImageModels';
 import { useModelMetadata } from '../hooks/useModelMetadata';
 
+interface ImageMetadata {
+  sizes?: string[];
+  qualityOptions?: string[];
+  styleOptions?: string[];
+  maxImages?: number;
+}
+
 interface ImageSettingsProps {
   models: ImageModel[];
 }
@@ -38,7 +45,7 @@ export default function ImageSettings({ models }: ImageSettingsProps) {
 
   // Get model metadata
   const { data: metadataResponse } = useModelMetadata(settings.model ?? null);
-  const imageMetadata = metadataResponse?.metadata?.image;
+  const imageMetadata = (metadataResponse as { metadata?: { image?: ImageMetadata } } | null)?.metadata?.image;
 
   // Get size options from metadata or fallback
   const getSizeOptions = () => {

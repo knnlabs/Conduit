@@ -15,6 +15,7 @@ import { notifications } from '@mantine/notifications';
 import { IconAlertCircle, IconLayersLinked } from '@tabler/icons-react';
 import { useState } from 'react';
 import type { CreateVirtualKeyGroupRequestDto } from '@knn_labs/conduit-admin-client';
+import { withAdminClient } from '@/lib/client/adminClient';
 
 interface CreateVirtualKeyGroupModalProps {
   opened: boolean;
@@ -45,21 +46,12 @@ export function CreateVirtualKeyGroupModal({ opened, onClose, onSuccess }: Creat
     try {
       setIsSubmitting(true);
 
-      const response = await fetch('/api/virtualkeys/groups', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      await withAdminClient(client => 
+        client.virtualKeyGroups.create({
           ...values,
           externalGroupId: values.externalGroupId?.trim() ?? undefined,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(error || 'Failed to create virtual key group');
-      }
+        })
+      );
 
       notifications.show({
         title: 'Success',

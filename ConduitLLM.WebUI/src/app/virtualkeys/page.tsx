@@ -26,7 +26,7 @@ import {
   IconSearch,
   IconLayersLinked,
 } from '@tabler/icons-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { VirtualKeysTable } from '@/components/virtualkeys/VirtualKeysTable';
 import { 
@@ -39,6 +39,7 @@ import { notifications } from '@mantine/notifications';
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
 import type { VirtualKeyDto, VirtualKeyGroupDto } from '@knn_labs/conduit-admin-client';
+import { withAdminClient } from '@/lib/client/adminClient';
 
 export default function VirtualKeysPage() {
   const [createModalOpened, { open: openCreateModal, close: closeCreateModal }] = useDisclosure(false);
@@ -50,6 +51,38 @@ export default function VirtualKeysPage() {
   const [virtualKeyGroups, setVirtualKeyGroups] = useState<VirtualKeyGroupDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+
+  const fetchVirtualKeys = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const result = await withAdminClient(client => 
+        client.virtualKeys.list(1, 1000)
+      );
+      
+      // Filter out items without valid IDs and ensure they match VirtualKeyDto type
+      const validKeys = result.items.filter((key): key is VirtualKeyDto => 
+        key.id !== undefined && key.id !== null
+      );
+      setVirtualKeys(validKeys);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Unknown error'));
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const fetchVirtualKeyGroups = useCallback(async () => {
+    try {
+      const groups = await withAdminClient(client => 
+        client.virtualKeyGroups.list()
+      );
+      setVirtualKeyGroups(groups);
+    } catch (err) {
+      console.warn('Error fetching virtual key groups:', err);
+    }
+  }, []);
 
   // Fetch virtual keys and groups on mount
   useEffect(() => {
@@ -68,57 +101,7 @@ export default function VirtualKeysPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  const fetchVirtualKeys = async () => {
-    try {
-      setIsLoading(true);
-      setError(null); // Clear any previous errors
-      
-      const response = await fetch('/api/virtualkeys');
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to fetch virtual keys: ${errorText}`);
-      }
-      
-      // Parse the response directly
-      const result = await response.json() as unknown;
-      const data = result as { items?: VirtualKeyDto[] } | VirtualKeyDto[];
-        
-      // Handle both array and paginated response formats
-      let virtualKeysData: VirtualKeyDto[];
-      if (Array.isArray(data)) {
-        virtualKeysData = data;
-      } else if (data.items && Array.isArray(data.items)) {
-        virtualKeysData = data.items;
-      } else {
-        virtualKeysData = [];
-      }
-      
-      setVirtualKeys(virtualKeysData);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Unknown error'));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchVirtualKeyGroups = async () => {
-    try {
-      const response = await fetch('/api/virtualkeys/groups');
-      
-      if (!response.ok) {
-        console.warn('Failed to fetch virtual key groups');
-        return;
-      }
-      
-      const groups = await response.json() as VirtualKeyGroupDto[];
-      setVirtualKeyGroups(groups);
-    } catch (err) {
-      console.warn('Error fetching virtual key groups:', err);
-    }
-  };
+  }, [fetchVirtualKeys, fetchVirtualKeyGroups]);
 
   // Filter virtual keys based on search query
   const filteredKeys = virtualKeys.filter((key) => {
@@ -145,36 +128,34 @@ export default function VirtualKeysPage() {
   } = usePaginatedData(filteredKeys);
 
   // Calculate statistics based on filtered data (not paginated)
-  const stats = filteredKeys ? {
+  const stats = useMemo(() => filteredKeys ? {
     totalKeys: filteredKeys.length,
     activeKeys: filteredKeys.filter((k) => k.isEnabled).length,
     totalGroups: new Set(filteredKeys.map((k) => k.virtualKeyGroupId)).size,
-  } : null;
+  } : null, [filteredKeys]);
 
-  const handleEdit = (key: VirtualKeyDto) => {
+  const handleEdit = useCallback((key: VirtualKeyDto) => {
     setSelectedKey(key);
     openEditModal();
-  };
+  }, [openEditModal]);
 
-  const handleView = (key: VirtualKeyDto) => {
+  const handleView = useCallback((key: VirtualKeyDto) => {
     setSelectedKey(key);
     openViewModal();
-  };
+  }, [openViewModal]);
 
-  const handleDelete = async (keyId: string) => {
+  const handleDelete = useCallback(async (keyId: string) => {
     try {
-      const response = await fetch(`/api/virtualkeys/${keyId}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete virtual key');
-      }
+      await withAdminClient(client => 
+        client.virtualKeys.delete(keyId)
+      );
+      
       notifications.show({
         title: 'Success',
         message: 'Virtual key deleted successfully',
         color: 'green',
       });
-      void fetchVirtualKeys(); // Refresh the list
+      void fetchVirtualKeys();
     } catch {
       notifications.show({
         title: 'Error',
@@ -182,10 +163,10 @@ export default function VirtualKeysPage() {
         color: 'red',
       });
     }
-  };
+  }, [fetchVirtualKeys]);
 
 
-  const handleExportCSV = () => {
+  const handleExportCSV = useCallback(() => {
     if (!filteredKeys || filteredKeys.length === 0) {
       notifications.show({
         title: 'No data to export',
@@ -228,9 +209,9 @@ export default function VirtualKeysPage() {
       message: `Exported ${filteredKeys.length} virtual keys`,
       color: 'green',
     });
-  };
+  }, [filteredKeys]);
 
-  const handleExportJSON = () => {
+  const handleExportJSON = useCallback(() => {
     if (!filteredKeys || filteredKeys.length === 0) {
       notifications.show({
         title: 'No data to export',
@@ -250,9 +231,9 @@ export default function VirtualKeysPage() {
       message: `Exported ${filteredKeys.length} virtual keys`,
       color: 'green',
     });
-  };
+  }, [filteredKeys]);
 
-  const statCards = stats ? [
+  const statCards = useMemo(() => stats ? [
     {
       title: 'Total Keys',
       value: stats.totalKeys,
@@ -271,7 +252,7 @@ export default function VirtualKeysPage() {
       icon: IconLayersLinked,
       color: 'orange',
     },
-  ] : [];
+  ] : [], [stats]);
 
   if (error) {
     return (

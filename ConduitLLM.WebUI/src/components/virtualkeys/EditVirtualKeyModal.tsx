@@ -19,6 +19,7 @@ import { notifications } from '@mantine/notifications';
 import { useState, useEffect, useCallback } from 'react';
 
 import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
+import { withAdminClient } from '@/lib/client/adminClient';
 
 interface EditVirtualKeyModalProps {
   opened: boolean;
@@ -106,29 +107,9 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
         metadata: values.description?.trim() ?? undefined,
       };
 
-      
-      const response = await fetch(`/api/virtualkeys/${virtualKey.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      
-      const responseText = await response.text();
-      
-      if (!response.ok) {
-        let errorMessage = 'Failed to update virtual key';
-        try {
-          const errorData = JSON.parse(responseText) as { message?: string; error?: string };
-          errorMessage = errorData.message ?? errorData.error ?? errorMessage;
-        } catch {
-          // If not JSON, use the text as is
-          errorMessage = responseText || errorMessage;
-        }
-        throw new Error(errorMessage);
-      }
+      await withAdminClient(client => 
+        client.virtualKeys.update(virtualKey.id.toString(), payload)
+      );
       
       // Response was successful
 

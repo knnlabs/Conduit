@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { withAdminClient } from '@/lib/client/adminClient';
 import { OverallMediaStorageStats } from '../types';
 
 export function useMediaStats() {
@@ -13,22 +14,22 @@ export function useMediaStats() {
     setError(null);
 
     try {
-      // Fetch overall stats
-      const overallResponse = await fetch('/api/media/stats?type=overall');
-      if (!overallResponse.ok) throw new Error('Failed to fetch overall stats');
-      const overallData = await overallResponse.json() as OverallMediaStorageStats;
+      // Fetch overall stats using Admin SDK
+      const overallData = await withAdminClient(client => 
+        client.media.getMediaStats('overall')
+      ) as OverallMediaStorageStats;
       setStats(overallData);
 
-      // Fetch provider stats
-      const providerResponse = await fetch('/api/media/stats?type=by-provider');
-      if (!providerResponse.ok) throw new Error('Failed to fetch provider stats');
-      const providerData = await providerResponse.json() as Record<string, number>;
+      // Fetch provider stats using Admin SDK
+      const providerData = await withAdminClient(client => 
+        client.media.getMediaStats('by-provider')
+      );
       setProviderStats(providerData);
 
-      // Fetch type stats
-      const typeResponse = await fetch('/api/media/stats?type=by-type');
-      if (!typeResponse.ok) throw new Error('Failed to fetch type stats');
-      const typeData = await typeResponse.json() as Record<string, number>;
+      // Fetch type stats using Admin SDK
+      const typeData = await withAdminClient(client => 
+        client.media.getMediaStats('by-type')
+      );
       setTypeStats(typeData);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';

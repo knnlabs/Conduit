@@ -34,6 +34,7 @@ import { useDisclosure } from '@mantine/hooks';
 import { useSearchParams } from 'next/navigation';
 import { formatters } from '@/lib/utils/formatters';
 import type { VirtualKeyGroupDto } from '@knn_labs/conduit-admin-client';
+import { withAdminClient } from '@/lib/client/adminClient';
 
 // Import modals lazily
 import { 
@@ -80,14 +81,9 @@ export default function VirtualKeyGroupsPage() {
       setIsLoading(true);
       setError(null);
       
-      const response = await fetch('/api/virtualkeys/groups');
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to fetch virtual key groups: ${errorText}`);
-      }
-      
-      const data = await response.json() as VirtualKeyGroupDto[];
+      const data = await withAdminClient(client => 
+        client.virtualKeyGroups.list()
+      );
       setGroups(data);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error'));

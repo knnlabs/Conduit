@@ -23,6 +23,7 @@ import { useState, useEffect } from 'react';
 import { validators } from '@/lib/utils/form-validators';
 import { notifications } from '@mantine/notifications';
 import type { VirtualKeyGroupDto } from '@knn_labs/conduit-admin-client';
+import { withAdminClient } from '@/lib/client/adminClient';
 
 interface CreateVirtualKeyModalProps {
   opened: boolean;
@@ -78,12 +79,10 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
       
       try {
         setIsLoadingGroups(true);
-        const response = await fetch('/api/virtualkeys/groups');
-        
-        if (response.ok) {
-          const data = await response.json() as VirtualKeyGroupDto[];
-          setGroups(data);
-        }
+        const data = await withAdminClient(client => 
+          client.virtualKeyGroups.list()
+        );
+        setGroups(data);
       } catch (error) {
         console.warn('Failed to fetch virtual key groups:', error);
       } finally {
@@ -133,28 +132,25 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
   const handleSubmit = async (values: CreateVirtualKeyForm) => {
     setIsSubmitting(true);
     try {
+      // Ensure required fields are properly validated
+      if (!values.virtualKeyGroupId) {
+        form.setFieldError('virtualKeyGroupId', 'Virtual Key Group is required');
+        return;
+      }
+
       const payload = {
         keyName: values.keyName.trim(),
         description: values.description?.trim() ?? undefined,
-        virtualKeyGroupId: values.virtualKeyGroupId ?? undefined,
+        virtualKeyGroupId: values.virtualKeyGroupId, // Now guaranteed to be number
         rateLimitRpm: values.rateLimitPerMinute ?? undefined,
         allowedModels: values.allowedModels.length > 0 ? values.allowedModels.join(',') : undefined,
         metadata: values.metadata?.trim() ? values.metadata : undefined,
         isEnabled: values.isEnabled,
       };
 
-      const response = await fetch('/api/virtualkeys', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      
-      if (!response.ok) {
-        throw new Error('Failed to create virtual key');
-      }
+      await withAdminClient(client => 
+        client.virtualKeys.create(payload)
+      );
 
       notifications.show({
         title: 'Success',

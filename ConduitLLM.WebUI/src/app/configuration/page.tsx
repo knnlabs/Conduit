@@ -30,6 +30,7 @@ import {
 } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
+import { withAdminClient } from '@/lib/client/adminClient';
 
 interface SystemInfo {
   version: string;
@@ -82,20 +83,10 @@ export default function ConfigurationPage() {
   const fetchSystemInfo = async () => {
     try {
       setSystemLoading(true);
-      const response = await fetch('/api/settings/system-info');
-      if (!response.ok) {
-        throw new Error('Failed to fetch system info');
-      }
-      const data = await response.json() as unknown;
+      const data = await withAdminClient(client => client.system.getSystemInfo());
       
-      // Validate the data structure matches AdminClient SystemInfoDto
-      if (data && typeof data === 'object' && 
-          'version' in data && 'runtime' in data && 'database' in data) {
-        setSystemInfo(data as SystemInfo);
-      } else {
-        console.error('Invalid system info structure:', data);
-        setSystemInfo(null);
-      }
+      // Convert AdminClient SystemInfoDto to local SystemInfo interface
+      setSystemInfo(data as SystemInfo);
     } catch (err) {
       console.error('Error fetching system info:', err);
       notifications.show({
@@ -112,19 +103,10 @@ export default function ConfigurationPage() {
   const fetchSettings = async () => {
     try {
       setSettingsLoading(true);
-      const response = await fetch('/api/settings');
-      if (!response.ok) {
-        throw new Error('Failed to fetch settings');
-      }
-      const data = await response.json() as unknown;
+      const data = await withAdminClient(client => client.settings.listGlobalSettings());
       
-      // Ensure we have an array
-      if (Array.isArray(data)) {
-        setSettings(data);
-      } else {
-        console.error('Settings data is not an array:', data);
-        setSettings([]);
-      }
+      // Admin SDK returns the settings array directly
+      setSettings(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error fetching settings:', err);
       notifications.show({
@@ -145,17 +127,9 @@ export default function ConfigurationPage() {
 
   const handleSave = async (key: string) => {
     try {
-      const response = await fetch(`/api/settings/${key}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ value: editValue }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update setting');
-      }
+      await withAdminClient(client => 
+        client.settings.updateGlobalSetting(key, { value: editValue })
+      );
 
       // Update local state
       setSettings(prevSettings =>

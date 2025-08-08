@@ -22,7 +22,7 @@ import {
 import { notifications } from '@mantine/notifications';
 import { IconAlertCircle } from '@tabler/icons-react';
 import type { ModelProviderMappingDto, UpdateModelProviderMappingDto, ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
-// Remove unused import
+import { withAdminClient } from '@/lib/client/adminClient';
 
 export default function EditModelMappingPage() {
   const params = useParams();
@@ -62,21 +62,21 @@ export default function EditModelMappingPage() {
       setIsLoading(true);
       try {
         // Fetch mapping details
-        const mappingResponse = await fetch(`/api/model-mappings/${mappingId}`);
-        if (!mappingResponse.ok) throw new Error('Failed to fetch mapping');
-        const mappingData = await mappingResponse.json() as ModelProviderMappingDto & { supportsChat?: boolean };
+        const mappingData = await withAdminClient(client => 
+          client.modelMappings.getById(parseInt(mappingId, 10))
+        ) as ModelProviderMappingDto & { supportsChat?: boolean };
 
         // Fetch providers
-        const providersResponse = await fetch('/api/providers');
-        if (!providersResponse.ok) throw new Error('Failed to fetch providers');
-        const providersData = await providersResponse.json() as ProviderCredentialDto[];
-        setProviders(providersData);
+        const providersResult = await withAdminClient(client => 
+          client.providers.list(1, 1000)
+        );
+        setProviders(providersResult.items as ProviderCredentialDto[]);
 
         // Fetch all mappings for validation
-        const mappingsResponse = await fetch('/api/model-mappings');
-        if (!mappingsResponse.ok) throw new Error('Failed to fetch mappings');
-        const mappingsData = await mappingsResponse.json() as ModelProviderMappingDto[];
-        setExistingMappings(mappingsData);
+        const mappingsResult = await withAdminClient(client => 
+          client.modelMappings.list()
+        );
+        setExistingMappings(mappingsResult);
 
         // Set form values
         setModelId(mappingData.modelId);
@@ -187,19 +187,9 @@ export default function EditModelMappingPage() {
         isDefault,
       };
 
-      const response = await fetch(`/api/model-mappings/${mappingId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updateData),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[EditPage] Update failed with status:', response.status, 'Error:', errorText);
-        throw new Error(`Failed to update model mapping: ${errorText}`);
-      }
+      await withAdminClient(client => 
+        client.modelMappings.update(parseInt(mappingId, 10), updateData)
+      );
 
       notifications.show({
         title: 'Success',

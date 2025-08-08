@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { ProviderType } from '@knn_labs/conduit-admin-client';
+import { withAdminClient } from '@/lib/client/adminClient';
 
 // Helper function to convert ProviderType enum to display name
 function getProviderDisplayName(providerType: ProviderType): string {
@@ -32,34 +33,18 @@ export function useImageModels() {
   return useQuery({
     queryKey: ['image-models'],
     queryFn: async () => {
-      const response = await fetch('/api/model-mappings');
-      if (!response.ok) {
-        throw new Error('Failed to fetch model mappings');
-      }
+      const result = await withAdminClient(client => 
+        client.modelMappings.list()
+      );
       
-      interface ModelMapping {
-        modelId: string;
-        providerId: number;
-        providerType?: ProviderType;
-        provider?: {
-          id: number;
-          providerType: ProviderType;
-          displayName: string;
-          isEnabled: boolean;
-        };
-        supportsImageGeneration?: boolean;
-        maxContextLength?: number;
-        isEnabled?: boolean;
-      }
-      
-      const mappings = await response.json() as ModelMapping[];
+      const mappings = result;
       
       // Filter for image generation models that are enabled
       const imageModels: ImageModel[] = mappings
-        .filter((mapping: ModelMapping) => 
+        .filter(mapping => 
           mapping.supportsImageGeneration === true && mapping.isEnabled !== false
         )
-        .map((mapping: ModelMapping) => {
+        .map(mapping => {
           const providerDisplayName = mapping.provider?.displayName ?? 
             (mapping.providerType !== undefined 
               ? getProviderDisplayName(mapping.providerType) 

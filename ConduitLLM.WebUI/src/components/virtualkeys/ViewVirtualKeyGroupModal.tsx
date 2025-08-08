@@ -20,6 +20,7 @@ import {
 import { useState, useEffect } from 'react';
 import { formatters } from '@/lib/utils/formatters';
 import type { VirtualKeyGroupDto, VirtualKeyDto } from '@knn_labs/conduit-admin-client';
+import { withAdminClient } from '@/lib/client/adminClient';
 
 interface ViewVirtualKeyGroupModalProps {
   opened: boolean;
@@ -37,12 +38,10 @@ export function ViewVirtualKeyGroupModal({ opened, onClose, group }: ViewVirtual
 
       try {
         setIsLoadingKeys(true);
-        const response = await fetch(`/api/virtualkeys/groups/${group.id}/keys`);
-        
-        if (response.ok) {
-          const data = await response.json() as VirtualKeyDto[];
-          setKeys(data);
-        }
+        const data = await withAdminClient(client => 
+          client.virtualKeyGroups.getKeys(group.id)
+        );
+        setKeys(data);
       } catch (error) {
         console.warn('Failed to fetch keys:', error);
       } finally {

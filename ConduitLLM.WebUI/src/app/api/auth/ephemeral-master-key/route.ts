@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
-import { getServerAdminClient } from '@/lib/server/sdk-config';
 
 interface EphemeralMasterKeyRequest {
   purpose?: string; // Optional purpose for logging/tracking
@@ -34,15 +33,33 @@ export async function POST(request: NextRequest) {
                      'unknown';
     const userAgent = request.headers.get('user-agent') ?? 'unknown';
     
-    // Use Admin SDK to generate ephemeral master key
-    const adminClient = getServerAdminClient();
-    const response = await adminClient.auth.generateEphemeralMasterKey(masterKey, {
-      metadata: {
-        sourceIP,
-        userAgent,
-        purpose: body.purpose ?? 'web-ui-request'
-      }
+    // Call the Admin API's ephemeral master key endpoint directly
+    // The SDK method doesn't work because it requires the master key in the client config,
+    // but we need to pass it as a header for this specific endpoint
+    const adminApiUrl = process.env.CONDUIT_ADMIN_API_BASE_URL ?? 'http://admin-api:5002';
+    const masterKeyHeader = 'X-Master-Key';
+    const ephemeralKeyResponse = await fetch(`${adminApiUrl}/api/admin/auth/ephemeral-master-key`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        [masterKeyHeader]: masterKey,
+      },
+      body: JSON.stringify({
+        metadata: {
+          sourceIP,
+          userAgent,
+          purpose: body.purpose ?? 'web-ui-request'
+        }
+      }),
     });
+
+    if (!ephemeralKeyResponse.ok) {
+      const errorText = await ephemeralKeyResponse.text();
+      console.error('Failed to generate ephemeral master key:', errorText);
+      throw new Error(`Failed to generate ephemeral master key: ${ephemeralKeyResponse.status}`);
+    }
+
+    const response = await ephemeralKeyResponse.json() as EphemeralMasterKeyResponse;
     
     // Return the ephemeral master key with Admin API URL
     // Use the external URL that the browser can access

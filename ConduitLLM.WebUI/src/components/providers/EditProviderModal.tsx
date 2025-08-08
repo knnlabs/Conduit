@@ -24,6 +24,7 @@ import {
   PROVIDER_CONFIG_REQUIREMENTS 
 } from '@/lib/constants/providers';
 import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+import { withAdminClient } from '@/lib/client/adminClient';
 import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 
 
@@ -103,24 +104,14 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
     try {
       const payload = {
         providerName: values.providerName ?? undefined,
-        apiKey: values.apiKey ?? undefined, // Only send if changed
-        apiEndpoint: values.apiEndpoint ?? undefined,
-        organizationId: values.organizationId ?? undefined,
+        baseUrl: values.apiEndpoint ?? undefined,
+        organization: values.organizationId ?? undefined,
         isEnabled: values.isEnabled,
       };
 
-      const response = await fetch(`/api/providers/${provider.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Failed to parse error response' })) as { error?: string; message?: string };
-        throw new Error(errorData.error ?? errorData.message ?? `Failed to update provider: ${response.status}`);
-      }
+      await withAdminClient(client => 
+        client.providers.update(provider.id, payload)
+      );
 
       notifications.show({
         title: 'Success',

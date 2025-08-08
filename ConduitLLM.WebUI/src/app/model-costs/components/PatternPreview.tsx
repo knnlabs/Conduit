@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Card, Text, Stack, Badge, Group, LoadingOverlay, ScrollArea } from '@mantine/core';
 import { IconInfoCircle } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
+import { withAdminClient } from '@/lib/client/adminClient';
 import { isPatternMatch } from '../utils/patternValidation';
 
 interface PatternPreviewProps {
@@ -63,10 +64,10 @@ export function PatternPreview({ pattern }: PatternPreviewProps) {
     queryKey: ['provider-models'],
     queryFn: async () => {
       try {
-        const response = await fetch('/api/model-mappings');
-        if (!response.ok) return [];
-        const data = await response.json() as { items?: unknown[] };
-        return data.items ?? [];
+        const result = await withAdminClient(client => 
+          client.modelMappings.list()
+        );
+        return result;
       } catch {
         return [];
       }

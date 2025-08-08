@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { withAdminClient } from '@/lib/client/adminClient';
 import { MediaRecord, MediaFilters } from '../types';
 import { notifications } from '@mantine/notifications';
 
@@ -19,12 +20,9 @@ export function useMediaAssets(virtualKeyId?: number) {
     setError(null);
 
     try {
-      const response = await fetch(`/api/media?virtualKeyId=${virtualKeyId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch media');
-      }
-
-      const data = await response.json() as MediaRecord[];
+      const data = await withAdminClient(client => 
+        client.media.getMediaByVirtualKey(virtualKeyId)
+      ) as MediaRecord[];
       setMedia(data);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
@@ -39,17 +37,11 @@ export function useMediaAssets(virtualKeyId?: number) {
     }
   }, [virtualKeyId]);
 
-  const deleteMedia = async (mediaId: string) => {
+  const deleteMedia = async (mediaId: string): Promise<void> => {
     try {
-      const response = await fetch('/api/media', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mediaId }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete media');
-      }
+      await withAdminClient(client => 
+        client.media.deleteMedia(mediaId)
+      );
 
       setMedia(prev => prev.filter(m => m.id !== mediaId));
       notifications.show({
@@ -66,20 +58,17 @@ export function useMediaAssets(virtualKeyId?: number) {
     }
   };
 
-  const searchMedia = async (pattern: string) => {
+  const searchMedia = async (pattern: string): Promise<void> => {
     if (!pattern) {
-      await fetchMedia();
+      void fetchMedia();
       return;
     }
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/media/search?pattern=${encodeURIComponent(pattern)}`);
-      if (!response.ok) {
-        throw new Error('Failed to search media');
-      }
-
-      const data = await response.json() as MediaRecord[];
+      const data = await withAdminClient(client => 
+        client.media.searchMedia(pattern)
+      ) as MediaRecord[];
       setMedia(data);
     } catch {
       notifications.show({

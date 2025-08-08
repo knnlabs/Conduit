@@ -30,6 +30,13 @@ import { formatDateTime, formatRelativeTime } from '@/utils/formatters';
 import { notifications } from '@mantine/notifications';
 import type { ErrorMessage } from '@knn_labs/conduit-admin-client';
 
+interface MessageListResponse {
+  messages: ErrorMessage[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}
+
 interface MessageListProps {
   queueName: string;
   page: number;
@@ -77,7 +84,7 @@ export function MessageList({
     );
   }
 
-  const messages = data?.messages ?? [];
+  const messages = Array.isArray(data) ? data as ErrorMessage[] : (data as unknown as MessageListResponse)?.messages ?? [];
 
   const toggleRow = (messageId: string) => {
     setExpandedRows((prev) => {

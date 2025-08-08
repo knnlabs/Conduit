@@ -994,179 +994,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/cache/monitoring/status": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets the current cache monitoring status */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.CacheMonitoringStatusDto"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/cache/monitoring/thresholds": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets the current alert thresholds */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.CacheAlertThresholdsDto"];
-          };
-        };
-      };
-    };
-    /** Updates the alert thresholds */
-    put: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      /** @description New threshold values */
-      requestBody?: {
-        content: {
-          "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.UpdateThresholdsRequestDto"];
-          "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.UpdateThresholdsRequestDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.UpdateThresholdsRequestDto"];
-        };
-      };
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.CacheAlertThresholdsDto"];
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-      };
-    };
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/cache/monitoring/alerts": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets recent cache alerts */
-    get: {
-      parameters: {
-        query?: {
-          /** @description Number of alerts to retrieve (default: 10, max: 100) */
-          count?: number;
-        };
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.CacheAlertDto"][];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    /** Clears the alert history */
-    delete: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/cache/monitoring/check": {
+  "/api/admin/auth/ephemeral-master-key": {
     parameters: {
       query?: never;
       header?: never;
@@ -1175,7 +1003,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Forces an immediate monitoring check */
+    /** Generate an ephemeral master key for Admin API authentication */
     post: {
       parameters: {
         query?: never;
@@ -1185,89 +1013,37 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description OK */
+        /** @description Ephemeral master key generated successfully */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.CacheMonitoringStatusDto"];
+            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.EphemeralMasterKeyResponse"];
+            "application/json": components["schemas"]["ConduitLLM.Admin.Models.EphemeralMasterKeyResponse"];
+            "text/json": components["schemas"]["ConduitLLM.Admin.Models.EphemeralMasterKeyResponse"];
           };
         };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/cache/monitoring/alert-definitions": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets available alert definitions */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
+        /** @description Authentication failed - master key required */
+        401: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.AlertDefinitionDto"][];
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
           };
         };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/cache/monitoring/health": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets cache health summary for monitoring dashboard */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
+        /** @description Internal server error */
+        500: {
           headers: {
             [name: string]: unknown;
           };
-          content: {
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.CacheHealthSummaryDto"];
-          };
+          content?: never;
         };
       };
     };
-    put?: never;
-    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -8202,6 +7978,21 @@ export interface components {
       /** @description Error messages for failed imports. */
       errors?: string[] | null;
     };
+    /** @description Response model for ephemeral master key generation */
+    "ConduitLLM.Admin.Models.EphemeralMasterKeyResponse": {
+      /** @description The generated ephemeral master key token */
+      ephemeralMasterKey?: string | null;
+      /**
+       * Format: date-time
+       * @description When the key expires
+       */
+      expiresAt?: string;
+      /**
+       * Format: int32
+       * @description Number of seconds until the key expires
+       */
+      expiresInSeconds?: number;
+    };
     /** @description Error details within a message. */
     "ConduitLLM.Admin.Models.ErrorQueue.ErrorDetails": {
       /** @description Type of the exception. */
@@ -8897,6 +8688,8 @@ export interface components {
     };
     "ConduitLLM.Configuration.DTOs.CreateModelCostDto": {
       costName: string;
+      pricingModel: components["schemas"]["ConduitLLM.Configuration.PricingModel"];
+      pricingConfiguration?: string | null;
       modelProviderMappingIds?: number[] | null;
       modelType: string;
       /** Format: int32 */
@@ -8925,6 +8718,7 @@ export interface components {
       batchProcessingMultiplier?: number | null;
       supportsBatchProcessing?: boolean;
       imageQualityMultipliers?: string | null;
+      imageResolutionMultipliers?: string | null;
       /** Format: double */
       cachedInputCostPerMillionTokens?: number | null;
       /** Format: double */
@@ -9082,6 +8876,8 @@ export interface components {
       /** Format: int32 */
       id?: number;
       costName: string;
+      pricingModel: components["schemas"]["ConduitLLM.Configuration.PricingModel"];
+      pricingConfiguration?: string | null;
       associatedModelAliases?: string[] | null;
       /** Format: double */
       inputCostPerMillionTokens?: number;
@@ -9119,6 +8915,7 @@ export interface components {
       batchProcessingMultiplier?: number | null;
       supportsBatchProcessing?: boolean;
       imageQualityMultipliers?: string | null;
+      imageResolutionMultipliers?: string | null;
       /** Format: double */
       cachedInputCostPerMillionTokens?: number | null;
       /** Format: double */
@@ -9176,95 +8973,6 @@ export interface components {
       /** Format: date-time */
       updatedAt?: string;
       notes?: string | null;
-    };
-    "ConduitLLM.Configuration.DTOs.Monitoring.AlertDefinitionDto": {
-      id?: string | null;
-      name?: string | null;
-      description?: string | null;
-      severity?: string | null;
-      enabled?: boolean;
-      thresholds?: {
-        [key: string]: unknown;
-      } | null;
-      type?: string | null;
-      defaultSeverity?: string | null;
-      recommendedActions?: string[] | null;
-      notificationEnabled?: boolean;
-      /** Format: int32 */
-      cooldownPeriodMinutes?: number;
-    };
-    "ConduitLLM.Configuration.DTOs.Monitoring.CacheAlertDto": {
-      alertType?: string | null;
-      message?: string | null;
-      severity?: string | null;
-      region?: string | null;
-      /** Format: date-time */
-      timestamp?: string;
-      context?: {
-        [key: string]: unknown;
-      } | null;
-      details?: {
-        [key: string]: unknown;
-      } | null;
-    };
-    "ConduitLLM.Configuration.DTOs.Monitoring.CacheAlertThresholdsDto": {
-      /** Format: double */
-      minHitRate?: number;
-      /** Format: double */
-      maxMemoryUsage?: number;
-      /** Format: double */
-      maxEvictionRate?: number;
-      /** Format: double */
-      maxResponseTimeMs?: number;
-      /** Format: int64 */
-      minRequestsForHitRateAlert?: number;
-    };
-    "ConduitLLM.Configuration.DTOs.Monitoring.CacheHealthSummaryDto": {
-      status?: string | null;
-      /** Format: date-time */
-      checkTime?: string;
-      metrics?: components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.CacheMonitoringStatusDto"];
-      recentAlerts?:
-        | components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.CacheAlertDto"][]
-        | null;
-      details?: {
-        [key: string]: unknown;
-      } | null;
-      overallHealth?: string | null;
-      /** Format: double */
-      hitRate?: number;
-      /** Format: double */
-      memoryUsagePercent?: number;
-      /** Format: double */
-      responseTimeMs?: number;
-      /** Format: double */
-      evictionRate?: number;
-      /** Format: int32 */
-      activeAlerts?: number;
-      /** Format: int64 */
-      totalCacheSize?: number;
-      /** Format: int64 */
-      totalEntries?: number;
-      /** Format: date-time */
-      lastCheck?: string;
-    };
-    "ConduitLLM.Configuration.DTOs.Monitoring.CacheMonitoringStatusDto": {
-      /** Format: date-time */
-      lastCheck?: string;
-      isHealthy?: boolean;
-      /** Format: double */
-      currentHitRate?: number;
-      /** Format: double */
-      currentMemoryUsagePercent?: number;
-      /** Format: double */
-      currentEvictionRate?: number;
-      /** Format: double */
-      currentResponseTimeMs?: number;
-      /** Format: int32 */
-      activeAlerts?: number;
-      details?: {
-        [key: string]: unknown;
-      } | null;
     };
     "ConduitLLM.Configuration.DTOs.Monitoring.ComponentHealth": {
       status?: string | null;
@@ -9324,18 +9032,6 @@ export interface components {
       database?: components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.DatabaseInfo"];
       runtime?: components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.RuntimeInfo"];
       recordCounts?: components["schemas"]["ConduitLLM.Configuration.DTOs.Monitoring.RecordCountsDto"];
-    };
-    "ConduitLLM.Configuration.DTOs.Monitoring.UpdateThresholdsRequestDto": {
-      /** Format: double */
-      minHitRate?: number | null;
-      /** Format: double */
-      maxMemoryUsage?: number | null;
-      /** Format: double */
-      maxEvictionRate?: number | null;
-      /** Format: double */
-      maxResponseTimeMs?: number | null;
-      /** Format: int64 */
-      minRequestsForHitRateAlert?: number | null;
     };
     "ConduitLLM.Configuration.DTOs.Monitoring.VersionInfo": {
       appVersion?: string | null;
@@ -9442,6 +9138,8 @@ export interface components {
       /** Format: int32 */
       id?: number;
       costName: string;
+      pricingModel: components["schemas"]["ConduitLLM.Configuration.PricingModel"];
+      pricingConfiguration?: string | null;
       modelProviderMappingIds?: number[] | null;
       modelType: string;
       /** Format: int32 */
@@ -9471,6 +9169,7 @@ export interface components {
       batchProcessingMultiplier?: number | null;
       supportsBatchProcessing?: boolean;
       imageQualityMultipliers?: string | null;
+      imageResolutionMultipliers?: string | null;
       /** Format: double */
       cachedInputCostPerMillionTokens?: number | null;
       /** Format: double */
@@ -9680,6 +9379,11 @@ export interface components {
      * @enum {integer}
      */
     "ConduitLLM.Configuration.Enums.TransactionType": 1 | 2 | 3 | 4;
+    /**
+     * Format: int32
+     * @enum {integer}
+     */
+    "ConduitLLM.Configuration.PricingModel": 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
     /**
      * Format: int32
      * @enum {integer}

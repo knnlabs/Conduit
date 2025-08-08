@@ -18,6 +18,7 @@ import { IconCash, IconAlertCircle } from '@tabler/icons-react';
 import { useState } from 'react';
 import { formatters } from '@/lib/utils/formatters';
 import type { VirtualKeyGroupDto, AdjustBalanceDto } from '@knn_labs/conduit-admin-client';
+import { withAdminClient } from '@/lib/client/adminClient';
 
 interface AddCreditsModalProps {
   opened: boolean;
@@ -49,18 +50,9 @@ export function AddCreditsModal({ opened, onClose, group, onSuccess }: AddCredit
     try {
       setIsSubmitting(true);
 
-      const response = await fetch(`/api/virtualkeys/groups/${group.id}/credits`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(error || 'Failed to add credits');
-      }
+      await withAdminClient(client => 
+        client.virtualKeyGroups.adjustBalance(group.id, values)
+      );
 
       notifications.show({
         title: 'Success',

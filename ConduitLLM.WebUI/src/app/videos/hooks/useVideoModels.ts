@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { VideoModel } from '../types';
-import { ProviderType } from '@knn_labs/conduit-admin-client';
+import { ProviderType, type ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
+import { withAdminClient } from '@/lib/client/adminClient';
 
 // Helper function to convert ProviderType enum to string
 function getProviderName(providerType: ProviderType): string {
@@ -20,37 +21,21 @@ function getProviderName(providerType: ProviderType): string {
   return providerNames[providerType] || `Provider ${providerType}`;
 }
 
-interface ModelMapping {
-  modelId: string;
-  providerId: string;
-  providerType?: ProviderType;
-  provider?: {
-    id: number;
-    providerType: ProviderType;
-    displayName: string;
-    isEnabled: boolean;
-  };
-  maxContextLength?: number;
-  supportsVideoGeneration?: boolean;
-  isEnabled?: boolean;
-}
-
 async function fetchVideoModels(): Promise<VideoModel[]> {
-  const response = await fetch('/api/model-mappings');
-  if (!response.ok) {
-    throw new Error(`Failed to fetch model mappings: ${response.statusText}`);
-  }
+  const result = await withAdminClient(client => 
+    client.modelMappings.list()
+  );
   
-  const mappings = await response.json() as ModelMapping[];
+  const mappings = result;
   
   // Filter to only include video generation capable models that are enabled
-  const videoModels = mappings.filter((mapping: ModelMapping) => 
+  const videoModels = mappings.filter((mapping: ModelProviderMappingDto) => 
     mapping.supportsVideoGeneration === true && mapping.isEnabled !== false
   );
   
-  return videoModels.map((mapping: ModelMapping) => {
+  return videoModels.map((mapping: ModelProviderMappingDto) => {
     const providerDisplayName = mapping.provider?.displayName ?? 
-      (mapping.providerType !== undefined ? getProviderName(mapping.providerType) : 'Unknown');
+      (mapping.provider?.providerType !== undefined ? getProviderName(mapping.provider.providerType) : 'Unknown');
     return {
       id: mapping.modelId,
       provider: providerDisplayName,

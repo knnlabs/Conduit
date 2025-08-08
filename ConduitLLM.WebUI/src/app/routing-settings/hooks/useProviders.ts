@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-
+import { withAdminClient } from '@/lib/client/adminClient';
 
 export function useProviders() {
   const [providers, setProviders] = useState<{ id: string; name: string; displayName?: string; enabled?: boolean; }[]>([]);
@@ -14,13 +14,18 @@ export function useProviders() {
         setLoading(true);
         setError(null);
         
-        const response = await fetch('/api/providers');
-        if (!response.ok) {
-          throw new Error(`Failed to fetch providers: ${response.statusText}`);
-        }
+        const result = await withAdminClient(client => 
+          client.providers.list(1, 1000)
+        );
         
-        const providersData = await response.json() as unknown;
-        setProviders(Array.isArray(providersData) ? providersData as { id: string; name: string; displayName?: string; enabled?: boolean; }[] : []);
+        const providersData = result.items.map(provider => ({
+          id: provider.id?.toString() ?? '',
+          name: provider.providerName ?? provider.providerType?.toString() ?? '',
+          displayName: provider.providerName,
+          enabled: provider.isEnabled
+        }));
+        
+        setProviders(providersData);
       } catch (err) {
         console.error('Error fetching providers:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch providers');

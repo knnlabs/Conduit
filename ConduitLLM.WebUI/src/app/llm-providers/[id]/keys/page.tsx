@@ -36,6 +36,7 @@ import {
 import { notifications } from '@mantine/notifications';
 import { modals } from '@mantine/modals';
 import type { ProviderCredentialDto, ProviderKeyCredentialDto, CreateProviderKeyCredentialDto } from '@knn_labs/conduit-admin-client';
+import { withAdminClient } from '@/lib/client/adminClient';
 import { formatters } from '@/lib/utils/formatters';
 import { getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 import Link from 'next/link';
@@ -61,12 +62,10 @@ export default function ProviderKeysPage() {
 
   const fetchProvider = useCallback(async () => {
     try {
-      const response = await fetch(`/api/providers/${providerId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch provider');
-      }
-      const data = await response.json() as ProviderCredentialDto;
-      setProvider(data);
+      const data = await withAdminClient(client => 
+        client.providers.getById(providerId)
+      );
+      setProvider(data as ProviderCredentialDto);
     } catch (error) {
       console.error('Error fetching provider:', error);
       notifications.show({
@@ -80,11 +79,9 @@ export default function ProviderKeysPage() {
   const fetchKeys = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/providers/${providerId}/keys`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch provider keys');
-      }
-      const data = await response.json() as ProviderKeyCredentialDto[];
+      const data = await withAdminClient(client => 
+        client.providers.listKeys(providerId)
+) as unknown as ProviderKeyCredentialDto[];
       setKeys(data);
     } catch (error) {
       console.error('Error fetching provider keys:', error);
@@ -108,16 +105,9 @@ export default function ProviderKeysPage() {
 
     try {
       setIsAddingKey(true);
-      const response = await fetch(`/api/providers/${providerId}/keys`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newKeyForm),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json() as { error?: string };
-        throw new Error(errorData.error ?? 'Failed to add key');
-      }
+      await withAdminClient(client => 
+        client.providers.createKey(providerId, newKeyForm)
+      );
       
       notifications.show({
         title: 'Success',
@@ -152,13 +142,9 @@ export default function ProviderKeysPage() {
 
   const handleSetPrimary = async (keyId: number) => {
     try {
-      const response = await fetch(`/api/providers/${providerId}/keys/${keyId}/set-primary`, {
-        method: 'POST',
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to set primary key');
-      }
+      await withAdminClient(client => 
+        client.providers.setPrimaryKey(providerId, keyId)
+      );
       
       notifications.show({
         title: 'Success',
@@ -179,15 +165,9 @@ export default function ProviderKeysPage() {
 
   const handleToggleKey = async (keyId: number, enabled: boolean) => {
     try {
-      const response = await fetch(`/api/providers/${providerId}/keys/${keyId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isEnabled: enabled }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to update key');
-      }
+      await withAdminClient(client => 
+        client.providers.updateKey(providerId, keyId, { isEnabled: enabled })
+      );
       
       notifications.show({
         title: 'Success',
@@ -209,35 +189,13 @@ export default function ProviderKeysPage() {
   const handleTestKey = async (keyId: number) => {
     setTestingKeys(prev => new Set(prev).add(keyId));
     try {
-      const response = await fetch('/api/provider-key-test', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ providerId, keyId }),
-      });
+      const result = await withAdminClient(client => 
+        client.providers.testKey(providerId, keyId)
+      );
       
-      if (!response.ok) {
-        throw new Error('Failed to test key');
-      }
-      
-      const result = await response.json() as { 
-        result?: 'success' | 'invalid_key' | 'ignored' | 'provider_down' | 'rate_limited' | 'unknown_error';
-        message?: string; 
-        details?: {
-          responseTimeMs?: number;
-          modelsAvailable?: string[];
-          providerMessage?: string;
-          errorCode?: string;
-          statusCode?: number;
-        };
-        // Legacy fields for backward compatibility
-        success?: boolean; 
-      };
-      
-      // Handle new response format with backward compatibility
-      const isSuccess = result.result === 'success' || result.success === true;
-      const testResult = result.result ?? (result.success ? 'success' : 'invalid_key');
+      // Handle new response format
+      const isSuccess = (result.result as string) === 'success';
+      const testResult = result.result as string;
       
       const colors: Record<string, string> = {
         'success': 'green',
@@ -291,13 +249,9 @@ export default function ProviderKeysPage() {
       onConfirm: () => {
         void (async () => {
           try {
-            const response = await fetch(`/api/providers/${providerId}/keys/${key.id}`, {
-              method: 'DELETE',
-            });
-            
-            if (!response.ok) {
-              throw new Error('Failed to delete key');
-            }
+            await withAdminClient(client => 
+              client.providers.deleteKey(providerId, key.id)
+            );
             
             notifications.show({
               title: 'Success',

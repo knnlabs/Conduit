@@ -268,6 +268,73 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/auth/ephemeral-key": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Generate an ephemeral key for the authenticated virtual key */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      /** @description Optional metadata for the ephemeral key */
+      requestBody?: {
+        content: {
+          "application/json": components["schemas"]["GenerateEphemeralKeyRequest"];
+          "text/json": components["schemas"]["GenerateEphemeralKeyRequest"];
+          "application/*+json": components["schemas"]["GenerateEphemeralKeyRequest"];
+        };
+      };
+      responses: {
+        /** @description Ephemeral key generated successfully */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["EphemeralKeyResponse"];
+            "application/json": components["schemas"]["EphemeralKeyResponse"];
+            "text/json": components["schemas"]["EphemeralKeyResponse"];
+          };
+        };
+        /** @description Authentication failed */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+        /** @description Internal server error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ProblemDetails"];
+            "application/json": components["schemas"]["ProblemDetails"];
+            "text/json": components["schemas"]["ProblemDetails"];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/batch/spend-updates": {
     parameters: {
       query?: never;
@@ -3255,6 +3322,32 @@ export interface components {
       model: string | null;
       usage: components["schemas"]["Usage"];
     };
+    /** @description Optional metadata for tracking ephemeral key usage */
+    EphemeralKeyMetadata: {
+      /** @description IP address that requested the ephemeral key */
+      sourceIP?: string | null;
+      /** @description User agent that requested the ephemeral key */
+      userAgent?: string | null;
+      /** @description Purpose or intended use of the ephemeral key */
+      purpose?: string | null;
+      /** @description Request ID for correlation */
+      requestId?: string | null;
+    };
+    /** @description Response when creating an ephemeral key */
+    EphemeralKeyResponse: {
+      /** @description The ephemeral key token to use for authentication */
+      ephemeralKey?: string | null;
+      /**
+       * Format: date-time
+       * @description When the ephemeral key expires
+       */
+      expiresAt?: string;
+      /**
+       * Format: int32
+       * @description The TTL in seconds
+       */
+      expiresInSeconds?: number;
+    };
     FunctionCall: {
       name: string | null;
       arguments: string | null;
@@ -3265,6 +3358,10 @@ export interface components {
       parameters?: {
         [key: string]: components["schemas"]["JsonNode"];
       } | null;
+    };
+    /** @description Request for generating an ephemeral key */
+    GenerateEphemeralKeyRequest: {
+      metadata?: components["schemas"]["EphemeralKeyMetadata"];
     };
     /** @description Request to generate a temporary download URL. */
     GenerateUrlRequest: {
@@ -3485,6 +3582,7 @@ export interface components {
       video_resolution?: string | null;
       is_batch?: boolean | null;
       image_quality?: string | null;
+      image_resolution?: string | null;
       /** Format: int32 */
       cached_input_tokens?: number | null;
       /** Format: int32 */

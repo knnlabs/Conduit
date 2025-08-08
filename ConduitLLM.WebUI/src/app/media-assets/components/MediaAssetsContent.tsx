@@ -5,7 +5,7 @@ import { Stack, Group, Button, Select, Text } from '@mantine/core';
 import { IconRefresh, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { modals } from '@mantine/modals';
-import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
+import { withAdminClient } from '@/lib/client/adminClient';
 import { useMediaAssets } from '../hooks/useMediaAssets';
 import { useBulkSelection } from '../hooks/useBulkSelection';
 import { MediaRecord, VirtualKeyInfo } from '../types';
@@ -45,42 +45,22 @@ export default function MediaAssetsContent() {
     const fetchVirtualKeys = async () => {
       try {
         setLoadingVirtualKeys(true);
-        const response = await fetch('/api/virtualkeys');
-        if (response.ok) {
-          const data = await response.json() as unknown;
+        const result = await withAdminClient(client => 
+          client.virtualKeys.list(1, 1000)
+        );
+        const items = result.items;
           
-          // Handle both array format and paginated response format
-          let items: VirtualKeyDto[] = [];
-          if (Array.isArray(data)) {
-            items = data as VirtualKeyDto[];
-          } else if (data && typeof data === 'object' && 'items' in data) {
-            const paginatedData = data as { items: VirtualKeyDto[] };
-            if (Array.isArray(paginatedData.items)) {
-              items = paginatedData.items;
-            }
-          } else {
-            console.warn('Unexpected virtualkeys API response format:', data);
-          }
-          
-          const virtualKeysData: VirtualKeyInfo[] = items.map(item => ({
-            id: item.id ?? 0,
-            name: item.keyName,
-            key: item.keyPrefix ?? `vk_${item.id ?? 'unknown'}`
-          }));
-          
-          setVirtualKeys(virtualKeysData);
-          
-          // Select first virtual key by default
-          if (virtualKeysData.length > 0) {
-            setSelectedVirtualKey(virtualKeysData[0].id);
-          }
-        } else {
-          console.error('Failed to fetch virtual keys:', response.status);
-          notifications.show({
-            title: 'Error',
-            message: 'Failed to load virtual keys',
-            color: 'red',
-          });
+        const virtualKeysData: VirtualKeyInfo[] = items.map(item => ({
+          id: item.id ?? 0,
+          name: item.keyName,
+          key: item.keyPrefix ?? `vk_${item.id ?? 'unknown'}`
+        }));
+        
+        setVirtualKeys(virtualKeysData);
+        
+        // Select first virtual key by default
+        if (virtualKeysData.length > 0) {
+          setSelectedVirtualKey(virtualKeysData[0].id);
         }
       } catch (error) {
         console.error('Failed to fetch virtual keys:', error);

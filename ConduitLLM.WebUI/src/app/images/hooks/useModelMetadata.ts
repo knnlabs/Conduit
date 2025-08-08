@@ -36,16 +36,18 @@ export function useModelMetadata(modelId: string | null) {
     queryFn: async () => {
       if (!modelId) return null;
       
-      const response = await fetch(`/api/models/${modelId}/metadata`);
-      if (!response.ok) {
-        if (response.status === 404) {
-          // No metadata found, return null
+      try {
+        // Note: getMetadata method doesn't exist in Admin SDK
+        // This is a placeholder implementation that returns null
+        // TODO: Implement metadata retrieval once SDK supports it
+        return Promise.resolve(null);
+      } catch (error) {
+        // If metadata not found, return null
+        if (error instanceof Error && error.message.includes('404')) {
           return null;
         }
-        throw new Error('Failed to fetch model metadata');
+        throw error;
       }
-      
-      return response.json() as Promise<ModelMetadata>;
     },
     enabled: !!modelId,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes

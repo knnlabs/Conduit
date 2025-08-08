@@ -6,6 +6,22 @@ import { useErrorMessage, useReplayMessage, useDeleteMessage } from '@/hooks/use
 import { formatDateTime } from '@/utils/formatters';
 import { notifications } from '@mantine/notifications';
 
+interface ErrorQueueMessage {
+  messageId: string;
+  body: string;
+  headers: Record<string, string>;
+  error: {
+    message: string;
+    stackTrace?: string;
+    fullException?: string;
+    exceptionType?: string;
+    failedAt?: string;
+  };
+  retryCount: number;
+  timestamp: string;
+  context?: Record<string, unknown>;
+}
+
 interface MessageDetailModalProps {
   queueName: string;
   messageId: string;
@@ -20,6 +36,7 @@ export function MessageDetailModal({
   onClose,
 }: MessageDetailModalProps) {
   const { data: message, isLoading } = useErrorMessage(queueName, messageId);
+  const typedMessage = message as ErrorQueueMessage | null;
   const replayMutation = useReplayMessage();
   const deleteMutation = useDeleteMessage();
 
@@ -43,8 +60,8 @@ export function MessageDetailModal({
   };
 
   const handleCopyJson = () => {
-    if (message) {
-      void navigator.clipboard.writeText(JSON.stringify(message, null, 2));
+    if (typedMessage) {
+      void navigator.clipboard.writeText(JSON.stringify(typedMessage, null, 2));
       notifications.show({
         title: 'Copied',
         message: 'Message JSON copied to clipboard',
@@ -77,7 +94,7 @@ export function MessageDetailModal({
               <Text size="sm" c="dimmed">
                 Message ID
               </Text>
-              <Code>{message.messageId}</Code>
+              <Code>{typedMessage?.messageId}</Code>
             </Stack>
             <Group>
               <Button
@@ -124,9 +141,9 @@ export function MessageDetailModal({
             </Tabs.List>
 
             <Tabs.Panel value="body" pt="md">
-              {message.body ? (
+              {typedMessage?.body ? (
                 <Code block style={{ fontSize: '12px' }}>
-                  {JSON.stringify(message.body, null, 2)}
+                  {JSON.stringify(typedMessage?.body, null, 2)}
                 </Code>
               ) : (
                 <Text c="dimmed">No message body available</Text>
@@ -134,9 +151,9 @@ export function MessageDetailModal({
             </Tabs.Panel>
 
             <Tabs.Panel value="headers" pt="md">
-              {message.headers && Object.keys(message.headers).length > 0 ? (
+              {typedMessage?.headers && Object.keys(typedMessage?.headers).length > 0 ? (
                 <Stack gap="sm">
-                  {Object.entries(message.headers).map(([key, value]) => (
+                  {Object.entries(typedMessage?.headers).map(([key, value]) => (
                     <Group key={key} justify="space-between" align="flex-start">
                       <Text size="sm" fw={500}>
                         {key}:
@@ -158,37 +175,37 @@ export function MessageDetailModal({
                   <Text size="sm" c="dimmed">
                     Exception Type
                   </Text>
-                  <Code>{message.error.exceptionType}</Code>
+                  <Code>{typedMessage?.error.exceptionType}</Code>
                 </Group>
                 <Group justify="space-between">
                   <Text size="sm" c="dimmed">
                     Failed At
                   </Text>
-                  <Text size="sm">{formatDateTime(message.error.failedAt)}</Text>
+                  <Text size="sm">{formatDateTime(typedMessage?.error?.failedAt ?? '')}</Text>
                 </Group>
                 <div>
                   <Text size="sm" c="dimmed" mb="xs">
                     Error Message
                   </Text>
-                  <Text size="sm">{message.error.message}</Text>
+                  <Text size="sm">{typedMessage?.error.message}</Text>
                 </div>
-                {message.error.stackTrace && (
+                {typedMessage?.error.stackTrace && (
                   <div>
                     <Text size="sm" c="dimmed" mb="xs">
                       Stack Trace
                     </Text>
                     <Code block style={{ fontSize: '12px', whiteSpace: 'pre-wrap' }}>
-                      {message.error.stackTrace}
+                      {typedMessage?.error.stackTrace}
                     </Code>
                   </div>
                 )}
-                {message.fullException && (
+                {typedMessage?.error?.fullException && (
                   <div>
                     <Text size="sm" c="dimmed" mb="xs">
                       Full Exception Details
                     </Text>
                     <Code block style={{ fontSize: '12px', whiteSpace: 'pre-wrap' }}>
-                      {message.fullException}
+                      {typedMessage?.error?.fullException}
                     </Code>
                   </div>
                 )}
@@ -205,44 +222,44 @@ export function MessageDetailModal({
                     size="lg"
                     variant="light"
                     color={(() => {
-                      if (message.retryCount === 0) return 'gray';
-                      if (message.retryCount < 3) return 'yellow';
+                      if (typedMessage?.retryCount ?? 0 === 0) return 'gray';
+                      if (typedMessage?.retryCount ?? 0 < 3) return 'yellow';
                       return 'red';
                     })()}
                   >
-                    {message.retryCount} retries
+                    {typedMessage?.retryCount ?? 0} retries
                   </Badge>
                 </Group>
 
                 <Timeline active={-1} bulletSize={20}>
                   <Timeline.Item title="Message Created">
                     <Text size="xs" c="dimmed">
-                      {formatDateTime(message.timestamp)}
+                      {formatDateTime(typedMessage?.timestamp ?? '')}
                     </Text>
                     <Text size="sm">Message was originally sent</Text>
                   </Timeline.Item>
                   
-                  {Array.from({ length: message.retryCount }).map((item, index) => (
-                    <Timeline.Item key={`retry-${message.messageId}-attempt-${index + 1}`} title={`Retry ${index + 1}`} color="red">
-                      <Text size="sm">Failed with: {message.error.exceptionType}</Text>
+                  {Array.from({ length: typedMessage?.retryCount ?? 0 }).map((item, index) => (
+                    <Timeline.Item key={`retry-${typedMessage?.messageId}-attempt-${index + 1}`} title={`Retry ${index + 1}`} color="red">
+                      <Text size="sm">Failed with: {typedMessage?.error.exceptionType}</Text>
                     </Timeline.Item>
                   ))}
                   
                   <Timeline.Item title="Current State" color="red">
                     <Text size="xs" c="dimmed">
-                      {formatDateTime(message.error.failedAt)}
+                      {formatDateTime(typedMessage?.error?.failedAt ?? '')}
                     </Text>
                     <Text size="sm">Message is in error queue</Text>
                   </Timeline.Item>
                 </Timeline>
 
-                {message.context && Object.keys(message.context).length > 0 && (
+                {typedMessage?.context && Object.keys(typedMessage?.context).length > 0 && (
                   <div>
                     <Text size="sm" fw={600} mb="xs">
                       Additional Context
                     </Text>
                     <Code block style={{ fontSize: '12px' }}>
-                      {JSON.stringify(message.context, null, 2)}
+                      {JSON.stringify(typedMessage?.context, null, 2)}
                     </Code>
                   </div>
                 )}

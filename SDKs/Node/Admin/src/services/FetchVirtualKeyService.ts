@@ -58,19 +58,31 @@ export class FetchVirtualKeyService {
     pageSize: number = 10,
     config?: RequestConfig
   ): Promise<VirtualKeyListResponseDto> {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      pageSize: pageSize.toString(),
-    });
-    
-    return this.client['get']<VirtualKeyListResponseDto>(
-      `${ENDPOINTS.VIRTUAL_KEYS.BASE}?${params.toString()}`,
+    // The Admin API returns VirtualKeyDto[] directly, not a paginated response
+    // So we need to fetch all items and simulate pagination
+    const allItems = await this.client['get']<VirtualKeyDto[]>(
+      ENDPOINTS.VIRTUAL_KEYS.BASE,
       {
         signal: config?.signal,
         timeout: config?.timeout,
         headers: config?.headers,
       }
     );
+    
+    // Simulate pagination on the client side
+    const totalCount = allItems.length;
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, totalCount);
+    const items = allItems.slice(startIndex, endIndex);
+    const totalPages = Math.ceil(totalCount / pageSize);
+    
+    return {
+      items,
+      totalCount,
+      page,
+      pageSize,
+      totalPages,
+    };
   }
 
   /**
