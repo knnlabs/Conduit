@@ -1,4 +1,5 @@
 import { FetchBaseApiClient } from './client/FetchBaseApiClient';
+import { FetchAuthService } from './services/FetchAuthService';
 import { FetchVirtualKeyService } from './services/FetchVirtualKeyService';
 import { FetchVirtualKeyGroupService } from './services/FetchVirtualKeyGroupService';
 import { FetchProvidersService } from './services/FetchProvidersService';
@@ -37,6 +38,7 @@ import { ConduitError } from './utils/errors';
  * ```
  */
 export class FetchConduitAdminClient extends FetchBaseApiClient {
+  public readonly auth: FetchAuthService;
   public readonly virtualKeys: FetchVirtualKeyService;
   public readonly virtualKeyGroups: FetchVirtualKeyGroupService;
   public readonly providers: FetchProvidersService;
@@ -59,6 +61,7 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
     super(config);
 
     // Initialize services
+    this.auth = new FetchAuthService(this);
     this.virtualKeys = new FetchVirtualKeyService(this);
     this.virtualKeyGroups = new FetchVirtualKeyGroupService(this);
     this.providers = new FetchProvidersService(this);

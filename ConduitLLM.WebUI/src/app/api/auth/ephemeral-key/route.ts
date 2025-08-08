@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
-import { getServerAdminClient } from '@/lib/server/sdk-config';
+import { getServerAdminClient, getServerCoreClient } from '@/lib/server/sdk-config';
 
 interface EphemeralKeyRequest {
   purpose?: string; // Optional purpose for logging/tracking
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as EphemeralKeyRequest;
     
-    // Get the WebUI's virtual key
+    // Get the WebUI's virtual key from Admin API
     const adminClient = getServerAdminClient();
     let webuiVirtualKey: string;
     
@@ -32,48 +32,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get Core API URL - use internal URL for server-to-server communication
-    const coreApiUrl = process.env.CONDUIT_API_BASE_URL ?? 'http://localhost:5000';
-    
     // Get request metadata for tracking
     const sourceIP = request.headers.get('x-forwarded-for') ?? 
                      request.headers.get('x-real-ip') ?? 
                      'unknown';
     const userAgent = request.headers.get('user-agent') ?? 'unknown';
     
-    // Call Core API to generate ephemeral key using the WebUI's virtual key
-    const response = await fetch(`${coreApiUrl}/v1/auth/ephemeral-key`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${webuiVirtualKey}`,
-      },
-      body: JSON.stringify({
-        metadata: {
-          sourceIP,
-          userAgent,
-          purpose: body.purpose ?? 'web-ui-request',
-          requestId: crypto.randomUUID(),
-        }
-      }),
+    // Use Core SDK to generate ephemeral key
+    const coreClient = await getServerCoreClient();
+    const response = await coreClient.auth.generateEphemeralKey(webuiVirtualKey, {
+      metadata: {
+        sourceIP,
+        userAgent,
+        purpose: body.purpose ?? 'web-ui-request'
+      }
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Failed to generate ephemeral key:', response.status, errorText);
-      
-      return NextResponse.json(
-        { error: 'Failed to generate ephemeral key' },
-        { status: response.status }
-      );
-    }
-
-    const data = await response.json() as Omit<EphemeralKeyResponse, 'coreApiUrl'>;
     
     // Return the ephemeral key with Core API URL
     // Use the external URL that the browser can access
     const result: EphemeralKeyResponse = {
-      ...data,
+      ...response,
       coreApiUrl: process.env.CONDUIT_API_EXTERNAL_URL ?? 'http://localhost:5000',
     };
     
