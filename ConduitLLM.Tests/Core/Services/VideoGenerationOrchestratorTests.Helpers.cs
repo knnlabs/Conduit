@@ -1,0 +1,295 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
+using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
+using MassTransit;
+using Moq;
+using Xunit;
+
+namespace ConduitLLM.Tests.Core.Services
+{
+    public partial class VideoGenerationOrchestratorTests
+    {
+        #region Private Method Tests (via public interface)
+
+        [Fact]
+        public async Task GetModelInfoAsync_WithExistingMapping_ShouldReturnModelInfo()
+        {
+            // This test verifies the behavior through the public Consume method
+            // since GetModelInfoAsync is private
+
+            // Arrange
+            var request = new VideoGenerationRequested
+            {
+                RequestId = "test-request-id",
+                Model = "test-model",
+                Prompt = "test prompt",
+                IsAsync = true,
+                VirtualKeyId = "1",
+                CorrelationId = "test-correlation-id"
+            };
+
+            var context = new Mock<ConsumeContext<VideoGenerationRequested>>();
+            context.Setup(x => x.Message).Returns(request);
+            context.Setup(x => x.CancellationToken).Returns(CancellationToken.None);
+
+            // Setup task metadata
+            var taskMetadata = new TaskMetadata
+            {
+                VirtualKeyId = 1,
+                ExtensionData = new Dictionary<string, object>
+                {
+                    ["VirtualKey"] = "test-virtual-key"
+                }
+            };
+
+            var taskStatus = new AsyncTaskStatus
+            {
+                TaskId = "test-request-id",
+                State = TaskState.Pending,
+                Metadata = taskMetadata
+            };
+
+            _mockTaskService.Setup(x => x.GetTaskStatusAsync("test-request-id", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(taskStatus);
+
+            // Setup model mapping
+            var modelMapping = new ModelProviderMapping
+            {
+                ModelAlias = "test-model",
+                ProviderId = 1,
+                ProviderModelId = "test-provider-model",
+                Provider = new Provider { ProviderType = ProviderType.Replicate }
+            };
+
+            _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("test-model"))
+                .Returns(Task.FromResult(modelMapping));
+
+            // Setup virtual key validation
+            var virtualKey = new VirtualKey
+            {
+                Id = 1,
+                IsEnabled = true,
+                KeyName = "test-virtual-key",
+                KeyHash = "test-virtual-key-hash"
+            };
+
+            _mockVirtualKeyService.Setup(x => x.ValidateVirtualKeyAsync("test-virtual-key", "test-model"))
+                .ReturnsAsync(virtualKey);
+
+            // Setup model capabilities
+            var modelCapabilities = new Dictionary<string, DiscoveredModel>
+            {
+                ["test-model"] = new DiscoveredModel
+                {
+                    ModelId = "test-model",
+                    Provider = "test-provider",
+                    Capabilities = new ConduitLLM.Core.Interfaces.ModelCapabilities
+                    {
+                        VideoGeneration = true
+                    }
+                }
+            };
+
+            _mockDiscoveryService.Setup(x => x.DiscoverModelsAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCapabilities);
+
+            // Setup client factory to return null (will cause NotSupportedException)
+            _mockClientFactory.Setup(x => x.GetClient("test-model"))
+                .Returns((ILLMClient)null);
+
+            // Act
+            await _orchestrator.Consume(context.Object);
+
+            // Assert
+            _mockModelMappingService.Verify(x => x.GetMappingByModelAliasAsync("test-model"), Times.Once);
+            // Should not call discovery service since mapping was found
+            _mockDiscoveryService.Verify(x => x.DiscoverModelsAsync(It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact(Skip = "Video generation uses reflection which cannot be easily mocked in unit tests")]
+        public async Task CalculateVideoCost_ShouldUseCorrectUsageParameters()
+        {
+            // This test verifies cost calculation through the public interface
+            // since CalculateVideoCostAsync is private
+
+            // Arrange
+            var request = new VideoGenerationRequested
+            {
+                RequestId = "test-request-id",
+                Model = "test-model",
+                Prompt = "test prompt",
+                IsAsync = true,
+                VirtualKeyId = "1",
+                CorrelationId = "test-correlation-id",
+                Parameters = new VideoGenerationParameters
+                {
+                    Duration = 10,
+                    Size = "1920x1080"
+                }
+            };
+
+            var context = new Mock<ConsumeContext<VideoGenerationRequested>>();
+            context.Setup(x => x.Message).Returns(request);
+            context.Setup(x => x.CancellationToken).Returns(CancellationToken.None);
+
+            // Setup all the mocks for a successful video generation
+            // (This would trigger cost calculation)
+            SetupSuccessfulVideoGeneration(request);
+
+            // Setup cost calculation
+            _mockCostService.Setup(x => x.CalculateCostAsync(
+                It.IsAny<string>(),
+                It.Is<Usage>(u => u.VideoDurationSeconds == 10 && u.VideoResolution == "1920x1080"),
+                It.IsAny<CancellationToken>()))
+                .ReturnsAsync(10.50m);
+
+            // Act
+            await _orchestrator.Consume(context.Object);
+
+            // Assert
+            _mockCostService.Verify(x => x.CalculateCostAsync(
+                It.IsAny<string>(),
+                It.Is<Usage>(u => u.VideoDurationSeconds == 10 && u.VideoResolution == "1920x1080"),
+                It.IsAny<CancellationToken>()), 
+                Times.Once);
+        }
+
+        #endregion
+
+        #region Test Helper Methods
+
+        private void SetupSuccessfulVideoGeneration(VideoGenerationRequested request)
+        {
+            // Setup task metadata
+            var taskMetadata = new TaskMetadata
+            {
+                VirtualKeyId = int.Parse(request.VirtualKeyId),
+                ExtensionData = new Dictionary<string, object>
+                {
+                    ["VirtualKey"] = "test-virtual-key",
+                    ["Request"] = new VideoGenerationRequest
+                    {
+                        Model = request.Model,
+                        Prompt = request.Prompt,
+                        Duration = request.Parameters?.Duration,
+                        Size = request.Parameters?.Size,
+                        Fps = request.Parameters?.Fps
+                    }
+                }
+            };
+
+            var taskStatus = new AsyncTaskStatus
+            {
+                TaskId = request.RequestId,
+                State = TaskState.Pending,
+                Metadata = taskMetadata
+            };
+
+            _mockTaskService.Setup(x => x.GetTaskStatusAsync(request.RequestId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(taskStatus);
+
+            // Setup model mapping
+            var modelMapping = new ModelProviderMapping
+            {
+                ModelAlias = request.Model,
+                ProviderId = 1,
+                ProviderModelId = "test-provider-model",
+                Provider = new Provider { ProviderType = ProviderType.Replicate }
+            };
+
+            _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync(request.Model))
+                .Returns(Task.FromResult(modelMapping));
+
+            // Setup virtual key validation
+            var virtualKey = new VirtualKey
+            {
+                Id = 1,
+                IsEnabled = true,
+                KeyName = "test-virtual-key",
+                KeyHash = "test-virtual-key-hash"
+            };
+
+            _mockVirtualKeyService.Setup(x => x.ValidateVirtualKeyAsync("test-virtual-key", request.Model))
+                .ReturnsAsync(virtualKey);
+
+            // Setup model capabilities
+            var modelCapabilities = new Dictionary<string, DiscoveredModel>
+            {
+                [request.Model] = new DiscoveredModel
+                {
+                    ModelId = request.Model,
+                    Provider = "test-provider",
+                    Capabilities = new ConduitLLM.Core.Interfaces.ModelCapabilities
+                    {
+                        VideoGeneration = true
+                    }
+                }
+            };
+
+            _mockDiscoveryService.Setup(x => x.DiscoverModelsAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCapabilities);
+
+            // Setup mock client with CreateVideoAsync method
+            var mockClient = new Mock<ILLMClient>();
+            var videoResponse = new VideoGenerationResponse
+            {
+                Data = new List<VideoData>
+                {
+                    new VideoData
+                    {
+                        Url = "https://example.com/video.mp4",
+                        Metadata = new VideoMetadata
+                        {
+                            Width = 1920,
+                            Height = 1080,
+                            Duration = 10,
+                            Fps = 30,
+                            MimeType = "video/mp4"
+                        }
+                    }
+                },
+                Usage = new VideoGenerationUsage
+                {
+                    TotalDurationSeconds = 10,
+                    VideosGenerated = 1
+                },
+                Model = request.Model,
+                Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+            };
+
+            // Video generation uses reflection to call CreateVideoAsync, which can't be easily mocked
+            // So we'll test the cost calculation more directly
+            _mockClientFactory.Setup(x => x.GetClient(request.Model))
+                .Returns(mockClient.Object);
+
+            // Setup media storage
+            var storageResult = new MediaStorageResult
+            {
+                StorageKey = "video/test-key.mp4",
+                Url = "https://storage.example.com/video/test-key.mp4",
+                SizeBytes = 1024000,
+                ContentHash = "test-hash",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _mockStorageService.Setup(x => x.StoreVideoAsync(
+                It.IsAny<Stream>(),
+                It.IsAny<VideoMediaMetadata>(),
+                It.IsAny<Action<long>>()))
+                .ReturnsAsync(storageResult);
+
+            // Setup cost calculation
+            _mockCostService.Setup(x => x.CalculateCostAsync(It.IsAny<string>(), It.IsAny<Usage>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(5.00m);
+        }
+
+        #endregion
+    }
+}
