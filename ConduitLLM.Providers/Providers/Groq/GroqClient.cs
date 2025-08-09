@@ -67,7 +67,9 @@ namespace ConduitLLM.Providers.Providers.Groq
                 logger,
                 httpClientFactory,
                 "groq",
-                baseUrl: null,
+                baseUrl: !string.IsNullOrWhiteSpace(provider.BaseUrl) 
+                    ? provider.BaseUrl 
+                    : Constants.Urls.DefaultBaseUrl,
                 defaultModels: defaultModels)
         {
         }
