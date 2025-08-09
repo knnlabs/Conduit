@@ -33,7 +33,7 @@ namespace ConduitLLM.Providers.Providers.MiniMax
                 
                 var miniMaxRequest = new MiniMaxChatCompletionRequest
                 {
-                    Model = MapModelName(request.Model ?? ProviderModelId),
+                    Model = request.Model ?? ProviderModelId,
                     Messages = ConvertMessages(request.Messages, includeNames: request.Stream == true),
                     Stream = request.Stream ?? false,
                     MaxTokens = request.MaxTokens,
@@ -103,11 +103,12 @@ namespace ConduitLLM.Providers.Providers.MiniMax
                 {
                     Logger.LogInformation("First choice message: {Message}", 
                         JsonSerializer.Serialize(response.Choices[0].Message));
-                    if (response.Choices[0].Message != null)
+                    var message = response.Choices[0].Message;
+                    if (message != null)
                     {
                         Logger.LogInformation("Message content: '{Content}', ReasoningContent: '{Reasoning}'", 
-                            response.Choices[0].Message.Content, 
-                            response.Choices[0].Message.ReasoningContent);
+                            message.Content ?? "", 
+                            message.ReasoningContent ?? "");
                     }
                 }
 

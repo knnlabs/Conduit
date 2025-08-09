@@ -1,100 +1,23 @@
 {
   "models": [
     {
-      "id": "abab6.5s-chat",
-      "name": "ABAB 6.5s Chat",
-      "created": 1724630400,
+      "id": "MiniMax-M1",
+      "name": "MiniMax-M1",
+      "created": 1734566400,
       "ownedBy": "minimax",
       "object": "model",
-      "contextLength": 245760,
-      "maxOutputTokens": 8192,
-      "capabilities": {
-        "chat": true,
-        "vision": true,
-        "functionCalling": false,
-        "jsonMode": false,
-        "systemMessage": true
-      }
-    },
-    {
-      "id": "abab6.5t-chat",
-      "name": "ABAB 6.5t Chat",
-      "created": 1724630400,
-      "ownedBy": "minimax",
-      "object": "model",
-      "contextLength": 8192,
-      "maxOutputTokens": 8192,
-      "capabilities": {
-        "chat": true,
-        "vision": true,
-        "functionCalling": false,
-        "jsonMode": false,
-        "systemMessage": true
-      }
-    },
-    {
-      "id": "abab6.5g-chat",
-      "name": "ABAB 6.5g Chat",
-      "created": 1724630400,
-      "ownedBy": "minimax",
-      "object": "model",
-      "contextLength": 8192,
-      "maxOutputTokens": 8192,
-      "capabilities": {
-        "chat": true,
-        "vision": true,
-        "functionCalling": false,
-        "jsonMode": false,
-        "systemMessage": true
-      }
-    },
-    {
-      "id": "abab6-chat",
-      "name": "ABAB 6 Chat",
-      "created": 1710288000,
-      "ownedBy": "minimax",
-      "object": "model",
-      "contextLength": 32768,
-      "maxOutputTokens": 4096,
-      "capabilities": {
-        "chat": true,
-        "vision": true,
-        "functionCalling": false,
-        "jsonMode": false,
-        "systemMessage": true
-      }
-    },
-    {
-      "id": "abab5.5s-chat",
-      "name": "ABAB 5.5s Chat",
-      "created": 1702512000,
-      "ownedBy": "minimax",
-      "object": "model",
-      "contextLength": 16384,
-      "maxOutputTokens": 4096,
+      "contextLength": 1000000,
+      "maxOutputTokens": 80000,
       "capabilities": {
         "chat": true,
         "vision": false,
-        "functionCalling": false,
-        "jsonMode": false,
-        "systemMessage": true
-      }
-    },
-    {
-      "id": "abab5.5-chat",
-      "name": "ABAB 5.5 Chat",
-      "created": 1694534400,
-      "ownedBy": "minimax",
-      "object": "model",
-      "contextLength": 16384,
-      "maxOutputTokens": 4096,
-      "capabilities": {
-        "chat": true,
-        "vision": false,
-        "functionCalling": false,
-        "jsonMode": false,
-        "systemMessage": true
-      }
+        "functionCalling": true,
+        "jsonMode": true,
+        "systemMessage": true,
+        "reasoning": true,
+        "streaming": true
+      },
+      "cotLength": 80000
     },
     {
       "id": "embo-01",

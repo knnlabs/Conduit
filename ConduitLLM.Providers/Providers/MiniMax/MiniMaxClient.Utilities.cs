@@ -14,41 +14,6 @@ namespace ConduitLLM.Providers.Providers.MiniMax
     /// </summary>
     public partial class MiniMaxClient
     {
-        private string MapModelName(string modelName)
-        {
-            // Map user-friendly names to MiniMax official model IDs
-            return modelName switch
-            {
-                // Current official models
-                "minimax-hailuo" => "MiniMax-Hailuo-02",
-                "minimax-hailuo-02" => "MiniMax-Hailuo-02",
-                "minimax-m1" => "MiniMax-M1",
-                "MiniMax-M1" => "MiniMax-M1",
-                
-                // Legacy "abab" names - map to MiniMax-M1 (their flagship model)
-                "abab6.5-chat" => "MiniMax-M1",
-                "abab6.5s-chat" => "MiniMax-M1",
-                "abab5.5-chat" => "MiniMax-M1",
-                "minimax-chat" => "MiniMax-M1",
-                
-                // Audio models
-                "speech-02-sense" => "speech-02-Sense",
-                "speech-02" => "speech-02-Sense",
-                "speech-01" => "speech-01",
-                
-                // Video models
-                "minimax-video" => "MiniMax-Video-01",
-                "video-01" => "MiniMax-Video-01",
-                "T2V-01" => "T2V-01-Director",
-                
-                // Image models  
-                "minimax-image" => "MiniMax-Image-01",
-                "image-01" => "MiniMax-Image-01",
-                
-                _ => modelName // Pass through if already a valid model ID
-            };
-        }
-
         private List<MiniMaxMessage> ConvertMessages(List<Message> messages, bool includeNames = false)
         {
             var miniMaxMessages = new List<MiniMaxMessage>();

@@ -29,7 +29,7 @@ namespace ConduitLLM.Providers.Providers.MiniMax
             
             var miniMaxRequest = new MiniMaxChatCompletionRequest
             {
-                Model = MapModelName(request.Model ?? ProviderModelId),
+                Model = request.Model ?? ProviderModelId,
                 Messages = ConvertMessages(request.Messages, includeNames: true),
                 Stream = true,
                 MaxTokens = request.MaxTokens,

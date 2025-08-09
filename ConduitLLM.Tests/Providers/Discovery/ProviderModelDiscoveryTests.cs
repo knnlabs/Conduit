@@ -188,16 +188,16 @@ namespace ConduitLLM.Tests.Providers.Discovery
             if (models.Any())
             {
                 // Verify we get the expected static models
-                Assert.Contains(models, m => m.ModelId == "abab6.5s-chat");
+                Assert.Contains(models, m => m.ModelId == "MiniMax-M1");
                 Assert.Contains(models, m => m.ModelId == "embo-01");
                 Assert.Contains(models, m => m.ModelId == "speech-01");
                 
-                var chat = models.FirstOrDefault(m => m.ModelId == "abab6.5s-chat");
+                var chat = models.FirstOrDefault(m => m.ModelId == "MiniMax-M1");
                 Assert.NotNull(chat);
                 Assert.True(chat.Capabilities.Chat);
-                Assert.True(chat.Capabilities.Vision);
+                Assert.True(chat.Capabilities.FunctionCalling);
                 Assert.NotNull(chat.Capabilities.MaxTokens);
-                Assert.Equal(245760, chat.Capabilities.MaxTokens.Value);
+                Assert.Equal(1000000, chat.Capabilities.MaxTokens.Value);
             }
         }
 
