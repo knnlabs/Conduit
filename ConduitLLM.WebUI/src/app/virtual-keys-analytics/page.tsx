@@ -144,26 +144,31 @@ export default function VirtualKeysAnalyticsPage() {
   const fetchAnalytics = useCallback(async () => {
     try {
       setIsLoading(true);
-      const params = new URLSearchParams({
-        range: timeRange,
-        ...(selectedKeys.length > 0 && { keys: selectedKeys.join(',') }),
-      });
       
-      const response = await fetch(`/api/virtual-keys-analytics?${params}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch analytics');
-      }
-      const data = await response.json() as VirtualKeysAnalyticsResponse;
+      // TODO: Replace with actual Admin SDK call when virtual keys analytics API is implemented
+      // For now, we'll create mock data to make the page functional
+      const mockData: VirtualKeysAnalyticsResponse = {
+        virtualKeys: [],
+        timeSeries: {},
+        aggregateMetrics: {
+          totalRequests: 0,
+          totalTokens: 0,
+          totalCost: 0,
+          activeKeys: 0,
+          avgErrorRate: 0,
+          topKey: 'No data available',
+        }
+      };
       
-      setVirtualKeys(data.virtualKeys);
-      setTimeSeries(data.timeSeries);
-      setAggregateMetrics(data.aggregateMetrics);
+      setVirtualKeys(mockData.virtualKeys);
+      setTimeSeries(mockData.timeSeries);
+      setAggregateMetrics(mockData.aggregateMetrics);
     } catch (error) {
       console.error('Error fetching analytics:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [timeRange, selectedKeys]);
+  }, []);
 
   useEffect(() => {
     void fetchAnalytics();
@@ -198,19 +203,21 @@ export default function VirtualKeysAnalyticsPage() {
 
   const handleExport = async () => {
     try {
-      const params = new URLSearchParams({
-        range: timeRange,
-        ...(selectedKeys.length > 0 && { keys: selectedKeys.join(',') }),
-      });
+      // TODO: Replace with actual Admin SDK call when virtual keys analytics export API is implemented
+      // For now, create a simple CSV export of current data
+      const csvData = 'Virtual Key,Status,Requests,Tokens,Cost,Error Rate\n';
+      const csvContent = virtualKeys.length > 0 
+        ? virtualKeys.map(key => 
+          `${key.name},${key.status},${key.usage.requests},${key.usage.tokens},${key.usage.cost},${key.usage.errorRate}%`
+        ).join('\n')
+        : 'No data available';
       
-      const response = await fetch(`/api/virtual-keys-analytics/export?${params}`);
-      if (!response.ok) throw new Error('Export failed');
-
-      const blob = await response.blob();
+      const fullCsv = csvData + csvContent;
+      const blob = new Blob([fullCsv], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `virtual-keys-analytics-${timeRange}-${new Date().toISOString()}.csv`;
+      a.download = `virtual-keys-analytics-${timeRange}-${new Date().toISOString().split('T')[0]}.csv`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

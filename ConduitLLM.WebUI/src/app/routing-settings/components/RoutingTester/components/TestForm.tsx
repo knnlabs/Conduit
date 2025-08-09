@@ -159,12 +159,13 @@ export function TestForm({
                 placeholder="Select a model"
                 description="Choose the model to test routing rules against"
                 data={modelOptions}
-                value={request.model}
+                value={request.model || null}
                 onChange={(value) => onRequestChange({ ...request, model: value ?? '' })}
                 searchable
                 disabled={modelsLoading}
                 required
                 error={!request.model.trim() ? 'Model is required' : null}
+                allowDeselect={false}
               />
             </Tooltip>
           </Grid.Col>
@@ -175,7 +176,7 @@ export function TestForm({
                 placeholder="Select a region"
                 description="Choose user or provider region for geographic routing"
                 data={regionOptions}
-                value={request.region ?? ''}
+                value={request.region ?? null}
                 onChange={(value) => onRequestChange({ ...request, region: value ?? undefined })}
                 searchable
                 clearable

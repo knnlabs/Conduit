@@ -424,6 +424,96 @@
         }
       }
     },
+    "/v1/auth/ephemeral-key": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Generate an ephemeral key for the authenticated virtual key",
+        "requestBody": {
+          "description": "Optional metadata for the ephemeral key",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateEphemeralKeyRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateEphemeralKeyRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateEphemeralKeyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ephemeral key generated successfully",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/EphemeralKeyResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EphemeralKeyResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EphemeralKeyResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication failed",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/batch/spend-updates": {
       "post": {
         "tags": [
@@ -3816,6 +3906,55 @@
         },
         "additionalProperties": false
       },
+      "EphemeralKeyMetadata": {
+        "type": "object",
+        "properties": {
+          "sourceIP": {
+            "type": "string",
+            "description": "IP address that requested the ephemeral key",
+            "nullable": true
+          },
+          "userAgent": {
+            "type": "string",
+            "description": "User agent that requested the ephemeral key",
+            "nullable": true
+          },
+          "purpose": {
+            "type": "string",
+            "description": "Purpose or intended use of the ephemeral key",
+            "nullable": true
+          },
+          "requestId": {
+            "type": "string",
+            "description": "Request ID for correlation",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Optional metadata for tracking ephemeral key usage"
+      },
+      "EphemeralKeyResponse": {
+        "type": "object",
+        "properties": {
+          "ephemeralKey": {
+            "type": "string",
+            "description": "The ephemeral key token to use for authentication",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "When the ephemeral key expires",
+            "format": "date-time"
+          },
+          "expiresInSeconds": {
+            "type": "integer",
+            "description": "The TTL in seconds",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Response when creating an ephemeral key"
+      },
       "FunctionCall": {
         "required": [
           "arguments",
@@ -3857,6 +3996,16 @@
           }
         },
         "additionalProperties": false
+      },
+      "GenerateEphemeralKeyRequest": {
+        "type": "object",
+        "properties": {
+          "metadata": {
+            "$ref": "#/components/schemas/EphemeralKeyMetadata"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request for generating an ephemeral key"
       },
       "GenerateUrlRequest": {
         "required": [
@@ -4504,6 +4653,10 @@
             "nullable": true
           },
           "image_quality": {
+            "type": "string",
+            "nullable": true
+          },
+          "image_resolution": {
             "type": "string",
             "nullable": true
           },

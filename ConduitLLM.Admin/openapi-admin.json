@@ -1348,202 +1348,55 @@
         }
       }
     },
-    "/api/cache/monitoring/status": {
-      "get": {
+    "/api/admin/auth/ephemeral-master-key": {
+      "post": {
         "tags": [
-          "CacheMonitoring"
+          "Auth"
         ],
-        "summary": "Gets the current cache monitoring status",
+        "summary": "Generate an ephemeral master key for Admin API authentication",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Ephemeral master key generated successfully",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Models.EphemeralMasterKeyResponse"
+                }
+              },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.CacheMonitoringStatusDto"
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Models.EphemeralMasterKeyResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Models.EphemeralMasterKeyResponse"
                 }
               }
             }
           },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/cache/monitoring/thresholds": {
-      "get": {
-        "tags": [
-          "CacheMonitoring"
-        ],
-        "summary": "Gets the current alert thresholds",
-        "responses": {
-          "200": {
-            "description": "OK",
+          "401": {
+            "description": "Authentication failed - master key required",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.CacheAlertThresholdsDto"
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
                 }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "CacheMonitoring"
-        ],
-        "summary": "Updates the alert thresholds",
-        "requestBody": {
-          "description": "New threshold values",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.UpdateThresholdsRequestDto"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.UpdateThresholdsRequestDto"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.UpdateThresholdsRequestDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.CacheAlertThresholdsDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
+              },
+              "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/api/cache/monitoring/alerts": {
-      "get": {
-        "tags": [
-          "CacheMonitoring"
-        ],
-        "summary": "Gets recent cache alerts",
-        "parameters": [
-          {
-            "name": "count",
-            "in": "query",
-            "description": "Number of alerts to retrieve (default: 10, max: 100)",
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 10
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.CacheAlertDto"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "CacheMonitoring"
-        ],
-        "summary": "Clears the alert history",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/cache/monitoring/check": {
-      "post": {
-        "tags": [
-          "CacheMonitoring"
-        ],
-        "summary": "Forces an immediate monitoring check",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.CacheMonitoringStatusDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/cache/monitoring/alert-definitions": {
-      "get": {
-        "tags": [
-          "CacheMonitoring"
-        ],
-        "summary": "Gets available alert definitions",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.AlertDefinitionDto"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/cache/monitoring/health": {
-      "get": {
-        "tags": [
-          "CacheMonitoring"
-        ],
-        "summary": "Gets cache health summary for monitoring dashboard",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.CacheHealthSummaryDto"
-                }
-              }
-            }
+          },
+          "500": {
+            "description": "Internal server error"
           }
         }
       }
@@ -9439,6 +9292,28 @@
         "additionalProperties": false,
         "description": "Result of bulk cost import operation."
       },
+      "ConduitLLM.Admin.Models.EphemeralMasterKeyResponse": {
+        "type": "object",
+        "properties": {
+          "ephemeralMasterKey": {
+            "type": "string",
+            "description": "The generated ephemeral master key token",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "When the key expires",
+            "format": "date-time"
+          },
+          "expiresInSeconds": {
+            "type": "integer",
+            "description": "Number of seconds until the key expires",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Response model for ephemeral master key generation"
+      },
       "ConduitLLM.Admin.Models.ErrorQueue.ErrorDetails": {
         "type": "object",
         "properties": {
@@ -11008,7 +10883,8 @@
       "ConduitLLM.Configuration.DTOs.CreateModelCostDto": {
         "required": [
           "costName",
-          "modelType"
+          "modelType",
+          "pricingModel"
         ],
         "type": "object",
         "properties": {
@@ -11016,6 +10892,13 @@
             "maxLength": 255,
             "minLength": 1,
             "type": "string"
+          },
+          "pricingModel": {
+            "$ref": "#/components/schemas/ConduitLLM.Configuration.PricingModel"
+          },
+          "pricingConfiguration": {
+            "type": "string",
+            "nullable": true
           },
           "modelProviderMappingIds": {
             "type": "array",
@@ -11097,6 +10980,10 @@
             "type": "boolean"
           },
           "imageQualityMultipliers": {
+            "type": "string",
+            "nullable": true
+          },
+          "imageResolutionMultipliers": {
             "type": "string",
             "nullable": true
           },
@@ -11555,7 +11442,8 @@
       "ConduitLLM.Configuration.DTOs.ModelCostDto": {
         "required": [
           "costName",
-          "modelType"
+          "modelType",
+          "pricingModel"
         ],
         "type": "object",
         "properties": {
@@ -11567,6 +11455,13 @@
             "maxLength": 255,
             "minLength": 1,
             "type": "string"
+          },
+          "pricingModel": {
+            "$ref": "#/components/schemas/ConduitLLM.Configuration.PricingModel"
+          },
+          "pricingConfiguration": {
+            "type": "string",
+            "nullable": true
           },
           "associatedModelAliases": {
             "type": "array",
@@ -11667,6 +11562,10 @@
             "type": "boolean"
           },
           "imageQualityMultipliers": {
+            "type": "string",
+            "nullable": true
+          },
+          "imageResolutionMultipliers": {
             "type": "string",
             "nullable": true
           },
@@ -11835,223 +11734,6 @@
         },
         "additionalProperties": false
       },
-      "ConduitLLM.Configuration.DTOs.Monitoring.AlertDefinitionDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "nullable": true
-          },
-          "name": {
-            "type": "string",
-            "nullable": true
-          },
-          "description": {
-            "type": "string",
-            "nullable": true
-          },
-          "severity": {
-            "type": "string",
-            "nullable": true
-          },
-          "enabled": {
-            "type": "boolean"
-          },
-          "thresholds": {
-            "type": "object",
-            "additionalProperties": { },
-            "nullable": true
-          },
-          "type": {
-            "type": "string",
-            "nullable": true
-          },
-          "defaultSeverity": {
-            "type": "string",
-            "nullable": true
-          },
-          "recommendedActions": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "nullable": true
-          },
-          "notificationEnabled": {
-            "type": "boolean"
-          },
-          "cooldownPeriodMinutes": {
-            "type": "integer",
-            "format": "int32"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.Monitoring.CacheAlertDto": {
-        "type": "object",
-        "properties": {
-          "alertType": {
-            "type": "string",
-            "nullable": true
-          },
-          "message": {
-            "type": "string",
-            "nullable": true
-          },
-          "severity": {
-            "type": "string",
-            "nullable": true
-          },
-          "region": {
-            "type": "string",
-            "nullable": true
-          },
-          "timestamp": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "context": {
-            "type": "object",
-            "additionalProperties": { },
-            "nullable": true
-          },
-          "details": {
-            "type": "object",
-            "additionalProperties": { },
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.Monitoring.CacheAlertThresholdsDto": {
-        "type": "object",
-        "properties": {
-          "minHitRate": {
-            "type": "number",
-            "format": "double"
-          },
-          "maxMemoryUsage": {
-            "type": "number",
-            "format": "double"
-          },
-          "maxEvictionRate": {
-            "type": "number",
-            "format": "double"
-          },
-          "maxResponseTimeMs": {
-            "type": "number",
-            "format": "double"
-          },
-          "minRequestsForHitRateAlert": {
-            "type": "integer",
-            "format": "int64"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.Monitoring.CacheHealthSummaryDto": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "nullable": true
-          },
-          "checkTime": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "metrics": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.CacheMonitoringStatusDto"
-          },
-          "recentAlerts": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.CacheAlertDto"
-            },
-            "nullable": true
-          },
-          "details": {
-            "type": "object",
-            "additionalProperties": { },
-            "nullable": true
-          },
-          "overallHealth": {
-            "type": "string",
-            "nullable": true
-          },
-          "hitRate": {
-            "type": "number",
-            "format": "double"
-          },
-          "memoryUsagePercent": {
-            "type": "number",
-            "format": "double"
-          },
-          "responseTimeMs": {
-            "type": "number",
-            "format": "double"
-          },
-          "evictionRate": {
-            "type": "number",
-            "format": "double"
-          },
-          "activeAlerts": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "totalCacheSize": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "totalEntries": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "lastCheck": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.Monitoring.CacheMonitoringStatusDto": {
-        "type": "object",
-        "properties": {
-          "lastCheck": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "isHealthy": {
-            "type": "boolean"
-          },
-          "currentHitRate": {
-            "type": "number",
-            "format": "double"
-          },
-          "currentMemoryUsagePercent": {
-            "type": "number",
-            "format": "double"
-          },
-          "currentEvictionRate": {
-            "type": "number",
-            "format": "double"
-          },
-          "currentResponseTimeMs": {
-            "type": "number",
-            "format": "double"
-          },
-          "activeAlerts": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "details": {
-            "type": "object",
-            "additionalProperties": { },
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
       "ConduitLLM.Configuration.DTOs.Monitoring.ComponentHealth": {
         "type": "object",
         "properties": {
@@ -12208,37 +11890,6 @@
           },
           "recordCounts": {
             "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Monitoring.RecordCountsDto"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.Monitoring.UpdateThresholdsRequestDto": {
-        "type": "object",
-        "properties": {
-          "minHitRate": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "maxMemoryUsage": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "maxEvictionRate": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "maxResponseTimeMs": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "minRequestsForHitRateAlert": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
           }
         },
         "additionalProperties": false
@@ -12520,7 +12171,8 @@
       "ConduitLLM.Configuration.DTOs.UpdateModelCostDto": {
         "required": [
           "costName",
-          "modelType"
+          "modelType",
+          "pricingModel"
         ],
         "type": "object",
         "properties": {
@@ -12532,6 +12184,13 @@
             "maxLength": 255,
             "minLength": 1,
             "type": "string"
+          },
+          "pricingModel": {
+            "$ref": "#/components/schemas/ConduitLLM.Configuration.PricingModel"
+          },
+          "pricingConfiguration": {
+            "type": "string",
+            "nullable": true
           },
           "modelProviderMappingIds": {
             "type": "array",
@@ -12616,6 +12275,10 @@
             "type": "boolean"
           },
           "imageQualityMultipliers": {
+            "type": "string",
+            "nullable": true
+          },
+          "imageResolutionMultipliers": {
             "type": "string",
             "nullable": true
           },
@@ -13207,6 +12870,20 @@
           2,
           3,
           4
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "ConduitLLM.Configuration.PricingModel": {
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
         ],
         "type": "integer",
         "format": "int32"

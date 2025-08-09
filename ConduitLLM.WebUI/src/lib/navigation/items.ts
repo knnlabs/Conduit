@@ -5,8 +5,6 @@ import {
   IconMessageChatbot,
   IconPhoto,
   IconVideo,
-  IconSettings,
-  IconUsers,
   IconShield,
   IconShield as IconHealth,
   IconRoute,
@@ -86,14 +84,6 @@ export const navigationSections: NavigationSection[] = [
         color: 'indigo',
       },
       {
-        id: 'configuration',
-        label: 'General Settings',
-        icon: IconSettings,
-        href: '/configuration',
-        description: 'System configuration',
-        color: 'gray',
-      },
-      {
         id: 'routing-settings',
         label: 'Routing Settings',
         icon: IconNetwork,
@@ -137,13 +127,6 @@ export const navigationSections: NavigationSection[] = [
         color: 'teal',
       },
       {
-        id: 'virtualkeys-dashboard',
-        label: 'Keys Dashboard',
-        icon: IconUsers,
-        href: '/virtualkeys/dashboard',
-        description: 'Virtual keys overview',
-      },
-      {
         id: 'media',
         label: 'Media Assets',
         icon: IconPhoto,
@@ -175,13 +158,6 @@ export const navigationSections: NavigationSection[] = [
         color: 'purple',
       },
       {
-        id: 'request-logs',
-        label: 'Request Logs',
-        icon: IconFileText,
-        href: '/request-logs',
-        description: 'API request history',
-      },
-      {
         id: 'model-costs',
         label: 'Model Pricing',
         icon: IconCreditCard,
@@ -200,14 +176,6 @@ export const navigationSections: NavigationSection[] = [
         icon: IconDeviceDesktop,
         href: '/system-info',
         description: 'System status and information',
-      },
-      {
-        id: 'system-performance',
-        label: 'System Performance',
-        icon: IconActivity,
-        href: '/system-performance',
-        description: 'Performance monitoring and metrics',
-        color: 'teal',
       },
       {
         id: 'error-queues',

@@ -12,13 +12,11 @@ import {
 } from '@mantine/core';
 import { 
   IconServer, 
-  IconKey, 
-  IconChartBar, 
+  IconKey,
   IconMessageChatbot,
   IconPhoto,
   IconVideo,
-  IconMicrophone,
-  IconSettings
+  IconMicrophone
 } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 
@@ -39,13 +37,6 @@ export function HomePageClient() {
       icon: IconKey,
       color: 'green',
       href: '/virtual-keys'
-    },
-    {
-      title: 'System Performance',
-      description: 'Monitor system performance metrics',
-      icon: IconChartBar,
-      color: 'orange',
-      href: '/system-performance'
     },
     {
       title: 'Chat Interface',
@@ -75,13 +66,6 @@ export function HomePageClient() {
       color: 'teal',
       href: '/audio'
     },
-    {
-      title: 'Settings',
-      description: 'Configure system settings and preferences',
-      icon: IconSettings,
-      color: 'gray',
-      href: '/settings'
-    }
   ];
 
   return (

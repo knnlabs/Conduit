@@ -154,6 +154,7 @@ export function ConditionBuilder({ conditions, onUpdate, errors }: ConditionBuil
                     w={80}
                     variant="filled"
                     size="xs"
+                    allowDeselect={false}
                   />
                 </Group>
               )}

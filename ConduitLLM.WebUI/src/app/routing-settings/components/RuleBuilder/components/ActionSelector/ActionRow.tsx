@@ -130,6 +130,7 @@ export function ActionRow({ action, index, onUpdate, onRemove, canRemove }: Acti
             onChange={(value) => handleParameterChange(param.name, value)}
             searchable
             required={param.required}
+            allowDeselect={!param.required}
           />
         );
 
@@ -145,6 +146,7 @@ export function ActionRow({ action, index, onUpdate, onRemove, canRemove }: Acti
             onChange={(value) => handleParameterChange(param.name, value)}
             searchable
             required={param.required}
+            allowDeselect={!param.required}
           />
         );
 
@@ -181,9 +183,10 @@ export function ActionRow({ action, index, onUpdate, onRemove, canRemove }: Acti
             <Select
               label="Action Type"
               data={ACTION_TYPES}
-              value={String(action.type)}
+              value={String(action.type) ?? null}
               onChange={handleTypeChange}
               searchable
+              allowDeselect={false}
             />
           </div>
 
@@ -194,10 +197,11 @@ export function ActionRow({ action, index, onUpdate, onRemove, canRemove }: Acti
                 label="Target Provider"
                 placeholder="Select provider"
                 data={providerOptions}
-            disabled={providersLoading}
-                value={safeToString(action.target) ?? ''}
+                disabled={providersLoading}
+                value={safeToString(action.target)}
                 onChange={(value) => onUpdate({ target: value ?? '' })}
                 searchable
+                allowDeselect={false}
               />
             </div>
           )}

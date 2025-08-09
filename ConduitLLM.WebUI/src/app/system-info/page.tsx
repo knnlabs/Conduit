@@ -35,6 +35,7 @@ import {
 import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
 import { SystemInfoDto } from '@knn_labs/conduit-admin-client';
+import { withAdminClient } from '@/lib/client/adminClient';
 
 interface SystemMetric {
   name: string;
@@ -71,14 +72,11 @@ export default function SystemInfoPage() {
   const fetchSystemInfo = async () => {
     try {
       setError(null);
-      const response = await fetch('/api/settings/system-info');
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to fetch system information: ${response.status} ${errorText}`);
-      }
-
-      const data = await response.json() as SystemInfoDto;
+      
+      const data = await withAdminClient(client => 
+        client.system.getSystemInfo()
+      );
+      
       setSystemInfo(data);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
