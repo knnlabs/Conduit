@@ -1,7 +1,7 @@
 # Discovery Provider Refactoring Plan
 
 **Created**: 2025-07-30  
-**Status**: Planning  
+**Status**: In Progress (as of 2025-08-08)  
 **Goal**: Refactor provider-specific discovery code to follow the driver model architecture
 
 ## Executive Summary
@@ -42,6 +42,37 @@ namespace ConduitLLM.Clients.Groq
 - **Provider Encapsulation**: All provider code in one namespace
 - **Simple Testing**: Test discovery independently
 - **Easy Maintenance**: Add providers without touching core
+
+## Progress to Date (2025-08-08)
+
+- Implemented provider discovery via sister classes:
+  - OpenAI: `OpenAIModelDiscovery.DiscoverAsync()`
+  - OpenAI-Compatible: `OpenAICompatibleModelDiscovery.DiscoverAsync()`
+  - Groq: `GroqModels.DiscoverAsync()`
+  - Cerebras: `CerebrasModels.DiscoverAsync()`
+  - MiniMax: `MiniMaxModels.DiscoverAsync()`
+  - Replicate: `ReplicateModels.DiscoverAsync()`
+  - Fireworks: `FireworksModels.DiscoverAsync()`
+  - SambaNova: `SambaNovaModels.DiscoverAsync()`
+- Admin and HTTP services call these via a switch-based `ProviderModelDiscoveryService`.
+- Core `ProviderDiscoveryService` delegates to `IProviderModelDiscovery`; legacy discovery removed; DI cleanup complete.
+
+Pending items:
+- Anthropic sister class (`AnthropicModels.DiscoverAsync`) — NOT IMPLEMENTED
+- OpenRouter sister class (`OpenRouterModels.DiscoverAsync`) — NOT IMPLEMENTED
+- Special cases: Azure OpenAI (return empty list for deployments), Ollama (local models), Bedrock (region-aware) — NOT IMPLEMENTED
+
+### Updated Next Steps
+
+1. Implement `AnthropicModels.DiscoverAsync(HttpClient http, string? apiKey, CancellationToken ct)` and wire into Admin/HTTP `ProviderModelDiscoveryService` switches; add `ProviderType.Anthropic` to supported types.
+2. Implement `OpenRouterModels.DiscoverAsync(...)` with prefix handling (e.g., `openrouter/anthropic/model`) and wire into Admin/HTTP switches; add `ProviderType.OpenRouter` to supported types.
+3. Implement special-case providers:
+   - Azure OpenAI: return empty list (deployments ≠ models) with TODO for future deployment discovery
+   - Ollama: discover locally pulled models
+   - Bedrock: region-aware discovery
+   Wire all three into the switches and supported types.
+4. Tests: add unit + integration tests for Anthropic and OpenRouter; verify byte-for-byte parity where applicable; extend E2E bulk import to cover the new providers.
+5. Docs: update API/reference notes on discovery sources; remove this plan document after all items above are merged.
 
 ## Migration Plan
 

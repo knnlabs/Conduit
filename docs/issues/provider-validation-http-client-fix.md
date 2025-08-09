@@ -29,10 +29,10 @@ Added `CreateAuthenticationVerificationClient()` to `BaseLLMClient`:
 
 ### 2. Updated Provider Implementations
 
-Modified all providers that implement `VerifyAuthenticationAsync` to use the new method:
-- OpenAI Client
-- Azure OpenAI Client  
-- Other affected providers
+Current status:
+- Method is added, but providers are not yet using `CreateAuthenticationVerificationClient()` in `VerifyAuthenticationAsync`
+- Most providers (e.g., OpenAI, Groq, Replicate, Fireworks, MiniMax, Ultravox) construct absolute URLs and work with a plain `HttpClient`
+- ElevenLabs still uses a relative path ("user") which can fail if `BaseAddress` is not set; update to an absolute URL or use the new auth client
 
 ### 3. Added Comprehensive Test Coverage
 
@@ -41,7 +41,7 @@ Created `ProviderAuthenticationTests.cs` with tests for:
 - Invalid API key scenarios
 - Null BaseUrl handling
 - Custom BaseUrl handling
-- Factory test client creation
+- HttpClient base address behavior for validation
 
 ## Architecture Improvements
 
@@ -59,17 +59,15 @@ Run the provider authentication tests:
 dotnet test --filter "FullyQualifiedName~ProviderAuthenticationTests"
 ```
 
-Run integration tests:
-```bash
-dotnet test --filter "FullyQualifiedName~ProviderValidationIntegrationTests"
-```
+Integration tests: TODO
+- The `ProviderValidationIntegrationTests` suite does not exist yet.
+- Add end-to-end tests per provider once the auth client adoption is complete.
 
 ## Future Considerations
 
-1. Consider migrating all providers to use either:
-   - Absolute URLs everywhere (no BaseAddress)
-   - OR relative URLs everywhere (always set BaseAddress)
-
-2. Add more integration tests for each provider type
-
-3. Consider creating provider-specific test suites for authentication verification
+1. Adopt `CreateAuthenticationVerificationClient()` in all providers' `VerifyAuthenticationAsync` implementations.
+2. Ensure each provider consistently uses either:
+   - Absolute URLs everywhere (no BaseAddress), or
+   - Relative URLs everywhere (and always set BaseAddress)
+3. Add integration tests for authentication verification per provider type.
+4. Create provider-specific test suites for authentication verification where needed.

@@ -19,6 +19,7 @@ A single `SecurityMiddleware` handles all security checks in one pass:
 - Primary header: `X-API-Key` (configurable)
 - Alternative headers: `X-Master-Key` (backward compatibility)
 - Uses `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` environment variable
+- Supports Ephemeral Master Keys (single-use, short-lived)
 - Failed authentication attempts are tracked
 
 ### 3. IP Filtering
@@ -52,6 +53,45 @@ A single `SecurityMiddleware` handles all security checks in one pass:
 - Strict-Transport-Security (HTTPS only)
 - Removes server identification headers
 
+### 7. Ephemeral Master Key (EMK)
+
+Provides one-time, short-lived authentication for Admin API operations and secure WebUI flows.
+
+Key properties:
+- Single-use tokens with 5-minute TTL
+- Stored in Redis with automatic expiration and cleanup
+- Token format: `emk_...` (URL-safe)
+
+Generate an EMK:
+
+```bash
+curl -X POST "$ADMIN_API_BASE_URL/api/admin/auth/ephemeral-master-key" \
+  -H "X-API-Key: $CONDUIT_API_TO_API_BACKEND_AUTH_KEY"
+```
+
+Response:
+
+```json
+{
+  "ephemeralMasterKey": "emk_abc...",
+  "expiresAt": "2025-01-01T00:00:00Z"
+}
+```
+
+Use the EMK for the next request:
+
+```bash
+curl -H "X-API-Key: emk_abc..." "$ADMIN_API_BASE_URL/api/providers"
+```
+
+Validation behavior:
+- Non-streaming requests: validated and marked consumed; key cannot be reused
+- Streaming (e.g., SignalR/SSE): key is consumed and deleted once the connection is established; the connection remains authorized
+
+Implementation notes:
+- Backed by distributed cache with key prefix `ephemeral:master:`
+- Authentication handler accepts EMK via `X-API-Key` or `X-Master-Key`
+
 ## Configuration
 
 ### Environment Variables
@@ -71,6 +111,7 @@ CONDUIT_ADMIN_RATE_LIMIT_WINDOW_SECONDS=60
 CONDUIT_ADMIN_RATE_LIMIT_EXCLUDED_PATHS=/health,/swagger
 
 # Failed Authentication Protection
+CONDUIT_ADMIN_IP_BANNING_ENABLED=true
 CONDUIT_ADMIN_MAX_FAILED_AUTH_ATTEMPTS=5
 CONDUIT_ADMIN_AUTH_BAN_DURATION_MINUTES=30
 
@@ -78,8 +119,14 @@ CONDUIT_ADMIN_AUTH_BAN_DURATION_MINUTES=30
 CONDUIT_SECURITY_USE_DISTRIBUTED_TRACKING=true
 
 # Security Headers
+CONDUIT_ADMIN_SECURITY_HEADERS_X_CONTENT_TYPE_OPTIONS_ENABLED=true
+CONDUIT_ADMIN_SECURITY_HEADERS_X_XSS_PROTECTION_ENABLED=true
 CONDUIT_ADMIN_SECURITY_HEADERS_HSTS_ENABLED=true
 CONDUIT_ADMIN_SECURITY_HEADERS_HSTS_MAX_AGE=31536000
+
+# API Authentication (header names)
+CONDUIT_ADMIN_API_KEY_HEADER=X-API-Key
+CONDUIT_ADMIN_API_KEY_ALT_HEADERS=X-Master-Key
 ```
 
 ## Shared Security Tracking
@@ -113,20 +160,7 @@ The WebUI Security Dashboard can display:
 - Rate limiting statistics per service
 - Source identification for security events
 
-## Migration from Old Architecture
 
-### Before (Multiple Middleware)
-```csharp
-app.UseMiddleware<AdminAuthenticationMiddleware>();
-app.UseMiddleware<AdminRequestTrackingMiddleware>();
-```
-
-### After (Unified Security)
-```csharp
-app.UseAdminSecurityHeaders();
-app.UseAdminSecurity();
-app.UseMiddleware<AdminRequestTrackingMiddleware>();
-```
 
 ## Backward Compatibility
 
