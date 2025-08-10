@@ -13,7 +13,7 @@ using Moq;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace ConduitLLM.Tests.Repositories
+namespace ConduitLLM.Tests.Configuration.Repositories
 {
     /// <summary>
     /// Example unit tests for the VirtualKeyRepository class demonstrating repository testing patterns.

@@ -13,7 +13,7 @@ using Moq;
 using Moq.Protected;
 using Xunit;
 
-namespace ConduitLLM.Tests.Services
+namespace ConduitLLM.Tests.Core.Services
 {
     /// <summary>
     /// Tests for the ProviderModelDiscoveryService implementations.

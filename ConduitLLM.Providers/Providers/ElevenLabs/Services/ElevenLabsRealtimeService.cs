@@ -13,7 +13,7 @@ using ConduitLLM.Providers.Translators;
 
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Providers.ElevenLabs.Services
+namespace ConduitLLM.Providers.ElevenLabs
 {
     /// <summary>
     /// Service for handling ElevenLabs real-time audio operations.

@@ -4,7 +4,7 @@ using ConduitLLM.Core.Models.Routing;
 using Moq;
 using Xunit;
 
-namespace ConduitLLM.Tests.Services
+namespace ConduitLLM.Tests.Core.Services
 {
     public partial class RouterServiceTests
     {

@@ -100,7 +100,7 @@ namespace ConduitLLM.Providers.OpenAI
                 }
 
                 // Default JSON response
-                var jsonResponse = JsonSerializer.Deserialize<ConduitLLM.Providers.OpenAI.Models.TranscriptionResponse>(responseText, DefaultJsonOptions);
+                var jsonResponse = JsonSerializer.Deserialize<TranscriptionResponse>(responseText, DefaultJsonOptions);
 
                 return new AudioTranscriptionResponse
                 {
@@ -141,7 +141,7 @@ namespace ConduitLLM.Providers.OpenAI
                 ? GetAzureAudioEndpoint("speech")
                 : UrlBuilder.Combine(BaseUrl, Constants.Endpoints.AudioSpeech);
 
-            var openAIRequest = new ConduitLLM.Providers.OpenAI.Models.TextToSpeechRequest
+            var openAIRequest = new TextToSpeechRequest
             {
                 Model = request.Model ?? GetDefaultTextToSpeechModel(),
                 Input = request.Input,

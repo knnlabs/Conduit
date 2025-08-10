@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace ConduitLLM.Providers.OpenAI.Models
+namespace ConduitLLM.Providers.OpenAI
 {
     /// <summary>
     /// OpenAI-specific audio transcription response model.

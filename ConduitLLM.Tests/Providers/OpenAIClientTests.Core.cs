@@ -15,7 +15,6 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Providers;
 using ConduitLLM.Providers.OpenAI;
-using ConduitLLM.Providers.OpenAI.Models;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;

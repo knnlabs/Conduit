@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
-namespace ConduitLLM.Tests.Repositories
+namespace ConduitLLM.Tests.Configuration.Repositories
 {
     /// <summary>
     /// Integration tests to verify that Entity Framework Include() functionality works correctly

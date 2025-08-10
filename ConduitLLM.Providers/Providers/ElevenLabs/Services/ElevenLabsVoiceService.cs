@@ -12,7 +12,7 @@ using ConduitLLM.Providers.ElevenLabs;
 
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Providers.ElevenLabs.Services
+namespace ConduitLLM.Providers.ElevenLabs
 {
     /// <summary>
     /// Service for handling ElevenLabs voice management operations.

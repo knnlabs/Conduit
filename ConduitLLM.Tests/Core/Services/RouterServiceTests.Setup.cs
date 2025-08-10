@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit.Abstractions;
 
-namespace ConduitLLM.Tests.Services
+namespace ConduitLLM.Tests.Core.Services
 {
     /// <summary>
     /// Unit tests for the RouterService class.

@@ -11,7 +11,6 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Core.Models.Realtime;
 using ConduitLLM.Providers.Common.Models;
-using ConduitLLM.Providers.ElevenLabs.Services;
 using ConduitLLM.Providers.Translators;
 
 using Microsoft.Extensions.Logging;

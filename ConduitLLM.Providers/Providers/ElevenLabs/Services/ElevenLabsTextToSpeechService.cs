@@ -12,7 +12,7 @@ using ConduitLLM.Core.Models.Audio;
 
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Providers.ElevenLabs.Services
+namespace ConduitLLM.Providers.ElevenLabs
 {
     /// <summary>
     /// Service for handling ElevenLabs text-to-speech operations.

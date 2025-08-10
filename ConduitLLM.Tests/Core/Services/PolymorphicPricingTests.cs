@@ -12,7 +12,7 @@ using Xunit;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Entities;
 
-namespace ConduitLLM.Tests.Services
+namespace ConduitLLM.Tests.Core.Services
 {
     public class PolymorphicPricingTests
     {

@@ -10,7 +10,6 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Providers.OpenAI;
-using ConduitLLM.Providers.OpenAI.Models;
 using Moq;
 using Moq.Protected;
 using Xunit;
