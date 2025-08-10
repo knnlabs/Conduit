@@ -1,8 +1,7 @@
-import { VideoProgressTracker } from '../VideoProgressTracker';
+import type { VideoProgressTracker } from '../VideoProgressTracker';
 import type { VideosService, VideoProgressCallbacks } from '../../services/VideosService';
 import type { SignalRService } from '../../services/SignalRService';
 import type { VideoGenerationHubClient } from '../../signalr/VideoGenerationHubClient';
-import { VideoTaskStatus } from '../../models/videos';
 
 // Type for accessing private methods in tests
 type VideoProgressTrackerTestable = VideoProgressTracker & {
