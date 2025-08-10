@@ -1,12 +1,12 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using ConduitLLM.Http.SignalR.Metrics;
+using ConduitLLM.Http.Metrics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Http.SignalR.Services
+namespace ConduitLLM.Http.Services
 {
     /// <summary>
     /// Background service that collects and reports SignalR metrics using OpenTelemetry

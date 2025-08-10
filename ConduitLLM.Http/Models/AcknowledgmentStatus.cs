@@ -1,4 +1,4 @@
-namespace ConduitLLM.Http.SignalR.Messages
+namespace ConduitLLM.Http.Models
 {
     /// <summary>
     /// Status of message acknowledgment

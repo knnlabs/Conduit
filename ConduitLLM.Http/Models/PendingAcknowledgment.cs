@@ -1,7 +1,7 @@
 using System;
 using System.Threading;
 
-namespace ConduitLLM.Http.SignalR.Messages
+namespace ConduitLLM.Http.Models
 {
     /// <summary>
     /// Tracks pending acknowledgments for messages

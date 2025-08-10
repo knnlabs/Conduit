@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace ConduitLLM.Http.SignalR.Messages
+namespace ConduitLLM.Http.Models
 {
     /// <summary>
     /// Message for task completion notifications that require acknowledgment

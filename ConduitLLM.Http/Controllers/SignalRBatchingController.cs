@@ -1,10 +1,10 @@
 using System.Threading.Tasks;
-using ConduitLLM.Http.SignalR.Services;
+using ConduitLLM.Http.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Http.SignalR.Controllers
+namespace ConduitLLM.Http.Controllers
 {
     /// <summary>
     /// Controller for managing SignalR message batching

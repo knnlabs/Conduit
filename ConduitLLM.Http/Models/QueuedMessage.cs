@@ -1,6 +1,6 @@
 using System;
 
-namespace ConduitLLM.Http.SignalR.Messages
+namespace ConduitLLM.Http.Models
 {
     /// <summary>
     /// Represents a message queued for delivery

@@ -2,12 +2,12 @@ using System;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Http.Hubs;
-using ConduitLLM.Http.SignalR.Messages;
-using ConduitLLM.Http.SignalR.Services;
+using ConduitLLM.Http.Models;
+using ConduitLLM.Http.Services;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Http.SignalR.Hubs
+namespace ConduitLLM.Http.Hubs
 {
     /// <summary>
     /// Base hub that provides message acknowledgment functionality

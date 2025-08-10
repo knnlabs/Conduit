@@ -83,25 +83,25 @@ public partial class Program
             provider.GetRequiredService<ConduitLLM.Http.Services.SignalRMetricsService>());
 
         // Register new SignalR reliability services
-        builder.Services.AddSingleton<ConduitLLM.Http.SignalR.Services.ISignalRAcknowledgmentService, ConduitLLM.Http.SignalR.Services.SignalRAcknowledgmentService>();
-        builder.Services.AddHostedService<ConduitLLM.Http.SignalR.Services.SignalRAcknowledgmentService>(provider => 
-            (ConduitLLM.Http.SignalR.Services.SignalRAcknowledgmentService)provider.GetRequiredService<ConduitLLM.Http.SignalR.Services.ISignalRAcknowledgmentService>());
+        builder.Services.AddSingleton<ConduitLLM.Http.Services.ISignalRAcknowledgmentService, ConduitLLM.Http.Services.SignalRAcknowledgmentService>();
+        builder.Services.AddHostedService<ConduitLLM.Http.Services.SignalRAcknowledgmentService>(provider => 
+            (ConduitLLM.Http.Services.SignalRAcknowledgmentService)provider.GetRequiredService<ConduitLLM.Http.Services.ISignalRAcknowledgmentService>());
 
-        builder.Services.AddSingleton<ConduitLLM.Http.SignalR.Services.ISignalRMessageQueueService, ConduitLLM.Http.SignalR.Services.SignalRMessageQueueService>();
-        builder.Services.AddHostedService<ConduitLLM.Http.SignalR.Services.SignalRMessageQueueService>(provider => 
-            (ConduitLLM.Http.SignalR.Services.SignalRMessageQueueService)provider.GetRequiredService<ConduitLLM.Http.SignalR.Services.ISignalRMessageQueueService>());
+        builder.Services.AddSingleton<ConduitLLM.Http.Services.ISignalRMessageQueueService, ConduitLLM.Http.Services.SignalRMessageQueueService>();
+        builder.Services.AddHostedService<ConduitLLM.Http.Services.SignalRMessageQueueService>(provider => 
+            (ConduitLLM.Http.Services.SignalRMessageQueueService)provider.GetRequiredService<ConduitLLM.Http.Services.ISignalRMessageQueueService>());
 
-        builder.Services.AddSingleton<ConduitLLM.Http.SignalR.Services.ISignalRConnectionMonitor, ConduitLLM.Http.SignalR.Services.SignalRConnectionMonitor>();
-        builder.Services.AddHostedService<ConduitLLM.Http.SignalR.Services.SignalRConnectionMonitor>(provider => 
-            (ConduitLLM.Http.SignalR.Services.SignalRConnectionMonitor)provider.GetRequiredService<ConduitLLM.Http.SignalR.Services.ISignalRConnectionMonitor>());
+        builder.Services.AddSingleton<ConduitLLM.Http.Services.ISignalRConnectionMonitor, ConduitLLM.Http.Services.SignalRConnectionMonitor>();
+        builder.Services.AddHostedService<ConduitLLM.Http.Services.SignalRConnectionMonitor>(provider => 
+            (ConduitLLM.Http.Services.SignalRConnectionMonitor)provider.GetRequiredService<ConduitLLM.Http.Services.ISignalRConnectionMonitor>());
 
-        builder.Services.AddSingleton<ConduitLLM.Http.SignalR.Services.ISignalRMessageBatcher, ConduitLLM.Http.SignalR.Services.SignalRMessageBatcher>();
-        builder.Services.AddHostedService<ConduitLLM.Http.SignalR.Services.SignalRMessageBatcher>(provider => 
-            (ConduitLLM.Http.SignalR.Services.SignalRMessageBatcher)provider.GetRequiredService<ConduitLLM.Http.SignalR.Services.ISignalRMessageBatcher>());
+        builder.Services.AddSingleton<ConduitLLM.Http.Services.ISignalRMessageBatcher, ConduitLLM.Http.Services.SignalRMessageBatcher>();
+        builder.Services.AddHostedService<ConduitLLM.Http.Services.SignalRMessageBatcher>(provider => 
+            (ConduitLLM.Http.Services.SignalRMessageBatcher)provider.GetRequiredService<ConduitLLM.Http.Services.ISignalRMessageBatcher>());
 
         // Register SignalR OpenTelemetry metrics
-        builder.Services.AddSingleton<ConduitLLM.Http.SignalR.Metrics.SignalRMetrics>();
-        builder.Services.AddHostedService<ConduitLLM.Http.SignalR.Services.SignalROpenTelemetryService>();
+        builder.Services.AddSingleton<ConduitLLM.Http.Metrics.SignalRMetrics>();
+        builder.Services.AddHostedService<ConduitLLM.Http.Services.SignalROpenTelemetryService>();
 
         builder.Services.AddHostedService<ConduitLLM.Http.Services.TaskProcessingMetricsService>();
         builder.Services.AddHostedService<ConduitLLM.Http.Services.BusinessMetricsService>();

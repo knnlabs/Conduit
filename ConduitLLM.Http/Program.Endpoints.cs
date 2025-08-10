@@ -80,7 +80,7 @@ public partial class Program
         Console.WriteLine("[Conduit API] SignalR UsageAnalyticsHub registered at /hubs/usage-analytics (requires authentication)");
 
         // Enhanced video generation hub with acknowledgment support
-        app.MapHub<ConduitLLM.Http.SignalR.Hubs.EnhancedVideoGenerationHub>("/hubs/enhanced-video-generation")
+        app.MapHub<ConduitLLM.Http.Hubs.EnhancedVideoGenerationHub>("/hubs/enhanced-video-generation")
             .RequireAuthorization();
         Console.WriteLine("[Conduit API] SignalR EnhancedVideoGenerationHub registered at /hubs/enhanced-video-generation (requires authentication)");
 

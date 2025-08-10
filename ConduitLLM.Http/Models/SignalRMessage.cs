@@ -1,6 +1,6 @@
 using System;
 
-namespace ConduitLLM.Http.SignalR.Messages
+namespace ConduitLLM.Http.Models
 {
     /// <summary>
     /// Base class for all SignalR messages that require acknowledgment

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace ConduitLLM.Http.SignalR.Messages
+namespace ConduitLLM.Http.Models
 {
     /// <summary>
     /// Represents a batch of messages to be sent together

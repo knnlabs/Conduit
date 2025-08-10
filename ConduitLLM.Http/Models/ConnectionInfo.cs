@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace ConduitLLM.Http.SignalR.Models
+namespace ConduitLLM.Http.Models
 {
     /// <summary>
     /// Information about a SignalR connection
