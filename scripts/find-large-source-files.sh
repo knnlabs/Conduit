@@ -3,7 +3,7 @@
 # find-large-source-files.sh
 # Finds source code files with more than 500 lines
 # Usage: ./find-large-source-files.sh [filter]
-# Filter options: dotnet, typescript (optional)
+# Filter options: dotnet, typescript, markdown, tests (optional)
 
 # Color codes for output
 RED='\033[0;31m'
@@ -64,13 +64,23 @@ case "$FILTER" in
         echo -e "${BLUE}Searching for TypeScript/JavaScript files with more than $LINE_THRESHOLD lines...${NC}"
         FILE_PATTERN="-name \"*.ts\" -o -name \"*.tsx\" -o -name \"*.js\" -o -name \"*.jsx\" -o -name \"*.mjs\" -o -name \"*.cjs\""
         ;;
+    "markdown")
+        echo -e "${BLUE}Searching for Markdown files with more than $LINE_THRESHOLD lines...${NC}"
+        FILE_PATTERN="-name \"*.md\""
+        ;;
+    "tests")
+        echo -e "${BLUE}Searching for test files (.NET and TypeScript/JavaScript) with more than $LINE_THRESHOLD lines...${NC}"
+        # .NET test patterns: *Test.cs, *Tests.cs, files in *.Tests folders
+        # TypeScript/JavaScript test patterns: *.test.*, *.spec.*, files in test/tests/__tests__ folders
+        FILE_PATTERN="\\( -name \"*Test.cs\" -o -name \"*Tests.cs\" -o -path \"*.Tests/*\" -name \"*.cs\" \\) -o \\( -name \"*.test.ts\" -o -name \"*.test.tsx\" -o -name \"*.test.js\" -o -name \"*.test.jsx\" -o -name \"*.spec.ts\" -o -name \"*.spec.tsx\" -o -name \"*.spec.js\" -o -name \"*.spec.jsx\" -o -name \"*.test.mjs\" -o -name \"*.test.cjs\" -o -name \"*.spec.mjs\" -o -name \"*.spec.cjs\" \\) -o \\( \\( -path \"*/test/*\" -o -path \"*/tests/*\" -o -path \"*/__tests__/*\" -o -path \"*/spec/*\" \\) -a \\( -name \"*.ts\" -o -name \"*.tsx\" -o -name \"*.js\" -o -name \"*.jsx\" -o -name \"*.mjs\" -o -name \"*.cjs\" \\) \\)"
+        ;;
     "")
         echo -e "${BLUE}Searching for all source code files with more than $LINE_THRESHOLD lines...${NC}"
         FILE_PATTERN="-name \"*.cs\" -o -name \"*.ts\" -o -name \"*.tsx\" -o -name \"*.js\" -o -name \"*.jsx\" -o -name \"*.py\" -o -name \"*.java\" -o -name \"*.cpp\" -o -name \"*.c\" -o -name \"*.h\" -o -name \"*.hpp\" -o -name \"*.go\" -o -name \"*.rs\" -o -name \"*.vue\" -o -name \"*.svelte\" -o -name \"*.rb\" -o -name \"*.php\" -o -name \"*.swift\" -o -name \"*.kt\" -o -name \"*.scala\" -o -name \"*.r\" -o -name \"*.m\" -o -name \"*.mm\" -o -name \"*.sh\" -o -name \"*.bash\" -o -name \"*.zsh\" -o -name \"*.sql\" -o -name \"*.yaml\" -o -name \"*.yml\" -o -name \"*.json\" -o -name \"*.xml\" -o -name \"*.md\" -o -name \"*.mjs\" -o -name \"*.cjs\""
         ;;
     *)
         echo -e "${RED}Invalid filter: $FILTER${NC}"
-        echo "Valid filters: dotnet, typescript"
+        echo "Valid filters: dotnet, typescript, markdown, tests"
         echo "Usage: $0 [filter]"
         exit 1
         ;;

@@ -17,7 +17,7 @@ namespace ConduitLLM.Tests.Security
     /// </summary>
     [Trait("Category", "Unit")]
     [Trait("Component", "Security")]
-    public class AuthenticationServiceTests
+    public partial class AuthenticationServiceTests
     {
         private readonly Mock<IConfiguration> _mockConfiguration;
         private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
