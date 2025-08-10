@@ -1,0 +1,57 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
+
+namespace ConduitLLM.Configuration.Tests.Repositories
+{
+    public partial class AudioUsageLogRepositoryTests
+    {
+        #region Helper Methods
+
+        private async Task SeedTestDataAsync(int count)
+        {
+            // Create test providers
+            var openAiProvider = new Provider { ProviderType = ProviderType.OpenAI, ProviderName = "OpenAI" };
+            var azureProvider = new Provider { ProviderType = ProviderType.AzureOpenAI, ProviderName = "Azure OpenAI" };
+            _context.Providers.AddRange(openAiProvider, azureProvider);
+            await _context.SaveChangesAsync();
+
+            var logs = new List<AudioUsageLog>();
+            var random = new Random();
+            
+            for (int i = 0; i < count; i++)
+            {
+                var operationType = i % 3 == 0 ? "transcription" : i % 3 == 1 ? "tts" : "realtime";
+                var provider = i % 2 == 0 ? openAiProvider : azureProvider;
+                var statusCode = i % 10 == 0 ? 500 : 200;
+                
+                logs.Add(new AudioUsageLog
+                {
+                    VirtualKey = $"key-{i % 3}",
+                    ProviderId = provider.Id,
+                    OperationType = operationType,
+                    Model = provider.ProviderType == ProviderType.OpenAI ? "whisper-1" : "azure-tts",
+                    RequestId = Guid.NewGuid().ToString(),
+                    SessionId = operationType == "realtime" ? Guid.NewGuid().ToString() : null,
+                    DurationSeconds = random.Next(1, 60),
+                    CharacterCount = random.Next(100, 5000),
+                    Cost = (decimal)(random.NextDouble() * 2),
+                    Language = "en",
+                    Voice = operationType == "tts" ? "alloy" : null,
+                    StatusCode = statusCode,
+                    ErrorMessage = statusCode >= 400 ? "Error occurred" : null,
+                    IpAddress = $"192.168.1.{i % 255}",
+                    UserAgent = "Test/1.0",
+                    Timestamp = DateTime.UtcNow.AddDays(-random.Next(0, 30))
+                });
+            }
+
+            _context.AudioUsageLogs.AddRange(logs);
+            await _context.SaveChangesAsync();
+        }
+
+        #endregion
+    }
+}
