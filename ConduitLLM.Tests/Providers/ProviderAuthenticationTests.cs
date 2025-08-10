@@ -9,7 +9,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Providers;
-using ConduitLLM.Providers.Providers.OpenAI;
+using ConduitLLM.Providers.OpenAI;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;

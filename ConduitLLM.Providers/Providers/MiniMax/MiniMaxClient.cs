@@ -10,7 +10,7 @@ using ConduitLLM.Providers.Common.Models;
 
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Providers.Providers.MiniMax
+namespace ConduitLLM.Providers.MiniMax
 {
     /// <summary>
     /// Client for interacting with MiniMax AI APIs.

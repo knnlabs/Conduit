@@ -4,11 +4,11 @@ using System.Linq;
 
 using Microsoft.Extensions.Logging;
 using CoreModels = ConduitLLM.Core.Models;
-using OpenAIModels = ConduitLLM.Providers.Providers.OpenAI.Models;
+using OpenAIModels = ConduitLLM.Providers.OpenAI.Models;
 using ProviderHelpers = ConduitLLM.Providers.Helpers;
 using ConduitLLM.Providers.Utilities;
 
-namespace ConduitLLM.Providers.Providers.OpenAICompatible
+namespace ConduitLLM.Providers.OpenAICompatible
 {
     /// <summary>
     /// OpenAICompatibleClient partial class containing request/response mapping functionality.

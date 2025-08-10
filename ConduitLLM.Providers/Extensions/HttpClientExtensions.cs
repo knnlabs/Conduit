@@ -2,15 +2,15 @@ using System;
 using System.Net.Http;
 
 using ConduitLLM.Providers.Configuration;
-using ConduitLLM.Providers.Providers.OpenAI;
-using ConduitLLM.Providers.Providers.Groq;
-using ConduitLLM.Providers.Providers.Replicate;
-using ConduitLLM.Providers.Providers.Fireworks;
-using ConduitLLM.Providers.Providers.OpenAICompatible;
-using ConduitLLM.Providers.Providers.MiniMax;
-using ConduitLLM.Providers.Providers.Ultravox;
-using ConduitLLM.Providers.Providers.ElevenLabs;
-using ConduitLLM.Providers.Providers.Cerebras;
+using ConduitLLM.Providers.OpenAI;
+using ConduitLLM.Providers.Groq;
+using ConduitLLM.Providers.Replicate;
+using ConduitLLM.Providers.Fireworks;
+using ConduitLLM.Providers.OpenAICompatible;
+using ConduitLLM.Providers.MiniMax;
+using ConduitLLM.Providers.Ultravox;
+using ConduitLLM.Providers.ElevenLabs;
+using ConduitLLM.Providers.Cerebras;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;

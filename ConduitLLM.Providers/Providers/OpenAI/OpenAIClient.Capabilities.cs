@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Core.Models;
 
-namespace ConduitLLM.Providers.Providers.OpenAI
+namespace ConduitLLM.Providers.OpenAI
 {
     /// <summary>
     /// OpenAIClient partial class containing capabilities functionality.

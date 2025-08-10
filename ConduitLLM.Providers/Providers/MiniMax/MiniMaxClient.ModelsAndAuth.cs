@@ -12,7 +12,7 @@ using ConduitLLM.Providers.Common.Models;
 
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Providers.Providers.MiniMax
+namespace ConduitLLM.Providers.MiniMax
 {
     /// <summary>
     /// MiniMaxClient partial class containing models and authentication functionality.

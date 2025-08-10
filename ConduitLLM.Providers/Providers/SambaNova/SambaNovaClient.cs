@@ -9,7 +9,7 @@ using ConduitLLM.Providers.Common.Models;
 
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Providers.Providers.SambaNova
+namespace ConduitLLM.Providers.SambaNova
 {
     /// <summary>
     /// Client for interacting with the SambaNova Cloud API for ultra-fast LLM inference.
@@ -32,7 +32,7 @@ namespace ConduitLLM.Providers.Providers.SambaNova
     /// The API key can be obtained from https://cloud.sambanova.ai
     /// </para>
     /// </remarks>
-    public partial class SambaNovaClient : ConduitLLM.Providers.Providers.OpenAICompatible.OpenAICompatibleClient
+    public partial class SambaNovaClient : ConduitLLM.Providers.OpenAICompatible.OpenAICompatibleClient
     {
         // API configuration constants
         private static class Constants

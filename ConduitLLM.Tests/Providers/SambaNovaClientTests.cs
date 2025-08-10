@@ -13,7 +13,7 @@ using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers;
-using ConduitLLM.Providers.Providers.SambaNova;
+using ConduitLLM.Providers.SambaNova;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;

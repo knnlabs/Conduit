@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using ConduitLLM.Providers.Common.Models;
 using ConduitLLM.Providers.Helpers;
 
-namespace ConduitLLM.Providers.Providers.OpenAI
+namespace ConduitLLM.Providers.OpenAI
 {
     /// <summary>
     /// OpenAIClient partial class containing model listing functionality.

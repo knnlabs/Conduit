@@ -5,7 +5,7 @@ using ConduitLLM.Configuration.Entities;
 
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Providers.Providers.Groq
+namespace ConduitLLM.Providers.Groq
 {
     /// <summary>
     /// Client for interacting with Groq's LLM API.
@@ -20,7 +20,7 @@ namespace ConduitLLM.Providers.Providers.Groq
     /// Groq-specific error handling and fallback mechanisms.
     /// </para>
     /// </remarks>
-    public partial class GroqClient : ConduitLLM.Providers.Providers.OpenAICompatible.OpenAICompatibleClient
+    public partial class GroqClient : ConduitLLM.Providers.OpenAICompatible.OpenAICompatibleClient
     {
         // API configuration constants
         private static class Constants

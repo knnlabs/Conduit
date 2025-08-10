@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace ConduitLLM.Providers.Providers.MiniMax
+namespace ConduitLLM.Providers.MiniMax
 {
     /// <summary>
     /// MiniMaxClient partial class containing model definitions.

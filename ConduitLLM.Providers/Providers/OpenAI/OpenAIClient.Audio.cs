@@ -14,11 +14,11 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Providers.Helpers;
-using ConduitLLM.Providers.Providers.OpenAI.Models;
+using ConduitLLM.Providers.OpenAI.Models;
 
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Providers.Providers.OpenAI
+namespace ConduitLLM.Providers.OpenAI
 {
     /// <summary>
     /// OpenAIClient partial class containing audio transcription and text-to-speech functionality.
@@ -100,7 +100,7 @@ namespace ConduitLLM.Providers.Providers.OpenAI
                 }
 
                 // Default JSON response
-                var jsonResponse = JsonSerializer.Deserialize<ConduitLLM.Providers.Providers.OpenAI.Models.TranscriptionResponse>(responseText, DefaultJsonOptions);
+                var jsonResponse = JsonSerializer.Deserialize<ConduitLLM.Providers.OpenAI.Models.TranscriptionResponse>(responseText, DefaultJsonOptions);
 
                 return new AudioTranscriptionResponse
                 {
@@ -141,7 +141,7 @@ namespace ConduitLLM.Providers.Providers.OpenAI
                 ? GetAzureAudioEndpoint("speech")
                 : UrlBuilder.Combine(BaseUrl, Constants.Endpoints.AudioSpeech);
 
-            var openAIRequest = new ConduitLLM.Providers.Providers.OpenAI.Models.TextToSpeechRequest
+            var openAIRequest = new ConduitLLM.Providers.OpenAI.Models.TextToSpeechRequest
             {
                 Model = request.Model ?? GetDefaultTextToSpeechModel(),
                 Input = request.Input,

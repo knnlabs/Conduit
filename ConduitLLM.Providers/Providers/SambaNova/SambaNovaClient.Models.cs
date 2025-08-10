@@ -11,7 +11,7 @@ using ConduitLLM.Providers.Common.Models;
 
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Providers.Providers.SambaNova
+namespace ConduitLLM.Providers.SambaNova
 {
     /// <summary>
     /// SambaNovaClient partial class containing model listing functionality.

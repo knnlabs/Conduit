@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 using CoreModels = ConduitLLM.Core.Models;
 using InternalModels = ConduitLLM.Providers.Common.Models;
 
-namespace ConduitLLM.Providers.Providers.OpenAICompatible
+namespace ConduitLLM.Providers.OpenAICompatible
 {
     /// <summary>
     /// Base class for LLM clients that implement OpenAI-compatible APIs.

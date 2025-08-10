@@ -1,6 +1,6 @@
 using System;
 
-namespace ConduitLLM.Providers.Providers.SambaNova
+namespace ConduitLLM.Providers.SambaNova
 {
     /// <summary>
     /// SambaNovaClient partial class containing validation methods.

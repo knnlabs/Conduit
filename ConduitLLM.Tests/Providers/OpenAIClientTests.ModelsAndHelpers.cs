@@ -9,8 +9,8 @@ using System.Threading.Tasks;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
-using ConduitLLM.Providers.Providers.OpenAI;
-using ConduitLLM.Providers.Providers.OpenAI.Models;
+using ConduitLLM.Providers.OpenAI;
+using ConduitLLM.Providers.OpenAI.Models;
 using Moq;
 using Moq.Protected;
 using Xunit;
@@ -52,9 +52,9 @@ namespace ConduitLLM.Tests.Providers
         {
             // Arrange
             var client = CreateAzureOpenAIClient();
-            var response = new ConduitLLM.Providers.Providers.OpenAI.AzureOpenAIModels.ListDeploymentsResponse
+            var response = new ConduitLLM.Providers.OpenAI.AzureOpenAIModels.ListDeploymentsResponse
             {
-                Data = new List<ConduitLLM.Providers.Providers.OpenAI.AzureOpenAIModels.DeploymentInfo>
+                Data = new List<ConduitLLM.Providers.OpenAI.AzureOpenAIModels.DeploymentInfo>
                 {
                     new() { DeploymentId = "my-gpt4", Model = "gpt-4", Status = "succeeded" },
                     new() { DeploymentId = "my-gpt35", Model = "gpt-3.5-turbo", Status = "succeeded" }

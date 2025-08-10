@@ -1,4 +1,4 @@
-namespace ConduitLLM.Providers.Providers.OpenAICompatible
+namespace ConduitLLM.Providers.OpenAICompatible
 {
     /// <summary>
     /// OpenAICompatibleClient partial class containing endpoint URL methods.

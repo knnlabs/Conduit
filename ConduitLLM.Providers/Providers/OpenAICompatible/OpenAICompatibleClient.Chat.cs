@@ -8,9 +8,9 @@ using ConduitLLM.Configuration.Exceptions;
 using Microsoft.Extensions.Logging;
 using CoreModels = ConduitLLM.Core.Models;
 using CoreUtils = ConduitLLM.Core.Utilities;
-using OpenAIModels = ConduitLLM.Providers.Providers.OpenAI.Models;
+using OpenAIModels = ConduitLLM.Providers.OpenAI.Models;
 
-namespace ConduitLLM.Providers.Providers.OpenAICompatible
+namespace ConduitLLM.Providers.OpenAICompatible
 {
     /// <summary>
     /// OpenAICompatibleClient partial class containing chat completion functionality.

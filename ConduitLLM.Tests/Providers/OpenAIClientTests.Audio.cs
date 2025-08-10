@@ -9,7 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models.Audio;
-using ConduitLLM.Providers.Providers.OpenAI.Models;
+using ConduitLLM.Providers.OpenAI.Models;
 using Moq;
 using Moq.Protected;
 using Xunit;

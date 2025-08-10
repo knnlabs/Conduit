@@ -18,7 +18,7 @@ namespace ConduitLLM.Providers
     /// self-hosted models with OpenAI-compatible interfaces, etc.).
     /// Unlike the standard OpenAI client, this requires an API base URL to be specified.
     /// </remarks>
-    public class OpenAICompatibleGenericClient : ConduitLLM.Providers.Providers.OpenAICompatible.OpenAICompatibleClient
+    public class OpenAICompatibleGenericClient : ConduitLLM.Providers.OpenAICompatible.OpenAICompatibleClient
     {
         /// <summary>
         /// Initializes a new instance of the OpenAICompatibleGenericClient class.

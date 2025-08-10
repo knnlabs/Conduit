@@ -7,7 +7,7 @@ using ConduitLLM.Core.Models;
 
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Providers.Providers.MiniMax
+namespace ConduitLLM.Providers.MiniMax
 {
     /// <summary>
     /// MiniMaxClient partial class containing utility and helper methods.

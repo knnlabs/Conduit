@@ -9,7 +9,7 @@ using ConduitLLM.Providers.Common.Models;
 
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Providers.Providers.Cerebras
+namespace ConduitLLM.Providers.Cerebras
 {
     /// <summary>
     /// Client for interacting with the Cerebras Inference API for high-performance LLM inference.
@@ -31,7 +31,7 @@ namespace ConduitLLM.Providers.Providers.Cerebras
     /// The API key can be obtained from https://cloud.cerebras.ai
     /// </para>
     /// </remarks>
-    public partial class CerebrasClient : ConduitLLM.Providers.Providers.OpenAICompatible.OpenAICompatibleClient
+    public partial class CerebrasClient : ConduitLLM.Providers.OpenAICompatible.OpenAICompatibleClient
     {
         // API configuration constants
         private static class Constants

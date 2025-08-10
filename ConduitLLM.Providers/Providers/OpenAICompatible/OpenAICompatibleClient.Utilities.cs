@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using CoreModels = ConduitLLM.Core.Models;
 
-namespace ConduitLLM.Providers.Providers.OpenAICompatible
+namespace ConduitLLM.Providers.OpenAICompatible
 {
     /// <summary>
     /// OpenAICompatibleClient partial class containing utility and helper methods.

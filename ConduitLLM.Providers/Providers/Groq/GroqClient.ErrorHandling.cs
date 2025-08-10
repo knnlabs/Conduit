@@ -1,6 +1,6 @@
 using System;
 
-namespace ConduitLLM.Providers.Providers.Groq
+namespace ConduitLLM.Providers.Groq
 {
     /// <summary>
     /// GroqClient partial class containing error handling methods.

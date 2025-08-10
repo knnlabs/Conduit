@@ -7,7 +7,7 @@ using ConduitLLM.Providers.Common.Models;
 
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Providers.Providers.Groq
+namespace ConduitLLM.Providers.Groq
 {
     /// <summary>
     /// GroqClient partial class containing model discovery methods.

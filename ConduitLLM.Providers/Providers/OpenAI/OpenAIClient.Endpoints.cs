@@ -1,7 +1,7 @@
 using System;
 using ConduitLLM.Providers.Helpers;
 
-namespace ConduitLLM.Providers.Providers.OpenAI
+namespace ConduitLLM.Providers.OpenAI
 {
     /// <summary>
     /// OpenAIClient partial class containing endpoint URL methods.

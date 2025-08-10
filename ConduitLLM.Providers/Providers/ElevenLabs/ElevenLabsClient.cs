@@ -11,12 +11,12 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Core.Models.Realtime;
 using ConduitLLM.Providers.Common.Models;
-using ConduitLLM.Providers.Providers.ElevenLabs.Services;
+using ConduitLLM.Providers.ElevenLabs.Services;
 using ConduitLLM.Providers.Translators;
 
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Providers.Providers.ElevenLabs
+namespace ConduitLLM.Providers.ElevenLabs
 {
     /// <summary>
     /// Client implementation for ElevenLabs voice AI services.
@@ -223,6 +223,11 @@ namespace ConduitLLM.Providers.Providers.ElevenLabs
             CancellationToken cancellationToken = default)
         {
             var effectiveApiKey = apiKey ?? PrimaryKeyCredential.ApiKey;
+            if (string.IsNullOrWhiteSpace(effectiveApiKey))
+            {
+                throw new InvalidOperationException("API key is required for creating a realtime session. Either provide an API key or ensure the client has a valid primary key credential.");
+            }
+            
             var defaultModel = GetDefaultRealtimeModel();
             
             return await _realtimeService.CreateSessionAsync(

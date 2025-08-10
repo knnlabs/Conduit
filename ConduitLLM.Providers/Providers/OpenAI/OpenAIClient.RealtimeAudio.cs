@@ -13,7 +13,7 @@ using ConduitLLM.Providers.Helpers;
 
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Providers.Providers.OpenAI
+namespace ConduitLLM.Providers.OpenAI
 {
     /// <summary>
     /// OpenAIClient partial class containing realtime audio functionality.

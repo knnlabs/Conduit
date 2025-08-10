@@ -21,7 +21,7 @@ using ConduitLLM.Providers.Translators;
 
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Providers.Providers.Ultravox
+namespace ConduitLLM.Providers.Ultravox
 {
     /// <summary>
     /// Client implementation for Ultravox real-time voice AI.

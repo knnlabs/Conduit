@@ -8,10 +8,10 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using CoreModels = ConduitLLM.Core.Models;
 using CoreUtils = ConduitLLM.Core.Utilities;
-using OpenAIModels = ConduitLLM.Providers.Providers.OpenAI.Models;
+using OpenAIModels = ConduitLLM.Providers.OpenAI.Models;
 using InternalModels = ConduitLLM.Providers.Common.Models;
 
-namespace ConduitLLM.Providers.Providers.OpenAICompatible
+namespace ConduitLLM.Providers.OpenAICompatible
 {
     /// <summary>
     /// OpenAICompatibleClient partial class containing model listing functionality.

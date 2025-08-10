@@ -13,7 +13,7 @@ using ConduitLLM.Providers.Translators;
 
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Providers.Providers.ElevenLabs
+namespace ConduitLLM.Providers.ElevenLabs
 {
     /// <summary>
     /// ElevenLabs-specific implementation of a real-time session.

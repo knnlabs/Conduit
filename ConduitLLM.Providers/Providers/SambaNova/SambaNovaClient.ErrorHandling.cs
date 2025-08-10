@@ -5,7 +5,7 @@ using ConduitLLM.Core.Exceptions;
 
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Providers.Providers.SambaNova
+namespace ConduitLLM.Providers.SambaNova
 {
     /// <summary>
     /// SambaNovaClient partial class containing error handling methods.

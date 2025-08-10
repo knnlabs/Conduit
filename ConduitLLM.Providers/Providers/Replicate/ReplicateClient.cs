@@ -16,11 +16,11 @@ using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers.Common.Models;
-using ConduitLLM.Providers.Providers.Replicate.Models;
+using ConduitLLM.Providers.Replicate.Models;
 
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Providers.Providers.Replicate
+namespace ConduitLLM.Providers.Replicate
 {
     /// <summary>
     /// Revised client for interacting with Replicate APIs using the new client hierarchy.

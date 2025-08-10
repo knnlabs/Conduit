@@ -12,7 +12,7 @@ using ConduitLLM.Providers.Common.Models;
 
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Providers.Providers.Fireworks
+namespace ConduitLLM.Providers.Fireworks
 {
     /// <summary>
     /// Client for interacting with Fireworks AI's API.
@@ -27,7 +27,7 @@ namespace ConduitLLM.Providers.Providers.Fireworks
     /// Fireworks supports multiple model families including Llama, Mixtral, and more.
     /// </para>
     /// </remarks>
-    public class FireworksClient : ConduitLLM.Providers.Providers.OpenAICompatible.OpenAICompatibleClient
+    public class FireworksClient : ConduitLLM.Providers.OpenAICompatible.OpenAICompatibleClient
     {
         // Default base URL for Fireworks API
         private const string DefaultFireworksBaseUrl = "https://api.fireworks.ai/inference/v1";

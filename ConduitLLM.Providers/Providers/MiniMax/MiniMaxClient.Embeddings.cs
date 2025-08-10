@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Core.Models;
 
-namespace ConduitLLM.Providers.Providers.MiniMax
+namespace ConduitLLM.Providers.MiniMax
 {
     /// <summary>
     /// MiniMaxClient partial class containing embeddings functionality.

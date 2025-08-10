@@ -9,7 +9,7 @@ using ConduitLLM.Core.Interfaces;
 
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Providers.Providers.OpenAI
+namespace ConduitLLM.Providers.OpenAI
 {
     /// <summary>
     /// Client for interacting with OpenAI-compatible APIs, including standard OpenAI,
@@ -21,7 +21,7 @@ namespace ConduitLLM.Providers.Providers.OpenAI
     /// It supports both OpenAI's standard API endpoint structure and Azure OpenAI's deployment-based
     /// endpoints, with automatic URL and authentication format selection based on the provider name.
     /// </remarks>
-    public partial class OpenAIClient : ConduitLLM.Providers.Providers.OpenAICompatible.OpenAICompatibleClient,
+    public partial class OpenAIClient : ConduitLLM.Providers.OpenAICompatible.OpenAICompatibleClient,
         Core.Interfaces.IAudioTranscriptionClient,
         Core.Interfaces.ITextToSpeechClient,
         Core.Interfaces.IRealtimeAudioClient

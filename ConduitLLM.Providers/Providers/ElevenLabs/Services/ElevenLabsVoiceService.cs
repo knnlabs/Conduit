@@ -8,11 +8,11 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models.Audio;
-using ConduitLLM.Providers.Providers.ElevenLabs.Models;
+using ConduitLLM.Providers.ElevenLabs.Models;
 
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Providers.Providers.ElevenLabs.Services
+namespace ConduitLLM.Providers.ElevenLabs.Services
 {
     /// <summary>
     /// Service for handling ElevenLabs voice management operations.

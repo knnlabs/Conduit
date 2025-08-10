@@ -1,6 +1,6 @@
 using System;
 
-namespace ConduitLLM.Providers.Providers.Cerebras
+namespace ConduitLLM.Providers.Cerebras
 {
     /// <summary>
     /// CerebrasClient partial class containing validation methods.

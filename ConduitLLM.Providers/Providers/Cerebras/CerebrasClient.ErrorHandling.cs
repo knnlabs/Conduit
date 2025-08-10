@@ -5,7 +5,7 @@ using ConduitLLM.Core.Exceptions;
 
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Providers.Providers.Cerebras
+namespace ConduitLLM.Providers.Cerebras
 {
     /// <summary>
     /// CerebrasClient partial class containing error handling methods.
