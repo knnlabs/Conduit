@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ConduitLLM.Configuration.DTOs.HealthMonitoring;
 using ConduitLLM.Http.Hubs;
+using ConduitLLM.Http.Interfaces;
 
 namespace ConduitLLM.Http.Services
 {

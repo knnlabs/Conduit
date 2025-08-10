@@ -122,7 +122,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             returnedMappings.First().ModelId.Should().Be("gpt-4");
         }
 
-        [ArchitecturalMismatch("Test expects specific logger mock verification that may not match implementation")]
+        [Fact]
         public async Task GetAllMappings_WithException_ShouldReturn500()
         {
             // Arrange
@@ -167,7 +167,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             returnedMapping.ModelId.Should().Be("gpt-4");
         }
 
-        [DynamicObjectIssue("Test expects error.error property but controller may return different format")]
+        [Fact]
         public async Task GetMappingById_WithNonExistingId_ShouldReturnNotFound()
         {
             // Arrange
@@ -233,8 +233,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             createdResult.RouteValues!["id"].Should().Be(123);
         }
 
-        [ArchitecturalMismatch("Test expects Conflict but controller returns BadRequest for duplicate mappings")]
-        public async Task AddMapping_WithDuplicateAlias_ShouldReturnConflict()
+        [Fact]
+        public async Task AddMapping_WithDuplicateModelId_ShouldReturnConflict()
         {
             // Arrange
             var mapping = new ModelProviderMapping
@@ -244,8 +244,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 ProviderModelId = "gpt-4"
             };
 
-            _mockService.Setup(x => x.AddMappingAsync(It.IsAny<ModelProviderMapping>()))
-                .ReturnsAsync(false);
+            // Mock that a mapping already exists for this model ID
+            _mockService.Setup(x => x.GetMappingByModelIdAsync("existing-model"))
+                .ReturnsAsync(new ModelProviderMapping { Id = 999, ModelAlias = "existing-model" });
 
             // Act
             var actionResult = await _controller.CreateMapping(mapping.ToDto());
@@ -256,12 +257,40 @@ namespace ConduitLLM.Tests.Admin.Controllers
             ((string)error.error).Should().Contain("already exists");
         }
 
+        [Fact]
+        public async Task AddMapping_WithInvalidProviderId_ShouldReturnBadRequest()
+        {
+            // Arrange
+            var mapping = new ModelProviderMapping
+            {
+                ModelAlias = "new-model",
+                ProviderId = 999, // Invalid provider
+                ProviderModelId = "gpt-4"
+            };
+
+            // No existing mapping
+            _mockService.Setup(x => x.GetMappingByModelIdAsync("new-model"))
+                .ReturnsAsync((ModelProviderMapping?)null);
+
+            // Add fails (e.g., invalid provider ID)
+            _mockService.Setup(x => x.AddMappingAsync(It.IsAny<ModelProviderMapping>()))
+                .ReturnsAsync(false);
+
+            // Act
+            var actionResult = await _controller.CreateMapping(mapping.ToDto());
+
+            // Assert
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(actionResult);
+            dynamic error = badRequestResult.Value!;
+            ((string)error.error).Should().Contain("Failed to create");
+        }
+
         #endregion
 
         #region UpdateMapping Tests
 
-        [ArchitecturalMismatch("Test expects Ok with message but controller returns NoContent for successful updates")]
-        public async Task UpdateMapping_WithValidMapping_ShouldReturnOk()
+        [Fact]
+        public async Task UpdateMapping_WithValidMapping_ShouldReturnNoContent()
         {
             // Arrange
             var mapping = new ModelProviderMapping
@@ -273,6 +302,10 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 SupportsVision = true
             };
 
+            // Mock that the mapping exists
+            _mockService.Setup(x => x.GetMappingByIdAsync(1))
+                .ReturnsAsync(mapping);
+
             _mockService.Setup(x => x.UpdateMappingAsync(It.IsAny<ModelProviderMapping>()))
                 .ReturnsAsync(true);
 
@@ -280,12 +313,10 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var actionResult = await _controller.UpdateMapping(1, mapping.ToDto());
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(actionResult);
-            dynamic response = okResult.Value!;
-            ((string)response.message).Should().Be("Model mapping updated successfully");
+            Assert.IsType<NoContentResult>(actionResult);
         }
 
-        [DynamicObjectIssue("Test expects error.error property but controller may return different format")]
+        [Fact]
         public async Task UpdateMapping_WithNonExistingId_ShouldReturnNotFound()
         {
             // Arrange
@@ -297,8 +328,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 ProviderModelId = "gpt-4"
             };
 
-            _mockService.Setup(x => x.UpdateMappingAsync(It.IsAny<ModelProviderMapping>()))
-                .ReturnsAsync(false);
+            // Mock that the mapping doesn't exist
+            _mockService.Setup(x => x.GetMappingByIdAsync(999))
+                .ReturnsAsync((ModelProviderMapping?)null);
 
             // Act
             var actionResult = await _controller.UpdateMapping(999, mapping.ToDto());
@@ -330,12 +362,12 @@ namespace ConduitLLM.Tests.Admin.Controllers
             Assert.IsType<NoContentResult>(result);
         }
 
-        [DynamicObjectIssue("Test expects error.error property but controller may return different format")]
+        [Fact]
         public async Task DeleteMapping_WithNonExistingId_ShouldReturnNotFound()
         {
             // Arrange
-            _mockService.Setup(x => x.DeleteMappingAsync(999))
-                .ReturnsAsync(false);
+            _mockService.Setup(x => x.GetMappingByIdAsync(999))
+                .ReturnsAsync((ModelProviderMapping?)null);
 
             // Act
             var result = await _controller.DeleteMapping(999);
@@ -453,7 +485,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             returnedResponse.FailureCount.Should().Be(2);
         }
 
-        [DynamicObjectIssue("Test expects error.error property but controller may return different format")]
+        [Fact]
         public async Task BulkCreateMappings_WithEmptyRequest_ShouldReturnBadRequest()
         {
             // Arrange

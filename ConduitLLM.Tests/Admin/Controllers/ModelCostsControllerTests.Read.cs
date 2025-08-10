@@ -87,7 +87,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             returnedCost.InputCostPerMillionTokens.Should().Be(30.00m);
         }
 
-        [DynamicObjectIssue("Test expects string response but controller may return object")]
+        [Fact]
         public async Task GetModelCostById_WithNonExistingId_ShouldReturnNotFound()
         {
             // Arrange
@@ -99,7 +99,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            notFoundResult.Value.Should().Be("Model cost not found");
+            var errorObj = notFoundResult.Value as dynamic;
+            ((string)errorObj.error).Should().Be("Model cost not found");
         }
 
         #endregion
@@ -171,7 +172,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             returnedCost.CostName.Should().Be("GPT-4 Turbo Pricing");
         }
 
-        [DynamicObjectIssue("Test expects string response but controller may return object")]
+        [Fact]
         public async Task GetModelCostByCostName_WithNoMatch_ShouldReturnNotFound()
         {
             // Arrange
@@ -183,7 +184,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            notFoundResult.Value.Should().Be("Model cost not found");
+            var errorObj = notFoundResult.Value as dynamic;
+            ((string)errorObj.error).Should().Be("Model cost not found");
         }
 
         #endregion

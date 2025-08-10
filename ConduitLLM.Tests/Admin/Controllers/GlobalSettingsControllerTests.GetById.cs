@@ -41,7 +41,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             returnedSetting.Value.Should().Be("1000");
         }
 
-        [DynamicObjectIssue("Test expects string response but controller may return object")]
+        [Fact]
         public async Task GetSettingById_WithNonExistingId_ShouldReturnNotFound()
         {
             // Arrange
@@ -53,7 +53,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            notFoundResult.Value.Should().Be("Global setting not found");
+            var errorObj = notFoundResult.Value as dynamic;
+            ((string)errorObj.error).Should().Be("Global setting not found");
         }
 
         #endregion

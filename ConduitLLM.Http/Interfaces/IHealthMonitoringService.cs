@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration.DTOs.HealthMonitoring;
@@ -38,5 +39,15 @@ namespace ConduitLLM.Http.Interfaces
         /// Force health check on specific component
         /// </summary>
         Task<ComponentHealth> ForceHealthCheckAsync(string componentName);
+
+        /// <summary>
+        /// Get performance metrics history
+        /// </summary>
+        Task<List<PerformanceMetrics>> GetPerformanceHistoryAsync(DateTime start, DateTime end, TimeSpan interval);
+
+        /// <summary>
+        /// Get resource metrics history
+        /// </summary>
+        Task<List<ResourceMetrics>> GetResourceHistoryAsync(DateTime start, DateTime end, TimeSpan interval);
     }
 }

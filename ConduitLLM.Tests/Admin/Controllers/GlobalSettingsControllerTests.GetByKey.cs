@@ -39,7 +39,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             returnedSetting.Key.Should().Be("rate_limit");
         }
 
-        [DynamicObjectIssue("Test expects string response but controller may return object")]
+        [Fact]
         public async Task GetSettingByKey_WithNonExistingKey_ShouldReturnNotFound()
         {
             // Arrange
@@ -51,7 +51,11 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            notFoundResult.Value.Should().Be("Global setting not found");
+            notFoundResult.Value.Should().NotBeNull();
+            var valueType = notFoundResult.Value.GetType();
+            valueType.GetProperty("error").Should().NotBeNull();
+            var errorValue = valueType.GetProperty("error")?.GetValue(notFoundResult.Value);
+            errorValue.Should().Be("Global setting not found");
         }
 
         [Fact]
