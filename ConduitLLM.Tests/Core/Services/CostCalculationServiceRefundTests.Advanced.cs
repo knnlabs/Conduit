@@ -1,14 +1,15 @@
+using System.Text.Json;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using FluentAssertions;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Tests.Core.Services
 {
@@ -25,9 +26,9 @@ namespace ConduitLLM.Tests.Core.Services
             var originalUsage = new Usage { PromptTokens = 1000, CompletionTokens = 500, TotalTokens = 1500 };
             var refundUsage = new Usage { PromptTokens = -100, CompletionTokens = -50, TotalTokens = -150 };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 30.00m
             };
@@ -54,7 +55,7 @@ namespace ConduitLLM.Tests.Core.Services
             var refundUsage = new Usage { PromptTokens = 500, CompletionTokens = 250, TotalTokens = 750 };
 
             _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync((ModelCostInfo?)null);
+                .ReturnsAsync((ModelCost?)null);
 
             // Act
             var result = await _service.CalculateRefundAsync(
@@ -88,9 +89,9 @@ namespace ConduitLLM.Tests.Core.Services
                 CachedWriteTokens = 100
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 30.00m,
                 CachedInputCostPerMillionTokens = 1.00m,
@@ -133,9 +134,9 @@ namespace ConduitLLM.Tests.Core.Services
                 TotalTokens = 700,
                 IsBatch = true
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 1000.00m,
                 OutputCostPerMillionTokens = 2000.00m,
                 SupportsBatchProcessing = true,
@@ -185,17 +186,17 @@ namespace ConduitLLM.Tests.Core.Services
                 ImageCount = 2,
                 ImageQuality = "hd"
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 ImageCostPerImage = 0.04m,
-                ImageQualityMultipliers = new Dictionary<string, decimal>
+                ImageQualityMultipliers = JsonSerializer.Serialize(new Dictionary<string, decimal>
                 {
                     ["standard"] = 1.0m,
                     ["hd"] = 2.0m
-                }
+                })
             };
 
             _modelCostServiceMock

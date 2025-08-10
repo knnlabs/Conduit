@@ -3,10 +3,10 @@ using System.Text.Json;
 using System.Text.Json.Serialization; // Required for JsonNamingPolicy
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Data; // Added for database initialization
 using ConduitLLM.Configuration.Extensions; // Added for DataProtectionExtensions and HealthCheckExtensions
 using ConduitLLM.Configuration.Repositories; // Added for repository interfaces
-using ConduitLLM.Configuration.Interfaces; // Added for IVirtualKeyGroupRepository
 using ConduitLLM.Core;
 using ConduitLLM.Core.Exceptions; // Add namespace for custom exceptions
 using ConduitLLM.Core.Extensions;

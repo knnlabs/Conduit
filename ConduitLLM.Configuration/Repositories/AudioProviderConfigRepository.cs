@@ -9,6 +9,7 @@ using ConduitLLM.Configuration.Enums;
 
 using Microsoft.EntityFrameworkCore;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Configuration.Repositories
 {
     /// <summary>

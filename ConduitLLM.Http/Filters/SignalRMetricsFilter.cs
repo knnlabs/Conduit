@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Http.Metrics;
 
+using ConduitLLM.Http.Interfaces;
 namespace ConduitLLM.Http.Filters
 {
     /// <summary>

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Models.ErrorQueue;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;

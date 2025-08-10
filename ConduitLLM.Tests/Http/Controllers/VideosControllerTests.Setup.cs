@@ -36,7 +36,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             _mockTimeoutProvider = new Mock<IOperationTimeoutProvider>();
             _mockTaskRegistry = new Mock<ICancellableTaskRegistry>();
             _mockLogger = CreateLogger<VideosController>();
-            var mockModelMappingService = new Mock<ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService>();
+            var mockModelMappingService = new Mock<ConduitLLM.Configuration.Interfaces.IModelProviderMappingService>();
 
             _controller = new VideosController(
                 _mockVideoService.Object,

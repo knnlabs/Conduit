@@ -8,6 +8,7 @@ using Prometheus;
 using Microsoft.EntityFrameworkCore;
 using ConduitLLM.Configuration.Repositories;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Admin.Services
 {
     /// <summary>
@@ -239,7 +240,7 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                var modelMappingService = scope.ServiceProvider.GetRequiredService<ConduitLLM.Configuration.IModelProviderMappingService>();
+                var modelMappingService = scope.ServiceProvider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IModelProviderMappingService>();
                 var mappings = await modelMappingService.GetAllMappingsAsync();
 
                 // Count total active mappings (no grouping by provider type)

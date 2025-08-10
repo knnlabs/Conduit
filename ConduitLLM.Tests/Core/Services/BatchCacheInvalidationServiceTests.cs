@@ -11,6 +11,7 @@ using Xunit;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Tests.Core.Services
 {

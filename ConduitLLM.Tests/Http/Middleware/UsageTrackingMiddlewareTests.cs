@@ -13,7 +13,8 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Configuration.DTOs;
-using IVirtualKeyService = ConduitLLM.Configuration.Services.IVirtualKeyService;
+using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
+using ConduitLLM.Configuration.Interfaces;
 
 namespace ConduitLLM.Tests.Http.Middleware
 {

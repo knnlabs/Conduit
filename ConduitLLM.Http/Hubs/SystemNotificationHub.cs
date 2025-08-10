@@ -9,6 +9,7 @@ using ConduitLLM.Configuration.DTOs.SignalR;
 using ConduitLLM.Configuration;
 using ConduitLLM.Http.Metrics;
 
+using ConduitLLM.Http.Interfaces;
 namespace ConduitLLM.Http.Hubs
 {
     /// <summary>

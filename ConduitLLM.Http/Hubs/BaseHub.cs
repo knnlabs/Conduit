@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Http.Metrics;
 
+using ConduitLLM.Http.Interfaces;
 namespace ConduitLLM.Http.Hubs
 {
     /// <summary>

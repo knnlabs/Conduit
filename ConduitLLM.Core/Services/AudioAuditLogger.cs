@@ -10,6 +10,7 @@ using ConduitLLM.Core.Interfaces;
 
 using Microsoft.Extensions.Logging;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Core.Services
 {
     /// <summary>

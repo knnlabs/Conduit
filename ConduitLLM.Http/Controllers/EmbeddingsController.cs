@@ -30,12 +30,12 @@ namespace ConduitLLM.Http.Controllers
     {
         private readonly ILLMRouter _router;
         private readonly ILogger<EmbeddingsController> _logger;
-        private readonly ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService _modelMappingService;
+        private readonly ConduitLLM.Configuration.Interfaces.IModelProviderMappingService _modelMappingService;
 
         public EmbeddingsController(
             ILLMRouter router,
             ILogger<EmbeddingsController> logger,
-            ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService modelMappingService,
+            ConduitLLM.Configuration.Interfaces.IModelProviderMappingService modelMappingService,
             IPublishEndpoint publishEndpoint) : base(publishEndpoint, logger)
         {
             _router = router ?? throw new ArgumentNullException(nameof(router));

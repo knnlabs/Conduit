@@ -11,6 +11,7 @@ using ConduitLLM.Http.Metrics;
 using ConduitLLM.Http.Authentication;
 using ConduitLLM.Configuration.Entities;
 
+using ConduitLLM.Http.Interfaces;
 namespace ConduitLLM.Http.Hubs
 {
     /// <summary>

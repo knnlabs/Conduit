@@ -32,15 +32,15 @@ namespace ConduitLLM.Http.Controllers
     public class AudioController : ControllerBase
     {
         private readonly IAudioRouter _audioRouter;
-        private readonly ConduitLLM.Configuration.Services.IVirtualKeyService _virtualKeyService;
+        private readonly ConduitLLM.Configuration.Interfaces.IVirtualKeyService _virtualKeyService;
         private readonly ILogger<AudioController> _logger;
-        private readonly ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService _modelMappingService;
+        private readonly ConduitLLM.Configuration.Interfaces.IModelProviderMappingService _modelMappingService;
 
         public AudioController(
             IAudioRouter audioRouter,
-            ConduitLLM.Configuration.Services.IVirtualKeyService virtualKeyService,
+            ConduitLLM.Configuration.Interfaces.IVirtualKeyService virtualKeyService,
             ILogger<AudioController> logger,
-            ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService modelMappingService)
+            ConduitLLM.Configuration.Interfaces.IModelProviderMappingService modelMappingService)
         {
             _audioRouter = audioRouter ?? throw new ArgumentNullException(nameof(audioRouter));
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));

@@ -1,8 +1,10 @@
 using ConduitLLM.Configuration.DTOs.SignalR;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Http.Authentication;
 using ConduitLLM.Http.Services;
+using ConduitLLM.Http.Interfaces;
 using ConduitLLM.Http.Hubs;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Caching.Memory;
@@ -42,7 +44,7 @@ public partial class Program
 
         // Register SignalR metrics
         builder.Services.AddSingleton<ConduitLLM.Http.Metrics.SignalRMetrics>();
-        builder.Services.AddSingleton<ConduitLLM.Http.Metrics.ISignalRMetrics>(sp => sp.GetRequiredService<ConduitLLM.Http.Metrics.SignalRMetrics>());
+        builder.Services.AddSingleton<ConduitLLM.Http.Interfaces.ISignalRMetrics>(sp => sp.GetRequiredService<ConduitLLM.Http.Metrics.SignalRMetrics>());
 
         // Register SignalR metrics filter
         builder.Services.AddSingleton<ConduitLLM.Http.Filters.SignalRMetricsFilter>();
@@ -101,7 +103,7 @@ public partial class Program
         builder.Services.AddSingleton<ISettingsRefreshService, SettingsRefreshService>();
 
         // Register media lifecycle repository
-        builder.Services.AddScoped<IMediaLifecycleRepository, MediaLifecycleRepository>();
+        builder.Services.AddScoped<ConduitLLM.Configuration.Interfaces.IMediaLifecycleRepository, MediaLifecycleRepository>();
 
         // Register video generation notification service
         builder.Services.AddSingleton<IVideoGenerationNotificationService, VideoGenerationNotificationService>();
@@ -154,7 +156,7 @@ public partial class Program
             
             return batchService;
         });
-        builder.Services.AddSingleton<ConduitLLM.Configuration.Services.IBatchSpendUpdateService>(serviceProvider =>
+        builder.Services.AddSingleton<IBatchSpendUpdateService>(serviceProvider =>
             serviceProvider.GetRequiredService<ConduitLLM.Configuration.Services.BatchSpendUpdateService>());
         builder.Services.AddHostedService<ConduitLLM.Configuration.Services.BatchSpendUpdateService>(serviceProvider =>
             serviceProvider.GetRequiredService<ConduitLLM.Configuration.Services.BatchSpendUpdateService>());

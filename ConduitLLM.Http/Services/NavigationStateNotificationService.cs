@@ -6,6 +6,7 @@ using ConduitLLM.Configuration;
 using System;
 using System.Threading.Tasks;
 
+using ConduitLLM.Http.Interfaces;
 namespace ConduitLLM.Http.Services
 {
     /// <summary>

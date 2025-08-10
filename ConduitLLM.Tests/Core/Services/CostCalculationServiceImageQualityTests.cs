@@ -1,14 +1,15 @@
+using System.Text.Json;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using FluentAssertions;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Tests.Core.Services
 {
@@ -34,17 +35,17 @@ namespace ConduitLLM.Tests.Core.Services
                 ImageCount = 2,
                 ImageQuality = "hd"
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 ImageCostPerImage = 0.04m, // Standard quality price
-                ImageQualityMultipliers = new Dictionary<string, decimal>
+                ImageQualityMultipliers = JsonSerializer.Serialize(new Dictionary<string, decimal>
                 {
                     ["standard"] = 1.0m,
                     ["hd"] = 2.0m
-                }
+                })
             };
 
             _modelCostServiceMock
@@ -72,17 +73,17 @@ namespace ConduitLLM.Tests.Core.Services
                 ImageCount = 3,
                 ImageQuality = "standard"
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 ImageCostPerImage = 0.04m,
-                ImageQualityMultipliers = new Dictionary<string, decimal>
+                ImageQualityMultipliers = JsonSerializer.Serialize(new Dictionary<string, decimal>
                 {
                     ["standard"] = 1.0m,
                     ["hd"] = 2.0m
-                }
+                })
             };
 
             _modelCostServiceMock
@@ -110,17 +111,17 @@ namespace ConduitLLM.Tests.Core.Services
                 ImageCount = 1,
                 ImageQuality = null // No quality specified
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 ImageCostPerImage = 0.02m,
-                ImageQualityMultipliers = new Dictionary<string, decimal>
+                ImageQualityMultipliers = JsonSerializer.Serialize(new Dictionary<string, decimal>
                 {
                     ["standard"] = 1.0m,
                     ["hd"] = 2.0m
-                }
+                })
             };
 
             _modelCostServiceMock
@@ -148,17 +149,17 @@ namespace ConduitLLM.Tests.Core.Services
                 ImageCount = 2,
                 ImageQuality = "ultra" // Quality not in multipliers
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 ImageCostPerImage = 0.04m,
-                ImageQualityMultipliers = new Dictionary<string, decimal>
+                ImageQualityMultipliers = JsonSerializer.Serialize(new Dictionary<string, decimal>
                 {
                     ["standard"] = 1.0m,
                     ["hd"] = 2.0m
-                }
+                })
             };
 
             _modelCostServiceMock
@@ -186,17 +187,17 @@ namespace ConduitLLM.Tests.Core.Services
                 ImageCount = 1,
                 ImageQuality = "HD" // Uppercase
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 ImageCostPerImage = 0.04m,
-                ImageQualityMultipliers = new Dictionary<string, decimal>
+                ImageQualityMultipliers = JsonSerializer.Serialize(new Dictionary<string, decimal>
                 {
                     ["standard"] = 1.0m,
                     ["hd"] = 2.0m // Lowercase in dictionary
-                }
+                })
             };
 
             _modelCostServiceMock

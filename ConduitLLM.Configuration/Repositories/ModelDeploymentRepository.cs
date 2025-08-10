@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 
 using static ConduitLLM.Configuration.Utilities.LogSanitizer;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Configuration.Repositories
 {
     /// <summary>

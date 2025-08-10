@@ -2,13 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using FluentAssertions;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Tests.Core.Services
 {
@@ -27,9 +27,9 @@ namespace ConduitLLM.Tests.Core.Services
             var refundReason = "Service interruption";
             var originalTransactionId = "txn_12345";
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m, // $0.01 per 1K tokens
                 OutputCostPerMillionTokens = 30.00m  // $0.03 per 1K tokens
             };
@@ -109,9 +109,9 @@ namespace ConduitLLM.Tests.Core.Services
             var originalUsage = new Usage { PromptTokens = 1000, CompletionTokens = 500, TotalTokens = 1500 };
             var refundUsage = new Usage { PromptTokens = 1500, CompletionTokens = 750, TotalTokens = 2250 };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 30.00m
             };

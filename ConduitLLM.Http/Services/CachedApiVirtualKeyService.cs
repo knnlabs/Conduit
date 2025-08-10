@@ -14,6 +14,7 @@ using ConduitLLM.Core.Services;
 using MassTransit;
 using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
+using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 namespace ConduitLLM.Http.Services
 {
     /// <summary>

@@ -47,7 +47,7 @@ public partial class Program
         builder.Services.AddScoped<VirtualKeyRateLimitPolicy>();
 
         // Model costs tracking service
-        builder.Services.AddScoped<ConduitLLM.Configuration.Services.IModelCostService, ConduitLLM.Configuration.Services.ModelCostService>();
+        builder.Services.AddScoped<IModelCostService, ConduitLLM.Configuration.Services.ModelCostService>();
         
         // Ephemeral key service for direct browser-to-API authentication (used for all direct access including SignalR)
         builder.Services.AddScoped<IEphemeralKeyService, EphemeralKeyService>();
@@ -55,7 +55,7 @@ public partial class Program
         builder.Services.AddScoped<ConduitLLM.Core.Interfaces.ICostCalculationService, ConduitLLM.Core.Services.CostCalculationService>();
 
         // Virtual key service (Configuration layer - used by RealtimeUsageTracker)
-        builder.Services.AddScoped<ConduitLLM.Configuration.Services.IVirtualKeyService, ConduitLLM.Configuration.Services.VirtualKeyService>();
+        builder.Services.AddScoped<ConduitLLM.Configuration.Interfaces.IVirtualKeyService, ConduitLLM.Configuration.Services.VirtualKeyService>();
 
         builder.Services.AddMemoryCache();
 
@@ -170,7 +170,7 @@ public partial class Program
         builder.Services.AddConfigurationAdapters();
 
         // Register operation timeout provider for operation-aware timeout policies
-        builder.Services.AddSingleton<ConduitLLM.Core.Configuration.IOperationTimeoutProvider, ConduitLLM.Core.Configuration.OperationTimeoutProvider>();
+        builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IOperationTimeoutProvider, ConduitLLM.Core.Configuration.OperationTimeoutProvider>();
 
         // Add dependencies needed for the Conduit service
         // Use DatabaseAwareLLMClientFactory to get provider credentials from database
@@ -186,7 +186,7 @@ public partial class Program
         // Image generation metrics service removed - not needed
 
         // Add required services for the router components
-        builder.Services.AddScoped<ConduitLLM.Core.Routing.Strategies.IModelSelectionStrategy, ConduitLLM.Core.Routing.Strategies.SimpleModelSelectionStrategy>();
+        builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IModelSelectionStrategy, ConduitLLM.Core.Routing.Strategies.SimpleModelSelectionStrategy>();
         builder.Services.AddScoped<ILLMRouter, ConduitLLM.Core.Routing.DefaultLLMRouter>();
 
         // Register token counter service for context management
@@ -197,9 +197,9 @@ public partial class Program
         builder.Services.AddRepositories();
 
         // Register services
-        builder.Services.AddScoped<ConduitLLM.Configuration.IModelProviderMappingService, ConduitLLM.Configuration.ModelProviderMappingService>();
-        builder.Services.AddScoped<ConduitLLM.Configuration.IProviderService, ConduitLLM.Configuration.ProviderService>();
-        builder.Services.AddScoped<ConduitLLM.Configuration.Services.IRequestLogService, ConduitLLM.Configuration.Services.RequestLogService>();
+        builder.Services.AddScoped<IModelProviderMappingService, ConduitLLM.Configuration.ModelProviderMappingService>();
+        builder.Services.AddScoped<IProviderService, ConduitLLM.Configuration.ProviderService>();
+        builder.Services.AddScoped<IRequestLogService, ConduitLLM.Configuration.Services.RequestLogService>();
 
         // Register System Notification Service
         builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.ISystemNotificationService, ConduitLLM.Http.Services.SystemNotificationService>();
@@ -243,11 +243,11 @@ public partial class Program
             var clientFactory = sp.GetRequiredService<ILLMClientFactory>();
             var capabilityService = sp.GetRequiredService<IModelCapabilityService>();
             var costService = sp.GetRequiredService<ICostCalculationService>();
-            var virtualKeyService = sp.GetRequiredService<IVirtualKeyService>();
+            var virtualKeyService = sp.GetRequiredService<ConduitLLM.Core.Interfaces.IVirtualKeyService>();
             var mediaStorage = sp.GetRequiredService<IMediaStorageService>();
             var taskService = sp.GetRequiredService<IAsyncTaskService>();
             var logger = sp.GetRequiredService<ILogger<VideoGenerationService>>();
-            var modelMappingService = sp.GetRequiredService<ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService>();
+            var modelMappingService = sp.GetRequiredService<IModelProviderMappingService>();
             var publishEndpoint = sp.GetService<IPublishEndpoint>(); // Optional
             var taskRegistry = sp.GetService<ICancellableTaskRegistry>(); // Optional
             
@@ -385,8 +385,8 @@ public partial class Program
         builder.Services.AddScoped<IProviderDiscoveryService>(serviceProvider =>
         {
             var clientFactory = serviceProvider.GetRequiredService<ILLMClientFactory>();
-            var credentialService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderService>();
-            var mappingService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IModelProviderMappingService>();
+            var credentialService = serviceProvider.GetRequiredService<IProviderService>();
+            var mappingService = serviceProvider.GetRequiredService<IModelProviderMappingService>();
             var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.ProviderDiscoveryService>>();
             var cache = serviceProvider.GetRequiredService<IMemoryCache>();
             var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
@@ -412,7 +412,7 @@ public partial class Program
         // This provides consistency across all deployments and proper event publishing
         builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IAsyncTaskService>(sp =>
         {
-            var repository = sp.GetRequiredService<ConduitLLM.Configuration.Repositories.IAsyncTaskRepository>();
+            var repository = sp.GetRequiredService<IAsyncTaskRepository>();
             var cache = sp.GetRequiredService<IDistributedCache>();
             var publishEndpoint = sp.GetService<MassTransit.IPublishEndpoint>(); // Optional
             var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.HybridAsyncTaskService>>();

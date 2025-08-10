@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Prometheus;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Interfaces;
 
@@ -330,7 +331,7 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                var ProviderService = scope.ServiceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderService>();
+                var ProviderService = scope.ServiceProvider.GetRequiredService<IProviderService>();
                 var providers = await ProviderService.GetAllProvidersAsync();
 
                 foreach (var provider in providers.Where(p => p.IsEnabled))
@@ -357,7 +358,7 @@ namespace ConduitLLM.Http.Services
             try
             {
                 var virtualKeyRepo = scope.ServiceProvider.GetRequiredService<IVirtualKeyRepository>();
-                var modelMappingService = scope.ServiceProvider.GetRequiredService<ConduitLLM.Configuration.IModelProviderMappingService>();
+                var modelMappingService = scope.ServiceProvider.GetRequiredService<IModelProviderMappingService>();
 
                 // Count active virtual keys
                 var allKeys = await virtualKeyRepo.GetAllAsync();

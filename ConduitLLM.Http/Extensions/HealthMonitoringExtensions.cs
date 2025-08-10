@@ -1,3 +1,4 @@
+using ConduitLLM.Http.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Configuration;
@@ -18,8 +19,8 @@ namespace ConduitLLM.Http.Extensions
         public static IServiceCollection AddHealthMonitoring(this IServiceCollection services, IConfiguration configuration)
         {
             // Register health monitoring services
-            services.AddScoped<Services.IHealthMonitoringService, Services.HealthMonitoringService>();
-            services.AddSingleton<Services.IAlertManagementService, Services.AlertManagementService>();
+            services.AddScoped<IHealthMonitoringService, Services.HealthMonitoringService>();
+            services.AddSingleton<IAlertManagementService, Services.AlertManagementService>();
             
             // Register security event monitoring services
             services.AddSingleton<ISecurityEventMonitoringService, ConduitLLM.Security.Services.SecurityEventMonitoringService>();

@@ -1,11 +1,12 @@
+using System.Text.Json;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 using FluentAssertions;
 using Moq;
 using Xunit;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Tests.Core.Services
 {
@@ -18,9 +19,9 @@ namespace ConduitLLM.Tests.Core.Services
         {
             // Arrange
             var modelId = "minimax/video-01";
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 VideoCostPerSecond = 0.05m // $0.05 per second
@@ -52,17 +53,17 @@ namespace ConduitLLM.Tests.Core.Services
         {
             // Arrange
             var modelId = "minimax/video-01";
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 VideoCostPerSecond = 0.05m,
-                VideoResolutionMultipliers = new Dictionary<string, decimal>
+                VideoResolutionMultipliers = JsonSerializer.Serialize(new Dictionary<string, decimal>
                 {
                     ["1920x1080"] = 1.5m,
                     ["1280x720"] = 1.0m
-                }
+                })
             };
             
             var usage = new Usage
@@ -96,14 +97,14 @@ namespace ConduitLLM.Tests.Core.Services
         {
             // Arrange
             var modelId = "video/model";
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 VideoCostPerSecond = costPerSecond,
                 VideoResolutionMultipliers = resolution != null && multiplier != 1.0m ? 
-                    new Dictionary<string, decimal> { [resolution] = multiplier } : null
+                    JsonSerializer.Serialize(new Dictionary<string, decimal> { [resolution] = multiplier }) : null
             };
             
             var usage = new Usage
@@ -131,9 +132,9 @@ namespace ConduitLLM.Tests.Core.Services
         {
             // Arrange
             var modelId = "video/model-with-chat";
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 20.00m,
                 VideoCostPerSecond = 0.1m

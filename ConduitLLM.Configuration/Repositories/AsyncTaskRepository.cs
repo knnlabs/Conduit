@@ -9,6 +9,7 @@ using ConduitLLM.Configuration.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Configuration.Repositories
 {
     /// <summary>

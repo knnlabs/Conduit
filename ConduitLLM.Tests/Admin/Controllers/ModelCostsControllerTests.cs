@@ -15,6 +15,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Tests.Admin.Controllers
 {

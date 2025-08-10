@@ -3,6 +3,7 @@ using ConduitLLM.Configuration.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Admin.Extensions
 {
     /// <summary>

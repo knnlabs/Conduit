@@ -8,13 +8,13 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Events;
 using Microsoft.Extensions.Caching.Memory;
 using MassTransit;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Core.Services
 {
     /// <summary>
@@ -24,8 +24,8 @@ namespace ConduitLLM.Core.Services
     public class ProviderDiscoveryService : EventPublishingServiceBase, IProviderDiscoveryService
     {
         private readonly ILLMClientFactory _clientFactory;
-        private readonly ConduitLLM.Configuration.IProviderService _credentialService;
-        private readonly ConduitLLM.Configuration.IModelProviderMappingService _mappingService;
+        private readonly IProviderService _credentialService;
+        private readonly IModelProviderMappingService _mappingService;
         private readonly ILogger<ProviderDiscoveryService> _logger;
         private readonly IMemoryCache _cache;
         private readonly IHttpClientFactory _httpClientFactory;
@@ -225,8 +225,8 @@ namespace ConduitLLM.Core.Services
         /// <param name="providerModelDiscovery">Optional provider-specific model discovery service.</param>
         public ProviderDiscoveryService(
             ILLMClientFactory clientFactory,
-            ConduitLLM.Configuration.IProviderService credentialService,
-            ConduitLLM.Configuration.IModelProviderMappingService mappingService,
+            IProviderService credentialService,
+            IModelProviderMappingService mappingService,
             ILogger<ProviderDiscoveryService> logger,
             IMemoryCache cache,
             IHttpClientFactory httpClientFactory,

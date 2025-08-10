@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Tests.TestHelpers;
@@ -11,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Tests.Core.Services
 {
@@ -67,7 +67,7 @@ namespace ConduitLLM.Tests.Core.Services
 
             _modelCostServiceMock
                 .Setup(x => x.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync((ModelCostInfo?)null);
+                .ReturnsAsync((ModelCost?)null);
 
             // Act
             var result = await _service.CalculateCostAsync(modelId, usage);
@@ -89,9 +89,9 @@ namespace ConduitLLM.Tests.Core.Services
                 ImageCount = 5,
                 VideoDurationSeconds = 10.0
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 ImageCostPerImage = 0m,

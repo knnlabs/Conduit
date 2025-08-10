@@ -7,13 +7,15 @@ using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Events;
-using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using ConduitLLM.Configuration.Interfaces;
+using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
+using ConduitLLM.Core.Interfaces;
 namespace ConduitLLM.Core.Services
 {
     /// <summary>

@@ -10,12 +10,12 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Core.Caching
 {
     /// <summary>

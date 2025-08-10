@@ -1,14 +1,15 @@
+using System.Text.Json;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using FluentAssertions;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Tests.Core.Services
 {
@@ -33,9 +34,9 @@ namespace ConduitLLM.Tests.Core.Services
                 TotalTokens = 1500,
                 IsBatch = true
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 1000.00m,
                 OutputCostPerMillionTokens = 2000.00m,
                 SupportsBatchProcessing = true,
@@ -67,9 +68,9 @@ namespace ConduitLLM.Tests.Core.Services
                 TotalTokens = 1500,
                 IsBatch = true
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 1000.00m,
                 OutputCostPerMillionTokens = 2000.00m,
                 SupportsBatchProcessing = false, // Model doesn't support batch
@@ -101,9 +102,9 @@ namespace ConduitLLM.Tests.Core.Services
                 TotalTokens = 1500,
                 IsBatch = false
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 1000.00m,
                 OutputCostPerMillionTokens = 2000.00m,
                 SupportsBatchProcessing = true,
@@ -135,9 +136,9 @@ namespace ConduitLLM.Tests.Core.Services
                 TotalTokens = 1500,
                 IsBatch = true
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 1000.00m,
                 OutputCostPerMillionTokens = 2000.00m,
                 SupportsBatchProcessing = true,
@@ -172,17 +173,17 @@ namespace ConduitLLM.Tests.Core.Services
                 VideoResolution = "1280x720",
                 IsBatch = true
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 20.00m,
                 ImageCostPerImage = 0.05m,
                 VideoCostPerSecond = 0.1m,
-                VideoResolutionMultipliers = new Dictionary<string, decimal>
+                VideoResolutionMultipliers = JsonSerializer.Serialize(new Dictionary<string, decimal>
                 {
                     ["1280x720"] = 0.8m
-                },
+                }),
                 SupportsBatchProcessing = true,
                 BatchProcessingMultiplier = 0.6m // 40% discount
             };
@@ -220,9 +221,9 @@ namespace ConduitLLM.Tests.Core.Services
                 TotalTokens = 1500,
                 IsBatch = true
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 1000.00m,
                 OutputCostPerMillionTokens = 2000.00m,
                 SupportsBatchProcessing = true,
@@ -254,9 +255,9 @@ namespace ConduitLLM.Tests.Core.Services
                 IsBatch = true
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 30.00m,
                 CachedInputCostPerMillionTokens = 1.00m,
@@ -292,9 +293,9 @@ namespace ConduitLLM.Tests.Core.Services
                 SearchUnits = 100,
                 IsBatch = true
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 0m,
                 CostPerSearchUnit = 2.0m,
@@ -330,9 +331,9 @@ namespace ConduitLLM.Tests.Core.Services
                 InferenceSteps = 10,
                 IsBatch = true
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 20.00m,
                 CostPerInferenceStep = 0.0002m,

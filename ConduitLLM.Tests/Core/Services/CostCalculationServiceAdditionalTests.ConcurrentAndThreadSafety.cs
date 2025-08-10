@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Tests.TestHelpers;
@@ -12,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Tests.Core.Services
 {
@@ -24,9 +24,9 @@ namespace ConduitLLM.Tests.Core.Services
         {
             // Arrange
             var modelId = "openai/gpt-4o";
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 30.00m
             };

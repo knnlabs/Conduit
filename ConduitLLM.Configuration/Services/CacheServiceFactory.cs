@@ -1,5 +1,6 @@
 using System;
 
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 
 using Microsoft.Extensions.Caching.Distributed;

@@ -177,8 +177,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IProviderDiscoveryService>(serviceProvider =>
         {
             var clientFactory = serviceProvider.GetRequiredService<ILLMClientFactory>();
-            var credentialService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderService>();
-            var mappingService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IModelProviderMappingService>();
+            var credentialService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IProviderService>();
+            var mappingService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IModelProviderMappingService>();
             var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.ProviderDiscoveryService>>();
             var cache = serviceProvider.GetRequiredService<IMemoryCache>();
             var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();

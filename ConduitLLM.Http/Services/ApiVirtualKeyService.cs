@@ -24,7 +24,7 @@ namespace ConduitLLM.Http.Services
     /// This provides a lightweight implementation of IVirtualKeyService for the API project,
     /// without requiring dependencies on the WebUI project.
     /// </remarks>
-    public class ApiVirtualKeyService : IVirtualKeyService
+    public class ApiVirtualKeyService : Core.Interfaces.IVirtualKeyService
     {
         private readonly IVirtualKeyRepository _virtualKeyRepository;
         private readonly IVirtualKeyGroupRepository _groupRepository;

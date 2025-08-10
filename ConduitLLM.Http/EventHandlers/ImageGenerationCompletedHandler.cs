@@ -9,6 +9,7 @@ using MassTransit;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
+using ConduitLLM.Http.Interfaces;
 namespace ConduitLLM.Http.EventHandlers
 {
     /// <summary>

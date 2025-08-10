@@ -12,6 +12,7 @@ using MassTransit;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Core.Services
 {
     /// <summary>

@@ -17,6 +17,7 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using Prometheus;
 
+using ConduitLLM.Admin.Interfaces;
 namespace ConduitLLM.Admin;
 
 /// <summary>

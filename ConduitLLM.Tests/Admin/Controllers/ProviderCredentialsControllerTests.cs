@@ -16,6 +16,7 @@ using Moq;
 using Xunit;
 using Xunit.Abstractions;
 using static ConduitLLM.Admin.Controllers.ProviderCredentialsController;
+using ConduitLLM.Configuration.Interfaces;
 
 namespace ConduitLLM.Tests.Admin.Controllers
 {

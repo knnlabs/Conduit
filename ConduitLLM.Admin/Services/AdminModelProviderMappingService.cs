@@ -12,6 +12,7 @@ using ConduitLLM.Core.Services;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Admin.Services;
 
 /// <summary>

@@ -5,12 +5,12 @@ using System.Threading.Tasks;
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Realtime;
 
 using Microsoft.Extensions.Logging;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Http.Services
 {
     /// <summary>
@@ -19,14 +19,14 @@ namespace ConduitLLM.Http.Services
     public class RealtimeUsageTracker : IRealtimeUsageTracker
     {
         private readonly ILogger<RealtimeUsageTracker> _logger;
-        private readonly ConduitLLM.Configuration.Services.IModelCostService _costService;
-        private readonly ConduitLLM.Configuration.Services.IVirtualKeyService _virtualKeyService;
+        private readonly Configuration.Interfaces.IModelCostService _costService;
+        private readonly Configuration.Interfaces.IVirtualKeyService _virtualKeyService;
         private readonly ConcurrentDictionary<string, SessionUsage> _sessions = new();
 
         public RealtimeUsageTracker(
             ILogger<RealtimeUsageTracker> logger,
-            ConduitLLM.Configuration.Services.IModelCostService costService,
-            ConduitLLM.Configuration.Services.IVirtualKeyService virtualKeyService)
+            Configuration.Interfaces.IModelCostService costService,
+            Configuration.Interfaces.IVirtualKeyService virtualKeyService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _costService = costService ?? throw new ArgumentNullException(nameof(costService));

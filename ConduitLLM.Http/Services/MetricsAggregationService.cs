@@ -14,6 +14,7 @@ using Microsoft.EntityFrameworkCore;
 using ConduitLLM.Configuration.DTOs.Metrics;
 using ConduitLLM.Http.Hubs;
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
 
 namespace ConduitLLM.Http.Services
@@ -329,7 +330,7 @@ namespace ConduitLLM.Http.Services
             try
             {
                 using var scope = _serviceProvider.CreateScope();
-                var providerService = scope.ServiceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderService>();
+                var providerService = scope.ServiceProvider.GetRequiredService<IProviderService>();
                 var providers = await providerService.GetAllProvidersAsync();
                 
                 snapshot.ProviderHealth = providers.Select(p => new ProviderHealthStatus

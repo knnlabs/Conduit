@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Data;
+using ConduitLLM.Configuration.Interfaces;
 using ModelProviderMappingEntity = ConduitLLM.Configuration.Entities.ModelProviderMapping;
 
 using Microsoft.EntityFrameworkCore;

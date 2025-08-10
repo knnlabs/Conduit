@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using ConduitLLM.Configuration.DTOs.SignalR;
 using ConduitLLM.Http.Metrics;
 
+using ConduitLLM.Http.Interfaces;
 namespace ConduitLLM.Http.Hubs
 {
     /// <summary>

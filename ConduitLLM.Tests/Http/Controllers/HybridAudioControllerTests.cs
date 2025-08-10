@@ -22,14 +22,14 @@ namespace ConduitLLM.Tests.Http.Controllers
     public partial class HybridAudioControllerTests : ControllerTestBase
     {
         private readonly Mock<IHybridAudioService> _mockHybridAudioService;
-        private readonly Mock<ConduitLLM.Configuration.Services.IVirtualKeyService> _mockVirtualKeyService;
+        private readonly Mock<ConduitLLM.Configuration.Interfaces.IVirtualKeyService> _mockVirtualKeyService;
         private readonly Mock<ILogger<HybridAudioController>> _mockLogger;
         private readonly HybridAudioController _controller;
 
         public HybridAudioControllerTests(ITestOutputHelper output) : base(output)
         {
             _mockHybridAudioService = new Mock<IHybridAudioService>();
-            _mockVirtualKeyService = new Mock<ConduitLLM.Configuration.Services.IVirtualKeyService>();
+            _mockVirtualKeyService = new Mock<ConduitLLM.Configuration.Interfaces.IVirtualKeyService>();
             _mockLogger = CreateLogger<HybridAudioController>();
 
             _controller = new HybridAudioController(

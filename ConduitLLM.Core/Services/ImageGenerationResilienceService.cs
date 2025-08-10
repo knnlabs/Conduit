@@ -6,7 +6,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 using MassTransit;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,6 +13,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Core.Services
 {
     /// <summary>
@@ -197,7 +197,7 @@ namespace ConduitLLM.Core.Services
             
             // Update provider configuration to disable it
             using var scope = _serviceProvider.CreateScope();
-            var mappingService = scope.ServiceProvider.GetService<Interfaces.Configuration.IModelProviderMappingService>();
+            var mappingService = scope.ServiceProvider.GetService<IModelProviderMappingService>();
             
             if (mappingService != null)
             {
@@ -207,7 +207,7 @@ namespace ConduitLLM.Core.Services
                     var allMappings = await mappingService.GetAllMappingsAsync();
                     
                     // Get provider service to load provider information
-                    var providerService = scope.ServiceProvider.GetService<ConduitLLM.Configuration.IProviderService>();
+                    var providerService = scope.ServiceProvider.GetService<IProviderService>();
                     if (providerService == null)
                     {
                         _logger.LogWarning("IProviderService not available, cannot quarantine provider");
@@ -266,14 +266,14 @@ namespace ConduitLLM.Core.Services
             
             // Find alternative providers
             using var scope = _serviceProvider.CreateScope();
-            var mappingService = scope.ServiceProvider.GetService<Interfaces.Configuration.IModelProviderMappingService>();
+            var mappingService = scope.ServiceProvider.GetService<IModelProviderMappingService>();
             
             if (mappingService != null)
             {
                 var allMappings = await mappingService.GetAllMappingsAsync();
                 
                 // Get provider service to load provider information
-                var providerService = scope.ServiceProvider.GetService<ConduitLLM.Configuration.IProviderService>();
+                var providerService = scope.ServiceProvider.GetService<IProviderService>();
                 if (providerService == null)
                 {
                     _logger.LogWarning("IProviderService not available, cannot initiate failover");
@@ -471,7 +471,7 @@ namespace ConduitLLM.Core.Services
             
             // Re-enable provider mappings
             using var scope = _serviceProvider.CreateScope();
-            var mappingService = scope.ServiceProvider.GetService<Interfaces.Configuration.IModelProviderMappingService>();
+            var mappingService = scope.ServiceProvider.GetService<IModelProviderMappingService>();
             
             if (mappingService != null)
             {
@@ -694,7 +694,7 @@ namespace ConduitLLM.Core.Services
         private async Task RefreshProviderCacheAsync(CancellationToken cancellationToken)
         {
             using var scope = _serviceProvider.CreateScope();
-            var providerService = scope.ServiceProvider.GetService<ConduitLLM.Configuration.IProviderService>();
+            var providerService = scope.ServiceProvider.GetService<IProviderService>();
             
             if (providerService == null)
             {

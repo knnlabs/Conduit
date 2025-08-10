@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
 
 using Microsoft.Extensions.Caching.Memory;

@@ -7,13 +7,15 @@ using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Events;
-using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using ConduitLLM.Configuration.Interfaces;
+using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
+using ConduitLLM.Core.Interfaces;
 namespace ConduitLLM.Core.Services
 {
     /// <summary>
@@ -31,7 +33,7 @@ namespace ConduitLLM.Core.Services
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ICancellableTaskRegistry _taskRegistry;
         private readonly ICostCalculationService _costCalculationService;
-        private readonly ConduitLLM.Configuration.IProviderService _providerService;
+        private readonly IProviderService _providerService;
         private readonly ImageGenerationPerformanceConfiguration _performanceConfig;
         private readonly ILogger<ImageGenerationOrchestrator> _logger;
 
@@ -46,7 +48,7 @@ namespace ConduitLLM.Core.Services
             IHttpClientFactory httpClientFactory,
             ICancellableTaskRegistry taskRegistry,
             ICostCalculationService costCalculationService,
-            ConduitLLM.Configuration.IProviderService providerService,
+            IProviderService providerService,
             IOptions<ImageGenerationPerformanceConfiguration> performanceOptions,
             ILogger<ImageGenerationOrchestrator> logger)
         {

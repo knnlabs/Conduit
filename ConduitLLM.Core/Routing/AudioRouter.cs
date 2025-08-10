@@ -5,11 +5,11 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models.Audio;
 
 using Microsoft.Extensions.Logging;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Core.Routing
 {
     /// <summary>

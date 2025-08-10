@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Pricing;
 using ConduitLLM.Core.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Tests.Services
 {
@@ -49,9 +50,9 @@ namespace ConduitLLM.Tests.Services
                 }
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 PricingModel = PricingModel.PerVideo,
                 PricingConfiguration = JsonSerializer.Serialize(config)
             };
@@ -86,9 +87,9 @@ namespace ConduitLLM.Tests.Services
                 }
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 PricingModel = PricingModel.PerVideo,
                 PricingConfiguration = JsonSerializer.Serialize(config)
             };
@@ -123,9 +124,9 @@ namespace ConduitLLM.Tests.Services
                 }
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 PricingModel = PricingModel.PerSecondVideo,
                 PricingConfiguration = JsonSerializer.Serialize(config)
             };
@@ -163,9 +164,9 @@ namespace ConduitLLM.Tests.Services
                 }
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 PricingModel = PricingModel.InferenceSteps,
                 PricingConfiguration = JsonSerializer.Serialize(config)
             };
@@ -197,9 +198,9 @@ namespace ConduitLLM.Tests.Services
                 DefaultSteps = 30
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 PricingModel = PricingModel.InferenceSteps,
                 PricingConfiguration = JsonSerializer.Serialize(config)
             };
@@ -234,9 +235,9 @@ namespace ConduitLLM.Tests.Services
                 }
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 PricingModel = PricingModel.TieredTokens,
                 PricingConfiguration = JsonSerializer.Serialize(config)
             };
@@ -274,9 +275,9 @@ namespace ConduitLLM.Tests.Services
                 }
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 PricingModel = PricingModel.TieredTokens,
                 PricingConfiguration = JsonSerializer.Serialize(config)
             };
@@ -322,9 +323,9 @@ namespace ConduitLLM.Tests.Services
                 }
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 PricingModel = PricingModel.PerImage,
                 PricingConfiguration = JsonSerializer.Serialize(config)
             };
@@ -352,9 +353,9 @@ namespace ConduitLLM.Tests.Services
                 IsBatch = true
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 PricingModel = PricingModel.Standard,
                 InputCostPerMillionTokens = 200m,
                 OutputCostPerMillionTokens = 1100m,
@@ -387,7 +388,7 @@ namespace ConduitLLM.Tests.Services
             };
 
             _mockModelCostService.Setup(x => x.GetCostForModelAsync(modelId, default))
-                .ReturnsAsync((ModelCostInfo?)null);
+                .ReturnsAsync((ModelCost?)null);
 
             // Act
             var cost = await _service.CalculateCostAsync(modelId, usage);
@@ -411,9 +412,9 @@ namespace ConduitLLM.Tests.Services
                 }
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 PricingModel = PricingModel.PerVideo,
                 PricingConfiguration = JsonSerializer.Serialize(config)
             };

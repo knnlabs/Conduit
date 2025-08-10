@@ -1,9 +1,9 @@
+using System.Text.Json;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Tests.TestHelpers;
@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Tests.Core.Services
 {
@@ -28,9 +29,9 @@ namespace ConduitLLM.Tests.Core.Services
             var refundUsage = new Usage { PromptTokens = 0, CompletionTokens = 0, TotalTokens = 0 };
             var refundReason = "No actual usage to refund";
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 30.00m
             };
@@ -59,9 +60,9 @@ namespace ConduitLLM.Tests.Core.Services
             var refundUsage = new Usage { PromptTokens = 500, CompletionTokens = 250, TotalTokens = 750 };
             var refundReason = "Service interruption";
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 30.00m
             };
@@ -101,9 +102,9 @@ namespace ConduitLLM.Tests.Core.Services
                 VideoResolution = "1920x1080"
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 VideoCostPerSecond = 0.2m,
@@ -145,18 +146,18 @@ namespace ConduitLLM.Tests.Core.Services
                 VideoResolution = "4K-UHD" // Unknown resolution
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 VideoCostPerSecond = 0.1m,
-                VideoResolutionMultipliers = new Dictionary<string, decimal>
+                VideoResolutionMultipliers = JsonSerializer.Serialize(new Dictionary<string, decimal>
                 {
                     ["1920x1080"] = 1.5m,
                     ["1280x720"] = 1.0m
                     // 4K-UHD not in dictionary
-                }
+                })
             };
 
             _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
@@ -180,9 +181,9 @@ namespace ConduitLLM.Tests.Core.Services
             var originalUsage = new Usage { PromptTokens = 0, CompletionTokens = 0, TotalTokens = 0, ImageCount = 5 };
             var refundUsage = new Usage { PromptTokens = 0, CompletionTokens = 0, TotalTokens = 0, ImageCount = -2 };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 ImageCostPerImage = 0.04m
@@ -221,9 +222,9 @@ namespace ConduitLLM.Tests.Core.Services
                 VideoDurationSeconds = -5.0 
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 VideoCostPerSecond = 0.1m
@@ -264,17 +265,17 @@ namespace ConduitLLM.Tests.Core.Services
                 VideoResolution = "1280x720" // Different resolution
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 VideoCostPerSecond = 0.1m,
-                VideoResolutionMultipliers = new Dictionary<string, decimal>
+                VideoResolutionMultipliers = JsonSerializer.Serialize(new Dictionary<string, decimal>
                 {
                     ["1920x1080"] = 1.5m,
                     ["1280x720"] = 1.0m
-                }
+                })
             };
 
             _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
@@ -299,9 +300,9 @@ namespace ConduitLLM.Tests.Core.Services
             var originalUsage = new Usage { PromptTokens = 1000, CompletionTokens = 500, TotalTokens = 1500 };
             var refundUsage = new Usage { PromptTokens = 600, CompletionTokens = 0, TotalTokens = 600 };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 30.00m
             };
@@ -328,9 +329,9 @@ namespace ConduitLLM.Tests.Core.Services
             var originalUsage = new Usage { PromptTokens = 1000, CompletionTokens = 500, TotalTokens = 1500 };
             var refundUsage = new Usage { PromptTokens = 0, CompletionTokens = 300, TotalTokens = 300 };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 30.00m
             };
@@ -358,9 +359,9 @@ namespace ConduitLLM.Tests.Core.Services
             var refundUsage = new Usage { PromptTokens = 500, CompletionTokens = 250, TotalTokens = 750 };
             using var cts = new CancellationTokenSource();
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 30.00m
             };
@@ -386,9 +387,9 @@ namespace ConduitLLM.Tests.Core.Services
             var originalUsage = new Usage { PromptTokens = 1000, CompletionTokens = 500, TotalTokens = 1500 };
             var refundUsage = new Usage { PromptTokens = 500, CompletionTokens = 250, TotalTokens = 750 };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,       // Regular input cost
                 OutputCostPerMillionTokens = 30.00m,      // Regular output cost
                 EmbeddingCostPerMillionTokens = 0.10m  // Embedding cost (not used here)
@@ -433,9 +434,9 @@ namespace ConduitLLM.Tests.Core.Services
                 TotalTokens = refundPrompt + refundCompletion 
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 30.00m
             };

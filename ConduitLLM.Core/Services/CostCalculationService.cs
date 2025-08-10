@@ -6,13 +6,14 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Pricing;
 
 using Microsoft.Extensions.Logging;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Core.Services;
 
 /// <summary>
@@ -148,7 +149,7 @@ public class CostCalculationService : ICostCalculationService
         return calculatedCost;
     }
 
-    private Task<decimal> CalculateStandardCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
+    private Task<decimal> CalculateStandardCostAsync(string modelId, ModelCost modelCost, Usage usage)
     {
         decimal calculatedCost = 0m;
 
@@ -206,11 +207,21 @@ public class CostCalculationService : ICostCalculationService
             var imageCost = usage.ImageCount.Value * modelCost.ImageCostPerImage.Value;
             
             // Apply quality multiplier if available
-            if (modelCost.ImageQualityMultipliers != null && 
-                !string.IsNullOrEmpty(usage.ImageQuality) &&
-                modelCost.ImageQualityMultipliers.TryGetValue(usage.ImageQuality.ToLowerInvariant(), out var multiplier))
+            if (!string.IsNullOrEmpty(modelCost.ImageQualityMultipliers) && 
+                !string.IsNullOrEmpty(usage.ImageQuality))
             {
-                imageCost *= multiplier;
+                try
+                {
+                    var qualityMultipliers = JsonSerializer.Deserialize<Dictionary<string, decimal>>(modelCost.ImageQualityMultipliers);
+                    if (qualityMultipliers != null && qualityMultipliers.TryGetValue(usage.ImageQuality.ToLowerInvariant(), out var multiplier))
+                    {
+                        imageCost *= multiplier;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse ImageQualityMultipliers for model {ModelId}", modelId);
+                }
             }
             
             calculatedCost += imageCost;
@@ -222,11 +233,21 @@ public class CostCalculationService : ICostCalculationService
             var baseCost = (decimal)usage.VideoDurationSeconds.Value * modelCost.VideoCostPerSecond.Value;
             
             // Apply resolution multiplier if available
-            if (modelCost.VideoResolutionMultipliers != null && 
-                !string.IsNullOrEmpty(usage.VideoResolution) &&
-                modelCost.VideoResolutionMultipliers.TryGetValue(usage.VideoResolution, out var multiplier))
+            if (!string.IsNullOrEmpty(modelCost.VideoResolutionMultipliers) && 
+                !string.IsNullOrEmpty(usage.VideoResolution))
             {
-                baseCost *= multiplier;
+                try
+                {
+                    var resolutionMultipliers = JsonSerializer.Deserialize<Dictionary<string, decimal>>(modelCost.VideoResolutionMultipliers);
+                    if (resolutionMultipliers != null && resolutionMultipliers.TryGetValue(usage.VideoResolution, out var multiplier))
+                    {
+                        baseCost *= multiplier;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse VideoResolutionMultipliers for model {ModelId}", modelId);
+                }
             }
             
             calculatedCost += baseCost;
@@ -411,11 +432,21 @@ public class CostCalculationService : ICostCalculationService
             var imageRefund = refundUsage.ImageCount.Value * modelCost.ImageCostPerImage.Value;
             
             // Apply quality multiplier if available
-            if (modelCost.ImageQualityMultipliers != null && 
-                !string.IsNullOrEmpty(refundUsage.ImageQuality) &&
-                modelCost.ImageQualityMultipliers.TryGetValue(refundUsage.ImageQuality.ToLowerInvariant(), out var multiplier))
+            if (!string.IsNullOrEmpty(modelCost.ImageQualityMultipliers) && 
+                !string.IsNullOrEmpty(refundUsage.ImageQuality))
             {
-                imageRefund *= multiplier;
+                try
+                {
+                    var qualityMultipliers = JsonSerializer.Deserialize<Dictionary<string, decimal>>(modelCost.ImageQualityMultipliers);
+                    if (qualityMultipliers != null && qualityMultipliers.TryGetValue(refundUsage.ImageQuality.ToLowerInvariant(), out var multiplier))
+                    {
+                        imageRefund *= multiplier;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse ImageQualityMultipliers for refund calculation");
+                }
             }
             
             breakdown.ImageRefund = imageRefund;
@@ -428,11 +459,21 @@ public class CostCalculationService : ICostCalculationService
             var videoRefund = (decimal)refundUsage.VideoDurationSeconds.Value * modelCost.VideoCostPerSecond.Value;
             
             // Apply resolution multiplier if available
-            if (modelCost.VideoResolutionMultipliers != null && 
-                !string.IsNullOrEmpty(refundUsage.VideoResolution) &&
-                modelCost.VideoResolutionMultipliers.TryGetValue(refundUsage.VideoResolution, out var multiplier))
+            if (!string.IsNullOrEmpty(modelCost.VideoResolutionMultipliers) && 
+                !string.IsNullOrEmpty(refundUsage.VideoResolution))
             {
-                videoRefund *= multiplier;
+                try
+                {
+                    var resolutionMultipliers = JsonSerializer.Deserialize<Dictionary<string, decimal>>(modelCost.VideoResolutionMultipliers);
+                    if (resolutionMultipliers != null && resolutionMultipliers.TryGetValue(refundUsage.VideoResolution, out var multiplier))
+                    {
+                        videoRefund *= multiplier;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse VideoResolutionMultipliers for refund calculation");
+                }
             }
             
             breakdown.VideoRefund = videoRefund;
@@ -559,7 +600,7 @@ public class CostCalculationService : ICostCalculationService
         return messages;
     }
 
-    private Task<decimal> CalculatePerVideoCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
+    private Task<decimal> CalculatePerVideoCostAsync(string modelId, ModelCost modelCost, Usage usage)
     {
         if (!usage.VideoDurationSeconds.HasValue || string.IsNullOrEmpty(usage.VideoResolution))
         {
@@ -567,13 +608,9 @@ public class CostCalculationService : ICostCalculationService
             return Task.FromResult(0m);
         }
 
-        // Parse configuration or use pre-parsed
+        // Parse configuration from JSON
         PerVideoPricingConfig? config = null;
-        if (modelCost.ParsedPricingConfiguration is PerVideoPricingConfig parsed)
-        {
-            config = parsed;
-        }
-        else if (!string.IsNullOrEmpty(modelCost.PricingConfiguration))
+        if (!string.IsNullOrEmpty(modelCost.PricingConfiguration))
         {
             try
             {
@@ -609,7 +646,7 @@ public class CostCalculationService : ICostCalculationService
         return Task.FromResult(flatRate);
     }
 
-    private Task<decimal> CalculatePerSecondVideoCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
+    private Task<decimal> CalculatePerSecondVideoCostAsync(string modelId, ModelCost modelCost, Usage usage)
     {
         if (!usage.VideoDurationSeconds.HasValue)
         {
@@ -617,13 +654,9 @@ public class CostCalculationService : ICostCalculationService
             return Task.FromResult(0m);
         }
 
-        // Parse configuration or use pre-parsed
+        // Parse configuration from JSON
         PerSecondVideoPricingConfig? config = null;
-        if (modelCost.ParsedPricingConfiguration is PerSecondVideoPricingConfig parsed)
-        {
-            config = parsed;
-        }
-        else if (!string.IsNullOrEmpty(modelCost.PricingConfiguration))
+        if (!string.IsNullOrEmpty(modelCost.PricingConfiguration))
         {
             try
             {
@@ -659,15 +692,11 @@ public class CostCalculationService : ICostCalculationService
         return Task.FromResult(baseCost);
     }
 
-    private Task<decimal> CalculateInferenceStepsCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
+    private Task<decimal> CalculateInferenceStepsCostAsync(string modelId, ModelCost modelCost, Usage usage)
     {
         // Parse configuration or use pre-parsed
         InferenceStepsPricingConfig? config = null;
-        if (modelCost.ParsedPricingConfiguration is InferenceStepsPricingConfig parsed)
-        {
-            config = parsed;
-        }
-        else if (!string.IsNullOrEmpty(modelCost.PricingConfiguration))
+        if (!string.IsNullOrEmpty(modelCost.PricingConfiguration))
         {
             try
             {
@@ -702,15 +731,11 @@ public class CostCalculationService : ICostCalculationService
         return Task.FromResult(cost);
     }
 
-    private Task<decimal> CalculateTieredTokensCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
+    private Task<decimal> CalculateTieredTokensCostAsync(string modelId, ModelCost modelCost, Usage usage)
     {
         // Parse configuration or use pre-parsed
         TieredTokensPricingConfig? config = null;
-        if (modelCost.ParsedPricingConfiguration is TieredTokensPricingConfig parsed)
-        {
-            config = parsed;
-        }
-        else if (!string.IsNullOrEmpty(modelCost.PricingConfiguration))
+        if (!string.IsNullOrEmpty(modelCost.PricingConfiguration))
         {
             try
             {
@@ -760,7 +785,7 @@ public class CostCalculationService : ICostCalculationService
         return Task.FromResult(inputCost + outputCost);
     }
 
-    private Task<decimal> CalculatePerImageCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
+    private Task<decimal> CalculatePerImageCostAsync(string modelId, ModelCost modelCost, Usage usage)
     {
         if (!usage.ImageCount.HasValue || usage.ImageCount.Value <= 0)
         {
@@ -770,11 +795,7 @@ public class CostCalculationService : ICostCalculationService
 
         // Parse configuration or use pre-parsed
         PerImagePricingConfig? config = null;
-        if (modelCost.ParsedPricingConfiguration is PerImagePricingConfig parsed)
-        {
-            config = parsed;
-        }
-        else if (!string.IsNullOrEmpty(modelCost.PricingConfiguration))
+        if (!string.IsNullOrEmpty(modelCost.PricingConfiguration))
         {
             try
             {
@@ -819,14 +840,14 @@ public class CostCalculationService : ICostCalculationService
         return Task.FromResult(cost);
     }
 
-    private async Task<decimal> CalculatePerMinuteAudioCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
+    private async Task<decimal> CalculatePerMinuteAudioCostAsync(string modelId, ModelCost modelCost, Usage usage)
     {
         // This pricing model is for audio transcription/realtime
         // Delegate to standard calculation which already handles audio costs
         return await CalculateStandardCostAsync(modelId, modelCost, usage);
     }
 
-    private async Task<decimal> CalculatePerThousandCharactersCostAsync(string modelId, ModelCostInfo modelCost, Usage usage)
+    private async Task<decimal> CalculatePerThousandCharactersCostAsync(string modelId, ModelCost modelCost, Usage usage)
     {
         // This pricing model is for text-to-speech
         // The standard calculation already handles AudioCostPerKCharacters

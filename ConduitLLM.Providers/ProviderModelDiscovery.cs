@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 
@@ -26,12 +27,12 @@ namespace ConduitLLM.Providers
     {
         private readonly ILogger<ProviderModelDiscovery> _logger;
         private readonly ILLMClientFactory _clientFactory;
-        private readonly ConduitLLM.Configuration.IProviderService _providerService;
+        private readonly IProviderService _providerService;
 
         public ProviderModelDiscovery(
             ILogger<ProviderModelDiscovery> logger,
             ILLMClientFactory clientFactory,
-            ConduitLLM.Configuration.IProviderService providerService)
+            IProviderService providerService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));

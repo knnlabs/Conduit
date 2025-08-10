@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ConduitLLM.Configuration.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Http.Controllers

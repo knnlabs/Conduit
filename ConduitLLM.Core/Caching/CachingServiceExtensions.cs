@@ -2,12 +2,12 @@ using System;
 
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Interfaces.Configuration;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Core.Caching
 {
     /// <summary>

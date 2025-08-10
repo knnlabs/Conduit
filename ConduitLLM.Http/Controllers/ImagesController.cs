@@ -9,6 +9,7 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Interfaces;
 using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -33,7 +34,7 @@ namespace ConduitLLM.Http.Controllers
         private readonly ILogger<ImagesController> _logger;
         private readonly IModelProviderMappingService _modelMappingService;
         private readonly IAsyncTaskService _taskService;
-        private readonly IVirtualKeyService _virtualKeyService;
+        private readonly ConduitLLM.Core.Interfaces.IVirtualKeyService _virtualKeyService;
         private readonly IMediaLifecycleService _mediaLifecycleService;
         private readonly IHttpClientFactory _httpClientFactory;
 
@@ -44,7 +45,7 @@ namespace ConduitLLM.Http.Controllers
             IModelProviderMappingService modelMappingService,
             IAsyncTaskService taskService,
             IPublishEndpoint publishEndpoint,
-            IVirtualKeyService virtualKeyService,
+            ConduitLLM.Core.Interfaces.IVirtualKeyService virtualKeyService,
             IMediaLifecycleService mediaLifecycleService,
             IHttpClientFactory httpClientFactory)
             : base(publishEndpoint, logger)

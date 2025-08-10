@@ -1,14 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using FluentAssertions;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Tests.Core.Services
 {
@@ -25,9 +26,9 @@ namespace ConduitLLM.Tests.Core.Services
             var originalUsage = new Usage { PromptTokens = 0, CompletionTokens = 0, TotalTokens = 0, ImageCount = 5 };
             var refundUsage = new Usage { PromptTokens = 0, CompletionTokens = 0, TotalTokens = 0, ImageCount = 2 };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 ImageCostPerImage = 0.04m // $0.04 per image
@@ -68,16 +69,16 @@ namespace ConduitLLM.Tests.Core.Services
                 VideoResolution = "1920x1080"
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 VideoCostPerSecond = 0.1m,
-                VideoResolutionMultipliers = new Dictionary<string, decimal>
+                VideoResolutionMultipliers = JsonSerializer.Serialize(new Dictionary<string, decimal>
                 {
                     ["1920x1080"] = 1.5m
-                }
+                })
             };
 
             _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
@@ -117,17 +118,17 @@ namespace ConduitLLM.Tests.Core.Services
                 VideoResolution = "1280x720"
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 30.00m,
                 ImageCostPerImage = 0.04m,
                 VideoCostPerSecond = 0.1m,
-                VideoResolutionMultipliers = new Dictionary<string, decimal>
+                VideoResolutionMultipliers = JsonSerializer.Serialize(new Dictionary<string, decimal>
                 {
                     ["1280x720"] = 1.0m
-                }
+                })
             };
 
             _modelCostServiceMock.Setup(m => m.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))

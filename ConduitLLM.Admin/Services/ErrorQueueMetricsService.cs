@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Prometheus;
 
+using ConduitLLM.Admin.Interfaces;
 namespace ConduitLLM.Admin.Services
 {
     /// <summary>

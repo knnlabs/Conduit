@@ -1,11 +1,12 @@
+using System.Text.Json;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 using FluentAssertions;
 using Moq;
 using Xunit;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Tests.Core.Services
 {
@@ -26,9 +27,9 @@ namespace ConduitLLM.Tests.Core.Services
                 ImageCount = 1,
                 InferenceSteps = 4
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 CostPerInferenceStep = 0.00035m, // $0.00035 per step
@@ -60,9 +61,9 @@ namespace ConduitLLM.Tests.Core.Services
                 ImageCount = 2,
                 InferenceSteps = 30
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 CostPerInferenceStep = 0.00013m, // $0.00013 per step
@@ -88,15 +89,15 @@ namespace ConduitLLM.Tests.Core.Services
         public async Task CalculateCost_WithStepsAndQuality_CombinesMultipliers()
         {
             // Test combination of step pricing and quality multipliers
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = "flux",
+                CostName = "flux",
                 CostPerInferenceStep = 0.0005m,
-                ImageQualityMultipliers = new Dictionary<string, decimal>
+                ImageQualityMultipliers = JsonSerializer.Serialize(new Dictionary<string, decimal>
                 {
                     { "low", 0.5m },
                     { "high", 2.0m }
-                }
+                })
             };
             
             var usage = new Usage

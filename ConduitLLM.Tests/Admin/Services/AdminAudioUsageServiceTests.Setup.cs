@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit.Abstractions;
+using ConduitLLM.Configuration.Interfaces;
 
 namespace ConduitLLM.Tests.Admin.Services
 {

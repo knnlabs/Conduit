@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
@@ -29,7 +30,7 @@ namespace ConduitLLM.Http.Controllers
     public class HybridAudioController : ControllerBase
     {
         private readonly IHybridAudioService _hybridAudioService;
-        private readonly ConduitLLM.Configuration.Services.IVirtualKeyService _virtualKeyService;
+        private readonly ConduitLLM.Configuration.Interfaces.IVirtualKeyService _virtualKeyService;
         private readonly ILogger<HybridAudioController> _logger;
 
         /// <summary>
@@ -40,7 +41,7 @@ namespace ConduitLLM.Http.Controllers
         /// <param name="logger">The logger instance.</param>
         public HybridAudioController(
             IHybridAudioService hybridAudioService,
-            ConduitLLM.Configuration.Services.IVirtualKeyService virtualKeyService,
+            ConduitLLM.Configuration.Interfaces.IVirtualKeyService virtualKeyService,
             ILogger<HybridAudioController> logger)
         {
             _hybridAudioService = hybridAudioService ?? throw new ArgumentNullException(nameof(hybridAudioService));

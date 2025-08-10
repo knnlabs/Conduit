@@ -7,6 +7,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Configuration.DTOs.HealthMonitoring;
 using ConduitLLM.Http.Hubs;
+using ConduitLLM.Http.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace ConduitLLM.Http.Services
@@ -14,7 +15,7 @@ namespace ConduitLLM.Http.Services
     /// <summary>
     /// Service for monitoring system health and performance
     /// </summary>
-    public class HealthMonitoringService : IHealthMonitoringService
+    public class HealthMonitoringService : Interfaces.IHealthMonitoringService
     {
         private readonly HealthCheckService _healthCheckService;
         private readonly IMemoryCache _cache;

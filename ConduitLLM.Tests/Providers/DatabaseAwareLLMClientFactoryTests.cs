@@ -10,6 +10,7 @@ using ConduitLLM.Providers;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using ConduitLLM.Configuration.Interfaces;
 
 namespace ConduitLLM.Tests.Providers
 {

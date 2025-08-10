@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Tests.TestHelpers;
@@ -11,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Tests.Core.Services
 {
@@ -32,9 +32,9 @@ namespace ConduitLLM.Tests.Core.Services
                 CompletionTokens = completionTokens,
                 TotalTokens = promptTokens + completionTokens
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = inputCost,
                 OutputCostPerMillionTokens = outputCost
             };
@@ -61,9 +61,9 @@ namespace ConduitLLM.Tests.Core.Services
                 CompletionTokens = 1,
                 TotalTokens = 2
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0.000001m,  // Very small cost
                 OutputCostPerMillionTokens = 0.000002m  // Very small cost
             };
@@ -86,9 +86,9 @@ namespace ConduitLLM.Tests.Core.Services
             // Arrange
             var modelId = "openai/gpt-4o";
             var usage = new Usage { PromptTokens = 100, CompletionTokens = 50, TotalTokens = 150 };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 30.00m
             };
@@ -120,9 +120,9 @@ namespace ConduitLLM.Tests.Core.Services
                 ImageCount = 2,
                 VideoDurationSeconds = 3.5
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 1000.00m,
                 OutputCostPerMillionTokens = 2000.00m,
                 ImageCostPerImage = 0.05m,

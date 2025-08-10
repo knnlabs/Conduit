@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Configuration.Repositories
 {
     /// <summary>

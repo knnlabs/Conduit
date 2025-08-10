@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.DTOs.SignalR;
 using ConduitLLM.Http.Hubs;
 using ConduitLLM.Http.Services;
@@ -26,7 +27,7 @@ namespace ConduitLLM.Http.EventHandlers
         private readonly IHubContext<ModelDiscoveryHub> _hubContext;
         private readonly ILogger<ModelDiscoveryNotificationHandler> _logger;
         private readonly IMemoryCache _cache;
-        private readonly IModelCostService _modelCostService;
+        private readonly Configuration.Interfaces.IModelCostService _modelCostService;
         private const string CacheKeyPrefix = "previous_model_capabilities_";
         private const string PricingCacheKeyPrefix = "previous_model_pricing_";
 

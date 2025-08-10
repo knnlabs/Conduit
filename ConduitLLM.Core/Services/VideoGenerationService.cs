@@ -11,6 +11,8 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Events;
 using MassTransit;
 
+using ConduitLLM.Configuration.Interfaces;
+using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 namespace ConduitLLM.Core.Services
 {
     /// <summary>
@@ -27,7 +29,7 @@ namespace ConduitLLM.Core.Services
         private readonly IAsyncTaskService _taskService;
         private readonly ICancellableTaskRegistry? _taskRegistry;
         private readonly ILogger<VideoGenerationService> _logger;
-        private readonly ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService _modelMappingService;
+        private readonly IModelProviderMappingService _modelMappingService;
 
         public VideoGenerationService(
             ILLMClientFactory clientFactory,
@@ -37,7 +39,7 @@ namespace ConduitLLM.Core.Services
             IMediaStorageService mediaStorage,
             IAsyncTaskService taskService,
             ILogger<VideoGenerationService> logger,
-            ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService modelMappingService,
+            IModelProviderMappingService modelMappingService,
             IPublishEndpoint? publishEndpoint = null,
             ICancellableTaskRegistry? taskRegistry = null)
             : base(publishEndpoint, logger)

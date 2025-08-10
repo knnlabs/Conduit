@@ -9,6 +9,7 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Admin.Extensions
 {
     /// <summary>

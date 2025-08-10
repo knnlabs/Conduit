@@ -29,13 +29,13 @@ namespace ConduitLLM.Tests.Core.Services
         private readonly Mock<IAsyncTaskService> _mockTaskService;
         private readonly Mock<IMediaStorageService> _mockStorageService;
         private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
-        private readonly Mock<ConduitLLM.Configuration.IModelProviderMappingService> _mockModelMappingService;
+        private readonly Mock<ConduitLLM.Configuration.Interfaces.IModelProviderMappingService> _mockModelMappingService;
         private readonly Mock<IProviderDiscoveryService> _mockDiscoveryService;
         private readonly Mock<IVirtualKeyService> _mockVirtualKeyService;
         private readonly Mock<IHttpClientFactory> _mockHttpClientFactory;
         private readonly Mock<ICancellableTaskRegistry> _mockTaskRegistry;
         private readonly Mock<ICostCalculationService> _mockCostCalculationService;
-        private readonly Mock<ConduitLLM.Configuration.IProviderService> _mockProviderService;
+        private readonly Mock<ConduitLLM.Configuration.Interfaces.IProviderService> _mockProviderService;
         private readonly Mock<ILogger<ImageGenerationOrchestrator>> _mockLogger;
         private readonly Mock<IOptions<ImageGenerationPerformanceConfiguration>> _mockPerformanceOptions;
         private readonly ImageGenerationPerformanceConfiguration _performanceConfig;
@@ -47,13 +47,13 @@ namespace ConduitLLM.Tests.Core.Services
             _mockTaskService = new Mock<IAsyncTaskService>();
             _mockStorageService = new Mock<IMediaStorageService>();
             _mockPublishEndpoint = new Mock<IPublishEndpoint>();
-            _mockModelMappingService = new Mock<ConduitLLM.Configuration.IModelProviderMappingService>();
+            _mockModelMappingService = new Mock<ConduitLLM.Configuration.Interfaces.IModelProviderMappingService>();
             _mockDiscoveryService = new Mock<IProviderDiscoveryService>();
             _mockVirtualKeyService = new Mock<IVirtualKeyService>();
             _mockHttpClientFactory = new Mock<IHttpClientFactory>();
             _mockTaskRegistry = new Mock<ICancellableTaskRegistry>();
             _mockCostCalculationService = new Mock<ICostCalculationService>();
-            _mockProviderService = new Mock<ConduitLLM.Configuration.IProviderService>();
+            _mockProviderService = new Mock<ConduitLLM.Configuration.Interfaces.IProviderService>();
             _mockLogger = new Mock<ILogger<ImageGenerationOrchestrator>>();
             _mockPerformanceOptions = new Mock<IOptions<ImageGenerationPerformanceConfiguration>>();
 

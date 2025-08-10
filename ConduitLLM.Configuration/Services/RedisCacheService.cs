@@ -11,6 +11,7 @@ using Microsoft.Extensions.Options;
 
 using StackExchange.Redis;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Configuration.Services
 {
     /// <summary>

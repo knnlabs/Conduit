@@ -1,9 +1,9 @@
+using System.Text.Json;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Tests.TestHelpers;
@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Tests.Core.Services
 {
@@ -32,9 +33,9 @@ namespace ConduitLLM.Tests.Core.Services
                 VideoDurationSeconds = 10.0, // Has video duration but model doesn't support video
                 VideoResolution = "1920x1080"
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 20.00m,
                 VideoCostPerSecond = null // No video cost defined
@@ -64,9 +65,9 @@ namespace ConduitLLM.Tests.Core.Services
                 TotalTokens = 150,
                 ImageCount = 5 // Has images but model doesn't support image generation
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 20.00m,
                 ImageCostPerImage = null // No image cost defined
@@ -97,17 +98,17 @@ namespace ConduitLLM.Tests.Core.Services
                 VideoDurationSeconds = 10,
                 VideoResolution = "" // Empty string resolution
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 VideoCostPerSecond = 0.1m,
-                VideoResolutionMultipliers = new Dictionary<string, decimal>
+                VideoResolutionMultipliers = JsonSerializer.Serialize(new Dictionary<string, decimal>
                 {
                     ["1920x1080"] = 1.5m
                     // No multiplier for empty string
-                }
+                })
             };
 
             _modelCostServiceMock
@@ -135,16 +136,16 @@ namespace ConduitLLM.Tests.Core.Services
                 VideoDurationSeconds = 0, // Zero duration
                 VideoResolution = "1920x1080"
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 VideoCostPerSecond = 0.1m,
-                VideoResolutionMultipliers = new Dictionary<string, decimal>
+                VideoResolutionMultipliers = JsonSerializer.Serialize(new Dictionary<string, decimal>
                 {
                     ["1920x1080"] = 1.5m
-                }
+                })
             };
 
             _modelCostServiceMock
@@ -170,9 +171,9 @@ namespace ConduitLLM.Tests.Core.Services
                 CompletionTokens = 0, // No completions (typical for embeddings)
                 TotalTokens = 1000
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 20.00m,
                 EmbeddingCostPerMillionTokens = null // No embedding cost defined
@@ -203,16 +204,16 @@ namespace ConduitLLM.Tests.Core.Services
                 VideoDurationSeconds = 3.14159265359, // Pi seconds
                 VideoResolution = "1280x720"
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 VideoCostPerSecond = 0.01m,
-                VideoResolutionMultipliers = new Dictionary<string, decimal>
+                VideoResolutionMultipliers = JsonSerializer.Serialize(new Dictionary<string, decimal>
                 {
                     ["1280x720"] = 1.0m
-                }
+                })
             };
 
             _modelCostServiceMock

@@ -36,7 +36,7 @@ namespace ConduitLLM.Tests.Configuration.Repositories
         public async Task GetUsageSummaryAsync_WithVirtualKeyFilter_ShouldReturnFilteredSummary()
         {
             // Arrange
-            await SeedTestDataAsync(20);
+            await SeedTestDataAsync(20, maxDaysAgo: 6); // Keep all data within 6 days for 7-day window query
             var startDate = DateTime.UtcNow.AddDays(-7);
             var endDate = DateTime.UtcNow;
 

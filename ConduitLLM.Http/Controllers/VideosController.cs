@@ -31,7 +31,7 @@ namespace ConduitLLM.Http.Controllers
         private readonly IOperationTimeoutProvider _timeoutProvider;
         private readonly ICancellableTaskRegistry _taskRegistry;
         private readonly ILogger<VideosController> _logger;
-        private readonly ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService _modelMappingService;
+        private readonly ConduitLLM.Configuration.Interfaces.IModelProviderMappingService _modelMappingService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="VideosController"/> class.
@@ -42,7 +42,7 @@ namespace ConduitLLM.Http.Controllers
             IOperationTimeoutProvider timeoutProvider,
             ICancellableTaskRegistry taskRegistry,
             ILogger<VideosController> logger,
-            ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService modelMappingService)
+            ConduitLLM.Configuration.Interfaces.IModelProviderMappingService modelMappingService)
         {
             _videoService = videoService ?? throw new ArgumentNullException(nameof(videoService));
             _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));

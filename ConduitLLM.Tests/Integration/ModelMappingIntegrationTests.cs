@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Core.Routing;
@@ -21,7 +20,7 @@ namespace ConduitLLM.Tests.Integration
     public class ModelMappingIntegrationTests
     {
         private readonly Mock<ILLMClientFactory> _mockClientFactory;
-        private readonly Mock<ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService> _mockModelMappingService;
+        private readonly Mock<ConduitLLM.Configuration.Interfaces.IModelProviderMappingService> _mockModelMappingService;
         private readonly Mock<ILogger<AudioRouter>> _mockAudioRouterLogger;
         private readonly Mock<ILogger<VideoGenerationService>> _mockVideoServiceLogger;
         private readonly string _testVirtualKey = "test-virtual-key";
@@ -29,7 +28,7 @@ namespace ConduitLLM.Tests.Integration
         public ModelMappingIntegrationTests()
         {
             _mockClientFactory = new Mock<ILLMClientFactory>();
-            _mockModelMappingService = new Mock<ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService>();
+            _mockModelMappingService = new Mock<ConduitLLM.Configuration.Interfaces.IModelProviderMappingService>();
             _mockAudioRouterLogger = new Mock<ILogger<AudioRouter>>();
             _mockVideoServiceLogger = new Mock<ILogger<VideoGenerationService>>();
         }

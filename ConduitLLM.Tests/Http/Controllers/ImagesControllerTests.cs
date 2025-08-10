@@ -28,7 +28,7 @@ namespace ConduitLLM.Tests.Http.Controllers
         private readonly Mock<ILLMClientFactory> _mockClientFactory;
         private readonly Mock<IMediaStorageService> _mockStorageService;
         private readonly Mock<ILogger<ImagesController>> _mockLogger;
-        private readonly Mock<ConduitLLM.Configuration.IModelProviderMappingService> _mockModelMappingService;
+        private readonly Mock<ConduitLLM.Configuration.Interfaces.IModelProviderMappingService> _mockModelMappingService;
         private readonly Mock<IAsyncTaskService> _mockTaskService;
         private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
         private readonly Mock<IVirtualKeyService> _mockVirtualKeyService;
@@ -43,7 +43,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             _mockClientFactory = new Mock<ILLMClientFactory>();
             _mockStorageService = new Mock<IMediaStorageService>();
             _mockLogger = CreateLogger<ImagesController>();
-            _mockModelMappingService = new Mock<ConduitLLM.Configuration.IModelProviderMappingService>();
+            _mockModelMappingService = new Mock<ConduitLLM.Configuration.Interfaces.IModelProviderMappingService>();
             _mockTaskService = new Mock<IAsyncTaskService>();
             _mockPublishEndpoint = new Mock<IPublishEndpoint>();
             _mockVirtualKeyService = new Mock<IVirtualKeyService>();

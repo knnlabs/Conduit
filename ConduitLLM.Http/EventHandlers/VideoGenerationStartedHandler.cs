@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Http.Services;
 
+using ConduitLLM.Http.Interfaces;
 namespace ConduitLLM.Http.EventHandlers
 {
     /// <summary>

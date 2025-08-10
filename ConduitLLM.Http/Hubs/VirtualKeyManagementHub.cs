@@ -10,6 +10,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 
+using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 namespace ConduitLLM.Http.Hubs
 {
     /// <summary>

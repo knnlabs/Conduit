@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.Http.Interfaces;
 using ConduitLLM.Security.Interfaces;
 
 namespace ConduitLLM.Http.Services

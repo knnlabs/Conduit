@@ -10,8 +10,9 @@ using Xunit;
 using ConduitLLM.Http.Middleware;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Services;
-using IVirtualKeyService = ConduitLLM.Configuration.Services.IVirtualKeyService;
+using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 
 namespace ConduitLLM.Tests.Http.Middleware
 {

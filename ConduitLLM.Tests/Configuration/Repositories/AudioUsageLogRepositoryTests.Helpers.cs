@@ -10,7 +10,7 @@ namespace ConduitLLM.Tests.Configuration.Repositories
     {
         #region Helper Methods
 
-        private async Task SeedTestDataAsync(int count)
+        private async Task SeedTestDataAsync(int count, int maxDaysAgo = 30)
         {
             // Create test providers
             var openAiProvider = new Provider { ProviderType = ProviderType.OpenAI, ProviderName = "OpenAI" };
@@ -19,13 +19,16 @@ namespace ConduitLLM.Tests.Configuration.Repositories
             await _context.SaveChangesAsync();
 
             var logs = new List<AudioUsageLog>();
-            var random = new Random();
+            var random = new Random(42); // Use fixed seed for deterministic behavior
             
             for (int i = 0; i < count; i++)
             {
                 var operationType = i % 3 == 0 ? "transcription" : i % 3 == 1 ? "tts" : "realtime";
                 var provider = i % 2 == 0 ? openAiProvider : azureProvider;
                 var statusCode = i % 10 == 0 ? 500 : 200;
+                
+                // Distribute timestamps evenly across the time range to ensure all operation types appear in any window
+                var daysAgo = (i * maxDaysAgo) / count;
                 
                 logs.Add(new AudioUsageLog
                 {
@@ -44,7 +47,7 @@ namespace ConduitLLM.Tests.Configuration.Repositories
                     ErrorMessage = statusCode >= 400 ? "Error occurred" : null,
                     IpAddress = $"192.168.1.{i % 255}",
                     UserAgent = "Test/1.0",
-                    Timestamp = DateTime.UtcNow.AddDays(-random.Next(0, 30))
+                    Timestamp = DateTime.UtcNow.AddDays(-daysAgo)
                 });
             }
 

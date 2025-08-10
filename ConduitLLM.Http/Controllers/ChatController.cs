@@ -39,14 +39,14 @@ namespace ConduitLLM.Http.Controllers
     {
         private readonly Conduit _conduit;
         private readonly ILogger<ChatController> _logger;
-        private readonly ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService _modelMappingService;
+        private readonly ConduitLLM.Configuration.Interfaces.IModelProviderMappingService _modelMappingService;
         private readonly IOptions<ConduitSettings> _settings;
         private readonly JsonSerializerOptions _jsonSerializerOptions;
 
         public ChatController(
             Conduit conduit,
             ILogger<ChatController> logger,
-            ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService modelMappingService,
+            ConduitLLM.Configuration.Interfaces.IModelProviderMappingService modelMappingService,
             IOptions<ConduitSettings> settings,
             JsonSerializerOptions jsonSerializerOptions,
             IPublishEndpoint publishEndpoint) : base(publishEndpoint, logger)

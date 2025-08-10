@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Events;
+using CoreInterfaces = ConduitLLM.Core.Interfaces;
 using ConduitLLM.Http.Services;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Configuration.Interfaces;
@@ -15,13 +16,13 @@ namespace ConduitLLM.Http.EventHandlers
     public class SpendUpdatedHandler : IConsumer<SpendUpdated>
     {
         private readonly ISpendNotificationService _notificationService;
-        private readonly IVirtualKeyService _virtualKeyService;
+        private readonly CoreInterfaces.IVirtualKeyService _virtualKeyService;
         private readonly IVirtualKeyGroupRepository _groupRepository;
         private readonly ILogger<SpendUpdatedHandler> _logger;
 
         public SpendUpdatedHandler(
             ISpendNotificationService notificationService,
-            IVirtualKeyService virtualKeyService,
+            CoreInterfaces.IVirtualKeyService virtualKeyService,
             IVirtualKeyGroupRepository groupRepository,
             ILogger<SpendUpdatedHandler> logger)
         {

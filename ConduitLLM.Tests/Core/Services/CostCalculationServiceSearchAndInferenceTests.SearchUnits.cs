@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 using FluentAssertions;
 using Moq;
 using Xunit;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Tests.Core.Services
 {
@@ -25,9 +25,9 @@ namespace ConduitLLM.Tests.Core.Services
                 TotalTokens = 0,
                 SearchUnits = 5
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 CostPerSearchUnit = 2.0m // $2.00 per 1K search units
@@ -57,9 +57,9 @@ namespace ConduitLLM.Tests.Core.Services
                 TotalTokens = 1500,
                 SearchUnits = 10
             };
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 30.00m,
                 CostPerSearchUnit = 1.5m // $1.50 per 1K search units

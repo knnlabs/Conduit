@@ -20,6 +20,7 @@ using ConduitLLM.Core.Controllers;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Configuration.Events;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Admin.Controllers
 {
     /// <summary>

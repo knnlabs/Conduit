@@ -12,6 +12,7 @@ using ModelProviderMappingEntity = ConduitLLM.Configuration.Entities.ModelProvid
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Configuration.Repositories
 {
     /// <summary>

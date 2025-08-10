@@ -2,13 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using FluentAssertions;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Tests.Core.Services
 {
@@ -25,9 +25,9 @@ namespace ConduitLLM.Tests.Core.Services
             var originalUsage = new Usage { PromptTokens = 5000, CompletionTokens = 0, TotalTokens = 5000 };
             var refundUsage = new Usage { PromptTokens = 2000, CompletionTokens = 0, TotalTokens = 2000 };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 0m,
                 EmbeddingCostPerMillionTokens = 100.00m // $0.0001 per token
@@ -54,9 +54,9 @@ namespace ConduitLLM.Tests.Core.Services
             var originalUsage = new Usage { PromptTokens = 5000, CompletionTokens = 0, TotalTokens = 5000, ImageCount = 3 };
             var refundUsage = new Usage { PromptTokens = 2000, CompletionTokens = 0, TotalTokens = 2000, ImageCount = 1 };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 100.00m,       // Regular cost (expensive)
                 OutputCostPerMillionTokens = 0m,
                 EmbeddingCostPerMillionTokens = 10.00m,  // Embedding cost (10x cheaper)
@@ -101,9 +101,9 @@ namespace ConduitLLM.Tests.Core.Services
                 SearchUnits = 20
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 CostPerSearchUnit = 2.0m // $2.00 per 1K search units
@@ -143,9 +143,9 @@ namespace ConduitLLM.Tests.Core.Services
                 SearchUnits = 30 // More than original
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 CostPerSearchUnit = 2.0m
@@ -185,9 +185,9 @@ namespace ConduitLLM.Tests.Core.Services
                 InferenceSteps = 20
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 CostPerInferenceStep = 0.0005m
@@ -227,9 +227,9 @@ namespace ConduitLLM.Tests.Core.Services
                 InferenceSteps = 50 // More than original
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 0m,
                 OutputCostPerMillionTokens = 0m,
                 CostPerInferenceStep = 0.00013m

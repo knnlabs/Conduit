@@ -5,8 +5,8 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Interfaces.Configuration;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;

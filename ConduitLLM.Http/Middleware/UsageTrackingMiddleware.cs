@@ -6,11 +6,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Configuration.DTOs;
 using Prometheus;
-using IVirtualKeyService = ConduitLLM.Configuration.Services.IVirtualKeyService;
-
+using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 namespace ConduitLLM.Http.Middleware
 {
     /// <summary>

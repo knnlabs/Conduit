@@ -16,6 +16,7 @@ using ConduitLLM.Configuration.DTOs.Monitoring;
 
 using Microsoft.EntityFrameworkCore;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Admin.Services;
 
 /// <summary>

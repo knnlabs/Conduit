@@ -9,6 +9,7 @@ using ConduitLLM.Core.Models.Audio;
 
 using Microsoft.Extensions.Logging;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Core.Services
 {
     /// <summary>
@@ -19,7 +20,7 @@ namespace ConduitLLM.Core.Services
     {
         private readonly ILogger<AudioCapabilityDetector> _logger;
         private readonly IModelCapabilityService _capabilityService;
-        private readonly ConduitLLM.Configuration.IProviderService _providerService;
+        private readonly IProviderService _providerService;
 
         /// <summary>
         /// Initializes a new instance of the AudioCapabilityDetector class.
@@ -30,7 +31,7 @@ namespace ConduitLLM.Core.Services
         public AudioCapabilityDetector(
             ILogger<AudioCapabilityDetector> logger,
             IModelCapabilityService capabilityService,
-            ConduitLLM.Configuration.IProviderService providerService)
+            IProviderService providerService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _capabilityService = capabilityService ?? throw new ArgumentNullException(nameof(capabilityService));

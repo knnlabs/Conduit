@@ -11,6 +11,7 @@ using ConduitLLM.Core.Models.Routing;
 
 using Microsoft.Extensions.Logging;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Admin.Services;
 
 /// <summary>
@@ -18,7 +19,7 @@ namespace ConduitLLM.Admin.Services;
 /// </summary>
 public class AdminRouterService : IAdminRouterService
 {
-    private readonly ConduitLLM.Configuration.Repositories.IRouterConfigRepository _routerConfigRepository;
+    private readonly IRouterConfigRepository _routerConfigRepository;
     private readonly IModelDeploymentRepository _modelDeploymentRepository;
     private readonly IFallbackConfigurationRepository _fallbackConfigRepository;
     private readonly ILogger<AdminRouterService> _logger;
@@ -31,7 +32,7 @@ public class AdminRouterService : IAdminRouterService
     /// <param name="fallbackConfigRepository">The fallback configuration repository</param>
     /// <param name="logger">The logger</param>
     public AdminRouterService(
-        ConduitLLM.Configuration.Repositories.IRouterConfigRepository routerConfigRepository,
+        IRouterConfigRepository routerConfigRepository,
         IModelDeploymentRepository modelDeploymentRepository,
         IFallbackConfigurationRepository fallbackConfigRepository,
         ILogger<AdminRouterService> logger)

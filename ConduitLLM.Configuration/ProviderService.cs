@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Configuration
 {
     /// <summary>

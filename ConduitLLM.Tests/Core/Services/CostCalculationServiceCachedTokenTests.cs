@@ -1,13 +1,13 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using FluentAssertions;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Tests.Core.Services
 {
@@ -33,9 +33,9 @@ namespace ConduitLLM.Tests.Core.Services
                 CachedInputTokens = 600  // 600 of the 1000 prompt tokens are cached
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,         // $10 per million regular input tokens
                 OutputCostPerMillionTokens = 30.00m,        // $30 per million output tokens
                 CachedInputCostPerMillionTokens = 1.00m   // $1 per million cached tokens (90% discount)
@@ -68,9 +68,9 @@ namespace ConduitLLM.Tests.Core.Services
                 CachedWriteTokens = 300  // 300 tokens written to cache
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,          // $10 per million regular input tokens
                 OutputCostPerMillionTokens = 30.00m,         // $30 per million output tokens
                 CachedInputWriteCostPerMillionTokens = 25.00m    // $25 per million cache write tokens
@@ -104,9 +104,9 @@ namespace ConduitLLM.Tests.Core.Services
                 CachedWriteTokens = 200    // 200 cache write tokens
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,          // $10 per million regular input tokens
                 OutputCostPerMillionTokens = 30.00m,         // $30 per million output tokens
                 CachedInputCostPerMillionTokens = 1.00m,   // $1 per million cached read tokens
@@ -142,9 +142,9 @@ namespace ConduitLLM.Tests.Core.Services
                 CachedWriteTokens = 200
             };
 
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 30.00m
                 // No cached token pricing defined
@@ -168,9 +168,9 @@ namespace ConduitLLM.Tests.Core.Services
         public async Task CalculateCost_WithCachedTokens_AppliesCorrectRates()
         {
             // Arrange
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = "claude-opus-4",
+                CostName = "claude-opus-4",
                 InputCostPerMillionTokens = 15.00m,           // $15 per million tokens
                 CachedInputCostPerMillionTokens = 1.50m,    // $1.50 per million tokens
                 CachedInputWriteCostPerMillionTokens = 18.75m    // $18.75 per million tokens
@@ -208,9 +208,9 @@ namespace ConduitLLM.Tests.Core.Services
         public async Task CalculateCost_WithCachedTokensExceedingTotal_ThrowsValidationError()
         {
             // Test that cached tokens cannot exceed total prompt tokens
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = "claude-opus-4",
+                CostName = "claude-opus-4",
                 InputCostPerMillionTokens = 15.00m,
                 CachedInputCostPerMillionTokens = 1.50m,
                 CachedInputWriteCostPerMillionTokens = 18.75m
@@ -243,9 +243,9 @@ namespace ConduitLLM.Tests.Core.Services
         public async Task CalculateCost_WithCachedTokensButNoPricing_FallsBackToRegular()
         {
             // Test graceful fallback when cached pricing not configured
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = "gpt-4",
+                CostName = "gpt-4",
                 InputCostPerMillionTokens = 30.00m,   // $30 per million tokens
                 OutputCostPerMillionTokens = 60.00m   // $60 per million tokens
                 // No cached pricing configured

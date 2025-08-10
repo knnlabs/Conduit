@@ -85,7 +85,7 @@ namespace ConduitLLM.Tests.Configuration.Repositories
         public async Task GetPagedAsync_WithDateRange_ShouldReturnFilteredResults()
         {
             // Arrange
-            await SeedTestDataAsync(10);
+            await SeedTestDataAsync(10, maxDaysAgo: 10); // Spread data across 10 days to ensure some fall in the date range
             var startDate = DateTime.UtcNow.AddDays(-7);
             var endDate = DateTime.UtcNow.AddDays(-3);
             

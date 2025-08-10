@@ -50,7 +50,7 @@ namespace ConduitLLM.Tests.Configuration.Repositories
         public async Task GetOperationBreakdownAsync_ShouldReturnCorrectCounts()
         {
             // Arrange
-            await SeedTestDataAsync(30);
+            await SeedTestDataAsync(30, maxDaysAgo: 6); // Keep all data within 6 days for 7-day window query
             var startDate = DateTime.UtcNow.AddDays(-7);
             var endDate = DateTime.UtcNow;
 
@@ -69,7 +69,7 @@ namespace ConduitLLM.Tests.Configuration.Repositories
         public async Task GetProviderBreakdownAsync_ShouldReturnCorrectCounts()
         {
             // Arrange
-            await SeedTestDataAsync(30);
+            await SeedTestDataAsync(30, maxDaysAgo: 6); // Keep all data within 6 days for 7-day window query
             var startDate = DateTime.UtcNow.AddDays(-7);
             var endDate = DateTime.UtcNow;
 

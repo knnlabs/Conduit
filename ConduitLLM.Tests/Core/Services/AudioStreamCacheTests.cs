@@ -16,6 +16,7 @@ using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
+using ConduitLLM.Configuration.Interfaces;
 
 namespace ConduitLLM.Tests.Core.Services
 {

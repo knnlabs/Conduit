@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 using FluentAssertions;
 using Moq;
 using Xunit;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Tests.Core.Services
 {
@@ -18,9 +18,9 @@ namespace ConduitLLM.Tests.Core.Services
         {
             // Arrange
             var modelId = "openai/gpt-4";
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 30.00m,
                 OutputCostPerMillionTokens = 60.00m
             };
@@ -52,9 +52,9 @@ namespace ConduitLLM.Tests.Core.Services
         {
             // Arrange
             var modelId = "openai/gpt-4";
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 30.00m,
                 OutputCostPerMillionTokens = 60.00m
             };
@@ -83,9 +83,9 @@ namespace ConduitLLM.Tests.Core.Services
         {
             // Arrange
             var modelId = "openai/dall-e-3";
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 ImageCostPerImage = 0.04m
             };
             
@@ -115,9 +115,9 @@ namespace ConduitLLM.Tests.Core.Services
         {
             // Arrange
             var modelId = "openai/gpt-4";
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 30.00m,
                 OutputCostPerMillionTokens = 60.00m,
                 ImageCostPerImage = 0.04m
@@ -156,9 +156,9 @@ namespace ConduitLLM.Tests.Core.Services
         {
             // Arrange
             var modelId = "openai/gpt-4";
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = 30.00m,
                 OutputCostPerMillionTokens = 60.00m
             };
@@ -194,9 +194,9 @@ namespace ConduitLLM.Tests.Core.Services
         {
             // Arrange
             var modelId = "test/model";
-            var modelCost = new ModelCostInfo
+            var modelCost = new ModelCost
             {
-                ModelIdPattern = modelId,
+                CostName = modelId,
                 InputCostPerMillionTokens = inputCost,
                 OutputCostPerMillionTokens = outputCost
             };
