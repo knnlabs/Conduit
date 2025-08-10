@@ -1,4 +1,4 @@
-namespace ConduitLLM.Configuration.DTOs.VirtualKey; // Updated namespace
+namespace ConduitLLM.Configuration.DTOs.VirtualKey;
 
 /// <summary>
 /// DTO representing the response after successfully creating a virtual key.

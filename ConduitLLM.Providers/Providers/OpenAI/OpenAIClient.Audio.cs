@@ -14,7 +14,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Providers.Helpers;
-using ConduitLLM.Providers.OpenAI.Models;
+using ConduitLLM.Providers.OpenAI;
 
 using Microsoft.Extensions.Logging;
 

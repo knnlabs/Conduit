@@ -4,7 +4,7 @@ using System.Linq;
 
 using Microsoft.Extensions.Logging;
 using CoreModels = ConduitLLM.Core.Models;
-using OpenAIModels = ConduitLLM.Providers.OpenAI.Models;
+using OpenAIModels = ConduitLLM.Providers.OpenAI;
 using ProviderHelpers = ConduitLLM.Providers.Helpers;
 using ConduitLLM.Providers.Utilities;
 

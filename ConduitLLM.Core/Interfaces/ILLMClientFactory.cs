@@ -1,6 +1,6 @@
 using ConduitLLM.Core.Exceptions; // Need this for exception documentation
 
-namespace ConduitLLM.Core.Interfaces; // Restored original namespace
+namespace ConduitLLM.Core.Interfaces;
 
 /// <summary>
 /// Defines the contract for a factory that creates instances of ILLMClient based on configuration.

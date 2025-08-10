@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace ConduitLLM.Providers.Replicate.Models
+namespace ConduitLLM.Providers.Replicate
 {
     /// <summary>
     /// Request model for creating a prediction via Replicate API.

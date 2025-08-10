@@ -8,7 +8,7 @@ using ConduitLLM.Configuration.Exceptions;
 using Microsoft.Extensions.Logging;
 using CoreModels = ConduitLLM.Core.Models;
 using CoreUtils = ConduitLLM.Core.Utilities;
-using OpenAIModels = ConduitLLM.Providers.OpenAI.Models;
+using OpenAIModels = ConduitLLM.Providers.OpenAI;
 
 namespace ConduitLLM.Providers.OpenAICompatible
 {

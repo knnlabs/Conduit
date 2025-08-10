@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace ConduitLLM.Configuration.DTOs.VirtualKey; // Updated namespace
+namespace ConduitLLM.Configuration.DTOs.VirtualKey;
 
 /// <summary>
 /// DTO for requesting updates to an existing virtual key.

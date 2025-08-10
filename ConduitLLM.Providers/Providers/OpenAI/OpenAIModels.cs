@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 
 using ConduitLLM.Core.Models;
 
-namespace ConduitLLM.Providers.OpenAI.Models
+namespace ConduitLLM.Providers.OpenAI
 {
     // Internal models mirroring OpenAI's /v1/chat/completions structure
     // See: https://platform.openai.com/docs/api-reference/chat/create

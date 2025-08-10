@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace ConduitLLM.Providers.ElevenLabs.Models
+namespace ConduitLLM.Providers.ElevenLabs
 {
     /// <summary>
     /// Response model for ElevenLabs voices endpoint.

@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.SignalR.Client;
 using System.Diagnostics;
 
-namespace SignalRBackplaneTest;
+namespace ConduitLLM.Tools.SignalRBackplaneTest;
 
 class Program
 {

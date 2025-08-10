@@ -16,7 +16,7 @@ using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers.Common.Models;
-using ConduitLLM.Providers.Replicate.Models;
+using ConduitLLM.Providers.Replicate;
 
 using Microsoft.Extensions.Logging;
 

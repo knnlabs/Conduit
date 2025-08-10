@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ConduitLLM.Http.Interfaces;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -402,23 +403,5 @@ namespace ConduitLLM.Http.Services
         {
             _cleanupTimer?.Dispose();
         }
-    }
-
-    /// <summary>
-    /// Interface to get transport type from SignalR features
-    /// </summary>
-    public interface IHttpTransportFeature
-    {
-        HttpTransportType TransportType { get; }
-    }
-
-    /// <summary>
-    /// HTTP transport types
-    /// </summary>
-    public enum HttpTransportType
-    {
-        WebSockets,
-        ServerSentEvents,
-        LongPolling
     }
 }
