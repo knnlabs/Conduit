@@ -111,7 +111,9 @@ public class CreateVirtualKeyGroupResponse
 {
     public int Id { get; set; }
     public string GroupName { get; set; } = "";
-    public decimal InitialBalance { get; set; }
+    public decimal Balance { get; set; }  // Current balance (not InitialBalance)
+    public decimal LifetimeCreditsAdded { get; set; }
+    public decimal LifetimeSpent { get; set; }
 }
 
 // =====================================================

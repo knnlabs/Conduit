@@ -92,4 +92,11 @@ public interface IAdminVirtualKeyService
     /// <param name="id">The ID of the virtual key</param>
     /// <returns>The virtual key group DTO or null if not found</returns>
     Task<VirtualKeyGroupDto?> GetKeyGroupAsync(int id);
+
+    /// <summary>
+    /// Gets usage information for a virtual key by its key value
+    /// </summary>
+    /// <param name="keyValue">The actual virtual key value (with prefix)</param>
+    /// <returns>Usage information for the virtual key, or null if not found</returns>
+    Task<VirtualKeyUsageDto?> GetUsageByKeyAsync(string keyValue);
 }

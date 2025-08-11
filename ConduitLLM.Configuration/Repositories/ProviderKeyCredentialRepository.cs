@@ -77,11 +77,26 @@ namespace ConduitLLM.Configuration.Repositories
             keyCredential.CreatedAt = DateTime.UtcNow;
             keyCredential.UpdatedAt = DateTime.UtcNow;
 
+            // Check if this should be automatically set as primary
+            if (keyCredential.IsEnabled && !keyCredential.IsPrimary)
+            {
+                var enabledKeysCount = await _context.ProviderKeyCredentials
+                    .CountAsync(k => k.ProviderId == keyCredential.ProviderId && k.IsEnabled);
+
+                // If this will be the only enabled key, set it as primary
+                if (enabledKeysCount == 0)
+                {
+                    keyCredential.IsPrimary = true;
+                    _logger.LogInformation("Automatically setting key as primary since it's the only enabled key for provider {ProviderId}", 
+                        keyCredential.ProviderId);
+                }
+            }
+
             _context.ProviderKeyCredentials.Add(keyCredential);
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Created key credential {KeyId} for provider {ProviderId}", 
-                keyCredential.Id, keyCredential.ProviderId);
+            _logger.LogInformation("Created key credential {KeyId} for provider {ProviderId} (IsPrimary: {IsPrimary})", 
+                keyCredential.Id, keyCredential.ProviderId, keyCredential.IsPrimary);
 
             return keyCredential;
         }
@@ -97,6 +112,9 @@ namespace ConduitLLM.Configuration.Repositories
             if (existingKey == null)
                 return false;
 
+            bool wasEnabled = existingKey.IsEnabled;
+            bool willBeEnabled = keyCredential.IsEnabled;
+
             // Update properties
             existingKey.ProviderAccountGroup = keyCredential.ProviderAccountGroup;
             existingKey.ApiKey = keyCredential.ApiKey;
@@ -105,10 +123,25 @@ namespace ConduitLLM.Configuration.Repositories
             existingKey.IsEnabled = keyCredential.IsEnabled;
             existingKey.UpdatedAt = DateTime.UtcNow;
 
+            // Check if this should be automatically set as primary when being enabled
+            if (!wasEnabled && willBeEnabled && !keyCredential.IsPrimary)
+            {
+                var enabledKeysCount = await _context.ProviderKeyCredentials
+                    .CountAsync(k => k.ProviderId == existingKey.ProviderId && k.IsEnabled && k.Id != existingKey.Id);
+
+                // If this will be the only enabled key, set it as primary
+                if (enabledKeysCount == 0)
+                {
+                    existingKey.IsPrimary = true;
+                    _logger.LogInformation("Automatically setting key {KeyId} as primary since it's the only enabled key for provider {ProviderId}", 
+                        existingKey.Id, existingKey.ProviderId);
+                }
+            }
+
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Updated key credential {KeyId} for provider {ProviderId}", 
-                keyCredential.Id, keyCredential.ProviderId);
+            _logger.LogInformation("Updated key credential {KeyId} for provider {ProviderId} (IsPrimary: {IsPrimary})", 
+                keyCredential.Id, keyCredential.ProviderId, existingKey.IsPrimary);
 
             return true;
         }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -833,6 +834,69 @@ namespace ConduitLLM.Admin.Services
                 CreatedAt = group.CreatedAt,
                 UpdatedAt = group.UpdatedAt,
                 VirtualKeyCount = group.VirtualKeys?.Count ?? 0
+            };
+        }
+
+        /// <inheritdoc />
+        public async Task<VirtualKeyUsageDto?> GetUsageByKeyAsync(string keyValue)
+        {
+            if (string.IsNullOrEmpty(keyValue))
+            {
+                _logger.LogWarning("GetUsageByKeyAsync called with empty key value");
+                return null;
+            }
+
+            if (!keyValue.StartsWith(VirtualKeyConstants.KeyPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("GetUsageByKeyAsync called with invalid key format (missing prefix)");
+                return null;
+            }
+
+            // Hash the key for lookup
+            var keyHash = ComputeSha256Hash(keyValue);
+            
+            // Get the virtual key by hash
+            var virtualKey = await _virtualKeyRepository.GetByKeyHashAsync(keyHash);
+            if (virtualKey == null)
+            {
+                _logger.LogInformation("Virtual key not found for hash lookup");
+                return null;
+            }
+
+            // Get the group information
+            var group = await _groupRepository.GetByKeyIdAsync(virtualKey.Id);
+            if (group == null)
+            {
+                _logger.LogWarning("Virtual key group not found for key {KeyId}", virtualKey.Id);
+                return null;
+            }
+
+            // Get spending history for this specific key
+            var spendHistory = await _spendHistoryRepository.GetByVirtualKeyIdAsync(virtualKey.Id);
+            var totalRequests = spendHistory.Count;
+            // Note: VirtualKeySpendHistory doesn't track individual tokens, only amounts
+            // We'll need to estimate based on spending or leave it as 0
+            var totalTokens = 0L; // Token tracking would require different data structure
+            var lastUsedAt = spendHistory.OrderByDescending(s => s.Timestamp).FirstOrDefault()?.Timestamp;
+
+            return new VirtualKeyUsageDto
+            {
+                KeyId = virtualKey.Id,
+                KeyName = virtualKey.KeyName,
+                GroupId = group.Id,
+                GroupName = group.GroupName,
+                Balance = group.Balance,
+                LifetimeCreditsAdded = group.LifetimeCreditsAdded,
+                LifetimeSpent = group.LifetimeSpent,
+                TotalRequests = totalRequests,
+                TotalTokens = totalTokens,
+                IsEnabled = virtualKey.IsEnabled,
+                ExpiresAt = virtualKey.ExpiresAt,
+                CreatedAt = virtualKey.CreatedAt,
+                LastUsedAt = lastUsedAt,
+                RateLimitRpm = virtualKey.RateLimitRpm,
+                RateLimitRpd = virtualKey.RateLimitRpd,
+                AllowedModels = virtualKey.AllowedModels
             };
         }
     }

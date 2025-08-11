@@ -341,4 +341,46 @@ public class VirtualKeysController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
+
+    /// <summary>
+    /// Get usage information for a virtual key by its key value
+    /// </summary>
+    /// <param name="key">The virtual key value (with prefix)</param>
+    /// <returns>Usage information including balance, spending, and request counts</returns>
+    /// <remarks>
+    /// This endpoint allows administrators to check the usage and balance of a virtual key 
+    /// using the actual key value instead of the database ID. This is useful for support 
+    /// scenarios where users provide their key value.
+    /// </remarks>
+    [HttpGet("usage/by-key/{key}")]
+    [Authorize(Policy = "MasterKeyPolicy")]
+    [ProducesResponseType(typeof(VirtualKeyUsageDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetUsageByKey(string key)
+    {
+        if (string.IsNullOrEmpty(key))
+        {
+            return BadRequest(new { message = "Key value is required" });
+        }
+
+        try
+        {
+            var usage = await _virtualKeyService.GetUsageByKeyAsync(key);
+            if (usage == null)
+            {
+                return NotFound(new { message = "Virtual key not found or invalid key format" });
+            }
+
+            return Ok(usage);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting usage for virtual key");
+            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+        }
+    }
 }

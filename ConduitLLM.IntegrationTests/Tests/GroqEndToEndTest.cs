@@ -154,18 +154,12 @@ public class GroqEndToEndTest : IClassFixture<TestFixture>
             groupResponse.Data.Should().NotBeNull();
             context.VirtualKeyGroupId = groupResponse.Data!.Id;
             
-            // Work around the API bug where InitialBalance returns 0
-            if (groupResponse.Data.InitialBalance == 0)
-            {
-                _logger.LogWarning("API BUG: InitialBalance returned 0 instead of {Expected}. Using configured value.", 
-                    _config.Defaults.VirtualKeyCredit);
-                context.InitialCredit = _config.Defaults.VirtualKeyCredit;
-            }
-            else
-            {
-                context.InitialCredit = groupResponse.Data.InitialBalance;
-            }
-            context.RemainingCredit = context.InitialCredit;
+            // Verify the balance was set correctly
+            groupResponse.Data.Balance.Should().Be(_config.Defaults.VirtualKeyCredit, 
+                "Group balance should match the requested initial balance");
+            
+            context.InitialCredit = groupResponse.Data.Balance;
+            context.RemainingCredit = groupResponse.Data.Balance;
             _logger.LogInformation("✓ Virtual key group created with ID: {Id}", context.VirtualKeyGroupId);
             
             // ========================================
