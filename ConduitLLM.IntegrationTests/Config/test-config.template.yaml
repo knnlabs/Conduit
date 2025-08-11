@@ -1,0 +1,36 @@
+# Integration Test Configuration Template
+# Copy this file to test-config.yaml and fill in your actual values
+# test-config.yaml is gitignored to protect secrets
+
+environment:
+  coreApiUrl: "http://localhost:5000"
+  adminApiUrl: "http://localhost:5002"
+  adminApiKey: "test-admin-key-123"  # From docker-compose.dev.yml CONDUIT_API_TO_API_BACKEND_AUTH_KEY
+  
+  # S3/Media settings (from your .env)
+  s3:
+    endpoint: "http://localhost:9000"
+    accessKey: "minioadmin"
+    secretKey: "minioadmin"
+    bucketName: "conduit-media"
+    region: "us-east-1"
+  
+  timeouts:
+    default: 10
+    chat: 60
+    imageGen: 120
+    videoGen: 300
+
+# Test defaults
+defaults:
+  virtualKeyCredit: 100.00  # $100 per test run
+  testPrefix: "TEST_"       # Prefix for all created entities
+
+# Active providers for testing (add provider config files to Config/providers/)
+activeProviders:
+  - groq
+  # Add more providers as testing expands:
+  # - openai
+  # - anthropic
+  # - cerebras
+  # - sambanova

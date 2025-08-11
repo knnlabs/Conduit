@@ -1,0 +1,33 @@
+# Groq Provider Configuration Template
+# Copy this file to groq.yaml and fill in your actual API key
+# groq.yaml is gitignored to protect secrets
+
+provider:
+  type: "Groq"
+  name: "TEST_Groq_Provider"
+  apiKey: "gsk_YOUR_GROQ_API_KEY_HERE"  # Replace with your actual Groq API key
+  baseUrl: "https://api.groq.com/openai/v1"
+
+models:
+  - alias: "TEST_gemma2-9b"
+    actual: "gemma2-9b-it"
+    capabilities:
+      chat: true
+      multimodal: false
+      streaming: true
+    cost:
+      inputPerMillion: 0.20   # $0.20 per million input tokens
+      outputPerMillion: 0.20  # $0.20 per million output tokens
+
+testCases:
+  basicChat:
+    prompt: "What is the history of France?"
+    validation:
+      minInputTokens: 8      # "What is the history of France?" ~8 tokens
+      minOutputTokens: 100   # Expect substantial response
+      requiredPatterns:
+        - "(?i)revolution"   # Case-insensitive: Revolution
+        - "(?i)napoleon"     # Napoleon
+        - "(?i)paris"        # Paris
+        - "\\d{4}"           # Any 4-digit year
+        - "(?i)french"       # French
