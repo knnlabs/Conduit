@@ -23,10 +23,10 @@ import {
 } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { formatters } from '@/lib/utils/formatters';
+import { withAdminClient } from '@/lib/client/adminClient';
 import type { 
   VirtualKeyGroupDto, 
   VirtualKeyGroupTransactionDto,
-  PagedResult,
   TransactionType,
   ReferenceType 
 } from '@knn_labs/conduit-admin-client';
@@ -52,7 +52,7 @@ export function TransactionHistoryModal({ opened, onClose, group }: TransactionH
       void fetchTransactions(1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opened, group]);
+  }, [opened, group?.id]);
 
   const fetchTransactions = async (pageNumber: number) => {
     if (!group) return;
@@ -61,15 +61,16 @@ export function TransactionHistoryModal({ opened, onClose, group }: TransactionH
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch(
-        `/api/virtualkeys/groups/${group.id}/transactions?page=${pageNumber}&pageSize=${ITEMS_PER_PAGE}`
+      const data = await withAdminClient(client =>
+        client.virtualKeyGroups.getTransactionHistory(
+          group.id,
+          {
+            page: pageNumber,
+            pageSize: ITEMS_PER_PAGE
+          }
+        )
       );
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch transaction history');
-      }
-
-      const data = await response.json() as PagedResult<VirtualKeyGroupTransactionDto>;
       setTransactions(data.items);
       setTotalPages(data.totalPages);
       setTotalCount(data.totalCount);

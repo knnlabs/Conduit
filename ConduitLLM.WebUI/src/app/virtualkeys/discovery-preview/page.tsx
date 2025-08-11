@@ -130,21 +130,14 @@ export default function VirtualKeyDiscoveryPreviewPage() {
       setIsLoadingDiscovery(true);
       setError(null);
       
-      const params = new URLSearchParams();
-      if (selectedCapability) {
-        params.append('capability', selectedCapability);
-      }
+      const data = await withAdminClient(client =>
+        client.virtualKeys.previewDiscovery(
+          selectedKeyId,
+          selectedCapability || undefined
+        )
+      );
       
-      const url = `/api/virtualkeys/${selectedKeyId}/discovery-preview${params.toString() ? `?${params.toString()}` : ''}`;
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to fetch discovery preview: ${errorText}`);
-      }
-      
-      const data = await response.json() as DiscoveryPreviewResponse;
-      setDiscoveryData(data);
+      setDiscoveryData(data as DiscoveryPreviewResponse);
     } catch (err) {
       console.error('Error fetching discovery preview:', err);
       setError(err as Error);

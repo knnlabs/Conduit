@@ -16,7 +16,7 @@ import { useForm } from '@mantine/form';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { validators } from '@/lib/utils/form-validators';
 import { notifications } from '@mantine/notifications';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
 import { withAdminClient } from '@/lib/client/adminClient';
@@ -45,6 +45,7 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
     isEnabled: true,
     allowedModels: [],
   }));
+  const lastVirtualKeyId = useRef<number | undefined>(undefined);
 
   const form = useForm<EditVirtualKeyForm>({
     initialValues: initialFormValues,
@@ -65,32 +66,38 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
     },
   });
 
-  // Stable callback for form updates
-  const updateForm = useCallback((newFormValues: EditVirtualKeyForm) => {
-    setInitialFormValues(newFormValues);
-    form.setValues(newFormValues);
-    form.resetDirty();
-  }, [form]);
+  // Reset tracking when modal closes
+  useEffect(() => {
+    if (!opened) {
+      lastVirtualKeyId.current = undefined;
+    }
+  }, [opened]);
 
   // Update form when virtualKey changes
   useEffect(() => {
-    if (virtualKey) {
-      // Parse allowedModels from string to array (it's stored as comma-separated in the DTO)
-      const models = virtualKey.allowedModels 
-        ? virtualKey.allowedModels.split(',').map(m => m.trim()).filter(m => m)
-        : ['*']; // Default to all models if none specified
-      
-      const newFormValues: EditVirtualKeyForm = {
-        keyName: virtualKey.keyName,
-        description: virtualKey.metadata ? JSON.stringify(virtualKey.metadata) : '',
-        virtualKeyGroupId: virtualKey.virtualKeyGroupId ?? undefined,
-        isEnabled: virtualKey.isEnabled,
-        allowedModels: models,
-      };
-      
-      updateForm(newFormValues);
-    }
-  }, [virtualKey, updateForm]);
+    if (!virtualKey) return;
+    
+    // Only update if this is a different virtualKey than last time
+    if (lastVirtualKeyId.current === virtualKey.id) return;
+    lastVirtualKeyId.current = virtualKey.id;
+    
+    // Parse allowedModels from string to array (it's stored as comma-separated in the DTO)
+    const models = virtualKey.allowedModels 
+      ? virtualKey.allowedModels.split(',').map(m => m.trim()).filter(m => m)
+      : ['*']; // Default to all models if none specified
+    
+    const newFormValues: EditVirtualKeyForm = {
+      keyName: virtualKey.keyName,
+      description: virtualKey.metadata ? JSON.stringify(virtualKey.metadata) : '',
+      virtualKeyGroupId: virtualKey.virtualKeyGroupId ?? undefined,
+      isEnabled: virtualKey.isEnabled,
+      allowedModels: models,
+    };
+    
+    setInitialFormValues(newFormValues);
+    form.setValues(newFormValues);
+    form.resetDirty();
+  }, [virtualKey, form]);
 
   const handleSubmit = async (values: EditVirtualKeyForm) => {
     if (!virtualKey) return;
