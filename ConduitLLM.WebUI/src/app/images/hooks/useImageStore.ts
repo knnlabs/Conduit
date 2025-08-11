@@ -11,7 +11,6 @@ import {
   handleApiError
 } from '@knn_labs/conduit-core-client';
 import { notifications } from '@mantine/notifications';
-import { ephemeralKeyClient } from '@/lib/client/ephemeralKeyClient';
 
 type ImageStore = ImageGenerationState & ImageGenerationActions;
 
@@ -58,25 +57,22 @@ export const useImageStore = create<ImageStore>((set, get) => ({
     const handleError = createToastErrorHandler(notifications.show);
 
     try {
-      // Use direct API with ephemeral keys
-      const response = await ephemeralKeyClient.makeDirectRequest(
-        '/v1/images/generate',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            prompt,
-            model: settings.model,
-            size: settings.size,
-            quality: settings.quality,
-            style: settings.style,
-            n: settings.n,
-            response_format: settings.responseFormat,
-          }),
-        }
-      );
+      // Use the SDK through our API route (similar to video generation pattern)
+      const response = await fetch('/api/images/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt,
+          model: settings.model,
+          size: settings.size,
+          quality: settings.quality,
+          style: settings.style,
+          n: settings.n,
+          response_format: settings.responseFormat,
+        }),
+      });
 
       if (!response.ok) {
         let errorData: ErrorResponse | { error: string };
@@ -94,11 +90,11 @@ export const useImageStore = create<ImageStore>((set, get) => ({
             headers: Object.fromEntries(response.headers.entries())
           },
           message: response.statusText,
-          request: { url: '/v1/images/generate', method: 'POST' }
+          request: { url: '/api/images/generate', method: 'POST' }
         };
         
         // This will automatically throw the appropriate ConduitError subclass
-        handleApiError(httpError, '/v1/images/generate', 'POST');
+        handleApiError(httpError, '/api/images/generate', 'POST');
       }
 
       const result = await response.json() as ImageGenerationResponse;

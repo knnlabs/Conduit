@@ -42,7 +42,6 @@ import { useChatStore } from '../hooks/useChatStore';
 import { useModels } from '../hooks/useModels';
 import { notifications } from '@mantine/notifications';
 import Link from 'next/link';
-import { ephemeralKeyClient } from '@/lib/client/ephemeralKeyClient';
 
 export function ChatInterface() {
   const { data: modelData, isLoading: modelsLoading } = useModels();
@@ -180,15 +179,18 @@ export function ChatInterface() {
         console.warn('Request timed out after 5 minutes');
       }, 300000);
       
-      // Always use direct API with ephemeral keys
-      const response = await ephemeralKeyClient.createStreamingRequest(
-        '/v1/chat/completions',
-        requestBody,
-        controller.signal
-      );
+      // Use the SDK through our API route (consistent with images/videos)
+      const response = await fetch('/api/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+      });
       
       if (process.env.NODE_ENV === 'development') {
-        console.warn('Using direct streaming to Core API');
+        console.warn('Using SDK-backed chat completions API');
       }
       
       // Clear the timeout once we get a response
