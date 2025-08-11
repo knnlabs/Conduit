@@ -9,7 +9,6 @@ import {
   IconShield as IconHealth,
   IconRoute,
   IconActivity,
-  IconFileText,
   IconCreditCard,
   IconNetwork,
   IconFilter,

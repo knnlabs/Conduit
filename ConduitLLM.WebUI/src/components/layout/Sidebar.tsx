@@ -14,7 +14,6 @@ import {
   IconPhoto,
   IconVideo,
   IconMessage,
-  IconFileText,
   IconCoin,
   IconInfoCircle,
   IconEye,

@@ -15,6 +15,7 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconAlertCircle, IconCheck, IconX } from '@tabler/icons-react';
+import { withAdminClient } from '@/lib/client/adminClient';
 
 interface IpTestModalProps {
   opened: boolean;
@@ -68,19 +69,46 @@ export function IpTestModal({ opened, onClose }: IpTestModalProps) {
     setTestResult(null);
     
     try {
-      const response = await fetch(`/api/admin/security/ip-rules/test?ip=${values.ipAddress}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to test IP address');
+      const result = await withAdminClient(client =>
+        client.ipFilters.checkIp(values.ipAddress)
+      );
+
+      // Convert IpCheckResult to TestResult format
+      const testResult: TestResult = {
+        allowed: result.isAllowed,
+        reason: result.deniedReason ?? (result.isAllowed ? 'IP address is allowed' : 'IP address is blocked'),
+      };
+
+      // If there's a matched filter, add rule details
+      if (result.matchedFilter && result.matchedFilterId) {
+        try {
+          const filter = await withAdminClient(client =>
+            client.ipFilters.getById(result.matchedFilterId as number)
+          );
+          
+          testResult.matchedRule = {
+            id: filter.id.toString(),
+            ipAddress: filter.ipAddressOrCidr,
+            action: filter.filterType === 'whitelist' ? 'allow' : 'block',
+            description: filter.description,
+          };
+        } catch {
+          // If we can't get the filter details, just use the basic info
+          testResult.matchedRule = {
+            id: result.matchedFilterId.toString(),
+            ipAddress: result.matchedFilter,
+            action: result.filterType === 'whitelist' ? 'allow' : 'block',
+          };
+        }
       }
-      
-      const result = await response.json() as TestResult;
-      setTestResult(result);
-    } catch {
-      // For now, simulate a test result since the endpoint might not exist
+
+      setTestResult(testResult);
+    } catch (error) {
+      // If the check fails, show an error message
+      const message = error instanceof Error ? error.message : 'Failed to test IP address';
       setTestResult({
-        allowed: true,
-        reason: 'No matching rules found (default allow)',
+        allowed: false,
+        reason: `Error: ${message}`,
       });
     } finally {
       setIsLoading(false);
