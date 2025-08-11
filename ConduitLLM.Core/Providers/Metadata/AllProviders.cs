@@ -176,4 +176,42 @@ namespace ConduitLLM.Core.Providers.Metadata
         }
     }
 
+    /// <summary>
+    /// Provider metadata for DeepInfra.
+    /// </summary>
+    public class DeepInfraProviderMetadata : BaseProviderMetadata
+    {
+        public override ProviderType ProviderType => ProviderType.DeepInfra;
+        public override string DisplayName => "DeepInfra";
+        public override string DefaultBaseUrl => "https://api.deepinfra.com/v1/openai";
+
+        public DeepInfraProviderMetadata()
+        {
+            // DeepInfra supports full OpenAI-compatible features
+            Capabilities.Features.Streaming = true;
+            Capabilities.Features.ImageGeneration = true;
+            Capabilities.Features.Embeddings = true;
+            Capabilities.Features.VisionInput = true; // Multimodal support
+            
+            // Chat parameters support
+            Capabilities.ChatParameters.Tools = true;
+            Capabilities.ChatParameters.ResponseFormat = true;
+            Capabilities.ChatParameters.Seed = true;
+            
+            ConfigurationHints.DocumentationUrl = "https://deepinfra.com/docs/openai_api";
+            ConfigurationHints.Tips.Add(new ConfigurationTip
+            {
+                Title = "Advanced Reasoning Models",
+                Description = "DeepInfra offers cutting-edge reasoning and coding models with extensive context windows",
+                Severity = TipSeverity.Info
+            });
+            ConfigurationHints.Tips.Add(new ConfigurationTip
+            {
+                Title = "Model Versioning",
+                Description = "You can specify model versions using MODEL_NAME:VERSION format",
+                Severity = TipSeverity.Info
+            });
+        }
+    }
+
 }

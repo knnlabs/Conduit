@@ -20,6 +20,7 @@ using ConduitLLM.Providers.Ultravox;
 using ConduitLLM.Providers.ElevenLabs;
 using ConduitLLM.Providers.Cerebras;
 using ConduitLLM.Providers.SambaNova;
+using ConduitLLM.Providers.DeepInfra;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers
@@ -308,6 +309,12 @@ namespace ConduitLLM.Providers
                 case ProviderType.SambaNova:
                     var sambaNovaLogger = _loggerFactory.CreateLogger<SambaNovaClient>();
                     client = new SambaNovaClient(provider, keyCredential, modelId, sambaNovaLogger, 
+                        _httpClientFactory, defaultModels);
+                    break;
+
+                case ProviderType.DeepInfra:
+                    var deepInfraLogger = _loggerFactory.CreateLogger<DeepInfraClient>();
+                    client = new DeepInfraClient(provider, keyCredential, modelId, deepInfraLogger, 
                         _httpClientFactory, defaultModels);
                     break;
 

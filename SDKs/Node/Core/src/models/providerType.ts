@@ -31,5 +31,8 @@ export enum ProviderType {
   Cerebras = 9,
   
   /** SambaNova Cloud (ultra-fast inference provider) */
-  SambaNova = 10
+  SambaNova = 10,
+  
+  /** DeepInfra (OpenAI-compatible LLM inference platform) */
+  DeepInfra = 11
 }

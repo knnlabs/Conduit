@@ -18,6 +18,7 @@ export const PROVIDER_DISPLAY_NAMES: Record<ProviderType, string> = {
   [ProviderType.ElevenLabs]: 'ElevenLabs',
   [ProviderType.Cerebras]: 'Cerebras',
   [ProviderType.SambaNova]: 'SambaNova Cloud',
+  [ProviderType.DeepInfra]: 'DeepInfra',
 };
 
 /** Provider categories for grouping in UI */
@@ -42,6 +43,7 @@ export const PROVIDER_CATEGORIES: Record<ProviderType, ProviderCategory[]> = {
   [ProviderType.ElevenLabs]: [ProviderCategory.Audio],
   [ProviderType.Cerebras]: [ProviderCategory.Chat],
   [ProviderType.SambaNova]: [ProviderCategory.Chat],
+  [ProviderType.DeepInfra]: [ProviderCategory.Chat, ProviderCategory.Image, ProviderCategory.Embedding],
 };
 
 /** Provider-specific configuration requirements */
@@ -142,6 +144,15 @@ export const PROVIDER_CONFIG_REQUIREMENTS: Record<ProviderType, ProviderConfigRe
     helpUrl: 'https://cloud.sambanova.ai/plans/pricing',
     helpText: 'Get your API key from cloud.sambanova.ai - ultra-fast inference with 250+ tokens/second',
     supportedModelTypes: [ModelType.Chat]
+  },
+  [ProviderType.DeepInfra]: {
+    requiresApiKey: true,
+    requiresEndpoint: false,
+    requiresOrganizationId: false,
+    supportsCustomEndpoint: true,
+    helpUrl: 'https://deepinfra.com/docs/openai_api',
+    helpText: 'Get your API key from deepinfra.com - OpenAI-compatible API with advanced reasoning models',
+    supportedModelTypes: [ModelType.Chat, ModelType.Image, ModelType.Embedding]
   },
 };
 

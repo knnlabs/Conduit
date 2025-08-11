@@ -56,6 +56,11 @@ namespace ConduitLLM.Configuration
         /// <summary>
         /// SambaNova Cloud (ultra-fast inference provider)
         /// </summary>
-        SambaNova = 10
+        SambaNova = 10,
+
+        /// <summary>
+        /// DeepInfra (OpenAI-compatible LLM inference platform)
+        /// </summary>
+        DeepInfra = 11
     }
 }
