@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using ConduitLLM.Configuration.DTOs;
 using Xunit.Abstractions;
 using ConduitLLM.Configuration.Interfaces;
 

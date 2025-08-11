@@ -8,6 +8,7 @@ using ConduitLLM.Core.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Xunit;
+using ConduitLLM.Configuration.DTOs;
 
 namespace ConduitLLM.Tests.Http.Controllers
 {
@@ -160,9 +161,10 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            dynamic error = notFoundResult.Value;
-            Assert.Equal("File not found", error.error.message.ToString());
-            Assert.Equal("not_found", error.error.type.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            var errorDetails = Assert.IsType<ErrorDetailsDto>(errorResponse.error);
+            Assert.Equal("File not found", errorDetails.Message);
+            Assert.Equal("not_found", errorDetails.Type);
         }
 
         [Fact]
@@ -186,9 +188,10 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            dynamic error = notFoundResult.Value;
-            Assert.Equal("File not found", error.error.message.ToString());
-            Assert.Equal("not_found", error.error.type.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            var errorDetails = Assert.IsType<ErrorDetailsDto>(errorResponse.error);
+            Assert.Equal("File not found", errorDetails.Message);
+            Assert.Equal("not_found", errorDetails.Type);
         }
 
         [Fact]
@@ -208,9 +211,10 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            dynamic error = notFoundResult.Value;
-            Assert.Equal("File not found", error.error.message.ToString());
-            Assert.Equal("not_found", error.error.type.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            var errorDetails = Assert.IsType<ErrorDetailsDto>(errorResponse.error);
+            Assert.Equal("File not found", errorDetails.Message);
+            Assert.Equal("not_found", errorDetails.Type);
         }
 
         #endregion

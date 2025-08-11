@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Xunit;
+using ConduitLLM.Configuration.DTOs;
 
 namespace ConduitLLM.Tests.Http.Controllers
 {
@@ -117,8 +118,8 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            dynamic error = badRequestResult.Value;
-            Assert.Equal("No audio file provided", error.error.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(badRequestResult.Value);
+            Assert.Equal("No audio file provided", errorResponse.error.ToString());
         }
 
         [Fact]
@@ -132,8 +133,8 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            dynamic error = badRequestResult.Value;
-            Assert.Equal("No audio file provided", error.error.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(badRequestResult.Value);
+            Assert.Equal("No audio file provided", errorResponse.error.ToString());
         }
 
         [Fact]
@@ -236,8 +237,8 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            dynamic error = badRequestResult.Value;
-            Assert.Equal(errorMessage, error.error.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(badRequestResult.Value);
+            Assert.Equal(errorMessage, errorResponse.error.ToString());
         }
 
         [Fact]
@@ -258,8 +259,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Assert
             var statusCodeResult = Assert.IsType<ObjectResult>(result);
             Assert.Equal(500, statusCodeResult.StatusCode);
-            dynamic error = statusCodeResult.Value;
-            Assert.Equal("An error occurred processing the audio", error.error.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(statusCodeResult.Value);
+            Assert.Equal("An error occurred processing the audio", errorResponse.error.ToString());
         }
 
         [Theory]

@@ -11,6 +11,7 @@ using ConduitLLM.Core.Interfaces;
 using MassTransit;
 
 using Microsoft.AspNetCore.Authorization;
+using ConduitLLM.Configuration.DTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -40,7 +41,7 @@ namespace ConduitLLM.Admin.Controllers
                 var provider = await _providerRepository.GetByIdAsync(id);
                 if (provider == null)
                 {
-                    return NotFound(new { error = "Provider not found" });
+                    return NotFound(new ErrorResponseDto("Provider not found"));
                 }
 
                 // Get a client for this provider to test
@@ -183,13 +184,13 @@ namespace ConduitLLM.Admin.Controllers
                 var key = await _keyRepository.GetByIdAsync(keyId);
                 if (key == null || key.ProviderId != providerId)
                 {
-                    return NotFound(new { error = "Key credential not found" });
+                    return NotFound(new ErrorResponseDto("Key credential not found"));
                 }
 
                 var provider = await _providerRepository.GetByIdAsync(providerId);
                 if (provider == null)
                 {
-                    return NotFound(new { error = "Provider not found" });
+                    return NotFound(new ErrorResponseDto("Provider not found"));
                 }
 
                 // Test the connection with this specific key

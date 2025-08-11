@@ -6,6 +6,7 @@ using ConduitLLM.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.DTOs;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Http.Controllers
@@ -50,13 +51,13 @@ namespace ConduitLLM.Http.Controllers
                 var virtualKeyId = GetVirtualKeyId();
                 if (!await ValidateFileOwnership(fileId, virtualKeyId))
                 {
-                    return NotFound(new { error = new { message = "File not found", type = "not_found" } });
+                    return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
                 }
 
                 var result = await _fileRetrievalService.RetrieveFileAsync(fileId);
                 if (result == null)
                 {
-                    return NotFound(new { error = new { message = "File not found", type = "not_found" } });
+                    return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
                 }
 
                 using (result)
@@ -85,7 +86,7 @@ namespace ConduitLLM.Http.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error downloading file {FileId}", fileId);
-                return StatusCode(500, new { error = new { message = "An error occurred while downloading the file", type = "server_error" } });
+                return StatusCode(500, new ErrorResponseDto(new ErrorDetailsDto("An error occurred while downloading the file", "server_error")));
             }
         }
 
@@ -103,13 +104,13 @@ namespace ConduitLLM.Http.Controllers
                 var virtualKeyId = GetVirtualKeyId();
                 if (!await ValidateFileOwnership(fileId, virtualKeyId))
                 {
-                    return NotFound(new { error = new { message = "File not found", type = "not_found" } });
+                    return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
                 }
 
                 var metadata = await _fileRetrievalService.GetFileMetadataAsync(fileId);
                 if (metadata == null)
                 {
-                    return NotFound(new { error = new { message = "File not found", type = "not_found" } });
+                    return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
                 }
 
                 return Ok(new
@@ -128,7 +129,7 @@ namespace ConduitLLM.Http.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting metadata for file {FileId}", fileId);
-                return StatusCode(500, new { error = new { message = "An error occurred while retrieving file metadata", type = "server_error" } });
+                return StatusCode(500, new ErrorResponseDto(new ErrorDetailsDto("An error occurred while retrieving file metadata", "server_error")));
             }
         }
 
@@ -144,20 +145,20 @@ namespace ConduitLLM.Http.Controllers
             {
                 if (string.IsNullOrWhiteSpace(request.FileId))
                 {
-                    return BadRequest(new { error = new { message = "File ID is required", type = "invalid_request_error" } });
+                    return BadRequest(new ErrorResponseDto(new ErrorDetailsDto("File ID is required", "invalid_request_error")));
                 }
 
                 // Validate ownership
                 var virtualKeyId = GetVirtualKeyId();
                 if (!await ValidateFileOwnership(request.FileId, virtualKeyId))
                 {
-                    return NotFound(new { error = new { message = "File not found", type = "not_found" } });
+                    return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
                 }
 
                 var expirationMinutes = request.ExpirationMinutes ?? 60; // Default 1 hour
                 if (expirationMinutes < 1 || expirationMinutes > 10080) // Max 1 week
                 {
-                    return BadRequest(new { error = new { message = "Expiration must be between 1 minute and 1 week", type = "invalid_request_error" } });
+                    return BadRequest(new ErrorResponseDto(new ErrorDetailsDto("Expiration must be between 1 minute and 1 week", "invalid_request_error")));
                 }
 
                 var expiration = TimeSpan.FromMinutes(expirationMinutes);
@@ -165,7 +166,7 @@ namespace ConduitLLM.Http.Controllers
 
                 if (string.IsNullOrEmpty(url))
                 {
-                    return NotFound(new { error = new { message = "File not found or URL generation failed", type = "not_found" } });
+                    return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found or URL generation failed", "not_found")));
                 }
 
                 return Ok(new
@@ -178,7 +179,7 @@ namespace ConduitLLM.Http.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error generating download URL for file {FileId}", request.FileId);
-                return StatusCode(500, new { error = new { message = "An error occurred while generating download URL", type = "server_error" } });
+                return StatusCode(500, new ErrorResponseDto(new ErrorDetailsDto("An error occurred while generating download URL", "server_error")));
             }
         }
 

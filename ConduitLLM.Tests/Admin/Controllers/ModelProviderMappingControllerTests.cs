@@ -136,7 +136,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var statusCodeResult = Assert.IsType<ObjectResult>(result);
             statusCodeResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
             
-            _mockLogger.VerifyLogWithAnyException(LogLevel.Error, "Error retrieving all model mappings");
+            _mockLogger.VerifyLogWithAnyException(LogLevel.Error, "Error getting all model provider mappings");
         }
 
         #endregion
@@ -179,8 +179,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            dynamic error = notFoundResult.Value!;
-            ((string)error.error).Should().Be("Model provider mapping not found");
+            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            errorResponse.error.ToString().Should().Be("Model provider mapping not found");
         }
 
         #endregion
@@ -253,8 +253,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var conflictResult = Assert.IsType<ConflictObjectResult>(actionResult);
-            dynamic error = conflictResult.Value!;
-            ((string)error.error).Should().Contain("already exists");
+            var errorResponse = Assert.IsType<ErrorResponseDto>(conflictResult.Value);
+            errorResponse.error.ToString().Should().Contain("already exists");
         }
 
         [Fact]
@@ -281,8 +281,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(actionResult);
-            dynamic error = badRequestResult.Value!;
-            ((string)error.error).Should().Contain("Failed to create");
+            var errorResponse = Assert.IsType<ErrorResponseDto>(badRequestResult.Value);
+            errorResponse.error.ToString().Should().Contain("Failed to create");
         }
 
         #endregion
@@ -337,8 +337,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(actionResult);
-            dynamic error = notFoundResult.Value!;
-            ((string)error.error).Should().Be("Model provider mapping not found");
+            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            errorResponse.error.ToString().Should().Be("Model provider mapping not found");
         }
 
         #endregion
@@ -374,8 +374,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            dynamic error = notFoundResult.Value!;
-            ((string)error.error).Should().Be("Model provider mapping not found");
+            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            errorResponse.error.ToString().Should().Be("Model provider mapping not found");
         }
 
         #endregion
@@ -496,8 +496,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            dynamic error = badRequestResult.Value!;
-            ((string)error.error).Should().Be("No mappings provided");
+            var errorResponse = Assert.IsType<ErrorResponseDto>(badRequestResult.Value);
+            errorResponse.error.ToString().Should().Be("No mappings provided");
         }
 
         [Fact]

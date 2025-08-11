@@ -9,6 +9,7 @@ using ConduitLLM.Http.Controllers;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Xunit;
+using ConduitLLM.Configuration.DTOs;
 
 namespace ConduitLLM.Tests.Http.Controllers
 {

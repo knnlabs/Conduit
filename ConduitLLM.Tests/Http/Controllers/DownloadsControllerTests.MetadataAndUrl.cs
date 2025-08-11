@@ -8,6 +8,7 @@ using ConduitLLM.Http.Controllers;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Xunit;
+using ConduitLLM.Configuration.DTOs;
 
 namespace ConduitLLM.Tests.Http.Controllers
 {
@@ -98,9 +99,10 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            dynamic error = notFoundResult.Value;
-            Assert.Equal("File not found", error.error.message.ToString());
-            Assert.Equal("not_found", error.error.type.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            var errorDetails = Assert.IsType<ErrorDetailsDto>(errorResponse.error);
+            Assert.Equal("File not found", errorDetails.Message);
+            Assert.Equal("not_found", errorDetails.Type);
         }
 
         [Fact]
@@ -137,8 +139,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Assert
             var statusCodeResult = Assert.IsType<ObjectResult>(result);
             Assert.Equal(500, statusCodeResult.StatusCode);
-            dynamic error = statusCodeResult.Value;
-            Assert.Equal("An error occurred while retrieving file metadata", error.error.message.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(statusCodeResult.Value);
+            var errorDetails = Assert.IsType<ErrorDetailsDto>(errorResponse.error);
+            Assert.Equal("An error occurred while retrieving file metadata", errorDetails.Message);
         }
 
         #endregion
@@ -264,9 +267,10 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            dynamic error = badRequestResult.Value;
-            Assert.Equal("File ID is required", error.error.message.ToString());
-            Assert.Equal("invalid_request_error", error.error.type.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(badRequestResult.Value);
+            var errorDetails = Assert.IsType<ErrorDetailsDto>(errorResponse.error);
+            Assert.Equal("File ID is required", errorDetails.Message);
+            Assert.Equal("invalid_request_error", errorDetails.Type);
         }
 
         [Theory]
@@ -306,8 +310,9 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            dynamic error = badRequestResult.Value;
-            Assert.Equal("Expiration must be between 1 minute and 1 week", error.error.message.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(badRequestResult.Value);
+            var errorDetails = Assert.IsType<ErrorDetailsDto>(errorResponse.error);
+            Assert.Equal("Expiration must be between 1 minute and 1 week", errorDetails.Message);
         }
 
         [Fact]
@@ -338,9 +343,10 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            dynamic error = notFoundResult.Value;
-            Assert.Equal("File not found", error.error.message.ToString());
-            Assert.Equal("not_found", error.error.type.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            var errorDetails = Assert.IsType<ErrorDetailsDto>(errorResponse.error);
+            Assert.Equal("File not found", errorDetails.Message);
+            Assert.Equal("not_found", errorDetails.Type);
         }
 
         [Fact]
@@ -383,8 +389,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Assert
             var statusCodeResult = Assert.IsType<ObjectResult>(result);
             Assert.Equal(500, statusCodeResult.StatusCode);
-            dynamic error = statusCodeResult.Value;
-            Assert.Equal("An error occurred while generating download URL", error.error.message.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(statusCodeResult.Value);
+            var errorDetails = Assert.IsType<ErrorDetailsDto>(errorResponse.error);
+            Assert.Equal("An error occurred while generating download URL", errorDetails.Message);
         }
 
         #endregion

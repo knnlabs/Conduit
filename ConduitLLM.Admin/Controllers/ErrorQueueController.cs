@@ -7,6 +7,7 @@ using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Models.ErrorQueue;
 using ConduitLLM.Admin.Services;
 using Microsoft.AspNetCore.Authorization;
+using ConduitLLM.Configuration.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -181,7 +182,7 @@ namespace ConduitLLM.Admin.Controllers
                     var validGroupBy = new[] { "hour", "day", "week" };
                     if (!validGroupBy.Contains(groupBy.ToLower()))
                     {
-                        return BadRequest(new { error = "Invalid groupBy value. Must be 'hour', 'day', or 'week'." });
+                        return BadRequest(new ErrorResponseDto("Invalid groupBy value. Must be 'hour', 'day', or 'week'."));
                     }
 
                     since ??= DateTime.UtcNow.AddDays(-7);

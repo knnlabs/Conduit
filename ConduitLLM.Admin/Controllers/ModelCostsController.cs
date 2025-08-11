@@ -79,7 +79,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (modelCost == null)
                 {
-                    return NotFound(new { error = "Model cost not found" });
+                    return NotFound(new ErrorResponseDto("Model cost not found"));
                 }
 
                 return Ok(modelCost);
@@ -130,7 +130,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (modelCost == null)
                 {
-                    return NotFound(new { error = "Model cost not found" });
+                    return NotFound(new ErrorResponseDto("Model cost not found"));
                 }
 
                 return Ok(modelCost);
@@ -205,7 +205,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (!success)
                 {
-                    return NotFound(new { error = "Model cost not found" });
+                    return NotFound(new ErrorResponseDto("Model cost not found"));
                 }
 
                 return NoContent();
@@ -239,7 +239,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (!success)
                 {
-                    return NotFound(new { error = "Model cost not found" });
+                    return NotFound(new ErrorResponseDto("Model cost not found"));
                 }
 
                 return NoContent();
@@ -374,12 +374,12 @@ namespace ConduitLLM.Admin.Controllers
         {
             if (file == null || file.Length == 0)
             {
-                return BadRequest("No file provided for import");
+                return BadRequest(new ErrorResponseDto("No file provided for import"));
             }
 
             if (!file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
             {
-                return BadRequest("File must be a CSV file");
+                return BadRequest(new ErrorResponseDto("File must be a CSV file"));
             }
 
             try

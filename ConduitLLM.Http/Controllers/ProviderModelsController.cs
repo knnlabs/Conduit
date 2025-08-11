@@ -9,6 +9,7 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
 
 using Microsoft.AspNetCore.Mvc;
+using ConduitLLM.Configuration.DTOs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -72,7 +73,7 @@ namespace ConduitLLM.Http.Controllers
                 if (provider == null)
                 {
                     _logger.LogWarning("Provider with ID {ProviderId} not found", providerId);
-                    return NotFound(new { error = $"Provider with ID {providerId} not found" });
+                    return NotFound(new ErrorResponseDto($"Provider with ID {providerId} not found"));
                 }
 
                 // Get the primary key or first enabled key from ProviderKeyCredentials
@@ -83,7 +84,7 @@ namespace ConduitLLM.Http.Controllers
                 if (primaryKey == null || string.IsNullOrEmpty(primaryKey.ApiKey))
                 {
                     _logger.LogWarning("API key missing for provider {ProviderId}", providerId);
-                    return BadRequest(new { error = "API key is required to retrieve models" });
+                    return BadRequest(new ErrorResponseDto("API key is required to retrieve models"));
                 }
 
                 // Use the model list service to get models
@@ -102,7 +103,7 @@ namespace ConduitLLM.Http.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving models for provider {ProviderId}", providerId);
-                return StatusCode(500, new { error = $"Failed to retrieve models: {ex.Message}" });
+                return StatusCode(500, new ErrorResponseDto($"Failed to retrieve models: {ex.Message}"));
             }
         }
     }

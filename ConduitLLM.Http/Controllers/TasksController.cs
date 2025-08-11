@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Configuration.DTOs;
 using Microsoft.AspNetCore.Authorization;
 
 namespace ConduitLLM.Http.Controllers
@@ -44,12 +45,12 @@ namespace ConduitLLM.Http.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                return NotFound(new { error = new { message = ex.Message, type = "not_found" } });
+                return NotFound(new ErrorResponseDto(new ErrorDetailsDto(ex.Message, "not_found")));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving task {TaskId}", taskId);
-                return StatusCode(500, new { error = new { message = "An error occurred while retrieving the task", type = "server_error" } });
+                return StatusCode(500, new ErrorResponseDto(new ErrorDetailsDto("An error occurred while retrieving the task", "server_error")));
             }
         }
 
@@ -68,12 +69,12 @@ namespace ConduitLLM.Http.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                return NotFound(new { error = new { message = ex.Message, type = "not_found" } });
+                return NotFound(new ErrorResponseDto(new ErrorDetailsDto(ex.Message, "not_found")));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error cancelling task {TaskId}", taskId);
-                return StatusCode(500, new { error = new { message = "An error occurred while cancelling the task", type = "server_error" } });
+                return StatusCode(500, new ErrorResponseDto(new ErrorDetailsDto("An error occurred while cancelling the task", "server_error")));
             }
         }
 
@@ -102,16 +103,16 @@ namespace ConduitLLM.Http.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                return NotFound(new { error = new { message = ex.Message, type = "not_found" } });
+                return NotFound(new ErrorResponseDto(new ErrorDetailsDto(ex.Message, "not_found")));
             }
             catch (OperationCanceledException)
             {
-                return StatusCode(408, new { error = new { message = "Task polling timed out", type = "timeout" } });
+                return StatusCode(408, new ErrorResponseDto(new ErrorDetailsDto("Task polling timed out", "timeout")));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error polling task {TaskId}", taskId);
-                return StatusCode(500, new { error = new { message = "An error occurred while polling the task", type = "server_error" } });
+                return StatusCode(500, new ErrorResponseDto(new ErrorDetailsDto("An error occurred while polling the task", "server_error")));
             }
         }
 

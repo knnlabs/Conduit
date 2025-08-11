@@ -11,6 +11,7 @@ using ConduitLLM.Core.Interfaces;
 using MassTransit;
 
 using Microsoft.AspNetCore.Authorization;
+using ConduitLLM.Configuration.DTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -103,7 +104,7 @@ namespace ConduitLLM.Admin.Controllers
                 if (provider == null)
                 {
                     _logger.LogWarning("Provider not found {ProviderId}", id);
-                    return NotFound(new { error = "Provider not found" });
+                    return NotFound(new ErrorResponseDto("Provider not found"));
                 }
 
                 return Ok(new
@@ -215,7 +216,7 @@ namespace ConduitLLM.Admin.Controllers
                 if (provider == null)
                 {
                     _logger.LogWarning("Provider not found for update {ProviderId}", id);
-                    return NotFound(new { error = "Provider not found" });
+                    return NotFound(new ErrorResponseDto("Provider not found"));
                 }
 
                 var changedProperties = new List<string>();
@@ -280,7 +281,7 @@ namespace ConduitLLM.Admin.Controllers
                 if (provider == null)
                 {
                     _logger.LogWarning("Provider not found for deletion {ProviderId}", id);
-                    return NotFound(new { error = "Provider not found" });
+                    return NotFound(new ErrorResponseDto("Provider not found"));
                 }
 
                 await _providerRepository.DeleteAsync(id);

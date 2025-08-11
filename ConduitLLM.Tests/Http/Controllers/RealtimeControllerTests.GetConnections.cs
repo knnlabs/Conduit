@@ -15,6 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using ConduitLLM.Configuration.DTOs;
 using Xunit.Abstractions;
 
 namespace ConduitLLM.Tests.Http.Controllers
@@ -88,8 +89,8 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
-            dynamic error = unauthorizedResult.Value;
-            Assert.Equal("Invalid virtual key", error.error.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(unauthorizedResult.Value);
+            Assert.Equal("Invalid virtual key", errorResponse.error.ToString());
         }
 
         [Fact]
@@ -101,8 +102,8 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
-            dynamic error = unauthorizedResult.Value;
-            Assert.Equal("Virtual key required", error.error.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(unauthorizedResult.Value);
+            Assert.Equal("Virtual key required", errorResponse.error.ToString());
         }
 
         #endregion

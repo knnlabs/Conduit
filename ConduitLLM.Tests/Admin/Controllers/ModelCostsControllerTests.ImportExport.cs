@@ -132,8 +132,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
         public async Task ImportCsv_WithInvalidFileType_ShouldReturnBadRequest()
         {
             // Arrange
-            var stream = new MemoryStream();
-            var formFile = new FormFile(stream, 0, 0, "file", "costs.txt")
+            var content = "some content";
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
+            var formFile = new FormFile(stream, 0, stream.Length, "file", "costs.txt")
             {
                 Headers = new HeaderDictionary(),
                 ContentType = "text/plain"

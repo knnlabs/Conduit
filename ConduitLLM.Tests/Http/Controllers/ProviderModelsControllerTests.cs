@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
+using ConduitLLM.Configuration.DTOs;
 
 namespace ConduitLLM.Tests.Http.Controllers
 {
@@ -155,8 +156,8 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            dynamic error = notFoundResult.Value;
-            Assert.Equal($"Provider with ID {providerId} not found", error.error.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            Assert.Equal($"Provider with ID {providerId} not found", errorResponse.error.ToString());
         }
 
         [Fact]
@@ -189,8 +190,8 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            dynamic error = badRequestResult.Value;
-            Assert.Equal("API key is required to retrieve models", error.error.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(badRequestResult.Value);
+            Assert.Equal("API key is required to retrieve models", errorResponse.error.ToString());
         }
 
         [Fact]
@@ -274,8 +275,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Assert
             var internalServerErrorResult = Assert.IsType<ObjectResult>(result);
             Assert.Equal(500, internalServerErrorResult.StatusCode);
-            dynamic error = internalServerErrorResult.Value;
-            Assert.Equal("Failed to retrieve models: Service error", error.error.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(internalServerErrorResult.Value);
+            Assert.Equal("Failed to retrieve models: Service error", errorResponse.error.ToString());
         }
 
         #endregion

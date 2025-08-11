@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration;
 using Microsoft.AspNetCore.Authorization;
+using ConduitLLM.Configuration.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -298,7 +299,7 @@ namespace ConduitLLM.Admin.Controllers
             {
                 if (take > 1000)
                 {
-                    return BadRequest(new { error = "Cannot retrieve more than 1000 entries at once" });
+                    return BadRequest(new ErrorResponseDto("Cannot retrieve more than 1000 entries at once"));
                 }
 
                 var entries = await _cacheManagementService.GetEntriesAsync(regionId, skip, take, cancellationToken);

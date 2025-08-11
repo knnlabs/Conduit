@@ -104,8 +104,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             
             var errorResponse = notFoundResult.Value as dynamic;
             Assert.NotNull(errorResponse);
-            Assert.Equal("Task not found", errorResponse.error.message.ToString());
-            Assert.Equal("not_found", errorResponse.error.type.ToString());
+            Assert.Equal("Task not found", errorResponse.error.Message.ToString());
+            Assert.Equal("not_found", errorResponse.error.Type.ToString());
         }
 
         [Fact]
@@ -125,8 +125,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             
             var errorResponse = objectResult.Value as dynamic;
             Assert.NotNull(errorResponse);
-            Assert.Equal("An error occurred while retrieving the task", errorResponse.error.message.ToString());
-            Assert.Equal("server_error", errorResponse.error.type.ToString());
+            Assert.Equal("An error occurred while retrieving the task", errorResponse.error.Message.ToString());
+            Assert.Equal("server_error", errorResponse.error.Type.ToString());
         }
 
         #endregion
@@ -164,8 +164,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
             var errorResponse = notFoundResult.Value as dynamic;
             Assert.NotNull(errorResponse);
-            Assert.Equal("Task not found", errorResponse.error.message.ToString());
-            Assert.Equal("not_found", errorResponse.error.type.ToString());
+            Assert.Equal("Task not found", errorResponse.error.Message.ToString());
+            Assert.Equal("not_found", errorResponse.error.Type.ToString());
         }
 
         [Fact]
@@ -185,8 +185,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             
             var errorResponse = objectResult.Value as dynamic;
             Assert.NotNull(errorResponse);
-            Assert.Equal("An error occurred while cancelling the task", errorResponse.error.message.ToString());
-            Assert.Equal("server_error", errorResponse.error.type.ToString());
+            Assert.Equal("An error occurred while cancelling the task", errorResponse.error.Message.ToString());
+            Assert.Equal("server_error", errorResponse.error.Type.ToString());
         }
 
         #endregion
@@ -272,8 +272,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             
             var errorResponse = objectResult.Value as dynamic;
             Assert.NotNull(errorResponse);
-            Assert.Equal("Task polling timed out", errorResponse.error.message.ToString());
-            Assert.Equal("timeout", errorResponse.error.type.ToString());
+            Assert.Equal("Task polling timed out", errorResponse.error.Message.ToString());
+            Assert.Equal("timeout", errorResponse.error.Type.ToString());
         }
 
         [Fact]
@@ -295,7 +295,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
             var errorResponse = notFoundResult.Value as dynamic;
             Assert.NotNull(errorResponse);
-            Assert.Equal("Task not found", errorResponse.error.message.ToString());
+            Assert.Equal("Task not found", errorResponse.error.Message.ToString());
         }
 
         [Fact]
@@ -319,7 +319,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             
             var errorResponse = objectResult.Value as dynamic;
             Assert.NotNull(errorResponse);
-            Assert.Equal("An error occurred while polling the task", errorResponse.error.message.ToString());
+            Assert.Equal("An error occurred while polling the task", errorResponse.error.Message.ToString());
         }
 
         #endregion

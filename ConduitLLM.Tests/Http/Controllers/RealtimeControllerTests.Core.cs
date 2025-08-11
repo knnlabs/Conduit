@@ -14,6 +14,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using ConduitLLM.Configuration.DTOs;
 using Xunit.Abstractions;
 
 namespace ConduitLLM.Tests.Http.Controllers

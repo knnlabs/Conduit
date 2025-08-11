@@ -14,6 +14,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using ConduitLLM.Configuration.DTOs;
 using Xunit.Abstractions;
 
 namespace ConduitLLM.Tests.Http.Controllers
@@ -43,8 +44,8 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            dynamic error = badRequestResult.Value;
-            Assert.Equal("WebSocket connection required", error.error.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(badRequestResult.Value);
+            Assert.Equal("WebSocket connection required", errorResponse.error.ToString());
         }
 
         [Fact]
@@ -68,8 +69,8 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
-            dynamic error = unauthorizedResult.Value;
-            Assert.Equal("Virtual key required", error.error.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(unauthorizedResult.Value);
+            Assert.Equal("Virtual key required", errorResponse.error.ToString());
         }
 
         [Fact]
@@ -99,8 +100,8 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
-            dynamic error = unauthorizedResult.Value;
-            Assert.Equal("Invalid virtual key", error.error.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(unauthorizedResult.Value);
+            Assert.Equal("Invalid virtual key", errorResponse.error.ToString());
         }
 
         [Fact]
@@ -137,8 +138,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Assert
             var forbiddenResult = Assert.IsType<ObjectResult>(result);
             Assert.Equal(403, forbiddenResult.StatusCode);
-            dynamic error = forbiddenResult.Value;
-            Assert.Equal("Virtual key does not have real-time audio permissions", error.error.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(forbiddenResult.Value);
+            Assert.Equal("Virtual key does not have real-time audio permissions", errorResponse.error.ToString());
         }
 
         [Fact]

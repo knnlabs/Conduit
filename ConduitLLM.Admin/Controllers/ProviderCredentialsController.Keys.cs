@@ -11,6 +11,7 @@ using ConduitLLM.Core.Interfaces;
 using MassTransit;
 
 using Microsoft.AspNetCore.Authorization;
+using ConduitLLM.Configuration.DTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -80,7 +81,7 @@ namespace ConduitLLM.Admin.Controllers
                 if (key == null || key.ProviderId != providerId)
                 {
                     _logger.LogWarning("Key credential not found {KeyId} for provider {ProviderId}", keyId, providerId);
-                    return NotFound(new { error = "Key credential not found" });
+                    return NotFound(new ErrorResponseDto("Key credential not found"));
                 }
 
                 return Ok(new
@@ -129,7 +130,7 @@ namespace ConduitLLM.Admin.Controllers
                 var provider = await _providerRepository.GetByIdAsync(providerId);
                 if (provider == null)
                 {
-                    return NotFound(new { error = "Provider not found" });
+                    return NotFound(new ErrorResponseDto("Provider not found"));
                 }
 
                 var keyCredential = new ProviderKeyCredential
@@ -186,7 +187,7 @@ namespace ConduitLLM.Admin.Controllers
             {
                 _logger.LogError(ex, "Controller caught general Exception of type {ExceptionType} for provider {ProviderId}: {Message}", 
                     ex.GetType().FullName, providerId, ex.Message);
-                return StatusCode(StatusCodes.Status500InternalServerError, new { error = "An unexpected error occurred." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new ErrorResponseDto("An unexpected error occurred."));
             }
         }
 
@@ -215,7 +216,7 @@ namespace ConduitLLM.Admin.Controllers
                 if (key == null || key.ProviderId != providerId)
                 {
                     _logger.LogWarning("Key credential not found for update {KeyId}", keyId);
-                    return NotFound(new { error = "Key credential not found" });
+                    return NotFound(new ErrorResponseDto("Key credential not found"));
                 }
 
                 // Update fields
@@ -279,7 +280,7 @@ namespace ConduitLLM.Admin.Controllers
                 if (key == null || key.ProviderId != providerId)
                 {
                     _logger.LogWarning("Key credential not found for deletion {KeyId}", keyId);
-                    return NotFound(new { error = "Key credential not found" });
+                    return NotFound(new ErrorResponseDto("Key credential not found"));
                 }
 
                 await _keyRepository.DeleteAsync(keyId);
@@ -325,7 +326,7 @@ namespace ConduitLLM.Admin.Controllers
                 if (key == null || key.ProviderId != providerId)
                 {
                     _logger.LogWarning("Key credential not found {KeyId} for provider {ProviderId}", keyId, providerId);
-                    return NotFound(new { error = "Key credential not found" });
+                    return NotFound(new ErrorResponseDto("Key credential not found"));
                 }
 
                 // Unset all other primary keys for this provider

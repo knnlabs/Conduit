@@ -91,7 +91,7 @@ public class ModelProviderMappingController : ControllerBase
 
             if (mapping == null)
             {
-                return NotFound(new { error = "Model provider mapping not found" });
+                return NotFound(new ErrorResponseDto("Model provider mapping not found"));
             }
 
             return Ok(mapping.ToDto());
@@ -126,7 +126,7 @@ public class ModelProviderMappingController : ControllerBase
             var existingMapping = await _mappingService.GetMappingByModelIdAsync(mappingDto.ModelId);
             if (existingMapping != null)
             {
-                return Conflict(new { error = $"A mapping for model ID '{mappingDto.ModelId}' already exists" });
+                return Conflict(new ErrorResponseDto($"A mapping for model ID '{mappingDto.ModelId}' already exists"));
             }
 
             var mapping = mappingDto.ToEntity();
@@ -134,7 +134,7 @@ public class ModelProviderMappingController : ControllerBase
 
             if (!success)
             {
-                return BadRequest(new { error = "Failed to create model provider mapping. Please check the provider ID." });
+                return BadRequest(new ErrorResponseDto("Failed to create model provider mapping. Please check the provider ID."));
             }
 
             var createdMapping = await _mappingService.GetMappingByModelIdAsync(mappingDto.ModelId);
@@ -169,13 +169,13 @@ public class ModelProviderMappingController : ControllerBase
 
             if (id != mappingDto.Id)
             {
-                return BadRequest(new { error = "ID mismatch" });
+                return BadRequest(new ErrorResponseDto("ID mismatch"));
             }
 
             var existingMapping = await _mappingService.GetMappingByIdAsync(id);
             if (existingMapping == null)
             {
-                return NotFound(new { error = "Model provider mapping not found" });
+                return NotFound(new ErrorResponseDto("Model provider mapping not found"));
             }
 
             existingMapping.UpdateFromDto(mappingDto);
@@ -183,7 +183,7 @@ public class ModelProviderMappingController : ControllerBase
 
             if (!success)
             {
-                return BadRequest(new { error = "Failed to update model provider mapping" });
+                return BadRequest(new ErrorResponseDto("Failed to update model provider mapping"));
             }
 
             return NoContent();
@@ -211,14 +211,14 @@ public class ModelProviderMappingController : ControllerBase
             var existingMapping = await _mappingService.GetMappingByIdAsync(id);
             if (existingMapping == null)
             {
-                return NotFound(new { error = "Model provider mapping not found" });
+                return NotFound(new ErrorResponseDto("Model provider mapping not found"));
             }
 
             var success = await _mappingService.DeleteMappingAsync(id);
 
             if (!success)
             {
-                return BadRequest(new { error = "Failed to delete model provider mapping" });
+                return BadRequest(new ErrorResponseDto("Failed to delete model provider mapping"));
             }
 
             return NoContent();
@@ -271,7 +271,7 @@ public class ModelProviderMappingController : ControllerBase
 
             if (mappingDtos == null || mappingDtos.Count == 0)
             {
-                return BadRequest(new { error = "No mappings provided" });
+                return BadRequest(new ErrorResponseDto("No mappings provided"));
             }
 
             var mappings = mappingDtos.Select(dto => dto.ToEntity()).ToList();
@@ -311,7 +311,7 @@ public class ModelProviderMappingController : ControllerBase
             var provider = await _providerService.GetProviderByIdAsync(providerId);
             if (provider == null)
             {
-                return NotFound(new { error = "Provider not found" });
+                return NotFound(new ErrorResponseDto("Provider not found"));
             }
 
             // Discover models for the provider

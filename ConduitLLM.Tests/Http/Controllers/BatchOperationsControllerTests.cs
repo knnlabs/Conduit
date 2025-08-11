@@ -16,6 +16,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
+using ConduitLLM.Configuration.DTOs;
 
 namespace ConduitLLM.Tests.Http.Controllers
 {
@@ -102,8 +103,8 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            dynamic error = notFoundResult.Value;
-            Assert.Equal("Operation not found", error.error.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            Assert.Equal("Operation not found", errorResponse.error.ToString());
         }
 
         #endregion
@@ -153,8 +154,8 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var conflictResult = Assert.IsType<ConflictObjectResult>(result);
-            dynamic error = conflictResult.Value;
-            Assert.Equal("Operation cannot be cancelled", error.error.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(conflictResult.Value);
+            Assert.Equal("Operation cannot be cancelled", errorResponse.error.ToString());
         }
 
         [Fact]
@@ -179,8 +180,8 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var conflictResult = Assert.IsType<ConflictObjectResult>(result);
-            dynamic error = conflictResult.Value;
-            Assert.Equal("Failed to cancel operation", error.error.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(conflictResult.Value);
+            Assert.Equal("Failed to cancel operation", errorResponse.error.ToString());
         }
 
         [Fact]
@@ -196,8 +197,8 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            dynamic error = notFoundResult.Value;
-            Assert.Equal("Operation not found", error.error.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(notFoundResult.Value);
+            Assert.Equal("Operation not found", errorResponse.error.ToString());
         }
 
         #endregion
@@ -284,8 +285,8 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            dynamic error = badRequestResult.Value;
-            Assert.Equal("No updates provided", error.error.ToString());
+            var errorResponse = Assert.IsType<ErrorResponseDto>(badRequestResult.Value);
+            Assert.Equal("No updates provided", errorResponse.error.ToString());
         }
 
         #endregion

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using ConduitLLM.Configuration.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -55,14 +56,14 @@ namespace ConduitLLM.Http.Controllers
                 var virtualKeyValue = HttpContext.User.FindFirst("VirtualKey")?.Value;
                 if (string.IsNullOrEmpty(virtualKeyValue))
                 {
-                    return Unauthorized(new { error = "Virtual key not found" });
+                    return Unauthorized(new ErrorResponseDto("Virtual key not found"));
                 }
 
                 // Get virtual key details to check allowed models
                 var virtualKey = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKeyValue);
                 if (virtualKey == null)
                 {
-                    return Unauthorized(new { error = "Invalid virtual key" });
+                    return Unauthorized(new ErrorResponseDto("Invalid virtual key"));
                 }
 
                 using var context = await _dbContextFactory.CreateDbContextAsync();
@@ -196,7 +197,7 @@ namespace ConduitLLM.Http.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving model discovery information");
-                return StatusCode(500, new { error = "Failed to retrieve model discovery information" });
+                return StatusCode(500, new ErrorResponseDto("Failed to retrieve model discovery information"));
             }
         }
 
@@ -234,7 +235,7 @@ namespace ConduitLLM.Http.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving capabilities list");
-                return Task.FromResult<IActionResult>(StatusCode(500, new { error = "Failed to retrieve capabilities" }));
+                return Task.FromResult<IActionResult>(StatusCode(500, new ErrorResponseDto("Failed to retrieve capabilities")));
             }
         }
 
