@@ -148,6 +148,16 @@ namespace ConduitLLM.Admin.Services
                         }
                         return sambaNovaModels;
                     
+                    case ProviderType.DeepInfra:
+                        _logger.LogDebug("Calling OpenAICompatibleModelDiscovery.DiscoverAsync for DeepInfra with API key: {HasKey}", !string.IsNullOrEmpty(apiKey));
+                        var deepInfraModels = await ConduitLLM.Providers.OpenAICompatibleModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);
+                        _logger.LogDebug("OpenAICompatibleModelDiscovery.DiscoverAsync returned {Count} models for DeepInfra", deepInfraModels.Count);
+                        foreach (var model in deepInfraModels)
+                        {
+                            model.Provider = Provider.ProviderName;
+                        }
+                        return deepInfraModels;
+                    
                     default:
                         _logger.LogDebug("No provider-specific discovery available for {ProviderType}", Provider.ProviderType);
                         return new List<DiscoveredModel>();
@@ -179,7 +189,8 @@ namespace ConduitLLM.Admin.Services
                 ProviderType.Replicate,
                 ProviderType.Fireworks,
                 ProviderType.OpenAICompatible,
-                ProviderType.SambaNova
+                ProviderType.SambaNova,
+                ProviderType.DeepInfra
             };
             
             var supported = supportedTypes.Contains(providerType);
