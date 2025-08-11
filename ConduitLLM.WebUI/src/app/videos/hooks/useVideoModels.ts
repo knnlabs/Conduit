@@ -15,6 +15,7 @@ function getProviderName(providerType: ProviderType): string {
     [ProviderType.ElevenLabs]: 'ElevenLabs',
     [ProviderType.Cerebras]: 'Cerebras',
     [ProviderType.SambaNova]: 'SambaNova',
+    [ProviderType.DeepInfra]: 'DeepInfra',
   };
   return providerNames[providerType] || `Provider ${providerType}`;
 }

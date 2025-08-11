@@ -21,6 +21,7 @@ export const PROVIDER_TYPE_DISPLAY_NAMES: Record<ProviderType, string> = {
   [ProviderType.ElevenLabs]: 'ElevenLabs',
   [ProviderType.Cerebras]: 'Cerebras',
   [ProviderType.SambaNova]: 'SambaNova',
+  [ProviderType.DeepInfra]: 'DeepInfra',
 };
 
 // Convert ProviderType to display name
@@ -79,6 +80,7 @@ const PROVIDER_TYPE_TO_NAME_MAP: Record<ProviderType, string> = {
   [ProviderType.ElevenLabs]: 'elevenlabs',
   [ProviderType.Cerebras]: 'cerebras',
   [ProviderType.SambaNova]: 'sambanova',
+  [ProviderType.DeepInfra]: 'deepinfra',
 };
 
 // Get provider name string from ProviderType
