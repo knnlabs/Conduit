@@ -13,9 +13,10 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 BOLD='\033[1m'
 
-# Get the script directory (root of Conduit)
+# Get the script directory and navigate to root of Conduit
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-TEST_DIR="$SCRIPT_DIR/ConduitLLM.IntegrationTests"
+ROOT_DIR="$( cd "$SCRIPT_DIR/.." && pwd )"
+TEST_DIR="$ROOT_DIR/ConduitLLM.IntegrationTests"
 
 echo -e "${BLUE}${BOLD}==================================${NC}"
 echo -e "${BLUE}${BOLD}  Conduit Integration Test Runner ${NC}"
@@ -124,7 +125,8 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 echo
 
 # Find the most recent report
-REPORT_DIR="$TEST_DIR/Reports"
+# Reports are generated in the bin/Debug/net9.0/Reports directory
+REPORT_DIR="$TEST_DIR/bin/Debug/net9.0/Reports"
 if [ -d "$REPORT_DIR" ]; then
     LATEST_REPORT=$(ls -t "$REPORT_DIR"/*.md 2>/dev/null | head -n1)
     
@@ -158,7 +160,7 @@ fi
 echo
 
 # Check test context for debugging
-CONTEXT_FILE="$TEST_DIR/test-context.json"
+CONTEXT_FILE="$TEST_DIR/bin/Debug/net9.0/test-context.json"
 if [ -f "$CONTEXT_FILE" ]; then
     echo -e "${BLUE}🔍 Test context saved for debugging:${NC}"
     echo -e "   ${YELLOW}$CONTEXT_FILE${NC}"
