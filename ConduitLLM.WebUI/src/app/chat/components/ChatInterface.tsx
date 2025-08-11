@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { 
   Container, 
   Paper, 
@@ -8,13 +8,13 @@ import {
   Center,
   Loader,
   Alert,
-  Select,
   Group,
   Badge,
   Collapse,
   ActionIcon
 } from '@mantine/core';
 import { IconAlertCircle, IconSettings, IconChevronUp } from '@tabler/icons-react';
+import { ModelSelector } from './ModelSelector';
 import { v4 as uuidv4 } from 'uuid';
 import { 
   createToastErrorHandler,
@@ -64,21 +64,12 @@ export function ChatInterface() {
     activeSessionId 
   } = useChatStore();
 
-  // Convert model data to the format expected by the Select component
-  const models = useMemo(() => 
-    modelData?.map(m => ({
-      value: m.id,
-      label: m.displayName,
-      supportsVision: m.supportsVision
-    })) ?? []
-  , [modelData]);
-
   // Set initial model when data loads
   useEffect(() => {
-    if (models.length > 0 && !selectedModel) {
-      setSelectedModel(models[0].value);
+    if (modelData && modelData.length > 0 && !selectedModel) {
+      setSelectedModel(modelData[0].id);
     }
-  }, [models, selectedModel]);
+  }, [modelData, selectedModel]);
 
   // Ensure we have an active session
   useEffect(() => {
@@ -456,7 +447,7 @@ export function ChatInterface() {
     return content;
   };
 
-  const currentModel = models.find(m => m.value === selectedModel);
+  const currentModel = modelData?.find(m => m.id === selectedModel);
 
   if (modelsLoading) {
     return (
@@ -490,7 +481,7 @@ export function ChatInterface() {
     );
   }
 
-  if (models.length === 0) {
+  if (!modelData || modelData.length === 0) {
     return (
       <Container size="sm" mt="xl">
         <Alert icon={<IconAlertCircle size={16} />} color="yellow" title="No models available">
@@ -508,12 +499,10 @@ export function ChatInterface() {
           <Stack gap="md">
             <Group justify="space-between">
               <Group style={{ flex: 1 }}>
-                <Select
-                  label="Model"
-                  placeholder="Select a model"
+                <ModelSelector
                   value={selectedModel}
                   onChange={setSelectedModel}
-                  data={models}
+                  modelData={modelData}
                   style={{ flex: 1, maxWidth: 400 }}
                 />
                 {currentModel?.supportsVision && (
@@ -553,9 +542,9 @@ export function ChatInterface() {
             onStopStreaming={() => {}}
             disabled={!selectedModel}
             model={currentModel ? {
-              id: currentModel.value,
-              providerId: '',
-              displayName: currentModel.label,
+              id: currentModel.id,
+              providerId: currentModel.providerId || '',
+              displayName: currentModel.displayName,
               supportsVision: currentModel.supportsVision
             } : undefined}
           />

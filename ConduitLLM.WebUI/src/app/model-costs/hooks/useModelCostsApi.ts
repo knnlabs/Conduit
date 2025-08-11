@@ -44,8 +44,8 @@ export function useModelCostsApi() {
       });
 
       if (!response.ok) {
-        const error = await response.json() as { message?: string };
-        throw new Error(error.message ?? 'Failed to create model cost');
+        const errorData = await response.json() as { error?: string; message?: string };
+        throw new Error(errorData.error ?? errorData.message ?? 'Failed to create model cost');
       }
 
       const result = await response.json() as ModelCost;
@@ -79,8 +79,8 @@ export function useModelCostsApi() {
       });
 
       if (!response.ok) {
-        const error = await response.json() as { message?: string };
-        throw new Error(error.message ?? 'Failed to update model cost');
+        const errorData = await response.json() as { error?: string; message?: string };
+        throw new Error(errorData.error ?? errorData.message ?? 'Failed to update model cost');
       }
 
       const result = await response.json() as ModelCost;
@@ -112,8 +112,8 @@ export function useModelCostsApi() {
       });
 
       if (!response.ok) {
-        const error = await response.json() as { message?: string };
-        throw new Error(error.message ?? 'Failed to delete model cost');
+        const errorData = await response.json() as { error?: string; message?: string };
+        throw new Error(errorData.error ?? errorData.message ?? 'Failed to delete model cost');
       }
 
       notifications.show({
@@ -143,8 +143,8 @@ export function useModelCostsApi() {
       });
 
       if (!response.ok) {
-        const error = await response.json() as { message?: string };
-        throw new Error(error.message ?? 'Failed to import model costs');
+        const errorData = await response.json() as { error?: string; message?: string };
+        throw new Error(errorData.error ?? errorData.message ?? 'Failed to import model costs');
       }
 
       const result = await response.json() as { imported?: number };
@@ -187,8 +187,8 @@ export function useModelCostsApi() {
       });
 
       if (!response.ok) {
-        const error = await response.json() as { message?: string };
-        throw new Error(error.message ?? 'Failed to import model costs');
+        const errorData = await response.json() as { error?: string; message?: string };
+        throw new Error(errorData.error ?? errorData.message ?? 'Failed to import model costs');
       }
 
       const result = await response.json() as { 

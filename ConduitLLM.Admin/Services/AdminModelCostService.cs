@@ -16,6 +16,7 @@ using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Services;
 
 using MassTransit;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using static ConduitLLM.Core.Extensions.LoggingSanitizer;
@@ -30,6 +31,7 @@ namespace ConduitLLM.Admin.Services
         private readonly IModelCostRepository _modelCostRepository;
         private readonly IRequestLogRepository _requestLogRepository;
         private readonly ILogger<AdminModelCostService> _logger;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
 
         /// <summary>
         /// Initializes a new instance of the AdminModelCostService
@@ -41,12 +43,14 @@ namespace ConduitLLM.Admin.Services
         public AdminModelCostService(
             IModelCostRepository modelCostRepository,
             IRequestLogRepository requestLogRepository,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             IPublishEndpoint? publishEndpoint,
             ILogger<AdminModelCostService> logger)
             : base(publishEndpoint, logger)
         {
             _modelCostRepository = modelCostRepository ?? throw new ArgumentNullException(nameof(modelCostRepository));
             _requestLogRepository = requestLogRepository ?? throw new ArgumentNullException(nameof(requestLogRepository));
+            _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -73,7 +77,25 @@ namespace ConduitLLM.Admin.Services
                 // Save to database
                 var id = await _modelCostRepository.CreateAsync(modelCostEntity);
 
-                // Get the created model cost
+                // Create model-cost mappings if provided
+                if (modelCost.ModelProviderMappingIds != null && modelCost.ModelProviderMappingIds.Any())
+                {
+                    using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+                    foreach (var mappingId in modelCost.ModelProviderMappingIds)
+                    {
+                        var modelCostMapping = new ModelCostMapping
+                        {
+                            ModelCostId = id,
+                            ModelProviderMappingId = mappingId,
+                            CreatedAt = DateTime.UtcNow,
+                            IsActive = true
+                        };
+                        dbContext.ModelCostMappings.Add(modelCostMapping);
+                    }
+                    await dbContext.SaveChangesAsync();
+                }
+
+                // Get the created model cost with mappings
                 var createdModelCost = await _modelCostRepository.GetByIdAsync(id);
                 if (createdModelCost == null)
                 {
@@ -417,6 +439,32 @@ namespace ConduitLLM.Admin.Services
 
                 // Save changes
                 var result = await _modelCostRepository.UpdateAsync(existingModelCost);
+
+                // Update model-cost mappings if provided
+                if (modelCost.ModelProviderMappingIds != null)
+                {
+                    using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+                    
+                    // Remove existing mappings
+                    var existingMappings = await dbContext.ModelCostMappings
+                        .Where(mcm => mcm.ModelCostId == modelCost.Id)
+                        .ToListAsync();
+                    dbContext.ModelCostMappings.RemoveRange(existingMappings);
+                    
+                    // Add new mappings
+                    foreach (var mappingId in modelCost.ModelProviderMappingIds)
+                    {
+                        var modelCostMapping = new ModelCostMapping
+                        {
+                            ModelCostId = modelCost.Id,
+                            ModelProviderMappingId = mappingId,
+                            CreatedAt = DateTime.UtcNow,
+                            IsActive = true
+                        };
+                        dbContext.ModelCostMappings.Add(modelCostMapping);
+                    }
+                    await dbContext.SaveChangesAsync();
+                }
 
                 if (result)
                 {

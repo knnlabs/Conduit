@@ -106,9 +106,9 @@ export function OpenAIErrorDisplay({
   
   const alertColor = getAlertColor();
   const hasAdditionalInfo = showDetails && (
-    error.originalError ?? 
-    error.code !== 'unknown_error' ?? 
-    error.retryAfter
+    (error.originalError ?? false) ||
+    error.code !== 'unknown_error' || 
+    (error.retryAfter ?? false)
   );
   
   // Error content

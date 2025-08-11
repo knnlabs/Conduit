@@ -22,6 +22,19 @@ export async function GET(req: NextRequest) {
       isActive,
     });
 
+    // The Admin API returns an array directly, but frontend expects a paginated response
+    // If response is an array, wrap it in the expected structure
+    if (Array.isArray(response)) {
+      const paginatedResponse = {
+        items: response,
+        totalCount: response.length,
+        page: page,
+        pageSize: pageSize,
+        totalPages: Math.ceil(response.length / pageSize)
+      };
+      return NextResponse.json(paginatedResponse);
+    }
+
     return NextResponse.json(response);
   } catch (error) {
     console.error('[ModelCosts] GET error:', error);

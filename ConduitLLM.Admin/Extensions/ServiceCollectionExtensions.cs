@@ -10,6 +10,7 @@ using ConduitLLM.Configuration.Options;
 
 using MassTransit; // For IPublishEndpoint
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore; // For IDbContextFactory
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
@@ -126,10 +127,11 @@ public static class ServiceCollectionExtensions
         {
             var modelCostRepository = serviceProvider.GetRequiredService<IModelCostRepository>();
             var requestLogRepository = serviceProvider.GetRequiredService<IRequestLogRepository>();
+            var dbContextFactory = serviceProvider.GetRequiredService<IDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>>();
             var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
             var logger = serviceProvider.GetRequiredService<ILogger<AdminModelCostService>>();
             
-            return new AdminModelCostService(modelCostRepository, requestLogRepository, publishEndpoint, logger);
+            return new AdminModelCostService(modelCostRepository, requestLogRepository, dbContextFactory, publishEndpoint, logger);
         });
 
         // Register Error Queue monitoring services

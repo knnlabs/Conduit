@@ -35,10 +35,12 @@ interface ModelCostOverviewParams {
 const createCostSchema = z.object({
   costName: z.string().min(1).max(255),
   modelProviderMappingIds: z.array(z.number()),
+  pricingModel: z.number().optional(), // PricingModel enum
+  pricingConfiguration: z.string().optional(), // JSON configuration
   modelType: z.string().default('chat'),
-  inputTokenCost: z.number().min(0),
-  outputTokenCost: z.number().min(0),
-  embeddingTokenCost: z.number().min(0).optional(),
+  inputCostPerMillionTokens: z.number().min(0),
+  outputCostPerMillionTokens: z.number().min(0),
+  embeddingCostPerMillionTokens: z.number().min(0).optional(),
   imageCostPerImage: z.number().min(0).optional(),
   audioCostPerMinute: z.number().min(0).optional(),
   audioCostPerKCharacters: z.number().min(0).optional(),
@@ -46,13 +48,14 @@ const createCostSchema = z.object({
   audioOutputCostPerMinute: z.number().min(0).optional(),
   videoCostPerSecond: z.number().min(0).optional(),
   videoResolutionMultipliers: z.string().optional(), // JSON string
+  imageResolutionMultipliers: z.string().optional(), // JSON string
   imageQualityMultipliers: z.string().optional(), // JSON string
   description: z.string().optional(),
   priority: z.number().optional(),
   batchProcessingMultiplier: z.number().min(0).max(1).optional(),
   supportsBatchProcessing: z.boolean().optional(),
-  cachedInputTokenCost: z.number().min(0).optional(),
-  cachedInputWriteCost: z.number().min(0).optional(),
+  cachedInputCostPerMillionTokens: z.number().min(0).optional(),
+  cachedInputWriteCostPerMillionTokens: z.number().min(0).optional(),
   costPerSearchUnit: z.number().min(0).optional(),
   costPerInferenceStep: z.number().min(0).optional(),
   defaultInferenceSteps: z.number().min(1).optional(),

@@ -329,7 +329,7 @@ namespace ConduitLLM.Admin.Extensions
                 CostName = modelCost.CostName,
                 AssociatedModelAliases = modelCost.ModelCostMappings?
                     .Where(mcm => mcm.IsActive)
-                    .Select(mcm => mcm.ModelProviderMapping?.ProviderModelId ?? "")
+                    .Select(mcm => mcm.ModelProviderMapping?.ModelAlias ?? "")
                     .Where(alias => !string.IsNullOrEmpty(alias))
                     .ToList() ?? new List<string>(),
                 PricingModel = modelCost.PricingModel,
