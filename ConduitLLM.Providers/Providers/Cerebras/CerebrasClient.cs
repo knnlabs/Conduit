@@ -117,7 +117,7 @@ namespace ConduitLLM.Providers.Cerebras
                 logger,
                 httpClientFactory,
                 providerName ?? "cerebras",
-                baseUrl: null,
+                baseUrl: Constants.Urls.DefaultBaseUrl,
                 defaultModels: defaultModels)
         {
             if (string.IsNullOrWhiteSpace(keyCredential.ApiKey))

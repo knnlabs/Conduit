@@ -57,7 +57,7 @@ namespace ConduitLLM.Providers.Replicate
                 logger,
                 httpClientFactory,
                 "Replicate",
-                baseUrl: null,
+                baseUrl: DefaultReplicateBaseUrl,
                 defaultModels: defaultModels)
         {
         }

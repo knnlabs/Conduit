@@ -54,7 +54,7 @@ namespace ConduitLLM.Providers.Fireworks
                 logger,
                 httpClientFactory,
                 "Fireworks",
-                baseUrl: null,
+                baseUrl: DefaultFireworksBaseUrl,
                 defaultModels: defaultModels)
         {
         }

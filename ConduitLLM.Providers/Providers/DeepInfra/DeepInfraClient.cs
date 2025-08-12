@@ -64,7 +64,7 @@ namespace ConduitLLM.Providers.DeepInfra
                 logger,
                 httpClientFactory,
                 "DeepInfra",
-                baseUrl: null,
+                baseUrl: DefaultDeepInfraBaseUrl,
                 defaultModels: defaultModels)
         {
         }
