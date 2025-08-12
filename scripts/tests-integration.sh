@@ -17,10 +17,11 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 BOLD='\033[1m'
+DIM='\033[2m' # Dimmed text
 
 # Provider configuration
 PROVIDER_ARG="${1:-all}"
-SUPPORTED_PROVIDERS=("groq" "sambanova")
+SUPPORTED_PROVIDERS=("groq" "sambanova" "cerebras")
 
 # Function to show usage
 show_usage() {
@@ -101,6 +102,10 @@ check_provider_config() {
                     echo -e "${BLUE}   📝 Opening in VS Code for you to add your SambaNova API key...${NC}"
                     echo -e "${YELLOW}   Look for: apiKey: \"YOUR_SAMBANOVA_API_KEY_HERE\"${NC}"
                     ;;
+                "cerebras")
+                    echo -e "${BLUE}   📝 Opening in VS Code for you to add your Cerebras API key...${NC}"
+                    echo -e "${YELLOW}   Look for: apiKey: \"YOUR_CEREBRAS_API_KEY_HERE\"${NC}"
+                    ;;
             esac
             
             # Open in VS Code
@@ -147,6 +152,20 @@ check_provider_config() {
                     echo -e "${YELLOW}   Edit manually: $TEST_DIR/$provider_config${NC}"
                 fi
                 echo -e "${YELLOW}   Replace: YOUR_SAMBANOVA_API_KEY_HERE with your actual API key${NC}"
+                exit 1
+            fi
+            ;;
+        "cerebras")
+            if grep -q "YOUR_CEREBRAS_API_KEY_HERE" "$provider_config" 2>/dev/null; then
+                echo -e "${RED}❌ Cerebras API key not configured!${NC}"
+                echo -e "${BLUE}   Opening in VS Code for editing...${NC}"
+                if command -v code >/dev/null 2>&1; then
+                    code "$TEST_DIR/$provider_config"
+                    echo -e "${GREEN}   ✓ Opened in VS Code${NC}"
+                else
+                    echo -e "${YELLOW}   Edit manually: $TEST_DIR/$provider_config${NC}"
+                fi
+                echo -e "${YELLOW}   Replace: YOUR_CEREBRAS_API_KEY_HERE with your actual API key${NC}"
                 exit 1
             fi
             ;;
@@ -248,6 +267,9 @@ run_provider_tests() {
         "sambanova")
             dotnet test --no-build --filter "FullyQualifiedName~SambaNovaEndToEndTest" --logger "console;verbosity=normal"
             ;;
+        "cerebras")
+            dotnet test --no-build --filter "FullyQualifiedName~CerebrasEndToEndTest" --logger "console;verbosity=normal"
+            ;;
         *)
             echo -e "${RED}❌ Unknown provider test configuration: $provider${NC}"
             return 1
@@ -294,9 +316,16 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 
 # Extract test results from output - handle both indented and non-indented format
 TOTAL_TESTS=$(grep -E "^\s*Total tests:" "$TEST_OUTPUT_FILE" 2>/dev/null | tail -1 | sed 's/.*Total tests:\s*//' | awk '{print $1}')
-PASSED_TESTS=$(grep -E "^\s*Passed:" "$TEST_OUTPUT_FILE" 2>/dev/null | tail -1 | sed 's/.*Passed:\s*//' | awk '{print $1}')
+PASSED_TESTS_RAW=$(grep -E "^\s*Passed:" "$TEST_OUTPUT_FILE" 2>/dev/null | tail -1 | sed 's/.*Passed:\s*//' | awk '{print $1}')
 FAILED_TESTS=$(grep -E "^\s*Failed:" "$TEST_OUTPUT_FILE" 2>/dev/null | tail -1 | sed 's/.*Failed:\s*//' | awk '{print $1}')
-SKIPPED_TESTS=$(grep -E "^\s*Skipped:" "$TEST_OUTPUT_FILE" 2>/dev/null | tail -1 | sed 's/.*Skipped:\s*//' | awk '{print $1}')
+SKIPPED_TESTS_RAW=$(grep -E "^\s*Skipped:" "$TEST_OUTPUT_FILE" 2>/dev/null | tail -1 | sed 's/.*Skipped:\s*//' | awk '{print $1}')
+
+# Count tests with "ShouldSkip" in the name as skipped, not passed
+SHOULDSKIP_COUNT=$(grep -E "Passed.*ShouldSkip" "$TEST_OUTPUT_FILE" 2>/dev/null | wc -l)
+
+# Adjust counts: subtract ShouldSkip tests from passed and add to skipped
+PASSED_TESTS=$((${PASSED_TESTS_RAW:-0} - ${SHOULDSKIP_COUNT:-0}))
+SKIPPED_TESTS=$((${SKIPPED_TESTS_RAW:-0} + ${SHOULDSKIP_COUNT:-0}))
 
 # Default values if parsing fails
 TOTAL_TESTS=${TOTAL_TESTS:-0}
@@ -304,16 +333,114 @@ PASSED_TESTS=${PASSED_TESTS:-0}
 FAILED_TESTS=${FAILED_TESTS:-0}
 SKIPPED_TESTS=${SKIPPED_TESTS:-0}
 
+# Parse individual test results from xUnit output
+declare -A TEST_RESULTS
+declare -A TEST_ERRORS
+
+# Parse xUnit test output for detailed results
+# Look for patterns from xUnit output like:
+#   Passed ConduitLLM.IntegrationTests.Tests.GroqEndToEndTest.GroqProvider_CompleteEndToEndFlow_ShouldWork
+#   Failed ConduitLLM.IntegrationTests.Tests.CerebrasEndToEndTest.CerebrasProvider_BasicChat_ShouldWork
+# Also handle xUnit.net format:
+#   [xUnit.net 00:00:00.29]     Cerebras Provider - Basic Chat Test [FAIL]
+while IFS= read -r line; do
+    # First try standard dotnet test output format
+    if [[ "$line" =~ ^[[:space:]]*(Passed|Failed|Skipped)[[:space:]]+ConduitLLM\.IntegrationTests\.Tests\.([^.]+)\.(.+)[[:space:]]*(\[|$) ]]; then
+        STATUS="${BASH_REMATCH[1]}"
+        TEST_CLASS="${BASH_REMATCH[2]}"
+        TEST_METHOD="${BASH_REMATCH[3]}"
+        # Remove timing info if present
+        TEST_METHOD=$(echo "$TEST_METHOD" | sed 's/ \[.*$//')
+        
+        # Determine provider from test class name
+        PROVIDER=""
+        if [[ "$TEST_CLASS" =~ Groq ]]; then
+            PROVIDER="Groq"
+        elif [[ "$TEST_CLASS" =~ SambaNova ]]; then
+            PROVIDER="SambaNova"
+        elif [[ "$TEST_CLASS" =~ Cerebras ]]; then
+            PROVIDER="Cerebras"
+        fi
+        
+        if [ -n "$PROVIDER" ]; then
+            TEST_KEY="${PROVIDER}::${TEST_METHOD}"
+            TEST_RESULTS["$TEST_KEY"]="$STATUS"
+            
+            # Capture error messages for failed tests
+            if [ "$STATUS" = "Failed" ]; then
+                # Look for the error message in the next few lines
+                ERROR_MSG=$(grep -A 5 "Failed.*$TEST_METHOD" "$TEST_OUTPUT_FILE" 2>/dev/null | grep -E "(Error Message:|Message:)" | head -1 | sed 's/.*Message: *//')
+                if [ -n "$ERROR_MSG" ]; then
+                    TEST_ERRORS["$TEST_KEY"]="$ERROR_MSG"
+                fi
+            fi
+        fi
+    # Also check for xUnit.net format with [FAIL] indicator
+    elif [[ "$line" =~ \[xUnit\.net[[:space:]]+[^\]]+\][[:space:]]+(.+)[[:space:]]+\[(FAIL|PASS|SKIP)\] ]]; then
+        TEST_NAME="${BASH_REMATCH[1]}"
+        STATUS_INDICATOR="${BASH_REMATCH[2]}"
+        
+        # Map status indicator to status
+        case "$STATUS_INDICATOR" in
+            "FAIL")
+                STATUS="Failed"
+                ;;
+            "PASS")
+                STATUS="Passed"
+                ;;
+            "SKIP")
+                STATUS="Skipped"
+                ;;
+        esac
+        
+        # Determine provider and method from test name
+        PROVIDER=""
+        METHOD_NAME=""
+        if [[ "$TEST_NAME" =~ Cerebras ]]; then
+            PROVIDER="Cerebras"
+            METHOD_NAME="CerebrasProvider_BasicChat_ShouldWork"
+        elif [[ "$TEST_NAME" =~ Groq ]]; then
+            PROVIDER="Groq"
+            METHOD_NAME="GroqProvider_CompleteEndToEndFlow_ShouldWork"
+        elif [[ "$TEST_NAME" =~ SambaNova ]]; then
+            PROVIDER="SambaNova"
+            if [[ "$TEST_NAME" =~ Multimodal ]]; then
+                METHOD_NAME="SambaNovaProvider_MultimodalChat_ShouldWork"
+            else
+                METHOD_NAME="SambaNovaProvider_BasicChat_ShouldWork"
+            fi
+        fi
+        
+        if [ -n "$PROVIDER" ] && [ -n "$METHOD_NAME" ]; then
+            TEST_KEY="${PROVIDER}::${METHOD_NAME}"
+            TEST_RESULTS["$TEST_KEY"]="$STATUS"
+            
+            # Capture error for failed tests
+            if [ "$STATUS" = "Failed" ]; then
+                # Look for error message after this line
+                ERROR_MSG=$(grep -A 3 "$TEST_NAME.*\[FAIL\]" "$TEST_OUTPUT_FILE" 2>/dev/null | grep -E "Exception" | head -1 | sed 's/.*Exception : //')
+                if [ -n "$ERROR_MSG" ]; then
+                    TEST_ERRORS["$TEST_KEY"]="$ERROR_MSG"
+                fi
+            fi
+        fi
+    fi
+done < "$TEST_OUTPUT_FILE"
+
 # Display overall stats - check TEST_EXIT_CODE for actual pass/fail
-if [ $TEST_EXIT_CODE -eq 0 ]; then
-    echo -e "${GREEN}✅ OVERALL: PASSED${NC}"
+if [ $TEST_EXIT_CODE -eq 0 ] && [ $FAILED_TESTS -eq 0 ]; then
+    echo -e "${GREEN}✅ OVERALL: ALL TESTS PASSED${NC}"
+elif [ $FAILED_TESTS -gt 0 ]; then
+    echo -e "${RED}❌ OVERALL: ${FAILED_TESTS} TEST(S) FAILED${NC}"
 else
-    echo -e "${RED}❌ OVERALL: FAILED${NC}"
+    echo -e "${YELLOW}⚠️ OVERALL: COMPLETED WITH WARNINGS${NC}"
 fi
 
 echo
 echo -e "Total Tests:    ${BOLD}$TOTAL_TESTS${NC}"
-echo -e "Passed:         ${GREEN}$PASSED_TESTS${NC}"
+if [ $PASSED_TESTS -gt 0 ]; then
+    echo -e "Passed:         ${GREEN}$PASSED_TESTS${NC}"
+fi
 if [ "$FAILED_TESTS" != "0" ] && [ -n "$FAILED_TESTS" ]; then
     echo -e "Failed:         ${RED}$FAILED_TESTS${NC}"
 fi
@@ -324,81 +451,141 @@ fi
 # Find all new reports generated during this test run
 echo
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BOLD}📄 TEST REPORTS${NC}"
+echo -e "${BOLD}📄 DETAILED TEST RESULTS BY PROVIDER${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-if [ -d "$REPORT_DIR" ]; then
-    REPORTS_AFTER=$(ls -t "$REPORT_DIR"/*.md 2>/dev/null | head -20)
+# Display test results from parsed xUnit output
+if [ ${#TEST_RESULTS[@]} -gt 0 ]; then
+    # Group results by provider
+    declare -A PROVIDER_STATS
     
-    # Find new reports by comparing before and after
-    if [ -n "$REPORTS_BEFORE" ]; then
-        NEW_REPORTS=$(comm -13 <(echo "$REPORTS_BEFORE" | sort) <(echo "$REPORTS_AFTER" | sort) 2>/dev/null)
-    else
-        # If no reports before, all current reports are new
-        NEW_REPORTS="$REPORTS_AFTER"
-    fi
-    
-    # Also check if running all providers - find reports from current test run (within 2 minutes)
-    if [ "$PROVIDER_ARG" = "all" ] && [ -n "$REPORTS_AFTER" ]; then
-        # Find all reports modified within the last 2 minutes (format: test_run_PROVIDER_YYYYMMDD_HHMMSS_fff_TESTID.md)
-        CURRENT_RUN_REPORTS=$(find "$REPORT_DIR" -name "test_run_*.md" -mmin -2 -type f 2>/dev/null | sort -r)
-        if [ -n "$CURRENT_RUN_REPORTS" ]; then
-            NEW_REPORTS="$CURRENT_RUN_REPORTS"
+    for TEST_KEY in "${!TEST_RESULTS[@]}"; do
+        PROVIDER="${TEST_KEY%%::*}"
+        TEST_METHOD="${TEST_KEY#*::}"
+        STATUS="${TEST_RESULTS[$TEST_KEY]}"
+        
+        # Initialize provider stats if not exists
+        if [ -z "${PROVIDER_STATS[$PROVIDER]}" ]; then
+            PROVIDER_STATS[$PROVIDER]="0:0:0"  # passed:failed:skipped
         fi
-    fi
+        
+        # Parse current stats
+        IFS=':' read -r PASS FAIL SKIP <<< "${PROVIDER_STATS[$PROVIDER]}"
+        
+        # Special handling for tests with "ShouldSkip" in the name
+        if [[ "$TEST_METHOD" =~ ShouldSkip ]]; then
+            # These tests are skipped regardless of actual status
+            SKIP=$((SKIP + 1))
+        else
+            # Update stats based on status
+            case "$STATUS" in
+                "Passed")
+                    PASS=$((PASS + 1))
+                    ;;
+                "Failed")
+                    FAIL=$((FAIL + 1))
+                    ;;
+                "Skipped")
+                    SKIP=$((SKIP + 1))
+                    ;;
+            esac
+        fi
+        
+        PROVIDER_STATS[$PROVIDER]="$PASS:$FAIL:$SKIP"
+    done
     
-    if [ -n "$NEW_REPORTS" ]; then
-        # Parse each report to show provider-specific results
-        for report in $NEW_REPORTS; do
-            if [ -f "$report" ]; then
-                # Extract provider name and status from report
-                PROVIDER=$(grep -E "^### .* Provider:" "$report" 2>/dev/null | head -1 | sed 's/.*Provider: *//')
-                STATUS=$(grep -E "^- Test Status:" "$report" 2>/dev/null | head -1)
+    # Display results by provider
+    IFS=$'\n' SORTED_PROVIDERS=($(sort <<<"${!PROVIDER_STATS[*]}"))
+    unset IFS
+    
+    for PROVIDER in "${SORTED_PROVIDERS[@]}"; do
+        IFS=':' read -r PASS FAIL SKIP <<< "${PROVIDER_STATS[$PROVIDER]}"
+        TOTAL=$((PASS + FAIL + SKIP))
+        
+        # Calculate percentage
+        if [ $TOTAL -gt 0 ]; then
+            PASS_PERCENTAGE=$((PASS * 100 / TOTAL))
+            FAIL_PERCENTAGE=$((FAIL * 100 / TOTAL))
+        else
+            PASS_PERCENTAGE=0
+            FAIL_PERCENTAGE=0
+        fi
+        
+        # Display provider header
+        echo
+        if [ $FAIL -eq 0 ] && [ $SKIP -eq 0 ]; then
+            echo -e "${GREEN}✅ $PROVIDER${NC} - ${BOLD}${GREEN}100% PASSED${NC} ($PASS/$TOTAL tests)"
+        elif [ $FAIL -gt 0 ] && [ $PASS -eq 0 ]; then
+            echo -e "${RED}❌ $PROVIDER${NC} - ${BOLD}${RED}100% FAILED${NC} ($FAIL/$TOTAL tests)"
+        elif [ $FAIL -gt 0 ]; then
+            echo -e "${YELLOW}⚠️  $PROVIDER${NC} - ${BOLD}${GREEN}${PASS_PERCENTAGE}% Passed${NC}, ${BOLD}${RED}${FAIL_PERCENTAGE}% Failed${NC} ($PASS passed, $FAIL failed, $SKIP skipped)"
+        elif [ $SKIP -gt 0 ]; then
+            echo -e "${YELLOW}⚠️  $PROVIDER${NC} - ${BOLD}${GREEN}${PASS_PERCENTAGE}% Passed${NC}, ${BOLD}${YELLOW}Skipped: $SKIP${NC} ($PASS passed, $SKIP skipped)"
+        fi
+        
+        # Display individual test results
+        for TEST_KEY in "${!TEST_RESULTS[@]}"; do
+            if [[ "$TEST_KEY" =~ ^${PROVIDER}:: ]]; then
+                TEST_METHOD="${TEST_KEY#*::}"
+                STATUS="${TEST_RESULTS[$TEST_KEY]}"
                 
-                if [ -z "$PROVIDER" ]; then
-                    # Try alternative format
-                    PROVIDER=$(grep -E "^- Provider:" "$report" 2>/dev/null | head -1 | sed 's/.*Provider: *//')
-                fi
+                # Format test method name for display
+                DISPLAY_NAME=$(echo "$TEST_METHOD" | sed 's/_/ /g' | sed 's/Should/ Should/g')
                 
-                # Display provider result
-                if [ -n "$PROVIDER" ]; then
-                    if echo "$STATUS" | grep -q "PASSED"; then
-                        echo -e "${GREEN}✅ $PROVIDER${NC}"
-                    elif echo "$STATUS" | grep -q "FAILED"; then
-                        echo -e "${RED}❌ $PROVIDER${NC}"
-                    else
-                        echo -e "${YELLOW}⚠️  $PROVIDER (unknown status)${NC}"
-                    fi
-                    echo -e "   Report: ${YELLOW}$report${NC}"
-                    
-                    # Extract any errors from the report
-                    ERRORS=$(grep -E "^- (Error|Multimodal not supported):" "$report" 2>/dev/null | head -2)
-                    if [ -n "$ERRORS" ]; then
-                        echo "$ERRORS" | while IFS= read -r line; do
-                            echo -e "   ${RED}$line${NC}"
-                        done
-                    fi
-                    echo
+                # Check if this is a test that should be skipped (has ShouldSkip in name)
+                if [[ "$TEST_METHOD" =~ ShouldSkip ]]; then
+                    # This is a skip test - always show as skipped regardless of status
+                    echo -e "   ${YELLOW}⊘${NC} $DISPLAY_NAME ${DIM}(skipped)${NC}"
+                else
+                    case "$STATUS" in
+                        "Passed")
+                            echo -e "   ${GREEN}✓${NC} $DISPLAY_NAME"
+                            ;;
+                        "Failed")
+                            echo -e "   ${RED}✗${NC} $DISPLAY_NAME"
+                            if [ -n "${TEST_ERRORS[$TEST_KEY]}" ]; then
+                                ERROR="${TEST_ERRORS[$TEST_KEY]}"
+                                # Truncate long error messages
+                                if [ ${#ERROR} -gt 80 ]; then
+                                    ERROR="${ERROR:0:77}..."
+                                fi
+                                echo -e "      ${DIM}${ERROR}${NC}"
+                            fi
+                            ;;
+                        "Skipped")
+                            echo -e "   ${YELLOW}⊘${NC} $DISPLAY_NAME ${DIM}(skipped)${NC}"
+                            ;;
+                    esac
                 fi
             fi
         done
+    done
+    echo
+fi
+
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BOLD}📄 GENERATED TEST REPORTS${NC}"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+# Show generated report files (if any)
+if [ -d "$REPORT_DIR" ]; then
+    # Find reports from current test run (within 2 minutes)
+    CURRENT_RUN_REPORTS=$(find "$REPORT_DIR" -name "test_run_*.md" -mmin -2 -type f 2>/dev/null | sort -r)
+    
+    if [ -n "$CURRENT_RUN_REPORTS" ]; then
+        echo
+        echo -e "Generated report files:"
+        for report in $CURRENT_RUN_REPORTS; do
+            REPORT_NAME=$(basename "$report")
+            echo -e "  ${DIM}$REPORT_NAME${NC}"
+        done
         
-        # Quick access commands
+        echo
         echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo -e "${BOLD}Quick Commands:${NC}"
         echo -e "  View all reports:  ${YELLOW}ls -la $REPORT_DIR/*.md${NC}"
         echo -e "  Open in VS Code:   ${YELLOW}code $REPORT_DIR/*.md${NC}"
-    else
-        # Fallback to showing the latest report if we can't determine new ones
-        LATEST_REPORT=$(ls -t "$REPORT_DIR"/*.md 2>/dev/null | head -n1)
-        if [ -n "$LATEST_REPORT" ]; then
-            echo -e "${YELLOW}Latest report: $LATEST_REPORT${NC}"
-        else
-            echo -e "${YELLOW}⚠️  No test reports found${NC}"
-        fi
     fi
-else
-    echo -e "${YELLOW}⚠️  Report directory not found: $REPORT_DIR${NC}"
 fi
 
 # Clean up temp file

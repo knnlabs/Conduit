@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Core.Models;
@@ -163,6 +165,18 @@ public class Usage
     [JsonPropertyName("metadata")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Dictionary<string, object>? Metadata { get; set; }
+
+    /// <summary>
+    /// Extension data to capture additional provider-specific fields not defined in the model.
+    /// </summary>
+    /// <remarks>
+    /// This property captures any JSON properties that don't map to defined properties.
+    /// For example, SambaNova includes performance metrics like completion_tokens_per_sec,
+    /// time_to_first_token, total_latency, etc. These will be captured here without
+    /// causing deserialization errors.
+    /// </remarks>
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 }
 
 /// <summary>

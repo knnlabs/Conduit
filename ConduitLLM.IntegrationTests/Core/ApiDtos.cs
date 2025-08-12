@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace ConduitLLM.IntegrationTests.Core;
@@ -250,4 +251,8 @@ public class ChatUsage
     
     [JsonPropertyName("total_tokens")]
     public int TotalTokens { get; set; }
+    
+    // Capture any additional provider-specific fields (e.g., SambaNova performance metrics)
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 }

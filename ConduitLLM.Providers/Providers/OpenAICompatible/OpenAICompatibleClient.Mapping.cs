@@ -115,7 +115,11 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 Seed = request.Seed,
                 Tools = openAiTools,
                 ToolChoice = openAiToolChoice,
-                ResponseFormat = request.ResponseFormat != null ? new OpenAIModels.ResponseFormat { Type = request.ResponseFormat.Type ?? "text" } : new OpenAIModels.ResponseFormat { Type = "text" },
+                // Only send ResponseFormat if explicitly requested and not "text" (default)
+                // Some providers like SambaNova don't support response_format with type "text"
+                ResponseFormat = request.ResponseFormat != null && request.ResponseFormat.Type != "text" 
+                    ? new OpenAIModels.ResponseFormat { Type = request.ResponseFormat.Type ?? "text" } 
+                    : null,
                 Stream = request.Stream ?? false
             };
         }

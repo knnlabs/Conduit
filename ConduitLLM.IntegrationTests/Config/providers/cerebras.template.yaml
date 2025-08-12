@@ -1,0 +1,45 @@
+# Cerebras Provider Configuration Template
+# Copy this file to cerebras.yaml and fill in your actual API key
+# cerebras.yaml is gitignored to protect secrets
+
+provider:
+  type: "Cerebras"
+  name: "TEST_Cerebras_Provider"
+  apiKey: "YOUR_CEREBRAS_API_KEY_HERE"  # Replace with your actual Cerebras API key
+  baseUrl: "https://api.cerebras.ai/v1"
+
+models:
+  - alias: "TEST_llama-3.3-70b-cerebras"
+    actual: "llama-3.3-70b"  # Cerebras uses shorter model names
+    capabilities:
+      chat: true
+      multimodal: false  # Cerebras models are text-only
+      streaming: true
+    cost:
+      inputPerMillion: 0.60   # $0.60 per million input tokens
+      outputPerMillion: 0.60   # $0.60 per million output tokens
+
+testCases:
+  basicChat:
+    prompt: "What is the history of France?"
+    validation:
+      minInputTokens: 8      # "What is the history of France?" ~8 tokens
+      minOutputTokens: 100   # Expect substantial response
+      requiredPatterns:
+        - "(?i)revolution"   # Case-insensitive: Revolution
+        - "(?i)napoleon"     # Napoleon
+        - "(?i)paris"        # Paris
+        - "\\d{4}"           # Any 4-digit year
+        - "(?i)french"       # French
+  
+  multimodal:
+    enabled: false  # Cerebras does not support multimodal
+    imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Tux.png/220px-Tux.png"
+    prompt: "What do you see in this image?"
+    validation:
+      minInputTokens: 20
+      minOutputTokens: 50
+      requiredPatterns:
+        - "(?i)penguin"
+        - "(?i)(linux|tux)"
+        - "(?i)(black|white|yellow|orange)"

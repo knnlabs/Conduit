@@ -13,7 +13,7 @@ models:
     actual: "Meta-Llama-3.3-70B-Instruct"
     capabilities:
       chat: true
-      multimodal: true  # Supports text + image inputs
+      multimodal: false  # Llama 3.3 70B is text-only, does not support images
       streaming: true
     cost:
       inputPerMillion: 0.45   # $0.45 per million input tokens
@@ -33,7 +33,7 @@ testCases:
         - "(?i)french"       # French
   
   multimodal:
-    enabled: true  # Set to false to skip multimodal tests
+    enabled: false  # Disabled - Llama 3.3 70B does not support multimodal/vision
     imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Tux.png/220px-Tux.png"  # Tux penguin logo
     prompt: "What do you see in this image? Please describe any text, logos, or symbols you can identify."
     validation:

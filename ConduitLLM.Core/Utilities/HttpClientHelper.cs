@@ -245,9 +245,28 @@ namespace ConduitLLM.Core.Utilities
 
             logger?.LogDebug("Received successful response with status code {StatusCode}", response.StatusCode);
 
-            var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            return await JsonSerializer.DeserializeAsync<TResponse>(responseStream, options, cancellationToken)
-                ?? throw new LLMCommunicationException("Failed to deserialize response");
+            // Read the response as string first for debugging
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            
+            // Log the first 500 chars of the response for debugging
+            if (logger?.IsEnabled(LogLevel.Debug) == true)
+            {
+                var preview = responseContent.Length > 500 ? responseContent.Substring(0, 500) + "..." : responseContent;
+                logger.LogDebug("Response content preview: {Content}", preview);
+            }
+            
+            // Deserialize from the string
+            try
+            {
+                return JsonSerializer.Deserialize<TResponse>(responseContent, options)
+                    ?? throw new LLMCommunicationException("Failed to deserialize response - result was null");
+            }
+            catch (JsonException ex)
+            {
+                // Log the full response on error for debugging
+                logger?.LogError(ex, "Failed to deserialize response. Full content: {Content}", responseContent);
+                throw;
+            }
         }
 
         /// <summary>

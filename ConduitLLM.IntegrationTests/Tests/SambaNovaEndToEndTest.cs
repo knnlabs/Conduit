@@ -25,29 +25,65 @@ public class SambaNovaEndToEndTest : ProviderIntegrationTestBase
     [Fact]
     public async Task SambaNovaProvider_BasicChat_ShouldWork()
     {
+        bool reportGenerated = false;
+        
         try
         {
             // Setup provider infrastructure (Steps 1-6)
             var setupSuccess = await SetupProviderInfrastructure();
             setupSuccess.Should().BeTrue("Provider infrastructure should be set up successfully");
             
-            // Step 7: Send basic chat request
-            var chatResponse = await SendBasicChatRequest();
-            chatResponse.Should().NotBeNull("Chat response should not be null");
+            try
+            {
+                // Step 7: Send basic chat request
+                var chatResponse = await SendBasicChatRequest();
+                chatResponse.Should().NotBeNull("Chat response should not be null");
+                
+                // Step 8: Verify token tracking
+                await VerifyTokenTracking();
+            }
+            catch (Exception chatEx)
+            {
+                // Log the error but continue to generate report
+                _specificLogger.LogError(chatEx, "Chat request failed");
+                _context.Errors.Add($"Chat request failed: {chatEx.Message}");
+                
+                // Still generate report even if chat failed
+                _specificLogger.LogInformation("Generating report despite chat failure");
+            }
             
-            // Step 8: Verify token tracking
-            await VerifyTokenTracking();
-            
-            // Step 9: Generate report
+            // Step 9: Generate report (always generate, even on failure)
             await GenerateReport();
+            reportGenerated = true;
             
-            // Verify no errors occurred
-            _context.Errors.Should().BeEmpty("No errors should have occurred during the test");
+            // Now check if there were errors and fail the test if needed
+            if (_context.Errors.Any())
+            {
+                var errorMessage = string.Join("; ", _context.Errors);
+                _specificLogger.LogError("Test completed with errors: {Errors}", errorMessage);
+                throw new Exception($"Test failed with errors: {errorMessage}");
+            }
         }
         catch (Exception ex)
         {
+            // Make sure we save context
             _context.Errors.Add($"Test failed: {ex.Message}");
             _context.SaveToFile();
+            
+            // Only generate report if we haven't already
+            if (!reportGenerated)
+            {
+                try
+                {
+                    await GenerateReport();
+                }
+                catch
+                {
+                    // If report generation fails, just log it
+                    _logger.LogError("Failed to generate report");
+                }
+            }
+            
             _logger.LogError(ex, "Test failed");
             throw;
         }

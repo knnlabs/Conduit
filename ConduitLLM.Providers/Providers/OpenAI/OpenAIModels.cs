@@ -109,6 +109,7 @@ namespace ConduitLLM.Providers.OpenAI
         public string? Object { get; init; } // e.g., "chat.completion"
 
         [JsonPropertyName("created")]
+        [JsonConverter(typeof(FlexibleTimestampConverter))]
         public long? Created { get; init; } // Unix timestamp
 
         [JsonPropertyName("model")]

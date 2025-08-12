@@ -127,6 +127,10 @@ public static class TestHelpers
             var content = response.Choices[0].Message.Content;
             content.Should().NotBeNullOrEmpty("Response content should not be empty");
             
+            // Log the actual content for debugging
+            logger.LogInformation("Response content (first 500 chars): {Content}", 
+                content.Length > 500 ? content.Substring(0, 500) + "..." : content);
+            
             // Token validation
             response.Usage!.PromptTokens.Should().BeGreaterThanOrEqualTo(
                 validation.MinInputTokens,
