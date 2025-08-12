@@ -141,7 +141,7 @@ export default function VirtualKeyGroupsPage() {
     },
     {
       title: 'Total Balance',
-      value: formatters.currency(stats.totalBalance),
+      value: formatters.currency(stats.totalBalance, { precision: 2 }),
       icon: IconCreditCard,
       color: 'green',
     },
