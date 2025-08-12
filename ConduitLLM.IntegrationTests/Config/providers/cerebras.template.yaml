@@ -21,9 +21,9 @@ models:
 
 testCases:
   basicChat:
-    prompt: "What is the history of France?"
+    prompt: "Tell me about the history of France. Include information about the French Revolution, Napoleon, and Paris. Mention specific years when important events happened."
     validation:
-      minInputTokens: 8      # "What is the history of France?" ~8 tokens
+      minInputTokens: 25     # Longer instructive prompt ~25-30 tokens
       minOutputTokens: 100   # Expect substantial response
       requiredPatterns:
         - "(?i)revolution"   # Case-insensitive: Revolution

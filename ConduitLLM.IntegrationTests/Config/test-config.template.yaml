@@ -19,8 +19,8 @@ defaults:
 # Active providers for testing (add provider config files to Config/providers/)
 activeProviders:
   - groq
+  - cerebras
+  - sambanova
   # Add more providers as testing expands:
   # - openai
   # - anthropic
-  # - cerebras
-  # - sambanova
