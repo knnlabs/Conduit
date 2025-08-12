@@ -25,19 +25,18 @@ public class CerebrasEndToEndTest : ProviderIntegrationTestBase
     [Fact(DisplayName = "Cerebras Provider - Basic Chat Test")]
     public async Task CerebrasProvider_BasicChat_ShouldWork()
     {
-        // Check if using a dummy API key and fail the test explicitly
-        if (_providerConfig.Provider.ApiKey.Contains("wddtxk3fch9hndv33mfh4") || 
-            _providerConfig.Provider.ApiKey.Length < 50)
+        // Check if using a placeholder API key
+        if (_providerConfig.Provider.ApiKey.Contains("YOUR_CEREBRAS_API_KEY_HERE") || 
+            _providerConfig.Provider.ApiKey.Length < 20)
         {
             // Generate a report indicating the test couldn't run
-            _context.Errors.Add("Test cannot run: Invalid or placeholder API key detected");
-            _context.Errors.Add($"API key starts with: {_providerConfig.Provider.ApiKey.Substring(0, Math.Min(10, _providerConfig.Provider.ApiKey.Length))}...");
+            _context.Errors.Add("Test cannot run: Placeholder API key detected");
             _context.Errors.Add("To fix: Configure a valid Cerebras API key in cerebras.yaml");
             _context.SaveToFile();
             
             // Fail the test with a clear message
             throw new InvalidOperationException(
-                "Cerebras test FAILED: Invalid or placeholder API key. " +
+                "Cerebras test FAILED: Placeholder API key detected. " +
                 "Please configure a valid Cerebras API key in cerebras.yaml. " + 
                 "Get your API key from https://cerebras.ai");
         }
