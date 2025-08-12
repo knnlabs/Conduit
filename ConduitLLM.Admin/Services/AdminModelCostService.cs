@@ -38,6 +38,7 @@ namespace ConduitLLM.Admin.Services
         /// </summary>
         /// <param name="modelCostRepository">The model cost repository</param>
         /// <param name="requestLogRepository">The request log repository</param>
+        /// <param name="dbContextFactory">The database context factory</param>
         /// <param name="publishEndpoint">Optional event publishing endpoint (null if MassTransit not configured)</param>
         /// <param name="logger">The logger</param>
         public AdminModelCostService(

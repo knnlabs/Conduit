@@ -174,7 +174,28 @@ public class ChatMessage
     public string Role { get; set; } = "";
     
     [JsonPropertyName("content")]
-    public string Content { get; set; } = "";
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public object? Content { get; set; }  // Can be string or List<ContentPart>
+}
+
+public class ContentPart
+{
+    [JsonPropertyName("type")]
+    public string Type { get; set; } = "";  // "text" or "image_url"
+    
+    [JsonPropertyName("text")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Text { get; set; }
+    
+    [JsonPropertyName("image_url")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ImageUrl? ImageUrl { get; set; }
+}
+
+public class ImageUrl
+{
+    [JsonPropertyName("url")]
+    public string Url { get; set; } = "";  // Base64 data URL or HTTP URL
 }
 
 public class ChatCompletionResponse
@@ -204,10 +225,19 @@ public class ChatChoice
     public int Index { get; set; }
     
     [JsonPropertyName("message")]
-    public ChatMessage Message { get; set; } = new();
+    public ResponseMessage Message { get; set; } = new();
     
     [JsonPropertyName("finish_reason")]
     public string? FinishReason { get; set; }
+}
+
+public class ResponseMessage
+{
+    [JsonPropertyName("role")]
+    public string Role { get; set; } = "";
+    
+    [JsonPropertyName("content")]
+    public string Content { get; set; } = "";  // Response is always string
 }
 
 public class ChatUsage

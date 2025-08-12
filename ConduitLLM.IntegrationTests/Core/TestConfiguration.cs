@@ -83,10 +83,19 @@ public class ModelCost
 public class TestCaseConfig
 {
     public ChatTestCase BasicChat { get; set; } = new();
+    public MultimodalTestCase? Multimodal { get; set; }
 }
 
 public class ChatTestCase
 {
+    public string Prompt { get; set; } = "";
+    public ValidationConfig Validation { get; set; } = new();
+}
+
+public class MultimodalTestCase
+{
+    public bool Enabled { get; set; } = true;
+    public string ImageUrl { get; set; } = "";
     public string Prompt { get; set; } = "";
     public ValidationConfig Validation { get; set; } = new();
 }

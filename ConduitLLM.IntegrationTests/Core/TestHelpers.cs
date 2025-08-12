@@ -170,6 +170,66 @@ public static class TestHelpers
         }
     }
     
+    public static class Multimodal
+    {
+        public static async Task<string> DownloadImageAsBase64(string imageUrl, ILogger logger)
+        {
+            try
+            {
+                logger.LogInformation("Downloading image from: {Url}", imageUrl);
+                
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+                var imageBytes = await client.GetByteArrayAsync(imageUrl);
+                
+                // Detect MIME type from URL or content
+                var mimeType = GetMimeTypeFromUrl(imageUrl);
+                var base64String = Convert.ToBase64String(imageBytes);
+                
+                logger.LogInformation("✓ Image downloaded: {Size} bytes, Type: {MimeType}", 
+                    imageBytes.Length, mimeType);
+                
+                // Return in the format expected by OpenAI-compatible APIs
+                return $"data:{mimeType};base64,{base64String}";
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to download image from {Url}", imageUrl);
+                throw new InvalidOperationException($"Failed to download image: {ex.Message}", ex);
+            }
+        }
+        
+        private static string GetMimeTypeFromUrl(string url)
+        {
+            var extension = Path.GetExtension(url).ToLower().TrimStart('.');
+            return extension switch
+            {
+                "jpg" or "jpeg" => "image/jpeg",
+                "png" => "image/png",
+                "gif" => "image/gif",
+                "webp" => "image/webp",
+                "bmp" => "image/bmp",
+                _ => "image/jpeg" // Default to JPEG
+            };
+        }
+        
+        public static ChatMessage CreateMultimodalMessage(string text, string base64Image)
+        {
+            return new ChatMessage
+            {
+                Role = "user",
+                Content = new List<ContentPart>
+                {
+                    new ContentPart { Type = "text", Text = text },
+                    new ContentPart 
+                    { 
+                        Type = "image_url", 
+                        ImageUrl = new ImageUrl { Url = base64Image }
+                    }
+                }
+            };
+        }
+    }
+    
     public static class ReportGenerator
     {
         public static async Task GenerateMarkdownReport(
