@@ -29,7 +29,6 @@ const navigationSections = [
       { id: 'virtualkeys', label: 'Virtual Keys', href: '/virtualkeys', icon: IconKey },
       { id: 'virtualkeys-groups', label: 'Virtual Key Groups', href: '/virtualkeys/groups', icon: IconUsers },
       { id: 'virtualkeys-discovery-preview', label: 'Discovery Preview', href: '/virtualkeys/discovery-preview', icon: IconEye },
-      { id: 'virtual-keys-analytics', label: 'Virtual Keys Analytics', href: '/virtual-keys-analytics', icon: IconChartBar },
     ]
   },
   {

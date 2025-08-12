@@ -149,14 +149,6 @@ export const navigationSections: NavigationSection[] = [
         color: 'blue',
       },
       {
-        id: 'virtual-keys-analytics',
-        label: 'Virtual Keys Analytics',
-        icon: IconKey,
-        href: '/virtual-keys-analytics',
-        description: 'Comprehensive virtual key analytics and monitoring',
-        color: 'purple',
-      },
-      {
         id: 'model-costs',
         label: 'Model Pricing',
         icon: IconCreditCard,
