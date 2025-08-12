@@ -42,6 +42,110 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
+        public async Task GetAllModelCosts_WithPagination_ShouldReturnPaginatedResponse()
+        {
+            // Arrange
+            var costs = new List<ModelCostDto>();
+            for (int i = 1; i <= 25; i++)
+            {
+                costs.Add(new() { Id = i, CostName = $"Model-{i} Pricing", InputCostPerMillionTokens = i * 10m, OutputCostPerMillionTokens = i * 20m });
+            }
+
+            _mockService.Setup(x => x.GetAllModelCostsAsync())
+                .ReturnsAsync(costs);
+
+            // Act
+            var result = await _controller.GetAllModelCosts(page: 2, pageSize: 10);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            okResult.Value.Should().NotBeNull();
+            
+            // Use reflection to access anonymous type properties
+            var responseType = okResult.Value!.GetType();
+            var totalCount = (int)responseType.GetProperty("totalCount")!.GetValue(okResult.Value)!;
+            var page = (int)responseType.GetProperty("page")!.GetValue(okResult.Value)!;
+            var pageSize = (int)responseType.GetProperty("pageSize")!.GetValue(okResult.Value)!;
+            var totalPages = (int)responseType.GetProperty("totalPages")!.GetValue(okResult.Value)!;
+            var items = responseType.GetProperty("items")!.GetValue(okResult.Value) as IEnumerable<ModelCostDto>;
+            
+            // Verify pagination metadata
+            totalCount.Should().Be(25);
+            page.Should().Be(2);
+            pageSize.Should().Be(10);
+            totalPages.Should().Be(3);
+            
+            // Verify items
+            items.Should().NotBeNull();
+            items!.Count().Should().Be(10);
+            items!.First().Id.Should().Be(11); // First item on page 2
+            items!.Last().Id.Should().Be(20);  // Last item on page 2
+        }
+
+        [Fact]
+        public async Task GetAllModelCosts_WithPaginationLastPage_ShouldReturnPartialPage()
+        {
+            // Arrange
+            var costs = new List<ModelCostDto>();
+            for (int i = 1; i <= 25; i++)
+            {
+                costs.Add(new() { Id = i, CostName = $"Model-{i} Pricing", InputCostPerMillionTokens = i * 10m, OutputCostPerMillionTokens = i * 20m });
+            }
+
+            _mockService.Setup(x => x.GetAllModelCostsAsync())
+                .ReturnsAsync(costs);
+
+            // Act
+            var result = await _controller.GetAllModelCosts(page: 3, pageSize: 10);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            okResult.Value.Should().NotBeNull();
+            
+            // Use reflection to access anonymous type properties
+            var responseType = okResult.Value!.GetType();
+            var totalCount = (int)responseType.GetProperty("totalCount")!.GetValue(okResult.Value)!;
+            var page = (int)responseType.GetProperty("page")!.GetValue(okResult.Value)!;
+            var pageSize = (int)responseType.GetProperty("pageSize")!.GetValue(okResult.Value)!;
+            var totalPages = (int)responseType.GetProperty("totalPages")!.GetValue(okResult.Value)!;
+            var items = responseType.GetProperty("items")!.GetValue(okResult.Value) as IEnumerable<ModelCostDto>;
+            
+            // Verify pagination metadata
+            totalCount.Should().Be(25);
+            page.Should().Be(3);
+            pageSize.Should().Be(10);
+            totalPages.Should().Be(3);
+            
+            // Verify items - should only have 5 items on last page
+            items.Should().NotBeNull();
+            items!.Count().Should().Be(5);
+            items!.First().Id.Should().Be(21); // First item on page 3
+            items!.Last().Id.Should().Be(25);  // Last item
+        }
+
+        [Fact]
+        public async Task GetAllModelCosts_WithOnlyPageParameter_ShouldReturnAllItems()
+        {
+            // Arrange
+            var costs = new List<ModelCostDto>
+            {
+                new() { Id = 1, CostName = "GPT-4 Pricing", InputCostPerMillionTokens = 30.00m, OutputCostPerMillionTokens = 60.00m },
+                new() { Id = 2, CostName = "Claude-3 Pricing", InputCostPerMillionTokens = 20.00m, OutputCostPerMillionTokens = 40.00m }
+            };
+
+            _mockService.Setup(x => x.GetAllModelCostsAsync())
+                .ReturnsAsync(costs);
+
+            // Act - Only page provided, no pageSize
+            var result = await _controller.GetAllModelCosts(page: 1, pageSize: null);
+
+            // Assert - Should return all items without pagination
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var returnedCosts = Assert.IsAssignableFrom<IEnumerable<ModelCostDto>>(okResult.Value);
+            returnedCosts.Should().HaveCount(2);
+        }
+
+        [Fact]
         public async Task GetAllModelCosts_WithException_ShouldReturn500()
         {
             // Arrange

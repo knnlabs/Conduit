@@ -42,17 +42,42 @@ namespace ConduitLLM.Admin.Controllers
         }
 
         /// <summary>
-        /// Gets all model costs
+        /// Gets all model costs with optional pagination
         /// </summary>
-        /// <returns>List of all model costs</returns>
+        /// <param name="page">Page number (1-based)</param>
+        /// <param name="pageSize">Number of items per page</param>
+        /// <returns>List of all model costs or paginated response</returns>
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<ModelCostDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetAllModelCosts()
+        public async Task<IActionResult> GetAllModelCosts([FromQuery] int? page = null, [FromQuery] int? pageSize = null)
         {
             try
             {
                 var modelCosts = await _modelCostService.GetAllModelCostsAsync();
+                
+                // If pagination parameters are provided, return paginated response
+                if (page.HasValue && pageSize.HasValue)
+                {
+                    var totalCount = modelCosts.Count();
+                    var items = modelCosts
+                        .Skip((page.Value - 1) * pageSize.Value)
+                        .Take(pageSize.Value)
+                        .ToList();
+                    
+                    var paginatedResponse = new
+                    {
+                        items = items,
+                        totalCount = totalCount,
+                        page = page.Value,
+                        pageSize = pageSize.Value,
+                        totalPages = (int)Math.Ceiling(totalCount / (double)pageSize.Value)
+                    };
+                    
+                    return Ok(paginatedResponse);
+                }
+                
+                // Otherwise return all items (backward compatibility)
                 return Ok(modelCosts);
             }
             catch (Exception ex)
