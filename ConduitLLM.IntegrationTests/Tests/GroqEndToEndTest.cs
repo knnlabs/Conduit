@@ -303,6 +303,22 @@ Report: {Report}
         {
             context.Errors.Add($"Test failed: {ex.Message}");
             context.SaveToFile();
+            
+            // Generate failure report
+            try
+            {
+                await TestHelpers.ReportGenerator.GenerateMarkdownReport(
+                    context, 
+                    _config, 
+                    _providerConfig, 
+                    _logger);
+                _logger.LogInformation("Failure report generated for Groq test");
+            }
+            catch (Exception reportEx)
+            {
+                _logger.LogError(reportEx, "Failed to generate failure report");
+            }
+            
             _logger.LogError(ex, "Test failed at step");
             throw;
         }

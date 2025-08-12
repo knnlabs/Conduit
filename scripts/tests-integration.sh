@@ -236,7 +236,7 @@ run_provider_tests() {
     
     case "$provider" in
         "groq")
-            dotnet test --no-build --logger "console;verbosity=normal"
+            dotnet test --no-build --filter "FullyQualifiedName~GroqEndToEndTest" --logger "console;verbosity=normal"
             ;;
         "sambanova")
             dotnet test --no-build --filter "FullyQualifiedName~SambaNovaEndToEndTest" --logger "console;verbosity=normal"
@@ -252,17 +252,28 @@ run_provider_tests() {
 set +e  # Don't exit on test failure
 TEST_EXIT_CODE=0
 
+# Create temporary file to capture test output
+TEST_OUTPUT_FILE=$(mktemp /tmp/conduit-test-output.XXXXXX)
+REPORTS_BEFORE=""
+REPORTS_AFTER=""
+
+# Capture initial report files
+REPORT_DIR="$TEST_DIR/bin/Debug/net9.0/Reports"
+if [ -d "$REPORT_DIR" ]; then
+    REPORTS_BEFORE=$(ls -t "$REPORT_DIR"/*.md 2>/dev/null | head -20)
+fi
+
 if [ "$PROVIDER_ARG" = "all" ]; then
     echo -e "${BLUE}🧪 Running integration tests for ALL providers...${NC}"
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     
-    # Run all provider tests
-    dotnet test --no-build --logger "console;verbosity=normal"
-    TEST_EXIT_CODE=$?
+    # Run all provider tests and capture output
+    dotnet test --no-build --logger "console;verbosity=normal" 2>&1 | tee "$TEST_OUTPUT_FILE"
+    TEST_EXIT_CODE=${PIPESTATUS[0]}
 else
     # Run specific provider tests
-    run_provider_tests "$PROVIDER_ARG"
-    TEST_EXIT_CODE=$?
+    run_provider_tests "$PROVIDER_ARG" 2>&1 | tee "$TEST_OUTPUT_FILE"
+    TEST_EXIT_CODE=${PIPESTATUS[0]}
 fi
 
 set -e
@@ -270,65 +281,129 @@ set -e
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo
 
-# Find the most recent report
-# Reports are generated in the bin/Debug/net9.0/Reports directory
-REPORT_DIR="$TEST_DIR/bin/Debug/net9.0/Reports"
+# Parse test output to extract results
+echo -e "${BOLD}📊 TEST RESULTS SUMMARY${NC}"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+# Extract test results from output - handle both indented and non-indented format
+TOTAL_TESTS=$(grep -E "^\s*Total tests:" "$TEST_OUTPUT_FILE" 2>/dev/null | tail -1 | sed 's/.*Total tests:\s*//' | awk '{print $1}')
+PASSED_TESTS=$(grep -E "^\s*Passed:" "$TEST_OUTPUT_FILE" 2>/dev/null | tail -1 | sed 's/.*Passed:\s*//' | awk '{print $1}')
+FAILED_TESTS=$(grep -E "^\s*Failed:" "$TEST_OUTPUT_FILE" 2>/dev/null | tail -1 | sed 's/.*Failed:\s*//' | awk '{print $1}')
+SKIPPED_TESTS=$(grep -E "^\s*Skipped:" "$TEST_OUTPUT_FILE" 2>/dev/null | tail -1 | sed 's/.*Skipped:\s*//' | awk '{print $1}')
+
+# Default values if parsing fails
+TOTAL_TESTS=${TOTAL_TESTS:-0}
+PASSED_TESTS=${PASSED_TESTS:-0}
+FAILED_TESTS=${FAILED_TESTS:-0}
+SKIPPED_TESTS=${SKIPPED_TESTS:-0}
+
+# Display overall stats - check TEST_EXIT_CODE for actual pass/fail
+if [ $TEST_EXIT_CODE -eq 0 ]; then
+    echo -e "${GREEN}✅ OVERALL: PASSED${NC}"
+else
+    echo -e "${RED}❌ OVERALL: FAILED${NC}"
+fi
+
+echo
+echo -e "Total Tests:    ${BOLD}$TOTAL_TESTS${NC}"
+echo -e "Passed:         ${GREEN}$PASSED_TESTS${NC}"
+if [ "$FAILED_TESTS" != "0" ] && [ -n "$FAILED_TESTS" ]; then
+    echo -e "Failed:         ${RED}$FAILED_TESTS${NC}"
+fi
+if [ "$SKIPPED_TESTS" != "0" ] && [ -n "$SKIPPED_TESTS" ]; then
+    echo -e "Skipped:        ${YELLOW}$SKIPPED_TESTS${NC}"
+fi
+
+# Find all new reports generated during this test run
+echo
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BOLD}📄 TEST REPORTS${NC}"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
 if [ -d "$REPORT_DIR" ]; then
-    LATEST_REPORT=$(ls -t "$REPORT_DIR"/*.md 2>/dev/null | head -n1)
+    REPORTS_AFTER=$(ls -t "$REPORT_DIR"/*.md 2>/dev/null | head -20)
     
-    if [ -n "$LATEST_REPORT" ]; then
-        echo -e "${GREEN}${BOLD}📄 Test Report Generated:${NC}"
-        echo -e "${YELLOW}   $LATEST_REPORT${NC}"
-        echo
-        
-        # Display report summary
-        echo -e "${BLUE}${BOLD}Report Summary:${NC}"
-        echo -e "${BLUE}───────────────${NC}"
-        
-        # Extract summary section from report
-        if [ -f "$LATEST_REPORT" ]; then
-            # Look for the Summary section and display it
-            awk '/^## Summary/,/^##/{if(/^##/ && !/^## Summary/) exit; print}' "$LATEST_REPORT" | tail -n +2
-        fi
-        
-        echo
-        echo -e "${GREEN}${BOLD}View full report:${NC}"
-        echo -e "  ${YELLOW}cat $LATEST_REPORT${NC}"
-        echo -e "  ${YELLOW}code $LATEST_REPORT${NC}  # Open in VS Code"
-        echo -e "  ${YELLOW}less $LATEST_REPORT${NC}  # View in terminal"
+    # Find new reports by comparing before and after
+    if [ -n "$REPORTS_BEFORE" ]; then
+        NEW_REPORTS=$(comm -13 <(echo "$REPORTS_BEFORE" | sort) <(echo "$REPORTS_AFTER" | sort) 2>/dev/null)
     else
-        echo -e "${YELLOW}⚠️  No test report found in $REPORT_DIR${NC}"
+        # If no reports before, all current reports are new
+        NEW_REPORTS="$REPORTS_AFTER"
+    fi
+    
+    # Also check if running all providers - find reports from current test run (within 2 minutes)
+    if [ "$PROVIDER_ARG" = "all" ] && [ -n "$REPORTS_AFTER" ]; then
+        # Find all reports modified within the last 2 minutes (format: test_run_PROVIDER_YYYYMMDD_HHMMSS_fff_TESTID.md)
+        CURRENT_RUN_REPORTS=$(find "$REPORT_DIR" -name "test_run_*.md" -mmin -2 -type f 2>/dev/null | sort -r)
+        if [ -n "$CURRENT_RUN_REPORTS" ]; then
+            NEW_REPORTS="$CURRENT_RUN_REPORTS"
+        fi
+    fi
+    
+    if [ -n "$NEW_REPORTS" ]; then
+        # Parse each report to show provider-specific results
+        for report in $NEW_REPORTS; do
+            if [ -f "$report" ]; then
+                # Extract provider name and status from report
+                PROVIDER=$(grep -E "^### .* Provider:" "$report" 2>/dev/null | head -1 | sed 's/.*Provider: *//')
+                STATUS=$(grep -E "^- Test Status:" "$report" 2>/dev/null | head -1)
+                
+                if [ -z "$PROVIDER" ]; then
+                    # Try alternative format
+                    PROVIDER=$(grep -E "^- Provider:" "$report" 2>/dev/null | head -1 | sed 's/.*Provider: *//')
+                fi
+                
+                # Display provider result
+                if [ -n "$PROVIDER" ]; then
+                    if echo "$STATUS" | grep -q "PASSED"; then
+                        echo -e "${GREEN}✅ $PROVIDER${NC}"
+                    elif echo "$STATUS" | grep -q "FAILED"; then
+                        echo -e "${RED}❌ $PROVIDER${NC}"
+                    else
+                        echo -e "${YELLOW}⚠️  $PROVIDER (unknown status)${NC}"
+                    fi
+                    echo -e "   Report: ${YELLOW}$report${NC}"
+                    
+                    # Extract any errors from the report
+                    ERRORS=$(grep -E "^- (Error|Multimodal not supported):" "$report" 2>/dev/null | head -2)
+                    if [ -n "$ERRORS" ]; then
+                        echo "$ERRORS" | while IFS= read -r line; do
+                            echo -e "   ${RED}$line${NC}"
+                        done
+                    fi
+                    echo
+                fi
+            fi
+        done
+        
+        # Quick access commands
+        echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${BOLD}Quick Commands:${NC}"
+        echo -e "  View all reports:  ${YELLOW}ls -la $REPORT_DIR/*.md${NC}"
+        echo -e "  Open in VS Code:   ${YELLOW}code $REPORT_DIR/*.md${NC}"
+    else
+        # Fallback to showing the latest report if we can't determine new ones
+        LATEST_REPORT=$(ls -t "$REPORT_DIR"/*.md 2>/dev/null | head -n1)
+        if [ -n "$LATEST_REPORT" ]; then
+            echo -e "${YELLOW}Latest report: $LATEST_REPORT${NC}"
+        else
+            echo -e "${YELLOW}⚠️  No test reports found${NC}"
+        fi
     fi
 else
     echo -e "${YELLOW}⚠️  Report directory not found: $REPORT_DIR${NC}"
 fi
 
+# Clean up temp file
+rm -f "$TEST_OUTPUT_FILE"
+
 echo
 
-# Check test context for debugging
-CONTEXT_FILE="$TEST_DIR/bin/Debug/net9.0/test-context.json"
-if [ -f "$CONTEXT_FILE" ]; then
-    echo -e "${BLUE}🔍 Test context saved for debugging:${NC}"
-    echo -e "   ${YELLOW}$CONTEXT_FILE${NC}"
-    echo
-fi
-
-# Exit with test exit code
+# Final status message
 if [ $TEST_EXIT_CODE -eq 0 ]; then
-    if [ "$PROVIDER_ARG" = "all" ]; then
-        echo -e "${GREEN}${BOLD}✅ All tests passed!${NC}"
-    else
-        echo -e "${GREEN}${BOLD}✅ All $PROVIDER_ARG tests passed!${NC}"
-        if [ "$PROVIDER_ARG" = "sambanova" ]; then
-            echo -e "${BLUE}Note: If multimodal tests were skipped, the model may not support image inputs.${NC}"
-        fi
-    fi
+    echo -e "${GREEN}${BOLD}✅ Test run completed successfully!${NC}"
 else
-    if [ "$PROVIDER_ARG" = "all" ]; then
-        echo -e "${RED}${BOLD}❌ Some tests failed. Check the report for details.${NC}"
-    else
-        echo -e "${RED}${BOLD}❌ Some $PROVIDER_ARG tests failed. Check the report for details.${NC}"
-    fi
+    echo -e "${RED}${BOLD}❌ Test run completed with failures. Review the reports above.${NC}"
 fi
 
 exit $TEST_EXIT_CODE

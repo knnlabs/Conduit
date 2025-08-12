@@ -242,7 +242,9 @@ public static class TestHelpers
             Directory.CreateDirectory(reportDir);
             
             var timestamp = DateTime.UtcNow;
-            var fileName = $"test_run_{timestamp:yyyyMMdd_HHmmss}.md";
+            var providerName = providerConfig.Provider.Type.ToLower();
+            // Include milliseconds and test run ID to ensure unique filenames
+            var fileName = $"test_run_{providerName}_{timestamp:yyyyMMdd_HHmmss_fff}_{context.TestRunId}.md";
             var filePath = Path.Combine(reportDir, fileName);
             
             var sb = new StringBuilder();
