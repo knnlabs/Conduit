@@ -16,17 +16,7 @@ public class EnvironmentConfig
     public string CoreApiUrl { get; set; } = "http://localhost:5000";
     public string AdminApiUrl { get; set; } = "http://localhost:5002";
     public string AdminApiKey { get; set; } = "";
-    public S3Config S3 { get; set; } = new();
     public TimeoutConfig Timeouts { get; set; } = new();
-}
-
-public class S3Config
-{
-    public string Endpoint { get; set; } = "";
-    public string AccessKey { get; set; } = "";
-    public string SecretKey { get; set; } = "";
-    public string BucketName { get; set; } = "";
-    public string Region { get; set; } = "us-east-1";
 }
 
 public class TimeoutConfig
@@ -209,14 +199,29 @@ public static class ConfigurationLoader
     {
         try
         {
-            var dockerComposePath = Path.Combine("..", "docker-compose.dev.yml");
-            if (File.Exists(dockerComposePath))
+            // Try multiple potential paths for docker-compose files
+            var potentialPaths = new[]
             {
-                var content = File.ReadAllText(dockerComposePath);
-                var match = Regex.Match(content, @"CONDUIT_API_TO_API_BACKEND_AUTH_KEY:\s*(.+)");
-                if (match.Success)
+                Path.Combine("..", "docker-compose.dev.yml"),
+                Path.Combine("..", "..", "docker-compose.dev.yml"),
+                Path.Combine("..", "..", "..", "docker-compose.dev.yml"),
+                Path.Combine("..", "docker-compose.yml"),
+                Path.Combine("..", "..", "docker-compose.yml"),
+                Path.Combine("..", "..", "..", "docker-compose.yml"),
+                "docker-compose.dev.yml",
+                "docker-compose.yml"
+            };
+
+            foreach (var dockerComposePath in potentialPaths)
+            {
+                if (File.Exists(dockerComposePath))
                 {
-                    return match.Groups[1].Value.Trim().Trim('"');
+                    var content = File.ReadAllText(dockerComposePath);
+                    var match = Regex.Match(content, @"CONDUIT_API_TO_API_BACKEND_AUTH_KEY:\s*(.+)");
+                    if (match.Success)
+                    {
+                        return match.Groups[1].Value.Trim().Trim('"');
+                    }
                 }
             }
         }

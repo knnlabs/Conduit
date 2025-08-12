@@ -1,19 +1,9 @@
-# Integration Test Configuration Template
-# Copy this file to test-config.yaml and fill in your actual values
-# test-config.yaml is gitignored to protect secrets
+# Integration Test Configuration - Auto-detected from docker-compose.dev.yml
 
 environment:
   coreApiUrl: "http://localhost:5000"
   adminApiUrl: "http://localhost:5002"
-  adminApiKey: "test-admin-key-123"  # From docker-compose.dev.yml CONDUIT_API_TO_API_BACKEND_AUTH_KEY
-  
-  # S3/Media settings (from your .env)
-  s3:
-    endpoint: "http://localhost:9000"
-    accessKey: "minioadmin"
-    secretKey: "minioadmin"
-    bucketName: "conduit-media"
-    region: "us-east-1"
+  # All other settings auto-detected from docker-compose.dev.yml
   
   timeouts:
     default: 10
