@@ -176,10 +176,17 @@ export default function VirtualKeysPage() {
       return;
     }
 
+    // Create a map for quick balance lookup
+    const groupBalanceMap = new Map<number, number>();
+    virtualKeyGroups?.forEach(group => {
+      groupBalanceMap.set(group.id, group.balance);
+    });
+
     const exportData = filteredKeys.map((key) => ({
       name: key.keyName,
       keyPrefix: key.keyPrefix ?? 'N/A',
       virtualKeyGroupId: key.virtualKeyGroupId,
+      currentBalance: groupBalanceMap.get(key.virtualKeyGroupId) ?? 0,
       status: key.isEnabled ? 'Active' : 'Disabled',
       createdAt: formatDateForExport(key.createdAt),
       allowedModels: key.allowedModels ?? '',
@@ -195,6 +202,7 @@ export default function VirtualKeysPage() {
         { key: 'name', label: 'Name' },
         { key: 'keyPrefix', label: 'Key Prefix' },
         { key: 'virtualKeyGroupId', label: 'Group ID' },
+        { key: 'currentBalance', label: 'Current Balance' },
         { key: 'status', label: 'Status' },
         { key: 'createdAt', label: 'Created At' },
         { key: 'allowedModels', label: 'Allowed Models' },
@@ -209,7 +217,7 @@ export default function VirtualKeysPage() {
       message: `Exported ${filteredKeys.length} virtual keys`,
       color: 'green',
     });
-  }, [filteredKeys]);
+  }, [filteredKeys, virtualKeyGroups]);
 
   const handleExportJSON = useCallback(() => {
     if (!filteredKeys || filteredKeys.length === 0) {
@@ -221,8 +229,20 @@ export default function VirtualKeysPage() {
       return;
     }
 
+    // Create a map for quick balance lookup
+    const groupBalanceMap = new Map<number, number>();
+    virtualKeyGroups?.forEach(group => {
+      groupBalanceMap.set(group.id, group.balance);
+    });
+
+    // Enrich the keys data with balance information
+    const enrichedKeys = filteredKeys.map(key => ({
+      ...key,
+      currentBalance: groupBalanceMap.get(key.virtualKeyGroupId) ?? 0
+    }));
+
     exportToJSON(
-      filteredKeys,
+      enrichedKeys,
       `virtual-keys-${new Date().toISOString().split('T')[0]}`
     );
 
@@ -231,7 +251,7 @@ export default function VirtualKeysPage() {
       message: `Exported ${filteredKeys.length} virtual keys`,
       color: 'green',
     });
-  }, [filteredKeys]);
+  }, [filteredKeys, virtualKeyGroups]);
 
   const statCards = useMemo(() => stats ? [
     {

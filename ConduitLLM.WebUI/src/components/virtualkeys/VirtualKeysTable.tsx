@@ -36,10 +36,12 @@ export function VirtualKeysTable({ onEdit, onView, data, groups, onDelete }: Vir
   const virtualKeys = data ?? [];
   const router = useRouter();
   
-  // Create a map of group ID to group name for quick lookup
-  const groupMap = new Map<number, string>();
+  // Create maps for group data lookup
+  const groupNameMap = new Map<number, string>();
+  const groupBalanceMap = new Map<number, number>();
   groups?.forEach(group => {
-    groupMap.set(group.id, group.groupName);
+    groupNameMap.set(group.id, group.groupName);
+    groupBalanceMap.set(group.id, group.balance);
   });
 
 
@@ -89,7 +91,7 @@ export function VirtualKeysTable({ onEdit, onView, data, groups, onDelete }: Vir
               onClick={() => handleGroupClick(key.virtualKeyGroupId)}
               style={{ cursor: 'pointer' }}
             >
-              {groupMap.get(key.virtualKeyGroupId) ?? `Group ID: ${key.virtualKeyGroupId}`}
+              {groupNameMap.get(key.virtualKeyGroupId) ?? `Group ID: ${key.virtualKeyGroupId}`}
             </Anchor>
             <Text size="xs" c="dimmed">
               Balance tracked at group level
@@ -97,6 +99,14 @@ export function VirtualKeysTable({ onEdit, onView, data, groups, onDelete }: Vir
           </Stack>
         </Table.Td>
 
+        <Table.Td>
+          <Text fw={500} size="sm" style={{ fontFamily: 'monospace' }}>
+            {(() => {
+              const balance = groupBalanceMap.get(key.virtualKeyGroupId);
+              return balance !== undefined ? `$${balance.toFixed(2)}` : 'N/A';
+            })()}
+          </Text>
+        </Table.Td>
 
         <Table.Td>
           <Badge
@@ -161,6 +171,7 @@ export function VirtualKeysTable({ onEdit, onView, data, groups, onDelete }: Vir
                 <Table.Th>Name</Table.Th>
                 <Table.Th>Key Prefix</Table.Th>
                 <Table.Th>Virtual Key Group</Table.Th>
+                <Table.Th>Current Balance</Table.Th>
                 <Table.Th>Status</Table.Th>
                 <Table.Th>Expires</Table.Th>
                 <Table.Th />
