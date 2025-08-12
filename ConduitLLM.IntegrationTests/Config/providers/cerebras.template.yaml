@@ -6,7 +6,7 @@ provider:
   type: "Cerebras"
   name: "TEST_Cerebras_Provider"
   apiKey: "YOUR_CEREBRAS_API_KEY_HERE"  # Replace with your actual Cerebras API key
-  baseUrl: "https://api.cerebras.ai/v1"
+  # baseUrl: "https://api.cerebras.ai/v1"  # Optional - defaults to https://api.cerebras.ai/v1
 
 models:
   - alias: "TEST_llama-3.3-70b-cerebras"

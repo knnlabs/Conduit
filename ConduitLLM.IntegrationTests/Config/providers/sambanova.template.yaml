@@ -6,7 +6,7 @@ provider:
   type: "SambaNova"
   name: "TEST_SambaNova_Provider"
   apiKey: "YOUR_SAMBANOVA_API_KEY_HERE"  # Replace with your actual SambaNova API key
-  baseUrl: "https://api.sambanova.ai/v1"
+  # baseUrl: "https://api.sambanova.ai/v1"  # Optional - defaults to https://api.sambanova.ai/v1
 
 models:
   - alias: "TEST_llama-3.3-70b"

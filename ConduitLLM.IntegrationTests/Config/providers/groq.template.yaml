@@ -6,7 +6,7 @@ provider:
   type: "Groq"
   name: "TEST_Groq_Provider"
   apiKey: "gsk_YOUR_GROQ_API_KEY_HERE"  # Replace with your actual Groq API key
-  baseUrl: "https://api.groq.com/openai/v1"
+  # baseUrl: "https://api.groq.com/openai/v1"  # Optional - defaults to https://api.groq.com/openai/v1
 
 models:
   - alias: "TEST_llama-3.3-70b"
