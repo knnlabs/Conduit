@@ -210,13 +210,12 @@ public class GroqEndToEndTest : IClassFixture<TestFixture>
             chatResponse.Success.Should().BeTrue($"Chat request should succeed: {chatResponse.Error}");
             chatResponse.Data.Should().NotBeNull();
             
-            // Validate response
-            TestHelpers.Assertions.ValidateChatResponse(
-                chatResponse.Data!, 
-                testCase.Validation, 
-                _logger);
+            // Log the actual response for debugging
+            var responseContent = chatResponse.Data!.Choices[0].Message.Content;
+            _logger.LogInformation("Chat response content (first 500 chars): {Content}", 
+                responseContent.Length > 500 ? responseContent.Substring(0, 500) + "..." : responseContent);
             
-            // Store response data
+            // Store response data BEFORE validation so it's available in error reports
             context.LastChatResponse = new ChatResponse
             {
                 Id = chatResponse.Data!.Id,
@@ -224,8 +223,14 @@ public class GroqEndToEndTest : IClassFixture<TestFixture>
                 PromptTokens = chatResponse.Data.Usage?.PromptTokens,
                 CompletionTokens = chatResponse.Data.Usage?.CompletionTokens,
                 TotalTokens = chatResponse.Data.Usage?.TotalTokens,
-                Content = chatResponse.Data.Choices[0].Message.Content
+                Content = responseContent
             };
+            
+            // Validate response (this may throw)
+            TestHelpers.Assertions.ValidateChatResponse(
+                chatResponse.Data!, 
+                testCase.Validation, 
+                _logger);
             
             _logger.LogInformation("✓ Chat response received: {Tokens} tokens", 
                 context.LastChatResponse.TotalTokens);

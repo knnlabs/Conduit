@@ -306,6 +306,19 @@ public static class TestHelpers
                     sb.AppendLine($"- {error}");
                 }
                 sb.AppendLine();
+                
+                // If there was a response but validation failed, show it
+                if (context.LastChatResponse != null && !string.IsNullOrEmpty(context.LastChatResponse.Content))
+                {
+                    sb.AppendLine("**Failed Response Content (first 1000 chars):**");
+                    var sample = context.LastChatResponse.Content.Length > 1000 
+                        ? context.LastChatResponse.Content.Substring(0, 1000) + "..."
+                        : context.LastChatResponse.Content;
+                    sb.AppendLine("```");
+                    sb.AppendLine(sample);
+                    sb.AppendLine("```");
+                    sb.AppendLine();
+                }
             }
             
             sb.AppendLine("---");

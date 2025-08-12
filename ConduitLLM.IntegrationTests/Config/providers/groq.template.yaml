@@ -9,19 +9,19 @@ provider:
   baseUrl: "https://api.groq.com/openai/v1"
 
 models:
-  - alias: "TEST_gemma2-9b"
-    actual: "gemma2-9b-it"
+  - alias: "TEST_llama-3.3-70b"
+    actual: "llama-3.3-70b-versatile"
     capabilities:
       chat: true
       multimodal: false
       streaming: true
     cost:
-      inputPerMillion: 0.20   # $0.20 per million input tokens
-      outputPerMillion: 0.20  # $0.20 per million output tokens
+      inputPerMillion: 0.59   # $0.59 per million input tokens
+      outputPerMillion: 0.79  # $0.79 per million output tokens
 
 testCases:
   basicChat:
-    prompt: "What is the history of France?"
+    prompt: "What is the history of France? Include information about Paris, the French Revolution, and Napoleon."
     validation:
       minInputTokens: 8      # "What is the history of France?" ~8 tokens
       minOutputTokens: 100   # Expect substantial response

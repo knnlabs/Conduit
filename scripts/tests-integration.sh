@@ -217,6 +217,13 @@ fi
 
 echo
 
+# Clean up old test data first
+echo -e "${BLUE}🧹 Cleaning up old test data...${NC}"
+"$SCRIPT_DIR/cleanup-test-data.sh" > /dev/null 2>&1
+echo -e "${GREEN}✓ Cleanup complete${NC}"
+
+echo
+
 # Build the test project
 echo -e "${BLUE}🔨 Building test project...${NC}"
 if dotnet build --nologo --verbosity quiet; then
