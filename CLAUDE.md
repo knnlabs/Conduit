@@ -226,9 +226,19 @@ export DOCKER_GROUP_ID=$(id -g)   # Your group ID
 ## Build Verification - CRITICAL
 **ALWAYS VERIFY BUILDS BEFORE COMPLETING WORK:**
 
+### ⚠️ WEBUI EXCEPTION - NEVER RUN NPM BUILD ⚠️
+**FORBIDDEN FOR WEBUI DEVELOPMENT:**
+- ❌ `npm run build` - **WILL BREAK THE DEVELOPMENT CONTAINER**
+- ❌ `cd ConduitLLM.WebUI && npm run build` - **WILL BREAK THE DEVELOPMENT CONTAINER**
+- ❌ `./scripts/dev-workflow.sh build-webui` - **ONLY FOR PRODUCTION TESTING**
+
+**WEBUI VERIFICATION COMMANDS (SAFE FOR DEVELOPMENT):**
+- ✅ `npm run lint` - Check ESLint errors
+- ✅ `npm run type-check` - Verify TypeScript types
+- ✅ Hot reloading in development container automatically validates code
+
 ### Project-Specific Build Commands
-- **WebUI (in container)**: `./scripts/dev-workflow.sh build-webui`
-- **WebUI (on host)**: `cd ConduitLLM.WebUI && npm run build`
+- **WebUI**: **USE LINT AND TYPE-CHECK ONLY** (see above)
 - **Core API**: `dotnet build ConduitLLM.Http`
 - **Admin API**: `dotnet build ConduitLLM.Admin`
 - **Admin SDK**: `cd SDKs/Node/Admin && npm run build`
@@ -237,10 +247,12 @@ export DOCKER_GROUP_ID=$(id -g)   # Your group ID
 - **Full Solution**: `dotnet build`
 
 ### Incremental Development Rules
-1. **NEVER make more than 3-5 file changes without building**
-2. **ALWAYS run the appropriate build command after ANY TypeScript/React changes**
+1. **NEVER make more than 3-5 file changes without verifying**
+2. **ALWAYS run the appropriate verification command after ANY TypeScript/React changes**
+   - **WebUI**: `npm run lint` and `npm run type-check` ONLY
+   - **Backend/SDKs**: Use build commands listed above
 3. **Fix ALL ESLint errors immediately - do not accumulate technical debt**
-4. **Never commit code that doesn't build cleanly**
+4. **Never commit code that doesn't verify cleanly**
 
 ### TypeScript/React Specific Rules
 - When replacing `any` types, test immediately with `./scripts/fix-webui-errors.sh` or `./scripts/fix-sdk-errors.sh`
@@ -286,16 +298,16 @@ The WebUI uses very strict ESLint rules that will cause build failures:
    }
    ```
 
-5. **Always Run Build Before Committing**:
-   - `cd ConduitLLM.WebUI && npm run build`
+5. **Always Verify Before Committing**:
+   - **WebUI**: `npm run lint` and `npm run type-check` (NEVER `npm run build`)
    - Fix ALL ESLint errors immediately
-   - The build will fail with any ESLint errors
+   - The verification will fail with any ESLint errors
 
 ## Development Workflow
 - After implementing features, always run: `dotnet build` to check for compilation errors
-- **For WebUI changes**: Run `cd ConduitLLM.WebUI && npm run lint` to check for ESLint errors
-- **For TypeScript checks**: Run `cd ConduitLLM.WebUI && npm run type-check` to verify types
-- **For production build verification**: Run `cd ConduitLLM.WebUI && npm run build`
+- **For WebUI changes**: Run `npm run lint` to check for ESLint errors
+- **For TypeScript checks**: Run `npm run type-check` to verify types
+- **❌ NEVER run `npm run build` for WebUI - it breaks the development container**
 - Test your changes locally before committing
 - When working with API changes, test with Swagger UI or curl
 - For UI changes, verify in the browser with developer tools open
@@ -311,17 +323,18 @@ The WebUI uses very strict ESLint rules that will cause build failures:
 
 ### WebUI Development
 You can run npm commands DIRECTLY on the host filesystem:
-- ✅ `cd ConduitLLM.WebUI && npm run lint` - Run ESLint
-- ✅ `cd ConduitLLM.WebUI && npm run type-check` - Check TypeScript types
+- ✅ `npm run lint` - Run ESLint
+- ✅ `npm run type-check` - Check TypeScript types  
 - ✅ `cd SDKs/Node/Admin && npm run build` - Build SDKs
+- ❌ **NEVER run `npm run build` for WebUI - breaks development container**
 
 The development environment shares node_modules between host and container.
 
 💡 **Development Notes**:
 - The WebUI container runs Next.js dev server with hot-reloading
 - Changes to source files are immediately reflected
-- To verify production build: `cd ConduitLLM.WebUI && npm run build`
-- To check types without building: `cd ConduitLLM.WebUI && npx tsc --noEmit`
+- **DO NOT run production builds during development**
+- To check types: `npm run type-check` (equivalent to `npx tsc --noEmit`)
 
 ## Git Branching Rules
 - **Protected branch**: `master` - Never push directly to master
@@ -442,4 +455,26 @@ For comprehensive documentation on specific topics, see:
 - Optimized settings: 25 prefetch, 30 partitions, 50 concurrent messages
 - HTTP client connection pooling: 50 connections per server
 - Circuit breakers and rate limiting prevent overload
-- Don't run "npm run build" after making WebUI changes. That is not needed and will break the development container.
+
+# CRITICAL SAFETY SECTION - READ FIRST
+## Commands That WILL Break Development and Waste Time
+
+### ❌ FORBIDDEN WEBUI COMMANDS
+These commands will break the development container and force a 5+ minute restart:
+- `npm run build` (anywhere in WebUI directory)
+- `cd ConduitLLM.WebUI && npm run build`
+- `./scripts/dev-workflow.sh build-webui` (production only)
+
+### ✅ SAFE WEBUI COMMANDS  
+Use these instead for WebUI verification:
+- `npm run lint`
+- `npm run type-check`
+
+### ❌ FORBIDDEN DEVELOPMENT COMMANDS
+- `docker compose up` for development (use `./scripts/start-dev.sh`)
+
+**If you run any forbidden command, you will:**
+1. Break the development environment
+2. Force the human to restart with `--clean`
+3. Waste 5+ minutes of their time
+4. Ignore explicit instructions
