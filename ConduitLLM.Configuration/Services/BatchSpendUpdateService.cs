@@ -231,38 +231,17 @@ namespace ConduitLLM.Configuration.Services
                     }
 
                     // Update group balance with transaction details
-                    await groupRepository.AdjustBalanceAsync(
+                    // This already creates a transaction record with the correct BalanceAfter
+                    var newBalance = await groupRepository.AdjustBalanceAsync(
                         groupId, 
                         -totalCost,
                         description,
                         "System"  // Initiated by system batch process
                     );
                     
-                    // Create individual transaction records for each key if we have detailed usage
-                    if (keyUsageByGroup.ContainsKey(groupId))
-                    {
-                        foreach (var (keyId, keyCost) in keyUsageByGroup[groupId])
-                        {
-                            if (keyCost > 0)
-                            {
-                                // Create a transaction record for this specific key usage
-                                var transaction = new VirtualKeyGroupTransaction
-                                {
-                                    VirtualKeyGroupId = groupId,
-                                    TransactionType = TransactionType.Debit,
-                                    Amount = keyCost, // Store as positive
-                                    BalanceAfter = 0, // Will be set by the next balance check
-                                    Description = $"API usage by virtual key #{keyId}",
-                                    ReferenceId = keyId.ToString(),
-                                    ReferenceType = ReferenceType.VirtualKey,
-                                    InitiatedBy = "System",
-                                    CreatedAt = DateTime.UtcNow
-                                };
-                                
-                                context.VirtualKeyGroupTransactions.Add(transaction);
-                            }
-                        }
-                    }
+                    // Note: We don't need to create additional transaction records here
+                    // because AdjustBalanceAsync already creates one with the correct balance.
+                    // The individual key usage tracking is already handled in the description.
                     
                     // Get keys in this group for cache invalidation
                     var groupKeys = await context.VirtualKeys
@@ -272,9 +251,6 @@ namespace ConduitLLM.Configuration.Services
                     
                     updatedKeyHashes.AddRange(groupKeys.Select(k => k.KeyHash));
                 }
-
-                // Save any additional transaction records
-                await context.SaveChangesAsync();
 
                 
                 _logger.LogInformation("Batch updated spend for {Count} groups", groupUpdates.Count);
