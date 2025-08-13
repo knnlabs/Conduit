@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -268,6 +269,32 @@ namespace ConduitLLM.Providers.Replicate
         }
 
         #region Helper Methods
+
+        /// <summary>
+        /// Cancels a running prediction on Replicate.
+        /// </summary>
+        private async Task CancelPredictionAsync(string predictionId, string? apiKey)
+        {
+            try
+            {
+                using var client = CreateHttpClient(apiKey);
+                var response = await client.PostAsync($"predictions/{predictionId}/cancel", null);
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    Logger.LogInformation("Successfully cancelled Replicate prediction {Id}", predictionId);
+                }
+                else
+                {
+                    Logger.LogWarning("Failed to cancel Replicate prediction {Id}: {StatusCode}", 
+                        predictionId, response.StatusCode);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Error cancelling Replicate prediction {Id}", predictionId);
+            }
+        }
 
         private ReplicatePredictionRequest MapToPredictionRequest(ChatCompletionRequest request)
         {

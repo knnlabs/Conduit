@@ -38,6 +38,13 @@ namespace ConduitLLM.Providers.Replicate
         [JsonPropertyName("webhook_events_filter")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<string>? WebhookEventsFilter { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether to stream the output.
+        /// </summary>
+        [JsonPropertyName("stream")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? Stream { get; set; }
     }
 
     /// <summary>
