@@ -114,8 +114,8 @@ namespace ConduitLLM.Tests.Security
             stats.TotalRequests.Should().Be(3);
             stats.AllowedRequests.Should().Be(2);
             stats.BlockedRequests.Should().Be(1);
-            stats.WhitelistSize.Should().BeGreaterOrEqualTo(3);
-            stats.BlacklistSize.Should().BeGreaterOrEqualTo(2);
+            stats.WhitelistSize.Should().BeGreaterThanOrEqualTo(3);
+            stats.BlacklistSize.Should().BeGreaterThanOrEqualTo(2);
         }
 
         #endregion

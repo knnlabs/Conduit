@@ -49,7 +49,7 @@ namespace ConduitLLM.Tests.Security
             var blacklist = await service.GetBlacklistAsync();
 
             // Assert
-            blacklist.Should().HaveCountGreaterOrEqualTo(2);
+            blacklist.Should().HaveCountGreaterThanOrEqualTo(2);
             blacklist.Should().Contain(entry => entry.IpAddress == "203.0.113.0/24");
             blacklist.Should().Contain(entry => entry.IpAddress == "198.51.100.14");
         }

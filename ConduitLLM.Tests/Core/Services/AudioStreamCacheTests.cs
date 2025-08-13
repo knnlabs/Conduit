@@ -335,7 +335,7 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _cache.ClearExpiredAsync();
 
             // Assert
-            result.Should().BeGreaterOrEqualTo(0);
+            result.Should().BeGreaterThanOrEqualTo(0);
         }
 
         [Fact]
