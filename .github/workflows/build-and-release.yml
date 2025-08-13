@@ -140,12 +140,14 @@ jobs:
 
     - name: Test with coverage
       run: |
+        # Skip integration tests (require test-config.yaml with API keys)
         dotnet test --no-build --configuration Release \
           --logger "trx;LogFileName=test-results.trx" \
           --logger "console;verbosity=normal" \
           --collect:"XPlat Code Coverage" \
           --results-directory ./TestResults \
-          --settings .runsettings
+          --settings .runsettings \
+          --filter "FullyQualifiedName!~IntegrationTests"
 
     - name: Process Coverage Results
       if: always()
