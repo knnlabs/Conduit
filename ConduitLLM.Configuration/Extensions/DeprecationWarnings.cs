@@ -85,7 +85,7 @@ namespace ConduitLLM.Configuration.Extensions
                 deprecatedVars.Add("AdminApi__MasterKey (use CONDUIT_API_TO_API_BACKEND_AUTH_KEY)");
             }
 
-            if (deprecatedVars.Count == 0)
+            if (deprecatedVars.Count() == 0)
             {
                 return null;
             }

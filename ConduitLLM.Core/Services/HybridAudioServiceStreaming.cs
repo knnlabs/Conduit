@@ -20,8 +20,7 @@ namespace ConduitLLM.Core.Services
             HybridAudioRequest request,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            if (request == null)
-                throw new ArgumentNullException(nameof(request));
+            ArgumentNullException.ThrowIfNull(request);
 
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             var sequenceNumber = 0;
@@ -284,7 +283,7 @@ namespace ConduitLLM.Core.Services
                     throw new InvalidOperationException("No TTS provider available");
 
                 // Process TTS queue
-                while (ttsQueue.Count > 0)
+                while (ttsQueue.Count() > 0)
                 {
                     var textToSpeak = ttsQueue.Dequeue();
 

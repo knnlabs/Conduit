@@ -50,7 +50,7 @@ namespace ConduitLLM.Http.Services
             _alertQueue.Enqueue(alert);
             
             // If queue is getting large, trigger immediate batch
-            if (_alertQueue.Count >= _options.MaxBatchSize)
+            if (_alertQueue.Count() >= _options.MaxBatchSize)
             {
                 _ = Task.Run(async () => await ProcessBatchAsync());
             }
@@ -84,14 +84,14 @@ namespace ConduitLLM.Http.Services
                 var alerts = new List<HealthAlert>();
                 
                 // Dequeue all alerts up to max batch size
-                while (alerts.Count < _options.MaxBatchSize && _alertQueue.TryDequeue(out var alert))
+                while (alerts.Count() < _options.MaxBatchSize && _alertQueue.TryDequeue(out var alert))
                 {
                     alerts.Add(alert);
                 }
 
-                if (alerts.Any())
+                if (alerts.Count() > 0)
                 {
-                    _logger.LogInformation("Processing batch of {Count} alerts", alerts.Count);
+                    _logger.LogInformation("Processing batch of {Count} alerts", alerts.Count());
                     
                     try
                     {

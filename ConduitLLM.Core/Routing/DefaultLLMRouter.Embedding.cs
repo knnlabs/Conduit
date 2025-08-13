@@ -249,7 +249,7 @@ namespace ConduitLLM.Core.Routing
             var (availableModels, availableDeployments) = await GetFilteredEmbeddingModelsAsync(
                 requestedModel, excludeModels, cancellationToken);
 
-            if (!availableModels.Any())
+            if (availableModels.Count() == 0)
             {
                 _logger.LogWarning("No available embedding models found for requestedModel={RequestedModel}", requestedModel);
                 return null;
@@ -439,10 +439,10 @@ namespace ConduitLLM.Core.Routing
             {
                 _logger.LogError(lastException,
                     "All embedding attempts failed for model {OriginalModel} after trying {ModelCount} models with {AttemptCount} attempts",
-                    originalModelRequested, attemptedModels.Count, attemptCount);
+                    originalModelRequested, attemptedModels.Count(), attemptCount);
 
                 throw new LLMCommunicationException(
-                    $"Failed to process embedding request after {attemptCount} attempts across {attemptedModels.Count} models",
+                    $"Failed to process embedding request after {attemptCount} attempts across {attemptedModels.Count()} models",
                     lastException);
             }
 

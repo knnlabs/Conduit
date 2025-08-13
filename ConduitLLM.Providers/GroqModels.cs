@@ -68,13 +68,13 @@ namespace ConduitLLM.Providers
                     PropertyNameCaseInsensitive = true
                 });
 
-                if (apiResponse?.Data == null || apiResponse.Data.Count == 0)
+                if (apiResponse?.Data == null || apiResponse.Data.Count() == 0)
                 {
                     Console.WriteLine("[GroqModels] No models found in API response");
                     return new List<DiscoveredModel>();
                 }
                 
-                Console.WriteLine($"[GroqModels] Found {apiResponse.Data.Count} models");
+                Console.WriteLine($"[GroqModels] Found {apiResponse.Data.Count()} models");
 
                 return apiResponse.Data
                     .Where(model => !string.IsNullOrEmpty(model.Id))

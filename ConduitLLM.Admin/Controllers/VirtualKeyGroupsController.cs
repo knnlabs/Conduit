@@ -56,7 +56,7 @@ namespace ConduitLLM.Admin.Controllers
             {
                 _logger.LogInformation("GetAllGroups called");
                 var groups = await _groupRepository.GetAllAsync();
-                _logger.LogInformation("Repository returned {Count} groups", groups.Count);
+                _logger.LogInformation("Repository returned {Count} groups", groups.Count());
                 var dtos = groups.Select(g => 
                 {
                     _logger.LogInformation("Group {GroupId} has {KeyCount} keys (null: {IsNull})", 
@@ -262,7 +262,7 @@ namespace ConduitLLM.Admin.Controllers
                 }
 
                 // Check if group has any keys
-                if (group.VirtualKeys?.Any() == true)
+                if (group.VirtualKeys?.Count > 0)
                 {
                     return BadRequest(new { message = "Cannot delete group with existing virtual keys" });
                 }

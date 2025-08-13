@@ -262,7 +262,7 @@ namespace ConduitLLM.Admin.Services
             }
 
             // Only proceed if there are actual changes
-            if (changedProperties.Count == 0)
+            if (changedProperties.Count() == 0)
             {
                 _logger.LogDebug("No changes detected for virtual key {KeyId} - skipping update", id);
                 return true;
@@ -560,7 +560,7 @@ namespace ConduitLLM.Admin.Services
             {
                 // Get all virtual keys
                 var allKeys = await _virtualKeyRepository.GetAllAsync();
-                _logger.LogInformation("Processing maintenance for {KeyCount} virtual keys", allKeys.Count);
+                _logger.LogInformation("Processing maintenance for {KeyCount} virtual keys", allKeys.Count());
 
                 int keysDisabled = 0;
 
@@ -669,7 +669,7 @@ namespace ConduitLLM.Admin.Services
             return new VirtualKeyDiscoveryPreviewDto
             {
                 Data = models,
-                Count = models.Count
+                Count = models.Count()
             };
         }
 
@@ -696,13 +696,13 @@ namespace ConduitLLM.Admin.Services
                 var audioCapabilities = new Dictionary<string, object> { ["supported"] = true };
                 
                 var supportedLanguages = await _modelCapabilityService.GetSupportedLanguagesAsync(modelAlias);
-                if (supportedLanguages.Any())
+                if (supportedLanguages.Count() > 0)
                 {
                     audioCapabilities["supported_languages"] = supportedLanguages;
                 }
 
                 var supportedFormats = await _modelCapabilityService.GetSupportedFormatsAsync(modelAlias);
-                if (supportedFormats.Any())
+                if (supportedFormats.Count() > 0)
                 {
                     audioCapabilities["supported_formats"] = supportedFormats;
                 }
@@ -716,13 +716,13 @@ namespace ConduitLLM.Admin.Services
                 var ttsCapabilities = new Dictionary<string, object> { ["supported"] = true };
                 
                 var supportedVoices = await _modelCapabilityService.GetSupportedVoicesAsync(modelAlias);
-                if (supportedVoices.Any())
+                if (supportedVoices.Count() > 0)
                 {
                     ttsCapabilities["supported_voices"] = supportedVoices;
                 }
 
                 var supportedLanguages = await _modelCapabilityService.GetSupportedLanguagesAsync(modelAlias);
-                if (supportedLanguages.Any())
+                if (supportedLanguages.Count() > 0)
                 {
                     ttsCapabilities["supported_languages"] = supportedLanguages;
                 }
@@ -873,7 +873,7 @@ namespace ConduitLLM.Admin.Services
 
             // Get spending history for this specific key
             var spendHistory = await _spendHistoryRepository.GetByVirtualKeyIdAsync(virtualKey.Id);
-            var totalRequests = spendHistory.Count;
+            var totalRequests = spendHistory.Count();
             // Note: VirtualKeySpendHistory doesn't track individual tokens, only amounts
             // We'll need to estimate based on spending or leave it as 0
             var totalTokens = 0L; // Token tracking would require different data structure

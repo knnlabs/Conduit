@@ -333,7 +333,7 @@ namespace ConduitLLM.Core.Services
                 e.EventType == SecurityEventType.AuthenticationSuccess || 
                 e.EventType == SecurityEventType.AuthenticationFailure).ToList();
             
-            if (authEvents.Any())
+            if (authEvents.Count() > 0)
             {
                 var failures = authEvents.Count(e => 
                     e.EventType == SecurityEventType.AuthenticationFailure);

@@ -73,7 +73,7 @@ public class CerebrasEndToEndTest : ProviderIntegrationTestBase
             reportGenerated = true;
             
             // Now check if there were errors and fail the test if needed
-            if (_context.Errors.Any())
+            if (_context.Errors.Count() > 0)
             {
                 var errorMessage = string.Join("; ", _context.Errors);
                 _specificLogger.LogError("Test completed with errors: {Errors}", errorMessage);

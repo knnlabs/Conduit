@@ -600,7 +600,7 @@ namespace ConduitLLM.Core.Services
                 .Where(p => p.Value.IsHealthy && !p.Value.IsQuarantined)
                 .ToList();
             
-            if (healthyProviders.Count > 1)
+            if (healthyProviders.Count() > 1)
             {
                 // Calculate optimal weights based on health scores
                 var totalScore = healthyProviders.Sum(p => p.Value.HealthScore);
@@ -724,7 +724,7 @@ namespace ConduitLLM.Core.Services
                     }
                 }
                 
-                _logger.LogInformation("Refreshed provider cache. Found {Count} providers", _providerCache.Count);
+                _logger.LogInformation("Refreshed provider cache. Found {Count} providers", _providerCache.Count());
             }
             catch (Exception ex)
             {

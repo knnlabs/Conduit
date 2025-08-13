@@ -168,7 +168,7 @@ namespace ConduitLLM.Http.Controllers
                             await sseWriter.WriteContentEventAsync(chunk);
                             
                             // Track metrics if enabled
-                            if (metricsCollector != null && chunk?.Choices?.Count > 0)
+                            if (metricsCollector != null && chunk?.Choices?.Count == 0)
                             {
                                 var hasContent = chunk.Choices.Any(c => !string.IsNullOrEmpty(c.Delta?.Content));
                                 if (hasContent)

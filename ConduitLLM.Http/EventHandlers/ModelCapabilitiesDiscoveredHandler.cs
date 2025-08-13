@@ -86,7 +86,7 @@ namespace ConduitLLM.Http.EventHandlers
                 // }
                 
                 // Track metrics for monitoring
-                if (message.ModelCapabilities.Count > 0)
+                if (message.ModelCapabilities.Count() > 0)
                 {
                     _logger.LogInformation("Provider ID {ProviderId} discovery metrics: {ImageGenModels} image generation, {VisionModels} vision, {ChatModels} chat models",
                         message.ProviderId,

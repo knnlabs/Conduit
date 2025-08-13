@@ -169,9 +169,9 @@ namespace ConduitLLM.Http.Services
 
                 stopwatch.Stop();
                 
-                if (failedKeys.Count > 0)
+                if (failedKeys.Count() > 0)
                 {
-                    _logger.LogWarning("Failed to delete {Count} keys during batch delete", failedKeys.Count);
+                    _logger.LogWarning("Failed to delete {Count} keys during batch delete", failedKeys.Count());
                 }
 
                 return new BatchDeleteResult
@@ -202,7 +202,7 @@ namespace ConduitLLM.Http.Services
 
         public async Task<BatchSetResult> BatchSetAsync<T>(Dictionary<string, T> keyValuePairs, TimeSpan? expiry = null)
         {
-            if (keyValuePairs == null || keyValuePairs.Count == 0)
+            if (keyValuePairs == null || keyValuePairs.Count() == 0)
             {
                 return new BatchSetResult
                 {
@@ -250,9 +250,9 @@ namespace ConduitLLM.Http.Services
 
                 stopwatch.Stop();
                 
-                if (failedKeys.Count > 0)
+                if (failedKeys.Count() > 0)
                 {
-                    _logger.LogWarning("Failed to set {Count} keys during batch set", failedKeys.Count);
+                    _logger.LogWarning("Failed to set {Count} keys during batch set", failedKeys.Count());
                 }
 
                 return new BatchSetResult
@@ -261,7 +261,7 @@ namespace ConduitLLM.Http.Services
                     SetCount = setCount,
                     FailedKeys = failedKeys.ToArray(),
                     Duration = stopwatch.Elapsed,
-                    OperationCount = keyValuePairs.Count
+                    OperationCount = keyValuePairs.Count()
                 };
             }
             catch (Exception ex)
@@ -275,7 +275,7 @@ namespace ConduitLLM.Http.Services
                     Error = ex.Message,
                     ErrorType = ex.GetType().Name,
                     Duration = stopwatch.Elapsed,
-                    OperationCount = keyValuePairs.Count,
+                    OperationCount = keyValuePairs.Count(),
                     FailedKeys = keyValuePairs.Keys.ToArray()
                 };
             }
@@ -283,7 +283,7 @@ namespace ConduitLLM.Http.Services
 
         public async Task<BatchPublishResult> BatchPublishAsync(Dictionary<string, string> channelMessages)
         {
-            if (channelMessages == null || channelMessages.Count == 0)
+            if (channelMessages == null || channelMessages.Count() == 0)
             {
                 return new BatchPublishResult
                 {
@@ -335,7 +335,7 @@ namespace ConduitLLM.Http.Services
                     PublishedCount = publishedCount,
                     FailedChannels = failedChannels.ToArray(),
                     Duration = stopwatch.Elapsed,
-                    OperationCount = channelMessages.Count
+                    OperationCount = channelMessages.Count()
                 };
             }
             catch (Exception ex)
@@ -349,7 +349,7 @@ namespace ConduitLLM.Http.Services
                     Error = ex.Message,
                     ErrorType = ex.GetType().Name,
                     Duration = stopwatch.Elapsed,
-                    OperationCount = channelMessages.Count,
+                    OperationCount = channelMessages.Count(),
                     FailedChannels = channelMessages.Keys.ToArray()
                 };
             }

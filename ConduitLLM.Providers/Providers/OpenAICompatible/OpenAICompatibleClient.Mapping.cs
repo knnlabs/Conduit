@@ -28,7 +28,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
         {
             // Map tools if present
             List<object>? openAiTools = null;
-            if (request.Tools != null && request.Tools.Count > 0)
+            if (request.Tools != null && request.Tools.Count() > 0)
             {
                 openAiTools = request.Tools.Select(t => new
                 {
@@ -170,7 +170,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
             }
 
             // If no parts were added, return an empty string
-            if (contentParts.Count == 0)
+            if (contentParts.Count() == 0)
                 return "";
 
             return contentParts;

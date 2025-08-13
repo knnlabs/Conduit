@@ -40,8 +40,7 @@ namespace ConduitLLM.Core.Services
 
         public void RegisterRegion(CacheRegion region, CacheRegionConfig config)
         {
-            if (config == null)
-                throw new ArgumentNullException(nameof(config));
+            ArgumentNullException.ThrowIfNull(config);
 
             config.Region = region; // Ensure region is set correctly
             _regions[region] = config;
@@ -72,8 +71,7 @@ namespace ConduitLLM.Core.Services
         {
             if (string.IsNullOrWhiteSpace(regionName))
                 throw new ArgumentException("Region name cannot be empty", nameof(regionName));
-            if (config == null)
-                throw new ArgumentNullException(nameof(config));
+            ArgumentNullException.ThrowIfNull(config);
 
             _customRegions[regionName] = config;
 
@@ -121,8 +119,7 @@ namespace ConduitLLM.Core.Services
 
         public bool UpdateRegionConfig(CacheRegion region, CacheRegionConfig config)
         {
-            if (config == null)
-                throw new ArgumentNullException(nameof(config));
+            ArgumentNullException.ThrowIfNull(config);
 
             if (!_regions.ContainsKey(region))
                 return false;

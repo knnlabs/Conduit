@@ -109,7 +109,8 @@ namespace ConduitLLM.Providers
 
         public async IAsyncEnumerable<RealtimeMessage> ReceiveMessagesAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var buffer = new ArraySegment<byte>(new byte[4096]);
+            var bufferArray = new byte[4096];
+            var buffer = new ArraySegment<byte>(bufferArray);
 
             while (!cancellationToken.IsCancellationRequested && _webSocket.State == WebSocketState.Open)
             {
@@ -126,7 +127,7 @@ namespace ConduitLLM.Providers
 
                 if (result.MessageType == WebSocketMessageType.Text)
                 {
-                    var message = Encoding.UTF8.GetString(buffer.Array!, 0, result.Count);
+                    var message = Encoding.UTF8.GetString(bufferArray, 0, result.Count);
                     _logger.LogDebug("Received message from OpenAI: {Message}", message);
 
                     var conduitMessages = await _translator.TranslateFromProviderAsync(message);
@@ -192,7 +193,8 @@ namespace ConduitLLM.Providers
 
         private async Task ReceiveLoopAsync(CancellationToken cancellationToken)
         {
-            var buffer = new ArraySegment<byte>(new byte[4096]);
+            var bufferArray = new byte[4096];
+            var buffer = new ArraySegment<byte>(bufferArray);
 
             try
             {
@@ -211,7 +213,7 @@ namespace ConduitLLM.Providers
 
                     if (result.MessageType == WebSocketMessageType.Text)
                     {
-                        var message = Encoding.UTF8.GetString(buffer.Array!, 0, result.Count);
+                        var message = Encoding.UTF8.GetString(bufferArray, 0, result.Count);
                         _logger.LogDebug("Received message from OpenAI: {Message}", message);
 
                         try

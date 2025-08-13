@@ -296,7 +296,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var candidates = availableProviderIds.ToList();
-                if (!candidates.Any())
+                if (candidates.Count() == 0)
                 {
                     return null;
                 }

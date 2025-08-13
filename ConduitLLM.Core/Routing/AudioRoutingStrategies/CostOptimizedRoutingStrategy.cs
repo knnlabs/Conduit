@@ -68,7 +68,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
                 p => CalculateTTSCost(p, characterCount),
                 qualityThreshold,
                 p => p.Capabilities.SupportedVoices.Contains(request.Voice) ||
-                     p.Capabilities.SupportedVoices.Count == 0,
+                     p.Capabilities.SupportedVoices.Count() == 0,
                 p => SupportsLanguage(p, request.Language),
                 p => SupportsFormat(p, request.ResponseFormat?.ToString()));
         }
@@ -105,7 +105,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
                            filters.All(f => f(p)))
                 .ToList();
 
-            if (!eligibleProviders.Any())
+            if (eligibleProviders.Count() == 0)
             {
                 _logger.LogWarning(
                     "No eligible providers found with quality >= {Quality}",
@@ -197,7 +197,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
             if (string.IsNullOrEmpty(language))
                 return true;
 
-            return provider.Capabilities.SupportedLanguages.Count == 0 ||
+            return provider.Capabilities.SupportedLanguages.Count() == 0 ||
                    provider.Capabilities.SupportedLanguages.Contains(language);
         }
 
@@ -206,7 +206,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
             if (string.IsNullOrEmpty(format))
                 return true;
 
-            return provider.Capabilities.SupportedFormats.Count == 0 ||
+            return provider.Capabilities.SupportedFormats.Count() == 0 ||
                    provider.Capabilities.SupportedFormats.Contains(format, StringComparer.OrdinalIgnoreCase);
         }
     }

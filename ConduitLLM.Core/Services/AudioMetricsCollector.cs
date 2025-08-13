@@ -336,7 +336,7 @@ namespace ConduitLLM.Core.Services
                 }
 
                 _logger.LogDebug("Cleaned up {Count} old metric buckets",
-                keysToRemove.Count);
+                keysToRemove.Count());
             }
             catch (Exception ex)
             {
@@ -351,7 +351,7 @@ namespace ConduitLLM.Core.Services
 
         private OperationStatistics AggregateOperationMetrics<T>(List<T> metrics) where T : AudioMetricBase
         {
-            if (!metrics.Any())
+            if (metrics.Count() == 0)
             {
                 return new OperationStatistics();
             }
@@ -361,9 +361,9 @@ namespace ConduitLLM.Core.Services
 
             return new OperationStatistics
             {
-                TotalRequests = metrics.Count,
-                SuccessfulRequests = successful.Count,
-                FailedRequests = metrics.Count - successful.Count,
+                TotalRequests = metrics.Count(),
+                SuccessfulRequests = successful.Count(),
+                FailedRequests = metrics.Count() - successful.Count(),
                 AverageDurationMs = durations.Average(),
                 P95DurationMs = GetPercentile(durations, 0.95),
                 P99DurationMs = GetPercentile(durations, 0.99),
@@ -374,7 +374,7 @@ namespace ConduitLLM.Core.Services
 
         private RealtimeStatistics AggregateRealtimeMetrics(List<RealtimeMetric> metrics)
         {
-            if (!metrics.Any())
+            if (metrics.Count() == 0)
             {
                 return new RealtimeStatistics();
             }
@@ -386,7 +386,7 @@ namespace ConduitLLM.Core.Services
 
             return new RealtimeStatistics
             {
-                TotalSessions = metrics.Count,
+                TotalSessions = metrics.Count(),
                 AverageSessionDurationSeconds = metrics.Average(m => m.SessionDurationSeconds),
                 TotalAudioMinutes = metrics.Sum(m => (m.TotalAudioSentSeconds + m.TotalAudioReceivedSeconds) / 60),
                 AverageLatencyMs = metrics.Average(m => m.AverageLatencyMs),
@@ -420,8 +420,8 @@ namespace ConduitLLM.Core.Services
                 result[group.Key] = new ProviderStatistics
                 {
                     Provider = group.Key,
-                    RequestCount = providerMetrics.Count,
-                    SuccessRate = providerMetrics.Count > 0 ? (double)successful / providerMetrics.Count : 0,
+                    RequestCount = providerMetrics.Count(),
+                    SuccessRate = providerMetrics.Count() > 0 ? (double)successful / providerMetrics.Count() : 0,
                     AverageLatencyMs = providerMetrics.Average(m => m.DurationMs),
                     UptimePercentage = CalculateUptime(buckets, group.Key),
                     ErrorBreakdown = errorGroups
@@ -467,10 +467,10 @@ namespace ConduitLLM.Core.Services
 
         private double GetPercentile(List<double> sortedValues, double percentile)
         {
-            if (!sortedValues.Any()) return 0;
+            if (sortedValues.Count() == 0) return 0;
 
-            var index = (int)Math.Ceiling(percentile * sortedValues.Count) - 1;
-            return sortedValues[Math.Max(0, Math.Min(index, sortedValues.Count - 1))];
+            var index = (int)Math.Ceiling(percentile * sortedValues.Count()) - 1;
+            return sortedValues[Math.Max(0, Math.Min(index, sortedValues.Count() - 1))];
         }
 
         private double CalculateCacheHitRate<T>(List<T> metrics) where T : AudioMetricBase
@@ -478,13 +478,13 @@ namespace ConduitLLM.Core.Services
             if (metrics is List<TranscriptionMetric> transcriptions)
             {
                 var cached = transcriptions.Count(m => m.ServedFromCache);
-                return transcriptions.Count > 0 ? (double)cached / transcriptions.Count : 0;
+                return transcriptions.Count() > 0 ? (double)cached / transcriptions.Count() : 0;
             }
 
             if (metrics is List<TtsMetric> ttsMetrics)
             {
                 var cached = ttsMetrics.Count(m => m.ServedFromCache);
-                return ttsMetrics.Count > 0 ? (double)cached / ttsMetrics.Count : 0;
+                return ttsMetrics.Count() > 0 ? (double)cached / ttsMetrics.Count() : 0;
             }
 
             return 0;
@@ -512,7 +512,7 @@ namespace ConduitLLM.Core.Services
 
         private double CalculateRequestRate(List<MetricsBucket> buckets)
         {
-            if (!buckets.Any()) return 0;
+            if (buckets.Count() == 0) return 0;
 
             var totalRequests = buckets.Sum(b => b.TotalRequests);
             var timeSpan = buckets.Max(b => b.Timestamp) - buckets.Min(b => b.Timestamp);
@@ -547,10 +547,10 @@ namespace ConduitLLM.Core.Services
                 .Where(h => h.Provider == provider)
                 .ToList();
 
-            if (!healthMetrics.Any()) return 100;
+            if (healthMetrics.Count() == 0) return 100;
 
             var healthyCount = healthMetrics.Count(h => h.IsHealthy);
-            return (double)healthyCount / healthMetrics.Count * 100;
+            return (double)healthyCount / healthMetrics.Count() * 100;
         }
 
         private async Task<SystemResources> GetSystemResourcesAsync()

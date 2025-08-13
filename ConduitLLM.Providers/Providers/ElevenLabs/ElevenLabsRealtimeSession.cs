@@ -95,7 +95,8 @@ namespace ConduitLLM.Providers.ElevenLabs
         public async IAsyncEnumerable<ProviderRealtimeMessage> ReceiveMessagesAsync(
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var buffer = new ArraySegment<byte>(new byte[4096]);
+            var bufferArray = new byte[4096];
+            var buffer = new ArraySegment<byte>(bufferArray);
 
             while (!cancellationToken.IsCancellationRequested && _webSocket?.State == WebSocketState.Open)
             {
@@ -107,7 +108,7 @@ namespace ConduitLLM.Providers.ElevenLabs
                     var result = await _webSocket.ReceiveAsync(buffer, cancellationToken);
                     if (result.MessageType == WebSocketMessageType.Text)
                     {
-                        var json = System.Text.Encoding.UTF8.GetString(buffer.Array!, buffer.Offset, result.Count);
+                        var json = System.Text.Encoding.UTF8.GetString(bufferArray, buffer.Offset, result.Count);
 
                         // Parse the message
                         messageToYield = new ProviderRealtimeMessage

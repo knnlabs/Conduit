@@ -213,7 +213,7 @@ namespace ConduitLLM.Admin.Services
                             try
                             {
                                 var voices = await ttsClient.ListVoicesAsync();
-                                result.Capabilities["tts"] = voices.Any();
+                                result.Capabilities["tts"] = voices.Count() > 0;
                                 result.Success = true;
                                 result.Message = $"Provider supports {voices.Count} TTS voices";
                             }

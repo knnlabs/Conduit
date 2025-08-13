@@ -31,7 +31,7 @@ namespace ConduitLLM.Http.Services
         private readonly ConcurrentDictionary<string, NotificationBatch> _batches = new();
         private Timer? _flushTimer;
         private readonly SemaphoreSlim _flushSemaphore = new(1, 1);
-        private bool _disposed = false;
+        private bool _disposed;
 
         public ModelDiscoveryNotificationBatcher(
             IHubContext<ModelDiscoveryHub> hubContext,

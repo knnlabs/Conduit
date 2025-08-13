@@ -94,7 +94,7 @@ namespace ConduitLLM.Http.Services
                 {
                     keyConnections.Remove(connectionId);
 
-                    if (keyConnections.Count == 0)
+                    if (keyConnections.Count() == 0)
                     {
                         _connectionsByVirtualKey.TryRemove(connection.VirtualKeyId, out _);
                     }
@@ -147,7 +147,7 @@ namespace ConduitLLM.Http.Services
             WebSocket webSocket)
         {
             // Check total connection limit
-            if (_connections.Count >= _maxTotalConnections)
+            if (_connections.Count() >= _maxTotalConnections)
             {
                 throw new InvalidOperationException($"Maximum total connections ({_maxTotalConnections}) reached");
             }
@@ -205,7 +205,7 @@ namespace ConduitLLM.Http.Services
                 {
                     keyConnections.Remove(connectionId);
 
-                    if (keyConnections.Count == 0)
+                    if (keyConnections.Count() == 0)
                     {
                         _connectionsByVirtualKey.TryRemove(connection.VirtualKeyId, out _);
                     }
@@ -239,7 +239,7 @@ namespace ConduitLLM.Http.Services
 
         public async Task<int> GetTotalConnectionCountAsync()
         {
-            return await Task.FromResult(_connections.Count);
+            return await Task.FromResult(_connections.Count());
         }
 
         public async Task<ConduitLLM.Core.Models.Realtime.ConnectionInfo?> GetConnectionAsync(string connectionId)
@@ -291,7 +291,7 @@ _logger.LogError(ex, "Error closing WebSocket for connection {ConnectionId}", co
         {
             if (_connectionsByVirtualKey.TryGetValue(virtualKeyId, out var connections))
             {
-                return await Task.FromResult(connections.Count >= _maxConnectionsPerKey);
+                return await Task.FromResult(connections.Count() >= _maxConnectionsPerKey);
             }
 
             return false;

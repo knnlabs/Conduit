@@ -350,7 +350,7 @@ public class CostCalculationService : ICostCalculationService
 
         // Validate refund amounts don't exceed original amounts
         var validationMessages = ValidateRefundAmounts(originalUsage, refundUsage);
-        if (validationMessages.Any())
+        if (validationMessages.Count() > 0)
         {
             result.ValidationMessages.AddRange(validationMessages);
             result.IsPartialRefund = true;
@@ -623,7 +623,7 @@ public class CostCalculationService : ICostCalculationService
             }
         }
 
-        if (config == null || config.Rates == null || config.Rates.Count == 0)
+        if (config == null || config.Rates == null || config.Rates.Count() == 0)
         {
             _logger.LogError("No per-video pricing rates configured for model {ModelId}", modelId);
             throw new InvalidOperationException($"No per-video pricing rates configured for model {modelId}");
@@ -748,7 +748,7 @@ public class CostCalculationService : ICostCalculationService
             }
         }
 
-        if (config == null || config.Tiers == null || config.Tiers.Count == 0)
+        if (config == null || config.Tiers == null || config.Tiers.Count() == 0)
         {
             _logger.LogError("No tiered tokens pricing configuration for model {ModelId}", modelId);
             throw new InvalidOperationException($"No tiered tokens pricing configuration for model {modelId}");

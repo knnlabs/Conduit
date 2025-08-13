@@ -418,7 +418,7 @@ namespace ConduitLLM.Http.Services
                 });
             }
 
-            if (alerts.Any())
+            if (alerts.Count() > 0)
             {
                 await _hubContext.Clients.Group("metrics-subscribers")
                     .SendAsync("MetricAlerts", alerts, cancellationToken);
@@ -495,7 +495,7 @@ namespace ConduitLLM.Http.Services
                                 .ToList()
                         };
 
-                        if (filteredSeries.DataPoints.Any())
+                        if (filteredSeries.DataPoints.Count() > 0)
                         {
                             response.Series.Add(filteredSeries);
                         }

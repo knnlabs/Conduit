@@ -81,8 +81,7 @@ namespace ConduitLLM.Providers.Translators
             if (string.IsNullOrEmpty(provider))
                 throw new ArgumentException("Provider name cannot be null or empty", nameof(provider));
 
-            if (translator == null)
-                throw new ArgumentNullException(nameof(translator));
+            ArgumentNullException.ThrowIfNull(translator);
 
             var normalizedProvider = provider.ToLowerInvariant();
             _translators[normalizedProvider] = translator;

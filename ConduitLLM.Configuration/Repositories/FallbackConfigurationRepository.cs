@@ -231,7 +231,7 @@ namespace ConduitLLM.Configuration.Repositories
                     .Where(m => m.FallbackConfigurationId == id)
                     .ToListAsync(cancellationToken);
 
-                if (mappings.Any())
+                if (mappings.Count() > 0)
                 {
                     // Remove related mappings if there are any
                     dbContext.FallbackModelMappings.RemoveRange(mappings);

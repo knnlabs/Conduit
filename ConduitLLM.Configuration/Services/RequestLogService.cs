@@ -106,7 +106,7 @@ namespace ConduitLLM.Configuration.Services
                     TotalCost = g.Sum(r => r.Cost),
                     TotalInputTokens = g.Sum(r => r.InputTokens),
                     TotalOutputTokens = g.Sum(r => r.OutputTokens),
-                    AverageResponseTime = g.Any() ? g.Average(r => r.ResponseTimeMs) : 0
+                    AverageResponseTime = g.Count() > 0 ? g.Average(r => r.ResponseTimeMs) : 0
                 })
                 .FirstOrDefaultAsync();
 
@@ -334,8 +334,8 @@ namespace ConduitLLM.Configuration.Services
                     EstimatedCost = logs.Sum(r => r.Cost),
                     InputTokens = logs.Sum(r => r.InputTokens),
                     OutputTokens = logs.Sum(r => r.OutputTokens),
-                    AverageResponseTime = logs.Any() ? logs.Average(r => r.ResponseTimeMs) : 0,
-                    LastRequestDate = logs.Any() ? logs.Max(r => r.Timestamp) : null
+                    AverageResponseTime = logs.Count() > 0 ? logs.Average(r => r.ResponseTimeMs) : 0,
+                    LastRequestDate = logs.Count() > 0 ? logs.Max(r => r.Timestamp) : null
                 };
 
                 // Group by model

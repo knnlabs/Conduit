@@ -148,7 +148,7 @@ namespace ConduitLLM.Configuration.Repositories
                 cost.UpdatedAt = DateTime.UtcNow;
             }
 
-            if (costs.Any())
+            if (costs.Count() > 0)
             {
                 await _context.SaveChangesAsync();
             }

@@ -41,10 +41,8 @@ namespace ConduitLLM.Core.Services
             VideoMediaMetadata metadata,
             Action<long>? progressCallback = null)
         {
-            if (content == null)
-                throw new ArgumentNullException(nameof(content));
-            if (metadata == null)
-                throw new ArgumentNullException(nameof(metadata));
+            ArgumentNullException.ThrowIfNull(content);
+            ArgumentNullException.ThrowIfNull(metadata);
 
             var contentLength = content.Length;
             

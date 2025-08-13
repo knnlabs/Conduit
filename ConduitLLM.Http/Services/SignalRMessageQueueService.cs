@@ -204,8 +204,8 @@ namespace ConduitLLM.Http.Services
         {
             return new QueueStatistics
             {
-                PendingMessages = _messageQueue.Count,
-                DeadLetterMessages = _deadLetterQueue.Count,
+                PendingMessages = _messageQueue.Count(),
+                DeadLetterMessages = _deadLetterQueue.Count(),
                 ProcessedMessages = _processedMessages,
                 FailedMessages = _failedMessages,
                 LastProcessedAt = _lastProcessedAt,
@@ -249,7 +249,7 @@ namespace ConduitLLM.Http.Services
             var now = DateTime.UtcNow;
 
             // Dequeue messages that are ready for delivery
-            while (messagesToProcess.Count < _processingBatchSize && _messageQueue.TryPeek(out var peekedMessage))
+            while (messagesToProcess.Count() < _processingBatchSize && _messageQueue.TryPeek(out var peekedMessage))
             {
                 if (peekedMessage.NextDeliveryAt <= now)
                 {
@@ -272,12 +272,12 @@ namespace ConduitLLM.Http.Services
                 }
             }
 
-            if (messagesToProcess.Count == 0)
+            if (messagesToProcess.Count() == 0)
             {
                 return;
             }
 
-            _logger.LogDebug("Processing batch of {Count} messages", messagesToProcess.Count);
+            _logger.LogDebug("Processing batch of {Count} messages", messagesToProcess.Count());
 
             // Process messages in parallel with limited concurrency
             var tasks = messagesToProcess.Select(async message =>

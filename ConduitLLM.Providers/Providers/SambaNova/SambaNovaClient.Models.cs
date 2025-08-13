@@ -40,7 +40,7 @@ namespace ConduitLLM.Providers.SambaNova
                 // Load models from the static JSON file
                 var models = await LoadStaticModelsAsync(cancellationToken);
                 
-                if (models.Count > 0)
+                if (models.Count() > 0)
                 {
                     Logger.LogInformation("Loaded {Count} SambaNova models from static configuration", models.Count);
                     return models;

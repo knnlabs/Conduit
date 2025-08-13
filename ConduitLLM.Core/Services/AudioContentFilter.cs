@@ -175,7 +175,7 @@ namespace ConduitLLM.Core.Services
                 }
             }
 
-            if (details.Any())
+            if (details.Count() > 0)
             {
                 result.WasModified = true;
                 result.FilteredText = filteredText;

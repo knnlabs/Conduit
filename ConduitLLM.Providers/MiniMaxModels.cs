@@ -65,7 +65,7 @@ namespace ConduitLLM.Providers
                 };
                 var modelsData = JsonSerializer.Deserialize<StaticModelsData>(json, options);
                 
-                if (modelsData?.Models == null || modelsData.Models.Count == 0)
+                if (modelsData?.Models == null || modelsData.Models.Count() == 0)
                 {
                     throw new NotSupportedException(
                         "MiniMax does not provide a models listing endpoint. " +

@@ -244,7 +244,7 @@ namespace ConduitLLM.Admin.Controllers
                 await _providerRepository.UpdateAsync(provider);
 
                 // Publish provider updated event
-                if (changedProperties.Any())
+                if (changedProperties.Count() > 0)
                 {
                     PublishEventFireAndForget(new ProviderUpdated
                     {

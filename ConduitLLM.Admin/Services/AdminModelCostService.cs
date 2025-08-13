@@ -79,7 +79,7 @@ namespace ConduitLLM.Admin.Services
                 var id = await _modelCostRepository.CreateAsync(modelCostEntity);
 
                 // Create model-cost mappings if provided
-                if (modelCost.ModelProviderMappingIds != null && modelCost.ModelProviderMappingIds.Any())
+                if (modelCost.ModelProviderMappingIds != null && modelCost.ModelProviderMappingIds.Count() > 0)
                 {
                     using var dbContext = await _dbContextFactory.CreateDbContextAsync();
                     foreach (var mappingId in modelCost.ModelProviderMappingIds)
@@ -237,7 +237,7 @@ namespace ConduitLLM.Admin.Services
             {
                 // Get request logs for the specified time period
                 var logs = await _requestLogRepository.GetByDateRangeAsync(startDate, endDate);
-                if (logs == null || !logs.Any())
+                if (logs == null || logs.Count() == 0)
                 {
                     return Enumerable.Empty<ModelCostOverviewDto>();
                 }
@@ -292,7 +292,7 @@ namespace ConduitLLM.Admin.Services
                 throw new ArgumentNullException(nameof(modelCosts));
             }
 
-            if (!modelCosts.Any())
+            if (modelCosts.Count() == 0)
             {
                 return 0;
             }
@@ -470,7 +470,7 @@ namespace ConduitLLM.Admin.Services
                 if (result)
                 {
                     // Publish ModelCostChanged event for cache invalidation and cross-service coordination
-                    if (changedProperties.Any())
+                    if (changedProperties.Count() > 0)
                     {
                         await PublishEventAsync(
                             new ModelCostChanged

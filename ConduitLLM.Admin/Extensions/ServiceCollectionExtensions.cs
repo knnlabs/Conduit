@@ -214,7 +214,7 @@ public static class ServiceCollectionExtensions
             options.AddPolicy("AdminCorsPolicy", policy =>
             {
                 var allowedOrigins = configuration.GetSection("AdminApi:AllowedOrigins").Get<string[]>();
-                if (allowedOrigins != null && allowedOrigins.Length > 0)
+                if (allowedOrigins != null && allowedOrigins.Length == 0)
                 {
                     policy.WithOrigins(allowedOrigins)
                         .AllowAnyMethod()

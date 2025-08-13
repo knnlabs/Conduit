@@ -121,14 +121,14 @@ namespace ConduitLLM.Tests.Core.Services
                     });
                     tasks.Add(task);
                 }
-                else if (encryptedDataList.Count > 0)
+                else if (encryptedDataList.Count() > 0)
                 {
                     // Decrypt operation
                     await semaphore.WaitAsync();
                     EncryptedAudioData? dataToDecrypt = null;
                     try
                     {
-                        if (encryptedDataList.Count > 0)
+                        if (encryptedDataList.Count() > 0)
                         {
                             dataToDecrypt = encryptedDataList[0];
                         }

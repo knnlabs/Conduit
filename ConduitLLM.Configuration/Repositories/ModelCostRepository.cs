@@ -193,7 +193,7 @@ namespace ConduitLLM.Configuration.Repositories
                     .Where(m => m.ProviderId == providerId)
                     .ToListAsync(cancellationToken);
 
-                if (!providerMappings.Any())
+                if (providerMappings.Count() == 0)
                 {
                     _logger.LogInformation("No model mappings found for provider {ProviderId}", providerId);
                     return new List<ModelCost>();

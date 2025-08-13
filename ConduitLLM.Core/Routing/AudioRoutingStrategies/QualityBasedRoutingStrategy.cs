@@ -57,7 +57,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
                 availableProviders,
                 AudioRequestType.TextToSpeech,
                 p => p.Capabilities.SupportedVoices.Contains(request.Voice) ||
-                     p.Capabilities.SupportedVoices.Count == 0,
+                     p.Capabilities.SupportedVoices.Count() == 0,
                 p => SupportsLanguage(p, request.Language),
                 p => SupportsFormat(p, request.ResponseFormat?.ToString()),
                 p => SupportsAdvancedFeatures(p, request));
@@ -102,7 +102,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
                 .Where(p => p.IsAvailable && filters.All(f => f(p)))
                 .ToList();
 
-            if (!eligibleProviders.Any())
+            if (eligibleProviders.Count() == 0)
             {
                 _logger.LogWarning("No eligible providers found for quality-based routing");
                 return Task.FromResult<string?>(null);
@@ -179,7 +179,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
                 multiplier += 0.1;
 
             // Bonus for many supported languages
-            if (provider.Capabilities.SupportedLanguages.Count > 50)
+            if (provider.Capabilities.SupportedLanguages.Count() > 50)
                 multiplier += 0.1;
 
             return Math.Min(1.3, multiplier);
@@ -190,7 +190,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
             var multiplier = 1.0;
 
             // Bonus for many voice options
-            var voiceCount = provider.Capabilities.SupportedVoices.Count;
+            var voiceCount = provider.Capabilities.SupportedVoices.Count();
             if (voiceCount > 100)
                 multiplier += 0.2;
             else if (voiceCount > 50)
@@ -224,7 +224,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
             var bonus = 0.0;
 
             // Format support
-            if (provider.Capabilities.SupportedFormats.Count > 5)
+            if (provider.Capabilities.SupportedFormats.Count() > 5)
                 bonus += 0.1;
 
             // Streaming support
@@ -264,10 +264,10 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
                 features.Add("Realtime");
             if (provider.Capabilities.SupportsCustomVocabulary)
                 features.Add("CustomVocab");
-            if (provider.Capabilities.SupportedLanguages.Count > 30)
-                features.Add($"{provider.Capabilities.SupportedLanguages.Count} Languages");
-            if (provider.Capabilities.SupportedVoices.Count > 20)
-                features.Add($"{provider.Capabilities.SupportedVoices.Count} Voices");
+            if (provider.Capabilities.SupportedLanguages.Count() > 30)
+                features.Add($"{provider.Capabilities.SupportedLanguages.Count()} Languages");
+            if (provider.Capabilities.SupportedVoices.Count() > 20)
+                features.Add($"{provider.Capabilities.SupportedVoices.Count()} Voices");
 
             return features;
         }
@@ -277,7 +277,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
             if (string.IsNullOrEmpty(language))
                 return true;
 
-            return provider.Capabilities.SupportedLanguages.Count == 0 ||
+            return provider.Capabilities.SupportedLanguages.Count() == 0 ||
                    provider.Capabilities.SupportedLanguages.Contains(language);
         }
 
@@ -286,7 +286,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
             if (string.IsNullOrEmpty(format))
                 return true;
 
-            return provider.Capabilities.SupportedFormats.Count == 0 ||
+            return provider.Capabilities.SupportedFormats.Count() == 0 ||
                    provider.Capabilities.SupportedFormats.Contains(format, StringComparer.OrdinalIgnoreCase);
         }
 

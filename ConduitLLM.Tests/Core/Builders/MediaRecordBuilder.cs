@@ -23,7 +23,7 @@ namespace ConduitLLM.Tests.Core.Builders
         private DateTime _createdAt = DateTime.UtcNow;
         private DateTime? _expiresAt = null;
         private DateTime? _lastAccessedAt = null;
-        private int _accessCount = 0;
+        private int _accessCount;
 
         public MediaRecordBuilder WithId(Guid id)
         {

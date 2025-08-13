@@ -43,7 +43,7 @@ namespace ConduitLLM.Http.Hubs
             await _subscriptionManager.AddOrUpdateSubscriptionAsync(Context.ConnectionId, virtualKeyGuid, filter);
             
             // Add to appropriate groups based on filter
-            if (filter.ProviderTypes?.Any() == true)
+            if (filter.ProviderTypes?.Count > 0)
             {
                 foreach (var providerType in filter.ProviderTypes)
                 {

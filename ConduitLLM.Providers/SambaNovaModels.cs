@@ -49,7 +49,7 @@ namespace ConduitLLM.Providers
                     PropertyNameCaseInsensitive = true
                 });
 
-                if (modelsData?.Models == null || modelsData.Models.Count == 0)
+                if (modelsData?.Models == null || modelsData.Models.Count() == 0)
                 {
                     return GetFallbackModels();
                 }

@@ -269,7 +269,7 @@ public class ModelProviderMappingController : ControllerBase
                 return BadRequest(ModelState);
             }
 
-            if (mappingDtos == null || mappingDtos.Count == 0)
+            if (mappingDtos == null || mappingDtos.Count() == 0)
             {
                 return BadRequest(new ErrorResponseDto("No mappings provided"));
             }
@@ -281,7 +281,7 @@ public class ModelProviderMappingController : ControllerBase
             {
                 Created = created.Select(m => m.ToDto()).ToList(),
                 Errors = errors.ToList(),
-                TotalProcessed = mappingDtos.Count,
+                TotalProcessed = mappingDtos.Count(),
                 SuccessCount = created.Count(),
                 FailureCount = errors.Count()
             };

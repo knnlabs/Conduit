@@ -147,7 +147,7 @@ namespace ConduitLLM.Http.Services
                 
                 var dbCosts = await databaseFallback(providerName);
                 
-                if (dbCosts != null && dbCosts.Any())
+                if (dbCosts != null && dbCosts.Count() > 0)
                 {
                     // NOTE: Provider-based caching disabled as ModelCost doesn't contain provider info
                     // await SetProviderModelCostsAsync(providerName, dbCosts);
@@ -435,7 +435,7 @@ namespace ConduitLLM.Http.Services
             
             await _database.StringSetAsync(providerKey, serialized, _defaultExpiry);
             
-            _logger.LogDebug("Model costs cached for provider: {Provider} ({Count} costs)", providerName, costs.Count);
+            _logger.LogDebug("Model costs cached for provider: {Provider} ({Count} costs)", providerName, costs.Count());
         }
         */
 
@@ -523,7 +523,7 @@ namespace ConduitLLM.Http.Services
                 await Task.WhenAll(deleteTasks);
                 
                 // Update invalidation statistics
-                await _database.StringIncrementAsync(STATS_INVALIDATION_KEY, keysToDelete.Count);
+                await _database.StringIncrementAsync(STATS_INVALIDATION_KEY, keysToDelete.Count());
                 
                 // Publish batch invalidation message to other instances
                 var batchMessage = new ModelCostBatchInvalidation
@@ -546,7 +546,7 @@ namespace ConduitLLM.Http.Services
                 return new BatchInvalidationResult
                 {
                     Success = true,
-                    ProcessedCount = keysToDelete.Count,
+                    ProcessedCount = keysToDelete.Count(),
                     Duration = stopwatch.Elapsed
                 };
             }

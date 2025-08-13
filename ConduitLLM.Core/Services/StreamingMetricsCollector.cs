@@ -88,10 +88,10 @@ namespace ConduitLLM.Core.Services
             };
 
             // Calculate average inter-token latency
-            if (_tokenTimestamps.Count > 1)
+            if (_tokenTimestamps.Count() > 1)
             {
                 var latencies = new List<long>();
-                for (int i = 1; i < _tokenTimestamps.Count; i++)
+                for (int i = 1; i < _tokenTimestamps.Count(); i++)
                 {
                     latencies.Add(_tokenTimestamps[i] - _tokenTimestamps[i - 1]);
                 }
@@ -161,10 +161,10 @@ namespace ConduitLLM.Core.Services
             }
 
             // Calculate average inter-token latency
-            if (_tokenTimestamps.Count > 1)
+            if (_tokenTimestamps.Count() > 1)
             {
                 var latencies = new List<long>();
-                for (int i = 1; i < _tokenTimestamps.Count; i++)
+                for (int i = 1; i < _tokenTimestamps.Count(); i++)
                 {
                     latencies.Add(_tokenTimestamps[i] - _tokenTimestamps[i - 1]);
                 }

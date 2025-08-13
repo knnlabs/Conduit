@@ -362,7 +362,7 @@ namespace ConduitLLM.Core.Services
             }
 
             // Update fallbacks mapping
-            if (fallbacks == null || fallbacks.Count == 0)
+            if (fallbacks == null || fallbacks.Count() == 0)
             {
                 // Remove the fallback configuration if empty
                 if (config.Fallbacks.ContainsKey(primaryModel))
@@ -382,7 +382,7 @@ namespace ConduitLLM.Core.Services
             // Update the router
             if (_router is DefaultLLMRouter defaultRouter)
             {
-                if (fallbacks == null || fallbacks.Count == 0)
+                if (fallbacks == null || fallbacks.Count() == 0)
                 {
                     defaultRouter.RemoveFallbacks(primaryModel);
                 }

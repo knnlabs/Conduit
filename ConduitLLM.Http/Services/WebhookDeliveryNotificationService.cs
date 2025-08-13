@@ -392,7 +392,7 @@ namespace ConduitLLM.Http.Services
                 .Where(e => e.Type == DeliveryEventType.Success && e.ResponseTimeMs.HasValue)
                 .ToList();
             
-            stats.AverageResponseTimeMs = successfulEvents.Any()
+            stats.AverageResponseTimeMs = successfulEvents.Count() > 0
                 ? successfulEvents.Average(e => e.ResponseTimeMs!.Value)
                 : 0;
             

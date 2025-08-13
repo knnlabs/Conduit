@@ -72,12 +72,12 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public void EnqueueWebhook(WebhookDeliveryRequested webhook)
         {
-            if (webhook == null) throw new ArgumentNullException(nameof(webhook));
+            ArgumentNullException.ThrowIfNull(webhook);
             
             _queue.Enqueue(webhook);
             
             // If we've reached the batch size, trigger immediate publishing
-            if (_queue.Count >= _options.Value.MaxBatchSize)
+            if (_queue.Count() >= _options.Value.MaxBatchSize)
             {
                 _ = Task.Run(async () => await PublishBatchAsync());
             }
@@ -170,12 +170,12 @@ namespace ConduitLLM.Core.Services
                 var batch = new List<WebhookDeliveryRequested>(_options.Value.MaxBatchSize);
                 
                 // Dequeue up to MaxBatchSize items
-                while (batch.Count < _options.Value.MaxBatchSize && _queue.TryDequeue(out var webhook))
+                while (batch.Count() < _options.Value.MaxBatchSize && _queue.TryDequeue(out var webhook))
                 {
                     batch.Add(webhook);
                 }
 
-                if (batch.Count == 0)
+                if (batch.Count() == 0)
                 {
                     return;
                 }
@@ -194,12 +194,12 @@ namespace ConduitLLM.Core.Services
                         var publishEndpoint = scope.ServiceProvider.GetRequiredService<IPublishEndpoint>();
                         await publishEndpoint.PublishBatch(webhooks);
                         
-                        Interlocked.Add(ref _totalPublished, webhooks.Count);
+                        Interlocked.Add(ref _totalPublished, webhooks.Count());
                         Interlocked.Increment(ref _totalBatches);
 
                         _logger.LogDebug(
                             "Published batch of {Count} webhooks for partition {PartitionKey}",
-                            webhooks.Count,
+                            webhooks.Count(),
                             group.Key);
                     }
                     catch (Exception ex)
@@ -207,7 +207,7 @@ namespace ConduitLLM.Core.Services
                         _logger.LogError(
                             ex,
                             "Failed to publish batch of {Count} webhooks for partition {PartitionKey}",
-                            webhooks.Count,
+                            webhooks.Count(),
                             group.Key);
 
                         // Re-queue failed webhooks
@@ -227,7 +227,7 @@ namespace ConduitLLM.Core.Services
                         _totalPublished,
                         _totalBatches,
                         (double)_totalPublished / _totalBatches,
-                        _queue.Count);
+                        _queue.Count());
                 }
             }
             finally

@@ -59,7 +59,7 @@ namespace ConduitLLM.Http.Interfaces
                     return await _repository.GetEnabledAsync();
                 });
 
-                if (filters == null || !filters.Any())
+                if (filters == null || filters.Count() == 0)
                 {
                     // No filters defined, allow all
                     return true;

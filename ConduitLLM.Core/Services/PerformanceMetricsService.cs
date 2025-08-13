@@ -139,7 +139,7 @@ namespace ConduitLLM.Core.Services
                 };
 
                 // Calculate average inter-token latency
-                if (_interTokenLatencies.Count > 0)
+                if (_interTokenLatencies.Count() > 0)
                 {
                     metrics.AvgInterTokenLatencyMs = _interTokenLatencies.Average();
                 }

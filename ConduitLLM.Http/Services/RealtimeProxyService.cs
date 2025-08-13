@@ -171,7 +171,8 @@ namespace ConduitLLM.Http.Services
             string virtualKey,
             CancellationToken cancellationToken)
         {
-            var buffer = new ArraySegment<byte>(new byte[4096]);
+            var bufferArray = new byte[4096];
+            var buffer = new ArraySegment<byte>(bufferArray);
 
             while (!cancellationToken.IsCancellationRequested &&
                    clientWs.State == WebSocketState.Open &&
@@ -193,7 +194,7 @@ namespace ConduitLLM.Http.Services
                         // Assume binary data is audio
                         var audioFrame = new RealtimeAudioFrame
                         {
-                            AudioData = buffer.Array!.Take(result.Count).ToArray(),
+                            AudioData = bufferArray.Take(result.Count).ToArray(),
                             IsOutput = false,
                             SampleRate = 24000, // Default, should be configurable
                             Channels = 1
@@ -210,7 +211,7 @@ namespace ConduitLLM.Http.Services
                     }
                     else if (result.MessageType == WebSocketMessageType.Text)
                     {
-                        var message = Encoding.UTF8.GetString(buffer.Array!, 0, result.Count);
+                        var message = Encoding.UTF8.GetString(bufferArray, 0, result.Count);
                         
                         // Track bytes sent to provider
                         UpdateConnectionMetrics(connectionId, bytesSent: result.Count);

@@ -44,10 +44,10 @@ namespace ConduitLLM.Providers.Utilities
         /// <returns>An object suitable for OpenAI API (string or string array).</returns>
         public static object? ConvertStopSequences(List<string>? stop)
         {
-            if (stop == null || stop.Count == 0) return null;
+            if (stop == null || stop.Count() == 0) return null;
             
             // OpenAI accepts either a string or array of strings
-            return stop.Count == 1 ? stop[0] : stop;
+            return stop.Count() == 1 ? stop[0] : stop;
         }
         
         /// <summary>

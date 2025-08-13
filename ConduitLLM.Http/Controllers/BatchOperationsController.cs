@@ -58,12 +58,12 @@ namespace ConduitLLM.Http.Controllers
             var virtualKeyId = GetVirtualKeyId();
             
             // Validate request
-            if (request.Updates == null || !request.Updates.Any())
+            if (request.Updates == null || request.Updates.Count() == 0)
             {
                 return BadRequest(new ErrorResponseDto("No updates provided"));
             }
 
-            if (request.Updates.Count > 10000)
+            if (request.Updates.Count() > 10000)
             {
                 return BadRequest(new ErrorResponseDto("Maximum 10,000 items per batch"));
             }
@@ -87,13 +87,13 @@ namespace ConduitLLM.Http.Controllers
             _logger.LogInformation(
                 "Started batch spend update operation {OperationId} with {Count} items",
                 result.OperationId,
-                request.Updates.Count);
+                request.Updates.Count());
 
             return Accepted(new BatchOperationStartResponse
             {
                 OperationId = result.OperationId,
                 OperationType = "spend_update",
-                TotalItems = request.Updates.Count,
+                TotalItems = request.Updates.Count(),
                 StatusUrl = $"/v1/batch/operations/{result.OperationId}",
                 TaskId = result.OperationId,
                 Message = "Batch operation started. Subscribe to TaskHub with the taskId for real-time updates."
@@ -138,12 +138,12 @@ namespace ConduitLLM.Http.Controllers
             }
 
             // Validate request
-            if (request.Updates == null || !request.Updates.Any())
+            if (request.Updates == null || request.Updates.Count() == 0)
             {
                 return BadRequest(new ErrorResponseDto("No updates provided"));
             }
 
-            if (request.Updates.Count > 1000)
+            if (request.Updates.Count() > 1000)
             {
                 return BadRequest(new ErrorResponseDto("Maximum 1,000 items per batch"));
             }
@@ -168,13 +168,13 @@ namespace ConduitLLM.Http.Controllers
             _logger.LogInformation(
                 "Started batch virtual key update operation {OperationId} with {Count} items",
                 result.OperationId,
-                request.Updates.Count);
+                request.Updates.Count());
 
             return Accepted(new BatchOperationStartResponse
             {
                 OperationId = result.OperationId,
                 OperationType = "virtual_key_update",
-                TotalItems = request.Updates.Count,
+                TotalItems = request.Updates.Count(),
                 StatusUrl = $"/v1/batch/operations/{result.OperationId}",
                 TaskId = result.OperationId,
                 Message = "Batch operation started. Subscribe to TaskHub with the taskId for real-time updates."
@@ -195,12 +195,12 @@ namespace ConduitLLM.Http.Controllers
             var virtualKeyId = GetVirtualKeyId();
             
             // Validate request
-            if (request.Webhooks == null || !request.Webhooks.Any())
+            if (request.Webhooks == null || request.Webhooks.Count() == 0)
             {
                 return BadRequest(new ErrorResponseDto("No webhooks provided"));
             }
 
-            if (request.Webhooks.Count > 5000)
+            if (request.Webhooks.Count() > 5000)
             {
                 return BadRequest(new ErrorResponseDto("Maximum 5,000 webhooks per batch"));
             }
@@ -225,13 +225,13 @@ namespace ConduitLLM.Http.Controllers
             _logger.LogInformation(
                 "Started batch webhook send operation {OperationId} with {Count} items",
                 result.OperationId,
-                request.Webhooks.Count);
+                request.Webhooks.Count());
 
             return Accepted(new BatchOperationStartResponse
             {
                 OperationId = result.OperationId,
                 OperationType = "webhook_send",
-                TotalItems = request.Webhooks.Count,
+                TotalItems = request.Webhooks.Count(),
                 StatusUrl = $"/v1/batch/operations/{result.OperationId}",
                 TaskId = result.OperationId,
                 Message = "Batch operation started. Subscribe to TaskHub with the taskId for real-time updates."

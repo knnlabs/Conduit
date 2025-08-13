@@ -21,7 +21,7 @@ namespace ConduitLLM.Core.Routing.Strategies
             IReadOnlyDictionary<string, ModelDeployment> modelDeployments,
             IReadOnlyDictionary<string, int> modelUsageCounts)
         {
-            return availableModels.Count > 0 ? availableModels[0] : null;
+            return availableModels.Count() > 0 ? availableModels[0] : null;
         }
     }
 }

@@ -185,7 +185,7 @@ namespace ConduitLLM.Tests.Providers.Discovery
             // Assert
             // If JSON file exists (in test environment), it should return models
             // If not, it should throw NotSupportedException
-            if (models.Any())
+            if (models.Count() > 0)
             {
                 // Verify we get the expected static models
                 Assert.Contains(models, m => m.ModelId == "MiniMax-M1");

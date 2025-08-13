@@ -88,7 +88,7 @@ namespace ConduitLLM.Providers
                 }
 
                 _logger.LogInformation("Discovered {Count} models for provider {ProviderId}", 
-                    discoveredModels.Count, provider.Id);
+                    discoveredModels.Count(), provider.Id);
 
                 return discoveredModels;
             }
@@ -226,7 +226,7 @@ namespace ConduitLLM.Providers
                     PropertyNameCaseInsensitive = true
                 });
 
-                if (modelsData?.Models == null || modelsData.Models.Count == 0)
+                if (modelsData?.Models == null || modelsData.Models.Count() == 0)
                 {
                     return GetFallbackSambaNovaModels(provider);
                 }

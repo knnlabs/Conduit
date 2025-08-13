@@ -41,7 +41,7 @@ namespace ConduitLLM.Http.Services
                     Provider.ProviderName, Provider.Id, Provider.ProviderType);
                 
                 // If no API key provided, try to get it from the credential's keys
-                if (string.IsNullOrEmpty(apiKey) && Provider.ProviderKeyCredentials?.Any() == true)
+                if (string.IsNullOrEmpty(apiKey) && Provider.ProviderKeyCredentials?.Count > 0 == true)
                 {
                     var primaryKey = Provider.ProviderKeyCredentials
                         .FirstOrDefault(k => k.IsPrimary && k.IsEnabled) ?? 

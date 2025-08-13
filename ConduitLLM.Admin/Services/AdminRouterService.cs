@@ -158,7 +158,7 @@ _logger.LogError(ex, "Error deleting model deployment: {DeploymentName}".Replace
         {
 _logger.LogInformation("Setting fallback configuration for model: {PrimaryModel}", primaryModel.Replace(Environment.NewLine, ""));
 
-            if (string.IsNullOrWhiteSpace(primaryModel) || fallbackModels == null || !fallbackModels.Any())
+            if (string.IsNullOrWhiteSpace(primaryModel) || fallbackModels == null || fallbackModels.Count == 0)
             {
                 _logger.LogWarning("Invalid fallback configuration");
                 return false;

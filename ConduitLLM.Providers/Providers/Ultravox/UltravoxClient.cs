@@ -451,7 +451,8 @@ namespace ConduitLLM.Providers.Ultravox
         public async IAsyncEnumerable<ProviderRealtimeMessage> ReceiveMessagesAsync(
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var buffer = new ArraySegment<byte>(new byte[4096]);
+            var bufferArray = new byte[4096];
+            var buffer = new ArraySegment<byte>(bufferArray);
 
             while (!cancellationToken.IsCancellationRequested && _webSocket?.State == WebSocketState.Open)
             {
@@ -463,7 +464,7 @@ namespace ConduitLLM.Providers.Ultravox
                     var result = await _webSocket.ReceiveAsync(buffer, cancellationToken);
                     if (result.MessageType == WebSocketMessageType.Text)
                     {
-                        var json = System.Text.Encoding.UTF8.GetString(buffer.Array!, buffer.Offset, result.Count);
+                        var json = System.Text.Encoding.UTF8.GetString(bufferArray, buffer.Offset, result.Count);
 
                         messageToYield = new ProviderRealtimeMessage
                         {

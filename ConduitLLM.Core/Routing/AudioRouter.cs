@@ -242,7 +242,7 @@ namespace ConduitLLM.Core.Routing
             lock (_statistics)
             {
                 var combinedStats = new AudioRoutingStatistics();
-                if (_statistics.Any())
+                if (_statistics.Count() > 0)
                 {
                     combinedStats.TranscriptionRequests = _statistics.Values.Sum(s => s.TranscriptionRequests);
                     combinedStats.TextToSpeechRequests = _statistics.Values.Sum(s => s.TextToSpeechRequests);

@@ -63,12 +63,12 @@ namespace ConduitLLM.Configuration.Services
                     .Where(k => k.ExpiresAt.HasValue && k.ExpiresAt.Value < now)
                     .ToList();
 
-                if (!expiredKeys.Any())
+                if (expiredKeys.Count() == 0)
                 {
                     return;
                 }
 
-                _logger.LogInformation("Disabling {Count} expired virtual keys", expiredKeys.Count);
+                _logger.LogInformation("Disabling {Count} expired virtual keys", expiredKeys.Count());
 
                 // Update keys to disable them
                 foreach (var key in expiredKeys)
@@ -79,7 +79,7 @@ namespace ConduitLLM.Configuration.Services
                     await _virtualKeyRepository.UpdateAsync(key);
                 }
 
-                _logger.LogInformation("Successfully disabled {Count} expired virtual keys", expiredKeys.Count);
+                _logger.LogInformation("Successfully disabled {Count} expired virtual keys", expiredKeys.Count());
             }
             catch (Exception ex)
             {

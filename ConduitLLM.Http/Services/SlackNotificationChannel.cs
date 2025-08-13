@@ -61,7 +61,7 @@ namespace ConduitLLM.Http.Services
             };
 
             // Add suggested actions if any
-            if (alert.SuggestedActions.Any())
+            if (alert.SuggestedActions.Count() > 0)
             {
                 attachments.Add(new
                 {

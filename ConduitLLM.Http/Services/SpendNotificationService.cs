@@ -237,7 +237,7 @@ namespace ConduitLLM.Http.Services
                 }
 
                 // Reset sent alerts if spending goes back down (e.g., new month)
-                if (percentageUsed < 50 && sentAlerts.Count > 0)
+                if (percentageUsed < 50 && sentAlerts.Count() > 0)
                 {
                     sentAlerts.Clear();
                     _logger.LogInformation("Budget alerts reset for VirtualKey {VirtualKeyId} as usage dropped below 50%", virtualKeyId);
@@ -337,7 +337,7 @@ namespace ConduitLLM.Http.Services
                     
                     // Keep only last hour of data
                     var cutoff = DateTime.UtcNow.AddHours(-1);
-                    while (_recentSpends.Count > 0 && _recentSpends.Peek().Timestamp < cutoff)
+                    while (_recentSpends.Count() > 0 && _recentSpends.Peek().Timestamp < cutoff)
                     {
                         _recentSpends.Dequeue();
                     }
@@ -348,7 +348,7 @@ namespace ConduitLLM.Http.Services
             {
                 lock (_lock)
                 {
-                    if (_recentSpends.Count < 5) // Need at least 5 records
+                    if (_recentSpends.Count() < 5) // Need at least 5 records
                     {
                         return new PatternAnalysis { IsUnusual = false };
                     }
@@ -357,7 +357,7 @@ namespace ConduitLLM.Http.Services
                     var lastHour = _recentSpends.Where(s => s.Timestamp > now.AddHours(-1)).ToList();
                     var previousHour = _recentSpends.Where(s => s.Timestamp <= now.AddHours(-1) && s.Timestamp > now.AddHours(-2)).ToList();
 
-                    if (lastHour.Count == 0 || previousHour.Count == 0)
+                    if (lastHour.Count() == 0 || previousHour.Count() == 0)
                     {
                         return new PatternAnalysis { IsUnusual = false };
                     }
@@ -389,7 +389,7 @@ namespace ConduitLLM.Http.Services
 
                     // Check for sustained high spending
                     var avgAmount = lastHour.Average(s => s.Amount);
-                    if (avgAmount > 10 && lastHour.Count > 20) // More than 20 requests in an hour with high avg cost
+                    if (avgAmount > 10 && lastHour.Count() > 20) // More than 20 requests in an hour with high avg cost
                     {
                         return new PatternAnalysis
                         {

@@ -34,8 +34,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <inheritdoc/>
         public async Task<MediaRecord> CreateAsync(MediaRecord mediaRecord)
         {
-            if (mediaRecord == null)
-                throw new ArgumentNullException(nameof(mediaRecord));
+            ArgumentNullException.ThrowIfNull(mediaRecord);
 
             using var context = await _contextFactory.CreateDbContextAsync();
             
@@ -112,7 +111,7 @@ namespace ConduitLLM.Configuration.Repositories
                 .Where(m => !context.VirtualKeys.Any(vk => vk.Id == m.VirtualKeyId))
                 .ToListAsync();
             
-            if (orphanedMedia.Any())
+            if (orphanedMedia.Count() > 0)
             {
                 _logger.LogWarning("Found {Count} orphaned media records", orphanedMedia.Count);
             }
@@ -162,7 +161,7 @@ namespace ConduitLLM.Configuration.Repositories
                 .Where(m => idList.Contains(m.Id))
                 .ToListAsync();
             
-            if (mediaRecords.Any())
+            if (mediaRecords.Count() > 0)
             {
                 context.MediaRecords.RemoveRange(mediaRecords);
                 await context.SaveChangesAsync();

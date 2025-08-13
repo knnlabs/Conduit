@@ -59,7 +59,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
                 language,
                 availableProviders,
                 p => p.Capabilities.SupportedVoices.Contains(request.Voice) ||
-                     p.Capabilities.SupportedVoices.Count == 0,
+                     p.Capabilities.SupportedVoices.Count() == 0,
                 p => SupportsFormat(p, request.ResponseFormat?.ToString()));
         }
 
@@ -96,7 +96,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
                 .Where(p => SupportsLanguage(p, language))
                 .ToList();
 
-            if (!eligibleProviders.Any())
+            if (eligibleProviders.Count() == 0)
             {
 _logger.LogWarning("No eligible providers found for language {Language}", language.Replace(Environment.NewLine, ""));
                 return Task.FromResult<string?>(null);
@@ -191,7 +191,7 @@ _logger.LogWarning("No eligible providers found for language {Language}", langua
             if (string.IsNullOrEmpty(language))
                 return true;
 
-            return provider.Capabilities.SupportedLanguages.Count == 0 ||
+            return provider.Capabilities.SupportedLanguages.Count() == 0 ||
                    provider.Capabilities.SupportedLanguages.Contains(language);
         }
 
@@ -200,7 +200,7 @@ _logger.LogWarning("No eligible providers found for language {Language}", langua
             if (string.IsNullOrEmpty(format))
                 return true;
 
-            return provider.Capabilities.SupportedFormats.Count == 0 ||
+            return provider.Capabilities.SupportedFormats.Count() == 0 ||
                    provider.Capabilities.SupportedFormats.Contains(format, StringComparer.OrdinalIgnoreCase);
         }
 

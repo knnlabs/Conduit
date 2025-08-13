@@ -29,7 +29,7 @@ namespace ConduitLLM.Core.Routing.Strategies
             IReadOnlyDictionary<string, ModelDeployment> modelDeployments,
             IReadOnlyDictionary<string, int> modelUsageCounts)
         {
-            if (availableModels.Count == 0)
+            if (availableModels.Count() == 0)
             {
                 return null;
             }
@@ -40,7 +40,7 @@ namespace ConduitLLM.Core.Routing.Strategies
                 .Where(d => d != null)
                 .ToList();
 
-            if (availableDeployments.Count == 0)
+            if (availableDeployments.Count() == 0)
             {
                 // Fall back to simple strategy if no deployment info is available
                 return availableModels[0];

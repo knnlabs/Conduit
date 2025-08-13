@@ -261,7 +261,7 @@ public class AdminSystemInfoService : IAdminSystemInfoService
             if (canConnect)
             {
                 // Check migrations
-                bool pendingMigrations = (await _dbContext.GetDatabase().GetPendingMigrationsAsync()).Any();
+                bool pendingMigrations = (await _dbContext.GetDatabase().GetPendingMigrationsAsync()).Count() > 0;
 
                 // Get migration history
                 var migrations = await _dbContext.GetDatabase().GetAppliedMigrationsAsync();

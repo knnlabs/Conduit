@@ -148,7 +148,7 @@ namespace ConduitLLM.Core.Services
                 foreach (var (provider, count) in sessionsByProvider)
                 {
                     var providerSessions = sessions.Where(s => s.Provider == provider).ToList();
-                    if (providerSessions.Any())
+                    if (providerSessions.Count() > 0)
                     {
                         // Report each session individually
                         foreach (var session in providerSessions)
@@ -191,7 +191,7 @@ namespace ConduitLLM.Core.Services
                 }
             }
 
-            if (zombies.Any())
+            if (zombies.Count() > 0)
             {
                 _logger.LogWarning("Found {Count} zombie sessions", zombies.Count);
 

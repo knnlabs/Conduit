@@ -58,7 +58,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
             return SelectProviderByLatencyAsync(
                 availableProviders,
                 p => p.Capabilities.SupportedVoices.Contains(request.Voice) ||
-                     p.Capabilities.SupportedVoices.Count == 0, // Empty means all voices supported
+                     p.Capabilities.SupportedVoices.Count() == 0, // Empty means all voices supported
                 p => SupportsLanguage(p, request.Language),
                 p => SupportsFormat(p, request.ResponseFormat?.ToString()));
         }
@@ -78,7 +78,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
             history.Enqueue(metrics.LatencyMs);
 
             // Keep only recent samples
-            while (history.Count > _maxHistorySize)
+            while (history.Count() > _maxHistorySize)
             {
                 history.Dequeue();
             }
@@ -101,7 +101,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
                 .Where(p => p.IsAvailable && filters.All(f => f(p)))
                 .ToList();
 
-            if (!eligibleProviders.Any())
+            if (eligibleProviders.Count() == 0)
             {
                 _logger.LogWarning("No eligible providers found for latency-based routing");
                 return Task.FromResult<string?>(null);
@@ -133,7 +133,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
             var baseLatency = provider.Metrics.AverageLatencyMs;
 
             // Adjust based on historical data if available
-            if (_latencyHistory.TryGetValue(provider.Name, out var history) && history.Any())
+            if (_latencyHistory.TryGetValue(provider.Name, out var history) && history.Count() > 0)
             {
                 // Weight recent history more heavily
                 var historicalAvg = history.Average();
@@ -152,7 +152,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
             if (string.IsNullOrEmpty(language))
                 return true;
 
-            return provider.Capabilities.SupportedLanguages.Count == 0 || // Empty means all languages
+            return provider.Capabilities.SupportedLanguages.Count() == 0 || // Empty means all languages
                    provider.Capabilities.SupportedLanguages.Contains(language);
         }
 
@@ -161,7 +161,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
             if (string.IsNullOrEmpty(format))
                 return true;
 
-            return provider.Capabilities.SupportedFormats.Count == 0 || // Empty means all formats
+            return provider.Capabilities.SupportedFormats.Count() == 0 || // Empty means all formats
                    provider.Capabilities.SupportedFormats.Contains(format, StringComparer.OrdinalIgnoreCase);
         }
     }

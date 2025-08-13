@@ -56,7 +56,7 @@ namespace ConduitLLM.Providers
                     PropertyNameCaseInsensitive = true
                 });
 
-                if (apiResponse?.Data == null || apiResponse.Data.Count == 0)
+                if (apiResponse?.Data == null || apiResponse.Data.Count() == 0)
                 {
                     return GetGenericModels();
                 }

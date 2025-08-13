@@ -334,7 +334,7 @@ namespace ConduitLLM.Http.Services
                     }
                 }
 
-                if (expiredKeys.Count > 0)
+                if (expiredKeys.Count() > 0)
                 {
                     _logger.LogDebug("Cleaned up {Count} expired acknowledgments", expiredKeys.Count);
                 }

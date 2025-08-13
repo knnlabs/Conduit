@@ -372,7 +372,7 @@ namespace ConduitLLM.Core.Services
                         models[model.ModelId] = model;
                     }
                     
-                    if (models.Count > 0)
+                    if (models.Count() > 0)
                     {
                         _logger.LogInformation("Provider-specific discovery found {Count} models for provider '{ProviderName}'", 
                             models.Count, Provider.ProviderName);
@@ -402,7 +402,7 @@ namespace ConduitLLM.Core.Services
             _cache.Set(cacheKey, models, _cacheExpiration);
 
             // Publish ModelCapabilitiesDiscovered event to eliminate redundant discovery calls
-            if (models.Count > 0)
+            if (models.Count() > 0)
             {
                 // Convert DiscoveredModel to ModelCapabilities for the event
                 var modelCapabilities = models.ToDictionary(

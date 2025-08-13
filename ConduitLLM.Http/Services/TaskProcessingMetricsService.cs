@@ -196,7 +196,7 @@ namespace ConduitLLM.Http.Services
                     {
                         State = g.Key.State,
                         Count = g.Count(),
-                        AvgDuration = g.Where(t => t.CompletedAt.HasValue).Any() 
+                        AvgDuration = g.Where(t => t.CompletedAt.HasValue).Count() > 0 
                             ? g.Where(t => t.CompletedAt.HasValue)
                                 .Average(t => (double)((t.CompletedAt!.Value - t.CreatedAt).TotalSeconds))
                             : (double?)null
@@ -242,7 +242,7 @@ namespace ConduitLLM.Http.Services
                     {
                         State = g.Key.State,
                         Count = g.Count(),
-                        AvgDuration = g.Where(t => t.CompletedAt.HasValue).Any() 
+                        AvgDuration = g.Where(t => t.CompletedAt.HasValue).Count() > 0 
                             ? g.Where(t => t.CompletedAt.HasValue)
                                 .Average(t => (double)((t.CompletedAt!.Value - t.CreatedAt).TotalSeconds))
                             : (double?)null

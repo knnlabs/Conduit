@@ -84,7 +84,7 @@ namespace ConduitLLM.Http.Services
             _recentRequests.Enqueue(metric);
             
             // Keep only recent metrics
-            while (_recentRequests.Count > _options.MaxMetricsRetention)
+            while (_recentRequests.Count() > _options.MaxMetricsRetention)
             {
                 _recentRequests.TryDequeue(out _);
             }
@@ -128,7 +128,7 @@ namespace ConduitLLM.Http.Services
             _recentDatabaseOps.Enqueue(metric);
             
             // Keep only recent metrics
-            while (_recentDatabaseOps.Count > _options.MaxMetricsRetention)
+            while (_recentDatabaseOps.Count() > _options.MaxMetricsRetention)
             {
                 _recentDatabaseOps.TryDequeue(out _);
             }
@@ -198,7 +198,7 @@ namespace ConduitLLM.Http.Services
                     .Where(r => r.Timestamp > recentWindow)
                     .ToList();
 
-                var requestCount = recentRequestsList.Count;
+                var requestCount = recentRequestsList.Count();
                 var successCount = recentRequestsList.Count(r => r.IsSuccess);
                 var errorRate = requestCount > 0 ? ((double)(requestCount - successCount) / requestCount) * 100 : 0;
                 
@@ -214,7 +214,7 @@ namespace ConduitLLM.Http.Services
                     ActiveRequests = 0 // Would need to track this separately
                 };
 
-                if (responseTimes.Any())
+                if (responseTimes.Count() > 0)
                 {
                     metrics.AverageResponseTimeMs = responseTimes.Average();
                     metrics.P95ResponseTimeMs = GetPercentile(responseTimes, 0.95);
@@ -361,13 +361,13 @@ namespace ConduitLLM.Http.Services
                 .Where(q => q.Timestamp > recentWindow)
                 .ToList();
 
-            if (!recentQueries.Any()) return;
+            if (recentQueries.Count() == 0) return;
 
             var slowQueries = recentQueries
                 .Where(q => q.ExecutionTimeMs > _options.DatabaseSlowQueryThresholdMs)
                 .ToList();
 
-            if (slowQueries.Count > _options.DatabaseSlowQueryCountThreshold)
+            if (slowQueries.Count() > _options.DatabaseSlowQueryCountThreshold)
             {
                 var avgSlowQueryTime = slowQueries.Average(q => q.ExecutionTimeMs);
                 await _alertManagementService.TriggerAlertAsync(new HealthAlert
@@ -376,10 +376,10 @@ namespace ConduitLLM.Http.Services
                     Type = AlertType.PerformanceDegradation,
                     Component = "Database",
                     Title = "High Number of Slow Queries",
-                    Message = $"Detected {slowQueries.Count} slow queries in the last {_options.MetricsWindowSeconds} seconds. Average execution time: {avgSlowQueryTime:F0}ms",
+                    Message = $"Detected {slowQueries.Count()} slow queries in the last {_options.MetricsWindowSeconds} seconds. Average execution time: {avgSlowQueryTime:F0}ms",
                     Context = new Dictionary<string, object>
                     {
-                        ["slowQueryCount"] = slowQueries.Count,
+                        ["slowQueryCount"] = slowQueries.Count(),
                         ["averageExecutionTime"] = avgSlowQueryTime,
                         ["threshold"] = _options.DatabaseSlowQueryThresholdMs,
                         ["operations"] = slowQueries.GroupBy(q => q.Operation)
@@ -517,10 +517,10 @@ namespace ConduitLLM.Http.Services
 
         private double GetPercentile(List<double> sortedValues, double percentile)
         {
-            if (!sortedValues.Any()) return 0;
+            if (sortedValues.Count() == 0) return 0;
             
-            var index = (int)Math.Ceiling(percentile * sortedValues.Count) - 1;
-            return sortedValues[Math.Max(0, Math.Min(index, sortedValues.Count - 1))];
+            var index = (int)Math.Ceiling(percentile * sortedValues.Count()) - 1;
+            return sortedValues[Math.Max(0, Math.Min(index, sortedValues.Count() - 1))];
         }
 
         public void Dispose()

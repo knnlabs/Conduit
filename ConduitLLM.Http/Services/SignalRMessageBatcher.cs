@@ -171,7 +171,7 @@ namespace ConduitLLM.Http.Services
             lock (batch.SyncRoot)
             {
                 // Check if adding this message would exceed limits
-                if (batch.Messages.Count >= _maxBatchSize || 
+                if (batch.Messages.Count() >= _maxBatchSize || 
                     batch.TotalSizeBytes + messageSize > _maxBatchSizeBytes)
                 {
                     // Queue this batch for immediate sending
@@ -206,7 +206,7 @@ namespace ConduitLLM.Http.Services
 
             _logger.LogTrace(
                 "Added message to batch for {HubName}.{MethodName}, batch size: {Size}",
-                hubName, methodName, batch.Messages.Count);
+                hubName, methodName, batch.Messages.Count());
         }
 
         public BatchingStatistics GetStatistics()
@@ -215,7 +215,7 @@ namespace ConduitLLM.Http.Services
             {
                 TotalMessagesBatched = _totalMessagesBatched,
                 TotalBatchesSent = _totalBatchesSent,
-                CurrentPendingMessages = _activeBatches.Sum(b => b.Value.Messages.Count),
+                CurrentPendingMessages = _activeBatches.Sum(b => b.Value.Messages.Count()),
                 LastBatchSentAt = _lastBatchSentAt,
                 IsBatchingEnabled = _isBatchingEnabled,
                 MessagesByMethod = _messagesByMethod.ToDictionary(kvp => kvp.Key, kvp => kvp.Value)
@@ -293,7 +293,7 @@ namespace ConduitLLM.Http.Services
                     
                     lock (batch.SyncRoot)
                     {
-                        if (batch.Messages.Count > 0 && 
+                        if (batch.Messages.Count() > 0 && 
                             (now - batch.CreatedAt >= _batchWindow || batch.IsQueued))
                         {
                             var batchKey = new BatchKey(batch.HubName, batch.MethodName, batch.ConnectionId, batch.GroupName);
@@ -337,13 +337,13 @@ namespace ConduitLLM.Http.Services
 
                 lock (batch.SyncRoot)
                 {
-                    if (batch.Messages.Count == 0)
+                    if (batch.Messages.Count() == 0)
                     {
                         return;
                     }
 
                     messagesToSend = new List<object>(batch.Messages);
-                    messageCount = messagesToSend.Count;
+                    messageCount = messagesToSend.Count();
                     batch.Messages.Clear();
                 }
 

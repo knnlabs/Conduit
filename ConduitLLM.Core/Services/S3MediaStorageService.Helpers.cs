@@ -159,10 +159,10 @@ namespace ConduitLLM.Core.Services
                 try
                 {
                     var corsConfig = await _s3Client.GetCORSConfigurationAsync(_bucketName);
-                    if (corsConfig.Configuration?.Rules?.Any() == true)
+                    if (corsConfig.Configuration?.Rules?.Count > 0)
                     {
                         _logger.LogInformation("Bucket {BucketName} already has {RuleCount} CORS rules configured", 
-                            _bucketName, corsConfig.Configuration.Rules.Count);
+                            _bucketName, corsConfig.Configuration.Rules.Count());
                         return;
                     }
                 }

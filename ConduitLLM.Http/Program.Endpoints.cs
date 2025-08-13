@@ -96,7 +96,7 @@ public partial class Program
         });
         app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
         {
-            Predicate = check => check.Tags.Contains("ready") || !check.Tags.Any()
+            Predicate = check => check.Tags.Contains("ready") || check.Tags.Count == 0
         });
 
         // Map Prometheus metrics endpoint for scraping

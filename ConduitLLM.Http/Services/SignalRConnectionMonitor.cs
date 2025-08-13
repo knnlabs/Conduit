@@ -329,7 +329,7 @@ namespace ConduitLLM.Http.Services
                 .GroupBy(c => c.TransportType!)
                 .ToDictionary(g => g.Key, g => g.Count());
 
-            if (activeConnections.Any())
+            if (activeConnections.Count() > 0)
             {
                 stats.AverageConnectionDurationMinutes = activeConnections
                     .Average(c => c.ConnectionDuration.TotalMinutes);
@@ -386,7 +386,7 @@ namespace ConduitLLM.Http.Services
                     _groupConnections.TryRemove(group, out _);
                 }
 
-                if (staleConnections.Count > 0)
+                if (staleConnections.Count() > 0)
                 {
                     _logger.LogInformation(
                         "Cleaned up {Count} stale connections and {GroupCount} empty groups",

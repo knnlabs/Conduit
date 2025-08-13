@@ -78,8 +78,7 @@ namespace ConduitLLM.Core.Services
             HybridAudioRequest request,
             CancellationToken cancellationToken = default)
         {
-            if (request == null)
-                throw new ArgumentNullException(nameof(request));
+            ArgumentNullException.ThrowIfNull(request);
 
             var stopwatch = Stopwatch.StartNew();
             var metrics = new ProcessingMetrics();
@@ -282,8 +281,7 @@ namespace ConduitLLM.Core.Services
             HybridSessionConfig config,
             CancellationToken cancellationToken = default)
         {
-            if (config == null)
-                throw new ArgumentNullException(nameof(config));
+            ArgumentNullException.ThrowIfNull(config);
 
             var sessionId = Guid.NewGuid().ToString();
             var session = new HybridSession
@@ -355,7 +353,7 @@ _logger.LogInformation("Closed hybrid audio session: {SessionId}", sessionId.Rep
         {
             lock (_metricsLock)
             {
-                if (_recentMetrics.Count == 0)
+                if (_recentMetrics.Count() == 0)
                 {
                     return Task.FromResult(new HybridLatencyMetrics
                     {
@@ -375,7 +373,7 @@ _logger.LogInformation("Closed hybrid audio session: {SessionId}", sessionId.Rep
                     AverageTotalLatencyMs = metrics.Average(m => m.TotalLatencyMs),
                     P95LatencyMs = GetPercentile(totalLatencies, 0.95),
                     P99LatencyMs = GetPercentile(totalLatencies, 0.99),
-                    SampleCount = metrics.Count,
+                    SampleCount = metrics.Count(),
                     CalculatedAt = DateTime.UtcNow
                 });
             }
@@ -464,7 +462,7 @@ _logger.LogInformation("Closed hybrid audio session: {SessionId}", sessionId.Rep
             lock (_metricsLock)
             {
                 _recentMetrics.Enqueue(metrics);
-                while (_recentMetrics.Count > MaxMetricsSamples)
+                while (_recentMetrics.Count() > MaxMetricsSamples)
                 {
                     _recentMetrics.Dequeue();
                 }
@@ -473,11 +471,11 @@ _logger.LogInformation("Closed hybrid audio session: {SessionId}", sessionId.Rep
 
         private double GetPercentile(List<double> sortedValues, double percentile)
         {
-            if (sortedValues.Count == 0)
+            if (sortedValues.Count() == 0)
                 return 0;
 
-            var index = (int)Math.Ceiling(percentile * sortedValues.Count) - 1;
-            return sortedValues[Math.Max(0, Math.Min(index, sortedValues.Count - 1))];
+            var index = (int)Math.Ceiling(percentile * sortedValues.Count()) - 1;
+            return sortedValues[Math.Max(0, Math.Min(index, sortedValues.Count() - 1))];
         }
 
         private void CleanupExpiredSessions(object? state)
@@ -527,7 +525,7 @@ _logger.LogInformation("Closed hybrid audio session: {SessionId}", sessionId.Rep
                 });
 
                 // Maintain history limit
-                while (_history.Count > Config.MaxHistoryTurns)
+                while (_history.Count() > Config.MaxHistoryTurns)
                 {
                     _history.Dequeue();
                 }

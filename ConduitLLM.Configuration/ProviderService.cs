@@ -88,7 +88,7 @@ namespace ConduitLLM.Configuration
             try
             {
                 var providers = await _repository.GetAllAsync();
-                _logger.LogInformation("Retrieved {Count} providers", providers.Count);
+                _logger.LogInformation("Retrieved {Count} providers", providers.Count());
                 return providers;
             }
             catch (Exception ex)
@@ -136,7 +136,7 @@ namespace ConduitLLM.Configuration
             {
                 var providers = await _repository.GetAllAsync();
                 var enabledProviders = providers.Where(p => p.IsEnabled).ToList();
-                _logger.LogInformation("Retrieved {Count} enabled providers out of {Total} total", enabledProviders.Count, providers.Count);
+                _logger.LogInformation("Retrieved {Count} enabled providers out of {Total} total", enabledProviders.Count(), providers.Count());
                 return enabledProviders;
             }
             catch (Exception ex)
@@ -185,7 +185,7 @@ namespace ConduitLLM.Configuration
             try
             {
                 var credentials = await _keyRepository.GetAllAsync();
-                _logger.LogInformation("Retrieved {Count} key credentials across all providers", credentials.Count);
+                _logger.LogInformation("Retrieved {Count} key credentials across all providers", credentials.Count());
                 return credentials;
             }
             catch (Exception ex)
@@ -245,7 +245,7 @@ namespace ConduitLLM.Configuration
 
                 // If this is the first key or marked as primary, ensure it's the only primary
                 var existingKeys = await _keyRepository.GetByProviderIdAsync(providerId);
-                if (!existingKeys.Any() || keyCredential.IsPrimary)
+                if (existingKeys.Count() == 0 || keyCredential.IsPrimary)
                 {
                     // Unset any existing primary keys
                     foreach (var existingKey in existingKeys.Where(k => k.IsPrimary))

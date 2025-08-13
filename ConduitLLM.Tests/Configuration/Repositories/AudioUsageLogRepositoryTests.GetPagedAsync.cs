@@ -148,7 +148,7 @@ namespace ConduitLLM.Tests.Configuration.Repositories
 
             // Assert
             // Some logs should match these criteria (not all, since we're filtering)
-            if (result.Items.Any())
+            if (result.Items.Count() > 0)
             {
                 result.Items.Should().OnlyContain(log => 
                     log.ProviderId == provider.Id &&

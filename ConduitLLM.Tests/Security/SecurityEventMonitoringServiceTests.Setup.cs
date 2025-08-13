@@ -136,7 +136,7 @@ namespace ConduitLLM.Tests.Security
 
         public async Task RecordEventAsync(SecurityEvent securityEvent)
         {
-            if (securityEvent == null) throw new ArgumentNullException(nameof(securityEvent));
+            ArgumentNullException.ThrowIfNull(securityEvent);
 
             try
             {

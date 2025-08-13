@@ -70,7 +70,7 @@ namespace ConduitLLM.Http.Services
         {
             var filteredAlerts = alerts.Where(ShouldSendAlert).ToList();
             
-            if (!filteredAlerts.Any())
+            if (filteredAlerts.Count() == 0)
             {
                 _logger.LogDebug("All alerts filtered out by severity threshold");
                 return;
@@ -250,7 +250,7 @@ namespace ConduitLLM.Http.Services
         public async Task SendBatchAsync(IEnumerable<HealthAlert> alerts, CancellationToken cancellationToken = default)
         {
             var alertsList = alerts.ToList();
-            var subject = $"ConduitLLM Alert Summary ({alertsList.Count} alerts)";
+            var subject = $"ConduitLLM Alert Summary ({alertsList.Count()} alerts)";
             var body = FormatBatchAlertEmail(alertsList);
 
             await SendEmailAsync(subject, body, cancellationToken);
@@ -305,7 +305,7 @@ namespace ConduitLLM.Http.Services
             sb.AppendLine($"<p><strong>Time:</strong> {alert.TriggeredAt:yyyy-MM-dd HH:mm:ss} UTC</p>");
             sb.AppendLine($"<p><strong>Message:</strong> {alert.Message}</p>");
 
-            if (alert.SuggestedActions.Any())
+            if (alert.SuggestedActions.Count() > 0)
             {
                 sb.AppendLine("<h3>Suggested Actions:</h3>");
                 sb.AppendLine("<ul>");
@@ -316,7 +316,7 @@ namespace ConduitLLM.Http.Services
                 sb.AppendLine("</ul>");
             }
 
-            if (alert.Context.Any())
+            if (alert.Context.Count() > 0)
             {
                 sb.AppendLine("<h3>Additional Context:</h3>");
                 sb.AppendLine("<pre style='background-color: #f5f5f5; padding: 10px;'>");
@@ -333,7 +333,7 @@ namespace ConduitLLM.Http.Services
             var sb = new StringBuilder();
             sb.AppendLine("<html><body style='font-family: Arial, sans-serif;'>");
             sb.AppendLine($"<h2>ConduitLLM Alert Summary</h2>");
-            sb.AppendLine($"<p>Total alerts: {alerts.Count}</p>");
+            sb.AppendLine($"<p>Total alerts: {alerts.Count()}</p>");
 
             var groupedBySeverity = alerts.GroupBy(a => a.Severity).OrderByDescending(g => g.Key);
             foreach (var group in groupedBySeverity)

@@ -264,7 +264,7 @@ _logger.LogDebug("Removed session {SessionId}", sessionId.Replace(Environment.Ne
             var activeList = _cacheService.Get<List<string>>(activeKey) ?? new List<string>();
             activeList.Remove(session.Id);
 
-            if (activeList.Count > 0)
+            if (activeList.Count() > 0)
             {
                 _cacheService.Set(activeKey, activeList, _defaultTtl);
             }
@@ -281,7 +281,7 @@ _logger.LogDebug("Removed session {SessionId}", sessionId.Replace(Environment.Ne
                 var vkeyList = _cacheService.Get<List<string>>(vkeyKey) ?? new List<string>();
                 vkeyList.Remove(session.Id);
 
-                if (vkeyList.Count > 0)
+                if (vkeyList.Count() > 0)
                 {
                     _cacheService.Set(vkeyKey, vkeyList, _defaultTtl);
                 }

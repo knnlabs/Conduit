@@ -546,7 +546,7 @@ namespace ConduitLLM.Configuration.Services
                     envConfig["MaxTTL"] = maxTtl;
                 }
 
-                if (envConfig.Count > 0)
+                if (envConfig.Count() > 0)
                 {
                     try
                     {

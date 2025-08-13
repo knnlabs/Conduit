@@ -50,13 +50,13 @@ namespace ConduitLLM.Http.EventHandlers
             var message = context.Message;
             _logger.LogInformation(
                 "Processing model discovery notification for provider ID {ProviderId} with {ModelCount} models",
-                message.ProviderId, message.ModelCapabilities.Count);
+                message.ProviderId, message.ModelCapabilities.Count());
 
             try
             {
                 // Check for new models
                 var newModels = await CheckForNewModelsAsync(message);
-                if (newModels.Any())
+                if (newModels.Count() > 0)
                 {
                     await NotifyNewModelsDiscoveredAsync(message.ProviderId, newModels, message);
                 }
@@ -130,7 +130,7 @@ namespace ConduitLLM.Http.EventHandlers
                 if (previousModels.TryGetValue(kvp.Key, out var previousCapabilities))
                 {
                     var changeList = CompareCapabilities(previousCapabilities, kvp.Value);
-                    if (changeList.Any())
+                    if (changeList.Count() > 0)
                     {
                         changes.Add(new ModelCapabilityChange
                         {
@@ -195,7 +195,7 @@ namespace ConduitLLM.Http.EventHandlers
             {
                 ProviderId = message.ProviderId,
                 NewModels = newModels,
-                TotalModelCount = message.ModelCapabilities.Count,
+                TotalModelCount = message.ModelCapabilities.Count(),
                 DiscoveredAt = message.DiscoveredAt
             };
 
@@ -205,7 +205,7 @@ namespace ConduitLLM.Http.EventHandlers
 
             // Determine severity based on provider and model capabilities
             var severity = NotificationSeverity.Low;
-            if (severityClassifier != null && newModels.Any())
+            if (severityClassifier != null && newModels.Count() == 0)
             {
                 severity = newModels.Max(m => severityClassifier.ClassifyNewModel(providerId.ToString(), m));
             }
@@ -221,13 +221,13 @@ namespace ConduitLLM.Http.EventHandlers
 
                 _logger.LogInformation(
                     "Queued new models notification for provider ID {ProviderId}: {Count} new models with severity {Severity}",
-                    providerId, newModels.Count, severity);
+                    providerId, newModels.Count(), severity);
             }
             else
             {
                 _logger.LogDebug(
                     "Model discovery notification batcher not available - skipping batched notifications for {Count} new models from provider ID {ProviderId}",
-                    newModels.Count, providerId);
+                    newModels.Count(), providerId);
             }
         }
 

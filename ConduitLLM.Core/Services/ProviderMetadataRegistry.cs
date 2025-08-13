@@ -65,8 +65,7 @@ namespace ConduitLLM.Core.Services
         /// <inheritdoc />
         public IEnumerable<IProviderMetadata> GetProvidersByFeature(Func<FeatureSupport, bool> featurePredicate)
         {
-            if (featurePredicate == null)
-                throw new ArgumentNullException(nameof(featurePredicate));
+            ArgumentNullException.ThrowIfNull(featurePredicate);
 
             return _providers.Values
                 .Where(p => featurePredicate(p.Capabilities.Features))
@@ -189,7 +188,7 @@ namespace ConduitLLM.Core.Services
                     .Where(pt => !_providers.ContainsKey(pt))
                     .ToList();
 
-                if (missingProviders.Any())
+                if (missingProviders.Count() > 0)
                 {
                     var missing = string.Join(", ", missingProviders);
                     var error = $"Missing provider implementations for: {missing}";
@@ -219,7 +218,7 @@ namespace ConduitLLM.Core.Services
                 .OrderBy(n => n)
                 .ToList();
 
-            if (providers.Any())
+            if (providers.Count() > 0)
             {
                 groups[capability] = providers;
             }

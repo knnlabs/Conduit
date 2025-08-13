@@ -50,7 +50,7 @@ namespace ConduitLLM.Core.Routing
             var (availableModels, availableDeployments) = await GetFilteredAvailableModelsAsync(
                 requestedModel, excludeModels, cancellationToken);
 
-            if (!availableModels.Any())
+            if (availableModels.Count() == 0)
             {
                 _logger.LogWarning("No available models found for requestedModel={RequestedModel}", requestedModel);
                 return null;
@@ -127,22 +127,22 @@ namespace ConduitLLM.Core.Routing
                     .Where(model => _capabilityDetector.HasVisionCapability(GetModelAliasForDeployment(model)))
                     .ToList();
 
-                if (!candidateModels.Any())
+                if (candidateModels.Count() == 0)
                 {
                     _logger.LogWarning("No vision-capable models available from the {Count} candidate models",
-                        availableModels.Count);
+                        availableModels.Count());
                     return null;
                 }
 
                 _logger.LogInformation("Found {Count} vision-capable models out of {TotalCount} candidates",
-                    candidateModels.Count, availableModels.Count);
+                    candidateModels.Count(), availableModels.Count());
             }
 
             // Use the strategy factory to get the appropriate strategy and delegate selection
             var modelSelectionStrategy = ModelSelectionStrategyFactory.GetStrategy(strategy);
 
             _logger.LogDebug("Using {Strategy} strategy to select from {ModelCount} models",
-                strategy, candidateModels.Count);
+                strategy, candidateModels.Count());
 
             return modelSelectionStrategy.SelectModel(
                 candidateModels,
@@ -170,7 +170,7 @@ namespace ConduitLLM.Core.Routing
                     .Select(d => d.DeploymentName)
                     .ToList();
 
-                if (matchingDeployments.Any())
+                if (matchingDeployments.Count() > 0)
                 {
                     candidateModels.AddRange(matchingDeployments);
                 }
@@ -188,7 +188,7 @@ namespace ConduitLLM.Core.Routing
             }
 
             // If no candidates yet, use all available models
-            if (!candidateModels.Any())
+            if (candidateModels.Count() == 0)
             {
                 candidateModels = _modelDeployments.Keys
                     .Where(m => !excludeModels.Contains(m))

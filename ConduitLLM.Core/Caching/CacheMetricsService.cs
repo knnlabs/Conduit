@@ -196,7 +196,7 @@ namespace ConduitLLM.Core.Caching
                 Interlocked.Exchange(ref _totalRetrievalTimeMs, totalTime);
 
                 // Import model-specific metrics if provided
-                if (modelMetrics != null && modelMetrics.Count > 0)
+                if (modelMetrics != null && modelMetrics.Count() > 0)
                 {
                     foreach (var kvp in modelMetrics)
                     {

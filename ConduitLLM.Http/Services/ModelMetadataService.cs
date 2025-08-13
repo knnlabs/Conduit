@@ -65,7 +65,7 @@ namespace ConduitLLM.Http.Services
         {
             lock (_cacheLock)
             {
-                if (DateTime.UtcNow - _lastCacheUpdate < _cacheExpiry && _metadataCache.Count > 0)
+                if (DateTime.UtcNow - _lastCacheUpdate < _cacheExpiry && _metadataCache.Count() > 0)
                 {
                     return;
                 }

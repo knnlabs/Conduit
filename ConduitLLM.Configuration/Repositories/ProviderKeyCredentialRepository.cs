@@ -71,8 +71,7 @@ namespace ConduitLLM.Configuration.Repositories
 
         public async Task<ProviderKeyCredential> CreateAsync(ProviderKeyCredential keyCredential)
         {
-            if (keyCredential == null)
-                throw new ArgumentNullException(nameof(keyCredential));
+            ArgumentNullException.ThrowIfNull(keyCredential);
 
             keyCredential.CreatedAt = DateTime.UtcNow;
             keyCredential.UpdatedAt = DateTime.UtcNow;
@@ -103,8 +102,7 @@ namespace ConduitLLM.Configuration.Repositories
 
         public async Task<bool> UpdateAsync(ProviderKeyCredential keyCredential)
         {
-            if (keyCredential == null)
-                throw new ArgumentNullException(nameof(keyCredential));
+            ArgumentNullException.ThrowIfNull(keyCredential);
 
             var existingKey = await _context.ProviderKeyCredentials
                 .FirstOrDefaultAsync(k => k.Id == keyCredential.Id);
@@ -180,7 +178,7 @@ namespace ConduitLLM.Configuration.Repositories
                 }
 
                 // Save changes to unset primary keys first to avoid constraint violation
-                if (existingPrimaryKeys.Any())
+                if (existingPrimaryKeys.Count() > 0)
                 {
                     await _context.SaveChangesAsync();
                 }

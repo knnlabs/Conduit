@@ -157,8 +157,8 @@ namespace ConduitLLM.Core.Services
         {
             var stats = new QueueStats
             {
-                TotalQueueDepth = _queues.Sum(q => q.Value.Count),
-                QueueDepthByType = _queues.ToDictionary(q => q.Key, q => q.Value.Count),
+                TotalQueueDepth = _queues.Sum(q => q.Value.Count()),
+                QueueDepthByType = _queues.ToDictionary(q => q.Key, q => q.Value.Count()),
                 LastProcessed = _lastProcessedTime
             };
 
@@ -170,12 +170,12 @@ namespace ConduitLLM.Core.Services
             lock (_errorLock)
             {
                 var cutoff = DateTime.UtcNow - window;
-                while (_errorTimestamps.Count > 0 && _errorTimestamps.Peek() < cutoff)
+                while (_errorTimestamps.Count() > 0 && _errorTimestamps.Peek() < cutoff)
                 {
                     _errorTimestamps.Dequeue();
                 }
 
-                var errorCount = _errorTimestamps.Count;
+                var errorCount = _errorTimestamps.Count();
                 var totalProcessed = _totalProcessed;
                 
                 return Task.FromResult(totalProcessed > 0 ? errorCount / (double)totalProcessed : 0);
@@ -240,7 +240,7 @@ namespace ConduitLLM.Core.Services
                     }
                 }
 
-                if (tasks.Any())
+                if (tasks.Count() > 0)
                 {
                     await Task.WhenAll(tasks);
                     _lastProcessedTime = DateTime.UtcNow;
@@ -259,12 +259,12 @@ namespace ConduitLLM.Core.Services
             var itemsToProcess = new List<InvalidationRequest>();
             
             // Dequeue up to MaxBatchSize items
-            while (itemsToProcess.Count < _options.MaxBatchSize && queue.TryDequeue(out var item))
+            while (itemsToProcess.Count() < _options.MaxBatchSize && queue.TryDequeue(out var item))
             {
                 itemsToProcess.Add(item);
             }
 
-            if (!itemsToProcess.Any())
+            if (itemsToProcess.Count() == 0)
             {
                 return;
             }
@@ -274,9 +274,9 @@ namespace ConduitLLM.Core.Services
                 // Apply coalescing if enabled
                 if (_options.EnableCoalescing)
                 {
-                    var originalCount = itemsToProcess.Count;
+                    var originalCount = itemsToProcess.Count();
                     itemsToProcess = CoalesceRequests(itemsToProcess);
-                    var coalescedCount = originalCount - itemsToProcess.Count;
+                    var coalescedCount = originalCount - itemsToProcess.Count();
                     
                     if (coalescedCount > 0)
                     {
@@ -292,17 +292,17 @@ namespace ConduitLLM.Core.Services
                 
                 // Update statistics
                 var processingTime = DateTime.UtcNow - batchStartTime;
-                Interlocked.Add(ref _totalProcessed, itemsToProcess.Count);
-                _stats[cacheType].Processed += itemsToProcess.Count;
+                Interlocked.Add(ref _totalProcessed, itemsToProcess.Count());
+                _stats[cacheType].Processed += itemsToProcess.Count();
                 UpdateAverageProcessTime(cacheType, processingTime);
                 
                 _logger.LogInformation("Processed batch of {Count} invalidations for {CacheType} in {Duration}ms", 
-                    itemsToProcess.Count, cacheType, processingTime.TotalMilliseconds);
+                    itemsToProcess.Count(), cacheType, processingTime.TotalMilliseconds);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to process batch for {CacheType}", cacheType);
-                _stats[cacheType].Errors += itemsToProcess.Count;
+                _stats[cacheType].Errors += itemsToProcess.Count();
                 RecordError();
                 
                 // Re-queue failed items for retry
@@ -470,7 +470,7 @@ namespace ConduitLLM.Core.Services
                 
                 // Keep only last hour of errors
                 var cutoff = DateTime.UtcNow.AddHours(-1);
-                while (_errorTimestamps.Count > 0 && _errorTimestamps.Peek() < cutoff)
+                while (_errorTimestamps.Count() > 0 && _errorTimestamps.Peek() < cutoff)
                 {
                     _errorTimestamps.Dequeue();
                 }

@@ -212,11 +212,11 @@ namespace ConduitLLM.Tests.Core.Services
                     // Handle negative indices (from end)
                     if (stop < 0)
                     {
-                        stop = orderedList.Count + stop;
+                        stop = orderedList.Count() + stop;
                     }
                     
                     // Remove elements in range
-                    for (long i = start; i <= stop && i < orderedList.Count; i++)
+                    for (long i = start; i <= stop && i < orderedList.Count(); i++)
                     {
                         if (i >= 0)
                         {
@@ -229,9 +229,9 @@ namespace ConduitLLM.Tests.Core.Services
                     {
                         // Keep only the last N elements
                         var keepCount = -stop - 1;
-                        if (keepCount > 0 && keepCount < orderedList.Count)
+                        if (keepCount > 0 && keepCount < orderedList.Count())
                         {
-                            _sortedSetStorage[keyStr] = orderedList.Skip(orderedList.Count - (int)keepCount).ToList();
+                            _sortedSetStorage[keyStr] = orderedList.Skip(orderedList.Count() - (int)keepCount).ToList();
                         }
                     }
                     

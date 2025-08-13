@@ -97,7 +97,7 @@ namespace ConduitLLM.Core.Services
             }
 
             // Early exit conditions
-            if (maxContextTokens == null || maxContextTokens <= 0 || request.Messages == null || !request.Messages.Any())
+            if (maxContextTokens == null || maxContextTokens <= 0 || request.Messages == null || request.Messages.Count() == 0)
             {
                 return request; // Nothing to do if no limit or no messages
             }
@@ -139,11 +139,11 @@ namespace ConduitLLM.Core.Services
 
             // Keep trimming until under the limit or only system messages remain
             while (currentTokens > availableContextTokens &&
-                   trimmedMessages.Count > systemMessages.Count)
+                   trimmedMessages.Count() > systemMessages.Count())
             {
                 // Find the oldest non-system message (typically user or assistant message)
                 int indexToRemove = -1;
-                for (int i = 0; i < trimmedMessages.Count; i++)
+                for (int i = 0; i < trimmedMessages.Count(); i++)
                 {
                     if (trimmedMessages[i].Role != MessageRole.System)
                     {
@@ -179,13 +179,13 @@ namespace ConduitLLM.Core.Services
             }
 
             // If we removed messages, create a new request with trimmed messages
-            if (trimmedMessages.Count < request.Messages.Count)
+            if (trimmedMessages.Count() < request.Messages.Count())
             {
                 _logger.LogInformation(
                     "Trimmed {RemovedCount} messages to fit context window. Original: {OriginalCount}, New: {NewCount}, Tokens: {TokenCount}",
-                    request.Messages.Count - trimmedMessages.Count,
-                    request.Messages.Count,
-                    trimmedMessages.Count,
+                    request.Messages.Count() - trimmedMessages.Count(),
+                    request.Messages.Count(),
+                    trimmedMessages.Count(),
                     currentTokens);
 
                 // Create a new request with the trimmed messages

@@ -131,7 +131,7 @@ namespace ConduitLLM.Admin.Services
                 RealtimeSessionCount = realtimeCount,
                 TotalCost = logs.Sum(l => l.Cost),
                 AverageResponseTime = avgResponseTime,
-                SuccessRate = logs.Count > 0 ? (successCount / (double)logs.Count) * 100 : 0,
+                SuccessRate = logs.Count() > 0 ? (successCount / (double)logs.Count) * 100 : 0,
                 MostUsedModel = mostUsedModel
             };
         }
@@ -166,7 +166,7 @@ namespace ConduitLLM.Admin.Services
                 .GroupBy(s => s.Provider)
                 .ToDictionary(g => g.Key, g => g.Count());
 
-            var averageDuration = sessions.Any()
+            var averageDuration = sessions.Count() > 0
                 ? sessions.Average(s => s.Statistics.Duration.TotalMinutes)
                 : 0;
 
@@ -174,11 +174,11 @@ namespace ConduitLLM.Admin.Services
                 .Sum(s => s.Statistics.Duration.TotalMinutes);
 
             var successfulSessions = sessions.Count(s => s.Statistics.ErrorCount == 0);
-            var successRate = sessions.Any()
+            var successRate = sessions.Count() > 0
                 ? (successfulSessions / (double)sessions.Count) * 100
                 : 100;
 
-            var averageTurns = sessions.Any()
+            var averageTurns = sessions.Count() > 0
                 ? sessions.Average(s => s.Statistics.TurnCount)
                 : 0;
 

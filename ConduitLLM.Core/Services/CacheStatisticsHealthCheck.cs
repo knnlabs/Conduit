@@ -158,12 +158,12 @@ namespace ConduitLLM.Core.Services
                     .Select(kvp => kvp.Key)
                     .ToList();
 
-                result.MissingInstances = missingInstances.Count;
+                result.MissingInstances = missingInstances.Count();
                 
-                if (missingInstances.Any())
+                if (missingInstances.Count() > 0)
                 {
                     result.Status = HealthStatus.Degraded;
-                    result.Messages.Add($"{missingInstances.Count} instances not reporting");
+                    result.Messages.Add($"{missingInstances.Count()} instances not reporting");
                 }
 
                 // Check aggregation performance
@@ -237,7 +237,7 @@ namespace ConduitLLM.Core.Services
                     // Get per-instance statistics
                     var perInstance = await _statisticsCollector.GetPerInstanceStatisticsAsync(region, cancellationToken);
                     
-                    if (!perInstance.Any()) continue;
+                    if (perInstance.Count() == 0) continue;
 
                     // Validate hit count
                     var sumHitCount = perInstance.Sum(kvp => kvp.Value.HitCount);
@@ -282,13 +282,13 @@ namespace ConduitLLM.Core.Services
                     }
 
                     // Check for instances with suspiciously high variance
-                    var avgHitCount = perInstance.Any() ? perInstance.Average(kvp => kvp.Value.HitCount) : 0;
+                    var avgHitCount = perInstance.Count() > 0 ? perInstance.Average(kvp => kvp.Value.HitCount) : 0;
                     var outliers = perInstance
                         .Where(kvp => Math.Abs(kvp.Value.HitCount - avgHitCount) > avgHitCount * 0.5) // 50% variance
                         .Select(kvp => kvp.Key)
                         .ToList();
 
-                    if (outliers.Any())
+                    if (outliers.Count() > 0)
                     {
                         report.InconsistentInstances.AddRange(outliers);
                     }
@@ -326,7 +326,7 @@ namespace ConduitLLM.Core.Services
                     .OrderBy(l => l)
                     .ToList();
 
-                if (recordingLatencies.Any())
+                if (recordingLatencies.Count() > 0)
                 {
                     metrics.AvgRecordingLatencyMs = recordingLatencies.Average();
                     metrics.P95RecordingLatencyMs = GetPercentile(recordingLatencies, 0.95);
@@ -340,7 +340,7 @@ namespace ConduitLLM.Core.Services
                     .OrderBy(l => l)
                     .ToList();
 
-                if (aggregationLatencies.Any())
+                if (aggregationLatencies.Count() > 0)
                 {
                     metrics.AvgAggregationLatencyMs = aggregationLatencies.Average();
                 }
@@ -491,7 +491,7 @@ namespace ConduitLLM.Core.Services
                 var info = await server.InfoAsync("memory");
                 
                 var memorySection = info.FirstOrDefault(s => s.Key == "Memory");
-                if (memorySection != null && memorySection.Any())
+                if (memorySection != null && memorySection.Count() > 0)
                 {
                     var usedMemory = memorySection.FirstOrDefault(kvp => kvp.Key == "used_memory");
                     if (usedMemory.Value != null && long.TryParse(usedMemory.Value, out var bytes))
@@ -696,7 +696,7 @@ namespace ConduitLLM.Core.Services
             if (_performanceTrackers.TryGetValue("aggregate:overall", out var tracker))
             {
                 var latencies = tracker.GetLatencies();
-                return latencies.Any() ? latencies.Last() : 0;
+                return latencies.Count() > 0 ? latencies.Last() : 0;
             }
             return 0;
         }
@@ -712,10 +712,10 @@ namespace ConduitLLM.Core.Services
 
         private double GetPercentile(List<double> sortedValues, double percentile)
         {
-            if (!sortedValues.Any()) return 0;
+            if (sortedValues.Count() == 0) return 0;
             
-            var index = (int)Math.Ceiling(percentile * sortedValues.Count) - 1;
-            return sortedValues[Math.Max(0, Math.Min(index, sortedValues.Count - 1))];
+            var index = (int)Math.Ceiling(percentile * sortedValues.Count()) - 1;
+            return sortedValues[Math.Max(0, Math.Min(index, sortedValues.Count() - 1))];
         }
 
         public override void Dispose()
@@ -742,7 +742,7 @@ namespace ConduitLLM.Core.Services
                 lock (_lock)
                 {
                     _latencies.Enqueue(latencyMs);
-                    if (_latencies.Count > MaxSamples)
+                    if (_latencies.Count() > MaxSamples)
                         _latencies.Dequeue();
                     
                     LastOperationTime = DateTime.UtcNow;
@@ -758,7 +758,7 @@ namespace ConduitLLM.Core.Services
                     
                     // Remove old operations outside time window
                     var cutoff = now.AddSeconds(-MaxTimeWindowSeconds);
-                    while (_operationTimes.Count > 0 && _operationTimes.Peek() < cutoff)
+                    while (_operationTimes.Count() > 0 && _operationTimes.Peek() < cutoff)
                     {
                         _operationTimes.Dequeue();
                     }
@@ -779,10 +779,10 @@ namespace ConduitLLM.Core.Services
             {
                 lock (_lock)
                 {
-                    if (_operationTimes.Count < 2) return 0;
+                    if (_operationTimes.Count() < 2) return 0;
                     
                     var timeSpan = DateTime.UtcNow - _operationTimes.Peek();
-                    return timeSpan.TotalSeconds > 0 ? _operationTimes.Count / timeSpan.TotalSeconds : 0;
+                    return timeSpan.TotalSeconds > 0 ? _operationTimes.Count() / timeSpan.TotalSeconds : 0;
                 }
             }
         }

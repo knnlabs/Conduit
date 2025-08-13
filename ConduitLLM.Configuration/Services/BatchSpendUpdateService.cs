@@ -180,7 +180,7 @@ namespace ConduitLLM.Configuration.Services
                 var pattern = $"{_redisKeyPrefix}*";
                 var keys = server.Keys(pattern: pattern).ToList();
                 
-                if (!keys.Any())
+                if (keys.Count() == 0)
                 {
                     return 0;
                 }
@@ -222,7 +222,7 @@ namespace ConduitLLM.Configuration.Services
                     }
                 }
                 
-                if (groupUpdates.Count == 0)
+                if (groupUpdates.Count() == 0)
                 {
                     return 0;
                 }
@@ -241,13 +241,13 @@ namespace ConduitLLM.Configuration.Services
                     if (keyUsageByGroup.ContainsKey(groupId))
                     {
                         var keyIds = keyUsageByGroup[groupId].Keys.ToList();
-                        if (keyIds.Count == 1)
+                        if (keyIds.Count() == 1)
                         {
                             description = $"API usage by virtual key #{keyIds[0]}";
                         }
                         else
                         {
-                            description = $"API usage by {keyIds.Count} virtual keys";
+                            description = $"API usage by {keyIds.Count()} virtual keys";
                         }
                     }
 
@@ -274,15 +274,15 @@ namespace ConduitLLM.Configuration.Services
                 }
 
                 
-                _logger.LogInformation("Batch updated spend for {Count} groups", groupUpdates.Count);
+                _logger.LogInformation("Batch updated spend for {Count} groups", groupUpdates.Count());
 
                 // Raise event for cache invalidation (if any subscribers)
-                if (updatedKeyHashes.Any() && SpendUpdatesCompleted != null)
+                if (updatedKeyHashes.Count() > 0 && SpendUpdatesCompleted != null)
                 {
                     try
                     {
                         SpendUpdatesCompleted.Invoke(updatedKeyHashes.ToArray());
-                        _logger.LogDebug("Raised SpendUpdatesCompleted event for {Count} Virtual Keys", updatedKeyHashes.Count);
+                        _logger.LogDebug("Raised SpendUpdatesCompleted event for {Count} Virtual Keys", updatedKeyHashes.Count());
                     }
                     catch (Exception eventEx)
                     {
@@ -291,7 +291,7 @@ namespace ConduitLLM.Configuration.Services
                     }
                 }
 
-                return groupUpdates.Count;
+                return groupUpdates.Count();
             }
             catch (Exception ex)
             {
@@ -416,7 +416,7 @@ namespace ConduitLLM.Configuration.Services
                 
                 return new Dictionary<string, object>
                 {
-                    ["PendingUpdates"] = keys.Count,
+                    ["PendingUpdates"] = keys.Count(),
                     ["TotalPendingCost"] = totalPending,
                     ["FlushIntervalSeconds"] = _flushInterval.TotalSeconds,
                     ["RedisTtlHours"] = _redisTtl.TotalHours,
