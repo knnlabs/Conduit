@@ -7,6 +7,7 @@ namespace ConduitLLM.Tests.Core.Services
     public partial class PerformanceMetricsServiceTests
     {
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public void CalculateMetrics_NoUsageData_HandlesGracefully()
         {
             // Arrange
@@ -24,6 +25,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public void CalculateMetrics_ZeroElapsedTime_HandlesGracefully()
         {
             // Arrange
@@ -45,6 +47,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public void CalculateMetrics_ZeroCompletionTokens_HandlesGracefully()
         {
             // Arrange

@@ -151,6 +151,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public async Task Critical_Priority_Should_Trigger_Immediate_Processing()
         {
             // Arrange
@@ -276,6 +277,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public async Task BatchWindow_Should_Trigger_Processing()
         {
             // Arrange

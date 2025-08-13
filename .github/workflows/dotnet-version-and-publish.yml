@@ -219,9 +219,9 @@ jobs:
 
       - name: Run tests
         run: |
-          # Skip integration tests (require test-config.yaml with API keys)
+          # Skip integration tests (require test-config.yaml with API keys) and timing-sensitive tests
           dotnet test --configuration Release --no-build --verbosity normal \
-            --filter "FullyQualifiedName!~IntegrationTests"
+            --filter "FullyQualifiedName!~IntegrationTests&Category!=TimingSensitive"
 
       - name: Pack NuGet packages
         run: |

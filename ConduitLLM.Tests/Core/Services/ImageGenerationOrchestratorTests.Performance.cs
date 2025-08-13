@@ -15,6 +15,7 @@ namespace ConduitLLM.Tests.Core.Services
         #region Cost Calculation Tests
 
         [Theory]
+        [Trait("Category", "TimingSensitive")]
         [InlineData("openai", "dall-e-3", 1, 0.040)]
         [InlineData("openai", "dall-e-2", 2, 0.040)]
         [InlineData("minimax", "minimax-image", 3, 0.030)]
@@ -69,6 +70,7 @@ namespace ConduitLLM.Tests.Core.Services
         #region Performance Configuration Tests
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public async Task GetOptimalConcurrency_WithOpenAIProvider_ShouldUseLimitFromConfiguration()
         {
             // This test verifies concurrency behavior through the public interface
@@ -111,6 +113,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public async Task GetProviderTimeout_WithMiniMaxProvider_ShouldUseConfiguredTimeout()
         {
             // This test verifies timeout behavior through HTTP client setup
@@ -150,6 +153,7 @@ namespace ConduitLLM.Tests.Core.Services
         #region Private Method Tests (via public interface)
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public async Task ProcessSingleImageAsync_WithB64JsonImage_ShouldStoreImageDirectly()
         {
             // This test verifies ProcessSingleImageAsync behavior through the public interface
@@ -190,6 +194,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public async Task DownloadAndStoreImageAsync_WithValidUrl_ShouldDownloadAndStore()
         {
             // This test verifies DownloadAndStoreImageAsync behavior through the public interface

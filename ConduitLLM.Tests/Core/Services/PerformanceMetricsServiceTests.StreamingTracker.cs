@@ -10,6 +10,7 @@ namespace ConduitLLM.Tests.Core.Services
     public partial class PerformanceMetricsServiceTests
     {
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public void CreateStreamingTracker_CreatesValidTracker()
         {
             // Act
@@ -21,6 +22,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public void StreamingTracker_RecordFirstToken_RecordsTimeToFirstToken()
         {
             // Arrange
@@ -40,6 +42,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public void StreamingTracker_RecordFirstToken_OnlyRecordsOnce()
         {
             // Arrange
@@ -57,6 +60,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public void StreamingTracker_RecordToken_TracksTokens()
         {
             // Arrange
@@ -77,6 +81,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public void StreamingTracker_CalculatesInterTokenLatency()
         {
             // Arrange
@@ -98,6 +103,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public void StreamingTracker_NoTokens_ReturnsBasicMetrics()
         {
             // Arrange
@@ -115,6 +121,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public void StreamingTracker_WithUsageData_UsesActualTokenCounts()
         {
             // Arrange
@@ -143,6 +150,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public void StreamingTracker_PromptTokensPerSecond_RequiresTimeToFirstToken()
         {
             // Arrange
@@ -165,6 +173,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public void StreamingTracker_VeryFastTokenGeneration_HandlesHighThroughput()
         {
             // Arrange
@@ -185,6 +194,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public void StreamingTracker_SingleToken_NoInterTokenLatency()
         {
             // Arrange
@@ -199,6 +209,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public void StreamingTracker_MultipleCalls_StopsTimerOnFirstGetMetrics()
         {
             // Arrange

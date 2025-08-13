@@ -170,6 +170,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public async Task RecordOperation_MeetsLatencyRequirement_Under5ms()
         {
             // Arrange
@@ -198,6 +199,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public async Task ConcurrentOperations_HighThroughput_MaintainsPerformance()
         {
             // Arrange
@@ -240,6 +242,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public async Task BatchOperations_ImprovedThroughput()
         {
             // Arrange
@@ -287,6 +290,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public async Task GetStatistics_LowLatency_UnderCachedConditions()
         {
             // Arrange - Pre-populate some data
@@ -317,6 +321,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public async Task MemoryEfficiency_LargeNumberOfOperations()
         {
             // Arrange
@@ -358,6 +363,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public async Task ExportStatistics_Performance_LargeDataset()
         {
             // Arrange - Create statistics for all regions

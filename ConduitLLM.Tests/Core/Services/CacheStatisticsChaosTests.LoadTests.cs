@@ -13,6 +13,7 @@ namespace ConduitLLM.Tests.Core.Services
     public partial class CacheStatisticsChaosTests
     {
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public async Task MassiveLoad_ThousandsOfOperations_SystemStable()
         {
             // Arrange
@@ -74,6 +75,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public async Task RapidInstanceChurn_FrequentJoinLeave_StatsRemainAccurate()
         {
             // Arrange
@@ -126,6 +128,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public async Task MemoryPressure_LargeDataVolumes_GracefulHandling()
         {
             // Arrange

@@ -128,6 +128,7 @@ namespace ConduitLLM.Tests.Integration
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public async Task EventToInvalidation_Should_Complete_Within_SLA()
         {
             // Arrange
@@ -181,6 +182,7 @@ namespace ConduitLLM.Tests.Integration
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public async Task BulkInvalidation_Should_Handle_High_Throughput()
         {
             // Arrange
@@ -241,6 +243,7 @@ namespace ConduitLLM.Tests.Integration
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public async Task Batch_Coalescing_Should_Reduce_Redis_Operations()
         {
             // Arrange
@@ -284,6 +287,7 @@ namespace ConduitLLM.Tests.Integration
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public async Task Redis_Batch_Operations_Should_Be_Faster_Than_Individual()
         {
             // Arrange
@@ -328,6 +332,7 @@ namespace ConduitLLM.Tests.Integration
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public async Task Critical_Events_Should_Be_Processed_Immediately()
         {
             // Arrange

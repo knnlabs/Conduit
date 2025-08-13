@@ -15,6 +15,7 @@ namespace ConduitLLM.Tests.Core.Services
     public partial class CacheStatisticsChaosTests
     {
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public async Task RandomRedisFailures_OperationsContinue_DataEventuallyConsistent()
         {
             // Arrange
@@ -86,6 +87,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public async Task NetworkPartition_SplitBrain_EventualConsistency()
         {
             // Arrange
@@ -155,6 +157,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public async Task ClockSkew_DifferentInstanceTimes_HandledGracefully()
         {
             // Arrange

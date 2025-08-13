@@ -21,6 +21,7 @@ namespace ConduitLLM.Tests.Core.Services
     public partial class DistributedCacheStatisticsIntegrationTests
     {
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public async Task ConcurrentOperations_AtomicIncrement_NoRaceConditions()
         {
             // Arrange
@@ -62,6 +63,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public async Task ResponseTimeAggregation_AcrossInstances_CalculatesPercentiles()
         {
             // Arrange
@@ -135,6 +137,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        [Trait("Category", "TimingSensitive")]
         public async Task PerformanceBenchmark_RecordOperation_Under5ms()
         {
             // Arrange

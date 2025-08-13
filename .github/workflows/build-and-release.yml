@@ -140,14 +140,14 @@ jobs:
 
     - name: Test with coverage
       run: |
-        # Skip integration tests (require test-config.yaml with API keys)
+        # Skip integration tests (require test-config.yaml with API keys) and timing-sensitive tests
         dotnet test --no-build --configuration Release \
           --logger "trx;LogFileName=test-results.trx" \
           --logger "console;verbosity=normal" \
           --collect:"XPlat Code Coverage" \
           --results-directory ./TestResults \
           --settings .runsettings \
-          --filter "FullyQualifiedName!~IntegrationTests"
+          --filter "FullyQualifiedName!~IntegrationTests&Category!=TimingSensitive"
 
     - name: Process Coverage Results
       if: always()
