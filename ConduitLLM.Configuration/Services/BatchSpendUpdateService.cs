@@ -7,10 +7,12 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Options;
 using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
 
@@ -25,8 +27,10 @@ namespace ConduitLLM.Configuration.Services
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<BatchSpendUpdateService> _logger;
         private readonly RedisConnectionFactory _redisConnectionFactory;
+        private readonly BatchSpendingOptions _options;
         private readonly Timer _flushTimer;
-        private readonly TimeSpan _flushInterval = TimeSpan.FromSeconds(30); // Flush every 30 seconds
+        private readonly TimeSpan _flushInterval;
+        private readonly TimeSpan _redisTtl;
         private readonly string _redisKeyPrefix = "pending_spend:group:";
         
         /// <summary>
@@ -40,15 +44,32 @@ namespace ConduitLLM.Configuration.Services
         /// </summary>
         /// <param name="serviceScopeFactory">Service scope factory for creating scoped services</param>
         /// <param name="redisConnectionFactory">Redis connection factory</param>
+        /// <param name="options">Batch spending configuration options</param>
         /// <param name="logger">Logger instance</param>
         public BatchSpendUpdateService(
             IServiceScopeFactory serviceScopeFactory,
             RedisConnectionFactory redisConnectionFactory,
+            IOptions<BatchSpendingOptions> options,
             ILogger<BatchSpendUpdateService> logger)
         {
             _serviceScopeFactory = serviceScopeFactory;
             _redisConnectionFactory = redisConnectionFactory;
+            _options = options.Value;
             _logger = logger;
+            
+            // Validate and apply configuration
+            var validationResult = _options.Validate();
+            if (validationResult != null)
+            {
+                _logger.LogError("Invalid BatchSpending configuration: {ValidationError}", validationResult.ErrorMessage);
+                throw new InvalidOperationException($"Invalid BatchSpending configuration: {validationResult.ErrorMessage}");
+            }
+            
+            _flushInterval = _options.GetValidatedFlushInterval();
+            _redisTtl = _options.GetRedisTtl();
+            
+            _logger.LogInformation("BatchSpendUpdateService configured with flush interval: {FlushInterval}, Redis TTL: {RedisTtl}", 
+                _flushInterval, _redisTtl);
             
             // Create timer for periodic flushing (in addition to background service)
             _flushTimer = new Timer(FlushPendingUpdatesCallback, null, _flushInterval, _flushInterval);
@@ -99,9 +120,9 @@ namespace ConduitLLM.Configuration.Services
                     var keyUsageKey = $"key_usage:group:{virtualKey.VirtualKeyGroupId}:key:{virtualKeyId}";
                     await db.StringIncrementAsync(keyUsageKey, (double)cost);
                     
-                    // Set TTL to 24 hours for safety
-                    await db.KeyExpireAsync(key, TimeSpan.FromHours(24));
-                    await db.KeyExpireAsync(keyUsageKey, TimeSpan.FromHours(24));
+                    // Set TTL for safety
+                    await db.KeyExpireAsync(key, _redisTtl);
+                    await db.KeyExpireAsync(keyUsageKey, _redisTtl);
                     
                     _logger.LogDebug("Queued spend update to Redis for Virtual Key {VirtualKeyId} (Group {GroupId}): {Cost:C}", 
                         virtualKeyId, virtualKey.VirtualKeyGroupId, cost);
@@ -397,7 +418,11 @@ namespace ConduitLLM.Configuration.Services
                 {
                     ["PendingUpdates"] = keys.Count,
                     ["TotalPendingCost"] = totalPending,
-                    ["FlushIntervalSeconds"] = _flushInterval.TotalSeconds
+                    ["FlushIntervalSeconds"] = _flushInterval.TotalSeconds,
+                    ["RedisTtlHours"] = _redisTtl.TotalHours,
+                    ["ConfiguredFlushInterval"] = _options.FlushIntervalSeconds,
+                    ["MinimumInterval"] = _options.MinimumIntervalSeconds,
+                    ["MaximumInterval"] = _options.MaximumIntervalSeconds
                 };
             }
             catch (Exception ex)
@@ -406,7 +431,8 @@ namespace ConduitLLM.Configuration.Services
                 return new Dictionary<string, object>
                 {
                     ["Error"] = ex.Message,
-                    ["FlushIntervalSeconds"] = _flushInterval.TotalSeconds
+                    ["FlushIntervalSeconds"] = _flushInterval.TotalSeconds,
+                    ["ConfiguredFlushInterval"] = _options.FlushIntervalSeconds
                 };
             }
         }

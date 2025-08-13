@@ -4347,7 +4347,8 @@
           7,
           8,
           9,
-          10
+          10,
+          11
         ],
         "type": "integer",
         "format": "int32"
@@ -4694,7 +4695,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": false
+        "additionalProperties": { }
       },
       "VideoData": {
         "type": "object",

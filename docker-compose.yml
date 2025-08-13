@@ -95,6 +95,11 @@ services:
       CacheInvalidation__BatchWindow: "00:00:00.100"  # 100ms
       CacheInvalidation__MaxBatchSize: "100"
       CacheInvalidation__EnableCoalescing: "true"
+      # Batch Spending configuration
+      BatchSpending__FlushIntervalSeconds: "30"
+      BatchSpending__MinimumIntervalSeconds: "1"
+      BatchSpending__MaximumIntervalSeconds: "21600"  # 6 hours
+      BatchSpending__RedisTtlHours: "24"
       # Health monitoring configuration - API endpoint checks
       HealthMonitoring__ApiEndpoints__0__Name: AdminAPI
       HealthMonitoring__ApiEndpoints__0__Url: http://admin:8080/health
@@ -141,6 +146,11 @@ services:
       CacheInvalidation__BatchWindow: "00:00:00.100"  # 100ms
       CacheInvalidation__MaxBatchSize: "100"
       CacheInvalidation__EnableCoalescing: "true"
+      # Batch Spending configuration
+      BatchSpending__FlushIntervalSeconds: "30"
+      BatchSpending__MinimumIntervalSeconds: "1"
+      BatchSpending__MaximumIntervalSeconds: "21600"  # 6 hours
+      BatchSpending__RedisTtlHours: "24"
       # S3/R2 configuration (required for production)
       CONDUIT_MEDIA_STORAGE_TYPE: "${CONDUIT_MEDIA_STORAGE_TYPE:-S3}"
       CONDUIT_S3_ENDPOINT: "${CONDUIT_S3_ENDPOINT}"

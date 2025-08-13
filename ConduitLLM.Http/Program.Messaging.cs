@@ -70,6 +70,9 @@ public partial class Program
             // Add model discovery notification handler for real-time model updates
             x.AddConsumer<ConduitLLM.Http.EventHandlers.ModelDiscoveryNotificationHandler>();
             
+            // Add batch spend flush handler for admin operations and integration testing
+            x.AddConsumer<ConduitLLM.Http.EventHandlers.BatchSpendFlushRequestedHandler>();
+            
             if (useRabbitMq)
             {
                 x.UsingRabbitMq((context, cfg) =>

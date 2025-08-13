@@ -2,6 +2,7 @@ using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Services;
+using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Http.Services;
@@ -14,6 +15,10 @@ public partial class Program
 {
     public static void ConfigureCachingServices(WebApplicationBuilder builder)
     {
+        // Configure batch spending options
+        builder.Services.Configure<BatchSpendingOptions>(
+            builder.Configuration.GetSection(BatchSpendingOptions.SectionName));
+
         // Virtual Key service registration will be done after Redis configuration
 
         // Register cache service based on configuration

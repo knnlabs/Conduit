@@ -9,33 +9,19 @@ using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Services;
+using ConduitLLM.Tests.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using StackExchange.Redis;
 using Xunit;
 
 namespace ConduitLLM.Tests.Configuration.Services
 {
-    // Test wrapper for RedisConnectionFactory
-    public class TestRedisConnectionFactory : RedisConnectionFactory
-    {
-        private readonly IConnectionMultiplexer _connection;
-
-        public TestRedisConnectionFactory(IConnectionMultiplexer connection) 
-            : base(Microsoft.Extensions.Options.Options.Create(new ConduitLLM.Configuration.Options.CacheOptions()), 
-                  new Mock<ILogger<RedisConnectionFactory>>().Object)
-        {
-            _connection = connection;
-        }
-
-        public override Task<IConnectionMultiplexer> GetConnectionAsync(string connectionString = null)
-        {
-            return Task.FromResult(_connection);
-        }
-    }
 
     /// <summary>
     /// Unit tests for the BatchSpendUpdateService to ensure correct balance tracking
@@ -98,9 +84,11 @@ namespace ConduitLLM.Tests.Configuration.Services
             
             _mockLogger = new Mock<ILogger<BatchSpendUpdateService>>();
             
+            var batchOptions = Microsoft.Extensions.Options.Options.Create(new BatchSpendingOptions()); // Use defaults
             _service = new BatchSpendUpdateService(
                 _mockScopeFactory.Object,
                 _testRedisFactory,
+                batchOptions,
                 _mockLogger.Object);
         }
 

@@ -11,6 +11,11 @@ services:
       CacheInvalidation__BatchWindow: "00:00:00.050"  # 50ms - Faster for development
       CacheInvalidation__MaxBatchSize: "50"   # Smaller batches for easier debugging
       CacheInvalidation__EnableCoalescing: "true"
+      # Batch Spending configuration (development settings)
+      BatchSpending__FlushIntervalSeconds: "1"        # 1 second - Fast for testing
+      BatchSpending__MinimumIntervalSeconds: "1"
+      BatchSpending__MaximumIntervalSeconds: "3600"   # 1 hour max for dev
+      BatchSpending__RedisTtlHours: "24"
       # Health monitoring configuration - API endpoint checks
       HealthMonitoring__ApiEndpoints__0__Name: AdminAPI
       HealthMonitoring__ApiEndpoints__0__Url: http://admin:8080/health
@@ -34,6 +39,11 @@ services:
       CacheInvalidation__BatchWindow: "00:00:00.050"  # 50ms - Faster for development
       CacheInvalidation__MaxBatchSize: "50"   # Smaller batches for easier debugging
       CacheInvalidation__EnableCoalescing: "true"
+      # Batch Spending configuration (development settings)
+      BatchSpending__FlushIntervalSeconds: "1"        # 1 second - Fast for testing
+      BatchSpending__MinimumIntervalSeconds: "1"
+      BatchSpending__MaximumIntervalSeconds: "3600"   # 1 hour max for dev
+      BatchSpending__RedisTtlHours: "24"
       # Cloudflare R2 configuration (default for development)
       CONDUIT_MEDIA_STORAGE_TYPE: "${CONDUIT_MEDIA_STORAGE_TYPE:-S3}"
       CONDUIT_S3_ENDPOINT: "${CONDUIT_S3_ENDPOINT}"

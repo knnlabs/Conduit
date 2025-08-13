@@ -37,7 +37,8 @@ Usage: $0 [options]
 
 Options:
   --clean        Delete volumes for fresh experience
-  --build        Rebuild containers with --no-cache
+  --build        Rebuild containers (smart caching: keeps OS layers, rebuilds .NET code)
+  --rebuild      Full rebuild with --no-cache (slower, use when --build fails)
   --webui        Rebuild WebUI container (fixes Next.js issues)
   --help         Show this help
 
@@ -108,11 +109,17 @@ build_containers() {
     export DOCKER_USER_ID=$(id -u)
     export DOCKER_GROUP_ID=$(id -g)
     
-    # In development, only build services that need building
-    # WebUI uses node:22-alpine directly with volume mounts
-    docker compose -f docker-compose.yml -f docker-compose.dev.yml build $build_flags api admin rabbitmq
+    # Generate timestamp to force .NET rebuild while keeping OS layers cached
+    local cachebust=$(date +%s)
+    log_info "Using CACHEBUST: $cachebust (forces .NET code rebuild, keeps OS layers cached)"
     
-    log_info "Containers built"
+    # Build with CACHEBUST to force .NET layers to rebuild while preserving OS cache
+    docker compose -f docker-compose.yml -f docker-compose.dev.yml build \
+        --build-arg CACHEBUST=$cachebust \
+        $build_flags \
+        api admin rabbitmq
+    
+    log_info "Containers built (CACHEBUST: $cachebust)"
 }
 
 rebuild_webui() {
@@ -181,7 +188,11 @@ main() {
                 shift
                 ;;
             --build)
-                build_flag="--no-cache"
+                build_flag=""  # Use cache where possible, CACHEBUST handles .NET invalidation
+                shift
+                ;;
+            --rebuild)
+                build_flag="--no-cache"  # Nuclear option for full rebuild
                 shift
                 ;;
             --webui)

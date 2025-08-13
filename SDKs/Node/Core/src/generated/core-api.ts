@@ -3477,7 +3477,7 @@ export interface components {
      * Format: int32
      * @enum {integer}
      */
-    ProviderType: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+    ProviderType: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
     /** @description Statistics about the message queue */
     QueueStatistics: {
       /** Format: int32 */
@@ -3597,6 +3597,8 @@ export interface components {
       metadata?: {
         [key: string]: unknown;
       } | null;
+    } & {
+      [key: string]: unknown;
     };
     VideoData: {
       url?: string | null;
