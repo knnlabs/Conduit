@@ -274,6 +274,7 @@ jobs:
   # Trigger Docker builds
   trigger-docker-release:
     name: Trigger Docker Release
+    runs-on: ubuntu-latest
     needs: [prepare-release, create-release]
     if: needs.prepare-release.outputs.release_docker == 'true' && !github.event.inputs.dry_run
     
