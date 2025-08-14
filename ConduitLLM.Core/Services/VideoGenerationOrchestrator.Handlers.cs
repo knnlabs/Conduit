@@ -157,16 +157,21 @@ namespace ConduitLLM.Core.Services
                                 CorrelationId = request.CorrelationId
                             });
                         }
-                        // Handle external URLs (e.g., from MiniMax)
-                        else if (!string.IsNullOrEmpty(video.Url) && (video.Url.Contains("minimax.io") || video.Url.Contains("api.minimax")))
+                        // Handle external URLs from any provider (Replicate, MiniMax, etc.)
+                        else if (!string.IsNullOrEmpty(video.Url) && 
+                                (video.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || 
+                                 video.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
                         {
-                            _logger.LogInformation("Streaming video from external URL: {Url}", video.Url);
+                            _logger.LogInformation("Downloading and storing video from external URL: {Url}", video.Url);
                             
                             try
                             {
                                 // Stream the video directly from the external URL to storage
                                 using var httpClient = _httpClientFactory.CreateClient("VideoDownload");
-                                httpClient.Timeout = TimeSpan.FromMinutes(10); // Allow time for large video downloads
+                                
+                                // Set timeout based on provider - some providers generate videos faster than others
+                                // Videos are typically larger than images, so we need longer timeouts
+                                httpClient.Timeout = TimeSpan.FromMinutes(15); // Default to 15 minutes for video downloads
                                 
                                 // Use ResponseHeadersRead for streaming
                                 using var videoResponse = await httpClient.GetAsync(
@@ -223,11 +228,13 @@ namespace ConduitLLM.Core.Services
                                     }
                                 };
                                 
+                                var originalUrl = video.Url; // Save original URL for logging
                                 var storageResult = await _storageService.StoreVideoAsync(videoStream, videoMediaMetadata, progressCallback);
                                 video.Url = storageResult.Url;
                                 videoUrl = storageResult.Url;
                                 
-                                _logger.LogInformation("Successfully stored video in storage: {StorageUrl}", storageResult.Url);
+                                _logger.LogInformation("Successfully downloaded video from {ProviderUrl} and stored in CDN: {CdnUrl} (Size: {SizeMB}MB)", 
+                                    originalUrl, storageResult.Url, contentLength / 1024 / 1024);
                                 
                                 // Publish MediaGenerationCompleted event for lifecycle tracking
                                 await _publishEndpoint.Publish(new MediaGenerationCompleted
@@ -264,13 +271,13 @@ namespace ConduitLLM.Core.Services
                             }
                             catch (HttpRequestException ex)
                             {
-                                _logger.LogError(ex, "HTTP error downloading video from URL: {Url}", video.Url);
-                                // Keep the original URL if download fails
+                                _logger.LogError(ex, "HTTP error downloading video from URL: {Url}. Video will use provider URL directly.", video.Url);
+                                // Keep the original URL if download fails - user can still access video from provider
                             }
                             catch (Exception ex)
                             {
-                                _logger.LogError(ex, "Failed to download and store video from external URL: {Url}", video.Url);
-                                // Keep the original URL if download fails
+                                _logger.LogError(ex, "Failed to download and store video from external URL: {Url}. Video will use provider URL directly.", video.Url);
+                                // Keep the original URL if download fails - user can still access video from provider
                             }
                         }
                     }
