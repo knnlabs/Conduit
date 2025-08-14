@@ -30,6 +30,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: |
+            SDKs/Node/package-lock.json
             SDKs/Node/Admin/package-lock.json
             SDKs/Node/Core/package-lock.json
             SDKs/Node/Common/package-lock.json
@@ -56,18 +57,21 @@ jobs:
     name: Docker - ${{ matrix.service }}
     runs-on: ubuntu-latest
     needs: validate
+    permissions:
+      contents: read
+      packages: write
     strategy:
       matrix:
         include:
           - service: webui
             context: .
-            dockerfile: Docker/Dockerfile.webui
+            dockerfile: ConduitLLM.WebUI/Dockerfile
           - service: http
             context: .
-            dockerfile: Docker/Dockerfile.http
+            dockerfile: ConduitLLM.Http/Dockerfile
           - service: admin
             context: .
-            dockerfile: Docker/Dockerfile.admin
+            dockerfile: ConduitLLM.Admin/Dockerfile
     
     steps:
       - uses: actions/checkout@v4
@@ -120,6 +124,12 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           registry-url: 'https://registry.npmjs.org'
+          cache: npm
+          cache-dependency-path: |
+            SDKs/Node/package-lock.json
+            SDKs/Node/Admin/package-lock.json
+            SDKs/Node/Core/package-lock.json
+            SDKs/Node/Common/package-lock.json
       
       - name: Build and Publish
         run: |
@@ -128,7 +138,8 @@ jobs:
           npm run build
           
           # Publish with 'next' tag for continuous releases from master
-          cd Admin && npm publish --tag next --access public || true
+          cd Common && npm publish --tag next --access public || true
+          cd ../Admin && npm publish --tag next --access public || true
           cd ../Core && npm publish --tag next --access public || true
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

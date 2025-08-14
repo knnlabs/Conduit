@@ -68,7 +68,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        ref: ${{ github.event.inputs.branch || 'master' }}
+        ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.branch || '' }}
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
@@ -114,6 +114,7 @@ jobs:
         node-version: '20'
         cache: 'npm'
         cache-dependency-path: |
+          SDKs/Node/package-lock.json
           SDKs/Node/Admin/package-lock.json
           SDKs/Node/Core/package-lock.json
           SDKs/Node/Common/package-lock.json
