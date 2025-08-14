@@ -1,4 +1,4 @@
-import { ConfigurationService } from '../services/ConfigurationService';
+import { FetchConfigurationService } from '../services/FetchConfigurationService';
 import { ENDPOINTS } from '../constants';
 import { ValidationError } from '../utils/errors';
 import type {
@@ -13,8 +13,8 @@ import type {
 // Mock the entire FetchBaseApiClient module
 jest.mock('../client/FetchBaseApiClient');
 
-describe('ConfigurationService - Extended Routing Methods', () => {
-  let service: ConfigurationService;
+describe('FetchConfigurationService - Extended Routing Methods', () => {
+  let service: FetchConfigurationService;
   let mockGet: jest.Mock;
   let mockPut: jest.Mock;
   let mockPost: jest.Mock;
@@ -85,7 +85,7 @@ describe('ConfigurationService - Extended Routing Methods', () => {
     mockPost = jest.fn();
     mockDelete = jest.fn();
     
-    service = new ConfigurationService({
+    service = new FetchConfigurationService({
       baseUrl: 'http://test.com',
       masterKey: 'test-key',
     });
