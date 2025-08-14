@@ -15,7 +15,7 @@ The main CI/CD workflow that handles building, testing, and releasing Docker ima
 **Features:**
 - ✅ .NET package caching for faster builds
 - ✅ Matrix strategy for parallel Docker builds
-- ✅ Multi-platform Docker images (amd64, arm64)
+- ✅ Docker images (amd64 only - ARM64 removed due to GitHub Actions limitations)
 - ✅ CodeQL security scanning with quality gates
 - ✅ Test result reporting with coverage
 - ✅ Concurrency controls to prevent race conditions
