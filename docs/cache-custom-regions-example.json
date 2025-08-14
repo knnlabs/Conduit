@@ -1,0 +1,32 @@
+{
+  "Cache": {
+    "CustomRegions": {
+      "my-feature-cache": {
+        "enabled": true,
+        "defaultTTL": "00:30:00",
+        "maxTTL": "01:00:00",
+        "useDistributedCache": true,
+        "useMemoryCache": true,
+        "priority": 60,
+        "evictionPolicy": "LRU",
+        "maxEntries": 10000,
+        "enableDetailedStats": true
+      },
+      "temporary-data": {
+        "enabled": true,
+        "defaultTTL": "00:05:00",
+        "useDistributedCache": false,
+        "useMemoryCache": true,
+        "priority": 30,
+        "evictionPolicy": "LFU"
+      },
+      "user-preferences": {
+        "enabled": true,
+        "defaultTTL": "24:00:00",
+        "useDistributedCache": true,
+        "useMemoryCache": false,
+        "priority": 40
+      }
+    }
+  }
+}

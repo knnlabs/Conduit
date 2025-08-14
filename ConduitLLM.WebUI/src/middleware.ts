@@ -1,10 +1,22 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
-// Only the access-denied page is public
-const isPublicRoute = createRouteMatcher(['/access-denied']);
+// Public routes that don't require authentication
+const isPublicRoute = createRouteMatcher([
+  '/access-denied',
+  '/api/health',
+  '/api/model-mappings(.*)',  // Allow all model-mappings API routes including PUT
+  '/api/discovery/models',
+  '/api/videos/generate',
+  '/api/videos/tasks/(.*)'
+]);
 
 export default clerkMiddleware(async (auth, req) => {
+  // Skip all auth in development when explicitly disabled
+  if (process.env.DISABLE_CLERK_AUTH === 'true' && process.env.NODE_ENV === 'development') {
+    return NextResponse.next();
+  }
+
   if (!isPublicRoute(req)) {
     // Get auth state
     const { userId, sessionClaims, redirectToSignIn } = await auth();

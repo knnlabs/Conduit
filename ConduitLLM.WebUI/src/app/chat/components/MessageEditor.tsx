@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Textarea, Button, Group, Stack } from '@mantine/core';
 import { IconCheck, IconX } from '@tabler/icons-react';
 import type { ChatMessage } from '@/types/chat';
+import type { TextContent } from '@/app/chat/types';
 
 interface MessageEditorProps {
   message: ChatMessage;
@@ -12,9 +13,16 @@ interface MessageEditorProps {
 }
 
 export function MessageEditor({ message, onSave, onCancel }: MessageEditorProps) {
-  const initialContent = typeof message.content === 'string' 
-    ? message.content 
-    : message.content.find(c => c.type === 'text')?.text ?? '';
+  let initialContent = '';
+  
+  if (typeof message.content === 'string') {
+    initialContent = message.content;
+  } else if (Array.isArray(message.content)) {
+    const textContent = message.content.find((c): c is TextContent => {
+      return 'type' in c && c.type === 'text';
+    });
+    initialContent = textContent?.text ?? '';
+  }
     
   const [content, setContent] = useState(initialContent);
 

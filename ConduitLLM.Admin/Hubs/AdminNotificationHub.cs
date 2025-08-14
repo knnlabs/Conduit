@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs.SignalR;
 using ConduitLLM.Admin.Interfaces;
 
@@ -19,7 +20,6 @@ namespace ConduitLLM.Admin.Hubs
     public class AdminNotificationHub : Hub, IAdminNotificationHub
     {
         private readonly ILogger<AdminNotificationHub> _logger;
-        private readonly IAdminProviderHealthService _providerHealthService;
         private readonly IAdminVirtualKeyService _virtualKeyService;
         private readonly IAdminNotificationService _notificationService;
 
@@ -27,17 +27,14 @@ namespace ConduitLLM.Admin.Hubs
         /// Initializes a new instance of the <see cref="AdminNotificationHub"/> class.
         /// </summary>
         /// <param name="logger">Logger instance.</param>
-        /// <param name="providerHealthService">Provider health service for status queries.</param>
         /// <param name="virtualKeyService">Virtual key service for key management notifications.</param>
         /// <param name="notificationService">Notification service for administrative alerts.</param>
         public AdminNotificationHub(
             ILogger<AdminNotificationHub> logger,
-            IAdminProviderHealthService providerHealthService,
             IAdminVirtualKeyService virtualKeyService,
             IAdminNotificationService notificationService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _providerHealthService = providerHealthService ?? throw new ArgumentNullException(nameof(providerHealthService));
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
             _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
         }
@@ -53,8 +50,6 @@ namespace ConduitLLM.Admin.Hubs
             // Add to admin group for receiving broadcast notifications
             await Groups.AddToGroupAsync(Context.ConnectionId, "admin");
             
-            // Send initial provider health status
-            await SendInitialProviderHealthStatus();
             
             await base.OnConnectedAsync();
         }
@@ -134,95 +129,88 @@ namespace ConduitLLM.Admin.Hubs
         }
 
         /// <summary>
-        /// Subscribes to notifications for a specific provider.
+        /// Subscribes to notifications for a specific provider by name (legacy).
         /// </summary>
         /// <param name="providerName">The provider name to subscribe to.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        public async Task SubscribeToProvider(string providerName)
+        [Obsolete("Use SubscribeToProvider(int providerId) instead")]
+        public async Task SubscribeToProviderByName(string providerName)
+        {
+            _logger.LogWarning("Legacy SubscribeToProviderByName called with {ProviderName}. Clients should use SubscribeToProvider(int) instead.", providerName);
+            await Clients.Caller.SendAsync("Error", new { message = "This method is deprecated. Please use SubscribeToProvider with provider ID." });
+        }
+
+        /// <summary>
+        /// Subscribes to notifications for a specific provider.
+        /// </summary>
+        /// <param name="providerId">The provider ID to subscribe to.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public async Task SubscribeToProvider(int providerId)
         {
             try
             {
-                var groupName = $"admin-provider-{providerName}";
+                var groupName = $"admin-provider-{providerId}";
                 await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
                 
-                _logger.LogInformation("Admin subscribed to provider {ProviderName} notifications", providerName);
+                _logger.LogInformation("Admin subscribed to provider {ProviderId} notifications", providerId);
                 
-                // Send current provider health status
-                var healthStatus = await _providerHealthService.GetLatestStatusAsync(providerName);
-                if (healthStatus != null)
-                {
-                    await Clients.Caller.SendAsync("ProviderHealthStatus", healthStatus);
-                }
+                // Provider health tracking has been removed
                 
-                await Clients.Caller.SendAsync("SubscribedToProvider", providerName);
+                await Clients.Caller.SendAsync("SubscribedToProvider", providerId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error subscribing to provider {ProviderName}", providerName);
+                _logger.LogError(ex, "Error subscribing to provider {ProviderId}", providerId);
                 await Clients.Caller.SendAsync("Error", new { message = "Failed to subscribe to provider notifications" });
             }
         }
 
         /// <summary>
-        /// Unsubscribes from notifications for a specific provider.
+        /// Unsubscribes from notifications for a specific provider by name (legacy).
         /// </summary>
         /// <param name="providerName">The provider name to unsubscribe from.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        public async Task UnsubscribeFromProvider(string providerName)
+        [Obsolete("Use UnsubscribeFromProvider(int providerId) instead")]
+        public async Task UnsubscribeFromProviderByName(string providerName)
+        {
+            _logger.LogWarning("Legacy UnsubscribeFromProviderByName called with {ProviderName}. Clients should use UnsubscribeFromProvider(int) instead.", providerName);
+            await Clients.Caller.SendAsync("Error", new { message = "This method is deprecated. Please use UnsubscribeFromProvider with provider ID." });
+        }
+
+        /// <summary>
+        /// Unsubscribes from notifications for a specific provider.
+        /// </summary>
+        /// <param name="providerId">The provider ID to unsubscribe from.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public async Task UnsubscribeFromProvider(int providerId)
         {
             try
             {
-                var groupName = $"admin-provider-{providerName}";
+                var groupName = $"admin-provider-{providerId}";
                 await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
                 
-                _logger.LogInformation("Admin unsubscribed from provider {ProviderName} notifications", providerName);
+                _logger.LogInformation("Admin unsubscribed from provider {ProviderId} notifications", providerId);
                 
-                await Clients.Caller.SendAsync("UnsubscribedFromProvider", providerName);
+                await Clients.Caller.SendAsync("UnsubscribedFromProvider", providerId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error unsubscribing from provider {ProviderName}", providerName);
+                _logger.LogError(ex, "Error unsubscribing from provider {ProviderId}", providerId);
                 await Clients.Caller.SendAsync("Error", new { message = "Failed to unsubscribe from provider notifications" });
             }
         }
 
         /// <summary>
-        /// Requests a refresh of provider health status.
+        /// Requests a refresh of provider health status (deprecated).
         /// </summary>
         /// <returns>A task representing the asynchronous operation.</returns>
+        [Obsolete("Provider health monitoring has been removed")]
         public async Task RefreshProviderHealth()
         {
-            try
-            {
-                _logger.LogInformation("Admin requested provider health refresh");
-                
-                // Get all provider health statuses
-                var healthStatuses = await _providerHealthService.GetAllLatestStatusesAsync();
-                
-                await Clients.Caller.SendAsync("ProviderHealthRefreshed", healthStatuses);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error refreshing provider health");
-                await Clients.Caller.SendAsync("Error", new { message = "Failed to refresh provider health" });
-            }
+            _logger.LogWarning("RefreshProviderHealth called but provider health monitoring has been removed");
+            await Clients.Caller.SendAsync("Error", new { message = "Provider health monitoring has been removed" });
         }
 
-        /// <summary>
-        /// Sends the initial provider health status to the connected client.
-        /// </summary>
-        private async Task SendInitialProviderHealthStatus()
-        {
-            try
-            {
-                var healthStatuses = await _providerHealthService.GetAllLatestStatusesAsync();
-                await Clients.Caller.SendAsync("InitialProviderHealth", healthStatuses);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending initial provider health status");
-            }
-        }
     }
 
     /// <summary>
@@ -243,16 +231,12 @@ namespace ConduitLLM.Admin.Hubs
         /// <summary>
         /// Subscribes to notifications for a specific provider.
         /// </summary>
-        Task SubscribeToProvider(string providerName);
+        Task SubscribeToProvider(int providerId);
 
         /// <summary>
         /// Unsubscribes from notifications for a specific provider.
         /// </summary>
-        Task UnsubscribeFromProvider(string providerName);
+        Task UnsubscribeFromProvider(int providerId);
 
-        /// <summary>
-        /// Requests a refresh of provider health status.
-        /// </summary>
-        Task RefreshProviderHealth();
     }
 }

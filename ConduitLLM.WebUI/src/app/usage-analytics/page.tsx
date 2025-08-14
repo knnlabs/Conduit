@@ -28,8 +28,6 @@ import {
   IconUsers,
   IconDownload,
   IconRefresh,
-  IconArrowUpRight,
-  IconArrowDownRight,
 } from '@tabler/icons-react';
 import { useState, useEffect, useCallback } from 'react';
 import { CardSkeleton } from '@/components/common/LoadingState';
@@ -135,9 +133,6 @@ export default function UsageAnalyticsPage() {
     return 'gray';
   };
 
-  const getChangeIcon = (change: number) => {
-    return change >= 0 ? IconArrowUpRight : IconArrowDownRight;
-  };
 
   const handleExport = async () => {
     try {
@@ -215,13 +210,6 @@ export default function UsageAnalyticsPage() {
                 </ThemeIcon>
               </Group>
               <Group gap="xs">
-                <ThemeIcon 
-                  size="xs" 
-                  variant="subtle" 
-                  color={getChangeColor(metrics?.requestsChange ?? 0)}
-                >
-                  {getChangeIcon(metrics?.requestsChange ?? 0)({ size: 14 })}
-                </ThemeIcon>
                 <Text size="xs" c={getChangeColor(metrics?.requestsChange ?? 0)}>
                   {Math.abs(metrics?.requestsChange ?? 0)}%
                 </Text>
@@ -242,7 +230,7 @@ export default function UsageAnalyticsPage() {
                     Total Cost
                   </Text>
                   <Text size="xl" fw={700}>
-                    ${formatters.currency(metrics?.totalCost ?? 0)}
+                    {formatters.currency(metrics?.totalCost ?? 0)}
                   </Text>
                 </div>
                 <ThemeIcon color="green" variant="light" size="xl">
@@ -250,13 +238,6 @@ export default function UsageAnalyticsPage() {
                 </ThemeIcon>
               </Group>
               <Group gap="xs">
-                <ThemeIcon 
-                  size="xs" 
-                  variant="subtle" 
-                  color={getChangeColor(metrics?.costChange ?? 0)}
-                >
-                  {getChangeIcon(metrics?.costChange ?? 0)({ size: 14 })}
-                </ThemeIcon>
                 <Text size="xs" c={getChangeColor(metrics?.costChange ?? 0)}>
                   {Math.abs(metrics?.costChange ?? 0)}%
                 </Text>
@@ -285,13 +266,6 @@ export default function UsageAnalyticsPage() {
                 </ThemeIcon>
               </Group>
               <Group gap="xs">
-                <ThemeIcon 
-                  size="xs" 
-                  variant="subtle" 
-                  color={getChangeColor(metrics?.tokensChange ?? 0)}
-                >
-                  {getChangeIcon(metrics?.tokensChange ?? 0)({ size: 14 })}
-                </ThemeIcon>
                 <Text size="xs" c={getChangeColor(metrics?.tokensChange ?? 0)}>
                   {Math.abs(metrics?.tokensChange ?? 0)}%
                 </Text>
@@ -320,13 +294,6 @@ export default function UsageAnalyticsPage() {
                 </ThemeIcon>
               </Group>
               <Group gap="xs">
-                <ThemeIcon 
-                  size="xs" 
-                  variant="subtle" 
-                  color={getChangeColor(metrics?.virtualKeysChange ?? 0)}
-                >
-                  {getChangeIcon(metrics?.virtualKeysChange ?? 0)({ size: 14 })}
-                </ThemeIcon>
                 <Text size="xs" c={getChangeColor(metrics?.virtualKeysChange ?? 0)}>
                   {Math.abs(metrics?.virtualKeysChange ?? 0)}%
                 </Text>
@@ -407,7 +374,7 @@ export default function UsageAnalyticsPage() {
                           <Table.Tr key={provider.provider}>
                             <Table.Td>{provider.provider}</Table.Td>
                             <Table.Td>{formatters.number(provider.requests)}</Table.Td>
-                            <Table.Td>${formatters.currency(provider.cost)}</Table.Td>
+                            <Table.Td>{formatters.currency(provider.cost)}</Table.Td>
                             <Table.Td>{provider.percentage}%</Table.Td>
                           </Table.Tr>
                         ))}
@@ -452,7 +419,7 @@ export default function UsageAnalyticsPage() {
                             </Badge>
                           </Table.Td>
                           <Table.Td>{formatters.number(model.requests)}</Table.Td>
-                          <Table.Td>${formatters.currency(model.cost)}</Table.Td>
+                          <Table.Td>{formatters.currency(model.cost)}</Table.Td>
                         </Table.Tr>
                       ))}
                     </Table.Tbody>

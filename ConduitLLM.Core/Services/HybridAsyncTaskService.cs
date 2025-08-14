@@ -12,6 +12,7 @@ using MassTransit;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Core.Services
 {
     /// <summary>
@@ -443,7 +444,7 @@ namespace ConduitLLM.Core.Services
             var cleanupThreshold = TimeSpan.FromDays(30); // Keep archived tasks for 30 days
             var tasksToDelete = await _repository.GetTasksForCleanupAsync(cleanupThreshold, 100, cancellationToken);
             
-            if (tasksToDelete.Count > 0)
+            if (tasksToDelete.Count() > 0)
             {
                 var taskIds = tasksToDelete.Select(t => t.Id);
                 var deletedCount = await _repository.BulkDeleteAsync(taskIds, cancellationToken);

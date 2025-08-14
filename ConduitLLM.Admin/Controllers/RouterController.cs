@@ -261,7 +261,7 @@ _logger.LogError(ex, "Error deleting model deployment {DeploymentName}".Replace(
                 return BadRequest("Primary model cannot be empty");
             }
 
-            if (fallbackModels == null || fallbackModels.Count == 0)
+            if (fallbackModels == null || fallbackModels.Count() == 0)
             {
                 return BadRequest("Fallback models cannot be empty");
             }

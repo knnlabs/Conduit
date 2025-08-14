@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace ConduitLLM.Configuration.DTOs
@@ -14,31 +15,58 @@ namespace ConduitLLM.Configuration.DTOs
         public int Id { get; set; }
 
         /// <summary>
-        /// Model identification pattern, which can include wildcards
+        /// User-friendly name for this cost configuration
         /// </summary>
         /// <remarks>
-        /// Examples: "openai/gpt-4o", "anthropic.claude-3*", "*-embedding-*"
+        /// Examples: "GPT-4 Standard Pricing", "Llama 3 Unified Cost", "Embedding Models - Ada"
         /// </remarks>
         [Required]
         [MaxLength(255)]
-        public string ModelIdPattern { get; set; } = string.Empty;
+        public string CostName { get; set; } = string.Empty;
 
         /// <summary>
-        /// Cost per input token for chat/completion requests in USD
+        /// The pricing model type that determines how costs are calculated
+        /// </summary>
+        [Required]
+        public PricingModel PricingModel { get; set; } = PricingModel.Standard;
+
+        /// <summary>
+        /// JSON configuration for complex pricing models
+        /// </summary>
+        /// <remarks>
+        /// Structure depends on PricingModel:
+        /// - PerVideo: {"rates": {"512p_6": 0.10, "720p_10": 0.15}}
+        /// - PerSecondVideo: {"baseRate": 0.09, "resolutionMultipliers": {"720p": 1.0}}
+        /// - InferenceSteps: {"costPerStep": 0.00013, "defaultSteps": 30}
+        /// - TieredTokens: {"tiers": [{"maxContext": 200000, "inputCost": 400}]}
+        /// </remarks>
+        public string? PricingConfiguration { get; set; }
+
+        /// <summary>
+        /// List of model aliases that use this cost configuration
+        /// </summary>
+        /// <remarks>
+        /// This is populated from the ModelCostMappings relationship.
+        /// Shows which models are associated with this cost configuration.
+        /// </remarks>
+        public List<string> AssociatedModelAliases { get; set; } = new List<string>();
+
+        /// <summary>
+        /// Cost per million input tokens for chat/completion requests in USD
         /// </summary>
         [Range(0, double.MaxValue)]
-        public decimal InputTokenCost { get; set; } = 0;
+        public decimal InputCostPerMillionTokens { get; set; } = 0;
 
         /// <summary>
-        /// Cost per output token for chat/completion requests in USD
+        /// Cost per million output tokens for chat/completion requests in USD
         /// </summary>
         [Range(0, double.MaxValue)]
-        public decimal OutputTokenCost { get; set; } = 0;
+        public decimal OutputCostPerMillionTokens { get; set; } = 0;
 
         /// <summary>
-        /// Cost per token for embedding requests in USD, if applicable
+        /// Cost per million tokens for embedding requests in USD, if applicable
         /// </summary>
-        public decimal? EmbeddingTokenCost { get; set; }
+        public decimal? EmbeddingCostPerMillionTokens { get; set; }
 
         /// <summary>
         /// Cost per image for image generation requests in USD, if applicable
@@ -56,13 +84,42 @@ namespace ConduitLLM.Configuration.DTOs
         public DateTime UpdatedAt { get; set; }
 
         /// <summary>
-        /// Optional description for this model cost entry (for backward compatibility)
+        /// Model type for categorization
         /// </summary>
+        /// <remarks>
+        /// Indicates the type of operations this model cost applies to (chat, embedding, image, audio, video).
+        /// </remarks>
+        [Required]
+        [MaxLength(50)]
+        public string ModelType { get; set; } = "chat";
+
+        /// <summary>
+        /// Indicates whether this cost configuration is active
+        /// </summary>
+        public bool IsActive { get; set; } = true;
+
+        /// <summary>
+        /// Effective date for this pricing
+        /// </summary>
+        public DateTime EffectiveDate { get; set; }
+
+        /// <summary>
+        /// Optional expiry date for this pricing
+        /// </summary>
+        public DateTime? ExpiryDate { get; set; }
+
+        /// <summary>
+        /// Optional description for this model cost entry
+        /// </summary>
+        [MaxLength(500)]
         public string? Description { get; set; }
 
         /// <summary>
-        /// Optional priority value for this model cost entry (for backward compatibility)
+        /// Priority value for this model cost entry
         /// </summary>
+        /// <remarks>
+        /// Higher priority patterns are evaluated first when matching model names.
+        /// </remarks>
         public int Priority { get; set; }
 
         /// <summary>
@@ -127,24 +184,33 @@ namespace ConduitLLM.Configuration.DTOs
         public string? ImageQualityMultipliers { get; set; }
 
         /// <summary>
-        /// Cost per cached input token for prompt caching in USD, if applicable
+        /// Resolution-based cost multipliers for image generation as JSON string
         /// </summary>
         /// <remarks>
-        /// This represents the cost for processing cached input tokens (reading from cache).
+        /// JSON object containing resolution-to-multiplier mappings.
+        /// Example: {"1024x1024": 1.0, "1792x1024": 1.5, "1024x1792": 1.5}
+        /// </remarks>
+        public string? ImageResolutionMultipliers { get; set; }
+
+        /// <summary>
+        /// Cost per million cached input tokens for prompt caching in USD, if applicable
+        /// </summary>
+        /// <remarks>
+        /// This represents the cost for processing one million cached input tokens (reading from cache).
         /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
         /// Typically much lower than standard input token costs (e.g., 10% of regular cost).
         /// </remarks>
-        public decimal? CachedInputTokenCost { get; set; }
+        public decimal? CachedInputCostPerMillionTokens { get; set; }
 
         /// <summary>
-        /// Cost per token for writing to the prompt cache in USD, if applicable
+        /// Cost per million tokens for writing to the prompt cache in USD, if applicable
         /// </summary>
         /// <remarks>
-        /// This represents the cost for writing tokens to the prompt cache.
+        /// This represents the cost for writing one million tokens to the prompt cache.
         /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
         /// The write cost is incurred when new content is added to the cache.
         /// </remarks>
-        public decimal? CachedInputWriteCost { get; set; }
+        public decimal? CachedInputWriteCostPerMillionTokens { get; set; }
 
         /// <summary>
         /// Cost per search unit for reranking models in USD per 1000 units, if applicable
@@ -184,31 +250,68 @@ namespace ConduitLLM.Configuration.DTOs
     public class CreateModelCostDto
     {
         /// <summary>
-        /// Model identification pattern, which can include wildcards
+        /// User-friendly name for this cost configuration
         /// </summary>
         /// <remarks>
-        /// Examples: "openai/gpt-4o", "anthropic.claude-3*", "*-embedding-*"
+        /// Examples: "GPT-4 Standard Pricing", "Llama 3 Unified Cost", "Embedding Models - Ada"
         /// </remarks>
         [Required]
         [MaxLength(255)]
-        public string ModelIdPattern { get; set; } = string.Empty;
+        public string CostName { get; set; } = string.Empty;
 
         /// <summary>
-        /// Cost per input token for chat/completion requests in USD
+        /// The pricing model type that determines how costs are calculated
+        /// </summary>
+        [Required]
+        public PricingModel PricingModel { get; set; } = PricingModel.Standard;
+
+        /// <summary>
+        /// JSON configuration for complex pricing models
+        /// </summary>
+        public string? PricingConfiguration { get; set; }
+
+        /// <summary>
+        /// List of model mapping IDs to associate with this cost
+        /// </summary>
+        /// <remarks>
+        /// These are the IDs of ModelProviderMapping entities that should use this cost configuration.
+        /// </remarks>
+        public List<int> ModelProviderMappingIds { get; set; } = new List<int>();
+
+        /// <summary>
+        /// Model type for categorization
+        /// </summary>
+        [Required]
+        [MaxLength(50)]
+        public string ModelType { get; set; } = "chat";
+
+        /// <summary>
+        /// Priority value for pattern matching
+        /// </summary>
+        public int Priority { get; set; } = 0;
+
+        /// <summary>
+        /// Optional description
+        /// </summary>
+        [MaxLength(500)]
+        public string? Description { get; set; }
+
+        /// <summary>
+        /// Cost per million input tokens for chat/completion requests in USD
         /// </summary>
         [Range(0, double.MaxValue)]
-        public decimal InputTokenCost { get; set; } = 0;
+        public decimal InputCostPerMillionTokens { get; set; } = 0;
 
         /// <summary>
-        /// Cost per output token for chat/completion requests in USD
+        /// Cost per million output tokens for chat/completion requests in USD
         /// </summary>
         [Range(0, double.MaxValue)]
-        public decimal OutputTokenCost { get; set; } = 0;
+        public decimal OutputCostPerMillionTokens { get; set; } = 0;
 
         /// <summary>
-        /// Cost per token for embedding requests in USD, if applicable
+        /// Cost per million tokens for embedding requests in USD, if applicable
         /// </summary>
-        public decimal? EmbeddingTokenCost { get; set; }
+        public decimal? EmbeddingCostPerMillionTokens { get; set; }
 
         /// <summary>
         /// Cost per image for image generation requests in USD, if applicable
@@ -277,24 +380,33 @@ namespace ConduitLLM.Configuration.DTOs
         public string? ImageQualityMultipliers { get; set; }
 
         /// <summary>
-        /// Cost per cached input token for prompt caching in USD, if applicable
+        /// Resolution-based cost multipliers for image generation as JSON string
         /// </summary>
         /// <remarks>
-        /// This represents the cost for processing cached input tokens (reading from cache).
+        /// JSON object containing resolution-to-multiplier mappings.
+        /// Example: {"1024x1024": 1.0, "1792x1024": 1.5, "1024x1792": 1.5}
+        /// </remarks>
+        public string? ImageResolutionMultipliers { get; set; }
+
+        /// <summary>
+        /// Cost per million cached input tokens for prompt caching in USD, if applicable
+        /// </summary>
+        /// <remarks>
+        /// This represents the cost for processing one million cached input tokens (reading from cache).
         /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
         /// Typically much lower than standard input token costs (e.g., 10% of regular cost).
         /// </remarks>
-        public decimal? CachedInputTokenCost { get; set; }
+        public decimal? CachedInputCostPerMillionTokens { get; set; }
 
         /// <summary>
-        /// Cost per token for writing to the prompt cache in USD, if applicable
+        /// Cost per million tokens for writing to the prompt cache in USD, if applicable
         /// </summary>
         /// <remarks>
-        /// This represents the cost for writing tokens to the prompt cache.
+        /// This represents the cost for writing one million tokens to the prompt cache.
         /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
         /// The write cost is incurred when new content is added to the cache.
         /// </remarks>
-        public decimal? CachedInputWriteCost { get; set; }
+        public decimal? CachedInputWriteCostPerMillionTokens { get; set; }
 
         /// <summary>
         /// Cost per search unit for reranking models in USD per 1000 units, if applicable
@@ -339,31 +451,73 @@ namespace ConduitLLM.Configuration.DTOs
         public int Id { get; set; }
 
         /// <summary>
-        /// Model identification pattern, which can include wildcards
+        /// User-friendly name for this cost configuration
         /// </summary>
         /// <remarks>
-        /// Examples: "openai/gpt-4o", "anthropic.claude-3*", "*-embedding-*"
+        /// Examples: "GPT-4 Standard Pricing", "Llama 3 Unified Cost", "Embedding Models - Ada"
         /// </remarks>
         [Required]
         [MaxLength(255)]
-        public string ModelIdPattern { get; set; } = string.Empty;
+        public string CostName { get; set; } = string.Empty;
 
         /// <summary>
-        /// Cost per input token for chat/completion requests in USD
+        /// The pricing model type that determines how costs are calculated
+        /// </summary>
+        [Required]
+        public PricingModel PricingModel { get; set; } = PricingModel.Standard;
+
+        /// <summary>
+        /// JSON configuration for complex pricing models
+        /// </summary>
+        public string? PricingConfiguration { get; set; }
+
+        /// <summary>
+        /// List of model mapping IDs to associate with this cost
+        /// </summary>
+        /// <remarks>
+        /// These are the IDs of ModelProviderMapping entities that should use this cost configuration.
+        /// </remarks>
+        public List<int> ModelProviderMappingIds { get; set; } = new List<int>();
+
+        /// <summary>
+        /// Model type for categorization
+        /// </summary>
+        [Required]
+        [MaxLength(50)]
+        public string ModelType { get; set; } = "chat";
+
+        /// <summary>
+        /// Priority value for pattern matching
+        /// </summary>
+        public int Priority { get; set; } = 0;
+
+        /// <summary>
+        /// Optional description
+        /// </summary>
+        [MaxLength(500)]
+        public string? Description { get; set; }
+
+        /// <summary>
+        /// Indicates whether this cost configuration is active
+        /// </summary>
+        public bool IsActive { get; set; } = true;
+
+        /// <summary>
+        /// Cost per million input tokens for chat/completion requests in USD
         /// </summary>
         [Range(0, double.MaxValue)]
-        public decimal InputTokenCost { get; set; } = 0;
+        public decimal InputCostPerMillionTokens { get; set; } = 0;
 
         /// <summary>
-        /// Cost per output token for chat/completion requests in USD
+        /// Cost per million output tokens for chat/completion requests in USD
         /// </summary>
         [Range(0, double.MaxValue)]
-        public decimal OutputTokenCost { get; set; } = 0;
+        public decimal OutputCostPerMillionTokens { get; set; } = 0;
 
         /// <summary>
-        /// Cost per token for embedding requests in USD, if applicable
+        /// Cost per million tokens for embedding requests in USD, if applicable
         /// </summary>
-        public decimal? EmbeddingTokenCost { get; set; }
+        public decimal? EmbeddingCostPerMillionTokens { get; set; }
 
         /// <summary>
         /// Cost per image for image generation requests in USD, if applicable
@@ -432,24 +586,33 @@ namespace ConduitLLM.Configuration.DTOs
         public string? ImageQualityMultipliers { get; set; }
 
         /// <summary>
-        /// Cost per cached input token for prompt caching in USD, if applicable
+        /// Resolution-based cost multipliers for image generation as JSON string
         /// </summary>
         /// <remarks>
-        /// This represents the cost for processing cached input tokens (reading from cache).
+        /// JSON object containing resolution-to-multiplier mappings.
+        /// Example: {"1024x1024": 1.0, "1792x1024": 1.5, "1024x1792": 1.5}
+        /// </remarks>
+        public string? ImageResolutionMultipliers { get; set; }
+
+        /// <summary>
+        /// Cost per million cached input tokens for prompt caching in USD, if applicable
+        /// </summary>
+        /// <remarks>
+        /// This represents the cost for processing one million cached input tokens (reading from cache).
         /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
         /// Typically much lower than standard input token costs (e.g., 10% of regular cost).
         /// </remarks>
-        public decimal? CachedInputTokenCost { get; set; }
+        public decimal? CachedInputCostPerMillionTokens { get; set; }
 
         /// <summary>
-        /// Cost per token for writing to the prompt cache in USD, if applicable
+        /// Cost per million tokens for writing to the prompt cache in USD, if applicable
         /// </summary>
         /// <remarks>
-        /// This represents the cost for writing tokens to the prompt cache.
+        /// This represents the cost for writing one million tokens to the prompt cache.
         /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
         /// The write cost is incurred when new content is added to the cache.
         /// </remarks>
-        public decimal? CachedInputWriteCost { get; set; }
+        public decimal? CachedInputWriteCostPerMillionTokens { get; set; }
 
         /// <summary>
         /// Cost per search unit for reranking models in USD per 1000 units, if applicable

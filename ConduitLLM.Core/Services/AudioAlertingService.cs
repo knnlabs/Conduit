@@ -49,8 +49,7 @@ namespace ConduitLLM.Core.Services
         /// <inheritdoc />
         public Task<string> RegisterAlertRuleAsync(AudioAlertRule rule)
         {
-            if (rule == null)
-                throw new ArgumentNullException(nameof(rule));
+            ArgumentNullException.ThrowIfNull(rule);
 
             if (string.IsNullOrEmpty(rule.Id))
                 rule.Id = Guid.NewGuid().ToString();
@@ -70,8 +69,7 @@ namespace ConduitLLM.Core.Services
             if (string.IsNullOrEmpty(ruleId))
                 throw new ArgumentException("Rule ID cannot be empty", nameof(ruleId));
 
-            if (rule == null)
-                throw new ArgumentNullException(nameof(rule));
+            ArgumentNullException.ThrowIfNull(rule);
 
             if (!_alertRules.ContainsKey(ruleId))
                 throw new InvalidOperationException($"Alert rule {ruleId} not found");
@@ -260,7 +258,7 @@ namespace ConduitLLM.Core.Services
                 _alertHistory.Add(alert);
 
                 // Trim old history
-                if (_alertHistory.Count > _options.MaxHistorySize)
+                if (_alertHistory.Count() > _options.MaxHistorySize)
                 {
                     _alertHistory.RemoveAt(0);
                 }
@@ -283,7 +281,7 @@ namespace ConduitLLM.Core.Services
             {
                 AudioMetricType.ErrorRate => metrics.CurrentErrorRate,
                 AudioMetricType.Latency => 0, // Would need historical data
-                AudioMetricType.ProviderAvailability => metrics.ProviderHealth.Count(p => p.Value) / (double)Math.Max(1, metrics.ProviderHealth.Count),
+                AudioMetricType.ProviderAvailability => metrics.ProviderHealth.Count(p => p.Value) / (double)Math.Max(1, metrics.ProviderHealth.Count()),
                 AudioMetricType.CacheHitRate => 0, // Would need cache metrics
                 AudioMetricType.ActiveSessions => metrics.ActiveRealtimeSessions,
                 AudioMetricType.RequestRate => metrics.RequestsPerSecond,

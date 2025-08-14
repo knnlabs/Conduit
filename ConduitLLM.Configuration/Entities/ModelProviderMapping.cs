@@ -32,20 +32,20 @@ namespace ConduitLLM.Configuration.Entities
         /// </summary>
         [Required]
         [MaxLength(100)]
-        public string ProviderModelName { get; set; } = string.Empty;
+        public string ProviderModelId { get; set; } = string.Empty;
 
         /// <summary>
-        /// Foreign key to the provider credential entity.
-        /// Links this mapping to the credential set used to authenticate with the provider.
+        /// Foreign key to the provider entity.
+        /// Links this mapping to the provider used to authenticate with the provider.
         /// </summary>
-        public int ProviderCredentialId { get; set; }
+        public int ProviderId { get; set; }
 
         /// <summary>
-        /// Navigation property to the associated provider credential.
+        /// Navigation property to the associated provider.
         /// Contains authentication details for connecting to the provider.
         /// </summary>
-        [ForeignKey("ProviderCredentialId")]
-        public virtual ProviderCredential ProviderCredential { get; set; } = null!;
+        [ForeignKey("ProviderId")]
+        public virtual Provider Provider { get; set; } = null!;
 
         /// <summary>
         /// Indicates whether this mapping is currently active.
@@ -107,6 +107,11 @@ namespace ConduitLLM.Configuration.Entities
         public bool SupportsEmbeddings { get; set; } = false;
 
         /// <summary>
+        /// Indicates whether this model supports chat completions.
+        /// </summary>
+        public bool SupportsChat { get; set; } = false;
+
+        /// <summary>
         /// Indicates whether this model supports function calling.
         /// </summary>
         public bool SupportsFunctionCalling { get; set; } = false;
@@ -148,5 +153,14 @@ namespace ConduitLLM.Configuration.Entities
         /// </summary>
         [MaxLength(50)]
         public string? DefaultCapabilityType { get; set; }
+
+        /// <summary>
+        /// Gets or sets the collection of cost configurations applied to this model mapping.
+        /// </summary>
+        /// <remarks>
+        /// This navigation property represents the many-to-many relationship between ModelProviderMapping and ModelCost.
+        /// A model can have multiple cost configurations (e.g., different costs for different time periods or regions).
+        /// </remarks>
+        public virtual ICollection<ModelCostMapping> ModelCostMappings { get; set; } = new List<ModelCostMapping>();
     }
 }

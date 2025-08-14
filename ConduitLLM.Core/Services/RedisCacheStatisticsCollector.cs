@@ -418,7 +418,7 @@ namespace ConduitLLM.Core.Services
                 setTimes.AddRange(setEntries.Select(e => e.Score));
             }
 
-            if (getTimes.Any())
+            if (getTimes.Count() > 0)
             {
                 getTimes.Sort();
                 stats.AverageGetTime = TimeSpan.FromMilliseconds(getTimes.Average());
@@ -427,7 +427,7 @@ namespace ConduitLLM.Core.Services
                 stats.MaxResponseTime = TimeSpan.FromMilliseconds(getTimes.Max());
             }
 
-            if (setTimes.Any())
+            if (setTimes.Count() > 0)
             {
                 setTimes.Sort();
                 stats.AverageSetTime = TimeSpan.FromMilliseconds(setTimes.Average());
@@ -436,10 +436,10 @@ namespace ConduitLLM.Core.Services
 
         private double GetPercentile(List<double> sortedValues, double percentile)
         {
-            if (sortedValues.Count == 0) return 0;
+            if (sortedValues.Count() == 0) return 0;
             
-            var index = (int)Math.Ceiling(percentile * sortedValues.Count) - 1;
-            return sortedValues[Math.Max(0, Math.Min(index, sortedValues.Count - 1))];
+            var index = (int)Math.Ceiling(percentile * sortedValues.Count()) - 1;
+            return sortedValues[Math.Max(0, Math.Min(index, sortedValues.Count() - 1))];
         }
 
         private async Task CheckAndTriggerAlertsAsync(CacheRegion region, CancellationToken cancellationToken)

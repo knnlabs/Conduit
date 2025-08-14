@@ -359,7 +359,7 @@ namespace ConduitLLM.Tests.Security
 
         public async Task<ThreatAnalysisResult> AnalyzeEventAsync(SecurityEvent securityEvent)
         {
-            if (securityEvent == null) throw new ArgumentNullException(nameof(securityEvent));
+            ArgumentNullException.ThrowIfNull(securityEvent);
 
             await Task.Delay(1); // Simulate async work
 

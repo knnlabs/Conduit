@@ -19,6 +19,12 @@ Enhance the SignalR implementation in Conduit to improve message delivery reliab
 ## Technical Approach
 Implement a layered approach starting with core reliability features, then adding performance optimizations and monitoring capabilities.
 
+### Current Status (as of 2025-08-08)
+- Implemented: message acknowledgment (hub + service), reliable queue with retries and circuit breaker, connection monitoring, batching, metrics (Prometheus + filter), SignalR rate limiting filter, Redis backplane.
+- Partially implemented: metrics breadth (delivered vs failed per hub/method varies by component), rate limiting breadth (primarily per-virtual-key filter), operational dashboards.
+- Not implemented: MessagePack/binary protocol for payload compression, delta updates, dedicated SignalR health checks, diagnostic hub filter, client reconnection/ack patterns, integration and load testing suites.
+- References: `ConduitLLM.Http/SignalR/Hubs/AcknowledgmentHub.cs`, `ConduitLLM.Http/SignalR/Services/SignalRAcknowledgmentService.cs`, `ConduitLLM.Http/SignalR/Services/SignalRMessageQueueService.cs`, `ConduitLLM.Http/SignalR/Services/SignalRConnectionMonitor.cs`, `ConduitLLM.Http/SignalR/Services/SignalRMessageBatcher.cs`, `ConduitLLM.Http/Filters/SignalRMetricsFilter.cs`, `ConduitLLM.Http/Authentication/VirtualKeySignalRRateLimitFilter.cs`, `ConduitLLM.Http/Program.SignalR.cs`.
+
 ---
 
 ## Phase 1: Core Reliability (Priority: High)
@@ -32,10 +38,10 @@ Implement a layered approach starting with core reliability features, then addin
 Implement a message acknowledgment pattern to ensure critical messages are delivered and processed by clients.
 
 **Acceptance Criteria**:
-- [ ] Create `SignalRMessage` base class with MessageId, Timestamp, CorrelationId
-- [ ] Add acknowledgment methods to hubs (`AcknowledgeMessage`, `NackMessage`)
-- [ ] Implement timeout handling for unacknowledged messages
-- [ ] Add retry logic for failed messages
+- [x] Create `SignalRMessage` base class with MessageId, Timestamp, CorrelationId
+- [x] Add acknowledgment methods to hubs (`AcknowledgeMessage`, `NackMessage`)
+- [x] Implement timeout handling for unacknowledged messages
+- [x] Add retry logic for failed messages
 - [ ] Unit tests for acknowledgment flow
 
 **Technical Details**:
@@ -60,11 +66,11 @@ public abstract class SignalRMessage
 Build a background service that queues SignalR messages and handles delivery with retry logic and circuit breaker pattern.
 
 **Acceptance Criteria**:
-- [ ] Implement `SignalRMessageQueueService` as IHostedService
-- [ ] Add Polly retry policy with exponential backoff
-- [ ] Implement circuit breaker for failing endpoints
-- [ ] Add dead letter queue for persistent failures
-- [ ] Configure max retry attempts and timeout values
+- [x] Implement `SignalRMessageQueueService` as IHostedService
+- [x] Add Polly retry policy with exponential backoff
+- [x] Implement circuit breaker for failing endpoints
+- [x] Add dead letter queue for persistent failures
+- [x] Configure max retry attempts and timeout values
 - [ ] Integration tests for queue processing
 
 **Dependencies**: Task 1.1
@@ -80,12 +86,12 @@ Build a background service that queues SignalR messages and handles delivery wit
 Implement comprehensive connection monitoring to track active connections, subscriptions, and connection health.
 
 **Acceptance Criteria**:
-- [ ] Create `SignalRConnectionMonitor` service
-- [ ] Track connections by hub, virtual key, and groups
-- [ ] Monitor connection duration and last activity
-- [ ] Implement stale connection cleanup (configurable timeout)
+- [x] Create `SignalRConnectionMonitor` service
+- [x] Track connections by hub, virtual key, and groups
+- [x] Monitor connection duration and last activity
+- [x] Implement stale connection cleanup (configurable timeout)
 - [ ] Expose metrics via health check endpoint
-- [ ] Add connection metrics to SecureHub base class
+- [x] Add connection metrics to SecureHub base class
 
 **Technical Details**:
 - Store connection info in ConcurrentDictionary
@@ -105,11 +111,11 @@ Implement comprehensive connection monitoring to track active connections, subsc
 Batch multiple messages within a time window to reduce network overhead and improve client performance.
 
 **Acceptance Criteria**:
-- [ ] Create `SignalRMessageBatcher` service
-- [ ] Configure batch window (default 100ms) and max batch size (default 50)
-- [ ] Group messages by type for efficient delivery
-- [ ] Support immediate send when batch is full
-- [ ] Add batch metrics (messages per batch, batch frequency)
+- [x] Create `SignalRMessageBatcher` service
+- [x] Configure batch window (default 100ms) and max batch size (default 50)
+- [x] Group messages by type for efficient delivery
+- [x] Support immediate send when batch is full
+- [x] Add batch metrics (messages per batch, batch frequency)
 - [ ] Client-side support for batch message processing
 
 **Dependencies**: Task 1.1
@@ -130,6 +136,8 @@ Enable message compression using MessagePack protocol for binary serialization.
 - [ ] Update clients to support MessagePack
 - [ ] Benchmark performance improvement
 - [ ] Document client library requirements
+
+Status: Not implemented as of 2025-08-08.
 
 ---
 
@@ -161,12 +169,14 @@ Send only changed properties in update messages to reduce payload size.
 Implement comprehensive metrics collection for SignalR operations.
 
 **Acceptance Criteria**:
-- [ ] Create `SignalRMetrics` with OpenTelemetry counters and histograms
+- [x] Create metrics with Prometheus/OpenTelemetry counters and histograms
 - [ ] Track messages delivered/failed by hub and method
-- [ ] Measure message delivery duration
-- [ ] Monitor active connections and groups
-- [ ] Export metrics to Prometheus/Grafana
+- [x] Measure message delivery duration
+- [x] Monitor active connections and groups
+- [x] Export metrics to Prometheus/Grafana
 - [ ] Create Grafana dashboard template
+
+Note: Implemented via `ISignalRMetrics`/`SignalRMetrics` and `SignalRMetricsService` with Prometheus exporters and hub filters.
 
 **Metrics to Track**:
 - `signalr_messages_delivered_total`
@@ -261,7 +271,7 @@ Implement client-side message acknowledgment for reliable message processing.
 Implement rate limiting for SignalR connections and method invocations.
 
 **Acceptance Criteria**:
-- [ ] Configure rate limiting policy for SignalR endpoints
+ - [x] Configure rate limiting policy for SignalR endpoints
 - [ ] Limit connections per IP address
 - [ ] Limit method invocations per connection
 - [ ] Add rate limit headers to responses
@@ -328,13 +338,20 @@ All new features should be configurable via appsettings.json:
 ```json
 {
   "SignalR": {
-    "EnableMessageAcknowledgment": true,
-    "MessageTimeoutSeconds": 30,
-    "MaxRetryAttempts": 3,
-    "BatchWindowMilliseconds": 100,
-    "MaxBatchSize": 50,
-    "EnableCompression": true,
-    "StaleConnectionTimeoutMinutes": 60
+    "Acknowledgment": {
+      "MessageTimeoutSeconds": 30,
+      "MaxRetryAttempts": 3
+    },
+    "Batching": {
+      "WindowMs": 100,
+      "MaxBatchSize": 50,
+      "MaxBatchSizeBytes": 262144,
+      "GroupByMethod": true
+    },
+    "Connection": {
+      "StaleConnectionTimeoutMinutes": 60
+    },
+    "MaximumReceiveMessageSize": 32768
   }
 }
 ```
@@ -347,6 +364,69 @@ All new features should be configurable via appsettings.json:
 - Add monitoring setup guide
 
 ---
+
+## Follow-up Tickets (created 2025-08-08)
+
+### FT-1: Adopt MessagePack for SignalR payloads
+Labels: `signalr`, `performance`
+- Description: Enable binary serialization to reduce payload size for WebSocket transport.
+- Acceptance Criteria:
+  - Server adds `Microsoft.AspNetCore.SignalR.Protocols.MessagePack` and calls `AddMessagePackProtocol`
+  - Clients updated to use MessagePack
+  - Benchmarks show reduced payload/CPU vs JSON
+
+### FT-2: Client reconnection/backoff and UX status
+Labels: `signalr`, `client`
+- Description: Implement exponential backoff reconnection and surface connection status in UI/SDKs.
+- Acceptance Criteria:
+  - Backoff with jitter implemented in clients
+  - Connection status indicators and events
+  - No data loss across reconnects in tests
+
+### FT-3: Client-side acknowledgment support
+Labels: `signalr`, `client`, `reliability`
+- Description: Implement ack/nack handling in Web UI and SDKs for critical messages.
+- Acceptance Criteria:
+  - Clients send ack/nack to server APIs
+  - Error paths send NACK with reason
+  - Docs with examples per client
+
+### FT-4: SignalR integration test suite
+Labels: `signalr`, `testing`
+- Description: E2E tests covering ack lifecycle, retries, DLQ, batching, and Redis backplane.
+- Acceptance Criteria:
+  - Tests run in CI
+  - Covers ack success/timeout/retry paths
+  - Verifies batch window behavior and DLQ
+
+### FT-5: Load testing at scale (Redis backplane)
+Labels: `signalr`, `performance`, `testing`
+- Description: Load tests for 100/500/1000+ concurrent connections and throughput.
+- Acceptance Criteria:
+  - Reports latency, throughput, backplane health
+  - Pass thresholds agreed with SRE
+
+### FT-6: SignalR health checks
+Labels: `signalr`, `monitoring`
+- Description: Add `IHealthCheck` for queue depth, connection ratio, hub accessibility.
+- Acceptance Criteria:
+  - Health check endpoint returns degraded/unhealthy status with thresholds
+  - Alerts integrated with existing monitoring
+
+### FT-7: Diagnostic hub filter with structured logging
+Labels: `signalr`, `monitoring`
+- Description: Add `IHubFilter` to log invocations with correlation IDs and timing.
+- Acceptance Criteria:
+  - Correlated logs for hub methods
+  - Configurable sampling/levels
+
+### FT-8: Rate limit policy hardening
+Labels: `signalr`, `security`
+- Description: Extend current virtual-key rate limit to include per-IP and per-connection method limits; optional response headers where applicable.
+- Acceptance Criteria:
+  - Enforce IP-based and per-connection method limits
+  - Metrics and alerts for rate limit breaches
+  - Documented policies
 
 ## Definition of Done
 - [ ] Code implemented and reviewed

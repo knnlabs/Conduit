@@ -11,9 +11,12 @@ using System.Threading.Tasks;
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.Data;
+using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Configuration.DTOs.Monitoring;
 
 using Microsoft.EntityFrameworkCore;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Admin.Services;
 
 /// <summary>
@@ -23,8 +26,7 @@ public class AdminSystemInfoService : IAdminSystemInfoService
 {
     private readonly IConfigurationDbContext _dbContext;
     private readonly ILogger<AdminSystemInfoService> _logger;
-    private readonly IAdminProviderHealthService _providerHealthService;
-    private readonly IAdminProviderCredentialService _providerCredentialService;
+    private readonly IProviderRepository _providerRepository;
     private readonly DateTime _startTime;
 
     /// <summary>
@@ -32,18 +34,15 @@ public class AdminSystemInfoService : IAdminSystemInfoService
     /// </summary>
     /// <param name="dbContext">The configuration database context</param>
     /// <param name="logger">The logger</param>
-    /// <param name="providerHealthService">The provider health service</param>
-    /// <param name="providerCredentialService">The provider credential service</param>
+    /// <param name="providerRepository">The provider repository</param>
     public AdminSystemInfoService(
         IConfigurationDbContext dbContext,
         ILogger<AdminSystemInfoService> logger,
-        IAdminProviderHealthService providerHealthService,
-        IAdminProviderCredentialService providerCredentialService)
+        IProviderRepository providerRepository)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _providerHealthService = providerHealthService ?? throw new ArgumentNullException(nameof(providerHealthService));
-        _providerCredentialService = providerCredentialService ?? throw new ArgumentNullException(nameof(providerCredentialService));
+        _providerRepository = providerRepository ?? throw new ArgumentNullException(nameof(providerRepository));
         _startTime = Process.GetCurrentProcess().StartTime;
     }
 
@@ -78,11 +77,7 @@ public class AdminSystemInfoService : IAdminSystemInfoService
         dbHealth.Duration = dbSw.ElapsedMilliseconds;
         checks.Add("database", dbHealth);
 
-        // Provider health
-        var providerSw = Stopwatch.StartNew();
-        var providerHealth = await CheckProviderHealthAsync();
-        providerHealth.Duration = providerSw.ElapsedMilliseconds;
-        checks.Add("providers", providerHealth);
+        // Provider health check removed - Epic #680
 
         sw.Stop();
 
@@ -266,7 +261,7 @@ public class AdminSystemInfoService : IAdminSystemInfoService
             if (canConnect)
             {
                 // Check migrations
-                bool pendingMigrations = (await _dbContext.GetDatabase().GetPendingMigrationsAsync()).Any();
+                bool pendingMigrations = (await _dbContext.GetDatabase().GetPendingMigrationsAsync()).Count() > 0;
 
                 // Get migration history
                 var migrations = await _dbContext.GetDatabase().GetAppliedMigrationsAsync();
@@ -293,44 +288,6 @@ public class AdminSystemInfoService : IAdminSystemInfoService
         return health;
     }
 
-    private async Task<ComponentHealth> CheckProviderHealthAsync()
-    {
-        var health = new ComponentHealth
-        {
-            Description = "LLM provider configuration status"
-        };
-
-        try
-        {
-            // Simple check: just see if we have enabled providers
-            var allProviders = await _providerCredentialService.GetAllProviderCredentialsAsync();
-            var enabledProviders = allProviders.Where(p => p.IsEnabled).ToList();
-
-            if (!enabledProviders.Any())
-            {
-                health.Status = "unhealthy";
-                health.Description = "No enabled providers configured";
-            }
-            else if (enabledProviders.Count == 1)
-            {
-                health.Status = "degraded";
-                health.Description = $"1 provider configured ({enabledProviders[0].ProviderName})";
-            }
-            else
-            {
-                health.Status = "healthy";
-                health.Description = $"{enabledProviders.Count} providers configured";
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error checking provider configuration");
-            health.Status = "unhealthy";
-            health.Error = ex.Message;
-        }
-
-        return health;
-    }
 
     private async Task<RecordCountsDto> GetRecordCountsAsync()
     {
@@ -341,7 +298,7 @@ public class AdminSystemInfoService : IAdminSystemInfoService
             counts.VirtualKeys = await _dbContext.VirtualKeys.CountAsync();
             counts.Requests = await _dbContext.RequestLogs.CountAsync();
             counts.Settings = await _dbContext.GlobalSettings.CountAsync();
-            counts.Providers = await _dbContext.ProviderCredentials.CountAsync();
+            counts.Providers = await _dbContext.Providers.CountAsync();
             counts.ModelMappings = await _dbContext.ModelProviderMappings.CountAsync();
         }
         catch (Exception ex)

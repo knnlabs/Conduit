@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { 
   Container, 
   Paper, 
@@ -8,41 +8,54 @@ import {
   Center,
   Loader,
   Alert,
-  Select,
   Group,
   Badge,
   Collapse,
   ActionIcon
 } from '@mantine/core';
 import { IconAlertCircle, IconSettings, IconChevronUp } from '@tabler/icons-react';
+import { ModelSelector } from './ModelSelector';
 import { v4 as uuidv4 } from 'uuid';
 import { 
-  ContentHelpers, 
-  type TextContent, 
-  type ImageContent,
-  type ChatCompletionRequest,
-  type PerformanceMetrics,
-  type Usage 
+  createToastErrorHandler,
+  shouldShowBalanceWarning
 } from '@knn_labs/conduit-core-client';
 import { ChatInput } from './ChatInput';
 import { ChatMessages } from './ChatMessages';
 import { ChatSettings } from './ChatSettings';
-import { ImageAttachment, ChatParameters, ChatCompletionResponse, ChatMessage } from '../types';
+import { ErrorDisplay } from '@/components/common/ErrorDisplay';
+import { 
+  ImageAttachment, 
+  ChatParameters, 
+  ChatCompletionResponse, 
+  ChatMessage,
+  ChatCompletionRequest,
+  ContentHelpers,
+  type TextContent,
+  type ImageContent,
+  type MessageContent
+} from '../types';
 import { StreamingPerformanceMetrics, UsageData, SSEEventType, MetricsEventData } from '../types/metrics';
 import { parseSSEStream } from '../utils/sse-parser';
 import { usePerformanceSettings } from '../hooks/usePerformanceSettings';
 import { useChatStore } from '../hooks/useChatStore';
+import { useModels } from '../hooks/useModels';
+import { notifications } from '@mantine/notifications';
+import Link from 'next/link';
 
 export function ChatInterface() {
-  const [models, setModels] = useState<Array<{ value: string; label: string; supportsVision?: boolean }>>([]);
+  const { data: modelData, isLoading: modelsLoading } = useModels();
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [modelsLoading, setModelsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Error | null>(null);
   const [streamingContent, setStreamingContent] = useState('');
   const [tokensPerSecond, setTokensPerSecond] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  
+  // Create error handler with toast notifications
+  const handleError = createToastErrorHandler(notifications.show);
   
   const performanceSettings = usePerformanceSettings();
   const { 
@@ -51,39 +64,12 @@ export function ChatInterface() {
     activeSessionId 
   } = useChatStore();
 
-  // Fetch models on mount
+  // Set initial model when data loads
   useEffect(() => {
-    const fetchModels = async () => {
-      try {
-        const response = await fetch('/api/model-mappings');
-        if (!response.ok) {
-          throw new Error('Failed to fetch models');
-        }
-        interface ModelMapping {
-          modelId: string;
-          providerId: string;
-          supportsVision?: boolean;
-        }
-        const data = await response.json() as ModelMapping[];
-        const modelOptions = data.map((m) => ({
-          value: m.modelId,
-          label: `${m.modelId} (${m.providerId})`,
-          supportsVision: m.supportsVision ?? false
-        }));
-        setModels(modelOptions);
-        if (modelOptions.length > 0) {
-          setSelectedModel(modelOptions[0].value);
-        }
-      } catch (err) {
-        setError('Failed to load models');
-        console.error(err);
-      } finally {
-        setModelsLoading(false);
-      }
-    };
-
-    void fetchModels();
-  }, []);
+    if (modelData && modelData.length > 0 && !selectedModel) {
+      setSelectedModel(modelData[0].id);
+    }
+  }, [modelData, selectedModel]);
 
   // Ensure we have an active session
   useEffect(() => {
@@ -91,6 +77,16 @@ export function ChatInterface() {
       createSession(selectedModel);
     }
   }, [selectedModel, activeSessionId, createSession]);
+
+  // Cleanup on unmount - abort any pending requests
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, []);
 
   const sendMessage = useCallback(async (inputMessage: string, images?: ImageAttachment[]) => {
     if (!inputMessage.trim() && (!images || images.length === 0)) return;
@@ -119,15 +115,14 @@ export function ChatInterface() {
       
       // Build messages array with optional system prompt
       const allMessages = [...messages, userMessage];
-      const apiMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string | Array<TextContent | ImageContent> }> = 
-        allMessages
-          .filter(m => m.role !== 'function') // Filter out function messages for API
-          .map(m => ({
-            role: m.role as 'system' | 'user' | 'assistant',
-            content: m.images && m.images.length > 0 
-              ? buildMessageContent(m.content, m.images)
-              : m.content
-          }));
+      const apiMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: MessageContent }> = allMessages
+        .filter(m => m.role !== 'function') // Filter out function messages for API
+        .map(m => ({
+          role: m.role as 'system' | 'user' | 'assistant',
+          content: m.images && m.images.length > 0 
+            ? buildMessageContent(m.content, m.images)
+            : m.content
+        }));
       
       // Prepend system prompt if it exists
       if (sessionParams.systemPrompt) {
@@ -160,18 +155,41 @@ export function ChatInterface() {
         });
       }
       
+      // Cancel any previous request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      
+      // Create new abort controller for this request
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      
+      // Set a generous timeout for streaming responses (5 minutes)
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+        console.warn('Request timed out after 5 minutes');
+      }, 300000);
+      
+      // Use the SDK through our API route (consistent with images/videos)
       const response = await fetch('/api/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(requestBody),
+        signal: controller.signal,
       });
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Using SDK-backed chat completions API');
+      }
+      
+      // Clear the timeout once we get a response
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Chat API error:', response.status, errorText);
-        throw new Error(`Failed to get response: ${response.status} ${response.statusText}`);
+        // This will throw the appropriate ConduitError subclass (including InsufficientBalanceError for 402)
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
       // Handle response based on streaming mode
@@ -181,7 +199,7 @@ export function ChatInterface() {
         if (!reader) throw new Error('No response body reader');
         
         let fullContent = '';
-        const finalMetrics: Partial<PerformanceMetrics & Usage> = {};
+        const finalMetrics: Partial<StreamingPerformanceMetrics & UsageData> = {};
 
         // Process SSE stream with proper event parsing
         for await (const event of parseSSEStream(reader)) {
@@ -194,16 +212,25 @@ export function ChatInterface() {
             console.warn('Final metrics collected:', finalMetrics);
           }
           const totalTokens = finalMetrics.total_tokens ?? finalMetrics.completion_tokens ?? 0;
-          const tokensPerSec = finalMetrics.tokens_per_second ?? (totalTokens > 0 && duration > 0 ? totalTokens / duration : 0);
-          const latencyMs = finalMetrics.total_response_time_ms ?? duration * 1000;
+          // Use completion_tokens_per_second for more accurate generation speed
+          const tokensPerSec = (finalMetrics as StreamingPerformanceMetrics).completion_tokens_per_second 
+            ?? (finalMetrics as StreamingPerformanceMetrics).tokens_per_second 
+            ?? (totalTokens > 0 && duration > 0 ? totalTokens / duration : 0);
+          const latencyMs = (finalMetrics as MetricsEventData).total_latency_ms ?? duration * 1000;
           
           const metadata = performanceSettings.trackPerformanceMetrics
             ? {
                 tokensUsed: totalTokens,
                 tokensPerSecond: tokensPerSec,
                 latency: latencyMs,
+                provider: finalMetrics.provider,
+                model: finalMetrics.model ?? selectedModel,
+                promptTokens: finalMetrics.prompt_tokens,
+                completionTokens: finalMetrics.completion_tokens,
+                timeToFirstToken: (finalMetrics as StreamingPerformanceMetrics).time_to_first_token_ms,
+                streaming: true,
               }
-            : undefined;
+            : { streaming: true };
           
           const assistantMessage: ChatMessage = {
             id: uuidv4(),
@@ -227,16 +254,17 @@ export function ChatInterface() {
             
             if (delta?.content) {
               fullContent += delta.content;
-              setStreamingContent(fullContent);
+              // Update streaming content incrementally for progressive rendering
+              setStreamingContent(prev => prev + delta.content);
             }
 
             // Check for inline performance metrics (backward compatibility)
             const performanceData = event.data as { performance?: StreamingPerformanceMetrics };
             if (performanceData?.performance && performanceSettings.useServerMetrics) {
               Object.assign(finalMetrics, performanceData.performance);
-              // Type assertion needed for legacy metrics format compatibility
-              const perf = performanceData.performance as unknown as PerformanceMetrics;
-              const tps = perf.tokens_per_second;
+              // Use completion_tokens_per_second for more accurate generation speed
+              const tps = performanceData.performance.completion_tokens_per_second 
+                ?? performanceData.performance.tokens_per_second;
               if (tps && performanceSettings.showTokensPerSecond) {
                 setTokensPerSecond(tps);
               }
@@ -258,9 +286,8 @@ export function ChatInterface() {
                 console.warn('Metrics event received:', metricsData);
               }
               Object.assign(finalMetrics, metricsData);
-              // Type assertion needed for dynamic metrics event format
-              const metrics = metricsData as unknown as PerformanceMetrics;
-              const tps = metrics.tokens_per_second;
+              // Use completion_tokens_per_second for more accurate generation speed
+              const tps = metricsData.completion_tokens_per_second ?? metricsData.tokens_per_second;
               if (tps !== undefined && performanceSettings.showTokensPerSecond) {
                 setTokensPerSecond(tps);
               }
@@ -280,10 +307,28 @@ export function ChatInterface() {
             break;
           }
             
-          case SSEEventType.Error:
+          case SSEEventType.Error: {
             // Handle error events
-            console.error('SSE Error event:', event.data);
-            break;
+            console.warn('Received SSE error event:', event);
+            const errorData = event.data as { error?: string; message?: string; statusCode?: number };
+            console.warn('Parsed error data:', errorData);
+            const rawError = errorData.error ?? errorData.message ?? 'Unknown error occurred';
+            const streamError = new Error(`Stream error: ${rawError}`);
+            
+            // Add status code if available
+            if (errorData.statusCode) {
+              (streamError as Error & { status?: number }).status = errorData.statusCode;
+            }
+            
+            // Use enhanced error handler for notifications
+            handleError(streamError, 'process streaming response');
+            setError(streamError);
+            
+            // Stop processing on error
+            setStreamingContent('');
+            setIsLoading(false);
+            return;
+          }
         }
       }
       } else {
@@ -293,7 +338,7 @@ export function ChatInterface() {
         
         const requestDuration = (Date.now() - startTime) / 1000;
         // Type assertion needed for response format compatibility
-        const usage = data.usage as unknown as Usage | undefined;
+        const usage = data.usage as unknown as UsageData | undefined;
         const totalTokens = usage?.total_tokens ?? 0;
         
         const metadata = performanceSettings.trackPerformanceMetrics && data.usage
@@ -301,8 +346,12 @@ export function ChatInterface() {
               tokensUsed: totalTokens,
               tokensPerSecond: totalTokens > 0 && requestDuration > 0 ? totalTokens / requestDuration : 0,
               latency: requestDuration * 1000,
+              model: data.model ?? selectedModel,
+              promptTokens: usage?.prompt_tokens,
+              completionTokens: usage?.completion_tokens,
+              streaming: false,
             }
-          : undefined;
+          : { streaming: false };
         
         const assistantMessage: ChatMessage = {
           id: uuidv4(),
@@ -315,15 +364,39 @@ export function ChatInterface() {
         setMessages(prev => [...prev, assistantMessage]);
       }
     } catch (err) {
-      console.error('Chat error:', err);
-      const errorMessage = (err instanceof Error ? err.message : String(err)) ?? 'Failed to send message';
-      setError(errorMessage);
+      // Check if the error is due to an abort (timeout or user cancellation)
+      if (err instanceof Error && err.name === 'AbortError') {
+        const errorMessage = 'Request timed out. The response took too long to generate. Please try a shorter prompt or simpler request.';
+        
+        const abortError = new Error(errorMessage);
+        setError(abortError);
+        
+        // Show error in chat
+        const errorMsg: ChatMessage = {
+          id: uuidv4(),
+          role: 'assistant',
+          content: errorMessage,
+          timestamp: new Date(),
+          metadata: {
+            tokensUsed: 0,
+            tokensPerSecond: 0,
+            latency: 0,
+          }
+        };
+        setMessages(prev => [...prev, errorMsg]);
+        return; // Early return for abort errors
+      }
+      
+      // Use the enhanced error handler from SDK for notifications
+      handleError(err, 'send chat message');
+      const errorInstance = err instanceof Error ? err : new Error(String(err));
+      setError(errorInstance);
       
       // Show error as a system message in chat
       const errorMsg: ChatMessage = {
         id: uuidv4(),
         role: 'assistant',
-        content: `Error: ${errorMessage}`,
+        content: `Error: ${errorInstance.message}`,
         timestamp: new Date(),
         metadata: {
           tokensUsed: 0,
@@ -332,14 +405,27 @@ export function ChatInterface() {
         }
       };
       setMessages(prev => [...prev, errorMsg]);
+      
+      // Show special handling for balance errors
+      if (shouldShowBalanceWarning(err)) {
+        // Clear the loading state faster for balance errors since user needs to take action
+        const balanceError = new Error('Please add credits to your account to continue chatting.');
+        balanceError.name = 'InsufficientBalanceError';
+        (balanceError as Error & { status?: number }).status = 402;
+        setError(balanceError);
+      }
     } finally {
       setIsLoading(false);
       setStreamingContent('');
       setTokensPerSecond(null);
+      // Clean up abort controller reference
+      if (abortControllerRef.current) {
+        abortControllerRef.current = null;
+      }
     }
-  }, [selectedModel, messages, isLoading, getActiveSession, performanceSettings.showTokensPerSecond, performanceSettings.trackPerformanceMetrics, performanceSettings.useServerMetrics]);
+  }, [selectedModel, messages, isLoading, getActiveSession, performanceSettings.showTokensPerSecond, performanceSettings.trackPerformanceMetrics, performanceSettings.useServerMetrics, handleError]);
 
-  const buildMessageContent = (text: string, images?: ImageAttachment[]): string | Array<TextContent | ImageContent> => {
+  const buildMessageContent = (text: string, images?: ImageAttachment[]): MessageContent => {
     if (!images || images.length === 0) {
       return text;
     }
@@ -361,7 +447,7 @@ export function ChatInterface() {
     return content;
   };
 
-  const currentModel = models.find(m => m.value === selectedModel);
+  const currentModel = modelData?.find(m => m.id === selectedModel);
 
   if (modelsLoading) {
     return (
@@ -374,18 +460,33 @@ export function ChatInterface() {
   if (error) {
     return (
       <Container size="sm" mt="xl">
-        <Alert icon={<IconAlertCircle size={16} />} color="red" title="Error">
-          {error}
-        </Alert>
+        <ErrorDisplay 
+          error={error}
+          variant="card"
+          showDetails={true}
+          onRetry={() => {
+            setError(null);
+            setIsLoading(false);
+          }}
+          actions={[
+            {
+              label: 'Configure Providers',
+              onClick: () => window.location.href = '/llm-providers',
+              color: 'blue',
+              variant: 'light',
+            }
+          ]}
+        />
       </Container>
     );
   }
 
-  if (models.length === 0) {
+  if (!modelData || modelData.length === 0) {
     return (
       <Container size="sm" mt="xl">
         <Alert icon={<IconAlertCircle size={16} />} color="yellow" title="No models available">
-          No models are currently configured. Please configure model mappings first.
+          No models are currently configured. Please add model mappings first.<br />
+          <Link href="/model-mappings">Add model mappings</Link>
         </Alert>
       </Container>
     );
@@ -398,12 +499,10 @@ export function ChatInterface() {
           <Stack gap="md">
             <Group justify="space-between">
               <Group style={{ flex: 1 }}>
-                <Select
-                  label="Model"
-                  placeholder="Select a model"
+                <ModelSelector
                   value={selectedModel}
                   onChange={setSelectedModel}
-                  data={models}
+                  modelData={modelData}
                   style={{ flex: 1, maxWidth: 400 }}
                 />
                 {currentModel?.supportsVision && (
@@ -428,7 +527,7 @@ export function ChatInterface() {
           </Stack>
         </Paper>
 
-        <Paper p="md" withBorder style={{ flex: 1, overflow: 'hidden' }}>
+        <Paper p="md" withBorder style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <ChatMessages 
             messages={messages}
             streamingContent={isLoading ? streamingContent : undefined}
@@ -443,9 +542,9 @@ export function ChatInterface() {
             onStopStreaming={() => {}}
             disabled={!selectedModel}
             model={currentModel ? {
-              id: currentModel.value,
-              providerId: '',
-              displayName: currentModel.label,
+              id: currentModel.id,
+              providerId: currentModel.providerId || '',
+              displayName: currentModel.displayName,
               supportsVision: currentModel.supportsVision
             } : undefined}
           />

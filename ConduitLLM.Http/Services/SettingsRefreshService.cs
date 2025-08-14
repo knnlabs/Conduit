@@ -1,168 +1,46 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using ConduitLLM.Configuration;
-using ConduitLLM.Configuration.Data;
+using ConduitLLM.Http.Interfaces;
 
 namespace ConduitLLM.Http.Services
 {
     /// <summary>
-    /// Service for refreshing in-memory settings from the database
-    /// Thread-safe implementation for runtime configuration updates
+    /// Service for refreshing in-memory settings from the database.
+    /// Since provider configuration is now entirely database-driven,
+    /// this service is mostly a placeholder for any future settings that might need refreshing.
     /// </summary>
     public class SettingsRefreshService : ISettingsRefreshService
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
-        private readonly IOptionsMonitor<ConduitSettings> _settingsMonitor;
         private readonly ILogger<SettingsRefreshService> _logger;
-        private readonly SemaphoreSlim _refreshLock = new(1, 1);
 
-        public SettingsRefreshService(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
-            IOptionsMonitor<ConduitSettings> settingsMonitor,
-            ILogger<SettingsRefreshService> logger)
+        public SettingsRefreshService(ILogger<SettingsRefreshService> logger)
         {
-            _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
-            _settingsMonitor = settingsMonitor ?? throw new ArgumentNullException(nameof(settingsMonitor));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <inheritdoc />
-        public async Task RefreshModelMappingsAsync()
+        public Task RefreshModelMappingsAsync()
         {
-            await _refreshLock.WaitAsync();
-            try
-            {
-                _logger.LogInformation("Refreshing model mappings from database");
-                
-                await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-                var settings = _settingsMonitor.CurrentValue;
-
-                // Load model mappings with provider information
-                var modelMappingsEntities = await dbContext.ModelProviderMappings
-                    .Include(m => m.ProviderCredential)
-                    .Where(m => m.IsEnabled)
-                    .ToListAsync();
-
-                if (modelMappingsEntities.Any())
-                {
-                    _logger.LogInformation("Found {Count} enabled model mappings in database", modelMappingsEntities.Count);
-
-                    // Convert database entities to configuration models
-                    var modelMappingsList = modelMappingsEntities.Select(m => new ModelProviderMapping
-                    {
-                        ModelAlias = m.ModelAlias,
-                        ProviderName = m.ProviderCredential.ProviderName,
-                        ProviderModelId = m.ProviderModelName
-                    }).ToList();
-
-                    // Thread-safe update of settings
-                    lock (settings)
-                    {
-                        settings.ModelMappings = modelMappingsList;
-                    }
-
-                    foreach (var mapping in modelMappingsList)
-                    {
-                        _logger.LogInformation("Refreshed model mapping: {ModelAlias} -> {ProviderName}/{ProviderModelId}",
-                            mapping.ModelAlias, mapping.ProviderName, mapping.ProviderModelId);
-                    }
-                }
-                else
-                {
-                    _logger.LogWarning("No enabled model mappings found in database");
-                    lock (settings)
-                    {
-                        settings.ModelMappings = new List<ModelProviderMapping>();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to refresh model mappings from database");
-                throw;
-            }
-            finally
-            {
-                _refreshLock.Release();
-            }
+            // Model mappings are now accessed directly from the database through services
+            _logger.LogInformation("Model mappings refresh requested - mappings are now accessed directly from database");
+            return Task.CompletedTask;
         }
 
         /// <inheritdoc />
-        public async Task RefreshProviderCredentialsAsync()
+        public Task RefreshProvidersAsync()
         {
-            await _refreshLock.WaitAsync();
-            try
-            {
-                _logger.LogInformation("Refreshing provider credentials from database");
-                
-                await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-                var settings = _settingsMonitor.CurrentValue;
-
-                // Load enabled provider credentials
-                var providerCredsList = await dbContext.ProviderCredentials
-                    .Where(p => p.IsEnabled)
-                    .ToListAsync();
-
-                if (providerCredsList.Any())
-                {
-                    _logger.LogInformation("Found {Count} enabled provider credentials in database", providerCredsList.Count);
-
-                    // Convert database entities to configuration models
-                    var providersList = providerCredsList.Select(p => new ProviderCredentials
-                    {
-                        ProviderName = p.ProviderName,
-                        ApiKey = p.ApiKey,
-                        ApiVersion = p.ApiVersion,
-                        ApiBase = p.BaseUrl
-                    }).ToList();
-
-                    // Thread-safe update of settings
-                    lock (settings)
-                    {
-                        settings.ProviderCredentials = providersList;
-                    }
-
-                    foreach (var cred in providersList)
-                    {
-                        _logger.LogInformation("Refreshed credentials for provider: {ProviderName}", cred.ProviderName);
-                    }
-                }
-                else
-                {
-                    _logger.LogWarning("No enabled provider credentials found in database");
-                    lock (settings)
-                    {
-                        settings.ProviderCredentials = new List<ProviderCredentials>();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to refresh provider credentials from database");
-                throw;
-            }
-            finally
-            {
-                _refreshLock.Release();
-            }
+            // Provider configuration is now entirely database-driven
+            _logger.LogInformation("Provider refresh requested - providers are now accessed directly from database");
+            return Task.CompletedTask;
         }
 
         /// <inheritdoc />
-        public async Task RefreshAllSettingsAsync()
+        public Task RefreshAllSettingsAsync()
         {
-            _logger.LogInformation("Refreshing all settings from database");
-            
-            // Refresh both provider credentials and model mappings
-            await RefreshProviderCredentialsAsync();
-            await RefreshModelMappingsAsync();
-            
-            _logger.LogInformation("All settings refreshed successfully");
+            // Since all configuration is database-driven, nothing to refresh
+            _logger.LogInformation("Settings refresh requested - all settings are now accessed directly from database");
+            return Task.CompletedTask;
         }
     }
 }

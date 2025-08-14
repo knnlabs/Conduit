@@ -6,12 +6,14 @@ using System.Text.Json;
 using System.Threading.Tasks;
 
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs.Audio;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 
 using Microsoft.Extensions.Logging;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Admin.Services
 {
     /// <summary>
@@ -48,23 +50,23 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <inheritdoc/>
-        public async Task<List<AudioCostDto>> GetByProviderAsync(string provider)
+        public async Task<List<AudioCostDto>> GetByProviderAsync(int providerId)
         {
-            var costs = await _repository.GetByProviderAsync(provider);
+            var costs = await _repository.GetByProviderAsync(providerId);
             return costs.Select(MapToDto).ToList();
         }
 
         /// <inheritdoc/>
-        public async Task<AudioCostDto?> GetCurrentCostAsync(string provider, string operationType, string? model = null)
+        public async Task<AudioCostDto?> GetCurrentCostAsync(int providerId, string operationType, string? model = null)
         {
-            var cost = await _repository.GetCurrentCostAsync(provider, operationType, model);
+            var cost = await _repository.GetCurrentCostAsync(providerId, operationType, model);
             return cost != null ? MapToDto(cost) : null;
         }
 
         /// <inheritdoc/>
-        public async Task<List<AudioCostDto>> GetCostHistoryAsync(string provider, string operationType, string? model = null)
+        public async Task<List<AudioCostDto>> GetCostHistoryAsync(int providerId, string operationType, string? model = null)
         {
-            var costs = await _repository.GetCostHistoryAsync(provider, operationType, model);
+            var costs = await _repository.GetCostHistoryAsync(providerId, operationType, model);
             return costs.Select(MapToDto).ToList();
         }
 
@@ -73,7 +75,7 @@ namespace ConduitLLM.Admin.Services
         {
             var cost = new AudioCost
             {
-                Provider = dto.Provider,
+                ProviderId = dto.ProviderId,
                 OperationType = dto.OperationType,
                 Model = dto.Model,
                 CostUnit = dto.CostUnit,
@@ -86,9 +88,9 @@ namespace ConduitLLM.Admin.Services
             };
 
             var created = await _repository.CreateAsync(cost);
-            _logger.LogInformation("Created audio cost configuration {Id} for {Provider} {Operation}",
+            _logger.LogInformation("Created audio cost configuration {Id} for Provider {ProviderId} {Operation}",
                 created.Id,
-                created.Provider.Replace(Environment.NewLine, ""),
+                created.ProviderId,
                 created.OperationType.Replace(Environment.NewLine, ""));
 
             return MapToDto(created);
@@ -104,7 +106,7 @@ namespace ConduitLLM.Admin.Services
             }
 
             // Update properties
-            cost.Provider = dto.Provider;
+            cost.ProviderId = dto.ProviderId;
             cost.OperationType = dto.OperationType;
             cost.Model = dto.Model;
             cost.CostUnit = dto.CostUnit;
@@ -160,7 +162,7 @@ namespace ConduitLLM.Admin.Services
                     {
                         // Check if cost configuration already exists
                         var existing = await _repository.GetCurrentCostAsync(
-                            cost.Provider, cost.OperationType, cost.Model);
+                            cost.ProviderId, cost.OperationType, cost.Model);
 
                         if (existing != null)
                         {
@@ -184,7 +186,7 @@ namespace ConduitLLM.Admin.Services
                     catch (Exception ex)
                     {
                         result.FailureCount++;
-                        result.Errors.Add($"Failed to import cost for {cost.Provider}/{cost.OperationType}: {ex.Message}");
+                        result.Errors.Add($"Failed to import cost for Provider {cost.ProviderId}/{cost.OperationType}: {ex.Message}");
                     }
                 }
 
@@ -203,9 +205,17 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <inheritdoc/>
-        public async Task<string> ExportCostsAsync(string format, string? provider = null)
+        public async Task<string> ExportCostsAsync(string format, int? providerId = null)
         {
-            var costs = provider != null ? await _repository.GetByProviderAsync(provider) : await _repository.GetAllAsync();
+            List<AudioCost> costs;
+            if (providerId.HasValue)
+            {
+                costs = await _repository.GetByProviderAsync(providerId.Value);
+            }
+            else
+            {
+                costs = await _repository.GetAllAsync();
+            }
 
             format = format?.ToLowerInvariant() ?? "json";
 
@@ -222,7 +232,8 @@ namespace ConduitLLM.Admin.Services
             return new AudioCostDto
             {
                 Id = cost.Id,
-                Provider = cost.Provider,
+                ProviderId = cost.ProviderId,
+                ProviderName = cost.Provider?.ProviderName,
                 OperationType = cost.OperationType,
                 Model = cost.Model,
                 CostUnit = cost.CostUnit,
@@ -244,19 +255,24 @@ namespace ConduitLLM.Admin.Services
                 var importData = JsonSerializer.Deserialize<List<AudioCostImportDto>>(jsonData);
                 if (importData == null) return new List<AudioCost>();
 
-                return importData.Select(d => new AudioCost
+                var costs = new List<AudioCost>();
+                foreach (var d in importData)
                 {
-                    Provider = d.Provider,
-                    OperationType = d.OperationType,
-                    Model = d.Model ?? "default",
-                    CostUnit = d.CostUnit,
-                    CostPerUnit = d.CostPerUnit,
-                    MinimumCharge = d.MinimumCharge,
-                    IsActive = d.IsActive ?? true,
-                    EffectiveFrom = d.EffectiveFrom ?? DateTime.UtcNow,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                }).ToList();
+                    costs.Add(new AudioCost
+                    {
+                        ProviderId = d.ProviderId,
+                        OperationType = d.OperationType,
+                        Model = d.Model ?? "default",
+                        CostUnit = d.CostUnit,
+                        CostPerUnit = d.CostPerUnit,
+                        MinimumCharge = d.MinimumCharge,
+                        IsActive = d.IsActive ?? true,
+                        EffectiveFrom = d.EffectiveFrom ?? DateTime.UtcNow,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    });
+                }
+                return costs;
             }
             catch (Exception ex)
             {
@@ -289,9 +305,16 @@ namespace ConduitLLM.Admin.Services
 
                 try
                 {
+                    var providerIdString = parts[0].Trim();
+                    if (!int.TryParse(providerIdString, out var providerId))
+                    {
+                        _logger.LogWarning("Invalid provider ID in CSV: {ProviderId}", providerIdString);
+                        continue;
+                    }
+                    
                     costs.Add(new AudioCost
                     {
-                        Provider = parts[0].Trim(),
+                        ProviderId = providerId,
                         OperationType = parts[1].Trim(),
                         Model = parts.Length > 2 ? parts[2].Trim() : "default",
                         CostUnit = parts[3].Trim(),
@@ -319,7 +342,8 @@ namespace ConduitLLM.Admin.Services
         {
             var exportData = costs.Select(c => new AudioCostImportDto
             {
-                Provider = c.Provider,
+                ProviderId = c.ProviderId,
+                ProviderName = c.Provider?.ProviderName,
                 OperationType = c.OperationType,
                 Model = c.Model,
                 CostUnit = c.CostUnit,
@@ -338,11 +362,11 @@ namespace ConduitLLM.Admin.Services
         private string GenerateCsvExport(List<AudioCost> costs)
         {
             var csv = new StringBuilder();
-            csv.AppendLine("Provider,OperationType,Model,CostUnit,CostPerUnit,MinimumCharge");
+            csv.AppendLine("ProviderId,OperationType,Model,CostUnit,CostPerUnit,MinimumCharge");
 
-            foreach (var cost in costs.OrderBy(c => c.Provider).ThenBy(c => c.OperationType))
+            foreach (var cost in costs.OrderBy(c => c.ProviderId).ThenBy(c => c.OperationType))
             {
-                csv.AppendLine($"{cost.Provider},{cost.OperationType},{cost.Model}," +
+                csv.AppendLine($"{cost.ProviderId},{cost.OperationType},{cost.Model}," +
                     $"{cost.CostUnit},{cost.CostPerUnit},{cost.MinimumCharge ?? 0}");
             }
 
@@ -350,18 +374,4 @@ namespace ConduitLLM.Admin.Services
         }
     }
 
-    /// <summary>
-    /// DTO for importing audio costs.
-    /// </summary>
-    internal class AudioCostImportDto
-    {
-        public string Provider { get; set; } = string.Empty;
-        public string OperationType { get; set; } = string.Empty;
-        public string? Model { get; set; }
-        public string CostUnit { get; set; } = string.Empty;
-        public decimal CostPerUnit { get; set; }
-        public decimal? MinimumCharge { get; set; }
-        public bool? IsActive { get; set; }
-        public DateTime? EffectiveFrom { get; set; }
-    }
 }

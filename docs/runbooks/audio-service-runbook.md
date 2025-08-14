@@ -265,7 +265,8 @@ curl http://audio-service/admin/connection-pool/stats \
 2. **Failover to Backup Region**
    ```bash
    # Update DNS to point to backup region
-   ./scripts/failover-audio-service.sh us-west-2
+   # Example: ./scripts/failover-audio-service.sh us-west-2
+   # Note: This is an example script that would need to be created
    ```
 
 3. **Emergency Scaling**
@@ -286,7 +287,8 @@ curl http://audio-service/admin/connection-pool/stats \
 2. **Redistribute Traffic**
    ```bash
    # Update weights for remaining providers
-   ./scripts/redistribute-audio-traffic.sh --exclude openai
+   # Example: ./scripts/redistribute-audio-traffic.sh --exclude openai
+   # Note: This is an example script that would need to be created
    ```
 
 3. **Monitor Capacity**
@@ -410,7 +412,8 @@ services.Configure<AudioBatchOptions>(options =>
 3. **Metrics Backup**
    ```bash
    # Export Prometheus data
-   ./scripts/backup-prometheus.sh audio-metrics
+   # Example: ./scripts/backup-prometheus.sh audio-metrics
+   # Note: This is an example script that would need to be created
    ```
 
 ### Recovery Procedures
@@ -435,10 +438,12 @@ services.Configure<AudioBatchOptions>(options =>
 3. **Verify Recovery**
    ```bash
    # Run health checks
-   ./scripts/verify-audio-service.sh
+   # Example: ./scripts/verify-audio-service.sh
+   # Note: This is an example script that would need to be created
    
    # Test each provider
-   ./scripts/test-audio-providers.sh
+   # Example: ./scripts/test-audio-providers.sh
+   # Note: This is an example script that would need to be created
    ```
 
 ### RTO/RPO Targets

@@ -8,7 +8,7 @@ By default, Conduit uses in-memory storage for development. Generated media file
 
 ## Production (S3-Compatible Storage)
 
-For production deployments, configure S3-compatible storage (AWS S3, Cloudflare R2, MinIO, etc.):
+For production deployments, configure S3-compatible storage (AWS S3, Cloudflare R2, etc.):
 
 ```bash
 # Storage provider configuration
@@ -21,6 +21,14 @@ export CONDUITLLM__STORAGE__S3__SECRETKEY=your-secret-key
 export CONDUITLLM__STORAGE__S3__BUCKETNAME=conduit-media
 export CONDUITLLM__STORAGE__S3__REGION=auto  # Or specific region like us-east-1
 export CONDUITLLM__STORAGE__S3__PUBLICBASEURL=https://cdn.yourdomain.com  # Optional CDN URL
+
+# Optional advanced settings (with defaults shown)
+# export CONDUITLLM__STORAGE__S3__FORCEPATHSTYLE=true  # Required for most S3-compatible services
+# export CONDUITLLM__STORAGE__S3__AUTOCREATEBUCKET=true  # Auto-create bucket if it doesn't exist
+# export CONDUITLLM__STORAGE__S3__AUTOCONFIGURECORS=true  # Auto-configure CORS for browser access
+# export CONDUITLLM__STORAGE__S3__MAXFILESIZEBYTES=524288000  # 500MB max file size
+# export CONDUITLLM__STORAGE__S3__MULTIPARTTHRESHOLDBYTES=104857600  # 100MB threshold for multipart
+# export CONDUITLLM__STORAGE__S3__MULTIPARTCHUNKSIZEBYTES=10485760  # 10MB chunk size (optimal for R2)
 ```
 
 ## Cloudflare R2 Example
@@ -32,6 +40,26 @@ export CONDUITLLM__STORAGE__S3__ACCESSKEY=<r2-access-key>
 export CONDUITLLM__STORAGE__S3__SECRETKEY=<r2-secret-key>
 export CONDUITLLM__STORAGE__S3__BUCKETNAME=conduit-media
 export CONDUITLLM__STORAGE__S3__REGION=auto
+```
+
+**Cloudflare R2 Optimizations:**
+- R2 is automatically detected when the ServiceURL contains "r2.cloudflarestorage.com"
+- Optimized multipart upload settings are applied automatically for R2
+- Default chunk size is 10MB (optimal for R2 performance)
+- CORS is automatically configured for browser access
+
+## R2 Public URL Configuration
+
+For Cloudflare R2, you can use either:
+1. **R2.dev subdomain** (free): `https://pub-[hash].r2.dev`
+2. **Custom domain**: Configure a custom domain in Cloudflare and use it as `PUBLICBASEURL`
+
+```bash
+# Example with R2.dev subdomain
+export CONDUITLLM__STORAGE__S3__PUBLICBASEURL=https://pub-abc123def456.r2.dev
+
+# Example with custom domain
+export CONDUITLLM__STORAGE__S3__PUBLICBASEURL=https://media.yourdomain.com
 ```
 
 ## Docker SignalR Configuration
@@ -76,11 +104,31 @@ See `docs/TODO-Media-Lifecycle-Management.md` for the planned implementation to 
 The image generation endpoint is available at:
 ```
 POST /v1/images/generations
+POST /v1/images/generations/async
 ```
 
-This endpoint follows OpenAI's image generation API format and supports providers like OpenAI (DALL-E), MiniMax, and Replicate.
+These endpoints follow OpenAI's image generation API format and support various providers.
 
 #### Supported Image Generation Models
+Image generation models must be configured through the model mappings system. Common providers include:
 - **OpenAI**: `dall-e-2`, `dall-e-3`
 - **MiniMax**: `minimax-image` (maps to `image-01`)
 - **Replicate**: Various models via model name
+- **Other providers**: As configured in your model mappings
+
+### Video Generation API
+The video generation endpoint is available at:
+```
+POST /v1/videos/generations/async
+```
+
+**Note**: Video generation is async-only due to longer processing times. Use the task status endpoint to check progress:
+```
+GET /v1/videos/generations/tasks/{taskId}
+```
+
+#### Video Generation Features
+- Async processing with progress tracking
+- Task status monitoring
+- Task cancellation support
+- Multipart upload for large video files

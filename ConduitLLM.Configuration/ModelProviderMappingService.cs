@@ -1,5 +1,5 @@
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Configuration.Mapping;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
 
 using Microsoft.Extensions.Logging;
@@ -13,19 +13,19 @@ namespace ConduitLLM.Configuration
     {
         private readonly ILogger<ModelProviderMappingService> _logger;
         private readonly IModelProviderMappingRepository _repository;
-        private readonly IProviderCredentialRepository _credentialRepository;
+        private readonly IProviderRepository _providerRepository;
 
         public ModelProviderMappingService(
             ILogger<ModelProviderMappingService> logger,
             IModelProviderMappingRepository repository,
-            IProviderCredentialRepository credentialRepository)
+            IProviderRepository providerRepository)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _repository = repository ?? throw new ArgumentNullException(nameof(repository));
-            _credentialRepository = credentialRepository ?? throw new ArgumentNullException(nameof(credentialRepository));
+            _providerRepository = providerRepository ?? throw new ArgumentNullException(nameof(providerRepository));
         }
 
-        public async Task AddMappingAsync(ModelProviderMapping mapping)
+        public async Task AddMappingAsync(Entities.ModelProviderMapping mapping)
         {
             if (mapping == null)
             {
@@ -37,25 +37,29 @@ namespace ConduitLLM.Configuration
 _logger.LogInformation("Adding mapping: {ModelAlias}", mapping.ModelAlias.Replace(Environment.NewLine, ""));
 
                 // Get the provider credential
-                var credential = await _credentialRepository.GetByProviderNameAsync(mapping.ProviderName);
-                if (credential == null)
+                Provider? credential = null;
+                
+                // Prefer ProviderId if available
+                if (mapping.ProviderId > 0)
                 {
-_logger.LogWarning("Provider credentials not found for provider {ProviderName}", mapping.ProviderName.Replace(Environment.NewLine, ""));
-                    throw new InvalidOperationException("Provider credentials not found for the specified provider");
-                }
-
-                // Convert to entity and set the provider credential ID
-                var entity = ModelProviderMappingMapper.ToEntity(mapping);
-                if (entity != null)
-                {
-                    entity.ProviderCredentialId = credential.Id;
+                    credential = await _providerRepository.GetByIdAsync(mapping.ProviderId);
+                    if (credential == null)
+                    {
+                        _logger.LogWarning("Provider credentials not found for provider ID {ProviderId}", mapping.ProviderId);
+                        throw new InvalidOperationException($"Provider credentials not found for provider ID {mapping.ProviderId}");
+                    }
                 }
                 else
                 {
-                    throw new InvalidOperationException("Failed to convert DTO to entity");
+                    // ProviderId is required
+                    _logger.LogWarning("ProviderId is required for model provider mapping");
+                    throw new InvalidOperationException("ProviderId is required for model provider mapping");
                 }
 
-                await _repository.CreateAsync(entity);
+                // Set the provider credential ID
+                mapping.ProviderId = credential.Id;
+
+                await _repository.CreateAsync(mapping);
             }
             catch (Exception ex)
             {
@@ -78,13 +82,12 @@ _logger.LogError(ex, "Error adding mapping for model alias {ModelAlias}".Replace
             }
         }
 
-        public async Task<List<ModelProviderMapping>> GetAllMappingsAsync()
+        public async Task<List<Entities.ModelProviderMapping>> GetAllMappingsAsync()
         {
             try
             {
                 _logger.LogInformation("Getting all model-provider mappings");
-                var entities = await _repository.GetAllAsync();
-                return ModelProviderMappingMapper.ToDtoList(entities);
+                return await _repository.GetAllAsync();
             }
             catch (Exception ex)
             {
@@ -93,13 +96,12 @@ _logger.LogError(ex, "Error adding mapping for model alias {ModelAlias}".Replace
             }
         }
 
-        public async Task<ModelProviderMapping?> GetMappingByIdAsync(int id)
+        public async Task<Entities.ModelProviderMapping?> GetMappingByIdAsync(int id)
         {
             try
             {
                 _logger.LogInformation("Getting mapping by ID: {Id}", id);
-                var entity = await _repository.GetByIdAsync(id);
-                return ModelProviderMappingMapper.ToDto(entity);
+                return await _repository.GetByIdAsync(id);
             }
             catch (Exception ex)
             {
@@ -108,7 +110,7 @@ _logger.LogError(ex, "Error adding mapping for model alias {ModelAlias}".Replace
             }
         }
 
-        public async Task<ModelProviderMapping?> GetMappingByModelAliasAsync(string modelAlias)
+        public async Task<Entities.ModelProviderMapping?> GetMappingByModelAliasAsync(string modelAlias)
         {
             if (string.IsNullOrEmpty(modelAlias))
             {
@@ -118,8 +120,7 @@ _logger.LogError(ex, "Error adding mapping for model alias {ModelAlias}".Replace
             try
             {
 _logger.LogInformation("Getting mapping by model alias: {ModelAlias}", modelAlias.Replace(Environment.NewLine, ""));
-                var entity = await _repository.GetByModelNameAsync(modelAlias);
-                return ModelProviderMappingMapper.ToDto(entity);
+                return await _repository.GetByModelNameAsync(modelAlias);
             }
             catch (Exception ex)
             {
@@ -128,7 +129,7 @@ _logger.LogError(ex, "Error getting mapping for model alias {ModelAlias}".Replac
             }
         }
 
-        public async Task UpdateMappingAsync(ModelProviderMapping mapping)
+        public async Task UpdateMappingAsync(Entities.ModelProviderMapping mapping)
         {
             if (mapping == null)
             {
@@ -148,25 +149,49 @@ _logger.LogWarning("Mapping not found for model alias {ModelAlias}", mapping.Mod
                 }
 
                 // Get the provider credential
-                var credential = await _credentialRepository.GetByProviderNameAsync(mapping.ProviderName);
-                if (credential == null)
+                Provider? credential = null;
+                
+                // Prefer ProviderId if available
+                if (mapping.ProviderId > 0)
                 {
-_logger.LogWarning("Provider credentials not found for provider {ProviderName}", mapping.ProviderName.Replace(Environment.NewLine, ""));
-                    throw new InvalidOperationException("Provider credentials not found for the specified provider");
-                }
-
-                // Update the entity
-                var entity = ModelProviderMappingMapper.ToEntity(mapping, existingEntity);
-                if (entity != null)
-                {
-                    entity.ProviderCredentialId = credential.Id;
+                    credential = await _providerRepository.GetByIdAsync(mapping.ProviderId);
+                    if (credential == null)
+                    {
+                        _logger.LogWarning("Provider credentials not found for provider ID {ProviderId}", mapping.ProviderId);
+                        throw new InvalidOperationException($"Provider credentials not found for provider ID {mapping.ProviderId}");
+                    }
                 }
                 else
                 {
-                    throw new InvalidOperationException("Failed to convert DTO to entity");
+                    // ProviderId is required
+                    _logger.LogWarning("ProviderId is required for model provider mapping");
+                    throw new InvalidOperationException("ProviderId is required for model provider mapping");
                 }
 
-                await _repository.UpdateAsync(entity);
+                // Update the entity
+                existingEntity.ModelAlias = mapping.ModelAlias;
+                existingEntity.ProviderModelId = mapping.ProviderModelId;
+                existingEntity.ProviderId = credential.Id;
+                existingEntity.IsEnabled = mapping.IsEnabled;
+                existingEntity.MaxContextTokens = mapping.MaxContextTokens;
+                existingEntity.SupportsVision = mapping.SupportsVision;
+                existingEntity.SupportsAudioTranscription = mapping.SupportsAudioTranscription;
+                existingEntity.SupportsTextToSpeech = mapping.SupportsTextToSpeech;
+                existingEntity.SupportsRealtimeAudio = mapping.SupportsRealtimeAudio;
+                existingEntity.SupportsImageGeneration = mapping.SupportsImageGeneration;
+                existingEntity.SupportsVideoGeneration = mapping.SupportsVideoGeneration;
+                existingEntity.SupportsEmbeddings = mapping.SupportsEmbeddings;
+                existingEntity.SupportsChat = mapping.SupportsChat;
+                existingEntity.SupportsFunctionCalling = mapping.SupportsFunctionCalling;
+                existingEntity.SupportsStreaming = mapping.SupportsStreaming;
+                existingEntity.TokenizerType = mapping.TokenizerType;
+                existingEntity.SupportedVoices = mapping.SupportedVoices;
+                existingEntity.SupportedLanguages = mapping.SupportedLanguages;
+                existingEntity.SupportedFormats = mapping.SupportedFormats;
+                existingEntity.IsDefault = mapping.IsDefault;
+                existingEntity.DefaultCapabilityType = mapping.DefaultCapabilityType;
+
+                await _repository.UpdateAsync(existingEntity);
             }
             catch (Exception ex)
             {
@@ -175,7 +200,7 @@ _logger.LogError(ex, "Error updating mapping for model alias {ModelAlias}".Repla
             }
         }
 
-        public async Task<(bool success, string? errorMessage, ModelProviderMapping? createdMapping)> ValidateAndCreateMappingAsync(ModelProviderMapping mapping)
+        public async Task<(bool success, string? errorMessage, Entities.ModelProviderMapping? createdMapping)> ValidateAndCreateMappingAsync(Entities.ModelProviderMapping mapping)
         {
             if (mapping == null)
             {
@@ -185,11 +210,23 @@ _logger.LogError(ex, "Error updating mapping for model alias {ModelAlias}".Repla
             try
             {
                 // Validate that the provider exists
-                var provider = await _credentialRepository.GetByProviderNameAsync(mapping.ProviderName);
-                if (provider == null)
+                Provider? provider = null;
+                
+                // Prefer ProviderId if available
+                if (mapping.ProviderId > 0)
                 {
-                    _logger.LogWarning("Provider does not exist {ProviderName}", mapping.ProviderName.Replace(Environment.NewLine, ""));
-                    return (false, $"Provider does not exist: {mapping.ProviderName}", null);
+                    provider = await _providerRepository.GetByIdAsync(mapping.ProviderId);
+                    if (provider == null)
+                    {
+                        _logger.LogWarning("Provider does not exist with ID {ProviderId}", mapping.ProviderId);
+                        return (false, $"Provider does not exist with ID: {mapping.ProviderId}", null);
+                    }
+                }
+                else
+                {
+                    // ProviderId is required
+                    _logger.LogWarning("ProviderId is required for model provider mapping");
+                    return (false, "ProviderId is required for model provider mapping", null);
                 }
 
                 // Check if a mapping with the same alias already exists
@@ -214,7 +251,7 @@ _logger.LogError(ex, "Error updating mapping for model alias {ModelAlias}".Repla
             }
         }
 
-        public async Task<(bool success, string? errorMessage)> ValidateAndUpdateMappingAsync(int id, ModelProviderMapping mapping)
+        public async Task<(bool success, string? errorMessage)> ValidateAndUpdateMappingAsync(int id, Entities.ModelProviderMapping mapping)
         {
             if (mapping == null)
             {
@@ -232,11 +269,19 @@ _logger.LogError(ex, "Error updating mapping for model alias {ModelAlias}".Repla
                 }
 
                 // Validate that the provider exists
-                var provider = await _credentialRepository.GetByProviderNameAsync(mapping.ProviderName);
-                if (provider == null)
+                if (mapping.ProviderId > 0)
                 {
-                    _logger.LogWarning("Provider does not exist {ProviderName}", mapping.ProviderName.Replace(Environment.NewLine, ""));
-                    return (false, $"Provider does not exist: {mapping.ProviderName}");
+                    var provider = await _providerRepository.GetByIdAsync(mapping.ProviderId);
+                    if (provider == null)
+                    {
+                        _logger.LogWarning("Provider does not exist {ProviderId}", mapping.ProviderId);
+                        return (false, $"Provider does not exist: {mapping.ProviderId}");
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning("ProviderId is required for model provider mapping");
+                    return (false, "ProviderId is required for model provider mapping");
                 }
 
                 // Update the mapping
@@ -250,21 +295,17 @@ _logger.LogError(ex, "Error updating mapping for model alias {ModelAlias}".Repla
             }
         }
 
-        public async Task<bool> ProviderExistsAsync(string providerName)
-        {
-            if (string.IsNullOrEmpty(providerName))
-            {
-                return false;
-            }
 
+        public async Task<bool> ProviderExistsByIdAsync(int providerId)
+        {
             try
             {
-                var provider = await _credentialRepository.GetByProviderNameAsync(providerName);
+                var provider = await _providerRepository.GetByIdAsync(providerId);
                 return provider != null;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error checking if provider exists: {ProviderName}", providerName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error checking if provider exists by ID: {ProviderId}", providerId);
                 return false;
             }
         }
@@ -274,7 +315,7 @@ _logger.LogError(ex, "Error updating mapping for model alias {ModelAlias}".Repla
             try
             {
                 _logger.LogInformation("Getting all available providers");
-                var providers = await _credentialRepository.GetAllAsync();
+                var providers = await _providerRepository.GetAllAsync();
                 return providers.Select(p => (p.Id, p.ProviderName)).ToList();
             }
             catch (Exception ex)

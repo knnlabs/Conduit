@@ -6,51 +6,46 @@ import {
   Text,
   Badge,
   ActionIcon,
-  Progress,
-  Tooltip,
   Stack,
   Box,
   Paper,
   Menu,
   rem,
+  Anchor,
 } from '@mantine/core';
 import {
   IconEye,
-  IconCopy,
   IconEdit,
   IconTrash,
   IconDotsVertical,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
-import { notifications } from '@mantine/notifications';
 import { formatters } from '@/lib/utils/formatters';
-import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
-
-// Extend VirtualKeyDto with UI-specific fields added by the API
-interface VirtualKeyWithUI extends VirtualKeyDto {
-  displayKey: string;
-}
+import { useRouter } from 'next/navigation';
+import type { VirtualKeyDto, VirtualKeyGroupDto } from '@knn_labs/conduit-admin-client';
 
 interface VirtualKeysTableProps {
-  onEdit?: (key: VirtualKeyWithUI) => void;
-  onView?: (key: VirtualKeyWithUI) => void;
-  data?: VirtualKeyWithUI[];
+  onEdit?: (key: VirtualKeyDto) => void;
+  onView?: (key: VirtualKeyDto) => void;
+  data?: VirtualKeyDto[];
+  groups?: VirtualKeyGroupDto[];
   onDelete?: (keyId: string) => void;
 }
 
-export function VirtualKeysTable({ onEdit, onView, data, onDelete }: VirtualKeysTableProps) {
+export function VirtualKeysTable({ onEdit, onView, data, groups, onDelete }: VirtualKeysTableProps) {
   const virtualKeys = data ?? [];
+  const router = useRouter();
+  
+  // Create maps for group data lookup
+  const groupNameMap = new Map<number, string>();
+  const groupBalanceMap = new Map<number, number>();
+  groups?.forEach(group => {
+    groupNameMap.set(group.id, group.groupName);
+    groupBalanceMap.set(group.id, group.balance);
+  });
 
-  const handleCopyKey = (keyHash: string) => {
-    void navigator.clipboard.writeText(keyHash);
-    notifications.show({
-      title: 'Copied',
-      message: 'Key hash copied to clipboard',
-      color: 'green',
-    });
-  };
 
-  const handleDelete = (key: VirtualKeyWithUI) => {
+  const handleDelete = (key: VirtualKeyDto) => {
     modals.openConfirmModal({
       title: 'Delete Virtual Key',
       children: (
@@ -65,20 +60,11 @@ export function VirtualKeysTable({ onEdit, onView, data, onDelete }: VirtualKeys
     });
   };
 
-  const getBudgetUsagePercentage = (currentSpend: number, maxBudget?: number) => {
-    if (!maxBudget) return 0;
-    return Math.min((currentSpend / maxBudget) * 100, 100);
-  };
-
-  const getBudgetUsageColor = (percentage: number) => {
-    if (percentage >= 90) return 'red';
-    if (percentage >= 75) return 'yellow';
-    return 'green';
+  const handleGroupClick = (groupId: number) => {
+    router.push(`/virtualkeys/groups?groupId=${groupId}`);
   };
 
   const rows = virtualKeys.map((key) => {
-    const budgetUsagePercentage = getBudgetUsagePercentage(key.currentSpend, key.maxBudget);
-    const budgetUsageColor = key.maxBudget ? getBudgetUsageColor(budgetUsagePercentage) : 'blue';
 
     return (
       <Table.Tr key={key.id}>
@@ -92,45 +78,34 @@ export function VirtualKeysTable({ onEdit, onView, data, onDelete }: VirtualKeys
         </Table.Td>
 
         <Table.Td>
-          <Group gap="xs">
-            <Text size="sm" style={{ fontFamily: 'monospace' }}>
-              {key.displayKey.substring(0, 12)}...
-            </Text>
-            <Tooltip label="Copy full key">
-              <ActionIcon
-                variant="subtle"
-                size="xs"
-                onClick={() => handleCopyKey(key.displayKey)}
-              >
-                <IconCopy size={14} />
-              </ActionIcon>
-            </Tooltip>
-          </Group>
+          <Text size="sm" style={{ fontFamily: 'monospace' }}>
+            {key.keyPrefix ?? 'N/A'}
+          </Text>
         </Table.Td>
 
         <Table.Td>
           <Stack gap={4}>
-            <Text size="sm" fw={500}>
-              ${key.currentSpend.toFixed(2)}
-              {key.maxBudget && (
-                <Text component="span" size="sm" c="dimmed">
-                  {' '}/ ${key.maxBudget.toFixed(2)}
-                </Text>
-              )}
+            <Anchor 
+              size="sm" 
+              fw={500}
+              onClick={() => handleGroupClick(key.virtualKeyGroupId)}
+              style={{ cursor: 'pointer' }}
+            >
+              {groupNameMap.get(key.virtualKeyGroupId) ?? `Group ID: ${key.virtualKeyGroupId}`}
+            </Anchor>
+            <Text size="xs" c="dimmed">
+              Balance tracked at group level
             </Text>
-            {key.maxBudget && (
-              <Progress
-                value={budgetUsagePercentage}
-                color={budgetUsageColor}
-                size="sm"
-                radius="md"
-              />
-            )}
           </Stack>
         </Table.Td>
 
         <Table.Td>
-          <Text size="sm">{key.requestCount?.toLocaleString() ?? '0'}</Text>
+          <Text fw={500} size="sm" style={{ fontFamily: 'monospace' }}>
+            {(() => {
+              const balance = groupBalanceMap.get(key.virtualKeyGroupId);
+              return balance !== undefined ? `$${balance.toFixed(2)}` : 'N/A';
+            })()}
+          </Text>
         </Table.Td>
 
         <Table.Td>
@@ -145,7 +120,7 @@ export function VirtualKeysTable({ onEdit, onView, data, onDelete }: VirtualKeys
 
         <Table.Td>
           <Text size="sm" c="dimmed">
-            {key.lastUsedAt ? formatters.date(key.lastUsedAt) : 'Never'}
+            {key.expiresAt ? formatters.date(key.expiresAt) : 'No expiration'}
           </Text>
         </Table.Td>
 
@@ -194,11 +169,11 @@ export function VirtualKeysTable({ onEdit, onView, data, onDelete }: VirtualKeys
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Name</Table.Th>
-                <Table.Th>Key Hash</Table.Th>
-                <Table.Th>Budget Usage</Table.Th>
-                <Table.Th>Requests</Table.Th>
+                <Table.Th>Key Prefix</Table.Th>
+                <Table.Th>Virtual Key Group</Table.Th>
+                <Table.Th>Current Balance</Table.Th>
                 <Table.Th>Status</Table.Th>
-                <Table.Th>Last Used</Table.Th>
+                <Table.Th>Expires</Table.Th>
                 <Table.Th />
               </Table.Tr>
             </Table.Thead>

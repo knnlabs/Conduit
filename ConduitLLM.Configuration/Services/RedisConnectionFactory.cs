@@ -73,8 +73,13 @@ namespace ConduitLLM.Configuration.Services
             {
                 try
                 {
+                    _logger.LogInformation("Attempting to connect to Redis: {ConnectionString}", 
+                        connectionString.Contains("password=") ? connectionString.Replace("password=", "password=******") : connectionString);
+                    
                     var configOptions = ConfigurationOptions.Parse(connectionString);
                     configOptions.AbortOnConnectFail = false;
+                    configOptions.ConnectTimeout = 5000; // 5 second timeout
+                    configOptions.SyncTimeout = 5000; // 5 second sync timeout
                     
                     // Enable admin mode for Redis INFO command used by metrics collection
                     configOptions.AllowAdmin = true;

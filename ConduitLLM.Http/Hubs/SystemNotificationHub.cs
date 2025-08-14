@@ -6,8 +6,10 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Configuration.DTOs.SignalR;
+using ConduitLLM.Configuration;
 using ConduitLLM.Http.Metrics;
 
+using ConduitLLM.Http.Interfaces;
 namespace ConduitLLM.Http.Hubs
 {
     /// <summary>
@@ -120,19 +122,20 @@ namespace ConduitLLM.Http.Hubs
         /// <summary>
         /// Notifies clients about provider health status changes.
         /// </summary>
-        public async Task ProviderHealthChanged(string provider, HealthStatus status, TimeSpan? responseTime)
+        public async Task ProviderHealthChanged(int providerId, string providerName, HealthStatus status, TimeSpan? responseTime)
         {
             var notification = new ProviderHealthNotification
             {
-                Provider = provider,
+                ProviderId = providerId,
+                ProviderName = providerName,
                 Status = status.ToString(),
                 ResponseTimeMs = responseTime?.TotalMilliseconds,
                 Priority = status == HealthStatus.Unhealthy ? NotificationPriority.High : NotificationPriority.Medium,
                 Details = status switch
                 {
-                    HealthStatus.Healthy => $"{provider} is operating normally",
-                    HealthStatus.Degraded => $"{provider} is experiencing performance issues",
-                    HealthStatus.Unhealthy => $"{provider} is currently unavailable",
+                    HealthStatus.Healthy => $"{providerName} is operating normally",
+                    HealthStatus.Degraded => $"{providerName} is experiencing performance issues",
+                    HealthStatus.Unhealthy => $"{providerName} is currently unavailable",
                     _ => null
                 }
             };
@@ -231,10 +234,11 @@ namespace ConduitLLM.Http.Hubs
         /// <summary>
         /// Notifies clients of model capabilities discovery.
         /// </summary>
-        public async Task ModelCapabilitiesDiscovered(string providerName, int modelCount, int embeddingCount = 0, int visionCount = 0, int imageGenCount = 0, int videoGenCount = 0)
+        public async Task ModelCapabilitiesDiscovered(int providerId, string providerName, int modelCount, int embeddingCount = 0, int visionCount = 0, int imageGenCount = 0, int videoGenCount = 0)
         {
             var notification = new ModelCapabilitiesNotification
             {
+                ProviderId = providerId,
                 ProviderName = providerName,
                 ModelCount = modelCount,
                 EmbeddingCount = embeddingCount,

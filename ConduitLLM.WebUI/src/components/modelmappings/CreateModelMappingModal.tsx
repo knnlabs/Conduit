@@ -18,7 +18,8 @@ import { IconInfoCircle } from '@tabler/icons-react';
 import { useCreateModelMapping } from '@/hooks/useModelMappingsApi';
 import { useProviders } from '@/hooks/useProviderApi';
 import { ProviderModelSelect } from './ProviderModelSelect';
-import type { CreateModelProviderMappingDto, ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+import type { CreateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
+// Remove unused import
 
 interface CreateModelMappingModalProps {
   isOpen: boolean;
@@ -41,6 +42,7 @@ interface FormValues {
   supportsFunctionCalling: boolean;
   supportsStreaming: boolean;
   supportsEmbeddings: boolean;
+  supportsChat: boolean;
   // Metadata
   maxContextLength?: number;
   maxOutputTokens?: number;
@@ -70,6 +72,7 @@ export function CreateModelMappingModal({
       supportsFunctionCalling: false,
       supportsStreaming: true, // Most models support streaming
       supportsEmbeddings: false,
+      supportsChat: false,
       maxContextLength: undefined,
       maxOutputTokens: undefined,
       isDefault: false,
@@ -83,13 +86,9 @@ export function CreateModelMappingModal({
   });
 
   const handleSubmit = async (values: FormValues) => {
-    // Convert the numeric provider ID to provider name for the backend
-    const provider = providers?.find(p => p.id.toString() === values.providerId);
-    const providerName = provider?.providerName ?? values.providerId;
-
     const createData: CreateModelProviderMappingDto = {
       modelId: values.modelId,
-      providerId: providerName, // Backend expects provider name, not numeric ID
+      providerId: parseInt(values.providerId, 10), // Send numeric ID directly
       providerModelId: values.providerModelId,
       priority: values.priority,
       isEnabled: values.isEnabled,
@@ -101,6 +100,7 @@ export function CreateModelMappingModal({
       supportsFunctionCalling: values.supportsFunctionCalling,
       supportsStreaming: values.supportsStreaming,
       supportsEmbeddings: values.supportsEmbeddings,
+      supportsChat: values.supportsChat,
       maxContextLength: values.maxContextLength,
       maxOutputTokens: values.maxOutputTokens,
       isDefault: values.isDefault,
@@ -112,10 +112,10 @@ export function CreateModelMappingModal({
     onClose();
   };
 
-  const providerOptions = providers?.map((p: ProviderCredentialDto) => ({
-    value: p.id.toString(),
-    label: p.providerName,
-  })) || [];
+  const providerOptions = providers?.map((p) => ({
+    value: p.id?.toString() ?? '',
+    label: p.providerName ?? `Provider ${p.id}`,
+  })).filter(opt => opt.value !== '' && opt.label !== '') ?? [];
 
   const handleCapabilitiesDetected = (capabilities: Record<string, boolean>) => {
     // Update form values based on detected capabilities
@@ -203,12 +203,23 @@ export function CreateModelMappingModal({
 
           <Group grow>
             <Switch
-              label="Vision"
-              {...form.getInputProps('supportsVision', { type: 'checkbox' })}
+              label="Chat"
+              {...form.getInputProps('supportsChat', { type: 'checkbox' })}
             />
             <Switch
               label="Streaming"
               {...form.getInputProps('supportsStreaming', { type: 'checkbox' })}
+            />
+          </Group>
+
+          <Group grow>
+            <Switch
+              label="Vision"
+              {...form.getInputProps('supportsVision', { type: 'checkbox' })}
+            />
+            <Switch
+              label="Embeddings"
+              {...form.getInputProps('supportsEmbeddings', { type: 'checkbox' })}
             />
           </Group>
 
@@ -237,11 +248,6 @@ export function CreateModelMappingModal({
           <Switch
             label="Realtime Audio"
             {...form.getInputProps('supportsRealtimeAudio', { type: 'checkbox' })}
-          />
-
-          <Switch
-            label="Embeddings"
-            {...form.getInputProps('supportsEmbeddings', { type: 'checkbox' })}
           />
 
           <Divider label="Context Limits (Optional)" labelPosition="center" />

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import {
   Table,
   Group,
@@ -19,12 +19,22 @@ import {
   IconAlertCircle,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
+import { useRouter } from 'next/navigation';
 import { 
   useModelMappings, 
   useDeleteModelMapping
 } from '@/hooks/useModelMappingsApi';
-import { EditModelMappingModal } from './EditModelMappingModalWithHooks';
 import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
+
+// Extend the DTO type to ensure provider property is available
+interface ExtendedModelProviderMappingDto extends ModelProviderMappingDto {
+  provider?: {
+    id: number;
+    providerType: number;
+    displayName: string;
+    isEnabled: boolean;
+  };
+}
 
 interface ModelMappingsTableProps {
   onRefresh?: () => void;
@@ -33,7 +43,7 @@ interface ModelMappingsTableProps {
 export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
   const { mappings, isLoading, error, refetch } = useModelMappings();
   const deleteMapping = useDeleteModelMapping();
-  const [editingMapping, setEditingMapping] = useState<ModelProviderMappingDto | null>(null);
+  const router = useRouter();
 
   // Refresh data when onRefresh changes
   useEffect(() => {
@@ -42,12 +52,12 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
     }
   }, [onRefresh, refetch]);
 
-  const handleEdit = (mapping: ModelProviderMappingDto) => {
-    setEditingMapping(mapping);
+  const handleEdit = (mapping: ExtendedModelProviderMappingDto) => {
+    router.push(`/model-mappings/edit/${mapping.id}`);
   };
 
 
-  const handleDelete = (mapping: ModelProviderMappingDto) => {
+  const handleDelete = (mapping: ExtendedModelProviderMappingDto) => {
     modals.openConfirmModal({
       title: 'Delete Model Mapping',
       children: (
@@ -62,18 +72,19 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
     });
   };
 
-  const getCapabilityBadges = (mapping: ModelProviderMappingDto) => {
+  const getCapabilityBadges = (mapping: ExtendedModelProviderMappingDto) => {
     const capabilities = [];
-    if (mapping.supportsVision) capabilities.push({ label: 'Vision', color: 'blue' });
-    if (mapping.supportsImageGeneration) capabilities.push({ label: 'Images', color: 'pink' });
-    if (mapping.supportsAudioTranscription) capabilities.push({ label: 'Audio', color: 'teal' });
-    if (mapping.supportsTextToSpeech) capabilities.push({ label: 'TTS', color: 'violet' });
-    if (mapping.supportsRealtimeAudio) capabilities.push({ label: 'Realtime', color: 'orange' });
+    if (mapping.supportsChat) capabilities.push({ label: '💬 Chat', color: 'blue' });
+    if (mapping.supportsVision) capabilities.push({ label: '👁️ Vision', color: 'cyan' });
+    if (mapping.supportsImageGeneration) capabilities.push({ label: '🎨 Images', color: 'pink' });
+    if (mapping.supportsAudioTranscription) capabilities.push({ label: '🎤 Audio', color: 'teal' });
+    if (mapping.supportsTextToSpeech) capabilities.push({ label: '🔊 TTS', color: 'violet' });
+    if (mapping.supportsRealtimeAudio) capabilities.push({ label: '📡 Realtime', color: 'orange' });
     
-    if (mapping.supportsVideoGeneration) capabilities.push({ label: 'Video', color: 'grape' });
-    if (mapping.supportsEmbeddings) capabilities.push({ label: 'Embeddings', color: 'indigo' });
-    if (mapping.supportsFunctionCalling) capabilities.push({ label: 'Functions', color: 'green' });
-    if (mapping.supportsStreaming) capabilities.push({ label: 'Streaming', color: 'cyan' });
+    if (mapping.supportsVideoGeneration) capabilities.push({ label: '🎬 Video', color: 'grape' });
+    if (mapping.supportsEmbeddings) capabilities.push({ label: '🔢 Embeddings', color: 'indigo' });
+    if (mapping.supportsFunctionCalling) capabilities.push({ label: '🔧 Functions', color: 'green' });
+    if (mapping.supportsStreaming) capabilities.push({ label: '⚡ Streaming', color: 'gray' });
     
     // Check capabilities string for additional features (if it exists in response)
     if ('capabilities' in mapping && mapping.capabilities) {
@@ -89,7 +100,7 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
       }
     }
     
-    return capabilities.slice(0, 3).map((cap) => (
+    return capabilities.slice(0, 5).map((cap) => (
       <Badge key={`${cap.label}-${cap.color}`} size="xs" variant="dot" color={cap.color}>
         {cap.label}
       </Badge>
@@ -114,7 +125,7 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
     );
   }
 
-  const rows = mappings.map((mapping: ModelProviderMappingDto) => (
+  const rows = (mappings as ExtendedModelProviderMappingDto[]).map((mapping) => (
     <Table.Tr key={mapping.id}>
       <Table.Td>
         <Group gap="xs">
@@ -126,7 +137,7 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
       
       <Table.Td>
         <Text size="sm">
-          {mapping.providerId}
+          {mapping.provider?.displayName ?? mapping.providerId}
         </Text>
       </Table.Td>
 
@@ -211,37 +222,23 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
   ));
 
   return (
-    <>
-      <Box pos="relative">
-        <LoadingOverlay visible={isLoading} />
-        <Table.ScrollContainer minWidth={800}>
-          <Table>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Model Mapping</Table.Th>
-                <Table.Th>Provider</Table.Th>
-                <Table.Th>Capabilities</Table.Th>
-                <Table.Th>Priority</Table.Th>
-                <Table.Th>Status</Table.Th>
-                <Table.Th />
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>{rows}</Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
-      </Box>
-
-      {editingMapping && (
-        <EditModelMappingModal
-          mapping={editingMapping}
-          isOpen={!!editingMapping}
-          onClose={() => setEditingMapping(null)}
-          onSave={() => {
-            setEditingMapping(null);
-            void refetch();
-          }}
-        />
-      )}
-    </>
+    <Box pos="relative">
+      <LoadingOverlay visible={isLoading} />
+      <Table.ScrollContainer minWidth={800}>
+        <Table>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Model Mapping</Table.Th>
+              <Table.Th>Provider</Table.Th>
+              <Table.Th>Capabilities</Table.Th>
+              <Table.Th>Priority</Table.Th>
+              <Table.Th>Status</Table.Th>
+              <Table.Th />
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>{rows}</Table.Tbody>
+        </Table>
+      </Table.ScrollContainer>
+    </Box>
   );
 }

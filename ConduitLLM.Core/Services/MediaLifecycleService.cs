@@ -8,6 +8,7 @@ using ConduitLLM.Core.Interfaces;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Core.Services
 {
     /// <summary>
@@ -342,13 +343,28 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var byProvider = await _mediaRepository.GetStorageStatsByProviderAsync();
-                var byMediaType = await _mediaRepository.GetStorageStatsByMediaTypeAsync();
                 var orphanedMedia = await _mediaRepository.GetOrphanedMediaAsync();
+                
+                // Get all media records to calculate proper stats by type
+                var allMedia = await _mediaRepository.GetMediaOlderThanAsync(DateTime.UtcNow.AddYears(10));
+                
+                // Group by media type to get both file count and size
+                var byMediaType = new Dictionary<string, MediaTypeStats>();
+                var mediaTypeGroups = allMedia.GroupBy(m => m.MediaType);
+                
+                foreach (var group in mediaTypeGroups)
+                {
+                    byMediaType[group.Key] = new MediaTypeStats
+                    {
+                        FileCount = group.Count(),
+                        SizeBytes = group.Sum(m => m.SizeBytes ?? 0)
+                    };
+                }
 
                 var stats = new OverallMediaStorageStats
                 {
-                    TotalSizeBytes = byMediaType.Values.Sum(),
-                    TotalFiles = (await _mediaRepository.GetMediaOlderThanAsync(DateTime.UtcNow.AddYears(10))).Count,
+                    TotalSizeBytes = allMedia.Sum(m => m.SizeBytes ?? 0),
+                    TotalFiles = allMedia.Count,
                     OrphanedFiles = orphanedMedia.Count,
                     ByProvider = byProvider,
                     ByMediaType = byMediaType

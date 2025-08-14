@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server';
 import { logger } from '@/lib/utils/logging';
-import { HttpError } from '@knn_labs/conduit-admin-client';
+import { 
+  HttpError, 
+  ValidationError,
+  AuthError,
+  NotFoundError,
+  ConflictError,
+  RateLimitError,
+  ServerError
+} from '@knn_labs/conduit-admin-client';
 import { 
   getErrorStatusCode, 
   getErrorMessage, 
@@ -21,6 +29,49 @@ export function handleSDKError(error: unknown): NextResponse {
     stack: errorStack,
   };
   logger.error('SDK operation failed', errorInfo);
+
+  // Handle specific SDK error types
+  if (error instanceof ValidationError) {
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: 400 }
+    );
+  }
+  
+  if (error instanceof AuthError) {
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: 401 }
+    );
+  }
+  
+  if (error instanceof NotFoundError) {
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: 404 }
+    );
+  }
+  
+  if (error instanceof ConflictError) {
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: 409 }
+    );
+  }
+  
+  if (error instanceof RateLimitError) {
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: 429 }
+    );
+  }
+  
+  if (error instanceof ServerError) {
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: 500 }
+    );
+  }
 
   // Handle HttpError from the SDK
   if (isHttpError(error)) {

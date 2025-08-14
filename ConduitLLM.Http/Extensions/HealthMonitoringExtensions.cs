@@ -1,10 +1,8 @@
+using ConduitLLM.Http.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Configuration;
 using ConduitLLM.Http.Services;
-using ConduitLLM.Http.Hubs;
-using ConduitLLM.Http.HealthChecks;
-using ConduitLLM.Core.HealthChecks;
 using ConduitLLM.Security.Interfaces;
 using ConduitLLM.Security.Models;
 
@@ -21,8 +19,8 @@ namespace ConduitLLM.Http.Extensions
         public static IServiceCollection AddHealthMonitoring(this IServiceCollection services, IConfiguration configuration)
         {
             // Register health monitoring services
-            services.AddScoped<Services.IHealthMonitoringService, Services.HealthMonitoringService>();
-            services.AddSingleton<Services.IAlertManagementService, Services.AlertManagementService>();
+            services.AddScoped<IHealthMonitoringService, Services.HealthMonitoringService>();
+            services.AddSingleton<IAlertManagementService, Services.AlertManagementService>();
             
             // Register security event monitoring services
             services.AddSingleton<ISecurityEventMonitoringService, ConduitLLM.Security.Services.SecurityEventMonitoringService>();
@@ -44,15 +42,7 @@ namespace ConduitLLM.Http.Extensions
                 provider.GetRequiredService<ISecurityEventMonitoringService>() as ConduitLLM.Security.Services.SecurityEventMonitoringService
                 ?? throw new InvalidOperationException("SecurityEventMonitoringService not registered correctly"));
 
-            // Configure system resources health check options
-            services.Configure<SystemResourcesHealthCheckOptions>(options =>
-            {
-                var section = configuration.GetSection("HealthMonitoring:SystemResources");
-                if (section.Exists())
-                {
-                    section.Bind(options);
-                }
-            });
+            // System resources health check removed per YAGNI principle
 
             // Register notification services
             services.Configure<AlertNotificationOptions>(configuration.GetSection("HealthMonitoring:Notifications"));
@@ -80,49 +70,14 @@ namespace ConduitLLM.Http.Extensions
         }
 
         /// <summary>
-        /// Adds advanced health monitoring checks for system resources and API endpoints
+        /// Adds advanced health monitoring checks (currently empty - removed unnecessary checks)
         /// </summary>
         public static IHealthChecksBuilder AddAdvancedHealthMonitoring(
             this IHealthChecksBuilder healthChecksBuilder,
             IConfiguration configuration)
         {
-            // Add system resources health check
-            healthChecksBuilder.AddCheck<SystemResourcesHealthCheck>(
-                "system_resources",
-                failureStatus: HealthStatus.Degraded,
-                tags: new[] { "system", "resources", "performance" });
-
-            // Add HTTP connection pool health check
-            healthChecksBuilder.AddCheck<ConduitLLM.Core.HealthChecks.HttpConnectionPoolHealthCheck>(
-                "http_connection_pool",
-                failureStatus: HealthStatus.Degraded,
-                tags: new[] { "http", "pool", "performance" });
-
-            // Add SignalR health check if available
-            healthChecksBuilder.AddCheck<SignalRHealthCheck>(
-                "signalr",
-                failureStatus: HealthStatus.Degraded,
-                tags: new[] { "signalr", "realtime", "ready" });
-
-            // Add API endpoint health checks from configuration
-            var endpoints = configuration.GetSection("HealthMonitoring:ApiEndpoints").GetChildren();
-            foreach (var endpoint in endpoints)
-            {
-                var name = endpoint["Name"] ?? "Unknown";
-                var url = endpoint["Url"] ?? "";
-                var timeout = endpoint.GetValue<int?>("TimeoutMs") ?? 5000;
-                var warningThreshold = endpoint.GetValue<int?>("WarningThresholdMs") ?? 1000;
-
-                if (!string.IsNullOrEmpty(url))
-                {
-                    healthChecksBuilder.AddTypeActivatedCheck<ApiEndpointHealthCheck>(
-                        $"api_endpoint_{name}",
-                        failureStatus: HealthStatus.Unhealthy,
-                        tags: new[] { "api", "endpoint", "ready" },
-                        args: new object[] { url, name, timeout, warningThreshold });
-                }
-            }
-
+            // All advanced health checks have been removed per YAGNI principle
+            // Basic health checks are sufficient for monitoring service health
             return healthChecksBuilder;
         }
     }

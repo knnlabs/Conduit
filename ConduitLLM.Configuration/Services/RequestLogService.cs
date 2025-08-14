@@ -5,10 +5,10 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Configuration.Services.Dtos;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Configuration.Services
 {
     /// <summary>
@@ -16,7 +16,7 @@ namespace ConduitLLM.Configuration.Services
     /// </summary>
     public class RequestLogService : IRequestLogService
     {
-        private readonly ConfigurationDbContext _context;
+        private readonly ConduitDbContext _context;
         private readonly ILogger<RequestLogService> _logger;
 
         /// <summary>
@@ -24,7 +24,7 @@ namespace ConduitLLM.Configuration.Services
         /// </summary>
         /// <param name="context">Database context</param>
         /// <param name="logger">Logger instance</param>
-        public RequestLogService(ConfigurationDbContext context, ILogger<RequestLogService> logger)
+        public RequestLogService(ConduitDbContext context, ILogger<RequestLogService> logger)
         {
             _context = context;
             _logger = logger;
@@ -106,7 +106,7 @@ namespace ConduitLLM.Configuration.Services
                     TotalCost = g.Sum(r => r.Cost),
                     TotalInputTokens = g.Sum(r => r.InputTokens),
                     TotalOutputTokens = g.Sum(r => r.OutputTokens),
-                    AverageResponseTime = g.Any() ? g.Average(r => r.ResponseTimeMs) : 0
+                    AverageResponseTime = g.Count() > 0 ? g.Average(r => r.ResponseTimeMs) : 0
                 })
                 .FirstOrDefaultAsync();
 
@@ -318,7 +318,7 @@ namespace ConduitLLM.Configuration.Services
         }
 
         /// <inheritdoc/>
-        public async Task<DTOs.LogsSummaryDto> GetLogsSummaryAsync(DateTime startDate, DateTime endDate)
+        public async Task<LogsSummaryDto> GetLogsSummaryAsync(DateTime startDate, DateTime endDate)
         {
             try
             {
@@ -328,14 +328,14 @@ namespace ConduitLLM.Configuration.Services
                     .Where(r => r.Timestamp >= startDate && r.Timestamp <= endDate)
                     .ToListAsync();
 
-                var summary = new DTOs.LogsSummaryDto
+                var summary = new LogsSummaryDto
                 {
                     TotalRequests = logs.Count,
-                    TotalCost = logs.Sum(r => r.Cost),
-                    TotalInputTokens = logs.Sum(r => r.InputTokens),
-                    TotalOutputTokens = logs.Sum(r => r.OutputTokens),
-                    AverageResponseTimeMs = logs.Any() ? logs.Average(r => r.ResponseTimeMs) : 0,
-                    LastRequestDate = logs.Any() ? logs.Max(r => r.Timestamp) : null
+                    EstimatedCost = logs.Sum(r => r.Cost),
+                    InputTokens = logs.Sum(r => r.InputTokens),
+                    OutputTokens = logs.Sum(r => r.OutputTokens),
+                    AverageResponseTime = logs.Count() > 0 ? logs.Average(r => r.ResponseTimeMs) : 0,
+                    LastRequestDate = logs.Count() > 0 ? logs.Max(r => r.Timestamp) : null
                 };
 
                 // Group by model
@@ -377,7 +377,7 @@ namespace ConduitLLM.Configuration.Services
                 // Group by day and model for daily stats
                 var dailyStats = logs
                     .GroupBy(r => new { Date = r.Timestamp.Date, Model = r.ModelName })
-                    .Select(g => new DTOs.DailyUsageStatsDto
+                    .Select(g => new DailyUsageStatsDto
                     {
                         Date = g.Key.Date,
                         ModelId = g.Key.Model,

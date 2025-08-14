@@ -20,7 +20,7 @@ namespace ConduitLLM.Core.Services
     public class RealtimeSessionManager : BackgroundService
     {
         private readonly ILogger<RealtimeSessionManager> _logger;
-        private readonly IServiceProvider _serviceProvider;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly RealtimeSessionOptions _options;
         private readonly Timer _cleanupTimer;
         private readonly Timer _metricsTimer;
@@ -30,11 +30,11 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public RealtimeSessionManager(
             ILogger<RealtimeSessionManager> logger,
-            IServiceProvider serviceProvider,
+            IServiceScopeFactory serviceScopeFactory,
             IOptions<RealtimeSessionOptions> options)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+            _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
             _options = options.Value ?? throw new ArgumentNullException(nameof(options));
 
             _cleanupTimer = new Timer(
@@ -87,11 +87,16 @@ namespace ConduitLLM.Core.Services
             base.Dispose();
         }
 
-        private async void CleanupCallback(object? state)
+        private void CleanupCallback(object? state)
+        {
+            _ = ExecuteCleanupAsync();
+        }
+
+        private async Task ExecuteCleanupAsync()
         {
             try
             {
-                using var scope = _serviceProvider.CreateScope();
+                using var scope = _serviceScopeFactory.CreateScope();
                 var sessionStore = scope.ServiceProvider.GetRequiredService<IRealtimeSessionStore>();
 
                 var cleaned = await sessionStore.CleanupExpiredSessionsAsync(
@@ -112,11 +117,16 @@ namespace ConduitLLM.Core.Services
             }
         }
 
-        private async void MetricsCallback(object? state)
+        private void MetricsCallback(object? state)
+        {
+            _ = ExecuteMetricsCollectionAsync();
+        }
+
+        private async Task ExecuteMetricsCollectionAsync()
         {
             try
             {
-                using var scope = _serviceProvider.CreateScope();
+                using var scope = _serviceScopeFactory.CreateScope();
                 var sessionStore = scope.ServiceProvider.GetRequiredService<IRealtimeSessionStore>();
                 var metricsCollector = scope.ServiceProvider.GetRequiredService<IAudioMetricsCollector>();
 
@@ -138,7 +148,7 @@ namespace ConduitLLM.Core.Services
                 foreach (var (provider, count) in sessionsByProvider)
                 {
                     var providerSessions = sessions.Where(s => s.Provider == provider).ToList();
-                    if (providerSessions.Any())
+                    if (providerSessions.Count() > 0)
                     {
                         // Report each session individually
                         foreach (var session in providerSessions)
@@ -181,7 +191,7 @@ namespace ConduitLLM.Core.Services
                 }
             }
 
-            if (zombies.Any())
+            if (zombies.Count() > 0)
             {
                 _logger.LogWarning("Found {Count} zombie sessions", zombies.Count);
 

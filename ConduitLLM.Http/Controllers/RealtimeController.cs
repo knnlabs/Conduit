@@ -8,6 +8,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Realtime;
 
 using Microsoft.AspNetCore.Authorization;
+using ConduitLLM.Configuration.DTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -71,27 +72,27 @@ namespace ConduitLLM.Http.Controllers
         {
             if (!HttpContext.WebSockets.IsWebSocketRequest)
             {
-                return BadRequest(new { error = "WebSocket connection required" });
+                return BadRequest(new ErrorResponseDto("WebSocket connection required"));
             }
 
             // Extract virtual key from authorization header
             var virtualKey = ExtractVirtualKey();
             if (string.IsNullOrEmpty(virtualKey))
             {
-                return Unauthorized(new { error = "Virtual key required" });
+                return Unauthorized(new ErrorResponseDto("Virtual key required"));
             }
 
             // Validate virtual key and check permissions
             var keyEntity = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKey, model);
             if (keyEntity == null)
             {
-                return Unauthorized(new { error = "Invalid virtual key" });
+                return Unauthorized(new ErrorResponseDto("Invalid virtual key"));
             }
 
             // Check if the key has real-time permissions
             if (!HasRealtimePermissions(keyEntity))
             {
-                return StatusCode(403, new { error = "Virtual key does not have real-time audio permissions" });
+                return StatusCode(403, new ErrorResponseDto("Virtual key does not have real-time audio permissions"));
             }
 
             try
@@ -149,13 +150,13 @@ namespace ConduitLLM.Http.Controllers
             var virtualKey = ExtractVirtualKey();
             if (string.IsNullOrEmpty(virtualKey))
             {
-                return Unauthorized(new { error = "Virtual key required" });
+                return Unauthorized(new ErrorResponseDto("Virtual key required"));
             }
 
             var keyEntity = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKey);
             if (keyEntity == null)
             {
-                return Unauthorized(new { error = "Invalid virtual key" });
+                return Unauthorized(new ErrorResponseDto("Invalid virtual key"));
             }
 
             var connections = await _connectionManager.GetActiveConnectionsAsync(keyEntity.Id);
@@ -181,19 +182,19 @@ namespace ConduitLLM.Http.Controllers
             var virtualKey = ExtractVirtualKey();
             if (string.IsNullOrEmpty(virtualKey))
             {
-                return Unauthorized(new { error = "Virtual key required" });
+                return Unauthorized(new ErrorResponseDto("Virtual key required"));
             }
 
             var keyEntity = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKey);
             if (keyEntity == null)
             {
-                return Unauthorized(new { error = "Invalid virtual key" });
+                return Unauthorized(new ErrorResponseDto("Invalid virtual key"));
             }
 
             var terminated = await _connectionManager.TerminateConnectionAsync(connectionId, keyEntity.Id);
             if (!terminated)
             {
-                return NotFound(new { error = "Connection not found or not owned by this key" });
+                return NotFound(new ErrorResponseDto("Connection not found or not owned by this key"));
             }
 
             return NoContent();

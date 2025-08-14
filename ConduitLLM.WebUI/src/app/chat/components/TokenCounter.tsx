@@ -29,9 +29,18 @@ function getMessageText(message: ChatMessage): string {
   if (typeof message.content === 'string') {
     return message.content;
   }
-  return message.content
-    .map(c => c.type === 'text' ? c.text : '[image]')
-    .join(' ');
+  
+  if (Array.isArray(message.content)) {
+    const parts = message.content.map((c) => {
+      if ('type' in c && c.type === 'text' && 'text' in c) {
+        return c.text;
+      }
+      return '[image]';
+    });
+    return parts.join(' ');
+  }
+  
+  return '';
 }
 
 // Model pricing per 1K tokens (example values)

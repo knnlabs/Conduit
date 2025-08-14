@@ -128,23 +128,6 @@ namespace ConduitLLM.Core.Interfaces
             string? apiKey = null,
             CancellationToken cancellationToken = default);
 
-        /// <summary>
-        /// Updates the health status of a deployment.
-        /// </summary>
-        /// <param name="modelName">Name of the model to update.</param>
-        /// <param name="isHealthy">Whether the model is healthy.</param>
-        /// <remarks>
-        /// <para>
-        /// This method allows manual or automated health status updates for models.
-        /// The router uses health status information when making routing decisions,
-        /// and will avoid routing requests to unhealthy models.
-        /// </para>
-        /// <para>
-        /// The router also automatically updates health status based on request
-        /// successes and failures.
-        /// </para>
-        /// </remarks>
-        void UpdateModelHealth(string modelName, bool isHealthy);
 
         /// <summary>
         /// Gets the available models for routing.

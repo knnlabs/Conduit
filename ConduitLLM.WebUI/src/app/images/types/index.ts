@@ -1,25 +1,55 @@
-export interface ImageGenerationSettings {
-  model: string;
-  size: string;
+// Local type definitions to avoid broken SDK imports
+
+export interface ImageGenerationRequest {
+  prompt: string;
+  model?: string;
+  n?: number;
   quality?: 'standard' | 'hd';
+  response_format?: 'url' | 'b64_json';
+  size?: '256x256' | '512x512' | '1024x1024' | '1792x1024' | '1024x1792';
   style?: 'vivid' | 'natural';
-  n: number;
-  responseFormat: 'url' | 'b64_json';
+  user?: string;
 }
 
-export interface GeneratedImage {
+export interface ImageData {
+  b64_json?: string;
   url?: string;
-  b64Json?: string;
-  revisedPrompt?: string;
-  id?: string;
+  revised_prompt?: string;
 }
 
 export interface ImageGenerationResponse {
   created: number;
-  data: GeneratedImage[];
+  data: ImageData[];
 }
 
+export interface ErrorResponse {
+  error: {
+    message: string;
+    type: string;
+    param?: string | null;
+    code?: string | null;
+  };
+}
+
+// UI-specific interface
+export interface ImageGenerationSettings {
+  model: string;
+  size: '256x256' | '512x512' | '1024x1024' | '1792x1024' | '1024x1792';
+  quality: 'standard' | 'hd';
+  style: 'vivid' | 'natural';
+  n: number;
+  responseFormat: 'url' | 'b64_json';
+}
+
+// UI-specific status type
 export type ImageGenerationStatus = 'idle' | 'generating' | 'completed' | 'error';
+
+// Extend ImageData with UI-specific properties
+export interface GeneratedImage extends ImageData {
+  id?: string; // UI-specific property for tracking
+}
+
+
 
 export interface ImageGenerationState {
   prompt: string;

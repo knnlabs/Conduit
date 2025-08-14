@@ -19,9 +19,9 @@
   "dependencies": {
     "@clerk/nextjs": "^6.25.4",
     "@hello-pangea/dnd": "^18.0.1",
-    "@knn_labs/conduit-admin-client": "file:../Clients/Node/Admin",
-    "@knn_labs/conduit-common": "file:../Clients/Node/Common",
-    "@knn_labs/conduit-core-client": "file:../Clients/Node/Core",
+    "@knn_labs/conduit-admin-client": "file:../SDKs/Node/Admin",
+    "@knn_labs/conduit-common": "file:../SDKs/Node/Common",
+    "@knn_labs/conduit-core-client": "file:../SDKs/Node/Core",
     "@mantine/carousel": "^8.1.2",
     "@mantine/charts": "^8.1.2",
     "@mantine/code-highlight": "^8.1.2",
@@ -32,6 +32,7 @@
     "@mantine/modals": "^8.1.2",
     "@mantine/notifications": "^8.1.2",
     "@mantine/spotlight": "^8.1.2",
+    "@microsoft/signalr": "^9.0.6",
     "@tabler/icons-react": "^3.34.1",
     "@tanstack/react-query": "^5.0.0",
     "@types/node": "^24.0.15",
@@ -67,6 +68,7 @@
   "devDependencies": {
     "@playwright/test": "^1.54.1",
     "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
     "@types/jest": "^30.0.0",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/uuid": "^10.0.0",

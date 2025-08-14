@@ -7,12 +7,14 @@ using Microsoft.Extensions.Logging;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Services;
 using MassTransit;
 using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
+using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 namespace ConduitLLM.Http.Services
 {
     /// <summary>
@@ -23,12 +25,14 @@ namespace ConduitLLM.Http.Services
     {
         private readonly IVirtualKeyRepository _virtualKeyRepository;
         private readonly IVirtualKeySpendHistoryRepository _spendHistoryRepository;
+        private readonly IVirtualKeyGroupRepository _groupRepository;
         private readonly ConduitLLM.Core.Interfaces.IVirtualKeyCache _cache;
         private readonly ILogger<CachedApiVirtualKeyService> _logger;
 
         public CachedApiVirtualKeyService(
             IVirtualKeyRepository virtualKeyRepository,
             IVirtualKeySpendHistoryRepository spendHistoryRepository,
+            IVirtualKeyGroupRepository groupRepository,
             ConduitLLM.Core.Interfaces.IVirtualKeyCache cache,
             IPublishEndpoint? publishEndpoint,
             ILogger<CachedApiVirtualKeyService> logger)
@@ -36,11 +40,86 @@ namespace ConduitLLM.Http.Services
         {
             _virtualKeyRepository = virtualKeyRepository ?? throw new ArgumentNullException(nameof(virtualKeyRepository));
             _spendHistoryRepository = spendHistoryRepository ?? throw new ArgumentNullException(nameof(spendHistoryRepository));
+            _groupRepository = groupRepository ?? throw new ArgumentNullException(nameof(groupRepository));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             
             // Log event publishing configuration status
             LogEventPublishingConfiguration(nameof(CachedApiVirtualKeyService));
+        }
+
+        /// <summary>
+        /// Validates virtual key for authentication only (no balance check)
+        /// </summary>
+        /// <param name="key">The virtual key to validate</param>
+        /// <param name="requestedModel">Optional model to check against allowed models</param>
+        /// <returns>The virtual key if valid for authentication, null otherwise</returns>
+        public async Task<VirtualKey?> ValidateVirtualKeyForAuthenticationAsync(string key, string? requestedModel = null)
+        {
+            if (string.IsNullOrEmpty(key))
+            {
+                _logger.LogWarning("Empty key provided for authentication validation");
+                return null;
+            }
+
+            try
+            {
+                var keyHash = HashKey(key);
+                _logger.LogDebug("Validating key for authentication: {KeyPrefix}..., Hash: {Hash}", 
+                    key.Length > 10 ? key.Substring(0, 10) : key, keyHash);
+                
+                // Use cache with database fallback
+                var virtualKey = await _cache.GetVirtualKeyAsync(keyHash, async hash => 
+                {
+                    // This fallback only runs on cache miss
+                    var dbKey = await _virtualKeyRepository.GetByKeyHashAsync(hash);
+                    _logger.LogDebug("Database fallback executed for Virtual Key authentication validation");
+                    return dbKey;
+                });
+
+                if (virtualKey == null)
+                {
+                    _logger.LogWarning("No matching virtual key found for hash: {Hash}", keyHash);
+                    return null;
+                }
+
+                // Check if key is enabled
+                if (!virtualKey.IsEnabled)
+                {
+                    _logger.LogWarning("Virtual key is disabled: {KeyName} (ID: {KeyId})", virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id);
+                    return null;
+                }
+
+                // Check expiration
+                if (virtualKey.ExpiresAt.HasValue && virtualKey.ExpiresAt.Value < DateTime.UtcNow)
+                {
+                    _logger.LogWarning("Virtual key has expired: {KeyName} (ID: {KeyId}), expired at {ExpiryDate}",
+                        virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id, virtualKey.ExpiresAt);
+                    return null;
+                }
+
+                // Check if model is allowed (but skip balance check for authentication)
+                if (!string.IsNullOrEmpty(requestedModel) && !string.IsNullOrEmpty(virtualKey.AllowedModels))
+                {
+                    bool isModelAllowed = IsModelAllowed(requestedModel, virtualKey.AllowedModels);
+                    if (!isModelAllowed)
+                    {
+                        _logger.LogWarning("Virtual key {KeyName} (ID: {KeyId}) attempted to access restricted model: {RequestedModel}",
+                            virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id, requestedModel.Replace(Environment.NewLine, ""));
+                        return null;
+                    }
+                }
+
+                // Authentication validation passed
+                _logger.LogDebug("Virtual key authenticated successfully: {KeyName} (ID: {KeyId})",
+                    virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id);
+                return virtualKey;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error validating virtual key for authentication");
+                return null;
+            }
         }
 
         /// <inheritdoc />
@@ -88,19 +167,30 @@ namespace ConduitLLM.Http.Services
                     return null;
                 }
 
-                // Check budget with fresh data
-                if (virtualKey.MaxBudget.HasValue)
+                // Check group balance
+                var group = await _groupRepository.GetByIdAsync(virtualKey.VirtualKeyGroupId);
+                if (group != null && group.Balance <= 0)
                 {
-                    var currentSpend = await _virtualKeyRepository.GetCurrentSpendAsync(virtualKey.Id);
-                    if (currentSpend >= virtualKey.MaxBudget.Value)
+                    _logger.LogWarning("Virtual key group budget depleted: {KeyName} (ID: {KeyId}), group {GroupId} has balance {Balance}",
+                        virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id, group.Id, group.Balance);
+                    
+                    // TODO: We used to immediately invalidate over-budget keys, but this violated clean architecture
+                    // TODO: Find a better way to handle this
+                    // await _cache.InvalidateVirtualKeyAsync(keyHash);
+                    
+                    // Set 402 status code for insufficient balance
+                    // Note: This violates clean architecture but is pragmatic
+                    // TODO: Find a better way to handle this
+                    try 
                     {
-                        _logger.LogWarning("Virtual key budget depleted: {KeyName} (ID: {KeyId}), spent {CurrentSpend}, budget {MaxBudget}",
-                            virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id, currentSpend, virtualKey.MaxBudget);
-                        
-                        // Immediately invalidate over-budget keys
-                        await _cache.InvalidateVirtualKeyAsync(keyHash);
-                        return null;
+                        var httpContext = new Microsoft.AspNetCore.Http.HttpContextAccessor().HttpContext;
+                        if (httpContext != null)
+                        {
+                            httpContext.Response.StatusCode = 402;
+                        }
                     }
+                    catch { /* Ignore if no HTTP context */ }
+                    return null;
                 }
 
                 // Check if model is allowed
@@ -139,16 +229,16 @@ namespace ConduitLLM.Http.Services
                 // Hash the key for storage
                 var keyHash = HashKey(keyWithPrefix);
                 
+                // VirtualKeyGroupId is now required
+                var groupId = request.VirtualKeyGroupId;
+
                 // Create the virtual key entity
                 var virtualKey = new VirtualKey
                 {
-                    KeyName = request.KeyName,
+                    KeyName = request.KeyName ?? string.Empty,
                     KeyHash = keyHash,
                     AllowedModels = request.AllowedModels,
-                    MaxBudget = request.MaxBudget,
-                    CurrentSpend = 0,
-                    BudgetDuration = request.BudgetDuration ?? "Total",
-                    BudgetStartDate = DateTime.UtcNow,
+                    VirtualKeyGroupId = groupId,
                     IsEnabled = true,
                     ExpiresAt = request.ExpiresAt,
                     Metadata = request.Metadata,
@@ -242,11 +332,8 @@ namespace ConduitLLM.Http.Services
                 if (request.AllowedModels != null)
                     virtualKey.AllowedModels = string.IsNullOrEmpty(request.AllowedModels) ? null : request.AllowedModels;
                     
-                if (request.MaxBudget.HasValue)
-                    virtualKey.MaxBudget = request.MaxBudget.Value;
-                    
-                if (request.BudgetDuration != null)
-                    virtualKey.BudgetDuration = request.BudgetDuration;
+                if (request.VirtualKeyGroupId.HasValue)
+                    virtualKey.VirtualKeyGroupId = request.VirtualKeyGroupId.Value;
                     
                 if (request.IsEnabled.HasValue)
                     virtualKey.IsEnabled = request.IsEnabled.Value;
@@ -321,32 +408,14 @@ namespace ConduitLLM.Http.Services
 
             try
             {
-                // Record the spend history before resetting
-                if (virtualKey.CurrentSpend > 0)
-                {
-                    var spendHistory = new VirtualKeySpendHistory
-                    {
-                        VirtualKeyId = virtualKey.Id,
-                        Amount = virtualKey.CurrentSpend,
-                        Date = DateTime.UtcNow
-                    };
-                    await _spendHistoryRepository.CreateAsync(spendHistory);
-                }
-
-                // Reset spend to zero
-                virtualKey.CurrentSpend = 0;
-                virtualKey.BudgetStartDate = DateTime.UtcNow;
-                virtualKey.UpdatedAt = DateTime.UtcNow;
-
-                var success = await _virtualKeyRepository.UpdateAsync(virtualKey);
+                // Budget tracking is now at the group level
+                // This method is deprecated but kept for compatibility
+                _logger.LogWarning("ResetSpendAsync called for key {KeyId} - this operation is no longer supported", id);
                 
-                if (success)
-                {
-                    // Invalidate cache after spend reset
-                    await _cache.InvalidateVirtualKeyAsync(virtualKey.KeyHash);
-                }
+                // Still invalidate cache for consistency
+                await _cache.InvalidateVirtualKeyAsync(virtualKey.KeyHash);
                 
-                return success;
+                return false;
             }
             catch (Exception ex)
             {
@@ -398,19 +467,23 @@ namespace ConduitLLM.Http.Services
                         return false;
                     }
 
-                    // Update spend and timestamp
-                    virtualKey.CurrentSpend += cost;
-                    virtualKey.UpdatedAt = DateTime.UtcNow;
-
-                    bool success = await _virtualKeyRepository.UpdateAsync(virtualKey);
-                    if (success)
+                    // Get the key's group and adjust its balance
+                    var group = await _groupRepository.GetByKeyIdAsync(keyId);
+                    if (group == null)
                     {
-                        // Invalidate cache after spend update
-                        await _cache.InvalidateVirtualKeyAsync(virtualKey.KeyHash);
-                        
-                        _logger.LogInformation("Updated spend for key ID {KeyId}. New spend: {CurrentSpend}",
-                            keyId, virtualKey.CurrentSpend);
+                        _logger.LogWarning("No group found for virtual key with ID {KeyId}", keyId);
+                        return false;
                     }
+
+                    var newBalance = await _groupRepository.AdjustBalanceAsync(group.Id, -cost);
+                    
+                    // Invalidate cache after spend update
+                    await _cache.InvalidateVirtualKeyAsync(virtualKey.KeyHash);
+                    
+                    _logger.LogInformation("Updated spend for key ID {KeyId} in group {GroupId}. New balance: {NewBalance}",
+                        keyId, group.Id, newBalance);
+                    
+                    bool success = true;
 
                     return success;
                 }
@@ -423,90 +496,14 @@ namespace ConduitLLM.Http.Services
         }
 
         /// <inheritdoc />
+        [Obsolete("Budget resets are no longer supported in the bank account model")]
         public async Task<bool> ResetBudgetIfExpiredAsync(int keyId, CancellationToken cancellationToken = default)
         {
-            var virtualKey = await _virtualKeyRepository.GetByIdAsync(keyId, cancellationToken);
-            if (virtualKey == null ||
-                string.IsNullOrEmpty(virtualKey.BudgetDuration) ||
-                !virtualKey.BudgetStartDate.HasValue)
-            {
-                return false;
-            }
-
-            DateTime now = DateTime.UtcNow;
-            bool needsReset = false;
-
-            // Calculate when the current budget period should end
-            if (virtualKey.BudgetDuration.Equals("Monthly", StringComparison.OrdinalIgnoreCase))
-            {
-                DateTime startDate = virtualKey.BudgetStartDate.Value;
-                DateTime periodEnd = new DateTime(
-                    startDate.Year + (startDate.Month == 12 ? 1 : 0),
-                    startDate.Month == 12 ? 1 : startDate.Month + 1,
-                    1, 0, 0, 0, DateTimeKind.Utc).AddDays(-1);
-
-                needsReset = now > periodEnd;
-            }
-            else if (virtualKey.BudgetDuration.Equals("Daily", StringComparison.OrdinalIgnoreCase))
-            {
-                needsReset = now.Date > virtualKey.BudgetStartDate.Value.Date;
-            }
-
-            if (needsReset)
-            {
-                try
-                {
-                    // Record the spend history before resetting
-                    if (virtualKey.CurrentSpend > 0)
-                    {
-                        var spendHistory = new VirtualKeySpendHistory
-                        {
-                            VirtualKeyId = virtualKey.Id,
-                            Amount = virtualKey.CurrentSpend,
-                            Date = DateTime.UtcNow
-                        };
-                        await _spendHistoryRepository.CreateAsync(spendHistory, cancellationToken);
-                    }
-
-                    _logger.LogInformation("Resetting budget for key ID {KeyId}. Previous spend: {PreviousSpend}, Previous start date: {PreviousStartDate}",
-                        keyId, virtualKey.CurrentSpend, virtualKey.BudgetStartDate);
-
-                    // Reset the spend
-                    virtualKey.CurrentSpend = 0;
-
-                    // Set new budget start date based on duration
-                    if (virtualKey.BudgetDuration.Equals("Monthly", StringComparison.OrdinalIgnoreCase))
-                    {
-                        virtualKey.BudgetStartDate = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-                    }
-                    else
-                    {
-                        virtualKey.BudgetStartDate = DateTime.UtcNow.Date;
-                    }
-
-                    virtualKey.UpdatedAt = now;
-
-                    bool success = await _virtualKeyRepository.UpdateAsync(virtualKey, cancellationToken);
-
-                    if (success)
-                    {
-                        // Invalidate cache after budget reset
-                        await _cache.InvalidateVirtualKeyAsync(virtualKey.KeyHash);
-                        
-                        _logger.LogInformation("Budget reset completed for key ID {KeyId}. New start date: {NewStartDate}",
-                            keyId, virtualKey.BudgetStartDate);
-                    }
-
-                    return success;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error resetting budget for key ID {KeyId}", keyId);
-                    return false;
-                }
-            }
-
-            return false; // No reset needed
+            // Budget resets are no longer supported in the bank account model
+            // This method is kept for backward compatibility but always returns false
+            _logger.LogDebug("ResetBudgetIfExpiredAsync called for key {KeyId} - no action taken (bank account model)", keyId);
+            await Task.CompletedTask;
+            return false;
         }
 
         /// <inheritdoc />
@@ -517,30 +514,18 @@ namespace ConduitLLM.Http.Services
 
         /// <summary>
         /// Bulk update spend and invalidate affected keys
-        /// Used by the BatchSpendUpdateService
+        /// NOTE: This method is deprecated in the group-based model
         /// </summary>
+        [Obsolete("Bulk spend updates are no longer supported. Spend is tracked at the group level.")]
         public async Task<bool> BulkUpdateSpendAsync(Dictionary<string, decimal> spendUpdates)
         {
-            try
-            {
-                var success = await _virtualKeyRepository.BulkUpdateSpendAsync(spendUpdates);
-                
-                if (success)
-                {
-                    // Invalidate all affected keys
-                    var keyHashes = spendUpdates.Keys.ToArray();
-                    await _cache.InvalidateVirtualKeysAsync(keyHashes);
-                    
-                    _logger.LogInformation("Bulk updated spend and invalidated {Count} Virtual Keys", keyHashes.Length);
-                }
-                
-                return success;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in bulk spend update");
-                return false;
-            }
+            _logger.LogWarning("BulkUpdateSpendAsync is deprecated. Spend tracking is now at the group level.");
+            
+            // Still invalidate cache for the affected keys
+            var keyHashes = spendUpdates.Keys.ToArray();
+            await _cache.InvalidateVirtualKeysAsync(keyHashes);
+            
+            return false;
         }
 
         /// <summary>
@@ -618,10 +603,7 @@ namespace ConduitLLM.Http.Services
                 KeyName = virtualKey.KeyName,
                 KeyPrefix = "condt_****", // Don't expose the actual key
                 AllowedModels = virtualKey.AllowedModels,
-                MaxBudget = virtualKey.MaxBudget,
-                CurrentSpend = virtualKey.CurrentSpend,
-                BudgetDuration = virtualKey.BudgetDuration,
-                BudgetStartDate = virtualKey.BudgetStartDate,
+                VirtualKeyGroupId = virtualKey.VirtualKeyGroupId,
                 IsEnabled = virtualKey.IsEnabled,
                 ExpiresAt = virtualKey.ExpiresAt,
                 CreatedAt = virtualKey.CreatedAt,
@@ -630,11 +612,6 @@ namespace ConduitLLM.Http.Services
                 RateLimitRpm = virtualKey.RateLimitRpm,
                 RateLimitRpd = virtualKey.RateLimitRpd,
                 Description = virtualKey.Description,
-                // Compatibility properties
-                Name = virtualKey.KeyName,
-                IsActive = virtualKey.IsEnabled,
-                UsageLimit = virtualKey.MaxBudget,
-                RateLimit = virtualKey.RateLimitRpm
             };
         }
     }

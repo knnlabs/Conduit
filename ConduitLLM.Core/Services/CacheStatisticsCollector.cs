@@ -73,8 +73,7 @@ namespace ConduitLLM.Core.Services
 
         public async Task RecordOperationAsync(CacheOperation operation, CancellationToken cancellationToken = default)
         {
-            if (operation == null)
-                throw new ArgumentNullException(nameof(operation));
+            ArgumentNullException.ThrowIfNull(operation);
 
             try
             {
@@ -361,7 +360,7 @@ namespace ConduitLLM.Core.Services
             };
 
             // Calculate response times
-            if (stats.ResponseTimes.Count > 0)
+            if (stats.ResponseTimes.Count() > 0)
             {
                 var getTimes = stats.ResponseTimes
                     .Where(rt => rt.Operation == CacheOperationType.Get || 
@@ -370,7 +369,7 @@ namespace ConduitLLM.Core.Services
                     .Select(rt => rt.Duration)
                     .ToList();
 
-                if (getTimes.Count > 0)
+                if (getTimes.Count() > 0)
                 {
                     publicStats.AverageGetTime = TimeSpan.FromMilliseconds(getTimes.Average(t => t.TotalMilliseconds));
                     publicStats.P95GetTime = CalculatePercentile(getTimes, 95);
@@ -384,12 +383,12 @@ namespace ConduitLLM.Core.Services
 
         private TimeSpan CalculatePercentile(List<TimeSpan> values, int percentile)
         {
-            if (values.Count == 0)
+            if (values.Count() == 0)
                 return TimeSpan.Zero;
 
             var sorted = values.OrderBy(v => v).ToList();
-            var index = (int)Math.Ceiling(percentile / 100.0 * sorted.Count) - 1;
-            return sorted[Math.Max(0, Math.Min(index, sorted.Count - 1))];
+            var index = (int)Math.Ceiling(percentile / 100.0 * sorted.Count()) - 1;
+            return sorted[Math.Max(0, Math.Min(index, sorted.Count() - 1))];
         }
 
         private TimeSpan GetWindowDuration(TimeWindow window)
@@ -492,7 +491,7 @@ namespace ConduitLLM.Core.Services
                 ResponseTimes.Add(new ResponseTimeEntry { Operation = operation, Duration = duration });
                 
                 // Keep only recent entries (last 1000)
-                while (ResponseTimes.Count > 1000)
+                while (ResponseTimes.Count() > 1000)
                 {
                     ResponseTimes.TryTake(out _);
                 }
@@ -503,7 +502,7 @@ namespace ConduitLLM.Core.Services
                 DataSizes.Add(sizeBytes);
                 
                 // Keep only recent entries
-                while (DataSizes.Count > 1000)
+                while (DataSizes.Count() > 1000)
                 {
                     DataSizes.TryTake(out _);
                 }

@@ -102,7 +102,7 @@ For direct deployments:
 ### How do I reset my master key?
 
 1. Stop Conduit: `docker compose down`
-2. Update the `CONDUIT_MASTER_KEY` in your `.env` file
+2. Update the `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` in your `.env` file
 3. Restart Conduit: `docker compose up -d`
 
 ## Usage

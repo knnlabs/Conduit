@@ -14,14 +14,6 @@ export interface RoutingRule {
   updatedAt: string;
 }
 
-export interface RoutingCondition {
-  type: 'model' | 'header' | 'body' | 'time' | 'load' | 'key' | 'metadata' | 'cost' | 'region' | 'virtualKeyId';
-  field?: string;
-  operator: ConditionOperator;
-  value: string | number | boolean | string[] | number[];
-  logicalOperator?: 'AND' | 'OR';
-}
-
 export type ConditionOperator = 
   | 'equals' 
   | 'contains' 
@@ -31,6 +23,15 @@ export type ConditionOperator =
   | 'in_list'
   | 'regex'
   | 'exists';
+
+export interface RoutingCondition {
+  type: 'model' | 'header' | 'body' | 'time' | 'load' | 'key' | 'metadata' | 'cost' | 'region' | 'virtualKeyId';
+  field?: string;
+  operator: ConditionOperator;
+  value: string | number | boolean | string[] | number[];
+  logicalOperator?: 'AND' | 'OR';
+}
+
 
 export interface RoutingAction {
   type: 'route' | 'transform' | 'cache' | 'rate_limit' | 'log' | 'block';
@@ -60,13 +61,6 @@ export interface RoutingConfiguration {
   maxConcurrentRequests: number;
 }
 
-export interface LoadBalancerHealth {
-  status: 'healthy' | 'degraded' | 'unhealthy';
-  nodes: LoadBalancerNode[];
-  lastCheck: string;
-  distribution: Record<string, number>;
-}
-
 export interface LoadBalancerNode {
   id: string;
   endpoint: string;
@@ -77,6 +71,14 @@ export interface LoadBalancerNode {
   avgResponseTime: number;
   lastHealthCheck: string;
 }
+
+export interface LoadBalancerHealth {
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  nodes: LoadBalancerNode[];
+  lastCheck: string;
+  distribution: Record<string, number>;
+}
+
 
 export interface RouteTestRequest {
   method: 'GET' | 'POST' | 'PUT' | 'DELETE';

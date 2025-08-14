@@ -47,8 +47,7 @@ namespace ConduitLLM.Http.Services
             if (string.IsNullOrEmpty(connectionId))
                 throw new ArgumentException("Connection ID cannot be null or empty", nameof(connectionId));
 
-            if (filter == null)
-                throw new ArgumentNullException(nameof(filter));
+            ArgumentNullException.ThrowIfNull(filter);
 
             var subscription = new ModelDiscoverySubscription
             {
@@ -67,7 +66,7 @@ namespace ConduitLLM.Http.Services
                 "Added/updated subscription for connection {ConnectionId} with filters: " +
                 "Providers={Providers}, Capabilities={Capabilities}, MinSeverity={MinSeverity}",
                 connectionId,
-                filter.Providers?.Count ?? 0,
+                filter.ProviderTypes?.Count ?? 0,
                 filter.Capabilities?.Count ?? 0,
                 filter.MinSeverityLevel);
 
@@ -120,11 +119,11 @@ namespace ConduitLLM.Http.Services
                 return false;
 
             // Check provider filter
-            if (filter.Providers?.Any() == true && !filter.Providers.Contains(provider, StringComparer.OrdinalIgnoreCase))
+            if (filter.ProviderTypes?.Count > 0 && !filter.ProviderTypes.Any(pt => pt.ToString().Equals(provider, StringComparison.OrdinalIgnoreCase)))
                 return false;
 
             // Check capability filter
-            if (filter.Capabilities?.Any() == true && capabilities?.Any() == true)
+            if (filter.Capabilities?.Count > 0 && capabilities?.Count > 0)
             {
                 var hasMatchingCapability = capabilities.Any(cap => 
                     filter.Capabilities.Contains(cap, StringComparer.OrdinalIgnoreCase));
@@ -151,9 +150,9 @@ namespace ConduitLLM.Http.Services
         {
             var stats = new Dictionary<string, int>
             {
-                ["TotalSubscriptions"] = _subscriptions.Count,
-                ["ProvidersFiltered"] = _subscriptions.Values.Count(s => s.Filter.Providers?.Any() == true),
-                ["CapabilitiesFiltered"] = _subscriptions.Values.Count(s => s.Filter.Capabilities?.Any() == true),
+                ["TotalSubscriptions"] = _subscriptions.Count(),
+                ["ProvidersFiltered"] = _subscriptions.Values.Count(s => s.Filter.ProviderTypes?.Count > 0),
+                ["CapabilitiesFiltered"] = _subscriptions.Values.Count(s => s.Filter.Capabilities?.Count > 0),
                 ["BatchingEnabled"] = _subscriptions.Values.Count(s => s.Filter.EnableBatching),
                 ["PriceNotificationsEnabled"] = _subscriptions.Values.Count(s => s.Filter.NotifyOnPriceChanges)
             };
@@ -189,11 +188,11 @@ namespace ConduitLLM.Http.Services
                     await RemoveSubscriptionAsync(connectionId);
                 }
 
-                if (staleConnections.Any())
+                if (staleConnections.Count() > 0)
                 {
                     _logger.LogInformation(
                         "Cleaned up {Count} stale subscriptions",
-                        staleConnections.Count);
+                        staleConnections.Count());
                 }
 
                 _lastCleanup = DateTime.UtcNow;

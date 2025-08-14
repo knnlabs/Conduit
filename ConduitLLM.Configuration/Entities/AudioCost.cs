@@ -14,11 +14,15 @@ namespace ConduitLLM.Configuration.Entities
         public int Id { get; set; }
 
         /// <summary>
-        /// Provider name (e.g., "openai", "elevenlabs").
+        /// Provider ID (foreign key).
         /// </summary>
         [Required]
-        [MaxLength(100)]
-        public string Provider { get; set; } = string.Empty;
+        public int ProviderId { get; set; }
+        
+        /// <summary>
+        /// Navigation property to Provider.
+        /// </summary>
+        public Provider? Provider { get; set; }
 
         /// <summary>
         /// Operation type (transcription, tts, realtime).

@@ -12,10 +12,10 @@ The Conduit WebUI implements multiple security layers to protect administrative 
 | Key | Purpose | Visibility | Used By |
 |-----|---------|------------|---------|
 | `CONDUIT_WEBUI_AUTH_KEY` | Admin login | Server-only | Login endpoint |
-| `CONDUIT_MASTER_KEY` | Admin API access | Server-only | Admin SDK |
+| `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` | Admin API access | Server-only | Admin SDK |
 | Virtual Key | Core API access | Client-side | Core SDK |
 
-**Security Rule**: Never use the same value for `CONDUIT_WEBUI_AUTH_KEY` and `CONDUIT_MASTER_KEY`.
+**Security Rule**: Never use the same value for `CONDUIT_WEBUI_AUTH_KEY` and `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`.
 
 ### 2. Virtual Key Exposure
 
@@ -121,14 +121,14 @@ function validateMasterKeyFormat(key: string) {
 ```bash
 # .env.local (git ignored)
 CONDUIT_WEBUI_AUTH_KEY=dev-auth-key-change-me
-CONDUIT_MASTER_KEY=dev-master-key-change-me
+CONDUIT_API_TO_API_BACKEND_AUTH_KEY=dev-master-key-change-me
 ```
 
 #### Production
 ```bash
 # Use strong, unique keys
 CONDUIT_WEBUI_AUTH_KEY=$(openssl rand -hex 32)
-CONDUIT_MASTER_KEY=$(openssl rand -hex 32)
+CONDUIT_API_TO_API_BACKEND_AUTH_KEY=$(openssl rand -hex 32)
 
 # Never commit production keys
 # Use environment variables or secrets management

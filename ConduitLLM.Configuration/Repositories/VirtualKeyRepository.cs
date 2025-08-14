@@ -11,6 +11,7 @@ using ConduitLLM.Configuration.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Configuration.Repositories
 {
     /// <summary>
@@ -39,7 +40,7 @@ namespace ConduitLLM.Configuration.Repositories
     /// </remarks>
     public class VirtualKeyRepository : IVirtualKeyRepository
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly ILogger<VirtualKeyRepository> _logger;
 
         /// <summary>
@@ -67,7 +68,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// </list>
         /// </remarks>
         public VirtualKeyRepository(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<VirtualKeyRepository> logger)
         {
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
@@ -82,6 +83,7 @@ namespace ConduitLLM.Configuration.Repositories
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.VirtualKeys
                     .AsNoTracking()
+                    .Include(vk => vk.VirtualKeyGroup)
                     .FirstOrDefaultAsync(vk => vk.Id == id, cancellationToken);
             }
             catch (Exception ex)
@@ -267,75 +269,5 @@ _logger.LogError(ex, "Error creating virtual key '{KeyName}'", virtualKey.KeyNam
             }
         }
 
-        /// <inheritdoc/>
-        public async Task<decimal> GetCurrentSpendAsync(int virtualKeyId, CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                
-                // Query only the current spend field for maximum performance
-                var currentSpend = await dbContext.VirtualKeys
-                    .AsNoTracking()
-                    .Where(vk => vk.Id == virtualKeyId)
-                    .Select(vk => vk.CurrentSpend)
-                    .FirstOrDefaultAsync(cancellationToken);
-
-                return currentSpend;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting current spend for virtual key ID {KeyId}", LogSanitizer.SanitizeObject(virtualKeyId));
-                throw;
-            }
-        }
-
-        /// <inheritdoc/>
-        public async Task<bool> BulkUpdateSpendAsync(Dictionary<string, decimal> spendUpdates, CancellationToken cancellationToken = default)
-        {
-            if (spendUpdates == null || !spendUpdates.Any())
-            {
-                return true; // Nothing to update
-            }
-
-            try
-            {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                
-                // Get all virtual keys that need to be updated
-                var keyHashes = spendUpdates.Keys.ToList();
-                var virtualKeys = await dbContext.VirtualKeys
-                    .Where(vk => keyHashes.Contains(vk.KeyHash))
-                    .ToListAsync(cancellationToken);
-
-                if (!virtualKeys.Any())
-                {
-                    _logger.LogWarning("No virtual keys found for bulk spend update");
-                    return false;
-                }
-
-                // Update spend amounts
-                foreach (var virtualKey in virtualKeys)
-                {
-                    if (spendUpdates.TryGetValue(virtualKey.KeyHash, out var spendToAdd))
-                    {
-                        virtualKey.CurrentSpend += spendToAdd;
-                        virtualKey.UpdatedAt = DateTime.UtcNow;
-                    }
-                }
-
-                int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
-                
-                _logger.LogInformation("Bulk updated spend for {Count} virtual keys, {RowsAffected} rows affected", 
-                    spendUpdates.Count, rowsAffected);
-                
-                return rowsAffected > 0;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in bulk spend update for {Count} virtual keys", spendUpdates.Count);
-                throw;
-            }
-        }
     }
 }

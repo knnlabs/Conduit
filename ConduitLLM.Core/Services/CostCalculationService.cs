@@ -1,15 +1,19 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
+using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Models.Pricing;
 
 using Microsoft.Extensions.Logging;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Core.Services;
 
 /// <summary>
@@ -97,12 +101,64 @@ public class CostCalculationService : ICostCalculationService
 
         decimal calculatedCost = 0m;
 
+        // Handle polymorphic pricing models
+        switch (modelCost.PricingModel)
+        {
+            case PricingModel.Standard:
+                calculatedCost = await CalculateStandardCostAsync(modelId, modelCost, usage);
+                break;
+            case PricingModel.PerVideo:
+                calculatedCost = await CalculatePerVideoCostAsync(modelId, modelCost, usage);
+                break;
+            case PricingModel.PerSecondVideo:
+                calculatedCost = await CalculatePerSecondVideoCostAsync(modelId, modelCost, usage);
+                break;
+            case PricingModel.InferenceSteps:
+                calculatedCost = await CalculateInferenceStepsCostAsync(modelId, modelCost, usage);
+                break;
+            case PricingModel.TieredTokens:
+                calculatedCost = await CalculateTieredTokensCostAsync(modelId, modelCost, usage);
+                break;
+            case PricingModel.PerImage:
+                calculatedCost = await CalculatePerImageCostAsync(modelId, modelCost, usage);
+                break;
+            case PricingModel.PerMinuteAudio:
+                calculatedCost = await CalculatePerMinuteAudioCostAsync(modelId, modelCost, usage);
+                break;
+            case PricingModel.PerThousandCharacters:
+                calculatedCost = await CalculatePerThousandCharactersCostAsync(modelId, modelCost, usage);
+                break;
+            default:
+                _logger.LogWarning("Unknown pricing model {PricingModel} for model {ModelId}. Using standard calculation.", modelCost.PricingModel, modelId);
+                calculatedCost = await CalculateStandardCostAsync(modelId, modelCost, usage);
+                break;
+        }
+
+        // Apply batch processing discount if applicable (works across all pricing models)
+        if (usage.IsBatch == true && modelCost.SupportsBatchProcessing && modelCost.BatchProcessingMultiplier.HasValue)
+        {
+            var originalCost = calculatedCost;
+            calculatedCost *= modelCost.BatchProcessingMultiplier!.Value;
+            _logger.LogDebug("Applied batch processing discount for model {ModelId}. Original cost: {OriginalCost}, Discounted cost: {DiscountedCost}, Multiplier: {Multiplier}",
+                modelId, originalCost, calculatedCost, modelCost.BatchProcessingMultiplier.Value);
+        }
+
+        _logger.LogDebug("Calculated cost for model {ModelId} using pricing model {PricingModel} is {CalculatedCost}",
+            modelId, modelCost.PricingModel, calculatedCost);
+
+        return calculatedCost;
+    }
+
+    private Task<decimal> CalculateStandardCostAsync(string modelId, ModelCost modelCost, Usage usage)
+    {
+        decimal calculatedCost = 0m;
+
         // Calculate cost based on token usage
         // For embeddings: prioritize embedding cost when available and no completion tokens
-        if (modelCost.EmbeddingTokenCost.HasValue && usage.CompletionTokens.GetValueOrDefault() == 0 && usage.PromptTokens.HasValue)
+        if (modelCost.EmbeddingCostPerMillionTokens.HasValue && usage.CompletionTokens.GetValueOrDefault() == 0 && usage.PromptTokens.HasValue)
         {
-            // Use specialized embedding cost for prompt tokens
-            calculatedCost += (usage.PromptTokens.Value * modelCost.EmbeddingTokenCost.Value);
+            // Use specialized embedding cost for prompt tokens (cost is per million tokens)
+            calculatedCost += (usage.PromptTokens.Value * modelCost.EmbeddingCostPerMillionTokens.Value) / 1_000_000m;
         }
         else
         {
@@ -110,39 +166,39 @@ public class CostCalculationService : ICostCalculationService
             var regularInputTokens = usage.PromptTokens.GetValueOrDefault();
             
             // Handle cached input tokens (read from cache)
-            if (usage.CachedInputTokens.HasValue && usage.CachedInputTokens.Value > 0 && modelCost.CachedInputTokenCost.HasValue)
+            if (usage.CachedInputTokens.HasValue && usage.CachedInputTokens.Value > 0 && modelCost.CachedInputCostPerMillionTokens.HasValue)
             {
                 // Subtract cached tokens from regular input tokens
                 regularInputTokens -= usage.CachedInputTokens.Value;
                 
-                // Add cost for cached tokens at the cached rate
-                calculatedCost += (usage.CachedInputTokens.Value * modelCost.CachedInputTokenCost.Value);
+                // Add cost for cached tokens at the cached rate (cost is per million tokens)
+                calculatedCost += (usage.CachedInputTokens.Value * modelCost.CachedInputCostPerMillionTokens.Value) / 1_000_000m;
                 
                 _logger.LogDebug("Applied cached input token pricing for {CachedTokens} tokens at rate {CachedRate}",
-                    usage.CachedInputTokens.Value, modelCost.CachedInputTokenCost.Value);
+                    usage.CachedInputTokens.Value, modelCost.CachedInputCostPerMillionTokens.Value);
             }
             
             // Handle cache write tokens
-            if (usage.CachedWriteTokens.HasValue && usage.CachedWriteTokens.Value > 0 && modelCost.CachedInputWriteCost.HasValue)
+            if (usage.CachedWriteTokens.HasValue && usage.CachedWriteTokens.Value > 0 && modelCost.CachedInputWriteCostPerMillionTokens.HasValue)
             {
-                // Cache writes are additional to regular input processing
-                calculatedCost += (usage.CachedWriteTokens.Value * modelCost.CachedInputWriteCost.Value);
+                // Cache writes are additional to regular input processing (cost is per million tokens)
+                calculatedCost += (usage.CachedWriteTokens.Value * modelCost.CachedInputWriteCostPerMillionTokens.Value) / 1_000_000m;
                 
                 _logger.LogDebug("Applied cache write token pricing for {WriteTokens} tokens at rate {WriteRate}",
-                    usage.CachedWriteTokens.Value, modelCost.CachedInputWriteCost.Value);
+                    usage.CachedWriteTokens.Value, modelCost.CachedInputWriteCostPerMillionTokens.Value);
             }
             
-            // Add cost for remaining regular input tokens
+            // Add cost for remaining regular input tokens (cost is per million tokens)
             if (regularInputTokens > 0)
             {
-                calculatedCost += (regularInputTokens * modelCost.InputTokenCost);
+                calculatedCost += (regularInputTokens * modelCost.InputCostPerMillionTokens) / 1_000_000m;
             }
         }
         
-        // Always add completion token cost
+        // Always add completion token cost (cost is per million tokens)
         if (usage.CompletionTokens.HasValue)
         {
-            calculatedCost += (usage.CompletionTokens.Value * modelCost.OutputTokenCost);
+            calculatedCost += (usage.CompletionTokens.Value * modelCost.OutputCostPerMillionTokens) / 1_000_000m;
         }
 
         // Add image generation cost if applicable
@@ -151,11 +207,21 @@ public class CostCalculationService : ICostCalculationService
             var imageCost = usage.ImageCount.Value * modelCost.ImageCostPerImage.Value;
             
             // Apply quality multiplier if available
-            if (modelCost.ImageQualityMultipliers != null && 
-                !string.IsNullOrEmpty(usage.ImageQuality) &&
-                modelCost.ImageQualityMultipliers.TryGetValue(usage.ImageQuality.ToLowerInvariant(), out var multiplier))
+            if (!string.IsNullOrEmpty(modelCost.ImageQualityMultipliers) && 
+                !string.IsNullOrEmpty(usage.ImageQuality))
             {
-                imageCost *= multiplier;
+                try
+                {
+                    var qualityMultipliers = JsonSerializer.Deserialize<Dictionary<string, decimal>>(modelCost.ImageQualityMultipliers);
+                    if (qualityMultipliers != null && qualityMultipliers.TryGetValue(usage.ImageQuality.ToLowerInvariant(), out var multiplier))
+                    {
+                        imageCost *= multiplier;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse ImageQualityMultipliers for model {ModelId}", modelId);
+                }
             }
             
             calculatedCost += imageCost;
@@ -167,11 +233,21 @@ public class CostCalculationService : ICostCalculationService
             var baseCost = (decimal)usage.VideoDurationSeconds.Value * modelCost.VideoCostPerSecond.Value;
             
             // Apply resolution multiplier if available
-            if (modelCost.VideoResolutionMultipliers != null && 
-                !string.IsNullOrEmpty(usage.VideoResolution) &&
-                modelCost.VideoResolutionMultipliers.TryGetValue(usage.VideoResolution, out var multiplier))
+            if (!string.IsNullOrEmpty(modelCost.VideoResolutionMultipliers) && 
+                !string.IsNullOrEmpty(usage.VideoResolution))
             {
-                baseCost *= multiplier;
+                try
+                {
+                    var resolutionMultipliers = JsonSerializer.Deserialize<Dictionary<string, decimal>>(modelCost.VideoResolutionMultipliers);
+                    if (resolutionMultipliers != null && resolutionMultipliers.TryGetValue(usage.VideoResolution, out var multiplier))
+                    {
+                        baseCost *= multiplier;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse VideoResolutionMultipliers for model {ModelId}", modelId);
+                }
             }
             
             calculatedCost += baseCost;
@@ -207,19 +283,12 @@ public class CostCalculationService : ICostCalculationService
                 stepCost);
         }
 
-        // Apply batch processing discount if applicable
-        if (usage.IsBatch == true && modelCost.SupportsBatchProcessing && modelCost.BatchProcessingMultiplier.HasValue)
-        {
-            var originalCost = calculatedCost;
-            calculatedCost *= modelCost.BatchProcessingMultiplier!.Value;
-            _logger.LogDebug("Applied batch processing discount for model {ModelId}. Original cost: {OriginalCost}, Discounted cost: {DiscountedCost}, Multiplier: {Multiplier}",
-                modelId, originalCost, calculatedCost, modelCost.BatchProcessingMultiplier.Value);
-        }
+        // Batch processing discount is now applied in the main CalculateCostAsync method for all pricing models
 
         _logger.LogDebug("Calculated cost for model {ModelId} with usage (Prompt: {PromptTokens}, Completion: {CompletionTokens}, CachedInput: {CachedInputTokens}, CachedWrite: {CachedWriteTokens}, Images: {ImageCount}, Video: {VideoDuration}s, SearchUnits: {SearchUnits}, InferenceSteps: {InferenceSteps}, IsBatch: {IsBatch}) is {CalculatedCost}",
             modelId, usage.PromptTokens, usage.CompletionTokens, usage.CachedInputTokens ?? 0, usage.CachedWriteTokens ?? 0, usage.ImageCount ?? 0, usage.VideoDurationSeconds ?? 0, usage.SearchUnits ?? 0, usage.InferenceSteps ?? 0, usage.IsBatch ?? false, calculatedCost);
 
-        return calculatedCost;
+        return Task.FromResult(calculatedCost);
     }
 
     /// <inheritdoc />
@@ -281,7 +350,7 @@ public class CostCalculationService : ICostCalculationService
 
         // Validate refund amounts don't exceed original amounts
         var validationMessages = ValidateRefundAmounts(originalUsage, refundUsage);
-        if (validationMessages.Any())
+        if (validationMessages.Count() > 0)
         {
             result.ValidationMessages.AddRange(validationMessages);
             result.IsPartialRefund = true;
@@ -302,10 +371,10 @@ public class CostCalculationService : ICostCalculationService
 
         // Calculate token-based refunds
         // For embeddings: prioritize embedding cost when available and no completion tokens
-        if (modelCost.EmbeddingTokenCost.HasValue && refundUsage.CompletionTokens.GetValueOrDefault() == 0 && refundUsage.PromptTokens.GetValueOrDefault() > 0)
+        if (modelCost.EmbeddingCostPerMillionTokens.HasValue && refundUsage.CompletionTokens.GetValueOrDefault() == 0 && refundUsage.PromptTokens.GetValueOrDefault() > 0)
         {
-            // Use specialized embedding cost for prompt token refunds
-            breakdown.EmbeddingRefund = refundUsage.PromptTokens!.Value * modelCost.EmbeddingTokenCost.Value;
+            // Use specialized embedding cost for prompt token refunds (cost is per million tokens)
+            breakdown.EmbeddingRefund = (refundUsage.PromptTokens!.Value * modelCost.EmbeddingCostPerMillionTokens.Value) / 1_000_000m;
             breakdown.InputTokenRefund = 0; // Clear input token refund since we're using embedding cost
             totalRefund += breakdown.EmbeddingRefund;
         }
@@ -315,45 +384,45 @@ public class CostCalculationService : ICostCalculationService
             var regularInputTokens = refundUsage.PromptTokens.GetValueOrDefault();
             
             // Handle cached input token refunds (read from cache)
-            if (refundUsage.CachedInputTokens.HasValue && refundUsage.CachedInputTokens.Value > 0 && modelCost.CachedInputTokenCost.HasValue)
+            if (refundUsage.CachedInputTokens.HasValue && refundUsage.CachedInputTokens.Value > 0 && modelCost.CachedInputCostPerMillionTokens.HasValue)
             {
                 // Subtract cached tokens from regular input tokens for refund calculation
                 regularInputTokens -= refundUsage.CachedInputTokens.Value;
                 
-                // Add refund for cached tokens at the cached rate
-                var cachedRefund = refundUsage.CachedInputTokens.Value * modelCost.CachedInputTokenCost.Value;
+                // Add refund for cached tokens at the cached rate (cost is per million tokens)
+                var cachedRefund = (refundUsage.CachedInputTokens.Value * modelCost.CachedInputCostPerMillionTokens.Value) / 1_000_000m;
                 breakdown.InputTokenRefund = breakdown.InputTokenRefund + cachedRefund;
                 totalRefund += cachedRefund;
                 
                 _logger.LogDebug("Applied cached input token refund for {CachedTokens} tokens at rate {CachedRate}",
-                    refundUsage.CachedInputTokens.Value, modelCost.CachedInputTokenCost.Value);
+                    refundUsage.CachedInputTokens.Value, modelCost.CachedInputCostPerMillionTokens.Value);
             }
             
             // Handle cache write token refunds
-            if (refundUsage.CachedWriteTokens.HasValue && refundUsage.CachedWriteTokens.Value > 0 && modelCost.CachedInputWriteCost.HasValue)
+            if (refundUsage.CachedWriteTokens.HasValue && refundUsage.CachedWriteTokens.Value > 0 && modelCost.CachedInputWriteCostPerMillionTokens.HasValue)
             {
-                // Cache write refunds are additional
-                var cacheWriteRefund = refundUsage.CachedWriteTokens.Value * modelCost.CachedInputWriteCost.Value;
+                // Cache write refunds are additional (cost is per million tokens)
+                var cacheWriteRefund = (refundUsage.CachedWriteTokens.Value * modelCost.CachedInputWriteCostPerMillionTokens.Value) / 1_000_000m;
                 breakdown.InputTokenRefund = breakdown.InputTokenRefund + cacheWriteRefund;
                 totalRefund += cacheWriteRefund;
                 
                 _logger.LogDebug("Applied cache write token refund for {WriteTokens} tokens at rate {WriteRate}",
-                    refundUsage.CachedWriteTokens.Value, modelCost.CachedInputWriteCost.Value);
+                    refundUsage.CachedWriteTokens.Value, modelCost.CachedInputWriteCostPerMillionTokens.Value);
             }
             
-            // Add refund for remaining regular input tokens
+            // Add refund for remaining regular input tokens (cost is per million tokens)
             if (regularInputTokens > 0)
             {
-                var regularRefund = regularInputTokens * modelCost.InputTokenCost;
+                var regularRefund = (regularInputTokens * modelCost.InputCostPerMillionTokens) / 1_000_000m;
                 breakdown.InputTokenRefund = breakdown.InputTokenRefund + regularRefund;
                 totalRefund += regularRefund;
             }
         }
 
-        // Always add completion token refund
+        // Always add completion token refund (cost is per million tokens)
         if (refundUsage.CompletionTokens.HasValue && refundUsage.CompletionTokens.Value > 0)
         {
-            breakdown.OutputTokenRefund = refundUsage.CompletionTokens.Value * modelCost.OutputTokenCost;
+            breakdown.OutputTokenRefund = (refundUsage.CompletionTokens.Value * modelCost.OutputCostPerMillionTokens) / 1_000_000m;
             totalRefund += breakdown.OutputTokenRefund;
         }
 
@@ -363,11 +432,21 @@ public class CostCalculationService : ICostCalculationService
             var imageRefund = refundUsage.ImageCount.Value * modelCost.ImageCostPerImage.Value;
             
             // Apply quality multiplier if available
-            if (modelCost.ImageQualityMultipliers != null && 
-                !string.IsNullOrEmpty(refundUsage.ImageQuality) &&
-                modelCost.ImageQualityMultipliers.TryGetValue(refundUsage.ImageQuality.ToLowerInvariant(), out var multiplier))
+            if (!string.IsNullOrEmpty(modelCost.ImageQualityMultipliers) && 
+                !string.IsNullOrEmpty(refundUsage.ImageQuality))
             {
-                imageRefund *= multiplier;
+                try
+                {
+                    var qualityMultipliers = JsonSerializer.Deserialize<Dictionary<string, decimal>>(modelCost.ImageQualityMultipliers);
+                    if (qualityMultipliers != null && qualityMultipliers.TryGetValue(refundUsage.ImageQuality.ToLowerInvariant(), out var multiplier))
+                    {
+                        imageRefund *= multiplier;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse ImageQualityMultipliers for refund calculation");
+                }
             }
             
             breakdown.ImageRefund = imageRefund;
@@ -380,11 +459,21 @@ public class CostCalculationService : ICostCalculationService
             var videoRefund = (decimal)refundUsage.VideoDurationSeconds.Value * modelCost.VideoCostPerSecond.Value;
             
             // Apply resolution multiplier if available
-            if (modelCost.VideoResolutionMultipliers != null && 
-                !string.IsNullOrEmpty(refundUsage.VideoResolution) &&
-                modelCost.VideoResolutionMultipliers.TryGetValue(refundUsage.VideoResolution, out var multiplier))
+            if (!string.IsNullOrEmpty(modelCost.VideoResolutionMultipliers) && 
+                !string.IsNullOrEmpty(refundUsage.VideoResolution))
             {
-                videoRefund *= multiplier;
+                try
+                {
+                    var resolutionMultipliers = JsonSerializer.Deserialize<Dictionary<string, decimal>>(modelCost.VideoResolutionMultipliers);
+                    if (resolutionMultipliers != null && resolutionMultipliers.TryGetValue(refundUsage.VideoResolution, out var multiplier))
+                    {
+                        videoRefund *= multiplier;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse VideoResolutionMultipliers for refund calculation");
+                }
             }
             
             breakdown.VideoRefund = videoRefund;
@@ -509,5 +598,259 @@ public class CostCalculationService : ICostCalculationService
         }
 
         return messages;
+    }
+
+    private Task<decimal> CalculatePerVideoCostAsync(string modelId, ModelCost modelCost, Usage usage)
+    {
+        if (!usage.VideoDurationSeconds.HasValue || string.IsNullOrEmpty(usage.VideoResolution))
+        {
+            _logger.LogDebug("No video usage data for per-video pricing model {ModelId}", modelId);
+            return Task.FromResult(0m);
+        }
+
+        // Parse configuration from JSON
+        PerVideoPricingConfig? config = null;
+        if (!string.IsNullOrEmpty(modelCost.PricingConfiguration))
+        {
+            try
+            {
+                config = JsonSerializer.Deserialize<PerVideoPricingConfig>(modelCost.PricingConfiguration);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to parse per-video pricing configuration for model {ModelId}", modelId);
+                throw new InvalidOperationException($"Invalid per-video pricing configuration for model {modelId}");
+            }
+        }
+
+        if (config == null || config.Rates == null || config.Rates.Count() == 0)
+        {
+            _logger.LogError("No per-video pricing rates configured for model {ModelId}", modelId);
+            throw new InvalidOperationException($"No per-video pricing rates configured for model {modelId}");
+        }
+
+        // Build lookup key (e.g., "720p_6" for 720p resolution, 6 seconds)
+        var duration = (int)Math.Round(usage.VideoDurationSeconds.Value);
+        var lookupKey = $"{usage.VideoResolution}_{duration}";
+
+        if (!config.Rates.TryGetValue(lookupKey, out var flatRate))
+        {
+            _logger.LogError("No pricing found for video {Resolution} {Duration}s for model {ModelId}", 
+                usage.VideoResolution, duration, modelId);
+            throw new InvalidOperationException($"No pricing available for {usage.VideoResolution} {duration}s video on model {modelId}");
+        }
+
+        _logger.LogDebug("Per-video cost for model {ModelId}: {Resolution} {Duration}s = ${Cost}",
+            modelId, usage.VideoResolution, duration, flatRate);
+
+        return Task.FromResult(flatRate);
+    }
+
+    private Task<decimal> CalculatePerSecondVideoCostAsync(string modelId, ModelCost modelCost, Usage usage)
+    {
+        if (!usage.VideoDurationSeconds.HasValue)
+        {
+            _logger.LogDebug("No video duration for per-second video pricing model {ModelId}", modelId);
+            return Task.FromResult(0m);
+        }
+
+        // Parse configuration from JSON
+        PerSecondVideoPricingConfig? config = null;
+        if (!string.IsNullOrEmpty(modelCost.PricingConfiguration))
+        {
+            try
+            {
+                config = JsonSerializer.Deserialize<PerSecondVideoPricingConfig>(modelCost.PricingConfiguration);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to parse per-second video pricing configuration for model {ModelId}", modelId);
+                throw new InvalidOperationException($"Invalid per-second video pricing configuration for model {modelId}");
+            }
+        }
+
+        if (config == null)
+        {
+            _logger.LogError("No per-second video pricing configuration for model {ModelId}", modelId);
+            throw new InvalidOperationException($"No per-second video pricing configuration for model {modelId}");
+        }
+
+        var baseCost = (decimal)usage.VideoDurationSeconds.Value * config.BaseRate;
+
+        // Apply resolution multiplier if available
+        if (!string.IsNullOrEmpty(usage.VideoResolution) && 
+            config.ResolutionMultipliers != null &&
+            config.ResolutionMultipliers.TryGetValue(usage.VideoResolution, out var multiplier))
+        {
+            baseCost *= multiplier;
+            _logger.LogDebug("Applied video resolution multiplier {Multiplier} for {Resolution}", multiplier, usage.VideoResolution);
+        }
+
+        _logger.LogDebug("Per-second video cost for model {ModelId}: {Duration}s × ${BaseRate} = ${Cost}",
+            modelId, usage.VideoDurationSeconds.Value, config.BaseRate, baseCost);
+
+        return Task.FromResult(baseCost);
+    }
+
+    private Task<decimal> CalculateInferenceStepsCostAsync(string modelId, ModelCost modelCost, Usage usage)
+    {
+        // Parse configuration or use pre-parsed
+        InferenceStepsPricingConfig? config = null;
+        if (!string.IsNullOrEmpty(modelCost.PricingConfiguration))
+        {
+            try
+            {
+                config = JsonSerializer.Deserialize<InferenceStepsPricingConfig>(modelCost.PricingConfiguration);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to parse inference steps pricing configuration for model {ModelId}", modelId);
+                throw new InvalidOperationException($"Invalid inference steps pricing configuration for model {modelId}");
+            }
+        }
+
+        if (config == null)
+        {
+            _logger.LogError("No inference steps pricing configuration for model {ModelId}", modelId);
+            throw new InvalidOperationException($"No inference steps pricing configuration for model {modelId}");
+        }
+
+        // Use provided steps or default
+        var steps = usage.InferenceSteps ?? config.DefaultSteps;
+        if (steps <= 0)
+        {
+            _logger.LogDebug("No inference steps for model {ModelId}", modelId);
+            return Task.FromResult(0m);
+        }
+
+        var cost = steps * config.CostPerStep;
+
+        _logger.LogDebug("Inference steps cost for model {ModelId}: {Steps} steps × ${CostPerStep} = ${Cost}",
+            modelId, steps, config.CostPerStep, cost);
+
+        return Task.FromResult(cost);
+    }
+
+    private Task<decimal> CalculateTieredTokensCostAsync(string modelId, ModelCost modelCost, Usage usage)
+    {
+        // Parse configuration or use pre-parsed
+        TieredTokensPricingConfig? config = null;
+        if (!string.IsNullOrEmpty(modelCost.PricingConfiguration))
+        {
+            try
+            {
+                config = JsonSerializer.Deserialize<TieredTokensPricingConfig>(modelCost.PricingConfiguration);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to parse tiered tokens pricing configuration for model {ModelId}", modelId);
+                throw new InvalidOperationException($"Invalid tiered tokens pricing configuration for model {modelId}");
+            }
+        }
+
+        if (config == null || config.Tiers == null || config.Tiers.Count() == 0)
+        {
+            _logger.LogError("No tiered tokens pricing configuration for model {ModelId}", modelId);
+            throw new InvalidOperationException($"No tiered tokens pricing configuration for model {modelId}");
+        }
+
+        var inputTokens = usage.PromptTokens ?? 0;
+        var outputTokens = usage.CompletionTokens ?? 0;
+
+        // Find the appropriate tier based on total context length
+        var totalTokens = inputTokens + outputTokens;
+        TokenPricingTier? tier = null;
+
+        foreach (var t in config.Tiers.OrderBy(t => t.MaxContext ?? int.MaxValue))
+        {
+            if (!t.MaxContext.HasValue || totalTokens <= t.MaxContext.Value)
+            {
+                tier = t;
+                break;
+            }
+        }
+
+        if (tier == null)
+        {
+            tier = config.Tiers.Last(); // Use highest tier if none match
+        }
+
+        var inputCost = (inputTokens * tier.InputCost) / 1_000_000m;
+        var outputCost = (outputTokens * tier.OutputCost) / 1_000_000m;
+
+        _logger.LogDebug("Tiered tokens cost for model {ModelId}: Context {TotalTokens}, Tier ≤{MaxContext}, " +
+            "Input: {InputTokens} × ${InputRate} + Output: {OutputTokens} × ${OutputRate} = ${TotalCost}",
+            modelId, totalTokens, tier.MaxContext, inputTokens, tier.InputCost, outputTokens, tier.OutputCost, inputCost + outputCost);
+
+        return Task.FromResult(inputCost + outputCost);
+    }
+
+    private Task<decimal> CalculatePerImageCostAsync(string modelId, ModelCost modelCost, Usage usage)
+    {
+        if (!usage.ImageCount.HasValue || usage.ImageCount.Value <= 0)
+        {
+            _logger.LogDebug("No image count for per-image pricing model {ModelId}", modelId);
+            return Task.FromResult(0m);
+        }
+
+        // Parse configuration or use pre-parsed
+        PerImagePricingConfig? config = null;
+        if (!string.IsNullOrEmpty(modelCost.PricingConfiguration))
+        {
+            try
+            {
+                config = JsonSerializer.Deserialize<PerImagePricingConfig>(modelCost.PricingConfiguration);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to parse per-image pricing configuration for model {ModelId}", modelId);
+                throw new InvalidOperationException($"Invalid per-image pricing configuration for model {modelId}");
+            }
+        }
+
+        if (config == null)
+        {
+            _logger.LogError("No per-image pricing configuration for model {ModelId}", modelId);
+            throw new InvalidOperationException($"No per-image pricing configuration for model {modelId}");
+        }
+
+        var cost = usage.ImageCount.Value * config.BaseRate;
+
+        // Apply quality multiplier
+        if (!string.IsNullOrEmpty(usage.ImageQuality) && 
+            config.QualityMultipliers != null &&
+            config.QualityMultipliers.TryGetValue(usage.ImageQuality.ToLowerInvariant(), out var qualityMultiplier))
+        {
+            cost *= qualityMultiplier;
+            _logger.LogDebug("Applied image quality multiplier {Multiplier} for {Quality}", qualityMultiplier, usage.ImageQuality);
+        }
+
+        // Apply resolution multiplier
+        if (!string.IsNullOrEmpty(usage.ImageResolution) && 
+            config.ResolutionMultipliers != null &&
+            config.ResolutionMultipliers.TryGetValue(usage.ImageResolution, out var resolutionMultiplier))
+        {
+            cost *= resolutionMultiplier;
+            _logger.LogDebug("Applied image resolution multiplier {Multiplier} for {Resolution}", resolutionMultiplier, usage.ImageResolution);
+        }
+
+        _logger.LogDebug("Per-image cost for model {ModelId}: {Count} images × ${BaseRate} = ${Cost}",
+            modelId, usage.ImageCount.Value, config.BaseRate, cost);
+
+        return Task.FromResult(cost);
+    }
+
+    private async Task<decimal> CalculatePerMinuteAudioCostAsync(string modelId, ModelCost modelCost, Usage usage)
+    {
+        // This pricing model is for audio transcription/realtime
+        // Delegate to standard calculation which already handles audio costs
+        return await CalculateStandardCostAsync(modelId, modelCost, usage);
+    }
+
+    private async Task<decimal> CalculatePerThousandCharactersCostAsync(string modelId, ModelCost modelCost, Usage usage)
+    {
+        // This pricing model is for text-to-speech
+        // The standard calculation already handles AudioCostPerKCharacters
+        return await CalculateStandardCostAsync(modelId, modelCost, usage);
     }
 }

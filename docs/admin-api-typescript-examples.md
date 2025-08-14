@@ -2525,7 +2525,7 @@ Use environment variables for configuration:
 ```typescript
 const config = {
     adminApiUrl: process.env.CONDUIT_ADMIN_API_URL || 'http://localhost:5002',
-    masterKey: process.env.CONDUIT_MASTER_KEY || '',
+    masterKey: process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY || '',
 };
 
 const adminClient = new ConduitAdminApiClient(config.adminApiUrl, config.masterKey);
@@ -2988,7 +2988,7 @@ For the latest updates and contributions, visit the [Conduit GitHub repository](
 ### Quick Start Checklist
 
 - [ ] Install dependencies: `npm install node-fetch @types/node-fetch`
-- [ ] Set environment variables: `CONDUIT_ADMIN_API_URL` and `CONDUIT_MASTER_KEY`
+- [ ] Set environment variables: `CONDUIT_ADMIN_API_URL` and `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`
 - [ ] Initialize the client with proper error handling
 - [ ] Implement rate limiting for production use
 - [ ] Set up monitoring and logging

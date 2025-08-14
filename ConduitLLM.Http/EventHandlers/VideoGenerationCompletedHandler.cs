@@ -132,9 +132,9 @@ namespace ConduitLLM.Http.EventHandlers
             completedTasks.Add(completionData);
             
             // Keep only last 100 completed tasks
-            if (completedTasks.Count > 100)
+            if (completedTasks.Count() > 100)
             {
-                completedTasks = completedTasks.Skip(completedTasks.Count - 100).ToList();
+                completedTasks = completedTasks.Skip(completedTasks.Count() - 100).ToList();
             }
             
             // Cache for 24 hours

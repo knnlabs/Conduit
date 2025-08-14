@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.SignalR.Client;
 using System.Diagnostics;
 
-namespace SignalRBackplaneTest;
+namespace ConduitLLM.Tools.SignalRBackplaneTest;
 
 class Program
 {
@@ -68,7 +68,7 @@ class Program
             }
         }
 
-        Console.WriteLine($"\nConnected to {connections.Count} instances");
+        Console.WriteLine($"\nConnected to {connections.Count()} instances");
         Console.WriteLine("\nMonitoring for SignalR messages. Press any key to run tests, or 'Q' to quit.\n");
 
         // Interactive test loop
@@ -106,24 +106,24 @@ class Program
         Console.WriteLine("Trigger an event through Admin API and check if all instances receive it.");
         Console.WriteLine("(You need to manually trigger an event via Admin API or curl)");
         
-        var countBefore = messageLog.Count;
+        var countBefore = messageLog.Count();
         Console.WriteLine("Waiting 5 seconds for messages...");
         await Task.Delay(5000);
         
         var newMessages = messageLog.Skip(countBefore).ToList();
-        if (newMessages.Any())
+        if (newMessages.Count() > 0)
         {
             var uniquePorts = newMessages.Select(m => m.port).Distinct().Count();
-            Console.WriteLine($"✓ Received {newMessages.Count} messages across {uniquePorts} instances");
+            Console.WriteLine($"✓ Received {newMessages.Count()} messages across {uniquePorts} instances");
             
             // Check if all instances received messages
-            if (uniquePorts == connections.Count)
+            if (uniquePorts == connections.Count())
             {
                 Console.WriteLine("✓ All instances received messages - Redis backplane is working!");
             }
             else
             {
-                Console.WriteLine($"⚠ Only {uniquePorts}/{connections.Count} instances received messages");
+                Console.WriteLine($"⚠ Only {uniquePorts}/{connections.Count()} instances received messages");
             }
         }
         else
@@ -133,13 +133,13 @@ class Program
 
         // Test 2: Latency Measurement
         Console.WriteLine("\nTest 2: Message Latency");
-        if (newMessages.Count >= 2)
+        if (newMessages.Count() >= 2)
         {
             var messageGroups = newMessages.GroupBy(m => m.message);
             foreach (var group in messageGroups)
             {
                 var times = group.Select(g => g.time).OrderBy(t => t).ToList();
-                if (times.Count > 1)
+                if (times.Count() > 1)
                 {
                     var latency = (times.Last() - times.First()).TotalMilliseconds;
                     Console.WriteLine($"Message propagation latency: {latency:F2}ms");
@@ -159,7 +159,7 @@ class Program
     static void PrintSummary(List<(DateTime time, int port, string message)> messageLog)
     {
         Console.WriteLine("\n--- Test Summary ---");
-        Console.WriteLine($"Total messages received: {messageLog.Count}");
+        Console.WriteLine($"Total messages received: {messageLog.Count()}");
         
         var messagesByPort = messageLog.GroupBy(m => m.port);
         foreach (var portGroup in messagesByPort)
@@ -167,7 +167,7 @@ class Program
             Console.WriteLine($"Instance {portGroup.Key}: {portGroup.Count()} messages");
         }
 
-        if (messageLog.Any())
+        if (messageLog.Count() > 0)
         {
             var uniqueMessages = messageLog.Select(m => m.message).Distinct().Count();
             Console.WriteLine($"Unique messages: {uniqueMessages}");
@@ -183,7 +183,7 @@ class Program
                 delays.Add(delay);
             }
             
-            if (delays.Any())
+            if (delays.Count() > 0)
             {
                 Console.WriteLine($"Average propagation delay: {delays.Average():F2}ms");
                 Console.WriteLine($"Max propagation delay: {delays.Max():F2}ms");

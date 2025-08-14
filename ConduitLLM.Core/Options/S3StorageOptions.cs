@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace ConduitLLM.Core.Options
 {
@@ -61,5 +62,50 @@ namespace ConduitLLM.Core.Options
         /// Gets or sets whether to automatically create the bucket if it doesn't exist.
         /// </summary>
         public bool AutoCreateBucket { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets whether to automatically configure CORS on bucket initialization.
+        /// </summary>
+        public bool AutoConfigureCors { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the allowed origins for CORS configuration.
+        /// Default is "*" to allow all origins.
+        /// </summary>
+        public List<string> CorsAllowedOrigins { get; set; } = new() { "*" };
+
+        /// <summary>
+        /// Gets or sets the allowed methods for CORS configuration.
+        /// Default is GET and HEAD for media access.
+        /// </summary>
+        public List<string> CorsAllowedMethods { get; set; } = new() { "GET", "HEAD" };
+
+        /// <summary>
+        /// Gets or sets the exposed headers for CORS configuration.
+        /// </summary>
+        public List<string> CorsExposeHeaders { get; set; } = new() { "ETag", "Content-Length", "Content-Type" };
+
+        /// <summary>
+        /// Gets or sets the max age in seconds for CORS preflight cache.
+        /// Default is 3600 seconds (1 hour).
+        /// </summary>
+        public int CorsMaxAgeSeconds { get; set; } = 3600;
+
+        /// <summary>
+        /// Gets whether this is Cloudflare R2 service (auto-detected from ServiceUrl).
+        /// </summary>
+        public bool IsR2 => ServiceUrl?.Contains("r2.cloudflarestorage.com", StringComparison.OrdinalIgnoreCase) ?? false;
+
+        /// <summary>
+        /// Gets or sets the size of each part in bytes for multipart uploads.
+        /// Default is 10MB which is optimal for R2. AWS S3 minimum is 5MB.
+        /// </summary>
+        public long MultipartChunkSizeBytes { get; set; } = 10 * 1024 * 1024; // 10MB
+
+        /// <summary>
+        /// Gets or sets the threshold in bytes for when to use multipart upload.
+        /// Default is 100MB. Files larger than this will use multipart upload.
+        /// </summary>
+        public long MultipartThresholdBytes { get; set; } = 100 * 1024 * 1024; // 100MB
     }
 }

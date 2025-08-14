@@ -2,6 +2,7 @@ using System;
 using System.Net.Http;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 
 using Microsoft.Extensions.Logging;
@@ -17,12 +18,12 @@ namespace ConduitLLM.Providers
     /// self-hosted models with OpenAI-compatible interfaces, etc.).
     /// Unlike the standard OpenAI client, this requires an API base URL to be specified.
     /// </remarks>
-    public class OpenAICompatibleGenericClient : OpenAICompatibleClient
+    public class OpenAICompatibleGenericClient : ConduitLLM.Providers.OpenAICompatible.OpenAICompatibleClient
     {
         /// <summary>
         /// Initializes a new instance of the OpenAICompatibleGenericClient class.
         /// </summary>
-        /// <param name="credentials">Provider credentials containing API key and endpoint configuration.</param>
+        /// <param name="credentials">LLMProvider credentials containing API key and endpoint configuration.</param>
         /// <param name="providerModelId">The specific model ID to use with this provider.</param>
         /// <param name="logger">Logger for recording diagnostic information.</param>
         /// <param name="httpClientFactory">Factory for creating HttpClient instances with proper configuration.</param>
@@ -30,18 +31,20 @@ namespace ConduitLLM.Providers
         /// <exception cref="ArgumentNullException">Thrown when any required parameter is null.</exception>
         /// <exception cref="ConfigurationException">Thrown when API base URL is missing.</exception>
         public OpenAICompatibleGenericClient(
-            ProviderCredentials credentials,
+            Provider provider,
+            ProviderKeyCredential keyCredential,
             string providerModelId,
             ILogger<OpenAICompatibleGenericClient> logger,
             IHttpClientFactory httpClientFactory,
             ProviderDefaultModels? defaultModels = null)
             : base(
-                credentials,
+                provider,
+                keyCredential,
                 providerModelId,
                 logger,
                 httpClientFactory,
                 "openai-compatible",
-                ValidateAndGetBaseUrl(credentials),
+                ValidateAndGetBaseUrl(provider),
                 defaultModels)
         {
             // Additional validation is done in ValidateAndGetBaseUrl
@@ -50,17 +53,17 @@ namespace ConduitLLM.Providers
         /// <summary>
         /// Validates that the API base URL is provided and returns it.
         /// </summary>
-        private static string ValidateAndGetBaseUrl(ProviderCredentials credentials)
+        private static string ValidateAndGetBaseUrl(Provider provider)
         {
-            if (string.IsNullOrWhiteSpace(credentials.ApiBase))
+            if (string.IsNullOrWhiteSpace(provider.BaseUrl))
             {
                 throw new ConfigurationException(
-                    "API Base URL is required for OpenAI-compatible providers. " +
+                    "Base URL is required for OpenAI-compatible providers. " +
                     "Please specify the base URL of your OpenAI-compatible API endpoint.");
             }
 
             // Ensure the URL ends properly (without trailing slash for consistency)
-            return credentials.ApiBase.TrimEnd('/');
+            return provider.BaseUrl.TrimEnd('/');
         }
 
         /// <summary>

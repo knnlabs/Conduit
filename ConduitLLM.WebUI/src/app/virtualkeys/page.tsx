@@ -18,16 +18,15 @@ import {
 import {
   IconKey,
   IconPlus,
-  IconCreditCard,
-  IconActivity,
   IconUsers,
   IconAlertCircle,
   IconDownload,
   IconFileTypeCsv,
   IconJson,
   IconSearch,
+  IconLayersLinked,
 } from '@tabler/icons-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { VirtualKeysTable } from '@/components/virtualkeys/VirtualKeysTable';
 import { 
@@ -35,76 +34,74 @@ import {
   LazyEditVirtualKeyModal as EditVirtualKeyModal,
   LazyViewVirtualKeyModal as ViewVirtualKeyModal
 } from '@/components/lazy/LazyModals';
-import { exportToCSV, exportToJSON, formatDateForExport, formatCurrencyForExport } from '@/lib/utils/export';
+import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/export';
 import { notifications } from '@mantine/notifications';
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
-import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
-
-// Extend VirtualKeyDto with UI-specific fields added by the API
-interface VirtualKeyWithUI extends VirtualKeyDto {
-  displayKey: string;
-}
+import type { VirtualKeyDto, VirtualKeyGroupDto } from '@knn_labs/conduit-admin-client';
+import { withAdminClient } from '@/lib/client/adminClient';
 
 export default function VirtualKeysPage() {
   const [createModalOpened, { open: openCreateModal, close: closeCreateModal }] = useDisclosure(false);
   const [editModalOpened, { open: openEditModal, close: closeEditModal }] = useDisclosure(false);
   const [viewModalOpened, { open: openViewModal, close: closeViewModal }] = useDisclosure(false);
-  const [selectedKey, setSelectedKey] = useState<VirtualKeyWithUI | null>(null);
+  const [selectedKey, setSelectedKey] = useState<VirtualKeyDto | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [virtualKeys, setVirtualKeys] = useState<VirtualKeyWithUI[]>([]);
+  const [virtualKeys, setVirtualKeys] = useState<VirtualKeyDto[]>([]);
+  const [virtualKeyGroups, setVirtualKeyGroups] = useState<VirtualKeyGroupDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  // Fetch virtual keys on mount
-  useEffect(() => {
-    let cancelled = false;
-    
-    const loadVirtualKeys = async () => {
-      if (cancelled) return;
-      await fetchVirtualKeys();
-    };
-    
-    void loadVirtualKeys();
-    
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const fetchVirtualKeys = async () => {
+  const fetchVirtualKeys = useCallback(async () => {
     try {
       setIsLoading(true);
-      setError(null); // Clear any previous errors
+      setError(null);
       
-      const response = await fetch('/api/virtualkeys');
+      const result = await withAdminClient(client => 
+        client.virtualKeys.list(1, 1000)
+      );
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to fetch virtual keys: ${errorText}`);
-      }
-      
-      // Parse the response directly
-      const result = await response.json() as unknown;
-      const data = result as { items?: VirtualKeyWithUI[] } | VirtualKeyWithUI[];
-        
-      // Handle both array and paginated response formats
-      let virtualKeysData: VirtualKeyWithUI[];
-      if (Array.isArray(data)) {
-        virtualKeysData = data;
-      } else if (data.items && Array.isArray(data.items)) {
-        virtualKeysData = data.items;
-      } else {
-        virtualKeysData = [];
-      }
-      
-      setVirtualKeys(virtualKeysData);
+      // Filter out items without valid IDs and ensure they match VirtualKeyDto type
+      const validKeys = result.items.filter((key): key is VirtualKeyDto => 
+        key.id !== undefined && key.id !== null
+      );
+      setVirtualKeys(validKeys);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error'));
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  const fetchVirtualKeyGroups = useCallback(async () => {
+    try {
+      const groups = await withAdminClient(client => 
+        client.virtualKeyGroups.list()
+      );
+      setVirtualKeyGroups(groups);
+    } catch (err) {
+      console.warn('Error fetching virtual key groups:', err);
+    }
+  }, []);
+
+  // Fetch virtual keys and groups on mount
+  useEffect(() => {
+    let cancelled = false;
+    
+    const loadData = async () => {
+      if (cancelled) return;
+      await Promise.all([
+        fetchVirtualKeys(),
+        fetchVirtualKeyGroups()
+      ]);
+    };
+    
+    void loadData();
+    
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchVirtualKeys, fetchVirtualKeyGroups]);
 
   // Filter virtual keys based on search query
   const filteredKeys = virtualKeys.filter((key) => {
@@ -113,8 +110,9 @@ export default function VirtualKeysPage() {
     const query = searchQuery.toLowerCase();
     return (
       key.keyName.toLowerCase().includes(query) ||
-      key.displayKey.toLowerCase().includes(query) ||
+      (key.keyPrefix?.toLowerCase().includes(query) ?? false) ||
       key.id.toString().toLowerCase().includes(query) ||
+      key.virtualKeyGroupId.toString().includes(query) ||
       (key.metadata && JSON.stringify(key.metadata).toLowerCase().includes(query))
     );
   });
@@ -130,37 +128,34 @@ export default function VirtualKeysPage() {
   } = usePaginatedData(filteredKeys);
 
   // Calculate statistics based on filtered data (not paginated)
-  const stats = filteredKeys ? {
+  const stats = useMemo(() => filteredKeys ? {
     totalKeys: filteredKeys.length,
     activeKeys: filteredKeys.filter((k) => k.isEnabled).length,
-    totalSpend: filteredKeys.reduce((sum: number, k) => sum + k.currentSpend, 0),
-    totalRequests: filteredKeys.reduce((sum: number, k) => sum + (k.requestCount ?? 0), 0),
-  } : null;
+    totalGroups: new Set(filteredKeys.map((k) => k.virtualKeyGroupId)).size,
+  } : null, [filteredKeys]);
 
-  const handleEdit = (key: VirtualKeyWithUI) => {
+  const handleEdit = useCallback((key: VirtualKeyDto) => {
     setSelectedKey(key);
     openEditModal();
-  };
+  }, [openEditModal]);
 
-  const handleView = (key: VirtualKeyWithUI) => {
+  const handleView = useCallback((key: VirtualKeyDto) => {
     setSelectedKey(key);
     openViewModal();
-  };
+  }, [openViewModal]);
 
-  const handleDelete = async (keyId: string) => {
+  const handleDelete = useCallback(async (keyId: string) => {
     try {
-      const response = await fetch(`/api/virtualkeys/${keyId}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete virtual key');
-      }
+      await withAdminClient(client => 
+        client.virtualKeys.delete(keyId)
+      );
+      
       notifications.show({
         title: 'Success',
         message: 'Virtual key deleted successfully',
         color: 'green',
       });
-      void fetchVirtualKeys(); // Refresh the list
+      void fetchVirtualKeys();
     } catch {
       notifications.show({
         title: 'Error',
@@ -168,17 +163,10 @@ export default function VirtualKeysPage() {
         color: 'red',
       });
     }
-  };
+  }, [fetchVirtualKeys]);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(amount);
-  };
 
-  const handleExportCSV = () => {
+  const handleExportCSV = useCallback(() => {
     if (!filteredKeys || filteredKeys.length === 0) {
       notifications.show({
         title: 'No data to export',
@@ -188,19 +176,23 @@ export default function VirtualKeysPage() {
       return;
     }
 
+    // Create a map for quick balance lookup
+    const groupBalanceMap = new Map<number, number>();
+    virtualKeyGroups?.forEach(group => {
+      groupBalanceMap.set(group.id, group.balance);
+    });
+
     const exportData = filteredKeys.map((key) => ({
       name: key.keyName,
-      keyHash: key.displayKey,
+      keyPrefix: key.keyPrefix ?? 'N/A',
+      virtualKeyGroupId: key.virtualKeyGroupId,
+      currentBalance: groupBalanceMap.get(key.virtualKeyGroupId) ?? 0,
       status: key.isEnabled ? 'Active' : 'Disabled',
-      currentSpend: formatCurrencyForExport(key.currentSpend),
-      maxBudget: key.maxBudget ? formatCurrencyForExport(key.maxBudget) : '',
-      requestCount: key.requestCount ?? 0,
       createdAt: formatDateForExport(key.createdAt),
-      lastUsed: key.lastUsedAt ? formatDateForExport(key.lastUsedAt) : '',
-      allowedModels: key.allowedModels || '',
-      allowedProviders: '', // TODO: SDK should include allowedProviders field
-      budgetPeriod: key.budgetDuration || '',
+      allowedModels: key.allowedModels ?? '',
       expirationDate: key.expiresAt ? formatDateForExport(key.expiresAt) : '',
+      rateLimitRpm: key.rateLimitRpm ?? '',
+      rateLimitRpd: key.rateLimitRpd ?? '',
     }));
 
     exportToCSV(
@@ -208,17 +200,15 @@ export default function VirtualKeysPage() {
       `virtual-keys-${new Date().toISOString().split('T')[0]}`,
       [
         { key: 'name', label: 'Name' },
-        { key: 'keyHash', label: 'Key Hash' },
+        { key: 'keyPrefix', label: 'Key Prefix' },
+        { key: 'virtualKeyGroupId', label: 'Group ID' },
+        { key: 'currentBalance', label: 'Current Balance' },
         { key: 'status', label: 'Status' },
-        { key: 'currentSpend', label: 'Current Spend' },
-        { key: 'maxBudget', label: 'Max Budget' },
-        { key: 'requestCount', label: 'Request Count' },
         { key: 'createdAt', label: 'Created At' },
-        { key: 'lastUsed', label: 'Last Used' },
         { key: 'allowedModels', label: 'Allowed Models' },
-        { key: 'allowedProviders', label: 'Allowed Providers' },
-        { key: 'budgetPeriod', label: 'Budget Period' },
         { key: 'expirationDate', label: 'Expiration Date' },
+        { key: 'rateLimitRpm', label: 'Rate Limit (RPM)' },
+        { key: 'rateLimitRpd', label: 'Rate Limit (RPD)' },
       ]
     );
 
@@ -227,9 +217,9 @@ export default function VirtualKeysPage() {
       message: `Exported ${filteredKeys.length} virtual keys`,
       color: 'green',
     });
-  };
+  }, [filteredKeys, virtualKeyGroups]);
 
-  const handleExportJSON = () => {
+  const handleExportJSON = useCallback(() => {
     if (!filteredKeys || filteredKeys.length === 0) {
       notifications.show({
         title: 'No data to export',
@@ -239,8 +229,20 @@ export default function VirtualKeysPage() {
       return;
     }
 
+    // Create a map for quick balance lookup
+    const groupBalanceMap = new Map<number, number>();
+    virtualKeyGroups?.forEach(group => {
+      groupBalanceMap.set(group.id, group.balance);
+    });
+
+    // Enrich the keys data with balance information
+    const enrichedKeys = filteredKeys.map(key => ({
+      ...key,
+      currentBalance: groupBalanceMap.get(key.virtualKeyGroupId) ?? 0
+    }));
+
     exportToJSON(
-      filteredKeys,
+      enrichedKeys,
       `virtual-keys-${new Date().toISOString().split('T')[0]}`
     );
 
@@ -249,9 +251,9 @@ export default function VirtualKeysPage() {
       message: `Exported ${filteredKeys.length} virtual keys`,
       color: 'green',
     });
-  };
+  }, [filteredKeys, virtualKeyGroups]);
 
-  const statCards = stats ? [
+  const statCards = useMemo(() => stats ? [
     {
       title: 'Total Keys',
       value: stats.totalKeys,
@@ -265,18 +267,12 @@ export default function VirtualKeysPage() {
       color: 'green',
     },
     {
-      title: 'Total Spend',
-      value: formatCurrency(stats.totalSpend),
-      icon: IconCreditCard,
+      title: 'Total Groups',
+      value: stats.totalGroups,
+      icon: IconLayersLinked,
       color: 'orange',
     },
-    {
-      title: 'Total Requests',
-      value: stats.totalRequests.toLocaleString(),
-      icon: IconActivity,
-      color: 'purple',
-    },
-  ] : [];
+  ] : [], [stats]);
 
   if (error) {
     return (
@@ -373,7 +369,7 @@ export default function VirtualKeysPage() {
 
         <Card.Section p="md">
           <TextInput
-            placeholder="Search by name, key hash, ID, or description..."
+            placeholder="Search by name, key prefix, group ID, or metadata..."
             leftSection={<IconSearch size={16} />}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.currentTarget.value)}
@@ -387,6 +383,7 @@ export default function VirtualKeysPage() {
             onEdit={handleEdit} 
             onView={handleView} 
             data={paginatedData} 
+            groups={virtualKeyGroups}
             onDelete={(id: string) => { void handleDelete(id); }} 
           />
           {filteredKeys.length > 0 && (
@@ -405,7 +402,10 @@ export default function VirtualKeysPage() {
       <CreateVirtualKeyModal
         opened={createModalOpened}
         onClose={closeCreateModal}
-        onSuccess={() => void fetchVirtualKeys()}
+        onSuccess={() => {
+          void fetchVirtualKeys();
+          void fetchVirtualKeyGroups();
+        }}
       />
 
       <EditVirtualKeyModal

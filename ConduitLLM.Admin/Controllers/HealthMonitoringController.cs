@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -18,10 +17,9 @@ namespace ConduitLLM.Admin.Controllers
     /// </summary>
     [ApiController]
     [Route("api/health")]
-    [Authorize(Policy = "MasterKeyPolicy")]
     public class HealthMonitoringController : ControllerBase
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly ILogger<HealthMonitoringController> _logger;
         private readonly IMemoryCache _cache;
 
@@ -32,7 +30,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="logger">Logger instance.</param>
         /// <param name="cache">Memory cache.</param>
         public HealthMonitoringController(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<HealthMonitoringController> logger,
             IMemoryCache cache)
         {
@@ -107,35 +105,6 @@ namespace ConduitLLM.Admin.Controllers
                     }
                 });
 
-                // Provider Services
-                var providerHealthRecords = await dbContext.ProviderHealthRecords
-                    .GroupBy(h => h.ProviderName)
-                    .Select(g => g.OrderByDescending(h => h.TimestampUtc).First())
-                    .ToListAsync(cancellationToken);
-
-                foreach (var providerHealth in providerHealthRecords)
-                {
-                    var recentErrors = await dbContext.RequestLogs
-                        .CountAsync(r => r.StatusCode >= 400 && 
-                                       r.Timestamp >= DateTime.UtcNow.AddHours(-1), cancellationToken);
-
-                    services.Add(new
-                    {
-                        Id = $"provider-{providerHealth.ProviderName.ToLower()}",
-                        Name = $"{providerHealth.ProviderName} Provider",
-                        Status = providerHealth.IsOnline ? (recentErrors > 10 ? "degraded" : "healthy") : "unhealthy",
-                        Uptime = TimeSpan.FromDays(7), // Would need actual tracking
-                        LastCheck = providerHealth.TimestampUtc,
-                        ResponseTime = providerHealth.ResponseTimeMs,
-                        Details = new
-                        {
-                            StatusMessage = providerHealth.StatusMessage,
-                            RecentErrors = recentErrors,
-                            Enabled = await dbContext.ProviderCredentials
-                                .AnyAsync(p => p.ProviderName == providerHealth.ProviderName && p.IsEnabled, cancellationToken)
-                        }
-                    });
-                }
 
                 // Calculate overall health
                 var healthyCount = services.Count(s => ((dynamic)s).Status == "healthy");
@@ -220,31 +189,10 @@ namespace ConduitLLM.Admin.Controllers
                     }
                 }).ToList();
 
-                // Add provider health failures as incidents
-                var healthFailures = await dbContext.ProviderHealthRecords
-                    .Where(h => h.TimestampUtc >= startDate && !h.IsOnline)
-                    .Select(h => new
-                    {
-                        Id = Guid.NewGuid().ToString(),
-                        Title = $"{h.ProviderName} Health Check Failed",
-                        Type = "health_check_failure",
-                        Severity = "major",
-                        Status = "resolved",
-                        StartTime = h.TimestampUtc,
-                        EndTime = (DateTime?)h.TimestampUtc.AddMinutes(5),
-                        AffectedService = h.ProviderName,
-                        Impact = "Provider unavailable",
-                        Details = new
-                        {
-                            StatusMessage = h.StatusMessage,
-                            ResponseTime = h.ResponseTimeMs
-                        }
-                    })
-                    .ToListAsync(cancellationToken);
+                // Health failures removed - no longer tracking provider health
 
                 var allIncidents = incidents
                     .Cast<object>()
-                    .Concat(healthFailures)
                     .OrderByDescending(i => ((dynamic)i).StartTime)
                     .ToList();
 
@@ -299,17 +247,7 @@ namespace ConduitLLM.Admin.Controllers
                 {
                     var intervalEnd = currentTime.AddMinutes(intervalMinutes);
 
-                    // Get provider health for this interval
-                    var providerHealth = await dbContext.ProviderHealthRecords
-                        .Where(h => h.TimestampUtc >= currentTime && h.TimestampUtc < intervalEnd)
-                        .GroupBy(h => h.ProviderName)
-                        .Select(g => new
-                        {
-                            Provider = g.Key,
-                            HealthRate = g.Count(h => h.IsOnline) * 100.0 / g.Count(),
-                            AvgResponseTime = g.Average(h => h.ResponseTimeMs)
-                        })
-                        .ToListAsync(cancellationToken);
+                    // Provider health tracking has been removed
 
                     // Get error rates for this interval
                     var errorStats = await dbContext.RequestLogs
@@ -329,9 +267,7 @@ namespace ConduitLLM.Admin.Controllers
                         SystemHealth = errorStats?.TotalRequests > 0 
                             ? 100 - (errorStats.ErrorCount * 100.0 / errorStats.TotalRequests) 
                             : 100,
-                        ProviderHealth = providerHealth.Any() 
-                            ? providerHealth.Average(p => p.HealthRate) 
-                            : 100,
+                        ProviderHealth = 100, // Provider health tracking removed
                         ResponseTime = errorStats?.AvgLatency ?? 0,
                         RequestVolume = errorStats?.TotalRequests ?? 0,
                         ErrorRate = errorStats?.TotalRequests > 0 
@@ -358,7 +294,7 @@ namespace ConduitLLM.Admin.Controllers
         }
 
         private async Task<(bool IsHealthy, int ResponseTime)> CheckDatabaseHealth(
-            ConfigurationDbContext dbContext, 
+            ConduitDbContext dbContext, 
             CancellationToken cancellationToken)
         {
             try
@@ -374,7 +310,7 @@ namespace ConduitLLM.Admin.Controllers
             }
         }
 
-        private async Task<string> GetDatabaseSize(ConfigurationDbContext dbContext, CancellationToken cancellationToken)
+        private async Task<string> GetDatabaseSize(ConduitDbContext dbContext, CancellationToken cancellationToken)
         {
             try
             {

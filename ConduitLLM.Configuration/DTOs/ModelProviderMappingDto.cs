@@ -26,15 +26,15 @@ namespace ConduitLLM.Configuration.DTOs
         public string ProviderModelId { get; set; } = string.Empty;
 
         /// <summary>
-        /// The provider identifier
+        /// The ID of the provider
         /// </summary>
-        [Required(ErrorMessage = "Provider is required")]
-        public string ProviderId { get; set; } = string.Empty;
+        [Required(ErrorMessage = "Provider ID is required")]
+        public int ProviderId { get; set; }
 
         /// <summary>
-        /// The human-readable provider name (e.g., "OpenAI", "Anthropic")
+        /// Provider reference information (populated when retrieving mappings)
         /// </summary>
-        public string? ProviderName { get; set; }
+        public ProviderReferenceDto? Provider { get; set; }
 
         /// <summary>
         /// The priority of this mapping (lower values have higher priority)
@@ -90,6 +90,11 @@ namespace ConduitLLM.Configuration.DTOs
         /// Whether this model supports embedding generation capabilities
         /// </summary>
         public bool SupportsEmbeddings { get; set; } = false;
+
+        /// <summary>
+        /// Whether this model supports chat completions
+        /// </summary>
+        public bool SupportsChat { get; set; } = false;
 
         /// <summary>
         /// Whether this model supports function calling

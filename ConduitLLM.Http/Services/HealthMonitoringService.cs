@@ -5,8 +5,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
-using ConduitLLM.Http.DTOs.HealthMonitoring;
+using ConduitLLM.Configuration.DTOs.HealthMonitoring;
 using ConduitLLM.Http.Hubs;
+using ConduitLLM.Http.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace ConduitLLM.Http.Services
@@ -14,7 +15,7 @@ namespace ConduitLLM.Http.Services
     /// <summary>
     /// Service for monitoring system health and performance
     /// </summary>
-    public class HealthMonitoringService : IHealthMonitoringService
+    public class HealthMonitoringService : Interfaces.IHealthMonitoringService
     {
         private readonly HealthCheckService _healthCheckService;
         private readonly IMemoryCache _cache;
@@ -110,7 +111,7 @@ namespace ConduitLLM.Http.Services
             return new ComponentHealth
             {
                 Name = componentName,
-                Status = DTOs.HealthMonitoring.HealthStatus.Unknown,
+                Status = ConduitLLM.Configuration.DTOs.HealthMonitoring.HealthStatus.Unknown,
                 LastCheck = DateTime.UtcNow,
                 ErrorMessage = "Component not found"
             };
@@ -258,14 +259,14 @@ namespace ConduitLLM.Http.Services
             });
         }
 
-        private DTOs.HealthMonitoring.HealthStatus ConvertHealthStatus(Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus status)
+        private ConduitLLM.Configuration.DTOs.HealthMonitoring.HealthStatus ConvertHealthStatus(Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus status)
         {
             return status switch
             {
-                Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy => DTOs.HealthMonitoring.HealthStatus.Healthy,
-                Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded => DTOs.HealthMonitoring.HealthStatus.Degraded,
-                Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy => DTOs.HealthMonitoring.HealthStatus.Unhealthy,
-                _ => DTOs.HealthMonitoring.HealthStatus.Unknown
+                Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy => ConduitLLM.Configuration.DTOs.HealthMonitoring.HealthStatus.Healthy,
+                Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded => ConduitLLM.Configuration.DTOs.HealthMonitoring.HealthStatus.Degraded,
+                Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy => ConduitLLM.Configuration.DTOs.HealthMonitoring.HealthStatus.Unhealthy,
+                _ => ConduitLLM.Configuration.DTOs.HealthMonitoring.HealthStatus.Unknown
             };
         }
     }

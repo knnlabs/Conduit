@@ -7,8 +7,14 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using ConduitLLM.Configuration.Data;
+using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Enums;
+using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Options;
 using Microsoft.EntityFrameworkCore;
+using StackExchange.Redis;
 
 namespace ConduitLLM.Configuration.Services
 {
@@ -16,13 +22,16 @@ namespace ConduitLLM.Configuration.Services
     /// Background service that batches Virtual Key spend updates to reduce database writes
     /// Provides events for cache invalidation integration
     /// </summary>
-    public class BatchSpendUpdateService : BackgroundService
+    public class BatchSpendUpdateService : BackgroundService, IBatchSpendUpdateService
     {
-        private readonly IServiceProvider _serviceProvider;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<BatchSpendUpdateService> _logger;
-        private readonly ConcurrentDictionary<int, decimal> _pendingSpendUpdates = new();
+        private readonly RedisConnectionFactory _redisConnectionFactory;
+        private readonly BatchSpendingOptions _options;
         private readonly Timer _flushTimer;
-        private readonly TimeSpan _flushInterval = TimeSpan.FromSeconds(30); // Flush every 30 seconds
+        private readonly TimeSpan _flushInterval;
+        private readonly TimeSpan _redisTtl;
+        private readonly string _redisKeyPrefix = "pending_spend:group:";
         
         /// <summary>
         /// Event raised after successful batch spend updates with the key hashes that were updated
@@ -33,18 +42,45 @@ namespace ConduitLLM.Configuration.Services
         /// <summary>
         /// Initializes a new instance of the BatchSpendUpdateService
         /// </summary>
-        /// <param name="serviceProvider">Service provider for creating scoped services</param>
+        /// <param name="serviceScopeFactory">Service scope factory for creating scoped services</param>
+        /// <param name="redisConnectionFactory">Redis connection factory</param>
+        /// <param name="options">Batch spending configuration options</param>
         /// <param name="logger">Logger instance</param>
         public BatchSpendUpdateService(
-            IServiceProvider serviceProvider,
+            IServiceScopeFactory serviceScopeFactory,
+            RedisConnectionFactory redisConnectionFactory,
+            IOptions<BatchSpendingOptions> options,
             ILogger<BatchSpendUpdateService> logger)
         {
-            _serviceProvider = serviceProvider;
+            _serviceScopeFactory = serviceScopeFactory;
+            _redisConnectionFactory = redisConnectionFactory;
+            _options = options.Value;
             _logger = logger;
+            
+            // Validate and apply configuration
+            var validationResult = _options.Validate();
+            if (validationResult != null)
+            {
+                _logger.LogError("Invalid BatchSpending configuration: {ValidationError}", validationResult.ErrorMessage);
+                throw new InvalidOperationException($"Invalid BatchSpending configuration: {validationResult.ErrorMessage}");
+            }
+            
+            _flushInterval = _options.GetValidatedFlushInterval();
+            _redisTtl = _options.GetRedisTtl();
+            
+            _logger.LogInformation("BatchSpendUpdateService configured with flush interval: {FlushInterval}, Redis TTL: {RedisTtl}", 
+                _flushInterval, _redisTtl);
             
             // Create timer for periodic flushing (in addition to background service)
             _flushTimer = new Timer(FlushPendingUpdatesCallback, null, _flushInterval, _flushInterval);
         }
+
+        /// <summary>
+        /// Gets whether the service is healthy and able to accept updates
+        /// </summary>
+        public bool IsHealthy => !_cancellationTokenSource?.Token.IsCancellationRequested ?? false;
+
+        private CancellationTokenSource? _cancellationTokenSource;
 
         /// <summary>
         /// Add a spend update to the batch queue
@@ -53,9 +89,50 @@ namespace ConduitLLM.Configuration.Services
         /// <param name="cost">Cost to add to the current spend</param>
         public void QueueSpendUpdate(int virtualKeyId, decimal cost)
         {
-            _pendingSpendUpdates.AddOrUpdate(virtualKeyId, cost, (key, existingCost) => existingCost + cost);
-            
-            _logger.LogDebug("Queued spend update for Virtual Key {VirtualKeyId}: {Cost:C}", virtualKeyId, cost);
+            // Fire and forget pattern for non-blocking updates
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    // Need to get the group ID for this key
+                    using var scope = _serviceScopeFactory.CreateScope();
+                    var context = scope.ServiceProvider.GetRequiredService<IConfigurationDbContext>();
+                    
+                    var virtualKey = await context.VirtualKeys
+                        .Where(vk => vk.Id == virtualKeyId)
+                        .Select(vk => new { vk.VirtualKeyGroupId })
+                        .FirstOrDefaultAsync();
+                    
+                    if (virtualKey == null)
+                    {
+                        _logger.LogWarning("Virtual Key {VirtualKeyId} not found for spend update", virtualKeyId);
+                        return;
+                    }
+                    
+                    var redis = await _redisConnectionFactory.GetConnectionAsync();
+                    var db = redis.GetDatabase();
+                    
+                    // Use group ID for accumulation
+                    var key = $"{_redisKeyPrefix}{virtualKey.VirtualKeyGroupId}";
+                    await db.StringIncrementAsync(key, (double)cost);
+                    
+                    // Also track which key was used (for transaction history)
+                    var keyUsageKey = $"key_usage:group:{virtualKey.VirtualKeyGroupId}:key:{virtualKeyId}";
+                    await db.StringIncrementAsync(keyUsageKey, (double)cost);
+                    
+                    // Set TTL for safety
+                    await db.KeyExpireAsync(key, _redisTtl);
+                    await db.KeyExpireAsync(keyUsageKey, _redisTtl);
+                    
+                    _logger.LogDebug("Queued spend update to Redis for Virtual Key {VirtualKeyId} (Group {GroupId}): {Cost:C}", 
+                        virtualKeyId, virtualKey.VirtualKeyGroupId, cost);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to queue spend update to Redis for Virtual Key {VirtualKeyId}", virtualKeyId);
+                    // In production, you might want to fall back to direct DB update here
+                }
+            });
         }
 
         /// <summary>
@@ -63,99 +140,162 @@ namespace ConduitLLM.Configuration.Services
         /// </summary>
         /// <param name="virtualKeyId">Virtual Key ID</param>
         /// <returns>Pending spend amount</returns>
-        public decimal GetPendingSpend(int virtualKeyId)
+        public async Task<decimal> GetPendingSpendAsync(int virtualKeyId)
         {
-            return _pendingSpendUpdates.TryGetValue(virtualKeyId, out var pendingSpend) ? pendingSpend : 0;
+            try
+            {
+                var redis = await _redisConnectionFactory.GetConnectionAsync();
+                var db = redis.GetDatabase();
+                
+                var key = $"{_redisKeyPrefix}{virtualKeyId}";
+                var value = await db.StringGetAsync(key);
+                
+                if (value.HasValue && double.TryParse(value, out var pendingSpend))
+                {
+                    return (decimal)pendingSpend;
+                }
+                
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get pending spend from Redis for Virtual Key {VirtualKeyId}", virtualKeyId);
+                return 0;
+            }
         }
 
         /// <summary>
         /// Force flush all pending updates immediately
         /// </summary>
-        /// <returns>Number of Virtual Keys updated</returns>
+        /// <returns>Number of groups updated</returns>
         public async Task<int> FlushPendingUpdatesAsync()
         {
-            if (_pendingSpendUpdates.IsEmpty)
-            {
-                return 0;
-            }
-
-            // Snapshot current pending updates and clear the queue
-            var updates = _pendingSpendUpdates.ToArray();
-            foreach (var (keyId, _) in updates)
-            {
-                _pendingSpendUpdates.TryRemove(keyId, out _);
-            }
-
-            if (updates.Length == 0)
-            {
-                return 0;
-            }
-
             try
             {
-                using var scope = _serviceProvider.CreateScope();
-                var context = scope.ServiceProvider.GetRequiredService<IConfigurationDbContext>();
-
-                // Batch update all Virtual Keys with pending spend
-                var virtualKeyIds = updates.Select(u => u.Key).ToList();
-                var virtualKeys = await context.VirtualKeys
-                    .Where(vk => virtualKeyIds.Contains(vk.Id))
-                    .ToListAsync();
-
-                foreach (var (keyId, cost) in updates)
+                var redis = await _redisConnectionFactory.GetConnectionAsync();
+                var db = redis.GetDatabase();
+                var server = redis.GetServer(redis.GetEndPoints()[0]);
+                
+                // Get all pending spend keys for groups
+                var pattern = $"{_redisKeyPrefix}*";
+                var keys = server.Keys(pattern: pattern).ToList();
+                
+                if (keys.Count() == 0)
                 {
-                    var virtualKey = virtualKeys.FirstOrDefault(vk => vk.Id == keyId);
-                    if (virtualKey != null)
+                    return 0;
+                }
+                
+                // Get and delete all values atomically
+                var groupUpdates = new Dictionary<int, decimal>();
+                var keyUsagePattern = "key_usage:group:*";
+                var keyUsageKeys = server.Keys(pattern: keyUsagePattern).ToList();
+                var keyUsageByGroup = new Dictionary<int, Dictionary<int, decimal>>();
+                
+                // Process group spend updates
+                foreach (var key in keys)
+                {
+                    var keyString = key.ToString();
+                    var groupId = int.Parse(keyString.Substring(_redisKeyPrefix.Length));
+                    
+                    // Get and delete atomically
+                    var value = await db.StringGetDeleteAsync(key);
+                    if (value.HasValue && double.TryParse(value, out var cost))
                     {
-                        virtualKey.CurrentSpend += cost;
-                        virtualKey.UpdatedAt = DateTime.UtcNow;
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Virtual Key not found for spend update: {VirtualKeyId}", keyId);
+                        groupUpdates[groupId] = (decimal)cost;
                     }
                 }
-
-                var affectedRows = await context.SaveChangesAsync();
                 
-                _logger.LogInformation("Batch updated spend for {Count} Virtual Keys, {AffectedRows} rows modified", 
-                    updates.Length, affectedRows);
+                // Process key usage data
+                foreach (var key in keyUsageKeys)
+                {
+                    var keyString = key.ToString();
+                    var parts = keyString.Split(':');
+                    if (parts.Length == 5 && int.TryParse(parts[2], out var groupId) && int.TryParse(parts[4], out var keyId))
+                    {
+                        var value = await db.StringGetDeleteAsync(key);
+                        if (value.HasValue && double.TryParse(value, out var cost))
+                        {
+                            if (!keyUsageByGroup.ContainsKey(groupId))
+                                keyUsageByGroup[groupId] = new Dictionary<int, decimal>();
+                            keyUsageByGroup[groupId][keyId] = (decimal)cost;
+                        }
+                    }
+                }
+                
+                if (groupUpdates.Count() == 0)
+                {
+                    return 0;
+                }
+
+                using var scope = _serviceScopeFactory.CreateScope();
+                var context = scope.ServiceProvider.GetRequiredService<IConfigurationDbContext>();
+                var groupRepository = scope.ServiceProvider.GetRequiredService<IVirtualKeyGroupRepository>();
+
+                // Process each group
+                var updatedKeyHashes = new List<string>();
+
+                foreach (var (groupId, totalCost) in groupUpdates)
+                {
+                    // Create a description that includes which keys were used
+                    var description = "API usage";
+                    if (keyUsageByGroup.ContainsKey(groupId))
+                    {
+                        var keyIds = keyUsageByGroup[groupId].Keys.ToList();
+                        if (keyIds.Count() == 1)
+                        {
+                            description = $"API usage by virtual key #{keyIds[0]}";
+                        }
+                        else
+                        {
+                            description = $"API usage by {keyIds.Count()} virtual keys";
+                        }
+                    }
+
+                    // Update group balance with transaction details
+                    // This already creates a transaction record with the correct BalanceAfter
+                    var newBalance = await groupRepository.AdjustBalanceAsync(
+                        groupId, 
+                        -totalCost,
+                        description,
+                        "System"  // Initiated by system batch process
+                    );
+                    
+                    // Note: We don't need to create additional transaction records here
+                    // because AdjustBalanceAsync already creates one with the correct balance.
+                    // The individual key usage tracking is already handled in the description.
+                    
+                    // Get keys in this group for cache invalidation
+                    var groupKeys = await context.VirtualKeys
+                        .Where(vk => vk.VirtualKeyGroupId == groupId)
+                        .Select(vk => new { vk.Id, vk.KeyHash })
+                        .ToListAsync();
+                    
+                    updatedKeyHashes.AddRange(groupKeys.Select(k => k.KeyHash));
+                }
+
+                
+                _logger.LogInformation("Batch updated spend for {Count} groups", groupUpdates.Count());
 
                 // Raise event for cache invalidation (if any subscribers)
-                if (affectedRows > 0 && SpendUpdatesCompleted != null)
+                if (updatedKeyHashes.Count() > 0 && SpendUpdatesCompleted != null)
                 {
-                    var keyHashes = virtualKeys
-                        .Where(vk => updates.Any(u => u.Key == vk.Id))
-                        .Select(vk => vk.KeyHash)
-                        .ToArray();
-                    
-                    if (keyHashes.Length > 0)
+                    try
                     {
-                        try
-                        {
-                            SpendUpdatesCompleted.Invoke(keyHashes);
-                            _logger.LogDebug("Raised SpendUpdatesCompleted event for {Count} Virtual Keys", keyHashes.Length);
-                        }
-                        catch (Exception eventEx)
-                        {
-                            _logger.LogWarning(eventEx, "Error in SpendUpdatesCompleted event handler");
-                            // Don't fail the operation if event handler fails
-                        }
+                        SpendUpdatesCompleted.Invoke(updatedKeyHashes.ToArray());
+                        _logger.LogDebug("Raised SpendUpdatesCompleted event for {Count} Virtual Keys", updatedKeyHashes.Count());
+                    }
+                    catch (Exception eventEx)
+                    {
+                        _logger.LogWarning(eventEx, "Error in SpendUpdatesCompleted event handler");
+                        // Don't fail the operation if event handler fails
                     }
                 }
 
-                return updates.Length;
+                return groupUpdates.Count();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during batch spend update for {Count} Virtual Keys", updates.Length);
-                
-                // Re-queue failed updates
-                foreach (var (keyId, cost) in updates)
-                {
-                    _pendingSpendUpdates.AddOrUpdate(keyId, cost, (key, existingCost) => existingCost + cost);
-                }
-                
+                _logger.LogError(ex, "Error during batch spend update");
                 throw;
             }
         }
@@ -163,16 +303,20 @@ namespace ConduitLLM.Configuration.Services
         /// <summary>
         /// Timer callback for periodic flushing
         /// </summary>
-        private async void FlushPendingUpdatesCallback(object? state)
+        private void FlushPendingUpdatesCallback(object? state)
         {
-            try
+            // Fire and forget with proper error handling
+            _ = Task.Run(async () =>
             {
-                await FlushPendingUpdatesAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in periodic flush timer");
-            }
+                try
+                {
+                    await FlushPendingUpdatesAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error in periodic flush timer");
+                }
+            });
         }
 
         /// <summary>
@@ -182,7 +326,22 @@ namespace ConduitLLM.Configuration.Services
         /// <returns>Async task</returns>
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
             _logger.LogInformation("BatchSpendUpdateService started");
+
+            // Check for any pending updates on startup
+            try
+            {
+                var count = await FlushPendingUpdatesAsync();
+                if (count > 0)
+                {
+                    _logger.LogInformation("Flushed {Count} pending updates from previous session", count);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error flushing pending updates on startup");
+            }
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -233,14 +392,49 @@ namespace ConduitLLM.Configuration.Services
         /// Get statistics about the batching service
         /// </summary>
         /// <returns>Dictionary with service statistics</returns>
-        public Dictionary<string, object> GetStatistics()
+        public async Task<Dictionary<string, object>> GetStatisticsAsync()
         {
-            return new Dictionary<string, object>
+            try
             {
-                ["PendingUpdates"] = _pendingSpendUpdates.Count,
-                ["TotalPendingCost"] = _pendingSpendUpdates.Values.Sum(),
-                ["FlushIntervalSeconds"] = _flushInterval.TotalSeconds
-            };
+                var redis = await _redisConnectionFactory.GetConnectionAsync();
+                var db = redis.GetDatabase();
+                var server = redis.GetServer(redis.GetEndPoints()[0]);
+                
+                // Count pending keys
+                var pattern = $"{_redisKeyPrefix}*";
+                var keys = server.Keys(pattern: pattern).ToList();
+                
+                decimal totalPending = 0;
+                foreach (var key in keys)
+                {
+                    var value = await db.StringGetAsync(key);
+                    if (value.HasValue && double.TryParse(value, out var cost))
+                    {
+                        totalPending += (decimal)cost;
+                    }
+                }
+                
+                return new Dictionary<string, object>
+                {
+                    ["PendingUpdates"] = keys.Count(),
+                    ["TotalPendingCost"] = totalPending,
+                    ["FlushIntervalSeconds"] = _flushInterval.TotalSeconds,
+                    ["RedisTtlHours"] = _redisTtl.TotalHours,
+                    ["ConfiguredFlushInterval"] = _options.FlushIntervalSeconds,
+                    ["MinimumInterval"] = _options.MinimumIntervalSeconds,
+                    ["MaximumInterval"] = _options.MaximumIntervalSeconds
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting statistics");
+                return new Dictionary<string, object>
+                {
+                    ["Error"] = ex.Message,
+                    ["FlushIntervalSeconds"] = _flushInterval.TotalSeconds,
+                    ["ConfiguredFlushInterval"] = _options.FlushIntervalSeconds
+                };
+            }
         }
     }
 }

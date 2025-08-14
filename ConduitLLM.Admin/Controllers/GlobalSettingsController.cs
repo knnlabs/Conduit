@@ -75,7 +75,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (setting == null)
                 {
-                    return NotFound(new { error = "Global setting not found" });
+                    return NotFound(new ErrorResponseDto("Global setting not found"));
                 }
 
                 return Ok(setting);
@@ -104,7 +104,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (setting == null)
                 {
-                    return NotFound(new { error = "Global setting not found" });
+                    return NotFound(new ErrorResponseDto("Global setting not found"));
                 }
 
                 return Ok(setting);
@@ -179,7 +179,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (!success)
                 {
-                    return NotFound(new { error = "Global setting not found" });
+                    return NotFound(new ErrorResponseDto("Global setting not found"));
                 }
 
                 return NoContent();
@@ -242,7 +242,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (!success)
                 {
-                    return NotFound(new { error = "Global setting not found" });
+                    return NotFound(new ErrorResponseDto("Global setting not found"));
                 }
 
                 return NoContent();
@@ -271,7 +271,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (!success)
                 {
-                    return NotFound(new { error = "Global setting not found" });
+                    return NotFound(new ErrorResponseDto("Global setting not found"));
                 }
 
                 return NoContent();

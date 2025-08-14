@@ -13,6 +13,7 @@ using Microsoft.Extensions.Options;
 
 using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Admin.Services;
 
 /// <summary>
@@ -197,7 +198,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
             }
 
             // Only proceed if there are actual changes
-            if (changedProperties.Count == 0)
+            if (changedProperties.Count() == 0)
             {
                 _logger.LogDebug("No changes detected for IP filter {FilterId} - skipping update", updateFilter.Id);
                 return (true, null);

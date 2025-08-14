@@ -25,26 +25,34 @@ import {
 } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useModelCostsApi } from '../hooks/useModelCostsApi';
-import { ModelCost, UpdateModelCostDto } from '../types/modelCost';
-import { PatternPreview } from './PatternPreview';
+import { ModelCostDto, UpdateModelCostDto, type ModelProviderMappingDto, ModelType } from '@knn_labs/conduit-admin-client';
+import { getModelTypeSelectOptions } from '@/lib/constants/modelTypes';
 import { formatters } from '@/lib/utils/formatters';
+import { ModelMappingSelector } from './ModelMappingSelector';
+import { useModelMappings } from '@/hooks/useModelMappingsApi';
+
+// Extended type to include additional fields from API response
+interface ExtendedModelProviderMappingDto extends ModelProviderMappingDto {
+  modelAlias?: string;
+}
 
 interface EditModelCostModalProps {
   isOpen: boolean;
-  modelCost: ModelCost;
+  modelCost: ModelCostDto;
   onClose: () => void;
   onSuccess?: () => void;
 }
 
 interface FormValues {
-  modelIdPattern: string;
-  modelType: 'chat' | 'embedding' | 'image' | 'audio' | 'video';
-  // Token-based costs (per 1K tokens for display)
-  inputCostPer1K: number;
-  outputCostPer1K: number;
-  cachedInputCostPer1K: number;
-  cachedInputWriteCostPer1K: number;
-  embeddingCostPer1K: number;
+  costName: string;
+  modelProviderMappingIds: number[];
+  modelType: ModelType;
+  // Token-based costs (per million tokens)
+  inputCostPerMillion: number;
+  outputCostPerMillion: number;
+  cachedInputCostPerMillion: number;
+  cachedInputWriteCostPerMillion: number;
+  embeddingCostPerMillion: number;
   // Other cost types
   searchUnitCostPer1K: number;
   inferenceStepCost: number;
@@ -70,45 +78,61 @@ interface FormValues {
 export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: EditModelCostModalProps) {
   const queryClient = useQueryClient();
   const { updateModelCost } = useModelCostsApi();
+  const { mappings } = useModelMappings();
+
+  // Find mapping IDs from associated model aliases
+  const getMappingIds = (): number[] => {
+    const aliases = modelCost.associatedModelAliases;
+    if (!aliases || aliases.length === 0) {
+      return [];
+    }
+    // Match aliases to mapping IDs
+    const extendedMappings = mappings as ExtendedModelProviderMappingDto[];
+    return extendedMappings
+      .filter(m => m?.modelAlias && aliases.includes(m.modelAlias))
+      .map(m => m.id);
+  };
 
   // Convert backend data to form values
   const initialValues: FormValues = {
-    modelIdPattern: modelCost.modelIdPattern,
+    costName: modelCost.costName,
+    modelProviderMappingIds: getMappingIds(),
     modelType: modelCost.modelType,
-    // Convert from per million to per 1K for display
-    inputCostPer1K: (modelCost.inputCostPerMillionTokens ?? 0) / 1000,
-    outputCostPer1K: (modelCost.outputCostPerMillionTokens ?? 0) / 1000,
-    cachedInputCostPer1K: (modelCost.cachedInputCostPerMillionTokens ?? 0) / 1000,
-    cachedInputWriteCostPer1K: (modelCost.cachedInputWriteCostPerMillionTokens ?? 0) / 1000,
-    embeddingCostPer1K: (modelCost.embeddingTokenCost ?? 0) / 1000,
-    searchUnitCostPer1K: modelCost.costPerSearchUnit ?? 0,
-    inferenceStepCost: modelCost.costPerInferenceStep ?? 0,
-    defaultInferenceSteps: modelCost.defaultInferenceSteps ?? 0,
-    imageCostPerImage: modelCost.imageCostPerImage ?? 0,
-    audioCostPerMinute: modelCost.audioCostPerMinute ?? 0,
-    audioCostPerKCharacters: modelCost.audioCostPerKCharacters ?? 0,
-    audioInputCostPerMinute: modelCost.audioInputCostPerMinute ?? 0,
-    audioOutputCostPerMinute: modelCost.audioOutputCostPerMinute ?? 0,
-    videoCostPerSecond: modelCost.videoCostPerSecond ?? 0,
-    videoResolutionMultipliers: modelCost.videoResolutionMultipliers ?? '',
-    supportsBatchProcessing: modelCost.supportsBatchProcessing ?? false,
-    batchProcessingMultiplier: modelCost.batchProcessingMultiplier ?? 0.5,
-    imageQualityMultipliers: modelCost.imageQualityMultipliers ?? '',
+    // Token costs are already per million tokens
+    inputCostPerMillion: (modelCost.inputCostPerMillionTokens) ?? 0,
+    outputCostPerMillion: (modelCost.outputCostPerMillionTokens) ?? 0,
+    cachedInputCostPerMillion: (modelCost.cachedInputCostPerMillionTokens as number) ?? 0,
+    cachedInputWriteCostPerMillion: (modelCost.cachedInputWriteCostPerMillionTokens as number) ?? 0,
+    embeddingCostPerMillion: (modelCost.embeddingCostPerMillionTokens as number) ?? 0,
+    searchUnitCostPer1K: (modelCost.costPerSearchUnit as number) ?? 0,
+    inferenceStepCost: (modelCost.costPerInferenceStep as number) ?? 0,
+    defaultInferenceSteps: (modelCost.defaultInferenceSteps as number) ?? 0,
+    imageCostPerImage: (modelCost.imageCostPerImage as number) ?? 0,
+    audioCostPerMinute: (modelCost.audioCostPerMinute as number) ?? 0,
+    audioCostPerKCharacters: (modelCost.audioCostPerKCharacters as number) ?? 0,
+    audioInputCostPerMinute: (modelCost.audioInputCostPerMinute as number) ?? 0,
+    audioOutputCostPerMinute: (modelCost.audioOutputCostPerMinute as number) ?? 0,
+    videoCostPerSecond: (modelCost.videoCostPerSecond as number) ?? 0,
+    videoResolutionMultipliers: (modelCost.videoResolutionMultipliers as string) ?? '',
+    supportsBatchProcessing: (modelCost.supportsBatchProcessing) ?? false,
+    batchProcessingMultiplier: (modelCost.batchProcessingMultiplier as number) ?? 0.5,
+    imageQualityMultipliers: (modelCost.imageQualityMultipliers as string) ?? '',
     priority: modelCost.priority,
-    description: modelCost.description ?? '',
+    description: (modelCost.description as string) ?? '',
     isActive: modelCost.isActive,
   };
 
   const form = useForm<FormValues>({
     initialValues,
     validate: {
-      modelIdPattern: (value) => !value?.trim() ? 'Model pattern is required' : null,
+      costName: (value) => !value?.trim() ? 'Cost name is required' : null,
+      modelProviderMappingIds: (value) => !value || value.length === 0 ? 'At least one model must be selected' : null,
       priority: (value) => value < 0 ? 'Priority must be non-negative' : null,
-      inputCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
-      outputCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
-      cachedInputCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
-      cachedInputWriteCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
-      embeddingCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
+      inputCostPerMillion: (value) => value < 0 ? 'Cost must be non-negative' : null,
+      outputCostPerMillion: (value) => value < 0 ? 'Cost must be non-negative' : null,
+      cachedInputCostPerMillion: (value) => value < 0 ? 'Cost must be non-negative' : null,
+      cachedInputWriteCostPerMillion: (value) => value < 0 ? 'Cost must be non-negative' : null,
+      embeddingCostPerMillion: (value) => value < 0 ? 'Cost must be non-negative' : null,
       searchUnitCostPer1K: (value) => value < 0 ? 'Cost must be non-negative' : null,
       inferenceStepCost: (value) => value < 0 ? 'Cost must be non-negative' : null,
       defaultInferenceSteps: (value) => value < 0 ? 'Steps must be non-negative' : null,
@@ -155,33 +179,28 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
 
   const handleSubmit = (values: FormValues) => {
     // Only send changed fields
-    const updates: UpdateModelCostDto = {};
+    const updates: UpdateModelCostDto = {
+      id: modelCost.id,
+      costName: values.costName,
+      modelProviderMappingIds: values.modelProviderMappingIds
+    };
     
-    if (values.modelIdPattern !== modelCost.modelIdPattern) {
-      updates.modelIdPattern = values.modelIdPattern;
+    // Values are already per million tokens
+    if (values.inputCostPerMillion !== modelCost.inputCostPerMillionTokens) {
+      updates.inputCostPerMillionTokens = values.inputCostPerMillion;
     }
-    
-    // Convert token costs back to per million
-    const inputTokenCost = values.inputCostPer1K * 1000;
-    const outputTokenCost = values.outputCostPer1K * 1000;
-    const cachedInputTokenCost = values.cachedInputCostPer1K * 1000;
-    const cachedInputWriteTokenCost = values.cachedInputWriteCostPer1K * 1000;
-    
-    if (inputTokenCost !== modelCost.inputCostPerMillionTokens) {
-      updates.inputTokenCost = inputTokenCost;
+    if (values.outputCostPerMillion !== modelCost.outputCostPerMillionTokens) {
+      updates.outputCostPerMillionTokens = values.outputCostPerMillion;
     }
-    if (outputTokenCost !== modelCost.outputCostPerMillionTokens) {
-      updates.outputTokenCost = outputTokenCost;
+    if (values.cachedInputCostPerMillion !== modelCost.cachedInputCostPerMillionTokens) {
+      updates.cachedInputCostPerMillionTokens = values.cachedInputCostPerMillion || undefined;
     }
-    if (cachedInputTokenCost !== modelCost.cachedInputCostPerMillionTokens) {
-      updates.cachedInputTokenCost = cachedInputTokenCost || undefined;
-    }
-    if (cachedInputWriteTokenCost !== modelCost.cachedInputWriteCostPerMillionTokens) {
-      updates.cachedInputWriteTokenCost = cachedInputWriteTokenCost || undefined;
+    if (values.cachedInputWriteCostPerMillion !== modelCost.cachedInputWriteCostPerMillionTokens) {
+      updates.cachedInputWriteCostPerMillionTokens = values.cachedInputWriteCostPerMillion || undefined;
     }
     
-    if (values.embeddingCostPer1K > 0) {
-      updates.embeddingTokenCost = values.embeddingCostPer1K * 1000;
+    if (values.embeddingCostPerMillion > 0) {
+      updates.embeddingCostPerMillionTokens = values.embeddingCostPerMillion;
     }
     
     if (values.searchUnitCostPer1K !== modelCost.costPerSearchUnit) {
@@ -258,35 +277,34 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="md">
           <Alert icon={<IconInfoCircle size={16} />} color="blue">
-            Update pricing for {modelCost.modelIdPattern}. Token costs are displayed per 1,000 tokens.
+            Update pricing for {modelCost.costName}. Token costs are displayed per million tokens.
           </Alert>
 
           <TextInput
-            label="Model Pattern"
-            placeholder="e.g., openai/gpt-4, anthropic/claude-3*, minimax/abab6.5g"
+            label="Cost Name"
+            placeholder="e.g., GPT-4 Standard Pricing, Claude 3 Opus Batch"
             required
-            {...form.getInputProps('modelIdPattern')}
-            description="Exact model ID or pattern with * wildcard"
+            {...form.getInputProps('costName')}
+            description="A descriptive name for this pricing configuration"
           />
 
-          <PatternPreview pattern={form.values.modelIdPattern} />
+          <ModelMappingSelector
+            value={form.values.modelProviderMappingIds}
+            onChange={(value) => form.setFieldValue('modelProviderMappingIds', value)}
+            error={form.errors.modelProviderMappingIds as string}
+            required
+          />
 
           <Select
             label="Model Type"
-            data={[
-              { value: 'chat', label: 'Chat / Completion' },
-              { value: 'embedding', label: 'Embedding' },
-              { value: 'image', label: 'Image Generation' },
-              { value: 'audio', label: 'Audio (Speech/Transcription)' },
-              { value: 'video', label: 'Video Generation' },
-            ]}
+            data={getModelTypeSelectOptions()}
             required
             disabled
             {...form.getInputProps('modelType')}
           />
 
           <Accordion variant="contained" defaultValue="basic">
-            {(modelType === 'chat' || modelType === 'embedding') && (
+            {(modelType === ModelType.Chat || modelType === ModelType.Embedding) && (
               <>
                 <Accordion.Item value="basic">
                   <Accordion.Control icon={<IconCurrencyDollar size={20} />}>
@@ -294,44 +312,44 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
                   </Accordion.Control>
                   <Accordion.Panel>
                     <Stack gap="sm">
-                      {modelType === 'chat' && (
+                      {modelType === ModelType.Chat && (
                         <Group grow>
                           <NumberInput
-                            label="Input Cost (per 1K tokens)"
-                            placeholder="0.0000"
-                            decimalScale={4}
+                            label="Input Cost (per million tokens)"
+                            placeholder="15.00"
+                            decimalScale={2}
                             min={0}
-                            step={0.0001}
+                            step={0.50}
                             leftSection="$"
-                            {...form.getInputProps('inputCostPer1K')}
+                            {...form.getInputProps('inputCostPerMillion')}
                           />
                           <NumberInput
-                            label="Output Cost (per 1K tokens)"
-                            placeholder="0.0000"
-                            decimalScale={4}
+                            label="Output Cost (per million tokens)"
+                            placeholder="75.00"
+                            decimalScale={2}
                             min={0}
-                            step={0.0001}
+                            step={0.50}
                             leftSection="$"
-                            {...form.getInputProps('outputCostPer1K')}
+                            {...form.getInputProps('outputCostPerMillion')}
                           />
                         </Group>
                       )}
-                      {modelType === 'embedding' && (
+                      {modelType === ModelType.Embedding && (
                         <NumberInput
-                          label="Embedding Cost (per 1K tokens)"
-                          placeholder="0.0000"
-                          decimalScale={4}
+                          label="Embedding Cost (per million tokens)"
+                          placeholder="1.00"
+                          decimalScale={2}
                           min={0}
-                          step={0.0001}
+                          step={0.10}
                           leftSection="$"
-                          {...form.getInputProps('embeddingCostPer1K')}
+                          {...form.getInputProps('embeddingCostPerMillion')}
                         />
                       )}
                     </Stack>
                   </Accordion.Panel>
                 </Accordion.Item>
 
-                {modelType === 'chat' && (
+                {modelType === ModelType.Chat && (
                   <Accordion.Item value="caching">
                     <Accordion.Control icon={<IconDatabase size={20} />}>
                       Prompt Caching
@@ -343,24 +361,24 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
                         </Alert>
                         <Group grow>
                           <NumberInput
-                            label="Cached Read Cost (per 1K tokens)"
-                            placeholder="0.0000"
+                            label="Cached Read Cost (per million tokens)"
+                            placeholder="0.50"
                             description="Cost for reading from cache"
-                            decimalScale={4}
+                            decimalScale={2}
                             min={0}
-                            step={0.0001}
+                            step={0.10}
                             leftSection="$"
-                            {...form.getInputProps('cachedInputCostPer1K')}
+                            {...form.getInputProps('cachedInputCostPerMillion')}
                           />
                           <NumberInput
-                            label="Cache Write Cost (per 1K tokens)"
-                            placeholder="0.0000"
+                            label="Cache Write Cost (per million tokens)"
+                            placeholder="15.00"
                             description="Cost for writing to cache"
-                            decimalScale={4}
+                            decimalScale={2}
                             min={0}
-                            step={0.0001}
+                            step={0.50}
                             leftSection="$"
-                            {...form.getInputProps('cachedInputWriteCostPer1K')}
+                            {...form.getInputProps('cachedInputWriteCostPerMillion')}
                           />
                         </Group>
                       </Stack>
@@ -370,7 +388,7 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
               </>
             )}
 
-            {modelType === 'image' && (
+            {modelType === ModelType.Image && (
               <Accordion.Item value="basic">
                 <Accordion.Control icon={<IconCurrencyDollar size={20} />}>
                   Image Generation Pricing
@@ -401,7 +419,7 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
               </Accordion.Item>
             )}
 
-            {modelType === 'audio' && (
+            {modelType === ModelType.Audio && (
               <Accordion.Item value="basic">
                 <Accordion.Control icon={<IconCurrencyDollar size={20} />}>
                   Audio Pricing
@@ -455,7 +473,7 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
               </Accordion.Item>
             )}
 
-            {modelType === 'video' && (
+            {modelType === ModelType.Video && (
               <Accordion.Item value="basic">
                 <Accordion.Control icon={<IconCurrencyDollar size={20} />}>
                   Video Generation Pricing

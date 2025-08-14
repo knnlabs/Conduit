@@ -1,21 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-
-export interface Provider {
-  id: string;
-  name: string;
-  displayName?: string;
-  enabled?: boolean;
-}
-
-export interface ProviderOption {
-  value: string;
-  label: string;
-}
+import { withAdminClient } from '@/lib/client/adminClient';
 
 export function useProviders() {
-  const [providers, setProviders] = useState<Provider[]>([]);
+  const [providers, setProviders] = useState<{ id: string; name: string; displayName?: string; enabled?: boolean; }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,13 +14,18 @@ export function useProviders() {
         setLoading(true);
         setError(null);
         
-        const response = await fetch('/api/providers');
-        if (!response.ok) {
-          throw new Error(`Failed to fetch providers: ${response.statusText}`);
-        }
+        const result = await withAdminClient(client => 
+          client.providers.list(1, 1000)
+        );
         
-        const providersData = await response.json() as unknown;
-        setProviders(Array.isArray(providersData) ? providersData as Provider[] : []);
+        const providersData = result.items.map(provider => ({
+          id: provider.id?.toString() ?? '',
+          name: provider.providerName ?? provider.providerType?.toString() ?? '',
+          displayName: provider.providerName,
+          enabled: provider.isEnabled
+        }));
+        
+        setProviders(providersData);
       } catch (err) {
         console.error('Error fetching providers:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch providers');
@@ -45,9 +39,9 @@ export function useProviders() {
   }, []);
 
   // Convert providers to select options format
-  const providerOptions: ProviderOption[] = providers.map(provider => ({
-    value: provider.id,
-    label: provider.displayName ?? provider.name ?? provider.id,
+  const providerOptions: { value: string; label: string; }[] = providers.map(provider => ({
+    value: String(provider.id ?? ''),
+    label: provider.displayName ?? provider.name ?? String(provider.id ?? ''),
   }));
 
   return {

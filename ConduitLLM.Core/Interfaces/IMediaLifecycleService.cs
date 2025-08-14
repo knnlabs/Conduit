@@ -200,6 +200,6 @@ namespace ConduitLLM.Core.Interfaces
         /// <summary>
         /// Gets or sets the breakdown by media type.
         /// </summary>
-        public Dictionary<string, long> ByMediaType { get; set; } = new();
+        public Dictionary<string, MediaTypeStats> ByMediaType { get; set; } = new();
     }
 }

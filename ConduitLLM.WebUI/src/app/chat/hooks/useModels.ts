@@ -1,31 +1,32 @@
 import { useQuery } from '@tanstack/react-query';
 import { ModelWithCapabilities } from '../types';
+import { withAdminClient } from '@/lib/client/adminClient';
 
 export function useModels() {
   return useQuery({
     queryKey: ['chat-models'],
     queryFn: async () => {
-      // Fetch model mappings through the WebUI API route that uses the SDK
-      const response = await fetch('/api/model-mappings');
-      if (!response.ok) {
-        throw new Error('Failed to fetch model mappings');
-      }
+      // Fetch model mappings through the Admin SDK
+      const result = await withAdminClient(client => 
+        client.modelMappings.list()
+      );
       
-      interface ModelMapping {
-        modelId: string;
-        providerId: string;
-        maxContextTokens?: number;
-        supportsVision?: boolean;
-      }
+      const mappings = result.map(mapping => ({
+        ...mapping,
+        providerId: mapping.providerId.toString(),
+      }));
       
-      const mappings = await response.json() as ModelMapping[];
+      // Filter to only include chat-capable models
+      const chatModels = mappings.filter(mapping => mapping.supportsChat === true);
       
-      const models: ModelWithCapabilities[] = mappings.map((mapping: ModelMapping) => {
+      const models: ModelWithCapabilities[] = chatModels.map(mapping => {
+        const providerName = mapping.provider?.displayName ?? 'unknown';
         return {
           id: mapping.modelId,
-          providerId: mapping.providerId,
-          displayName: `${mapping.modelId} (${mapping.providerId})`,
-          maxContextTokens: mapping.maxContextTokens,
+          providerId: mapping.providerType?.toString() ?? 'unknown',
+          providerName: providerName,
+          displayName: `${mapping.modelId} (${providerName})`,
+          maxContextTokens: mapping.maxContextLength,
           supportsVision: mapping.supportsVision ?? false,
           // Function calling support will need to be detected at runtime
           // since it's not stored in the database

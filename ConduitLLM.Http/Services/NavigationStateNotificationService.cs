@@ -2,9 +2,11 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Http.Hubs;
 using ConduitLLM.Configuration.DTOs.SignalR;
+using ConduitLLM.Configuration;
 using System;
 using System.Threading.Tasks;
 
+using ConduitLLM.Http.Interfaces;
 namespace ConduitLLM.Http.Services
 {
     /// <summary>
@@ -20,12 +22,12 @@ namespace ConduitLLM.Http.Services
         /// <summary>
         /// Notifies all connected clients of a provider health change
         /// </summary>
-        Task NotifyProviderHealthChangedAsync(string providerName, bool isHealthy, string status);
+        Task NotifyProviderHealthChangedAsync(int providerId, string providerName, bool isHealthy, string status);
         
         /// <summary>
         /// Notifies all connected clients of model capabilities discovery
         /// </summary>
-        Task NotifyModelCapabilitiesDiscoveredAsync(string providerName, int modelCount, int embeddingCount = 0, int visionCount = 0, int imageGenCount = 0, int videoGenCount = 0);
+        Task NotifyModelCapabilitiesDiscoveredAsync(int providerId, string providerName, int modelCount, int embeddingCount = 0, int visionCount = 0, int imageGenCount = 0, int videoGenCount = 0);
         
         /// <summary>
         /// Notifies specific model subscribers of availability change
@@ -78,7 +80,7 @@ namespace ConduitLLM.Http.Services
         }
 
         /// <inheritdoc />
-        public async Task NotifyProviderHealthChangedAsync(string providerName, bool isHealthy, string status)
+        public async Task NotifyProviderHealthChangedAsync(int providerId, string providerName, bool isHealthy, string status)
         {
             try
             {
@@ -91,28 +93,30 @@ namespace ConduitLLM.Http.Services
                 
                 var notification = new ProviderHealthNotification
                 {
-                    Provider = providerName,
+                    ProviderId = providerId,
+                    ProviderName = providerName,
                     Status = healthStatus.ToString(),
                     Priority = healthStatus == HealthStatus.Unhealthy ? NotificationPriority.High : NotificationPriority.Medium
                 };
                 
                 await _hubContext.Clients.All.SendAsync("OnProviderHealthChanged", notification);
                 
-                _logger.LogDebug("Sent provider health change notification for {ProviderName} (Healthy: {IsHealthy})", providerName, isHealthy);
+                _logger.LogDebug("Sent provider health change notification for {ProviderName} (ID: {ProviderId}, Healthy: {IsHealthy})", providerName, providerId, isHealthy);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to send provider health change notification for {ProviderName}", providerName);
+                _logger.LogError(ex, "Failed to send provider health change notification for {ProviderName} (ID: {ProviderId})", providerName, providerId);
             }
         }
 
         /// <inheritdoc />
-        public async Task NotifyModelCapabilitiesDiscoveredAsync(string providerName, int modelCount, int embeddingCount = 0, int visionCount = 0, int imageGenCount = 0, int videoGenCount = 0)
+        public async Task NotifyModelCapabilitiesDiscoveredAsync(int providerId, string providerName, int modelCount, int embeddingCount = 0, int visionCount = 0, int imageGenCount = 0, int videoGenCount = 0)
         {
             try
             {
                 var notification = new ModelCapabilitiesNotification
                 {
+                    ProviderId = providerId,
                     ProviderName = providerName,
                     ModelCount = modelCount,
                     EmbeddingCount = embeddingCount,
@@ -124,12 +128,12 @@ namespace ConduitLLM.Http.Services
                 
                 await _hubContext.Clients.All.SendAsync("OnModelCapabilitiesDiscovered", notification);
                 
-                _logger.LogDebug("Sent model capabilities discovered notification for {ProviderName} ({ModelCount} models, {EmbeddingCount} embeddings, {VisionCount} vision, {ImageGenCount} image gen, {VideoGenCount} video gen)", 
-                    providerName, modelCount, embeddingCount, visionCount, imageGenCount, videoGenCount);
+                _logger.LogDebug("Sent model capabilities discovered notification for {ProviderName} (ID: {ProviderId}, {ModelCount} models, {EmbeddingCount} embeddings, {VisionCount} vision, {ImageGenCount} image gen, {VideoGenCount} video gen)", 
+                    providerName, providerId, modelCount, embeddingCount, visionCount, imageGenCount, videoGenCount);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to send model capabilities discovered notification for {ProviderName}", providerName);
+                _logger.LogError(ex, "Failed to send model capabilities discovered notification for {ProviderName} (ID: {ProviderId})", providerName, providerId);
             }
         }
 

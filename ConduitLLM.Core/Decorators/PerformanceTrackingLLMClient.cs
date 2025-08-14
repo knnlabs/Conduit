@@ -9,7 +9,7 @@ namespace ConduitLLM.Core.Decorators
     /// <summary>
     /// Decorator that adds performance tracking to LLM client operations.
     /// </summary>
-    public class PerformanceTrackingLLMClient : ILLMClient
+    public class PerformanceTrackingLLMClient : ILLMClient, IAuthenticationVerifiable
     {
         private readonly ILLMClient _innerClient;
         private readonly IPerformanceMetricsService _metricsService;
@@ -228,6 +228,48 @@ namespace ConduitLLM.Core.Decorators
         {
             // No performance tracking needed for capabilities
             return _innerClient.GetCapabilitiesAsync(modelId);
+        }
+
+        /// <summary>
+        /// Verifies authentication by delegating to the inner client if it supports IAuthenticationVerifiable.
+        /// </summary>
+        public Task<AuthenticationResult> VerifyAuthenticationAsync(
+            string? apiKey = null, 
+            string? baseUrl = null,
+            CancellationToken cancellationToken = default)
+        {
+            // Check if the inner client supports authentication verification
+            if (_innerClient is IAuthenticationVerifiable authVerifiable)
+            {
+                // Delegate to the inner client
+                return authVerifiable.VerifyAuthenticationAsync(apiKey, baseUrl, cancellationToken);
+            }
+
+            // If the inner client doesn't support authentication verification,
+            // return a failure result
+            return Task.FromResult(new AuthenticationResult
+            {
+                IsSuccess = false,
+                Message = "Provider does not support authentication verification",
+                ErrorDetails = $"The {_providerName} provider has not implemented authentication verification"
+            });
+        }
+
+        /// <summary>
+        /// Gets the health check URL by delegating to the inner client if it supports IAuthenticationVerifiable.
+        /// </summary>
+        public string GetHealthCheckUrl(string? baseUrl = null)
+        {
+            // Check if the inner client supports authentication verification
+            if (_innerClient is IAuthenticationVerifiable authVerifiable)
+            {
+                // Delegate to the inner client
+                return authVerifiable.GetHealthCheckUrl(baseUrl);
+            }
+
+            // If the inner client doesn't support authentication verification,
+            // return a default URL (this shouldn't normally happen)
+            return baseUrl ?? "https://api.provider.com/health";
         }
     }
 }

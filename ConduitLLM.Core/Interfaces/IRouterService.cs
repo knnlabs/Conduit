@@ -56,9 +56,5 @@ namespace ConduitLLM.Core.Interfaces
         /// </summary>
         Task<List<string>> GetFallbackModelsAsync(string primaryModel, CancellationToken cancellationToken = default);
 
-        /// <summary>
-        /// Updates the health status of a model deployment
-        /// </summary>
-        void UpdateModelHealth(string deploymentName, bool isHealthy);
     }
 }

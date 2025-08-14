@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using ConduitLLM.Configuration.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services.BatchOperations;
-using ConduitLLM.Http.DTOs;
+using ConduitLLM.Configuration.DTOs.BatchOperations;
 
 namespace ConduitLLM.Http.Controllers
 {
@@ -57,14 +58,14 @@ namespace ConduitLLM.Http.Controllers
             var virtualKeyId = GetVirtualKeyId();
             
             // Validate request
-            if (request.Updates == null || !request.Updates.Any())
+            if (request.Updates == null || request.Updates.Count() == 0)
             {
-                return BadRequest(new { error = "No updates provided" });
+                return BadRequest(new ErrorResponseDto("No updates provided"));
             }
 
-            if (request.Updates.Count > 10000)
+            if (request.Updates.Count() > 10000)
             {
-                return BadRequest(new { error = "Maximum 10,000 items per batch" });
+                return BadRequest(new ErrorResponseDto("Maximum 10,000 items per batch"));
             }
 
             // Convert to internal model
@@ -73,7 +74,7 @@ namespace ConduitLLM.Http.Controllers
                 VirtualKeyId = u.VirtualKeyId,
                 Amount = u.Amount,
                 Model = u.Model,
-                Provider = u.Provider,
+                Provider = u.ProviderType.ToString(),
                 RequestMetadata = u.Metadata
             }).ToList();
 
@@ -86,13 +87,13 @@ namespace ConduitLLM.Http.Controllers
             _logger.LogInformation(
                 "Started batch spend update operation {OperationId} with {Count} items",
                 result.OperationId,
-                request.Updates.Count);
+                request.Updates.Count());
 
             return Accepted(new BatchOperationStartResponse
             {
                 OperationId = result.OperationId,
                 OperationType = "spend_update",
-                TotalItems = request.Updates.Count,
+                TotalItems = request.Updates.Count(),
                 StatusUrl = $"/v1/batch/operations/{result.OperationId}",
                 TaskId = result.OperationId,
                 Message = "Batch operation started. Subscribe to TaskHub with the taskId for real-time updates."
@@ -137,21 +138,20 @@ namespace ConduitLLM.Http.Controllers
             }
 
             // Validate request
-            if (request.Updates == null || !request.Updates.Any())
+            if (request.Updates == null || request.Updates.Count() == 0)
             {
-                return BadRequest(new { error = "No updates provided" });
+                return BadRequest(new ErrorResponseDto("No updates provided"));
             }
 
-            if (request.Updates.Count > 1000)
+            if (request.Updates.Count() > 1000)
             {
-                return BadRequest(new { error = "Maximum 1,000 items per batch" });
+                return BadRequest(new ErrorResponseDto("Maximum 1,000 items per batch"));
             }
 
             // Convert to internal model
             var keyUpdates = request.Updates.Select(u => new VirtualKeyUpdateItem
             {
                 VirtualKeyId = u.VirtualKeyId,
-                MaxBudget = u.MaxBudget,
                 AllowedModels = u.AllowedModels,
                 RateLimits = u.RateLimits,
                 IsEnabled = u.IsEnabled,
@@ -168,13 +168,13 @@ namespace ConduitLLM.Http.Controllers
             _logger.LogInformation(
                 "Started batch virtual key update operation {OperationId} with {Count} items",
                 result.OperationId,
-                request.Updates.Count);
+                request.Updates.Count());
 
             return Accepted(new BatchOperationStartResponse
             {
                 OperationId = result.OperationId,
                 OperationType = "virtual_key_update",
-                TotalItems = request.Updates.Count,
+                TotalItems = request.Updates.Count(),
                 StatusUrl = $"/v1/batch/operations/{result.OperationId}",
                 TaskId = result.OperationId,
                 Message = "Batch operation started. Subscribe to TaskHub with the taskId for real-time updates."
@@ -195,14 +195,14 @@ namespace ConduitLLM.Http.Controllers
             var virtualKeyId = GetVirtualKeyId();
             
             // Validate request
-            if (request.Webhooks == null || !request.Webhooks.Any())
+            if (request.Webhooks == null || request.Webhooks.Count() == 0)
             {
-                return BadRequest(new { error = "No webhooks provided" });
+                return BadRequest(new ErrorResponseDto("No webhooks provided"));
             }
 
-            if (request.Webhooks.Count > 5000)
+            if (request.Webhooks.Count() > 5000)
             {
-                return BadRequest(new { error = "Maximum 5,000 webhooks per batch" });
+                return BadRequest(new ErrorResponseDto("Maximum 5,000 webhooks per batch"));
             }
 
             // Convert to internal model
@@ -225,13 +225,13 @@ namespace ConduitLLM.Http.Controllers
             _logger.LogInformation(
                 "Started batch webhook send operation {OperationId} with {Count} items",
                 result.OperationId,
-                request.Webhooks.Count);
+                request.Webhooks.Count());
 
             return Accepted(new BatchOperationStartResponse
             {
                 OperationId = result.OperationId,
                 OperationType = "webhook_send",
-                TotalItems = request.Webhooks.Count,
+                TotalItems = request.Webhooks.Count(),
                 StatusUrl = $"/v1/batch/operations/{result.OperationId}",
                 TaskId = result.OperationId,
                 Message = "Batch operation started. Subscribe to TaskHub with the taskId for real-time updates."
@@ -251,7 +251,7 @@ namespace ConduitLLM.Http.Controllers
             var status = _batchOperationService.GetOperationStatus(operationId);
             if (status == null)
             {
-                return NotFound(new { error = "Operation not found" });
+                return NotFound(new ErrorResponseDto("Operation not found"));
             }
 
             return Ok(new BatchOperationStatusResponse
@@ -286,18 +286,18 @@ namespace ConduitLLM.Http.Controllers
             var status = _batchOperationService.GetOperationStatus(operationId);
             if (status == null)
             {
-                return NotFound(new { error = "Operation not found" });
+                return NotFound(new ErrorResponseDto("Operation not found"));
             }
 
             if (!status.CanCancel)
             {
-                return Conflict(new { error = "Operation cannot be cancelled" });
+                return Conflict(new ErrorResponseDto("Operation cannot be cancelled"));
             }
 
             var cancelled = await _batchOperationService.CancelBatchOperationAsync(operationId);
             if (!cancelled)
             {
-                return Conflict(new { error = "Failed to cancel operation" });
+                return Conflict(new ErrorResponseDto("Failed to cancel operation"));
             }
 
             _logger.LogInformation("Cancelled batch operation {OperationId}", operationId);

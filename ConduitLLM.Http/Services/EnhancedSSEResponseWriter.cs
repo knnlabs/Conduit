@@ -50,10 +50,20 @@ namespace ConduitLLM.Http.Services
 
         /// <summary>
         /// Writes a content event containing a chat completion chunk.
+        /// For OpenAI compatibility, this writes just "data:" without event type.
         /// </summary>
         public async Task WriteContentEventAsync<T>(T data, CancellationToken cancellationToken = default)
         {
-            await WriteEventAsync("content", data, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            
+            await EnsureHeadersWrittenAsync();
+            
+            // OpenAI format uses just "data:" without event type
+            var json = JsonSerializer.Serialize(data, _jsonOptions);
+            var eventData = $"data: {json}\n\n";
+            var bytes = Encoding.UTF8.GetBytes(eventData);
+            await _response.Body.WriteAsync(bytes, cancellationToken);
+            await _response.Body.FlushAsync(cancellationToken);
         }
 
         /// <summary>
@@ -114,7 +124,14 @@ namespace ConduitLLM.Http.Services
         /// </summary>
         public async Task WriteDoneEventAsync(CancellationToken cancellationToken = default)
         {
-            await WriteEventAsync("done", "[DONE]", cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            
+            await EnsureHeadersWrittenAsync();
+            
+            // OpenAI format requires just "data: [DONE]" without event type
+            var doneData = Encoding.UTF8.GetBytes("data: [DONE]\n\n");
+            await _response.Body.WriteAsync(doneData, cancellationToken);
+            await _response.Body.FlushAsync(cancellationToken);
         }
 
         /// <summary>

@@ -16,12 +16,12 @@ namespace ConduitLLM.Configuration.DTOs.Audio
         /// <summary>
         /// Associated provider credential ID.
         /// </summary>
-        public int ProviderCredentialId { get; set; }
+        public int ProviderId { get; set; }
 
         /// <summary>
-        /// Provider name from the credential.
+        /// Provider type from the credential.
         /// </summary>
-        public string? ProviderName { get; set; }
+        public ProviderType? ProviderType { get; set; }
 
         /// <summary>
         /// Whether transcription is enabled for this provider.
@@ -87,6 +87,7 @@ namespace ConduitLLM.Configuration.DTOs.Audio
         /// When the configuration was last updated.
         /// </summary>
         public DateTime UpdatedAt { get; set; }
+        
     }
 
     /// <summary>
@@ -98,7 +99,7 @@ namespace ConduitLLM.Configuration.DTOs.Audio
         /// Associated provider credential ID.
         /// </summary>
         [Required]
-        public int ProviderCredentialId { get; set; }
+        public int ProviderId { get; set; }
 
         /// <summary>
         /// Whether transcription is enabled for this provider.

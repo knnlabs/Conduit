@@ -2,16 +2,20 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Interfaces;
 using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.Core.Controllers;
+using ConduitLLM.Http.Authorization;
 
 namespace ConduitLLM.Http.Controllers
 {
@@ -20,18 +24,19 @@ namespace ConduitLLM.Http.Controllers
     /// </summary>
     [ApiController]
     [Route("v1/images")]
-    [Authorize]
-    public class ImagesController : ControllerBase
+    [Authorize(AuthenticationSchemes = "VirtualKey,EphemeralKey")]
+    [RequireBalance]
+    [Tags("Images")]
+    public class ImagesController : EventPublishingControllerBase
     {
         private readonly ILLMClientFactory _clientFactory;
         private readonly IMediaStorageService _storageService;
         private readonly ILogger<ImagesController> _logger;
         private readonly IModelProviderMappingService _modelMappingService;
         private readonly IAsyncTaskService _taskService;
-        private readonly IPublishEndpoint _publishEndpoint;
-        private readonly IVirtualKeyService _virtualKeyService;
+        private readonly ConduitLLM.Core.Interfaces.IVirtualKeyService _virtualKeyService;
         private readonly IMediaLifecycleService _mediaLifecycleService;
-        private readonly IImageGenerationMetricsService _metricsService;
+        private readonly IHttpClientFactory _httpClientFactory;
 
         public ImagesController(
             ILLMClientFactory clientFactory,
@@ -40,19 +45,19 @@ namespace ConduitLLM.Http.Controllers
             IModelProviderMappingService modelMappingService,
             IAsyncTaskService taskService,
             IPublishEndpoint publishEndpoint,
-            IVirtualKeyService virtualKeyService,
+            ConduitLLM.Core.Interfaces.IVirtualKeyService virtualKeyService,
             IMediaLifecycleService mediaLifecycleService,
-            IImageGenerationMetricsService metricsService)
+            IHttpClientFactory httpClientFactory)
+            : base(publishEndpoint, logger)
         {
             _clientFactory = clientFactory;
             _storageService = storageService;
             _logger = logger;
             _modelMappingService = modelMappingService;
             _taskService = taskService;
-            _publishEndpoint = publishEndpoint;
             _virtualKeyService = virtualKeyService;
             _mediaLifecycleService = mediaLifecycleService;
-            _metricsService = metricsService;
+            _httpClientFactory = httpClientFactory;
         }
 
         /// <summary>
@@ -68,53 +73,34 @@ namespace ConduitLLM.Http.Controllers
                 // Validate request
                 if (string.IsNullOrWhiteSpace(request.Prompt))
                 {
-                    return BadRequest(new { error = new { message = "Prompt is required", type = "invalid_request_error" } });
+                    return BadRequest(new OpenAIErrorResponse
+                    {
+                        Error = new OpenAIError
+                        {
+                            Message = "Prompt is required",
+                            Type = "invalid_request_error",
+                            Code = "missing_parameter",
+                            Param = "prompt"
+                        }
+                    });
                 }
 
-                var modelName = request.Model;
-                
-                // If no model specified, use smart provider selection
-                if (string.IsNullOrEmpty(modelName))
+                // Model parameter is required
+                if (string.IsNullOrWhiteSpace(request.Model))
                 {
-                    _logger.LogInformation("No model specified, using smart provider selection");
-                    
-                    // Get all image generation capable providers
-                    var allMappings = await _modelMappingService.GetAllMappingsAsync();
-                    var imageProviders = allMappings.Where(m => m.SupportsImageGeneration).ToList();
-                    if (imageProviders.Any())
+                    return BadRequest(new OpenAIErrorResponse
                     {
-                        var availableProviders = imageProviders
-                            .Select(m => (m.ProviderName, m.ProviderModelId))
-                            .ToList();
-                        
-                        // Select optimal provider based on current metrics
-                        var optimal = await _metricsService.SelectOptimalProviderAsync(
-                            availableProviders,
-                            request.N,
-                            maxWaitTimeSeconds: null);
-                        
-                        if (optimal.HasValue)
+                        Error = new OpenAIError
                         {
-                            var selectedMapping = imageProviders.FirstOrDefault(m => 
-                                m.ProviderName == optimal.Value.Provider && 
-                                m.ProviderModelId == optimal.Value.Model);
-                            
-                            if (selectedMapping != null)
-                            {
-                                modelName = selectedMapping.ModelAlias;
-                                _logger.LogInformation("Smart selection chose {Provider}/{Model} (alias: {Alias})", 
-                                    optimal.Value.Provider, optimal.Value.Model, modelName);
-                            }
+                            Message = "Model is required",
+                            Type = "invalid_request_error",
+                            Code = "missing_parameter",
+                            Param = "model"
                         }
-                    }
-                    
-                    // Fallback to default if smart selection fails
-                    if (string.IsNullOrEmpty(modelName))
-                    {
-                        modelName = "dall-e-3";
-                        _logger.LogInformation("Smart selection failed, falling back to default model: {Model}", modelName);
-                    }
+                    });
                 }
+                
+                var modelName = request.Model;
                 
                 // First check model mappings for image generation capability
                 var mapping = await _modelMappingService.GetMappingByModelAliasAsync(modelName);
@@ -127,6 +113,10 @@ namespace ConduitLLM.Http.Controllers
                     
                     _logger.LogInformation("Model {Model} mapping found, supports image generation: {Supports}", 
                         modelName, supportsImageGen);
+                    
+                    // Store provider info for usage tracking
+                    HttpContext.Items["ProviderId"] = mapping.ProviderId;
+                    HttpContext.Items["ProviderType"] = mapping.Provider?.ProviderType;
                 }
                 else
                 {
@@ -137,7 +127,16 @@ namespace ConduitLLM.Http.Controllers
                 
                 if (!supportsImageGen)
                 {
-                    return BadRequest(new { error = new { message = $"Model {modelName} does not support image generation", type = "invalid_request_error" } });
+                    return BadRequest(new OpenAIErrorResponse
+                    {
+                        Error = new OpenAIError
+                        {
+                            Message = $"Model {modelName} does not support image generation",
+                            Type = "invalid_request_error",
+                            Code = "unsupported_model",
+                            Param = "model"
+                        }
+                    });
                 }
 
                 // If we don't have a mapping, try to create a client anyway (for direct model names)
@@ -166,67 +165,96 @@ namespace ConduitLLM.Http.Controllers
                     string contentType = "image/png";
                     string extension = "png";
                     
+                    _logger.LogInformation("Processing image {Index}: URL={Url}, HasB64={HasB64}", 
+                        i, imageData.Url ?? "null", !string.IsNullOrEmpty(imageData.B64Json));
+                    
                     try
                     {
                         if (!string.IsNullOrEmpty(imageData.B64Json))
                         {
-                            // Convert base64 to bytes
-                            var imageBytes = Convert.FromBase64String(imageData.B64Json);
-                            imageStream = new MemoryStream(imageBytes);
+                            // Decode base64 to binary
+                            try
+                            {
+                                var imageBytes = Convert.FromBase64String(imageData.B64Json);
+                                imageStream = new MemoryStream(imageBytes);
+                                _logger.LogInformation("Decoded base64 image, size: {Size} bytes", imageBytes.Length);
+                            }
+                            catch (FormatException ex)
+                            {
+                                _logger.LogError(ex, "Failed to decode base64 image data");
+                                continue;
+                            }
                         }
                         else if (!string.IsNullOrEmpty(imageData.Url) && 
                                 (imageData.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || 
                                  imageData.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
                         {
-                            // Download external image to proxy it through our storage
-                            using var httpClient = new System.Net.Http.HttpClient();
-                            httpClient.Timeout = TimeSpan.FromSeconds(30);
+                            // Stream external image directly to storage without buffering
+                            using var httpClient = _httpClientFactory.CreateClient("ImageDownload");
+                            httpClient.Timeout = TimeSpan.FromSeconds(60); // Increased timeout for streaming
                             
-                            var imageResponse = await httpClient.GetAsync(imageData.Url);
-                            if (imageResponse.IsSuccessStatusCode)
+                            try
                             {
-                                var imageBytes = await imageResponse.Content.ReadAsByteArrayAsync();
-                                imageStream = new MemoryStream(imageBytes);
+                                // Use GetAsync with HttpCompletionOption.ResponseHeadersRead for streaming
+                                using var imageResponse = await httpClient.GetAsync(imageData.Url, 
+                                    System.Net.Http.HttpCompletionOption.ResponseHeadersRead);
                                 
-                                // Try to determine content type from response
-                                if (imageResponse.Content.Headers.ContentType != null)
+                                if (imageResponse.IsSuccessStatusCode)
                                 {
-                                    contentType = imageResponse.Content.Headers.ContentType.MediaType ?? contentType;
-                                    extension = contentType.Split('/').LastOrDefault() ?? "png";
-                                    if (extension == "jpeg") extension = "jpg";
+                                    // Try to determine content type from response
+                                    if (imageResponse.Content.Headers.ContentType != null)
+                                    {
+                                        contentType = imageResponse.Content.Headers.ContentType.MediaType ?? contentType;
+                                        extension = contentType.Split('/').LastOrDefault() ?? "png";
+                                        if (extension == "jpeg") extension = "jpg";
+                                    }
+                                    else if (imageData.Url.Contains(".jpeg", StringComparison.OrdinalIgnoreCase) || 
+                                             imageData.Url.Contains(".jpg", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        contentType = "image/jpeg";
+                                        extension = "jpg";
+                                    }
+                                    
+                                    // Copy the stream to memory to avoid disposal issues
+                                    var responseStream = await imageResponse.Content.ReadAsStreamAsync();
+                                    var memoryStream = new MemoryStream();
+                                    await responseStream.CopyToAsync(memoryStream);
+                                    memoryStream.Position = 0;
+                                    imageStream = memoryStream;
+                                    
+                                    _logger.LogInformation("Downloaded image data: {Bytes} bytes", memoryStream.Length);
                                 }
-                                else if (imageData.Url.Contains(".jpeg", StringComparison.OrdinalIgnoreCase) || 
-                                         imageData.Url.Contains(".jpg", StringComparison.OrdinalIgnoreCase))
+                                else
                                 {
-                                    contentType = "image/jpeg";
-                                    extension = "jpg";
+                                    _logger.LogWarning("Failed to download image from {Url}: {StatusCode}", 
+                                        imageData.Url, imageResponse.StatusCode);
+                                    continue;
                                 }
                             }
-                            else
+                            catch (TaskCanceledException ex)
                             {
-                                _logger.LogWarning("Failed to download image from {Url}: {StatusCode}", 
-                                    imageData.Url, imageResponse.StatusCode);
+                                _logger.LogWarning(ex, "Timeout downloading image from {Url}", imageData.Url);
                                 continue;
                             }
+                            catch (System.Net.Http.HttpRequestException ex)
+                            {
+                                _logger.LogWarning(ex, "HTTP error downloading image from {Url}", imageData.Url);
+                                continue;
+                            }
+                        }
+                        else if (!string.IsNullOrEmpty(imageData.Url))
+                        {
+                            // Log non-HTTP URLs that we're not downloading
+                            _logger.LogWarning("Image URL is not an HTTP/HTTPS URL, will not download: {Url}", imageData.Url);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Image data has neither URL nor base64 content");
                         }
                         
                         if (imageStream != null)
                         {
-                            // Read the image bytes first if we need base64
-                            byte[]? imageBytes = null;
-                            if (request.ResponseFormat == "b64_json")
-                            {
-                                // Read bytes for base64 conversion
-                                using (var ms = new MemoryStream())
-                                {
-                                    await imageStream.CopyToAsync(ms);
-                                    imageBytes = ms.ToArray();
-                                }
-                                // Create new stream for storage
-                                imageStream = new MemoryStream(imageBytes);
-                            }
-                            
-                            // Store in media storage
+                            // Store in media storage directly with streaming
                             var metadata = new MediaMetadata
                             {
                                 ContentType = contentType,
@@ -236,7 +264,7 @@ namespace ConduitLLM.Http.Controllers
                                 {
                                     ["prompt"] = request.Prompt,
                                     ["model"] = request.Model ?? "unknown",
-                                    ["provider"] = mapping?.ProviderName ?? "unknown",
+                                    ["provider"] = mapping?.ProviderId.ToString() ?? "unknown",
                                     ["originalUrl"] = imageData.Url ?? ""
                                 }
                             };
@@ -246,7 +274,13 @@ namespace ConduitLLM.Http.Controllers
                                 metadata.CreatedBy = request.User;
                             }
 
-                            var storageResult = await _storageService.StoreAsync(imageStream, metadata);
+                            // Create progress reporter for large image downloads
+                            var progress = new Progress<long>(bytesProcessed =>
+                            {
+                                _logger.LogDebug("Image storage progress: {BytesProcessed} bytes processed", bytesProcessed);
+                            });
+                            
+                            var storageResult = await _storageService.StoreAsync(imageStream, metadata, progress);
 
                             // Track media ownership for lifecycle management
                             try
@@ -259,7 +293,7 @@ namespace ConduitLLM.Http.Controllers
                                     {
                                         ContentType = contentType,
                                         SizeBytes = storageResult.SizeBytes,
-                                        Provider = mapping?.ProviderName ?? "unknown",
+                                        Provider = mapping?.Provider?.ProviderType.ToString() ?? "unknown",
                                         Model = request.Model ?? "unknown",
                                         Prompt = request.Prompt,
                                         StorageUrl = storageResult.Url,
@@ -287,13 +321,23 @@ namespace ConduitLLM.Http.Controllers
                             }
                             
                             // Update response with our proxied URL
+                            _logger.LogInformation("Setting image URL: {Url}", storageResult.Url);
                             imageData.Url = storageResult.Url;
                             
                             // Handle response format
-                            if (request.ResponseFormat == "b64_json" && imageBytes != null)
+                            if (request.ResponseFormat == "b64_json")
                             {
-                                // Use the bytes we already read
-                                imageData.B64Json = Convert.ToBase64String(imageBytes);
+                                // Read from storage to convert to base64
+                                var storedStream = await _storageService.GetStreamAsync(storageResult.StorageKey);
+                                if (storedStream != null)
+                                {
+                                    using (var ms = new MemoryStream())
+                                    {
+                                        await storedStream.CopyToAsync(ms);
+                                        imageData.B64Json = Convert.ToBase64String(ms.ToArray());
+                                    }
+                                    storedStream.Dispose();
+                                }
                                 imageData.Url = null; // Clear URL when returning base64
                             }
                             else if (request.ResponseFormat == "url")
@@ -314,7 +358,15 @@ namespace ConduitLLM.Http.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error generating images");
-                return StatusCode(500, new { error = new { message = "An error occurred while generating images", type = "server_error" } });
+                return StatusCode(500, new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = "An error occurred while generating images",
+                        Type = "server_error",
+                        Code = "internal_error"
+                    }
+                });
             }
         }
 
@@ -331,10 +383,34 @@ namespace ConduitLLM.Http.Controllers
                 // Validate request
                 if (string.IsNullOrWhiteSpace(request.Prompt))
                 {
-                    return BadRequest(new { error = new { message = "Prompt is required", type = "invalid_request_error" } });
+                    return BadRequest(new OpenAIErrorResponse
+                    {
+                        Error = new OpenAIError
+                        {
+                            Message = "Prompt is required",
+                            Type = "invalid_request_error",
+                            Code = "missing_parameter",
+                            Param = "prompt"
+                        }
+                    });
                 }
 
-                var modelName = request.Model ?? "dall-e-3";
+                // Model parameter is required
+                if (string.IsNullOrWhiteSpace(request.Model))
+                {
+                    return BadRequest(new OpenAIErrorResponse
+                    {
+                        Error = new OpenAIError
+                        {
+                            Message = "Model is required",
+                            Type = "invalid_request_error",
+                            Code = "missing_parameter",
+                            Param = "model"
+                        }
+                    });
+                }
+                
+                var modelName = request.Model;
                 
                 // Check model capabilities
                 var mapping = await _modelMappingService.GetMappingByModelAliasAsync(modelName);
@@ -354,20 +430,46 @@ namespace ConduitLLM.Http.Controllers
                 
                 if (!supportsImageGen)
                 {
-                    return BadRequest(new { error = new { message = $"Model {modelName} does not support image generation", type = "invalid_request_error" } });
+                    return BadRequest(new OpenAIErrorResponse
+                    {
+                        Error = new OpenAIError
+                        {
+                            Message = $"Model {modelName} does not support image generation",
+                            Type = "invalid_request_error",
+                            Code = "unsupported_model",
+                            Param = "model"
+                        }
+                    });
                 }
 
-                // Get virtual key information
-                var virtualKeyHash = HttpContext.User.FindFirst("VirtualKey")?.Value;
-                if (string.IsNullOrEmpty(virtualKeyHash))
+                // Get virtual key ID from authenticated user claims
+                var virtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
+                if (string.IsNullOrEmpty(virtualKeyIdClaim) || !int.TryParse(virtualKeyIdClaim, out var virtualKeyId))
                 {
-                    return Unauthorized(new { error = new { message = "Invalid authentication", type = "authentication_error" } });
+                    return Unauthorized(new OpenAIErrorResponse
+                    {
+                        Error = new OpenAIError
+                        {
+                            Message = "Invalid authentication",
+                            Type = "invalid_request_error",
+                            Code = "unauthorized"
+                        }
+                    });
                 }
 
-                var virtualKey = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKeyHash);
+                // Get virtual key information from service
+                var virtualKey = await _virtualKeyService.GetVirtualKeyInfoForValidationAsync(virtualKeyId);
                 if (virtualKey == null)
                 {
-                    return Unauthorized(new { error = new { message = "Virtual key not found", type = "authentication_error" } });
+                    return Unauthorized(new OpenAIErrorResponse
+                    {
+                        Error = new OpenAIError
+                        {
+                            Message = "Virtual key not found",
+                            Type = "invalid_request_error",
+                            Code = "unauthorized"
+                        }
+                    });
                 }
 
                 // Create correlation ID
@@ -377,8 +479,8 @@ namespace ConduitLLM.Http.Controllers
                 var generationRequest = new ImageGenerationRequested
                 {
                     TaskId = "", // Will be filled in after task creation
-                    VirtualKeyId = virtualKey.Id,
-                    VirtualKeyHash = virtualKeyHash,
+                    VirtualKeyId = virtualKeyId,
+                    VirtualKeyHash = virtualKey.KeyHash,
                     Request = new ConduitLLM.Core.Events.ImageGenerationRequest
                     {
                         Prompt = request.Prompt,
@@ -397,7 +499,7 @@ namespace ConduitLLM.Http.Controllers
                 };
 
                 // Create metadata for the task including the serialized request
-                var metadata = new TaskMetadata(virtualKey.Id)
+                var metadata = new TaskMetadata(virtualKeyId)
                 {
                     Model = modelName,
                     Prompt = request.Prompt,
@@ -408,14 +510,14 @@ namespace ConduitLLM.Http.Controllers
                 // Create the task using the correct method signature
                 var taskId = await _taskService.CreateTaskAsync(
                     taskType: "image_generation",
-                    virtualKeyId: virtualKey.Id,
+                    virtualKeyId: virtualKeyId,
                     metadata: metadata);
 
                 // Update the request with the actual task ID
                 generationRequest = generationRequest with { TaskId = taskId };
 
                 // Publish the event directly to MassTransit for immediate processing
-                await _publishEndpoint.Publish(generationRequest);
+                PublishEventFireAndForget(generationRequest, "create async image generation", new { TaskId = taskId, Model = modelName });
                 
                 _logger.LogInformation("Created async image generation task {TaskId} for model {Model} and published event", 
                     taskId, modelName);
@@ -434,7 +536,15 @@ namespace ConduitLLM.Http.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating async image generation task");
-                return StatusCode(500, new { error = new { message = "An error occurred while creating the task", type = "server_error" } });
+                return StatusCode(500, new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = "An error occurred while creating the task",
+                        Type = "server_error",
+                        Code = "internal_error"
+                    }
+                });
             }
         }
 
@@ -455,61 +565,48 @@ namespace ConduitLLM.Http.Controllers
                 if (task == null)
                 {
                     _logger.LogWarning("Task {TaskId} not found by task service", taskId);
-                    return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
+                    return NotFound(new OpenAIErrorResponse
+                    {
+                        Error = new OpenAIError
+                        {
+                            Message = "Task not found",
+                            Type = "invalid_request_error",
+                            Code = "not_found",
+                            Param = "task_id"
+                        }
+                    });
                 }
                 
                 _logger.LogInformation("Task {TaskId} retrieved, State: {State}, HasMetadata: {HasMetadata}", 
                     taskId, task.State, task.Metadata != null);
 
-                // Verify user owns this task
-                var virtualKeyFromClaim = HttpContext.User.FindFirst("VirtualKey")?.Value;
-                if (task.Metadata != null && !string.IsNullOrEmpty(virtualKeyFromClaim))
+                // Verify user owns this task by comparing virtual key IDs
+                var userVirtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
+                if (task.Metadata != null && !string.IsNullOrEmpty(userVirtualKeyIdClaim) && int.TryParse(userVirtualKeyIdClaim, out var userVirtualKeyId))
                 {
                     var metadataJson = System.Text.Json.JsonSerializer.Serialize(task.Metadata);
                     var metadataDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(metadataJson);
                     if (metadataDict != null && metadataDict.TryGetValue("virtualKeyId", out var keyIdObj))
                     {
-                        var virtualKeyId = Convert.ToInt32(keyIdObj.ToString());
-                        _logger.LogInformation("Validating task ownership - VirtualKeyId: {VirtualKeyId}, UserKey: {UserKey}", 
-                            virtualKeyId, virtualKeyFromClaim?.Substring(0, Math.Min(10, virtualKeyFromClaim?.Length ?? 0)) + "...");
+                        var taskVirtualKeyId = Convert.ToInt32(keyIdObj.ToString());
+                        _logger.LogInformation("Validating task ownership - Task VirtualKeyId: {TaskKeyId}, User VirtualKeyId: {UserKeyId}", 
+                            taskVirtualKeyId, userVirtualKeyId);
                         
-                        // The database stores SHA256 hash of the full key (including "condt_" prefix)
-                        string userKeyHash;
-                        try
+                        // Compare the virtual key IDs
+                        if (taskVirtualKeyId != userVirtualKeyId)
                         {
-                            using (var sha256 = System.Security.Cryptography.SHA256.Create())
-                            {
-                                var keyBytes = System.Text.Encoding.UTF8.GetBytes(virtualKeyFromClaim!);
-                                var hashBytes = sha256.ComputeHash(keyBytes);
-                                userKeyHash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
-                                _logger.LogInformation("Computed SHA256 hash of virtual key: {Hash}", 
-                                    userKeyHash?.Substring(0, Math.Min(10, userKeyHash?.Length ?? 0)) + "...");
-                            }
+                            _logger.LogWarning("Virtual key ID mismatch for task {TaskId} - Expected: {Expected}, Got: {Got}", 
+                                taskId, taskVirtualKeyId, userVirtualKeyId);
+                            return NotFound(new OpenAIErrorResponse
+                    {
+                        Error = new OpenAIError
+                        {
+                            Message = "Task not found",
+                            Type = "invalid_request_error",
+                            Code = "not_found",
+                            Param = "task_id"
                         }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Failed to compute hash from virtual key");
-                            return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
-                        }
-                        
-                        var taskVirtualKey = await _virtualKeyService.GetVirtualKeyInfoForValidationAsync(virtualKeyId);
-                        if (taskVirtualKey == null)
-                        {
-                            _logger.LogWarning("Virtual key {VirtualKeyId} not found for task {TaskId}", virtualKeyId, taskId);
-                            return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
-                        }
-                        
-                        _logger.LogInformation("Task virtual key hash from DB: {TaskKeyHash}", 
-                            taskVirtualKey.KeyHash?.Substring(0, Math.Min(10, taskVirtualKey.KeyHash?.Length ?? 0)) + "...");
-                        
-                        // Compare the extracted hash with the database hash
-                        if (!string.Equals(taskVirtualKey.KeyHash, userKeyHash, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _logger.LogWarning("Virtual key mismatch for task {TaskId} - DB hash: {Expected}, User hash: {Got}", 
-                                taskId, 
-                                taskVirtualKey.KeyHash?.Substring(0, Math.Min(10, taskVirtualKey.KeyHash?.Length ?? 0)) + "...",
-                                userKeyHash?.Substring(0, Math.Min(10, userKeyHash?.Length ?? 0)) + "...");
-                            return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
+                    });
                         }
                         
                         _logger.LogInformation("Virtual key validation successful for task {TaskId}", taskId);
@@ -533,7 +630,15 @@ namespace ConduitLLM.Http.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting task status for {TaskId}", taskId);
-                return StatusCode(500, new { error = new { message = "An error occurred while getting task status", type = "server_error" } });
+                return StatusCode(500, new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = "An error occurred while getting task status",
+                        Type = "server_error",
+                        Code = "internal_error"
+                    }
+                });
             }
         }
 
@@ -551,58 +656,45 @@ namespace ConduitLLM.Http.Controllers
                 var task = await _taskService.GetTaskStatusAsync(taskId);
                 if (task == null)
                 {
-                    return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
+                    return NotFound(new OpenAIErrorResponse
+                    {
+                        Error = new OpenAIError
+                        {
+                            Message = "Task not found",
+                            Type = "invalid_request_error",
+                            Code = "not_found",
+                            Param = "task_id"
+                        }
+                    });
                 }
 
-                // Verify user owns this task
-                var virtualKeyFromClaim = HttpContext.User.FindFirst("VirtualKey")?.Value;
-                if (task.Metadata != null && !string.IsNullOrEmpty(virtualKeyFromClaim))
+                // Verify user owns this task by comparing virtual key IDs
+                var userVirtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
+                if (task.Metadata != null && !string.IsNullOrEmpty(userVirtualKeyIdClaim) && int.TryParse(userVirtualKeyIdClaim, out var userVirtualKeyId))
                 {
                     var metadataJson = System.Text.Json.JsonSerializer.Serialize(task.Metadata);
                     var metadataDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(metadataJson);
                     if (metadataDict != null && metadataDict.TryGetValue("virtualKeyId", out var keyIdObj))
                     {
-                        var virtualKeyId = Convert.ToInt32(keyIdObj.ToString());
-                        _logger.LogInformation("Validating task ownership - VirtualKeyId: {VirtualKeyId}, UserKey: {UserKey}", 
-                            virtualKeyId, virtualKeyFromClaim?.Substring(0, Math.Min(10, virtualKeyFromClaim?.Length ?? 0)) + "...");
+                        var taskVirtualKeyId = Convert.ToInt32(keyIdObj.ToString());
+                        _logger.LogInformation("Validating task ownership - Task VirtualKeyId: {TaskKeyId}, User VirtualKeyId: {UserKeyId}", 
+                            taskVirtualKeyId, userVirtualKeyId);
                         
-                        // The database stores SHA256 hash of the full key (including "condt_" prefix)
-                        string userKeyHash;
-                        try
+                        // Compare the virtual key IDs
+                        if (taskVirtualKeyId != userVirtualKeyId)
                         {
-                            using (var sha256 = System.Security.Cryptography.SHA256.Create())
-                            {
-                                var keyBytes = System.Text.Encoding.UTF8.GetBytes(virtualKeyFromClaim!);
-                                var hashBytes = sha256.ComputeHash(keyBytes);
-                                userKeyHash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
-                                _logger.LogInformation("Computed SHA256 hash of virtual key: {Hash}", 
-                                    userKeyHash?.Substring(0, Math.Min(10, userKeyHash?.Length ?? 0)) + "...");
-                            }
+                            _logger.LogWarning("Virtual key ID mismatch for task {TaskId} - Expected: {Expected}, Got: {Got}", 
+                                taskId, taskVirtualKeyId, userVirtualKeyId);
+                            return NotFound(new OpenAIErrorResponse
+                    {
+                        Error = new OpenAIError
+                        {
+                            Message = "Task not found",
+                            Type = "invalid_request_error",
+                            Code = "not_found",
+                            Param = "task_id"
                         }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Failed to compute hash from virtual key");
-                            return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
-                        }
-                        
-                        var taskVirtualKey = await _virtualKeyService.GetVirtualKeyInfoForValidationAsync(virtualKeyId);
-                        if (taskVirtualKey == null)
-                        {
-                            _logger.LogWarning("Virtual key {VirtualKeyId} not found for task {TaskId}", virtualKeyId, taskId);
-                            return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
-                        }
-                        
-                        _logger.LogInformation("Task virtual key hash from DB: {TaskKeyHash}", 
-                            taskVirtualKey.KeyHash?.Substring(0, Math.Min(10, taskVirtualKey.KeyHash?.Length ?? 0)) + "...");
-                        
-                        // Compare the extracted hash with the database hash
-                        if (!string.Equals(taskVirtualKey.KeyHash, userKeyHash, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _logger.LogWarning("Virtual key mismatch for task {TaskId} - DB hash: {Expected}, User hash: {Got}", 
-                                taskId, 
-                                taskVirtualKey.KeyHash?.Substring(0, Math.Min(10, taskVirtualKey.KeyHash?.Length ?? 0)) + "...",
-                                userKeyHash?.Substring(0, Math.Min(10, userKeyHash?.Length ?? 0)) + "...");
-                            return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
+                    });
                         }
                         
                         _logger.LogInformation("Virtual key validation successful for task {TaskId}", taskId);
@@ -612,30 +704,38 @@ namespace ConduitLLM.Http.Controllers
                 // Check if task can be cancelled
                 if (task.State == TaskState.Completed || task.State == TaskState.Failed || task.State == TaskState.Cancelled)
                 {
-                    return BadRequest(new { error = new { message = "Task has already completed", type = "invalid_request_error" } });
+                    return BadRequest(new OpenAIErrorResponse
+                    {
+                        Error = new OpenAIError
+                        {
+                            Message = "Task has already completed",
+                            Type = "invalid_request_error",
+                            Code = "invalid_operation"
+                        }
+                    });
                 }
 
-                // Get virtual key ID from metadata
-                var taskVirtualKeyId = 0;
+                // Get virtual key ID from metadata for event publishing
+                var cancelVirtualKeyId = 0;
                 if (task.Metadata != null)
                 {
                     var metadataJson = System.Text.Json.JsonSerializer.Serialize(task.Metadata);
                     var metadataDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(metadataJson);
                     if (metadataDict != null && metadataDict.TryGetValue("virtualKeyId", out var keyIdObj))
                     {
-                        taskVirtualKeyId = Convert.ToInt32(keyIdObj.ToString());
+                        cancelVirtualKeyId = Convert.ToInt32(keyIdObj.ToString());
                     }
                 }
 
                 // Publish cancellation event
-                await _publishEndpoint.Publish(new ImageGenerationCancelled
+                PublishEventFireAndForget(new ImageGenerationCancelled
                 {
                     TaskId = taskId,
-                    VirtualKeyId = taskVirtualKeyId,
+                    VirtualKeyId = cancelVirtualKeyId,
                     Reason = "Cancelled by user request",
                     CancelledAt = DateTime.UtcNow,
                     CorrelationId = Guid.NewGuid().ToString()
-                });
+                }, "cancel image generation", new { TaskId = taskId });
 
                 _logger.LogInformation("Published cancellation event for image generation task {TaskId}", taskId);
 
@@ -644,7 +744,15 @@ namespace ConduitLLM.Http.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error cancelling task {TaskId}", taskId);
-                return StatusCode(500, new { error = new { message = "An error occurred while cancelling the task", type = "server_error" } });
+                return StatusCode(500, new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = "An error occurred while cancelling the task",
+                        Type = "server_error",
+                        Code = "internal_error"
+                    }
+                });
             }
         }
 

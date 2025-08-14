@@ -140,8 +140,9 @@ export function RuleTester({ onTest, testResult, isLoading }: RuleTesterProps) {
           <Select
             label="HTTP Method"
             data={httpMethods}
-            value={testRequest.method}
+            value={testRequest.method ?? null}
             onChange={(value) => value && setTestRequest(prev => ({ ...prev, method: value as 'GET' | 'POST' | 'PUT' | 'DELETE' }))}
+            allowDeselect={false}
           />
           <TextInput
             label="Path"

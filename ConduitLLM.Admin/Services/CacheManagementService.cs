@@ -8,7 +8,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Configuration.Models;
-using ConduitLLM.Admin.Models;
+using ConduitLLM.Configuration.DTOs.Cache;
 using MassTransit;
 using ConduitLLM.Configuration.Events;
 
@@ -260,7 +260,7 @@ namespace ConduitLLM.Admin.Services
                 }
 
                 // Security: Only allow browsing of non-sensitive regions
-                var sensitiveRegions = new[] { CacheRegion.AuthTokens, CacheRegion.ProviderCredentials };
+                var sensitiveRegions = new[] { CacheRegion.AuthTokens, CacheRegion.Providers };
                 if (sensitiveRegions.Contains(region))
                 {
                     _logger.LogWarning("Attempted to browse sensitive cache region: {Region}", region);
@@ -535,7 +535,7 @@ namespace ConduitLLM.Admin.Services
                 CacheRegion.ProviderResponses => "Response Cache",
                 CacheRegion.Embeddings => "Embeddings Cache",
                 CacheRegion.GlobalSettings => "Global Settings Cache",
-                CacheRegion.ProviderCredentials => "Provider Credentials Cache",
+                CacheRegion.Providers => "Provider Credentials Cache",
                 CacheRegion.ModelCosts => "Model Cost Cache",
                 CacheRegion.AudioStreams => "Audio Stream Cache",
                 CacheRegion.Monitoring => "Monitoring Cache",

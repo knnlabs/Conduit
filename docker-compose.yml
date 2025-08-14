@@ -75,6 +75,13 @@ services:
       Logging__LogLevel__ConduitLLM__Providers__MiniMaxClient: "Debug"
       # Configure the public base URL for media storage
       CONDUITLLM__MEDIA_BASE_URL: http://localhost:5000
+      # S3/R2 configuration (required for production)
+      CONDUIT_MEDIA_STORAGE_TYPE: "${CONDUIT_MEDIA_STORAGE_TYPE:-S3}"
+      CONDUIT_S3_ENDPOINT: "${CONDUIT_S3_ENDPOINT}"
+      CONDUIT_S3_ACCESS_KEY: "${CONDUIT_S3_ACCESS_KEY}"
+      CONDUIT_S3_SECRET_KEY: "${CONDUIT_S3_SECRET_KEY}"
+      CONDUIT_S3_BUCKET_NAME: "${CONDUIT_S3_BUCKET_NAME:-conduit-media}"
+      CONDUIT_S3_REGION: "${CONDUIT_S3_REGION:-us-east-1}"
       # RabbitMQ configuration
       CONDUITLLM__RABBITMQ__HOST: rabbitmq
       CONDUITLLM__RABBITMQ__PORT: 5672
@@ -83,6 +90,21 @@ services:
       CONDUITLLM__RABBITMQ__VHOST: /
       CONDUITLLM__RABBITMQ__PREFETCHCOUNT: 10
       CONDUITLLM__RABBITMQ__PARTITIONCOUNT: 10
+      # Batch Cache Invalidation configuration
+      CacheInvalidation__BatchingEnabled: "true"
+      CacheInvalidation__BatchWindow: "00:00:00.100"  # 100ms
+      CacheInvalidation__MaxBatchSize: "100"
+      CacheInvalidation__EnableCoalescing: "true"
+      # Batch Spending configuration
+      BatchSpending__FlushIntervalSeconds: "30"
+      BatchSpending__MinimumIntervalSeconds: "1"
+      BatchSpending__MaximumIntervalSeconds: "21600"  # 6 hours
+      BatchSpending__RedisTtlHours: "24"
+      # Health monitoring configuration - API endpoint checks
+      HealthMonitoring__ApiEndpoints__0__Name: AdminAPI
+      HealthMonitoring__ApiEndpoints__0__Url: http://admin:8080/health
+      HealthMonitoring__ApiEndpoints__0__TimeoutMs: 5000
+      HealthMonitoring__ApiEndpoints__0__WarningThresholdMs: 1000
     ports:
       - "5000:8080"
     restart: on-failure
@@ -113,14 +135,29 @@ services:
       REDIS_URL: "redis://redis:6379"
       CONDUIT_REDIS_INSTANCE_NAME: "conduit:"
       AdminApi__AllowedOrigins__0: http://localhost:3000
-      AdminApi__AllowedOrigins__1: http://localhost:3001
-      AdminApi__AllowedOrigins__2: http://localhost:5001
       # RabbitMQ configuration
       CONDUITLLM__RABBITMQ__HOST: rabbitmq
       CONDUITLLM__RABBITMQ__PORT: 5672
       CONDUITLLM__RABBITMQ__USERNAME: conduit
       CONDUITLLM__RABBITMQ__PASSWORD: conduitpass
       CONDUITLLM__RABBITMQ__VHOST: /
+      # Batch Cache Invalidation configuration
+      CacheInvalidation__BatchingEnabled: "true"
+      CacheInvalidation__BatchWindow: "00:00:00.100"  # 100ms
+      CacheInvalidation__MaxBatchSize: "100"
+      CacheInvalidation__EnableCoalescing: "true"
+      # Batch Spending configuration
+      BatchSpending__FlushIntervalSeconds: "30"
+      BatchSpending__MinimumIntervalSeconds: "1"
+      BatchSpending__MaximumIntervalSeconds: "21600"  # 6 hours
+      BatchSpending__RedisTtlHours: "24"
+      # S3/R2 configuration (required for production)
+      CONDUIT_MEDIA_STORAGE_TYPE: "${CONDUIT_MEDIA_STORAGE_TYPE:-S3}"
+      CONDUIT_S3_ENDPOINT: "${CONDUIT_S3_ENDPOINT}"
+      CONDUIT_S3_ACCESS_KEY: "${CONDUIT_S3_ACCESS_KEY}"
+      CONDUIT_S3_SECRET_KEY: "${CONDUIT_S3_SECRET_KEY}"
+      CONDUIT_S3_BUCKET_NAME: "${CONDUIT_S3_BUCKET_NAME:-conduit-media}"
+      CONDUIT_S3_REGION: "${CONDUIT_S3_REGION:-us-east-1}"
       # Disable IP banning for development
       CONDUIT_ADMIN_IP_BANNING_ENABLED: "false"
     ports:
@@ -146,9 +183,6 @@ services:
       # Next.js specific environment variables
       NODE_ENV: production
       PORT: 3000
-      # Public environment variables (accessible in browser)
-      NEXT_PUBLIC_CONDUIT_CORE_API_URL: http://localhost:5000
-      # Admin API is accessed through proxy routes, not directly
       # Server-side environment variables
       CONDUIT_API_TO_API_BACKEND_AUTH_KEY: alpha
       CONDUIT_API_BASE_URL: http://api:8080
@@ -156,8 +190,6 @@ services:
       # External URLs for SignalR connections from browser
       CONDUIT_API_EXTERNAL_URL: http://localhost:5000
       CONDUIT_ADMIN_API_EXTERNAL_URL: http://localhost:5002
-      # Redis configuration
-      REDIS_URL: "redis://redis:6379"
       # Clerk authentication for WebUI access (Required)
       # Get these values from your Clerk dashboard at https://dashboard.clerk.com
       # Users must have siteadmin: true in their public metadata to access the WebUI

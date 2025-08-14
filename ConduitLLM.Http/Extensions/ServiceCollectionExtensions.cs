@@ -1,3 +1,4 @@
+using ConduitLLM.Http.Interfaces;
 using System.Linq;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,12 +34,11 @@ namespace ConduitLLM.Http.Extensions
                 var config = serviceProvider.GetRequiredService<IConfiguration>();
                 var logger = serviceProvider.GetRequiredService<ILogger<SecurityService>>();
                 var memoryCache = serviceProvider.GetRequiredService<IMemoryCache>();
-                var ipFilterService = serviceProvider.GetRequiredService<IIpFilterService>();
                 
-                return new SecurityService(options, config, logger, memoryCache, ipFilterService, serviceProvider);
+                return new SecurityService(options, config, logger, memoryCache, serviceProvider);
             });
             
-            // Register IP filter service
+            // Register IP filter service as scoped since it depends on scoped repository
             services.AddScoped<IIpFilterService, IpFilterService>();
             
             return services;

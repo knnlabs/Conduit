@@ -30,7 +30,7 @@ namespace ConduitLLM.Admin.Models.ErrorQueue
     public record ErrorQueueInfo
     {
         /// <summary>
-        /// Full name of the error queue (e.g., "ProviderCredentialEventHandler_error").
+        /// Full name of the error queue (e.g., "ProviderEventHandler_error").
         /// </summary>
         public string QueueName { get; init; } = string.Empty;
 

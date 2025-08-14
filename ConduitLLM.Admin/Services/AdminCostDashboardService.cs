@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 
 using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Admin.Services;
 
 /// <summary>
@@ -396,7 +397,7 @@ public class AdminCostDashboardService : IAdminCostDashboardService
         IEnumerable<(DateTime Date, decimal Cost)> dailyCosts,
         string period)
     {
-        if (dailyCosts == null || !dailyCosts.Any())
+        if (dailyCosts == null || dailyCosts.Count() == 0)
         {
             return new List<(DateTime, decimal)>();
         }

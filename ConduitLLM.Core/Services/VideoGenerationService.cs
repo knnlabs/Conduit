@@ -11,6 +11,8 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Events;
 using MassTransit;
 
+using ConduitLLM.Configuration.Interfaces;
+using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 namespace ConduitLLM.Core.Services
 {
     /// <summary>
@@ -27,6 +29,7 @@ namespace ConduitLLM.Core.Services
         private readonly IAsyncTaskService _taskService;
         private readonly ICancellableTaskRegistry? _taskRegistry;
         private readonly ILogger<VideoGenerationService> _logger;
+        private readonly IModelProviderMappingService _modelMappingService;
 
         public VideoGenerationService(
             ILLMClientFactory clientFactory,
@@ -36,6 +39,7 @@ namespace ConduitLLM.Core.Services
             IMediaStorageService mediaStorage,
             IAsyncTaskService taskService,
             ILogger<VideoGenerationService> logger,
+            IModelProviderMappingService modelMappingService,
             IPublishEndpoint? publishEndpoint = null,
             ICancellableTaskRegistry? taskRegistry = null)
             : base(publishEndpoint, logger)
@@ -48,6 +52,7 @@ namespace ConduitLLM.Core.Services
             _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _taskRegistry = taskRegistry;
+            _modelMappingService = modelMappingService ?? throw new ArgumentNullException(nameof(modelMappingService));
             
             // Log event publishing configuration
             LogEventPublishingConfiguration(nameof(VideoGenerationService));
@@ -74,12 +79,32 @@ namespace ConduitLLM.Core.Services
                 throw new UnauthorizedAccessException("Invalid or disabled virtual key");
             }
 
+            // Get model mapping to resolve alias to provider model
+            var modelMapping = await _modelMappingService.GetMappingByModelAliasAsync(request.Model);
+            if (modelMapping == null)
+            {
+                throw new NotSupportedException($"Model {request.Model} is not configured. Please add it to model mappings.");
+            }
+
+            // Check if the model supports video generation
+            var supportsVideo = await _capabilityService.SupportsVideoGenerationAsync(request.Model);
+            if (!supportsVideo)
+            {
+                throw new NotSupportedException($"Model {request.Model} does not support video generation");
+            }
+
             // Get the appropriate client for the model
             var client = _clientFactory.GetClient(request.Model);
             if (client == null)
             {
                 throw new NotSupportedException($"No provider available for model {request.Model}");
             }
+
+            // Store the original model alias for response
+            var originalModelAlias = request.Model;
+            
+            // Update request to use the provider's model ID
+            request.Model = modelMapping.ProviderModelId;
 
             // Publish VideoGenerationRequested event
             var requestId = Guid.NewGuid().ToString();
@@ -195,16 +220,19 @@ namespace ConduitLLM.Core.Services
                     {
                         if (!string.IsNullOrEmpty(video.B64Json))
                         {
-                            // Convert base64 to stream
-                            var videoBytes = Convert.FromBase64String(video.B64Json);
-                            using var videoStream = new MemoryStream(videoBytes);
+                            // Use streaming to decode base64 without loading entire content into memory
+                            using var base64Stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(video.B64Json));
+                            using var decodedStream = new System.Security.Cryptography.CryptoStream(
+                                base64Stream, 
+                                new System.Security.Cryptography.FromBase64Transform(), 
+                                System.Security.Cryptography.CryptoStreamMode.Read);
                             
                             // Create video metadata for storage
                             var videoMediaMetadata = new VideoMediaMetadata
                             {
                                 MediaType = MediaType.Video,
                                 ContentType = video.Metadata?.MimeType ?? "video/mp4",
-                                FileSizeBytes = videoBytes.Length,
+                                FileSizeBytes = 0, // Will be set by storage service
                                 FileName = $"video_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}.mp4",
                                 Width = video.Metadata?.Width ?? 1280,
                                 Height = video.Metadata?.Height ?? 720,
@@ -217,7 +245,7 @@ namespace ConduitLLM.Core.Services
                                 Resolution = request.Size ?? "1280x720"
                             };
                             
-                            var storageResult = await _mediaStorage.StoreVideoAsync(videoStream, videoMediaMetadata);
+                            var storageResult = await _mediaStorage.StoreVideoAsync(decodedStream, videoMediaMetadata);
                             video.Url = storageResult.Url;
                             video.B64Json = null; // Clear base64 data after storing
                             
@@ -258,7 +286,13 @@ namespace ConduitLLM.Core.Services
                     VideoUrl = response.Data?.FirstOrDefault()?.Url ?? string.Empty,
                     CompletedAt = DateTime.UtcNow,
                     CorrelationId = requestId
-                }, "video generation completed", new { Model = request.Model });
+                }, "video generation completed", new { Model = originalModelAlias });
+
+                // Restore the original model alias in the response
+                if (response.Model != null)
+                {
+                    response.Model = originalModelAlias;
+                }
 
                 return response;
             }

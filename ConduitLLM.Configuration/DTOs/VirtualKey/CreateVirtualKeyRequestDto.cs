@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace ConduitLLM.Configuration.DTOs.VirtualKey; // Updated namespace
+namespace ConduitLLM.Configuration.DTOs.VirtualKey;
 
 /// <summary>
 /// DTO for requesting the creation of a new virtual key.
@@ -13,11 +13,13 @@ public class CreateVirtualKeyRequestDto
 
     public string? AllowedModels { get; set; } // Comma-separated
 
-    [Range(0, 1000000, ErrorMessage = "Max budget must be between 0 and 1,000,000. Set to 0 for no budget limit.")]
-    public decimal? MaxBudget { get; set; }
-
-    [MaxLength(20)]
-    public string? BudgetDuration { get; set; } // e.g., "Total", "Monthly"
+    /// <summary>
+    /// Required ID of an existing virtual key group to add this key to.
+    /// Create a virtual key group first using POST /api/virtualkey-groups.
+    /// </summary>
+    [Required(ErrorMessage = "VirtualKeyGroupId is required. Create a virtual key group first using POST /api/virtualkey-groups.")]
+    [Range(1, int.MaxValue, ErrorMessage = "VirtualKeyGroupId must be a valid positive number. Create a virtual key group first using POST /api/virtualkey-groups.")]
+    public int VirtualKeyGroupId { get; set; }
 
     public DateTime? ExpiresAt { get; set; }
 

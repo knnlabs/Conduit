@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration.Services;
+using ConduitLLM.Configuration.DTOs.Audio;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Http.Controllers;
@@ -14,7 +15,6 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
-using static ConduitLLM.Http.Controllers.AudioController;
 
 namespace ConduitLLM.Tests.Http.Controllers
 {
@@ -23,20 +23,22 @@ namespace ConduitLLM.Tests.Http.Controllers
     public class AudioControllerTests : ControllerTestBase
     {
         private readonly Mock<IAudioRouter> _audioRouterMock;
-        private readonly Mock<ConduitLLM.Configuration.Services.IVirtualKeyService> _virtualKeyServiceMock;
+        private readonly Mock<ConduitLLM.Configuration.Interfaces.IVirtualKeyService> _virtualKeyServiceMock;
         private readonly Mock<ILogger<AudioController>> _loggerMock;
         private readonly AudioController _controller;
 
         public AudioControllerTests(ITestOutputHelper output) : base(output)
         {
             _audioRouterMock = new Mock<IAudioRouter>();
-            _virtualKeyServiceMock = new Mock<ConduitLLM.Configuration.Services.IVirtualKeyService>();
+            _virtualKeyServiceMock = new Mock<ConduitLLM.Configuration.Interfaces.IVirtualKeyService>();
             _loggerMock = CreateLogger<AudioController>();
             
+            var mockModelMappingService = new Mock<ConduitLLM.Configuration.Interfaces.IModelProviderMappingService>();
             _controller = new AudioController(
                 _audioRouterMock.Object,
                 _virtualKeyServiceMock.Object,
-                _loggerMock.Object);
+                _loggerMock.Object,
+                mockModelMappingService.Object);
         }
 
         #region Constructor Tests
@@ -45,7 +47,8 @@ namespace ConduitLLM.Tests.Http.Controllers
         public void Constructor_WithNullAudioRouter_ThrowsArgumentNullException()
         {
             // Act & Assert
-            var act = () => new AudioController(null!, _virtualKeyServiceMock.Object, _loggerMock.Object);
+            var mockModelMappingService = new Mock<ConduitLLM.Configuration.Interfaces.IModelProviderMappingService>();
+            var act = () => new AudioController(null!, _virtualKeyServiceMock.Object, _loggerMock.Object, mockModelMappingService.Object);
             Assert.Throws<ArgumentNullException>(act);
         }
 
@@ -53,7 +56,8 @@ namespace ConduitLLM.Tests.Http.Controllers
         public void Constructor_WithNullVirtualKeyService_ThrowsArgumentNullException()
         {
             // Act & Assert
-            var act = () => new AudioController(_audioRouterMock.Object, (ConduitLLM.Configuration.Services.IVirtualKeyService)null!, _loggerMock.Object);
+            var mockModelMappingService = new Mock<ConduitLLM.Configuration.Interfaces.IModelProviderMappingService>();
+            var act = () => new AudioController(_audioRouterMock.Object, (ConduitLLM.Configuration.Interfaces.IVirtualKeyService)null!, _loggerMock.Object, mockModelMappingService.Object);
             Assert.Throws<ArgumentNullException>(act);
         }
 
@@ -61,7 +65,8 @@ namespace ConduitLLM.Tests.Http.Controllers
         public void Constructor_WithNullLogger_ThrowsArgumentNullException()
         {
             // Act & Assert
-            var act = () => new AudioController(_audioRouterMock.Object, _virtualKeyServiceMock.Object, null!);
+            var mockModelMappingService = new Mock<ConduitLLM.Configuration.Interfaces.IModelProviderMappingService>();
+            var act = () => new AudioController(_audioRouterMock.Object, _virtualKeyServiceMock.Object, null!, mockModelMappingService.Object);
             Assert.Throws<ArgumentNullException>(act);
         }
 

@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using ConduitLLM.Admin.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using ConduitLLM.Configuration.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -46,7 +47,7 @@ namespace ConduitLLM.Admin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting overall storage statistics");
-                return StatusCode(500, new { error = "Failed to get storage statistics" });
+                return StatusCode(500, new ErrorResponseDto("Failed to get storage statistics"));
             }
         }
 
@@ -66,7 +67,7 @@ namespace ConduitLLM.Admin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting storage statistics for virtual key {VirtualKeyId}", virtualKeyId);
-                return StatusCode(500, new { error = "Failed to get storage statistics" });
+                return StatusCode(500, new ErrorResponseDto("Failed to get storage statistics"));
             }
         }
 
@@ -85,7 +86,7 @@ namespace ConduitLLM.Admin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting storage statistics by provider");
-                return StatusCode(500, new { error = "Failed to get storage statistics" });
+                return StatusCode(500, new ErrorResponseDto("Failed to get storage statistics"));
             }
         }
 
@@ -104,7 +105,7 @@ namespace ConduitLLM.Admin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting storage statistics by media type");
-                return StatusCode(500, new { error = "Failed to get storage statistics" });
+                return StatusCode(500, new ErrorResponseDto("Failed to get storage statistics"));
             }
         }
 
@@ -124,7 +125,7 @@ namespace ConduitLLM.Admin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting media for virtual key {VirtualKeyId}", virtualKeyId);
-                return StatusCode(500, new { error = "Failed to get media records" });
+                return StatusCode(500, new ErrorResponseDto("Failed to get media records"));
             }
         }
 
@@ -140,7 +141,7 @@ namespace ConduitLLM.Admin.Controllers
             {
                 if (string.IsNullOrWhiteSpace(pattern))
                 {
-                    return BadRequest(new { error = "Search pattern is required" });
+                    return BadRequest(new ErrorResponseDto("Search pattern is required"));
                 }
 
                 var media = await _mediaService.SearchMediaByStorageKeyAsync(pattern);
@@ -149,7 +150,7 @@ namespace ConduitLLM.Admin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error searching media with pattern {Pattern}", pattern);
-                return StatusCode(500, new { error = "Failed to search media" });
+                return StatusCode(500, new ErrorResponseDto("Failed to search media"));
             }
         }
 
@@ -166,7 +167,7 @@ namespace ConduitLLM.Admin.Controllers
                 var result = await _mediaService.DeleteMediaAsync(mediaId);
                 if (!result)
                 {
-                    return NotFound(new { error = "Media record not found" });
+                    return NotFound(new ErrorResponseDto("Media record not found"));
                 }
 
                 return Ok(new { message = "Media deleted successfully" });
@@ -174,7 +175,7 @@ namespace ConduitLLM.Admin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting media {MediaId}", mediaId);
-                return StatusCode(500, new { error = "Failed to delete media" });
+                return StatusCode(500, new ErrorResponseDto("Failed to delete media"));
             }
         }
 
@@ -196,7 +197,7 @@ namespace ConduitLLM.Admin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during expired media cleanup");
-                return StatusCode(500, new { error = "Failed to cleanup expired media" });
+                return StatusCode(500, new ErrorResponseDto("Failed to cleanup expired media"));
             }
         }
 
@@ -218,7 +219,7 @@ namespace ConduitLLM.Admin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during orphaned media cleanup");
-                return StatusCode(500, new { error = "Failed to cleanup orphaned media" });
+                return StatusCode(500, new ErrorResponseDto("Failed to cleanup orphaned media"));
             }
         }
 
@@ -234,7 +235,7 @@ namespace ConduitLLM.Admin.Controllers
             {
                 if (request?.DaysToKeep == null || request.DaysToKeep <= 0)
                 {
-                    return BadRequest(new { error = "DaysToKeep must be a positive number" });
+                    return BadRequest(new ErrorResponseDto("DaysToKeep must be a positive number"));
                 }
 
                 var count = await _mediaService.PruneOldMediaAsync(request.DaysToKeep.Value);
@@ -246,7 +247,7 @@ namespace ConduitLLM.Admin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during old media pruning");
-                return StatusCode(500, new { error = "Failed to prune old media" });
+                return StatusCode(500, new ErrorResponseDto("Failed to prune old media"));
             }
         }
     }

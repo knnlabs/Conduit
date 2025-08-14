@@ -20,48 +20,63 @@ namespace ConduitLLM.Configuration.Data
             modelBuilder.Entity<ConduitLLM.Configuration.Entities.ModelProviderMapping>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.HasIndex(e => new { e.ModelAlias, e.ProviderCredentialId }).IsUnique();
+                entity.HasIndex(e => new { e.ModelAlias, e.ProviderId }).IsUnique();
             });
 
-            // Configure ProviderCredential entity
-            modelBuilder.Entity<ConduitLLM.Configuration.Entities.ProviderCredential>(entity =>
+            // Configure Provider entity
+            modelBuilder.Entity<ConduitLLM.Configuration.Entities.Provider>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.HasIndex(e => e.ProviderName).IsUnique();
+                entity.HasIndex(e => e.ProviderType); // Removed .IsUnique() to allow multiple providers of same type
             });
 
-            // Configure Provider Health entities
-            modelBuilder.ApplyProviderHealthConfigurations();
+            // Configure ProviderKeyCredential entity
+            modelBuilder.Entity<ConduitLLM.Configuration.Entities.ProviderKeyCredential>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                
+                // Foreign key relationship
+                entity.HasOne(e => e.Provider)
+                    .WithMany(e => e.ProviderKeyCredentials)
+                    .HasForeignKey(e => e.ProviderId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                
+                // Index for performance
+                entity.HasIndex(e => e.ProviderId)
+                    .HasDatabaseName("IX_ProviderKeyCredential_ProviderId");
+                
+                // Unique constraint: Only one primary key per provider
+                entity.HasIndex(e => new { e.ProviderId, e.IsPrimary })
+                    .IsUnique()
+                    .HasFilter("\"IsPrimary\" = true")
+                    .HasDatabaseName("IX_ProviderKeyCredential_OnePrimaryPerProvider");
+                
+                // Unique constraint: Prevent duplicate API keys for the same provider
+                entity.HasIndex(e => new { e.ProviderId, e.ApiKey })
+                    .IsUnique()
+                    .HasDatabaseName("IX_ProviderKeyCredential_UniqueApiKeyPerProvider")
+                    .HasFilter("\"ApiKey\" IS NOT NULL");
+                
+                // Configure check constraints in table configuration
+                entity.ToTable(t => {
+                    // Check constraint: Primary keys must be enabled
+                    t.HasCheckConstraint(
+                        "CK_ProviderKeyCredential_PrimaryMustBeEnabled",
+                        "\"IsPrimary\" = false OR \"IsEnabled\" = true"
+                    );
+                    
+                    // Check constraint: ProviderAccountGroup range (0-32)
+                    t.HasCheckConstraint(
+                        "CK_ProviderKeyCredential_AccountGroupRange",
+                        "\"ProviderAccountGroup\" >= 0 AND \"ProviderAccountGroup\" <= 32"
+                    );
+                });
+            });
+
 
             // Note: Previously ignored entities are now included in test environments
             // as they are required by the application code during tests
         }
 
-        /// <summary>
-        /// Applies configurations specific to provider health entities
-        /// </summary>
-        /// <param name="modelBuilder">The model builder to configure</param>
-        public static void ApplyProviderHealthConfigurations(this Microsoft.EntityFrameworkCore.ModelBuilder modelBuilder)
-        {
-            // Configure ProviderHealthRecord entity
-            modelBuilder.Entity<ProviderHealthRecord>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.HasIndex(e => new { e.ProviderName, e.TimestampUtc });
-                entity.HasIndex(e => e.IsOnline);
-                entity.Property(e => e.StatusMessage).HasMaxLength(500);
-                entity.Property(e => e.ErrorCategory).HasMaxLength(50);
-                entity.Property(e => e.ErrorDetails).HasMaxLength(2000);
-                entity.Property(e => e.EndpointUrl).HasMaxLength(1000);
-            });
-
-            // Configure ProviderHealthConfiguration entity
-            modelBuilder.Entity<ProviderHealthConfiguration>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.HasIndex(e => e.ProviderName).IsUnique();
-                entity.Property(e => e.CustomEndpointUrl).HasMaxLength(1000);
-            });
-        }
     }
 }

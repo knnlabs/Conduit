@@ -28,6 +28,15 @@ on:
         default: false
         type: boolean
 
+# IMPORTANT: Never set cancel-in-progress to true for versioning workflows!
+# Interrupting could cause:
+# - Duplicate version numbers in Directory.Build.props
+# - Partially published NuGet packages
+# - Failed GitHub releases
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   DOTNET_VERSION: '9.0.x'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
@@ -209,7 +218,10 @@ jobs:
         run: dotnet build --configuration Release --no-restore
 
       - name: Run tests
-        run: dotnet test --configuration Release --no-build --verbosity normal
+        run: |
+          # Skip integration tests (require test-config.yaml with API keys) and timing-sensitive tests
+          dotnet test --configuration Release --no-build --verbosity normal \
+            --filter "FullyQualifiedName!~IntegrationTests&Category!=TimingSensitive"
 
       - name: Pack NuGet packages
         run: |

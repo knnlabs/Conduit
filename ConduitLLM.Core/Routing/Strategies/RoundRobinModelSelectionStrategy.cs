@@ -3,6 +3,7 @@ using System.Linq;
 
 using ConduitLLM.Core.Models.Routing;
 
+using ConduitLLM.Core.Interfaces;
 namespace ConduitLLM.Core.Routing.Strategies
 {
     /// <summary>
@@ -18,6 +19,10 @@ namespace ConduitLLM.Core.Routing.Strategies
     /// Round-robin selection is useful for load balancing and for avoiding overloading any
     /// single model deployment, especially in high-traffic scenarios.
     /// </para>
+    /// <para>
+    /// Note: This strategy also serves the "leastused" and "random" routing strategies in the factory,
+    /// as they all effectively distribute load across models.
+    /// </para>
     /// </remarks>
     public class RoundRobinModelSelectionStrategy : IModelSelectionStrategy
     {
@@ -27,7 +32,7 @@ namespace ConduitLLM.Core.Routing.Strategies
             IReadOnlyDictionary<string, ModelDeployment> modelDeployments,
             IReadOnlyDictionary<string, int> modelUsageCounts)
         {
-            if (availableModels.Count == 0)
+            if (availableModels.Count() == 0)
             {
                 return null;
             }

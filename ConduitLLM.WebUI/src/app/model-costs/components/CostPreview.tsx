@@ -26,7 +26,7 @@ export const CostPreview: React.FC<CostPreviewProps> = ({ modelCost }) => {
 
     // Token-based examples
     if (modelCost.inputCostPerMillionTokens || modelCost.outputCostPerMillionTokens) {
-      // Basic token example
+      // Basic token example (costs are per million tokens)
       const inputCost = (modelCost.inputCostPerMillionTokens ?? 0) * 1000 / 1000000;
       const outputCost = (modelCost.outputCostPerMillionTokens ?? 0) * 500 / 1000000;
       examples.push({
@@ -50,8 +50,8 @@ export const CostPreview: React.FC<CostPreviewProps> = ({ modelCost }) => {
     }
 
     // Embedding example
-    if (modelCost.embeddingTokenCost) {
-      const embeddingCost = (modelCost.embeddingTokenCost * 5000 / 1000000);
+    if (modelCost.embeddingCostPerMillionTokens) {
+      const embeddingCost = (modelCost.embeddingCostPerMillionTokens * 5000 / 1000000);
       examples.push({
         label: '5K embedding tokens',
         cost: embeddingCost

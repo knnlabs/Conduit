@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Extensions;
+using ConduitLLM.Configuration.Interfaces;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,7 +30,7 @@ namespace ConduitLLM.Admin.Extensions
             services.AddDatabaseInitialization();
             
             // Add Configuration services
-            services.AddScoped<IProviderCredentialService, ProviderCredentialService>();
+            services.AddScoped<IProviderService, ProviderService>();
             services.AddScoped<IModelProviderMappingService, ModelProviderMappingService>();
 
             return services;

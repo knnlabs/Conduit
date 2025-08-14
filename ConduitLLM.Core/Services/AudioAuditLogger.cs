@@ -10,6 +10,7 @@ using ConduitLLM.Core.Interfaces;
 
 using Microsoft.Extensions.Logging;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Core.Services
 {
     /// <summary>
@@ -72,7 +73,7 @@ namespace ConduitLLM.Core.Services
             entry.Metadata["WasModified"] = entry.WasModified.ToString();
             entry.Metadata["ViolationCount"] = entry.ViolationCategories.Count.ToString();
 
-            if (entry.ViolationCategories.Any())
+            if (entry.ViolationCategories.Count() > 0)
             {
                 entry.Metadata["ViolationCategories"] = string.Join(",", entry.ViolationCategories);
             }
@@ -101,7 +102,7 @@ namespace ConduitLLM.Core.Services
             entry.Metadata["EntityCount"] = entry.EntityCount.ToString();
             entry.Metadata["RiskScore"] = entry.RiskScore.ToString("F2");
 
-            if (entry.PiiTypes.Any())
+            if (entry.PiiTypes.Count() > 0)
             {
                 entry.Metadata["PiiTypes"] = string.Join(",", entry.PiiTypes);
             }
@@ -153,7 +154,7 @@ namespace ConduitLLM.Core.Services
                 }
 
                 // Log metadata as structured data
-                if (entry.Metadata.Any())
+                if (entry.Metadata.Count() > 0)
                 {
                     _logger.LogDebug(
                         "Audio operation metadata: {Metadata}",

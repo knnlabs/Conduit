@@ -57,8 +57,8 @@ namespace ConduitLLM.Http.Authentication
                     return AuthenticateResult.Fail("Missing Virtual Key");
                 }
 
-                // Validate the Virtual Key
-                var keyEntity = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKey);
+                // Validate the Virtual Key for authentication only (no balance check)
+                var keyEntity = await _virtualKeyService.ValidateVirtualKeyForAuthenticationAsync(virtualKey);
                 if (keyEntity == null)
                 {
                     Logger.LogWarning("Invalid Virtual Key in request to {Path} from IP {IP}", 
@@ -77,6 +77,11 @@ namespace ConduitLLM.Http.Authentication
                 var identity = new ClaimsIdentity(claims, Scheme.Name);
                 var principal = new ClaimsPrincipal(identity);
                 var ticket = new AuthenticationTicket(principal, Scheme.Name);
+
+                // Store virtual key info in HttpContext for usage tracking
+                Context.Items["VirtualKeyId"] = keyEntity.Id;
+                Context.Items["VirtualKey"] = virtualKey;
+                Context.Items["RequestStartTime"] = DateTime.UtcNow;
 
                 Logger.LogDebug("Successfully authenticated Virtual Key {KeyName} for {Path}", 
                     keyEntity.KeyName, Context.Request.Path);

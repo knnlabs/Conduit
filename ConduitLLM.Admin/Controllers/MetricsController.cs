@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -15,14 +17,14 @@ using Npgsql;
 namespace ConduitLLM.Admin.Controllers
 {
     /// <summary>
-    /// Controller for exposing Admin API metrics including database connection pool statistics.
+    /// Controller for exposing application metrics including database connection pool statistics.
     /// </summary>
     [ApiController]
-    [Route("api/metrics")]
+    [Route("metrics")]
     [Authorize(Policy = "MasterKeyPolicy")]
     public class MetricsController : ControllerBase
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly ILogger<MetricsController> _logger;
 
         /// <summary>
@@ -31,7 +33,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="dbContextFactory">Database context factory.</param>
         /// <param name="logger">Logger instance.</param>
         public MetricsController(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<MetricsController> logger)
         {
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
@@ -39,7 +41,7 @@ namespace ConduitLLM.Admin.Controllers
         }
 
         /// <summary>
-        /// Gets database connection pool metrics for the Admin API.
+        /// Gets database connection pool metrics.
         /// </summary>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Connection pool metrics.</returns>
@@ -70,17 +72,20 @@ namespace ConduitLLM.Admin.Controllers
                 stopwatch.Stop();
                 await connection.CloseAsync();
 
+                // Note: Npgsql doesn't expose pool statistics directly in current versions
+                // We can only infer pool health from connection acquisition time
+                // For detailed monitoring, use PostgreSQL's pg_stat_activity or external monitoring tools
+                
                 var metrics = new
                 {
                     timestamp = DateTime.UtcNow,
                     provider = "postgresql",
-                    service = "Admin API",
                     connectionString = new
                     {
                         host = builder.Host,
                         port = builder.Port,
                         database = builder.Database,
-                        applicationName = builder.ApplicationName ?? "Conduit Admin API"
+                        applicationName = builder.ApplicationName ?? "Conduit Core API"
                     },
                     poolConfiguration = new
                     {
@@ -94,6 +99,8 @@ namespace ConduitLLM.Admin.Controllers
                     {
                         connectionAcquisitionTimeMs = stopwatch.ElapsedMilliseconds,
                         healthStatus = GetHealthStatus(stopwatch.ElapsedMilliseconds),
+                        // Additional metrics can be obtained from pg_stat_activity if needed
+                        // but we avoid that here to prevent performance impact
                         note = "For detailed pool statistics, query pg_stat_activity directly or use monitoring tools"
                     }
                 };
@@ -108,10 +115,10 @@ namespace ConduitLLM.Admin.Controllers
         }
 
         /// <summary>
-        /// Gets all Admin API metrics including database and system metrics.
+        /// Gets all application metrics including database, cache, and performance metrics.
         /// </summary>
         /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>Comprehensive Admin API metrics.</returns>
+        /// <returns>Comprehensive application metrics.</returns>
         [HttpGet]
         public async Task<IActionResult> GetAllMetrics(CancellationToken cancellationToken = default)
         {
@@ -126,7 +133,7 @@ namespace ConduitLLM.Admin.Controllers
                     timestamp = DateTime.UtcNow,
                     application = new
                     {
-                        name = "Conduit Admin API",
+                        name = "Conduit Core API",
                         version = typeof(MetricsController).Assembly.GetName().Version?.ToString() ?? "unknown",
                         environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"
                     },
@@ -145,7 +152,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to retrieve Admin API metrics");
+                _logger.LogError(ex, "Failed to retrieve application metrics");
                 return StatusCode(500, new { error = "Failed to retrieve metrics", message = ex.Message });
             }
         }
@@ -158,6 +165,16 @@ namespace ConduitLLM.Admin.Controllers
                 return "degraded";
             else
                 return "unhealthy";
+        }
+
+        private static string SanitizeConnectionString(string connectionString)
+        {
+            // Remove sensitive information from connection string
+            return System.Text.RegularExpressions.Regex.Replace(
+                connectionString,
+                @"(Password|pwd)=([^;]+)",
+                "$1=*****",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         }
     }
 }

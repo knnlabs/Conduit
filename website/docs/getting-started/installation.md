@@ -35,7 +35,7 @@ Create a `.env` file in the root directory with your configuration:
 
 ```bash
 # Example .env file
-CONDUIT_MASTER_KEY=your_secure_master_key
+CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your_secure_master_key
 CONDUIT_HOST=0.0.0.0
 CONDUIT_PORT=5000
 CONDUIT_DATABASE_PATH=/data/conduit.db

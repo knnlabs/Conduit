@@ -10,65 +10,74 @@ Model costs in Conduit are used to:
 - Generate cost reports and dashboards
 - Track spending across different models and providers
 
+## Architecture
+
+Conduit uses a modern cost mapping architecture:
+
+1. **ModelCost entities** store cost configurations with user-friendly names (e.g., "GPT-4 Standard Pricing")
+2. **ModelProviderMapping entities** represent specific model implementations from providers
+3. **ModelCostMapping entities** link cost configurations to specific models (many-to-many relationship)
+
+This allows one cost configuration to be applied to multiple models across different providers.
+
+## Cost Storage Format
+
+**IMPORTANT**: All costs in the database are stored as **cost per token** (not per 1K tokens). The values shown in this documentation are converted to per-1K-token format for readability, but the actual database values are 1000x smaller.
+
 ## Default Model Costs
 
-Conduit includes default costs for popular frontier models from Anthropic and OpenAI. These costs are based on the official pricing from each provider as of May 2025.
+Conduit includes default costs for popular frontier models from Anthropic and OpenAI. These costs are based on the official pricing from each provider as of August 2025.
 
 ### Anthropic Models
 
-| Model | Input Cost (per 1K tokens) | Output Cost (per 1K tokens) |
-|-------|----------------------------|----------------------------|
-| `anthropic/claude-3-opus-20240229` | $15.00 | $75.00 |
-| `anthropic/claude-3-sonnet-20240229` | $3.00 | $15.00 |
-| `anthropic/claude-3-haiku-20240307` | $0.25 | $1.25 |
-| `anthropic/claude-3*` (wildcard) | $3.00 | $15.00 |
-| `anthropic/claude-2.1` | $8.00 | $24.00 |
-| `anthropic/claude-2.0` | $8.00 | $24.00 |
-| `anthropic/claude-instant-1.2` | $0.80 | $2.40 |
+| Model | Input Cost (per 1K tokens) | Output Cost (per 1K tokens) | Database Value (Input) | Database Value (Output) |
+|-------|----------------------------|------------------------------|------------------------|-------------------------|
+| `anthropic/claude-3-opus-20240229` | $15.00 | $75.00 | 0.0150000000 | 0.0750000000 |
+| `anthropic/claude-3-sonnet-20240229` | $3.00 | $15.00 | 0.0030000000 | 0.0150000000 |
+| `anthropic/claude-3-haiku-20240307` | $0.25 | $1.25 | 0.0002500000 | 0.0012500000 |
+| `anthropic/claude-2.1` | $8.00 | $24.00 | 0.0080000000 | 0.0240000000 |
+| `anthropic/claude-2.0` | $8.00 | $24.00 | 0.0080000000 | 0.0240000000 |
+| `anthropic/claude-instant-1.2` | $0.80 | $2.40 | 0.0008000000 | 0.0024000000 |
 
 ### OpenAI Models
 
-| Model | Input Cost (per 1K tokens) | Output Cost (per 1K tokens) |
-|-------|----------------------------|----------------------------|
-| `openai/gpt-4o` | $5.00 | $15.00 |
-| `openai/gpt-4o-mini` | $0.50 | $1.50 |
-| `openai/gpt-4-turbo` | $10.00 | $30.00 |
-| `openai/gpt-4-1106-preview` | $10.00 | $30.00 |
-| `openai/gpt-4-0125-preview` | $10.00 | $30.00 |
-| `openai/gpt-4-vision-preview` | $10.00 | $30.00 |
-| `openai/gpt-4-32k` | $60.00 | $120.00 |
-| `openai/gpt-4` | $30.00 | $60.00 |
-| `openai/gpt-4*` (wildcard) | $10.00 | $30.00 |
-| `openai/gpt-3.5-turbo` | $0.50 | $1.50 |
-| `openai/gpt-3.5-turbo-16k` | $1.00 | $2.00 |
-| `openai/gpt-3.5*` (wildcard) | $0.50 | $1.50 |
+| Model | Input Cost (per 1K tokens) | Output Cost (per 1K tokens) | Database Value (Input) | Database Value (Output) |
+|-------|----------------------------|------------------------------|------------------------|-------------------------|
+| `openai/gpt-4o` | $5.00 | $15.00 | 0.0050000000 | 0.0150000000 |
+| `openai/gpt-4o-mini` | $0.50 | $1.50 | 0.0005000000 | 0.0015000000 |
+| `openai/gpt-4-turbo` | $10.00 | $30.00 | 0.0100000000 | 0.0300000000 |
+| `openai/gpt-4-1106-preview` | $10.00 | $30.00 | 0.0100000000 | 0.0300000000 |
+| `openai/gpt-4-0125-preview` | $10.00 | $30.00 | 0.0100000000 | 0.0300000000 |
+| `openai/gpt-4-vision-preview` | $10.00 | $30.00 | 0.0100000000 | 0.0300000000 |
+| `openai/gpt-4-32k` | $60.00 | $120.00 | 0.0600000000 | 0.1200000000 |
+| `openai/gpt-4` | $30.00 | $60.00 | 0.0300000000 | 0.0600000000 |
+| `openai/gpt-3.5-turbo` | $0.50 | $1.50 | 0.0005000000 | 0.0015000000 |
+| `openai/gpt-3.5-turbo-16k` | $1.00 | $2.00 | 0.0010000000 | 0.0020000000 |
 
 ### Embedding Models
 
-| Model | Embedding Cost (per 1K tokens) |
-|-------|------------------------------|
-| `openai/text-embedding-3-small` | $0.02 |
-| `openai/text-embedding-3-large` | $0.13 |
-| `openai/text-embedding-ada-002` | $0.10 |
+| Model | Embedding Cost (per 1K tokens) | Database Value |
+|-------|-------------------------------|----------------|
+| `openai/text-embedding-3-small` | $0.02 | 0.0000200000 |
+| `openai/text-embedding-3-large` | $0.13 | 0.0001300000 |
+| `openai/text-embedding-ada-002` | $0.10 | 0.0001000000 |
 
 ### Image Generation Models
 
-| Model | Cost per Image |
-|-------|---------------|
-| `openai/dall-e-3` | $0.04 |
-| `openai/dall-e-2` | $0.02 |
+| Model | Cost per Image | Database Value |
+|-------|----------------|----------------|
+| `openai/dall-e-3` | $0.04 | 0.0400 |
+| `openai/dall-e-2` | $0.02 | 0.0200 |
 
-## Wildcard Pattern Matching
+## Model Cost Mapping
 
-Conduit supports wildcard pattern matching for model costs, allowing you to:
-- Define costs for specific models (e.g., `openai/gpt-4o`)
-- Define costs for families of models (e.g., `openai/gpt-4*`)
-- Apply costs by pattern (e.g., `*-embedding*`)
+The current implementation uses a mapping-based system rather than wildcard patterns:
 
-When determining the cost for a model, Conduit:
-1. First looks for an exact match by model name
-2. If no exact match is found, searches for a match using wildcard patterns
-3. Uses the longest prefix match when multiple patterns could apply
+1. **Create ModelCost entities** with cost configurations
+2. **Link to ModelProviderMapping entities** via ModelCostMappings
+3. **Cost lookup** happens through the mapping relationships
+
+This provides more precise control and better performance than pattern matching.
 
 ## Managing Model Costs
 
@@ -80,30 +89,73 @@ You can manage model costs in the Conduit Admin UI at `/model-costs`:
 
 ## Reloading Default Costs
 
-If you need to reload the default model costs for Anthropic and OpenAI, you can use the included script:
+**Note**: The shell script referenced in older documentation does not exist. Use the SQL script directly.
+
+To reload default model costs for Anthropic and OpenAI:
 
 ```bash
-# Make the script executable (if needed)
-chmod +x add-frontier-model-costs.sh
-
-# Run the script
-./add-frontier-model-costs.sh
+# Execute the SQL script directly
+docker compose exec postgres psql -U conduit -d conduitdb -f add-frontier-model-costs.sql
 ```
 
-The script will:
-1. Delete any existing model costs for Anthropic and OpenAI models
-2. Insert the default costs based on current provider pricing
-3. Display a summary of the added costs
+**Important**: The current SQL script uses the deprecated `ModelIdPattern` approach. For production use, you should:
+
+1. Create ModelCost entities through the Admin API
+2. Link them to ModelProviderMapping entities via ModelCostMappings
+3. Use the Admin UI at `/model-costs` for management
+
+## Adding Model Costs via Admin API
+
+The recommended approach is to use the Admin API:
+
+```bash
+# Example: Create a new model cost configuration
+curl -X POST "http://localhost:5000/api/model-costs" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "costName": "GPT-4 Standard Pricing",
+    "modelProviderMappingIds": [1, 2, 3],
+    "modelType": "chat",
+    "inputTokenCost": 0.0100000000,
+    "outputTokenCost": 0.0300000000,
+    "description": "Standard GPT-4 pricing"
+  }'
+```
 
 ## Custom Cost Scripts
 
-If you need to add custom model costs, you can:
+For custom model costs, create SQL scripts that work with the current architecture:
 
-1. Create a SQL script with your cost definitions
-2. Use the PostgreSQL `psql` command to execute it:
+```sql
+-- Example: Add a custom model cost
+INSERT INTO "ModelCosts" (
+    "CostName", 
+    "InputTokenCost", 
+    "OutputTokenCost", 
+    "ModelType",
+    "CreatedAt", 
+    "UpdatedAt"
+) VALUES (
+    'Custom Model Pricing',
+    0.0020000000,  -- $2.00 per 1K tokens
+    0.0040000000,  -- $4.00 per 1K tokens
+    'chat',
+    NOW(), 
+    NOW()
+);
 
-```bash
-docker compose exec postgres psql -U conduit -d conduitdb -f /path/to/your/script.sql
+-- Link to specific model provider mappings
+INSERT INTO "ModelCostMappings" (
+    "ModelCostId",
+    "ModelProviderMappingId",
+    "IsActive",
+    "CreatedAt"
+) VALUES (
+    (SELECT "Id" FROM "ModelCosts" WHERE "CostName" = 'Custom Model Pricing'),
+    1,  -- Replace with actual ModelProviderMapping ID
+    true,
+    NOW()
+);
 ```
 
 ## Pricing Sources
@@ -114,34 +166,64 @@ The default costs are based on the official pricing pages from each provider:
 
 Always check the official pricing pages for the most up-to-date information, as these values may change.
 
-## Cost Calculation Behavior for Embeddings
+## Cost Calculation Behavior
 
-### Important Note on Multimodal Embedding Models
+### Cost Calculation Service
 
-The `CostCalculationService` has specific rules for when embedding costs are applied vs regular token costs. This behavior might be unexpected in certain scenarios.
+The cost calculation logic is implemented in `ConduitLLM.Core.Services.CostCalculationService` and supports:
 
-#### When Embedding Cost is Used
+- **Token-based costs**: Input, output, and embedding tokens
+- **Image generation costs**: Per-image pricing with quality multipliers
+- **Video generation costs**: Per-second pricing with resolution multipliers
+- **Advanced features**: Cached tokens, search units, inference steps
+- **Batch processing**: Discounted rates for batch operations
 
-Embedding cost (`EmbeddingTokenCost`) is ONLY used when ALL of the following conditions are met:
+### Embedding Cost Logic
+
+Embedding cost (`EmbeddingTokenCost`) is used when **ALL** of the following conditions are met:
 1. The model has an `EmbeddingTokenCost` defined
-2. `CompletionTokens` equals 0
-3. `ImageCount` is null (not present)
+2. `CompletionTokens` equals 0 (no text generation)
+3. `ImageCount` is null (no image generation)
 
-#### When Regular Token Cost is Used
+### Regular Token Cost Logic
 
-Regular token costs (`InputTokenCost`/`OutputTokenCost`) are used in all other cases, including:
-- When the model generates completion tokens (even if it has embedding cost defined)
-- When the model generates images (even if it's primarily an embedding model)
-- When both conditions above are true
+Regular token costs (`InputTokenCost`/`OutputTokenCost`) are used in all other cases:
+- Text generation requests (CompletionTokens > 0)
+- Multimodal requests (ImageCount > 0)
+- Any combination of the above
 
-#### Known Issue with Multimodal Models
+### Known Issue: Multimodal Embedding Models
 
-This logic can lead to unexpected billing in multimodal scenarios. For example, consider a model that:
-- Primarily generates embeddings (with specialized, cheaper embedding pricing)
-- Can also generate visualization images
+**Problem**: When an embedding model also generates images, it uses expensive `InputTokenCost` instead of cheaper `EmbeddingTokenCost`.
 
-When this model processes tokens and generates images, it will use the more expensive `InputTokenCost` instead of the `EmbeddingTokenCost`, potentially resulting in significantly higher costs than expected.
+**Example Scenario**:
+- Model: Multimodal embedding model
+- Request: 5000 tokens + 2 images
+- Costs: `InputTokenCost` = $0.10/1K tokens, `EmbeddingTokenCost` = $0.01/1K tokens (10x cheaper)
+- **Current behavior**: Uses $0.10/1K tokens (expensive)
+- **Expected behavior**: Should use $0.01/1K tokens (cheap)
+- **Impact**: 10x higher token costs than expected
 
-**Example**: A model with `InputTokenCost` of $0.10/1M tokens and `EmbeddingTokenCost` of $0.01/1M tokens (10x cheaper) that generates 2 images would charge based on the input token cost, not the embedding cost, resulting in 10x higher token charges.
+**Workaround**: For multimodal embedding models, consider:
+1. Setting `InputTokenCost` = `EmbeddingTokenCost` if the model is primarily for embeddings
+2. Creating separate cost configurations for embedding-only vs multimodal use cases
+3. Using the Admin API to adjust costs based on actual usage patterns
 
-This behavior is documented in the test suite and may be addressed in future versions to provide more flexible cost calculation options for multimodal models.
+### Advanced Cost Features
+
+#### Cached Token Pricing
+- `CachedInputTokenCost`: Discounted rate for cached prompt tokens
+- `CachedInputWriteCost`: Cost for writing new content to cache
+- Used by providers like Anthropic Claude and Google Gemini
+
+#### Search Unit Pricing
+- `CostPerSearchUnit`: Cost per 1000 search units for reranking models
+- Used by models like Cohere Rerank
+- 1 search unit = 1 query + up to 100 documents
+
+#### Inference Step Pricing
+- `CostPerInferenceStep`: Cost per iterative refinement step
+- `DefaultInferenceSteps`: Standard step count for the model
+- Used by image generation models like FLUX and SDXL
+
+This comprehensive cost calculation system is fully tested and documented in the test suite at `ConduitLLM.Tests/Core/Services/CostCalculationService*Tests.cs`.

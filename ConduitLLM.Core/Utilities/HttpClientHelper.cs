@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -79,6 +80,73 @@ namespace ConduitLLM.Core.Utilities
             {
                 logger?.LogError(ex, "JSON error processing response from {Endpoint}", endpoint);
                 throw new LLMCommunicationException("Error processing response", ex);
+            }
+            catch (Exception ex) when (ex is not LLMCommunicationException)
+            {
+                logger?.LogError(ex, "Unexpected error during API communication with {Endpoint}", endpoint);
+                throw new LLMCommunicationException($"Unexpected error: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// Sends a GET request and deserializes the JSON response.
+        /// </summary>
+        /// <typeparam name="TResponse">The type of the response object.</typeparam>
+        /// <param name="client">The HTTP client to use for the request.</param>
+        /// <param name="endpoint">The endpoint to send the request to.</param>
+        /// <param name="headers">Optional headers to include in the request.</param>
+        /// <param name="jsonOptions">Optional JSON serialization options.</param>
+        /// <param name="logger">Optional logger for diagnostic information.</param>
+        /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+        /// <returns>The deserialized response object.</returns>
+        /// <exception cref="LLMCommunicationException">Thrown when there is an error communicating with the API.</exception>
+        public static async Task<TResponse> GetJsonAsync<TResponse>(
+            HttpClient client,
+            string endpoint,
+            IDictionary<string, string>? headers = null,
+            JsonSerializerOptions? jsonOptions = null,
+            ILogger? logger = null,
+            CancellationToken cancellationToken = default)
+        {
+            var options = jsonOptions ?? DefaultJsonOptions;
+
+            try
+            {
+                var request = new HttpRequestMessage(HttpMethod.Get, endpoint);
+                
+                // Add custom headers if provided
+                if (headers != null)
+                {
+                    foreach (var header in headers)
+                    {
+                        request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                    }
+                }
+                
+                logger?.LogDebug("Sending GET request to {Endpoint}", endpoint);
+
+                using var response = await client.SendAsync(request, cancellationToken);
+                return await ProcessResponseAsync<TResponse>(response, options, logger, cancellationToken);
+            }
+            catch (HttpRequestException ex)
+            {
+                logger?.LogError(ex, "HTTP request error communicating with API at {Endpoint}", endpoint);
+                throw new LLMCommunicationException($"HTTP request error: {ex.Message}", ex);
+            }
+            catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
+            {
+                logger?.LogWarning("Request to {Endpoint} was cancelled", endpoint);
+                throw new LLMCommunicationException("Request was cancelled", ex);
+            }
+            catch (TaskCanceledException ex)
+            {
+                logger?.LogError(ex, "Request to {Endpoint} timed out", endpoint);
+                throw new LLMCommunicationException("Request timed out", ex);
+            }
+            catch (JsonException ex)
+            {
+                logger?.LogError(ex, "Failed to deserialize JSON response from {Endpoint}", endpoint);
+                throw new LLMCommunicationException($"Failed to deserialize response: {ex.Message}", ex);
             }
             catch (Exception ex) when (ex is not LLMCommunicationException)
             {
@@ -177,9 +245,28 @@ namespace ConduitLLM.Core.Utilities
 
             logger?.LogDebug("Received successful response with status code {StatusCode}", response.StatusCode);
 
-            var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            return await JsonSerializer.DeserializeAsync<TResponse>(responseStream, options, cancellationToken)
-                ?? throw new LLMCommunicationException("Failed to deserialize response");
+            // Read the response as string first for debugging
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            
+            // Log the first 500 chars of the response for debugging
+            if (logger?.IsEnabled(LogLevel.Debug) == true)
+            {
+                var preview = responseContent.Length > 500 ? responseContent.Substring(0, 500) + "..." : responseContent;
+                logger.LogDebug("Response content preview: {Content}", preview);
+            }
+            
+            // Deserialize from the string
+            try
+            {
+                return JsonSerializer.Deserialize<TResponse>(responseContent, options)
+                    ?? throw new LLMCommunicationException("Failed to deserialize response - result was null");
+            }
+            catch (JsonException ex)
+            {
+                // Log the full response on error for debugging
+                logger?.LogError(ex, "Failed to deserialize response. Full content: {Content}", responseContent);
+                throw;
+            }
         }
 
         /// <summary>
@@ -229,8 +316,16 @@ namespace ConduitLLM.Core.Utilities
 
             try
             {
-                var request = CreateJsonRequest(method, endpoint, requestData, headers, options);
+                var request = CreateJsonRequest(method, endpoint, requestData, headers, options, logger);
+                
+                // Add Accept header for SSE if not already present
+                if (!request.Headers.Accept.Any(h => h.MediaType == "text/event-stream"))
+                {
+                    request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("text/event-stream"));
+                }
+                
                 logger?.LogDebug("Sending streaming {Method} request to {Endpoint}", method, endpoint);
+                logger?.LogDebug("Request headers: {Headers}", request.Headers.ToString());
 
                 var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 

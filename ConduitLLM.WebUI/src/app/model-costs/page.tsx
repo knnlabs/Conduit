@@ -3,16 +3,23 @@
 import { useState } from 'react';
 import { Container, Title, Text, Button, Group, Stack } from '@mantine/core';
 import { IconPlus, IconRefresh, IconFileImport, IconFileExport } from '@tabler/icons-react';
+import { useRouter } from 'next/navigation';
 import { ModelCostsTable } from './components/ModelCostsTable';
-import { CreateModelCostModal } from './components/CreateModelCostModal';
 import { ImportModelCostsModal } from './components/ImportModelCostsModal';
 import { useModelCostsApi } from './hooks/useModelCostsApi';
+import { useProviders } from '@/hooks/useProviderApi';
+import { useModelMappings } from '@/hooks/useModelMappingsApi';
 
 export default function ModelCostsPage() {
+  const router = useRouter();
   const [refreshKey, setRefreshKey] = useState(0);
-  const [createModalOpen, setCreateModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const { exportModelCosts, isExporting } = useModelCostsApi();
+  const { providers } = useProviders();
+  const { mappings } = useModelMappings();
+
+  const hasProviders = providers.length > 0;
+  const hasModelMappings = mappings.length > 0;
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);
@@ -61,7 +68,7 @@ export default function ModelCostsPage() {
             </Button>
             <Button
               leftSection={<IconPlus size={16} />}
-              onClick={() => setCreateModalOpen(true)}
+              onClick={() => router.push('/model-costs/add-v2')}
             >
               Add Pricing
             </Button>
@@ -71,17 +78,10 @@ export default function ModelCostsPage() {
         <ModelCostsTable 
           key={refreshKey} 
           onRefresh={handleRefresh}
+          hasProviders={hasProviders}
+          hasModelMappings={hasModelMappings}
         />
       </Stack>
-
-      <CreateModelCostModal
-        isOpen={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
-        onSuccess={() => {
-          setCreateModalOpen(false);
-          handleRefresh();
-        }}
-      />
       
       <ImportModelCostsModal
         isOpen={importModalOpen}

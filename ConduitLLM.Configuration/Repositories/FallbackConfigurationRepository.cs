@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 
 using static ConduitLLM.Configuration.Utilities.LogSanitizer;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Configuration.Repositories
 {
     /// <summary>
@@ -19,7 +20,7 @@ namespace ConduitLLM.Configuration.Repositories
     /// </summary>
     public class FallbackConfigurationRepository : IFallbackConfigurationRepository
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly ILogger<FallbackConfigurationRepository> _logger;
 
         /// <summary>
@@ -28,7 +29,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="dbContextFactory">The database context factory</param>
         /// <param name="logger">The logger</param>
         public FallbackConfigurationRepository(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<FallbackConfigurationRepository> logger)
         {
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
@@ -230,7 +231,7 @@ namespace ConduitLLM.Configuration.Repositories
                     .Where(m => m.FallbackConfigurationId == id)
                     .ToListAsync(cancellationToken);
 
-                if (mappings.Any())
+                if (mappings.Count() > 0)
                 {
                     // Remove related mappings if there are any
                     dbContext.FallbackModelMappings.RemoveRange(mappings);

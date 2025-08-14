@@ -1,0 +1,22 @@
+[
+  {
+    "service": "Admin",
+    "summary": {
+      "totalSdk": 129,
+      "totalApi": 132,
+      "matched": 129,
+      "sdkOnly": 0,
+      "apiOnly": 3,
+      "matchRate": "100.0%"
+    },
+    "issues": {
+      "missingInApi": [],
+      "missingInSdk": [
+        "/metrics/database/pool",
+        "/metrics",
+        "/v1/admin/tasks/cleanup"
+      ],
+      "suggestions": []
+    }
+  }
+]

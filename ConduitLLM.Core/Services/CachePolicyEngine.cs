@@ -38,7 +38,7 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public void RegisterPolicy(ICachePolicy policy, CacheRegion[]? regions = null)
         {
-            if (policy == null) throw new ArgumentNullException(nameof(policy));
+            ArgumentNullException.ThrowIfNull(policy);
 
             if (!policy.Validate())
             {
@@ -143,7 +143,7 @@ namespace ConduitLLM.Core.Services
                 .OrderByDescending(p => p.Priority)
                 .ToList();
 
-            if (!ttlPolicies.Any())
+            if (ttlPolicies.Count() == 0)
                 return null;
 
             DateTime? shortestExpiration = null;
@@ -183,7 +183,7 @@ namespace ConduitLLM.Core.Services
                 .OrderByDescending(p => p.Priority)
                 .ToList();
 
-            if (!sizePolicies.Any())
+            if (sizePolicies.Count() == 0)
                 return true; // No size restrictions
 
             foreach (var policy in sizePolicies)
@@ -222,7 +222,7 @@ namespace ConduitLLM.Core.Services
                 .OrderByDescending(p => p.Priority)
                 .ToList();
 
-            if (!evictionPolicies.Any())
+            if (evictionPolicies.Count() == 0)
             {
                 // Default: evict oldest entries
                 return entries

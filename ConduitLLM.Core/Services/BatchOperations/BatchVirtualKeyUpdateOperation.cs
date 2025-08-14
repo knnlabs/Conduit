@@ -7,6 +7,8 @@ using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 
+using ConduitLLM.Configuration.Interfaces;
+using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 namespace ConduitLLM.Core.Services.BatchOperations
 {
     /// <summary>
@@ -90,7 +92,6 @@ namespace ConduitLLM.Core.Services.BatchOperations
                     KeyName = virtualKeyInfo.KeyName,
                     IsEnabled = item.IsEnabled ?? virtualKeyInfo.IsEnabled,
                     ExpiresAt = item.ExpiresAt ?? virtualKeyInfo.ExpiresAt,
-                    MaxBudget = item.MaxBudget ?? virtualKeyInfo.MaxBudget,
                     // Convert List<string> to comma-separated string
                     AllowedModels = item.AllowedModels != null 
                         ? string.Join(",", item.AllowedModels) 
@@ -104,11 +105,7 @@ namespace ConduitLLM.Core.Services.BatchOperations
                         : virtualKeyInfo.RateLimitRpd
                 };
 
-                // Track changes
-                if (item.MaxBudget.HasValue && virtualKeyInfo.MaxBudget != item.MaxBudget.Value)
-                {
-                    changedProperties.Add($"MaxBudget: {item.MaxBudget.Value}");
-                }
+                // Track changes - MaxBudget removed as it's now at group level
 
                 if (item.AllowedModels != null)
                 {
@@ -130,7 +127,7 @@ namespace ConduitLLM.Core.Services.BatchOperations
                     changedProperties.Add($"ExpiresAt: {item.ExpiresAt.Value:yyyy-MM-dd}");
                 }
 
-                if (changedProperties.Any())
+                if (changedProperties.Count() > 0)
                 {
                     // Save changes
                     var updated = await _virtualKeyService.UpdateVirtualKeyAsync(item.VirtualKeyId, updateRequest);

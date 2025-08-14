@@ -51,6 +51,14 @@ export function ActionRow({ action, index, onUpdate, onRemove, canRemove }: Acti
   const [requiredParameters, setRequiredParameters] = useState(getParametersForActionType(action.type));
   const { providerOptions, loading: providersLoading } = useProviders();
 
+  // Helper function to safely convert values to strings for Select components
+  const safeToString = (value: unknown): string | null => {
+    if (value === null || value === undefined) return null;
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+    return null; // For objects and other types, return null instead of stringifying
+  };
+
   useEffect(() => {
     const config = ACTION_TYPES.find(a => a.value === action.type);
     setActionConfig(config);
@@ -118,10 +126,11 @@ export function ActionRow({ action, index, onUpdate, onRemove, canRemove }: Acti
             label={param.label}
             placeholder={(param).placeholder}
             data={(param).options ?? []}
-            value={typeof currentValue === 'string' ? currentValue : null}
+            value={safeToString(currentValue)}
             onChange={(value) => handleParameterChange(param.name, value)}
             searchable
             required={param.required}
+            allowDeselect={!param.required}
           />
         );
 
@@ -133,10 +142,11 @@ export function ActionRow({ action, index, onUpdate, onRemove, canRemove }: Acti
             placeholder="Select provider"
             data={providerOptions}
             disabled={providersLoading}
-            value={typeof currentValue === 'string' ? currentValue : null}
+            value={safeToString(currentValue)}
             onChange={(value) => handleParameterChange(param.name, value)}
             searchable
             required={param.required}
+            allowDeselect={!param.required}
           />
         );
 
@@ -173,9 +183,10 @@ export function ActionRow({ action, index, onUpdate, onRemove, canRemove }: Acti
             <Select
               label="Action Type"
               data={ACTION_TYPES}
-              value={action.type}
+              value={String(action.type) ?? null}
               onChange={handleTypeChange}
               searchable
+              allowDeselect={false}
             />
           </div>
 
@@ -186,10 +197,11 @@ export function ActionRow({ action, index, onUpdate, onRemove, canRemove }: Acti
                 label="Target Provider"
                 placeholder="Select provider"
                 data={providerOptions}
-            disabled={providersLoading}
-                value={action.target ?? ''}
+                disabled={providersLoading}
+                value={safeToString(action.target)}
                 onChange={(value) => onUpdate({ target: value ?? '' })}
                 searchable
+                allowDeselect={false}
               />
             </div>
           )}

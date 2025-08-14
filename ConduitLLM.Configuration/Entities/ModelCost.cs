@@ -1,17 +1,19 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ConduitLLM.Configuration.Entities;
 
 /// <summary>
-/// Represents cost configuration for a specific model or model pattern in the system.
+/// Represents cost configuration that can be applied to multiple models in the system.
 /// This entity stores pricing information for different operations (input/output tokens, embeddings, images).
 /// </summary>
 /// <remarks>
-/// ModelCost entities are used for cost calculation and budget tracking, with support for wildcard patterns
-/// to match model names. The pricing information is used to calculate costs for each request processed
-/// through the system, enabling detailed cost reporting and budget management.
+/// ModelCost entities are linked to specific ModelProviderMapping records through the ModelCostMappings collection.
+/// This allows one cost configuration to be applied to multiple models (e.g., same cost for Llama across different providers).
+/// The pricing information is used to calculate costs for each request processed through the system,
+/// enabling detailed cost reporting and budget management.
 /// </remarks>
 public class ModelCost
 {
@@ -22,47 +24,78 @@ public class ModelCost
     public int Id { get; set; }
 
     /// <summary>
-    /// Gets or sets the model identification pattern, which can include wildcards.
+    /// Gets or sets a user-friendly name for this cost configuration.
     /// </summary>
     /// <remarks>
-    /// Examples: "openai/gpt-4o", "anthropic.claude-3*", "*-embedding-*"
-    /// The pattern is used to match against model names for cost calculation,
-    /// with support for * wildcard to match multiple models with similar names.
+    /// Examples: "GPT-4 Standard Pricing", "Llama 3 Unified Cost", "Embedding Models - Ada"
+    /// This helps administrators identify and manage different cost configurations.
     /// </remarks>
     [Required]
     [MaxLength(255)]
-    public string ModelIdPattern { get; set; } = string.Empty;
+    public string CostName { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the cost per input token for chat/completion requests.
+    /// Gets or sets the pricing model type that determines how costs are calculated.
     /// </summary>
     /// <remarks>
-    /// This represents the cost in USD for processing each input token.
-    /// Stored with high precision (decimal 18,10) to accommodate very small per-token costs.
+    /// This field determines which pricing strategy to use for cost calculation.
+    /// Different providers use different pricing models (per-token, per-video, per-step, etc.).
+    /// Defaults to Standard (token-based) for backward compatibility.
+    /// </remarks>
+    [Required]
+    public PricingModel PricingModel { get; set; } = PricingModel.Standard;
+
+    /// <summary>
+    /// Gets or sets the JSON configuration for complex pricing models.
+    /// </summary>
+    /// <remarks>
+    /// Contains model-specific pricing configuration based on PricingModel:
+    /// - PerVideo: {"rates": {"512p_6": 0.10, "720p_10": 0.15}}
+    /// - PerSecondVideo: {"baseRate": 0.09, "resolutionMultipliers": {"720p": 1.0}}
+    /// - InferenceSteps: {"costPerStep": 0.00013, "defaultSteps": 30}
+    /// - TieredTokens: {"tiers": [{"maxContext": 200000, "inputCost": 400}]}
+    /// Null for Standard pricing model which uses direct fields.
+    /// </remarks>
+    [Column(TypeName = "text")]
+    public string? PricingConfiguration { get; set; }
+
+    /// <summary>
+    /// Gets or sets the cost per million input tokens for chat/completion requests.
+    /// </summary>
+    /// <remarks>
+    /// This represents the cost in USD for processing one million input tokens.
+    /// This format aligns with industry standard pricing from providers like Anthropic and OpenAI.
+    /// Example: 15.00 means $15 per million input tokens.
+    /// Stored with high precision (decimal 18,10) to accommodate fractional costs.
+    /// Used primarily when PricingModel is Standard.
     /// </remarks>
     [Column(TypeName = "decimal(18, 10)")]
-    public decimal InputTokenCost { get; set; } = 0;
+    public decimal InputCostPerMillionTokens { get; set; } = 0;
 
     /// <summary>
-    /// Gets or sets the cost per output token for chat/completion requests.
+    /// Gets or sets the cost per million output tokens for chat/completion requests.
     /// </summary>
     /// <remarks>
-    /// This represents the cost in USD for generating each output token.
-    /// Stored with high precision (decimal 18,10) to accommodate very small per-token costs.
+    /// This represents the cost in USD for generating one million output tokens.
+    /// This format aligns with industry standard pricing from providers like Anthropic and OpenAI.
+    /// Example: 75.00 means $75 per million output tokens.
+    /// Stored with high precision (decimal 18,10) to accommodate fractional costs.
     /// </remarks>
     [Column(TypeName = "decimal(18, 10)")]
-    public decimal OutputTokenCost { get; set; } = 0;
+    public decimal OutputCostPerMillionTokens { get; set; } = 0;
 
     /// <summary>
-    /// Gets or sets the cost per token for embedding requests, if applicable.
+    /// Gets or sets the cost per million tokens for embedding requests, if applicable.
     /// </summary>
     /// <remarks>
-    /// This represents the cost in USD for processing each token in embedding requests.
+    /// This represents the cost in USD for processing one million tokens in embedding requests.
+    /// This format aligns with industry standard pricing from providers like Anthropic and OpenAI.
+    /// Example: 0.10 means $0.10 per million embedding tokens.
     /// Nullable because not all models support embedding operations.
-    /// Stored with high precision (decimal 18,10) to accommodate very small per-token costs.
+    /// Stored with high precision (decimal 18,10) to accommodate fractional costs.
     /// </remarks>
     [Column(TypeName = "decimal(18, 10)")]
-    public decimal? EmbeddingTokenCost { get; set; }
+    public decimal? EmbeddingCostPerMillionTokens { get; set; }
 
     /// <summary>
     /// Gets or sets the cost per image for image generation requests, if applicable.
@@ -92,16 +125,57 @@ public class ModelCost
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
-    /// Optional description for this model cost entry (for backward compatibility)
+    /// Gets or sets the model type for categorization.
     /// </summary>
-    [NotMapped]
+    /// <remarks>
+    /// Indicates the type of operations this model cost applies to.
+    /// Used for filtering and organizing costs in the UI.
+    /// </remarks>
+    [Required]
+    [MaxLength(50)]
+    public string ModelType { get; set; } = "chat";
+
+    /// <summary>
+    /// Gets or sets whether this cost configuration is active.
+    /// </summary>
+    /// <remarks>
+    /// When false, this cost configuration is ignored during cost calculations.
+    /// Allows disabling costs without deleting the configuration.
+    /// </remarks>
+    public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the effective date for this pricing.
+    /// </summary>
+    /// <remarks>
+    /// The date from which this pricing becomes active.
+    /// Used for historical cost tracking and future price changes.
+    /// </remarks>
+    public DateTime EffectiveDate { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Gets or sets the expiry date for this pricing.
+    /// </summary>
+    /// <remarks>
+    /// Optional date when this pricing expires.
+    /// Null means the pricing has no expiration date.
+    /// </remarks>
+    public DateTime? ExpiryDate { get; set; }
+
+    /// <summary>
+    /// Optional description for this model cost entry
+    /// </summary>
+    [MaxLength(500)]
     public string? Description { get; set; }
 
     /// <summary>
-    /// Optional priority value for this model cost entry (for backward compatibility)
+    /// Priority value for this model cost entry
     /// </summary>
-    [NotMapped]
-    public int Priority { get; set; }
+    /// <remarks>
+    /// Higher priority patterns are evaluated first when matching model names.
+    /// Default is 0. Use higher values for more specific patterns.
+    /// </remarks>
+    public int Priority { get; set; } = 0;
 
     /// <summary>
     /// Gets or sets the cost per minute for audio transcription (speech-to-text), if applicable.
@@ -207,31 +281,44 @@ public class ModelCost
     public string? ImageQualityMultipliers { get; set; }
 
     /// <summary>
-    /// Gets or sets the cost per cached input token for prompt caching, if applicable.
+    /// Gets or sets the resolution-based cost multipliers for image generation.
     /// </summary>
     /// <remarks>
-    /// This represents the cost in USD for processing each cached input token (reading from cache).
-    /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
-    /// Typically much lower than standard input token costs (e.g., 10% of regular cost).
-    /// Nullable because not all models support prompt caching.
-    /// Stored with high precision (decimal 18,10) to accommodate very small per-token costs.
+    /// JSON object containing resolution-to-multiplier mappings.
+    /// Example: {"1024x1024": 1.0, "1792x1024": 1.5, "1024x1792": 1.5}
+    /// The base ImageCostPerImage is multiplied by these values based on the requested resolution.
+    /// Stored as JSON text in the database.
     /// </remarks>
-    [Column(TypeName = "decimal(18, 10)")]
-    public decimal? CachedInputTokenCost { get; set; }
+    public string? ImageResolutionMultipliers { get; set; }
 
     /// <summary>
-    /// Gets or sets the cost per token for writing to the prompt cache, if applicable.
+    /// Gets or sets the cost per million cached input tokens for prompt caching, if applicable.
     /// </summary>
     /// <remarks>
-    /// This represents the cost in USD for writing tokens to the prompt cache.
+    /// This represents the cost in USD for processing one million cached input tokens (reading from cache).
+    /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
+    /// Typically much lower than standard input token costs (e.g., 10% of regular cost).
+    /// Example: 1.50 means $1.50 per million cached tokens.
+    /// Nullable because not all models support prompt caching.
+    /// Stored with high precision (decimal 18,10) to accommodate fractional costs.
+    /// </remarks>
+    [Column(TypeName = "decimal(18, 10)")]
+    public decimal? CachedInputCostPerMillionTokens { get; set; }
+
+    /// <summary>
+    /// Gets or sets the cost per million tokens for writing to the prompt cache, if applicable.
+    /// </summary>
+    /// <remarks>
+    /// This represents the cost in USD for writing one million tokens to the prompt cache.
     /// Used by providers like Anthropic Claude and Google Gemini that offer prompt caching.
     /// Typically higher than cached read costs but may be lower than standard input costs.
     /// The write cost is incurred when new content is added to the cache.
+    /// Example: 3.75 means $3.75 per million tokens written to cache.
     /// Nullable because not all models support prompt caching.
-    /// Stored with high precision (decimal 18,10) to accommodate very small per-token costs.
+    /// Stored with high precision (decimal 18,10) to accommodate fractional costs.
     /// </remarks>
     [Column(TypeName = "decimal(18, 10)")]
-    public decimal? CachedInputWriteCost { get; set; }
+    public decimal? CachedInputWriteCostPerMillionTokens { get; set; }
 
     /// <summary>
     /// Gets or sets the cost per search unit for reranking models, if applicable.
@@ -273,4 +360,13 @@ public class ModelCost
     /// Nullable because not all models use step-based generation or have configurable steps.
     /// </remarks>
     public int? DefaultInferenceSteps { get; set; }
+
+    /// <summary>
+    /// Gets or sets the collection of model mappings that use this cost configuration.
+    /// </summary>
+    /// <remarks>
+    /// This navigation property represents the many-to-many relationship between ModelCost and ModelProviderMapping.
+    /// Through this collection, one cost configuration can be applied to multiple models across different providers.
+    /// </remarks>
+    public virtual ICollection<ModelCostMapping> ModelCostMappings { get; set; } = new List<ModelCostMapping>();
 }

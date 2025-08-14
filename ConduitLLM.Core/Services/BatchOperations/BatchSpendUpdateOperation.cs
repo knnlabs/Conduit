@@ -7,6 +7,8 @@ using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 
+using ConduitLLM.Configuration.Interfaces;
+using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 namespace ConduitLLM.Core.Services.BatchOperations
 {
     /// <summary>
@@ -100,8 +102,7 @@ namespace ConduitLLM.Core.Services.BatchOperations
                     Data = new
                     {
                         VirtualKeyId = item.VirtualKeyId,
-                        Amount = item.Amount,
-                        NewTotal = virtualKey.CurrentSpend + item.Amount
+                        Amount = item.Amount
                     }
                 };
             }

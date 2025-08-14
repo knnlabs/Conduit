@@ -307,7 +307,6 @@ namespace ConduitLLM.Core.Models
     public class VirtualKeyUpdateItem
     {
         public int VirtualKeyId { get; set; }
-        public decimal? MaxBudget { get; set; }
         public List<string>? AllowedModels { get; set; }
         public Dictionary<string, object>? RateLimits { get; set; }
         public bool? IsEnabled { get; set; }

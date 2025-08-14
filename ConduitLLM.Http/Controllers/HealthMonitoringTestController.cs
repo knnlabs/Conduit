@@ -8,8 +8,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
-using ConduitLLM.Http.DTOs.HealthMonitoring;
+using ConduitLLM.Configuration.DTOs.HealthMonitoring;
 using ConduitLLM.Http.Services;
+using ConduitLLM.Http.Interfaces;
 using ConduitLLM.Security.Interfaces;
 
 namespace ConduitLLM.Http.Controllers

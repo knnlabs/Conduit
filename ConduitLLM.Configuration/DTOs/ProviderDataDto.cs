@@ -11,8 +11,8 @@ namespace ConduitLLM.Configuration.DTOs
         public int Id { get; set; }
 
         /// <summary>
-        /// Provider name
+        /// Provider type
         /// </summary>
-        public string ProviderName { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
     }
 }

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using ConduitLLM.Configuration.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -21,7 +22,7 @@ namespace ConduitLLM.Http.Controllers
     [Authorize]
     public class DiscoveryController : ControllerBase
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly IModelCapabilityService _modelCapabilityService;
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly ILogger<DiscoveryController> _logger;
@@ -30,7 +31,7 @@ namespace ConduitLLM.Http.Controllers
         /// Initializes a new instance of the <see cref="DiscoveryController"/> class.
         /// </summary>
         public DiscoveryController(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             IModelCapabilityService modelCapabilityService,
             IVirtualKeyService virtualKeyService,
             ILogger<DiscoveryController> logger)
@@ -55,22 +56,22 @@ namespace ConduitLLM.Http.Controllers
                 var virtualKeyValue = HttpContext.User.FindFirst("VirtualKey")?.Value;
                 if (string.IsNullOrEmpty(virtualKeyValue))
                 {
-                    return Unauthorized(new { error = "Virtual key not found" });
+                    return Unauthorized(new ErrorResponseDto("Virtual key not found"));
                 }
 
                 // Get virtual key details to check allowed models
                 var virtualKey = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKeyValue);
                 if (virtualKey == null)
                 {
-                    return Unauthorized(new { error = "Invalid virtual key" });
+                    return Unauthorized(new ErrorResponseDto("Invalid virtual key"));
                 }
 
                 using var context = await _dbContextFactory.CreateDbContextAsync();
                 
                 // Get all enabled model mappings with their providers
                 var modelMappings = await context.ModelProviderMappings
-                    .Include(m => m.ProviderCredential)
-                    .Where(m => m.IsEnabled && m.ProviderCredential != null && m.ProviderCredential.IsEnabled)
+                    .Include(m => m.Provider)
+                    .Where(m => m.IsEnabled && m.Provider != null && m.Provider.IsEnabled)
                     .ToListAsync();
 
                 var models = new List<object>();
@@ -179,7 +180,7 @@ namespace ConduitLLM.Http.Controllers
                     models.Add(new
                     {
                         id = mapping.ModelAlias,
-                        provider = mapping.ProviderCredential?.ProviderName?.ToLowerInvariant(),
+                        provider = mapping.Provider?.ProviderType.ToString().ToLowerInvariant(),
                         display_name = mapping.ModelAlias,
                         capabilities = capabilities
                     });
@@ -196,7 +197,7 @@ namespace ConduitLLM.Http.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving model discovery information");
-                return StatusCode(500, new { error = "Failed to retrieve model discovery information" });
+                return StatusCode(500, new ErrorResponseDto("Failed to retrieve model discovery information"));
             }
         }
 
@@ -234,7 +235,7 @@ namespace ConduitLLM.Http.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving capabilities list");
-                return Task.FromResult<IActionResult>(StatusCode(500, new { error = "Failed to retrieve capabilities" }));
+                return Task.FromResult<IActionResult>(StatusCode(500, new ErrorResponseDto("Failed to retrieve capabilities")));
             }
         }
 

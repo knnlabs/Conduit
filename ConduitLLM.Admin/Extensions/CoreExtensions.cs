@@ -2,6 +2,8 @@ using ConduitLLM.Admin.Adapters;
 using ConduitLLM.Core.Data;
 using ConduitLLM.Core.Data.Extensions;
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Services;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -23,7 +25,7 @@ namespace ConduitLLM.Admin.Extensions
         public static IServiceCollection AddCoreServices(this IServiceCollection services, IConfiguration configuration)
         {
             // Add database services - use ConfigurationDbContext
-            services.AddDatabaseServices<ConduitLLM.Configuration.ConfigurationDbContext>();
+            services.AddDatabaseServices<ConduitLLM.Configuration.ConduitDbContext>();
 
             // Register DbContext Factory (using connection string from environment variables)
             var connectionStringManager = new ConnectionStringManager();
@@ -48,7 +50,7 @@ namespace ConduitLLM.Admin.Extensions
                 throw new InvalidOperationException($"Only PostgreSQL is supported. Invalid provider: {dbProvider}");
             }
 
-            services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
+            services.AddDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>(options =>
             {
                 options.UseNpgsql(dbConnectionString);
                 // Suppress PendingModelChangesWarning in production
@@ -58,12 +60,28 @@ namespace ConduitLLM.Admin.Extensions
                     options.ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
                 }
             });
+            
+            // Also add scoped registration from factory for services that need direct injection
+            // Note: This creates contexts from the factory on demand
+            services.AddScoped<ConduitLLM.Configuration.ConduitDbContext>(provider =>
+            {
+                var factory = provider.GetService<IDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>>();
+                if (factory == null)
+                {
+                    throw new InvalidOperationException("IDbContextFactory<ConfigurationDbContext> is not registered");
+                }
+                return factory.CreateDbContext();
+            });
 
             // Add context management services
             services.AddConduitContextManagement(configuration);
 
             // Add Configuration adapters (moved from Core)
             services.AddConfigurationAdapters();
+
+            // Add Provider Registry - single source of truth for provider metadata
+            services.AddSingleton<IProviderMetadataRegistry, ProviderMetadataRegistry>();
+            Console.WriteLine("[ConduitLLM.Admin] Provider Registry registered - centralized provider metadata management enabled");
 
             return services;
         }

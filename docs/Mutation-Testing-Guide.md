@@ -205,7 +205,6 @@ Add to your build pipeline:
 As of the latest run, mutation testing has been set up for:
 - LoggingSanitizer (security-critical)
 - CostCalculationService (business-critical)
-- AudioCostCalculationService (business-critical)
 
 Next targets for mutation testing:
 - CorrelationContext

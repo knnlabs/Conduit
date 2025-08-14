@@ -1,43 +1,19 @@
-namespace ConduitLLM.Configuration;
-
-/// <summary>
-/// Represents the overall configuration settings for ConduitLLM.
-/// This class is typically bound from configuration sources like appsettings.json.
-/// </summary>
-public class ConduitSettings
+namespace ConduitLLM.Configuration
 {
     /// <summary>
-    /// Gets or sets the list of model mappings, defining how model aliases route to providers.
+    /// Main configuration settings for Conduit.
+    /// This class holds non-provider configuration that may still come from appsettings.json.
+    /// Provider configuration is now entirely database-driven.
     /// </summary>
-    public List<ModelProviderMapping> ModelMappings { get; set; } = new();
-
-    /// <summary>
-    /// Gets or sets the list of provider credentials and connection details.
-    /// </summary>
-    public List<ProviderCredentials> ProviderCredentials { get; set; } = new();
-
-    /// <summary>
-    /// Gets or sets the default timeout in seconds for LLM requests.
-    /// Provider-specific clients might override this.
-    /// </summary>
-    public int? DefaultTimeoutSeconds { get; set; }
-
-    /// <summary>
-    /// Gets or sets the default number of retries for failed LLM requests.
-    /// Provider-specific clients might override this or implement more sophisticated retry logic.
-    /// </summary>
-    public int? DefaultRetries { get; set; }
-
-    /// <summary>
-    /// Gets or sets the default model configurations for providers.
-    /// This centralizes all default model settings to avoid hardcoded values in provider implementations.
-    /// </summary>
-    public ProviderDefaultModels DefaultModels { get; set; } = new();
-
-    /// <summary>
-    /// Gets or sets the performance tracking configuration.
-    /// </summary>
-    public PerformanceTrackingSettings PerformanceTracking { get; set; } = new();
-
-    // Add other global settings as needed, e.g., logging configuration, global API key (if applicable).
+    public class ConduitSettings
+    {
+        /// <summary>
+        /// Performance tracking settings.
+        /// </summary>
+        public PerformanceTrackingSettings? PerformanceTracking { get; set; }
+        
+        /// <summary>
+        /// Other non-provider settings can be added here as needed.
+        /// </summary>
+    }
 }

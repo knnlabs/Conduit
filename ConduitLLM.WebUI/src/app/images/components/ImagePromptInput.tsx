@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { Textarea, Button, Group, Text } from '@mantine/core';
+import { IconPalette, IconTrash } from '@tabler/icons-react';
 import { useImageStore } from '../hooks/useImageStore';
 
 export default function ImagePromptInput() {
@@ -40,57 +42,47 @@ export default function ImagePromptInput() {
   const isGenerating = status === 'generating';
 
   return (
-    <div className="image-prompt-section">
-      <label htmlFor="prompt-input" className="block text-sm font-medium mb-2">
-        Image Prompt
-      </label>
-      
-      <textarea
-        id="prompt-input"
+    <>
+      <Textarea
+        label="Image Prompt"
         value={localPrompt}
         onChange={(e) => handlePromptChange(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Describe the image you want to generate... (Ctrl+Enter to generate)"
-        className="image-prompt-input"
         disabled={isGenerating}
-        rows={4}
+        minRows={4}
+        autosize
+        maxRows={10}
       />
       
-      <div className="image-prompt-controls">
-        <div className="text-sm text-gray-500">
+      <Group justify="space-between" mt="md">
+        <Text size="sm" c="dimmed">
           {localPrompt.length > 0 && `${localPrompt.length} characters`}
           {localPrompt.length > 1000 && ' (very long prompt)'}
-        </div>
+        </Text>
         
-        <div className="flex gap-2">
+        <Group>
           {status === 'completed' && (
-            <button
+            <Button
               onClick={handleClear}
-              className="btn btn-secondary"
+              variant="subtle"
+              leftSection={<IconTrash size={16} />}
               disabled={isGenerating}
             >
               Clear Results
-            </button>
+            </Button>
           )}
           
-          <button
+          <Button
             onClick={() => void handleGenerate()}
             disabled={!localPrompt.trim() || isGenerating}
-            className="btn btn-primary"
+            leftSection={<IconPalette size={16} />}
+            loading={isGenerating}
           >
-            {isGenerating ? (
-              <>
-                <span className="animate-spin">⏳</span>
-                Generating...
-              </>
-            ) : (
-              <>
-                🎨 Generate Images
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
+            Generate Images
+          </Button>
+        </Group>
+      </Group>
+    </>
   );
 }

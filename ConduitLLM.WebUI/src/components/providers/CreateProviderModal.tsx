@@ -15,12 +15,13 @@ import {
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconAlertCircle, IconInfoCircle, IconCircleCheck } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   ProviderType, 
-  PROVIDER_CONFIG_REQUIREMENTS, 
-  getLLMProviderSelectOptions 
+  PROVIDER_CONFIG_REQUIREMENTS
 } from '@/lib/constants/providers';
+import { withAdminClient } from '@/lib/client/adminClient';
+import { getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 
 interface CreateProviderModalProps {
   opened: boolean;
@@ -30,23 +31,29 @@ interface CreateProviderModalProps {
 
 interface CreateProviderForm {
   providerType: string;
+  providerName: string;
   apiKey: string;
   apiEndpoint?: string;
   organizationId?: string;
   isEnabled: boolean;
 }
 
-// Provider options are now generated from constants
-const PROVIDER_TYPES = getLLMProviderSelectOptions();
+interface ProviderOption {
+  value: string;
+  label: string;
+}
 
 export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProviderModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [availableProviders, setAvailableProviders] = useState<ProviderOption[]>([]);
+  const [isLoadingProviders, setIsLoadingProviders] = useState(false);
 
   const form = useForm<CreateProviderForm>({
     initialValues: {
       providerType: '',
+      providerName: '',
       apiKey: '',
       apiEndpoint: '',
       organizationId: '',
@@ -54,6 +61,7 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
     },
     validate: {
       providerType: (value) => (!value ? 'Provider type is required' : null),
+      // Provider name is now optional - will use provider type if not provided
       apiKey: (value) => (!value ? 'API key is required' : null),
       apiEndpoint: (value) => {
         if (value && !value.startsWith('http://') && !value.startsWith('https://')) {
@@ -64,6 +72,48 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
     },
   });
 
+  // Fetch available providers when modal opens
+  useEffect(() => {
+    const loadProviders = async () => {
+      setIsLoadingProviders(true);
+      try {
+        const providerTypes = await withAdminClient(client => 
+          client.providers.getAvailableProviderTypes()
+        );
+        
+        const providers: ProviderOption[] = providerTypes.map(type => ({
+          value: type.toString(),
+          label: getProviderDisplayName(type)
+        }));
+        setAvailableProviders(providers);
+        
+        // If no providers are available, show a notification
+        if (providers.length === 0) {
+          notifications.show({
+            title: 'No Providers Available',
+            message: 'All provider types have already been configured.',
+            color: 'orange',
+          });
+          onClose();
+        }
+      } catch (error) {
+        console.error('Error fetching available providers:', error);
+        notifications.show({
+          title: 'Error',
+          message: 'Failed to load available providers',
+          color: 'red',
+        });
+      } finally {
+        setIsLoadingProviders(false);
+      }
+    };
+    
+    if (opened) {
+      void loadProviders();
+    }
+  }, [opened, onClose]);
+
+
   const handleClose = () => {
     form.reset();
     setTestResult(null);
@@ -73,27 +123,25 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
   const handleSubmit = async (values: CreateProviderForm) => {
     setIsSubmitting(true);
     try {
+      // If no provider name was entered, use the provider type label
+      let providerName = values.providerName.trim();
+      if (!providerName) {
+        const selectedProvider = availableProviders.find(p => p.value === values.providerType);
+        providerName = selectedProvider?.label ?? 'Unknown Provider';
+      }
+
       const payload = {
-        providerName: values.providerType, // Use the provider type as-is (e.g., "openai")
+        providerType: parseInt(values.providerType, 10), // Send numeric provider type
+        providerName: providerName,
         apiKey: values.apiKey,
-        apiEndpoint: values.apiEndpoint ?? undefined,
-        organizationId: values.organizationId ?? undefined,
+        baseUrl: values.apiEndpoint ?? undefined,
+        organization: values.organizationId ?? undefined,
         isEnabled: values.isEnabled,
       };
 
-      const response = await fetch('/api/providers', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Failed to parse error response' })) as { error?: string; message?: string };
-        console.error('Provider creation failed:', errorData);
-        throw new Error(errorData.error ?? errorData.message ?? `Failed to create provider: ${response.status}`);
-      }
+      await withAdminClient(client => 
+        client.providers.create(payload)
+      );
 
       notifications.show({
         title: 'Success',
@@ -137,33 +185,22 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
     setTestResult(null);
 
     try {
-      const response = await fetch('/api/providers/test-config', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          providerName: form.values.providerType,
+      const result = await withAdminClient(client => 
+        client.providers.testConfig({
+          providerType: parseInt(form.values.providerType, 10),
           apiKey: form.values.apiKey,
-          apiEndpoint: form.values.apiEndpoint ?? undefined, // Changed from baseUrl to apiEndpoint
+          baseUrl: form.values.apiEndpoint ?? undefined,
           organizationId: form.values.organizationId ?? undefined,
-        }),
+        })
+      );
+      
+      // Handle new response format  
+      const isSuccess = (result.result as string) === 'success';
+      
+      setTestResult({
+        success: isSuccess,
+        message: result.message ?? (isSuccess ? 'Connection successful' : 'Connection failed'),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}` })) as { error?: string; message?: string };
-        console.error('Provider test failed:', errorData);
-        setTestResult({
-          success: false,
-          message: errorData.error ?? errorData.message ?? `Connection failed: ${response.status}`,
-        });
-      } else {
-        const result = await response.json() as { success?: boolean; message?: string };
-        setTestResult({
-          success: result.success ?? false,
-          message: result.message ?? 'Connection successful',
-        });
-      }
     } catch (error) {
       console.error('Connection test error:', error);
       setTestResult({
@@ -176,7 +213,8 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
   };
 
   const getProviderHelp = (providerType: string) => {
-    const config = PROVIDER_CONFIG_REQUIREMENTS[providerType as ProviderType];
+    const providerTypeNum = parseInt(providerType, 10) as ProviderType;
+    const config = PROVIDER_CONFIG_REQUIREMENTS[providerTypeNum];
     if (!config?.helpText) {
       return null;
     }
@@ -206,21 +244,39 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
         <Stack gap="md">
           <Select
             label="Provider Type"
-            placeholder="Select a provider"
-            data={PROVIDER_TYPES}
+            placeholder={isLoadingProviders ? "Loading available providers..." : "Select a provider"}
+            data={availableProviders}
             required
+            disabled={isLoadingProviders || availableProviders.length === 0}
             {...form.getInputProps('providerType')}
+          />
+
+          <TextInput
+            label="Provider Name (Optional)"
+            placeholder="Leave empty to use provider type name"
+            description="A friendly name to identify this provider (e.g., 'Production OpenAI', 'Dev Ollama')"
+            autoComplete="off"
+            aria-autocomplete="none"
+            list="autocompleteOff"
+            data-form-type="other"
+            {...form.getInputProps('providerName')}
           />
 
           <PasswordInput
             label="API Key"
             placeholder="Enter API key"
             required
+            autoComplete="off"
+            aria-autocomplete="none"
+            list="autocompleteOff"
+            data-form-type="other"
+            data-lpignore="true"
             {...form.getInputProps('apiKey')}
           />
 
           {(() => {
-            const config = PROVIDER_CONFIG_REQUIREMENTS[form.values.providerType as ProviderType];
+            const providerTypeNum = parseInt(form.values.providerType, 10) as ProviderType;
+            const config = PROVIDER_CONFIG_REQUIREMENTS[providerTypeNum];
             if (!config) return null;
 
             return (
@@ -230,6 +286,10 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
                     label="Organization ID"
                     placeholder="Enter organization ID"
                     required={config.requiresOrganizationId}
+                    autoComplete="off"
+                    aria-autocomplete="none"
+                    list="autocompleteOff"
+                    data-form-type="other"
                     {...form.getInputProps('organizationId')}
                   />
                 )}
@@ -239,6 +299,10 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
                     label={config.requiresEndpoint ? "API Endpoint" : "Custom API Endpoint"}
                     placeholder={config.requiresEndpoint ? "https://api.example.com" : "https://api.example.com (optional)"}
                     required={config.requiresEndpoint}
+                    autoComplete="off"
+                    aria-autocomplete="none"
+                    list="autocompleteOff"
+                    data-form-type="other"
                     {...form.getInputProps('apiEndpoint')}
                   />
                 )}

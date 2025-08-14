@@ -165,12 +165,12 @@ fi
 # Step 7: Check migration snapshot
 echo ""
 echo "Step 7: Validating migration snapshot..."
-SNAPSHOT_FILE="Migrations/ConfigurationDbContextModelSnapshot.cs"
-if [ ! -f "$SNAPSHOT_FILE" ]; then
+SNAPSHOT_FILE=$(find Migrations -name "*ModelSnapshot.cs" | head -1)
+if [ -z "$SNAPSHOT_FILE" ] || [ ! -f "$SNAPSHOT_FILE" ]; then
     echo "ERROR: Migration snapshot file missing"
     exit 1
 else
-    echo "✓ Migration snapshot present"
+    echo "✓ Migration snapshot present: $SNAPSHOT_FILE"
 fi
 
 # Step 8: Summary

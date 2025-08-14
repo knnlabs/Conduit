@@ -154,7 +154,7 @@ A route is considered **fully compliant** if it meets ALL of these criteria:
 - These routes handle sensitive data but lack `requireAuth()`
 
 ### 2. Direct Environment Variable Access (3 routes)
-- `/api/auth/login` - Accesses `CONDUIT_ADMIN_LOGIN_PASSWORD`
+- `/api/auth/*` - Authentication handled by Clerk middleware
 - `/api/auth/validate` - Accesses auth-related env vars
 - `/api/admin/[...path]` - Proxy route accessing multiple env vars
 

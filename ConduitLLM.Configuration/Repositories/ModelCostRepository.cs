@@ -7,10 +7,12 @@ using System.Threading.Tasks;
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Utilities;
+using ModelProviderMappingEntity = ConduitLLM.Configuration.Entities.ModelProviderMapping;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Configuration.Repositories
 {
     /// <summary>
@@ -41,7 +43,7 @@ namespace ConduitLLM.Configuration.Repositories
     /// </remarks>
     public class ModelCostRepository : IModelCostRepository
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly ILogger<ModelCostRepository> _logger;
 
         /// <summary>
@@ -69,7 +71,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// </list>
         /// </remarks>
         public ModelCostRepository(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<ModelCostRepository> logger)
         {
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
@@ -84,6 +86,8 @@ namespace ConduitLLM.Configuration.Repositories
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ModelCosts
                     .AsNoTracking()
+                    .Include(m => m.ModelCostMappings)
+                        .ThenInclude(mcm => mcm.ModelProviderMapping)
                     .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
             }
             catch (Exception ex)
@@ -94,11 +98,11 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
-        public async Task<ModelCost?> GetByModelNameAsync(string modelName, CancellationToken cancellationToken = default)
+        public async Task<ModelCost?> GetByCostNameAsync(string costName, CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrEmpty(modelName))
+            if (string.IsNullOrWhiteSpace(costName))
             {
-                throw new ArgumentException("Model name cannot be null or empty", nameof(modelName));
+                throw new ArgumentException("Cost name cannot be null or empty", nameof(costName));
             }
 
             try
@@ -106,33 +110,13 @@ namespace ConduitLLM.Configuration.Repositories
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ModelCosts
                     .AsNoTracking()
-                    .FirstOrDefaultAsync(m => m.ModelIdPattern == modelName, cancellationToken);
+                    .Include(m => m.ModelCostMappings)
+                        .ThenInclude(mcm => mcm.ModelProviderMapping)
+                    .FirstOrDefaultAsync(m => m.CostName == costName, cancellationToken);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost for model {ModelName}", LogSanitizer.SanitizeObject(modelName));
-                throw;
-            }
-        }
-
-        /// <inheritdoc/>
-        public async Task<ModelCost?> GetByModelIdPatternAsync(string modelIdPattern, CancellationToken cancellationToken = default)
-        {
-            if (string.IsNullOrEmpty(modelIdPattern))
-            {
-                throw new ArgumentException("Model ID pattern cannot be null or empty", nameof(modelIdPattern));
-            }
-
-            try
-            {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                return await dbContext.ModelCosts
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(m => m.ModelIdPattern == modelIdPattern, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-_logger.LogError(ex, "Error getting model cost for model ID pattern {ModelIdPattern}", modelIdPattern.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error getting model cost with name {CostName}", LogSanitizer.SanitizeObject(costName));
                 throw;
             }
         }
@@ -145,7 +129,9 @@ _logger.LogError(ex, "Error getting model cost for model ID pattern {ModelIdPatt
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ModelCosts
                     .AsNoTracking()
-                    .OrderBy(m => m.ModelIdPattern)
+                    .Include(m => m.ModelCostMappings)
+                        .ThenInclude(mcm => mcm.ModelProviderMapping)
+                    .OrderBy(m => m.CostName)
                     .ToListAsync(cancellationToken);
             }
             catch (Exception ex)
@@ -182,92 +168,59 @@ _logger.LogError(ex, "Error getting model cost for model ID pattern {ModelIdPatt
         /// even if they use different naming conventions or wildcard patterns.
         /// </para>
         /// </remarks>
-        public async Task<List<ModelCost>> GetByProviderAsync(string providerName, CancellationToken cancellationToken = default)
-        {
-            if (string.IsNullOrEmpty(providerName))
-            {
-                throw new ArgumentException("Provider name cannot be null or empty", nameof(providerName));
-            }
 
+        /// <inheritdoc/>
+        public async Task<List<ModelCost>> GetByProviderAsync(int providerId, CancellationToken cancellationToken = default)
+        {
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-                // First, get provider credentials for this provider
-                var providerCredential = await dbContext.ProviderCredentials
+                // First, verify provider exists
+                var provider = await dbContext.Providers
                     .AsNoTracking()
-                    .FirstOrDefaultAsync(pc => pc.ProviderName == providerName, cancellationToken);
+                    .FirstOrDefaultAsync(p => p.Id == providerId, cancellationToken);
 
-                if (providerCredential == null)
+                if (provider == null)
                 {
-_logger.LogWarning("No provider credential found for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
+                    _logger.LogWarning("No provider found with ID {ProviderId}", providerId);
                     return new List<ModelCost>();
                 }
 
-                // Get all model mappings for this provider where provider credential matches
+                // Get all model mappings for this provider
                 var providerMappings = await dbContext.ModelProviderMappings
                     .AsNoTracking()
-                    .Where(m => m.ProviderCredentialId == providerCredential.Id)
+                    .Where(m => m.ProviderId == providerId)
                     .ToListAsync(cancellationToken);
 
-                if (!providerMappings.Any())
+                if (providerMappings.Count() == 0)
                 {
-_logger.LogInformation("No model mappings found for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
+                    _logger.LogInformation("No model mappings found for provider {ProviderId}", providerId);
                     return new List<ModelCost>();
                 }
 
                 // Get the list of model patterns used by this provider
                 var allModelPatterns = new List<string>();
                 // Extract provider model names from mappings for pattern matching
-                var exactModelNames = providerMappings.Select(m => m.ProviderModelName).ToList();
+                var exactModelNames = providerMappings.Select(m => m.ProviderModelId).ToList();
 
                 // Get all model costs
-                var allModelCosts = await dbContext.ModelCosts
+                // Get all model costs that are associated with models from this provider
+                var costs = await dbContext.ModelCosts
                     .AsNoTracking()
-                    .OrderBy(m => m.ModelIdPattern)
+                    .Include(m => m.ModelCostMappings)
+                        .ThenInclude(mcm => mcm.ModelProviderMapping)
+                    .Where(m => m.ModelCostMappings.Any(mcm => 
+                        mcm.ModelProviderMapping.ProviderId == providerId && 
+                        mcm.IsActive))
+                    .OrderBy(m => m.CostName)
                     .ToListAsync(cancellationToken);
 
-                // Filter model costs that match:
-                // 1. Exact matches to provider model names
-                // 2. Wildcard patterns that match provider model names
-                var result = new List<ModelCost>();
-
-                // Add exact matches
-                result.AddRange(allModelCosts.Where(c => exactModelNames.Contains(c.ModelIdPattern)));
-
-                // Add wildcard matches
-                var wildcardPatterns = allModelCosts.Where(c => c.ModelIdPattern.Contains('*')).ToList();
-                foreach (var pattern in wildcardPatterns)
-                {
-                    string patternPrefix = pattern.ModelIdPattern.TrimEnd('*');
-
-                    // Add if any provider model starts with this pattern prefix
-                    if (exactModelNames.Any(modelName => modelName.StartsWith(patternPrefix)))
-                    {
-                        result.Add(pattern);
-                    }
-                }
-
-                // Also include model patterns that have the provider name in them
-                var providerPrefixPatterns = allModelCosts
-                    .Where(c => c.ModelIdPattern.StartsWith($"{providerName}/") ||
-                                c.ModelIdPattern.StartsWith($"{providerName}-") ||
-                                c.ModelIdPattern.StartsWith(providerName.ToLowerInvariant()))
-                    .ToList();
-
-                foreach (var pattern in providerPrefixPatterns)
-                {
-                    if (!result.Any(r => r.Id == pattern.Id))
-                    {
-                        result.Add(pattern);
-                    }
-                }
-
-                return result.OrderBy(m => m.ModelIdPattern).ToList();
+                return costs;
             }
             catch (Exception ex)
             {
-_logger.LogError(ex, "Error getting model costs for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error getting model costs for provider {ProviderId}", providerId);
                 throw;
             }
         }
@@ -305,21 +258,21 @@ _logger.LogError(ex, "Error getting model costs for provider {ProviderName}", pr
                 {
                     // Rollback the transaction on error
                     await transaction.RollbackAsync(cancellationToken);
-                    _logger.LogError(ex, "Transaction rolled back while creating model cost for model '{ModelIdPattern}'",
-                        LogSanitizer.SanitizeObject(modelCost.ModelIdPattern.Replace(Environment.NewLine, "")));
+                    _logger.LogError(ex, "Transaction rolled back while creating model cost '{CostName}'",
+                        LogSanitizer.SanitizeObject(modelCost.CostName.Replace(Environment.NewLine, "")));
                     throw;
                 }
             }
             catch (DbUpdateException ex)
             {
-                _logger.LogError(ex, "Database error creating model cost for model '{ModelIdPattern}'",
-                    LogSanitizer.SanitizeObject(modelCost.ModelIdPattern.Replace(Environment.NewLine, "")));
+                _logger.LogError(ex, "Database error creating model cost '{CostName}'",
+                    LogSanitizer.SanitizeObject(modelCost.CostName.Replace(Environment.NewLine, "")));
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating model cost for model '{ModelIdPattern}'",
-                    LogSanitizer.SanitizeObject(modelCost.ModelIdPattern.Replace(Environment.NewLine, "")));
+                _logger.LogError(ex, "Error creating model cost '{CostName}'",
+                    LogSanitizer.SanitizeObject(modelCost.CostName.Replace(Environment.NewLine, "")));
                 throw;
             }
         }

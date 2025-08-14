@@ -8,11 +8,12 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Utilities;
-using ConduitLLM.Providers.InternalModels;
+using ConduitLLM.Providers.Common.Models;
 
 using Microsoft.Extensions.Logging;
 
@@ -22,9 +23,10 @@ namespace ConduitLLM.Providers
     /// Base class for LLM client implementations that provides common functionality 
     /// and standardized handling of requests, responses, and errors.
     /// </summary>
-    public abstract class BaseLLMClient : ILLMClient
+    public abstract class BaseLLMClient : ILLMClient, IAuthenticationVerifiable
     {
-        protected readonly ProviderCredentials Credentials;
+        protected readonly Provider Provider;
+        protected readonly ProviderKeyCredential PrimaryKeyCredential;
         protected readonly string ProviderModelId;
         protected readonly ILogger Logger;
         protected readonly string ProviderName;
@@ -40,25 +42,28 @@ namespace ConduitLLM.Providers
         /// <summary>
         /// Initializes a new instance of the <see cref="BaseLLMClient"/> class.
         /// </summary>
-        /// <param name="credentials">The provider credentials to use for requests.</param>
+        /// <param name="provider">The provider entity containing configuration.</param>
+        /// <param name="primaryKeyCredential">The primary key credential to use for requests.</param>
         /// <param name="providerModelId">The provider's model identifier.</param>
         /// <param name="logger">The logger to use for logging.</param>
         /// <param name="httpClientFactory">Optional HTTP client factory for creating HttpClient instances.</param>
         /// <param name="providerName">The name of this LLM provider.</param>
         /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         protected BaseLLMClient(
-            ProviderCredentials credentials,
+            Provider provider,
+            ProviderKeyCredential primaryKeyCredential,
             string providerModelId,
             ILogger logger,
             IHttpClientFactory? httpClientFactory = null,
             string? providerName = null,
             ProviderDefaultModels? defaultModels = null)
         {
-            Credentials = credentials ?? throw new ArgumentNullException(nameof(credentials));
+            Provider = provider ?? throw new ArgumentNullException(nameof(provider));
+            PrimaryKeyCredential = primaryKeyCredential ?? throw new ArgumentNullException(nameof(primaryKeyCredential));
             ProviderModelId = providerModelId ?? throw new ArgumentNullException(nameof(providerModelId));
             Logger = logger ?? throw new ArgumentNullException(nameof(logger));
             HttpClientFactory = httpClientFactory;
-            ProviderName = providerName ?? GetType().Name.Replace("Client", string.Empty);
+            ProviderName = providerName ?? provider.ProviderName ?? GetType().Name.Replace("Client", string.Empty);
             DefaultModels = defaultModels;
 
             ValidateCredentials();
@@ -70,7 +75,7 @@ namespace ConduitLLM.Providers
         /// </summary>
         protected virtual void ValidateCredentials()
         {
-            if (string.IsNullOrWhiteSpace(Credentials.ApiKey))
+            if (string.IsNullOrWhiteSpace(PrimaryKeyCredential.ApiKey))
             {
                 throw new ConfigurationException($"API key is missing for provider '{ProviderName}'");
             }
@@ -94,7 +99,7 @@ namespace ConduitLLM.Providers
                 client = new HttpClient();
             }
 
-            string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
+            string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey!;
             if (string.IsNullOrWhiteSpace(effectiveApiKey))
             {
                 throw new ConfigurationException($"API key is missing for provider '{ProviderName}'");
@@ -133,6 +138,39 @@ namespace ConduitLLM.Providers
         {
             // Default Bearer token authentication - can be overridden by providers
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        }
+
+        /// <summary>
+        /// Creates an HttpClient specifically for authentication verification.
+        /// This client should NOT have BaseAddress set when using absolute URLs.
+        /// </summary>
+        /// <param name="apiKey">The API key to use for authentication.</param>
+        /// <returns>A configured HttpClient for authentication verification.</returns>
+        protected virtual HttpClient CreateAuthenticationVerificationClient(string apiKey)
+        {
+            HttpClient client;
+            if (HttpClientFactory != null)
+            {
+                client = HttpClientFactory.CreateClient($"{ProviderName}AuthVerification");
+            }
+            else
+            {
+                client = new HttpClient();
+            }
+
+            // Configure basic headers
+            client.DefaultRequestHeaders.Accept.Clear();
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
+            
+            // Configure authentication
+            ConfigureAuthentication(client, apiKey);
+            
+            // Use a shorter timeout for health checks
+            client.Timeout = TimeSpan.FromSeconds(30);
+            
+            // Do NOT set BaseAddress - we'll be using absolute URLs
+            return client;
         }
 
         /// <summary>
@@ -291,7 +329,7 @@ namespace ConduitLLM.Providers
         /// <returns>A dictionary of headers.</returns>
         protected virtual Dictionary<string, string> CreateStandardHeaders(string? apiKey = null)
         {
-            string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
+            string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey!;
 
             var headers = new Dictionary<string, string>
             {
@@ -303,6 +341,84 @@ namespace ConduitLLM.Providers
             headers["Authorization"] = $"Bearer {effectiveApiKey}";
 
             return headers;
+        }
+
+        /// <summary>
+        /// Verifies that the provider credentials are valid by making a test request.
+        /// </summary>
+        /// <param name="apiKey">Optional API key to test. If null, uses the configured key.</param>
+        /// <param name="baseUrl">Optional base URL override. If null, uses the configured URL.</param>
+        /// <param name="cancellationToken">Cancellation token for the operation.</param>
+        /// <returns>An authentication result indicating success or failure.</returns>
+        /// <remarks>
+        /// This default implementation performs a basic check that the API key exists.
+        /// Derived classes should override this method to implement provider-specific
+        /// authentication verification logic.
+        /// </remarks>
+        public virtual async Task<Core.Interfaces.AuthenticationResult> VerifyAuthenticationAsync(
+            string? apiKey = null,
+            string? baseUrl = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                // Use provided API key or fall back to configured one
+                var effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : PrimaryKeyCredential.ApiKey;
+                
+                // Basic validation
+                if (string.IsNullOrWhiteSpace(effectiveApiKey))
+                {
+                    return Core.Interfaces.AuthenticationResult.Failure(
+                        "API key is required",
+                        "No API key provided for authentication verification");
+                }
+
+                // For base implementation, just verify key exists
+                // Derived classes should override with actual API calls
+                Logger.LogInformation("Basic authentication check passed for {Provider}", ProviderName);
+                
+                // Return completed task to make this properly async
+                await Task.CompletedTask;
+                
+                return Core.Interfaces.AuthenticationResult.Success($"Authentication verified for {ProviderName}");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error verifying authentication for {Provider}", ProviderName);
+                return Core.Interfaces.AuthenticationResult.Failure(
+                    $"Authentication verification failed: {ex.Message}",
+                    ex.ToString());
+            }
+        }
+
+        /// <summary>
+        /// Gets the health check URL for this provider.
+        /// </summary>
+        /// <param name="baseUrl">Optional base URL override. If null, uses the configured URL.</param>
+        /// <returns>The URL to use for health checks.</returns>
+        /// <remarks>
+        /// This default implementation returns a generic /health endpoint.
+        /// Derived classes should override this method to return provider-specific URLs.
+        /// </remarks>
+        public virtual string GetHealthCheckUrl(string? baseUrl = null)
+        {
+            var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl) 
+                ? baseUrl.TrimEnd('/') 
+                : (Provider.BaseUrl ?? GetDefaultBaseUrl()).TrimEnd('/');
+            
+            return $"{effectiveBaseUrl}/health";
+        }
+
+        /// <summary>
+        /// Gets the default base URL for this provider.
+        /// </summary>
+        /// <returns>The default base URL.</returns>
+        /// <remarks>
+        /// Override in derived classes to provide provider-specific default URLs.
+        /// </remarks>
+        protected virtual string GetDefaultBaseUrl()
+        {
+            return "https://api.example.com";
         }
     }
 }

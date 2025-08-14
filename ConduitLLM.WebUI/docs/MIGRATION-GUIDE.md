@@ -154,7 +154,7 @@ export function ConduitProviders({ children }: { children: React.ReactNode }) {
   
   const coreApiUrl = process.env.NEXT_PUBLIC_CONDUIT_CORE_API_URL!;
   const adminApiUrl = process.env.NEXT_PUBLIC_CONDUIT_ADMIN_API_URL!;
-  const masterKey = process.env.CONDUIT_MASTER_KEY!;
+  const masterKey = process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY!;
 
   return (
     <ConduitProvider

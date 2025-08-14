@@ -7,12 +7,12 @@ using System.Threading.Tasks;
 using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Core
 {
     /// <summary>

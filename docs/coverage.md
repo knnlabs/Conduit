@@ -75,19 +75,19 @@ Local tool manifest:
 #### Quick Coverage Check
 ```bash
 # Run tests with coverage and show summary
-./scripts/coverage-dashboard.sh run
+./scripts/coverage-dashboard.sh
 ```
 
 #### Generate Reports Only
 ```bash
 # Generate reports from existing coverage data
-./scripts/coverage-dashboard.sh report
+./scripts/generate-coverage-badges.sh
 ```
 
 #### View Summary
 ```bash
 # Display coverage summary without running tests
-./scripts/coverage-dashboard.sh summary
+./scripts/check-coverage-info.sh
 ```
 
 ### Manual Coverage Collection
@@ -138,7 +138,7 @@ Coverage is automatically collected in GitHub Actions:
 #### Locally
 ```bash
 # Generate and open HTML report
-./scripts/coverage-dashboard.sh run
+./scripts/coverage-dashboard.sh
 # Report opens automatically in browser
 ```
 
@@ -260,7 +260,7 @@ Coverage history is maintained in:
 
 ### Before Submitting PRs
 
-1. Run local coverage: `./scripts/coverage-dashboard.sh run`
+1. Run local coverage: `./scripts/coverage-dashboard.sh`
 2. Ensure coverage meets minimum thresholds
 3. Add tests for new functionality
 4. Review coverage report for your changes

@@ -9,6 +9,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration;
 
 namespace ConduitLLM.Admin.Services
 {
@@ -36,15 +38,14 @@ namespace ConduitLLM.Admin.Services
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-            var rabbitMqHost = configuration["MessageBus:RabbitMQ:Host"] ?? "localhost";
-            var managementPort = configuration["MessageBus:RabbitMQ:ManagementPort"] ?? "15672";
-            var username = configuration["MessageBus:RabbitMQ:Username"] ?? "guest";
-            var password = configuration["MessageBus:RabbitMQ:Password"] ?? "guest";
+            // Use the same configuration section as the rest of the application
+            var rabbitMqConfig = configuration.GetSection("ConduitLLM:RabbitMQ").Get<RabbitMqConfiguration>() 
+                ?? new RabbitMqConfiguration();
 
-            _baseUrl = $"http://{rabbitMqHost}:{managementPort}/api";
+            _baseUrl = $"http://{rabbitMqConfig.Host}:{rabbitMqConfig.ManagementPort}/api";
 
             // Set up basic authentication
-            var authValue = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}"));
+            var authValue = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{rabbitMqConfig.Username}:{rabbitMqConfig.Password}"));
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authValue);
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 

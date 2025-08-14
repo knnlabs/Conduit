@@ -9,6 +9,7 @@ using MassTransit;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
+using ConduitLLM.Http.Interfaces;
 namespace ConduitLLM.Http.EventHandlers
 {
     /// <summary>
@@ -37,7 +38,7 @@ namespace ConduitLLM.Http.EventHandlers
             var message = context.Message;
             
             _logger.LogInformation("Processing image generation completion for task {TaskId}: {ImageCount} images generated in {Duration}s (cost: ${Cost})", 
-                message.TaskId, message.Images.Count, message.Duration.TotalSeconds, message.Cost);
+                message.TaskId, message.Images.Count(), message.Duration.TotalSeconds, message.Cost);
 
             try
             {
@@ -50,7 +51,7 @@ namespace ConduitLLM.Http.EventHandlers
                 {
                     TaskId = message.TaskId,
                     VirtualKeyId = message.VirtualKeyId,
-                    ImageCount = message.Images.Count,
+                    ImageCount = message.Images.Count(),
                     Provider = message.Provider,
                     Model = message.Model,
                     Duration = message.Duration.TotalSeconds,
@@ -63,12 +64,12 @@ namespace ConduitLLM.Http.EventHandlers
                 UpdateCompletedTasksCache(completionData);
                 
                 // Log performance metrics
-                var avgTimePerImage = message.Duration.TotalSeconds / Math.Max(1, message.Images.Count);
+                var avgTimePerImage = message.Duration.TotalSeconds / Math.Max(1, message.Images.Count());
                 _logger.LogInformation("Image generation performance - Provider: {Provider}, Model: {Model}, Avg time per image: {AvgTime}s, Total cost: ${Cost}",
                     message.Provider, message.Model, avgTimePerImage, message.Cost);
                 
                 // Track provider-specific metrics
-                LogProviderMetrics(message.Provider, message.Model, message.Images.Count, message.Duration, message.Cost);
+                LogProviderMetrics(message.Provider, message.Model, message.Images.Count(), message.Duration, message.Cost);
                 
                 // Future: Trigger post-processing workflows
                 // - Image optimization
@@ -104,9 +105,9 @@ namespace ConduitLLM.Http.EventHandlers
             completedTasks.Add(completionData);
             
             // Keep only last 100 completed tasks
-            if (completedTasks.Count > 100)
+            if (completedTasks.Count() > 100)
             {
-                completedTasks = completedTasks.Skip(completedTasks.Count - 100).ToList();
+                completedTasks = completedTasks.Skip(completedTasks.Count() - 100).ToList();
             }
             
             // Cache for 24 hours

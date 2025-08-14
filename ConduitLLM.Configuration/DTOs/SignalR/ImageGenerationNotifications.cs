@@ -29,9 +29,9 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         public int ImageCount { get; set; }
         
         /// <summary>
-        /// Provider being used for generation
+        /// Provider type being used for generation
         /// </summary>
-        public string Provider { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
         
         /// <summary>
         /// Model being used for generation
@@ -121,9 +121,9 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         public decimal Cost { get; set; }
         
         /// <summary>
-        /// Provider used for generation
+        /// Provider type used for generation
         /// </summary>
-        public string Provider { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
         
         /// <summary>
         /// Model used for generation
@@ -162,9 +162,9 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         public string? ErrorCode { get; set; }
         
         /// <summary>
-        /// Provider that failed
+        /// Provider type that failed
         /// </summary>
-        public string Provider { get; set; } = string.Empty;
+        public ProviderType ProviderType { get; set; }
         
         /// <summary>
         /// Whether this error is retryable

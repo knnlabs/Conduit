@@ -9,8 +9,9 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using ConduitLLM.Http.DTOs.HealthMonitoring;
+using ConduitLLM.Configuration.DTOs.HealthMonitoring;
 using ConduitLLM.Http.Hubs;
+using ConduitLLM.Http.Interfaces;
 using Microsoft.AspNetCore.SignalR;
 
 namespace ConduitLLM.Http.Services
@@ -18,7 +19,7 @@ namespace ConduitLLM.Http.Services
     /// <summary>
     /// Service for managing health alerts and notifications
     /// </summary>
-    public class AlertManagementService : IAlertManagementService
+    public class AlertManagementService : Interfaces.IAlertManagementService
     {
         private readonly IMemoryCache _cache;
         private readonly ILogger<AlertManagementService> _logger;

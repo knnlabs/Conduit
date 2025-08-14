@@ -12,6 +12,7 @@ using ConduitLLM.Configuration.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Configuration.Repositories
 {
     /// <summary>
@@ -19,7 +20,7 @@ namespace ConduitLLM.Configuration.Repositories
     /// </summary>
     public class RequestLogRepository : IRequestLogRepository
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly ILogger<RequestLogRepository> _logger;
 
         /// <summary>
@@ -28,7 +29,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="dbContextFactory">The database context factory</param>
         /// <param name="logger">The logger</param>
         public RequestLogRepository(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<RequestLogRepository> logger)
         {
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
@@ -329,7 +330,7 @@ namespace ConduitLLM.Configuration.Repositories
                 {
                     TotalRequests = totalRequests,
                     TotalCost = totalCost,
-                    AverageResponseTimeMs = logs.Any() ? logs.Average(r => r.ResponseTimeMs) : 0,
+                    AverageResponseTimeMs = logs.Count() > 0 ? logs.Average(r => r.ResponseTimeMs) : 0,
                     TotalInputTokens = logs.Sum(r => r.InputTokens),
                     TotalOutputTokens = logs.Sum(r => r.OutputTokens),
                     ModelUsage = modelUsageDict

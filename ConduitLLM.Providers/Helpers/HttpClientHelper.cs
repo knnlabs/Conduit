@@ -106,7 +106,7 @@ namespace ConduitLLM.Providers.Helpers
                 var request = new HttpRequestMessage(method, endpoint);
 
                 // Add form content
-                if (formData != null && formData.Count > 0)
+                if (formData != null && formData.Count() > 0)
                 {
                     request.Content = new FormUrlEncodedContent(formData);
                 }
@@ -209,7 +209,7 @@ namespace ConduitLLM.Providers.Helpers
         /// </remarks>
         public static string FormatQueryParameters(Dictionary<string, string?> parameters)
         {
-            if (parameters == null || parameters.Count == 0)
+            if (parameters == null || parameters.Count() == 0)
             {
                 return string.Empty;
             }
@@ -224,7 +224,7 @@ namespace ConduitLLM.Providers.Helpers
                 }
             }
 
-            return queryParts.Count > 0 ? "?" + string.Join("&", queryParts) : string.Empty;
+            return queryParts.Count() > 0 ? "?" + string.Join("&", queryParts) : string.Empty;
         }
 
         /// <summary>
@@ -239,7 +239,7 @@ namespace ConduitLLM.Providers.Helpers
         /// </remarks>
         public static string AppendQueryParameters(string baseUrl, Dictionary<string, string?> parameters)
         {
-            if (parameters == null || parameters.Count == 0)
+            if (parameters == null || parameters.Count() == 0)
             {
                 return baseUrl;
             }
@@ -255,7 +255,7 @@ namespace ConduitLLM.Providers.Helpers
                 }
             }
 
-            return queryParts.Count > 0
+            return queryParts.Count() > 0
                 ? baseUrl + separator + string.Join("&", queryParts)
                 : baseUrl;
         }

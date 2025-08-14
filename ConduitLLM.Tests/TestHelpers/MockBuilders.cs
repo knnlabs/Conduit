@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Interfaces.Configuration;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -121,7 +120,7 @@ namespace ConduitLLM.Tests.TestHelpers
     /// </summary>
     public class CacheServiceBuilder
     {
-        private readonly Mock<ConduitLLM.Configuration.Services.ICacheService> _mock = new();
+        private readonly Mock<ConduitLLM.Configuration.Interfaces.ICacheService> _mock = new();
         private readonly Dictionary<string, object> _cache = new();
         private TimeSpan? _defaultExpiration;
 
@@ -185,7 +184,7 @@ namespace ConduitLLM.Tests.TestHelpers
             return this;
         }
 
-        public Mock<ConduitLLM.Configuration.Services.ICacheService> Build()
+        public Mock<ConduitLLM.Configuration.Interfaces.ICacheService> Build()
         {
             return _mock;
         }

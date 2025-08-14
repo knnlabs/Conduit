@@ -26,7 +26,7 @@ namespace ConduitLLM.Core.Services
     public partial class HybridAudioService : IHybridAudioService
     {
         private readonly ILLMRouter _llmRouter;
-        private readonly ISimpleAudioRouter _audioRouter;
+        private readonly IAudioRouter _audioRouter;
         private readonly ILogger<HybridAudioService> _logger;
         private readonly ICostCalculationService _costService;
         private readonly IContextManager _contextManager;
@@ -52,7 +52,7 @@ namespace ConduitLLM.Core.Services
         /// <param name="audioProcessingService">The audio processing service.</param>
         public HybridAudioService(
             ILLMRouter llmRouter,
-            ISimpleAudioRouter audioRouter,
+            IAudioRouter audioRouter,
             ILogger<HybridAudioService> logger,
             ICostCalculationService costService,
             IContextManager contextManager,
@@ -78,8 +78,7 @@ namespace ConduitLLM.Core.Services
             HybridAudioRequest request,
             CancellationToken cancellationToken = default)
         {
-            if (request == null)
-                throw new ArgumentNullException(nameof(request));
+            ArgumentNullException.ThrowIfNull(request);
 
             var stopwatch = Stopwatch.StartNew();
             var metrics = new ProcessingMetrics();
@@ -109,8 +108,14 @@ namespace ConduitLLM.Core.Services
 
                 // Step 1: Speech-to-Text
                 var sttStart = stopwatch.ElapsedMilliseconds;
+                // Create a minimal transcription request for routing
+                var routingRequest = new AudioTranscriptionRequest
+                {
+                    Language = request.Language
+                };
                 var transcriptionClient = await _audioRouter.GetTranscriptionClientAsync(
-                    request.Language,
+                    routingRequest,
+                    request.VirtualKey ?? string.Empty,
                     cancellationToken);
 
                 if (transcriptionClient == null)
@@ -193,8 +198,15 @@ namespace ConduitLLM.Core.Services
 
                 // Step 3: Text-to-Speech
                 var ttsStart = stopwatch.ElapsedMilliseconds;
+                // Create a minimal TTS request for routing
+                var ttsRoutingRequest = new TextToSpeechRequest
+                {
+                    Voice = request.VoiceId ?? "alloy",
+                    Input = responseText ?? string.Empty
+                };
                 var ttsClient = await _audioRouter.GetTextToSpeechClientAsync(
-                    request.VoiceId,
+                    ttsRoutingRequest,
+                    request.VirtualKey ?? string.Empty,
                     cancellationToken);
 
                 if (ttsClient == null)
@@ -269,8 +281,7 @@ namespace ConduitLLM.Core.Services
             HybridSessionConfig config,
             CancellationToken cancellationToken = default)
         {
-            if (config == null)
-                throw new ArgumentNullException(nameof(config));
+            ArgumentNullException.ThrowIfNull(config);
 
             var sessionId = Guid.NewGuid().ToString();
             var session = new HybridSession
@@ -306,11 +317,10 @@ _logger.LogInformation("Closed hybrid audio session: {SessionId}", sessionId.Rep
         {
             try
             {
-                // Check STT availability
-                var sttClient = await _audioRouter.GetTranscriptionClientAsync(null, cancellationToken);
-                if (sttClient == null || !await sttClient.SupportsTranscriptionAsync(cancellationToken: cancellationToken))
-                    return false;
-
+                // For hybrid audio service, we can't check specific provider availability without a virtual key
+                // The actual availability will be determined when ProcessConversationAsync is called with a valid key
+                // For now, just check if the LLM router is available
+                
                 // Check LLM availability
                 var testRequest = new ChatCompletionRequest
                 {
@@ -328,11 +338,7 @@ _logger.LogInformation("Closed hybrid audio session: {SessionId}", sessionId.Rep
                     return false;
                 }
 
-                // Check TTS availability
-                var ttsClient = await _audioRouter.GetTextToSpeechClientAsync(null, cancellationToken);
-                if (ttsClient == null || !await ttsClient.SupportsTextToSpeechAsync(cancellationToken: cancellationToken))
-                    return false;
-
+                // TTS availability will be checked when actually processing with a valid virtual key
                 return true;
             }
             catch (Exception ex)
@@ -347,7 +353,7 @@ _logger.LogInformation("Closed hybrid audio session: {SessionId}", sessionId.Rep
         {
             lock (_metricsLock)
             {
-                if (_recentMetrics.Count == 0)
+                if (_recentMetrics.Count() == 0)
                 {
                     return Task.FromResult(new HybridLatencyMetrics
                     {
@@ -367,7 +373,7 @@ _logger.LogInformation("Closed hybrid audio session: {SessionId}", sessionId.Rep
                     AverageTotalLatencyMs = metrics.Average(m => m.TotalLatencyMs),
                     P95LatencyMs = GetPercentile(totalLatencies, 0.95),
                     P99LatencyMs = GetPercentile(totalLatencies, 0.99),
-                    SampleCount = metrics.Count,
+                    SampleCount = metrics.Count(),
                     CalculatedAt = DateTime.UtcNow
                 });
             }
@@ -456,7 +462,7 @@ _logger.LogInformation("Closed hybrid audio session: {SessionId}", sessionId.Rep
             lock (_metricsLock)
             {
                 _recentMetrics.Enqueue(metrics);
-                while (_recentMetrics.Count > MaxMetricsSamples)
+                while (_recentMetrics.Count() > MaxMetricsSamples)
                 {
                     _recentMetrics.Dequeue();
                 }
@@ -465,11 +471,11 @@ _logger.LogInformation("Closed hybrid audio session: {SessionId}", sessionId.Rep
 
         private double GetPercentile(List<double> sortedValues, double percentile)
         {
-            if (sortedValues.Count == 0)
+            if (sortedValues.Count() == 0)
                 return 0;
 
-            var index = (int)Math.Ceiling(percentile * sortedValues.Count) - 1;
-            return sortedValues[Math.Max(0, Math.Min(index, sortedValues.Count - 1))];
+            var index = (int)Math.Ceiling(percentile * sortedValues.Count()) - 1;
+            return sortedValues[Math.Max(0, Math.Min(index, sortedValues.Count() - 1))];
         }
 
         private void CleanupExpiredSessions(object? state)
@@ -519,7 +525,7 @@ _logger.LogInformation("Closed hybrid audio session: {SessionId}", sessionId.Rep
                 });
 
                 // Maintain history limit
-                while (_history.Count > Config.MaxHistoryTurns)
+                while (_history.Count() > Config.MaxHistoryTurns)
                 {
                     _history.Dequeue();
                 }

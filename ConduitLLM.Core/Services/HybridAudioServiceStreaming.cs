@@ -20,8 +20,7 @@ namespace ConduitLLM.Core.Services
             HybridAudioRequest request,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            if (request == null)
-                throw new ArgumentNullException(nameof(request));
+            ArgumentNullException.ThrowIfNull(request);
 
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             var sequenceNumber = 0;
@@ -119,8 +118,14 @@ namespace ConduitLLM.Core.Services
             HybridAudioRequest request,
             CancellationToken cancellationToken)
         {
+            // Create a minimal transcription request for routing
+            var routingRequest = new AudioTranscriptionRequest
+            {
+                Language = request.Language
+            };
             var transcriptionClient = await _audioRouter.GetTranscriptionClientAsync(
-                request.Language,
+                routingRequest,
+                request.VirtualKey ?? string.Empty,
                 cancellationToken);
 
             if (transcriptionClient == null)
@@ -263,15 +268,22 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
+                // Create a minimal TTS request for routing
+                var ttsRoutingRequest = new TextToSpeechRequest
+                {
+                    Voice = request.VoiceId ?? "alloy",
+                    Input = "test" // Dummy text for routing only
+                };
                 var ttsClient = await _audioRouter.GetTextToSpeechClientAsync(
-                    request.VoiceId,
+                    ttsRoutingRequest,
+                    request.VirtualKey ?? string.Empty,
                     cancellationToken);
 
                 if (ttsClient == null)
                     throw new InvalidOperationException("No TTS provider available");
 
                 // Process TTS queue
-                while (ttsQueue.Count > 0)
+                while (ttsQueue.Count() > 0)
                 {
                     var textToSpeak = ttsQueue.Dequeue();
 

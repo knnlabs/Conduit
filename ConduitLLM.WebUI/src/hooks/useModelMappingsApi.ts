@@ -4,10 +4,9 @@ import { notifications } from '@mantine/notifications';
 import type { 
   ModelProviderMappingDto, 
   CreateModelProviderMappingDto,
-  UpdateModelProviderMappingDto,
-  DiscoveredModel
+  UpdateModelProviderMappingDto
 } from '@knn_labs/conduit-admin-client';
-import type { ErrorResponse } from '@knn_labs/conduit-common';
+import { withAdminClient } from '@/lib/client/adminClient';
 
 const QUERY_KEY = 'model-mappings';
 
@@ -15,13 +14,7 @@ export function useModelMappings() {
   
   const { data: mappings = [], isLoading, error, refetch } = useQuery({
     queryKey: [QUERY_KEY],
-    queryFn: async () => {
-      const response = await fetch('/api/model-mappings');
-      if (!response.ok) {
-        throw new Error('Failed to fetch model mappings');
-      }
-      return response.json() as Promise<ModelProviderMappingDto[]>;
-    },
+    queryFn: () => withAdminClient(client => client.modelMappings.list()),
   });
 
   return {
@@ -35,13 +28,9 @@ export function useModelMappings() {
 export function useModelMapping(id: number | null) {
   const { data: mapping, isLoading, error } = useQuery({
     queryKey: [QUERY_KEY, id],
-    queryFn: async () => {
+    queryFn: () => {
       if (!id) return null;
-      const response = await fetch(`/api/model-mappings/${id}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch model mapping');
-      }
-      return response.json() as Promise<ModelProviderMappingDto>;
+      return withAdminClient(client => client.modelMappings.getById(id));
     },
     enabled: !!id,
   });
@@ -57,22 +46,8 @@ export function useCreateModelMapping() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: CreateModelProviderMappingDto) => {
-      const response = await fetch('/api/model-mappings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const errorResult = await response.json() as ErrorResponse;
-        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to create model mapping');
-      }
-
-      return response.json() as Promise<ModelProviderMappingDto>;
-    },
+    mutationFn: (data: CreateModelProviderMappingDto) => 
+      withAdminClient(client => client.modelMappings.create(data)),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       notifications.show({
@@ -95,33 +70,8 @@ export function useUpdateModelMapping() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: UpdateModelProviderMappingDto }) => {
-      
-      const response = await fetch(`/api/model-mappings/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-
-
-      if (!response.ok) {
-        const errorResult = await response.json() as ErrorResponse;
-        
-        // Try to parse the details if it's a JSON string
-        let detailsMessage = errorResult.error ?? errorResult.message ?? 'Failed to update model mapping';
-        if (errorResult.details && typeof errorResult.details === 'object') {
-          const details = errorResult.details as { detail?: string; message?: string };
-          detailsMessage = details.detail ?? details.message ?? detailsMessage;
-        }
-        
-        throw new Error(detailsMessage);
-      }
-
-      const result = await response.json() as ModelProviderMappingDto;
-      return result;
-    },
+    mutationFn: ({ id, data }: { id: number; data: UpdateModelProviderMappingDto }) => 
+      withAdminClient(client => client.modelMappings.update(id, data)),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       notifications.show({
@@ -144,16 +94,8 @@ export function useDeleteModelMapping() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: number) => {
-      const response = await fetch(`/api/model-mappings/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const errorResult = await response.json() as ErrorResponse;
-        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to delete model mapping');
-      }
-    },
+    mutationFn: (id: number) => 
+      withAdminClient(client => client.modelMappings.deleteById(id)),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       notifications.show({
@@ -173,71 +115,6 @@ export function useDeleteModelMapping() {
 }
 
 
-interface DiscoveredModelWithStatus extends DiscoveredModel {
-  created?: boolean;
-}
-
-export function useDiscoverModels() {
-  const [isDiscovering, setIsDiscovering] = useState(false);
-  const queryClient = useQueryClient();
-
-  const discoverModels = async (autoCreate: boolean = false, enableNewMappings: boolean = false) => {
-    setIsDiscovering(true);
-    try {
-      const response = await fetch('/api/model-mappings/discover', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          autoCreate,
-          enableNewMappings,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorResult = await response.json() as ErrorResponse;
-        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to discover models');
-      }
-
-      const result = await response.json() as DiscoveredModelWithStatus[];
-      
-      if (autoCreate) {
-        // Invalidate cache to show new mappings
-        void await queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-        
-        const created = result.filter(m => m.created === true).length;
-        notifications.show({
-          title: 'Discovery Complete',
-          message: `Created ${created} new model mappings`,
-          color: 'green',
-        });
-      } else {
-        notifications.show({
-          title: 'Discovery Complete',
-          message: `Found ${result.length} models across all providers`,
-          color: 'green',
-        });
-      }
-
-      return result;
-    } catch (error) {
-      notifications.show({
-        title: 'Discovery Failed',
-        message: error instanceof Error ? error.message : 'Failed to discover models',
-        color: 'red',
-      });
-      throw error;
-    } finally {
-      setIsDiscovering(false);
-    }
-  };
-
-  return {
-    discoverModels,
-    isDiscovering,
-  };
-}
 
 interface BulkDiscoverResult {
   providerId: string;
@@ -258,6 +135,7 @@ interface BulkDiscoverResult {
       supportsStreaming: boolean;
       supportsVideoGeneration: boolean;
       supportsEmbeddings: boolean;
+      supportsChat: boolean;
       maxContextLength?: number | null;
       maxOutputTokens?: number | null;
     };
@@ -272,28 +150,45 @@ export function useBulkDiscoverModels() {
   const discoverModels = async (providerId: string, providerName: string): Promise<BulkDiscoverResult> => {
     setIsDiscovering(true);
     try {
-      const response = await fetch('/api/model-mappings/bulk-discover', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const models = await withAdminClient(client => 
+        client.modelMappings.discoverProviderModels(parseInt(providerId, 10))
+      ) as unknown as Array<{ modelId: string; displayName?: string; capabilities?: Record<string, boolean>; contextWindow?: number; maxOutputTokens?: number }>;
+
+      // Transform the discovered models to match the expected interface
+      const result: BulkDiscoverResult = {
+        providerId,
+        providerName,
+        models: (models as Array<{ modelId: string; displayName?: string; capabilities?: Record<string, boolean>; contextWindow?: number; maxOutputTokens?: number }>).map(model => ({
+          modelId: model.modelId,
+          displayName: model.displayName ?? model.modelId,
           providerId,
-          providerName,
-        }),
-      });
+          hasConflict: false, // The SDK doesn't provide this info directly
+          existingMapping: null, // Would need a separate lookup
+          capabilities: {
+            supportsVision: (model.capabilities?.supportsVision as boolean) ?? false,
+            supportsImageGeneration: (model.capabilities?.supportsImageGeneration as boolean) ?? false,
+            supportsAudioTranscription: (model.capabilities?.supportsAudioTranscription as boolean) ?? false,
+            supportsTextToSpeech: (model.capabilities?.supportsTextToSpeech as boolean) ?? false,
+            supportsRealtimeAudio: (model.capabilities?.supportsRealtimeAudio as boolean) ?? false,
+            supportsFunctionCalling: (model.capabilities?.supportsFunctionCalling as boolean) ?? false,
+            supportsStreaming: (model.capabilities?.supportsStreaming as boolean) ?? true,
+            supportsVideoGeneration: (model.capabilities?.supportsVideoGeneration as boolean) ?? false,
+            supportsEmbeddings: (model.capabilities?.supportsEmbeddings as boolean) ?? false,
+            supportsChat: (model.capabilities?.supportsChat as boolean) ?? true,
+            maxContextLength: model.contextWindow ?? null,
+            maxOutputTokens: model.maxOutputTokens ?? null,
+          },
+        })),
+        totalModels: Array.isArray(models) ? models.length : 0,
+        conflictCount: 0,
+      };
 
-      if (!response.ok) {
-        const errorResult = await response.json() as ErrorResponse;
-        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to discover models');
-      }
-
-      const result = await response.json() as BulkDiscoverResult;
       return result;
-    } catch (error) {
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Failed to discover models');
       notifications.show({
         title: 'Discovery Failed',
-        message: error instanceof Error ? error.message : 'Failed to discover models',
+        message: error.message,
         color: 'red',
       });
       throw error;
@@ -323,6 +218,7 @@ interface BulkCreateRequest {
       supportsStreaming: boolean;
       supportsVideoGeneration: boolean;
       supportsEmbeddings: boolean;
+      supportsChat: boolean;
       maxContextLength?: number | null;
       maxOutputTokens?: number | null;
     };
@@ -351,23 +247,52 @@ export function useBulkCreateMappings() {
   const createMappings = async (request: BulkCreateRequest): Promise<BulkCreateResult> => {
     setIsCreating(true);
     try {
-      const response = await fetch('/api/model-mappings/bulk-create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      // Transform request to Admin SDK format
+      const bulkRequest = {
+        mappings: request.models.map(model => ({
+          modelId: model.modelId,
+          providerId: parseInt(model.providerId, 10),
+          providerModelId: model.modelId,
+          isEnabled: request.enableByDefault ?? true,
+          priority: request.defaultPriority ?? 50,
+          isDefault: false,
+          // Capability flags
+          supportsVision: model.capabilities.supportsVision,
+          supportsImageGeneration: model.capabilities.supportsImageGeneration,
+          supportsAudioTranscription: model.capabilities.supportsAudioTranscription,
+          supportsTextToSpeech: model.capabilities.supportsTextToSpeech,
+          supportsRealtimeAudio: model.capabilities.supportsRealtimeAudio,
+          supportsFunctionCalling: model.capabilities.supportsFunctionCalling,
+          supportsStreaming: model.capabilities.supportsStreaming,
+          supportsVideoGeneration: model.capabilities.supportsVideoGeneration,
+          supportsEmbeddings: model.capabilities.supportsEmbeddings,
+          supportsChat: model.capabilities.supportsChat,
+          maxContextLength: model.capabilities.maxContextLength ?? undefined,
+          maxOutputTokens: model.capabilities.maxOutputTokens ?? undefined,
+        })),
+        replaceExisting: false,
+      };
+      
+      const sdkResult = await withAdminClient(client => 
+        client.modelMappings.bulkCreate(bulkRequest)
+      );
+      
+      // Transform result back to expected format
+      const result: BulkCreateResult = {
+        success: sdkResult.failureCount === 0,
+        created: sdkResult.successCount,
+        failed: sdkResult.failureCount,
+        details: {
+          created: sdkResult.created,
+          failed: sdkResult.errors.map((error, index) => ({
+            modelId: request.models[index]?.modelId ?? 'unknown',
+            error: error,
+          })),
         },
-        body: JSON.stringify(request),
-      });
-
-      if (!response.ok) {
-        const errorResult = await response.json() as ErrorResponse;
-        throw new Error(errorResult.error ?? errorResult.message ?? 'Failed to create mappings');
-      }
-
-      const result = await response.json() as BulkCreateResult;
+      };
       
       // Invalidate cache to show new mappings
-      void await queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+      void queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       
       return result;
     } catch (error) {

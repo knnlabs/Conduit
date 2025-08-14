@@ -5,7 +5,7 @@
 
 import { getErrorStatusCode, getErrorMessage, isHttpError } from './error-utils';
 
-export type ErrorType = 'network' | 'auth' | 'timeout' | 'validation' | 'permission' | 'notFound' | 'server' | 'generic';
+export type ErrorType = 'network' | 'auth' | 'timeout' | 'validation' | 'permission' | 'notFound' | 'server' | 'payment' | 'generic';
 export type RecoveryAction = 'retry' | 'login' | 'reload' | 'navigate' | 'none';
 
 export interface ErrorClassification {
@@ -25,6 +25,7 @@ export class ErrorClassifier {
     if (isHttpError(error)) {
       const status = getErrorStatusCode(error) ?? 0;
       if (status === 401) return 'auth';
+      if (status === 402) return 'payment';
       if (status === 403) return 'permission';
       if (status === 404) return 'notFound';
       if (status === 408 || status === 504) return 'timeout';
@@ -38,6 +39,12 @@ export class ErrorClassifier {
     
     if (errorMessage.includes('unauthorized') || errorMessage.includes('401') || errorName.includes('auth')) {
       return 'auth';
+    }
+    
+    if (errorMessage.includes('payment required') || errorMessage.includes('402') || 
+        errorMessage.includes('insufficient') || errorMessage.includes('balance') ||
+        errorMessage.includes('credits') || errorMessage.includes('quota')) {
+      return 'payment';
     }
     
     if (errorMessage.includes('forbidden') || errorMessage.includes('403') || errorMessage.includes('permission')) {
@@ -99,6 +106,7 @@ export class ErrorClassifier {
       permission: 'You do not have permission to perform this action.',
       notFound: 'The requested resource was not found.',
       server: 'Server error occurred. Please try again later.',
+      payment: 'Insufficient credits or API key balance. Please check your provider configuration and ensure you have sufficient credits.',
       generic: originalMessage || fallback,
     };
     
@@ -119,6 +127,7 @@ export class ErrorClassifier {
       permission: 'navigate',
       notFound: 'navigate',
       server: 'retry',
+      payment: 'navigate',
       generic: 'reload',
     };
     
@@ -139,6 +148,7 @@ export class ErrorClassifier {
       permission: 'high',
       notFound: 'medium',
       server: 'high',
+      payment: 'high',
       generic: 'medium',
     };
     

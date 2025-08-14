@@ -1,18 +1,20 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Events;
 using Microsoft.Extensions.Caching.Memory;
 using MassTransit;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Core.Services
 {
     /// <summary>
@@ -22,11 +24,12 @@ namespace ConduitLLM.Core.Services
     public class ProviderDiscoveryService : EventPublishingServiceBase, IProviderDiscoveryService
     {
         private readonly ILLMClientFactory _clientFactory;
-        private readonly ConduitLLM.Configuration.IProviderCredentialService _credentialService;
-        private readonly ConduitLLM.Configuration.IModelProviderMappingService _mappingService;
+        private readonly IProviderService _credentialService;
+        private readonly IModelProviderMappingService _mappingService;
         private readonly ILogger<ProviderDiscoveryService> _logger;
         private readonly IMemoryCache _cache;
-        private readonly IEnumerable<IModelDiscoveryProvider> _discoveryProviders;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IProviderModelDiscovery? _providerModelDiscovery;
         private const string CacheKeyPrefix = "provider_capabilities_";
         private readonly TimeSpan _cacheExpiration = TimeSpan.FromHours(24);
 
@@ -217,15 +220,18 @@ namespace ConduitLLM.Core.Services
         /// <param name="logger">Logger for diagnostic information.</param>
         /// <param name="cache">Memory cache for caching discovery results.</param>
         /// <param name="discoveryProviders">Collection of provider-specific discovery implementations.</param>
+        /// <param name="httpClientFactory">HTTP client factory for making API calls.</param>
         /// <param name="publishEndpoint">Optional endpoint for publishing events.</param>
+        /// <param name="providerModelDiscovery">Optional provider-specific model discovery service.</param>
         public ProviderDiscoveryService(
             ILLMClientFactory clientFactory,
-            ConduitLLM.Configuration.IProviderCredentialService credentialService,
-            ConduitLLM.Configuration.IModelProviderMappingService mappingService,
+            IProviderService credentialService,
+            IModelProviderMappingService mappingService,
             ILogger<ProviderDiscoveryService> logger,
             IMemoryCache cache,
-            IEnumerable<IModelDiscoveryProvider> discoveryProviders,
-            IPublishEndpoint? publishEndpoint = null)
+            IHttpClientFactory httpClientFactory,
+            IPublishEndpoint? publishEndpoint = null,
+            IProviderModelDiscovery? providerModelDiscovery = null)
             : base(publishEndpoint, logger)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
@@ -233,7 +239,8 @@ namespace ConduitLLM.Core.Services
             _mappingService = mappingService ?? throw new ArgumentNullException(nameof(mappingService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
-            _discoveryProviders = discoveryProviders ?? throw new ArgumentNullException(nameof(discoveryProviders));
+            _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+            _providerModelDiscovery = providerModelDiscovery;
             
             // Log event publishing configuration status
             LogEventPublishingConfiguration(nameof(ProviderDiscoveryService));
@@ -244,41 +251,62 @@ namespace ConduitLLM.Core.Services
         {
             var allModels = new Dictionary<string, DiscoveredModel>();
 
-            // Get all known providers from the system
-            var knownProviders = new[] { "openai", "anthropic", "google", "minimax", "replicate", "mistral", "cohere", "openrouter" };
+            // Provider types that have model discovery functionality implemented
+            var providerTypesThatSupportDiscovery = new HashSet<ProviderType> { 
+                ProviderType.OpenAI, 
+                ProviderType.MiniMax, 
+                ProviderType.Replicate,
+                ProviderType.SambaNova 
+            };
 
-            // BULK OPTIMIZATION: Load all credentials and mappings in parallel to avoid N+1 queries
-            var credentialsTask = _credentialService.GetAllCredentialsAsync();
+            // BULK OPTIMIZATION: Load all providers and mappings in parallel to avoid N+1 queries
+            var providersTask = _credentialService.GetAllProvidersAsync();
             var mappingsTask = _mappingService.GetAllMappingsAsync();
             
-            await Task.WhenAll(credentialsTask, mappingsTask);
+            await Task.WhenAll(providersTask, mappingsTask);
             
-            var allCredentials = await credentialsTask;
+            var allProviders = await providersTask;
             var modelMappings = await mappingsTask;
             
-            var credentialLookup = allCredentials.ToDictionary(c => c.ProviderName.ToLowerInvariant(), c => c);
+            // Create lookup for credentials by provider ID
+            var providerIdLookup = allProviders.ToDictionary(p => p.Id, p => p);
 
-            foreach (var providerName in knownProviders)
+            // Iterate through each provider (not provider type)
+            foreach (var provider in allProviders.Where(p => p.IsEnabled && providerTypesThatSupportDiscovery.Contains(p.ProviderType)))
             {
                 try
                 {
-                    if (credentialLookup.TryGetValue(providerName.ToLowerInvariant(), out var credentials) 
-                        && credentials.IsEnabled)
-                    {
-                        var providerModels = await DiscoverProviderModelsAsync(
-                            providerName, 
-                            credentials.ApiKey, 
-                            cancellationToken);
+                    // Get the primary key for this provider
+                    var primaryKey = await _credentialService.GetKeyCredentialsByProviderIdAsync(provider.Id)
+                        .ContinueWith(t => t.Result?.FirstOrDefault(k => k.IsPrimary && k.IsEnabled));
 
-                        foreach (var model in providerModels)
-                        {
-                            allModels[model.Key] = model.Value;
-                        }
+                    if (primaryKey == null)
+                    {
+                        // Fallback to any enabled key
+                        var enabledKeys = await _credentialService.GetKeyCredentialsByProviderIdAsync(provider.Id);
+                        primaryKey = enabledKeys?.FirstOrDefault(k => k.IsEnabled);
+                    }
+                    
+                    if (primaryKey?.ApiKey == null)
+                    {
+                        _logger.LogWarning("No API key available for provider '{ProviderName}' (ID: {ProviderId})", 
+                            provider.ProviderName, provider.Id);
+                        continue;
+                    }
+                    
+                    var providerModels = await DiscoverProviderModelsAsync(
+                        provider, 
+                        cancellationToken);
+
+                    foreach (var model in providerModels)
+                    {
+                        allModels[model.Key] = model.Value;
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to discover models for provider {Provider}", providerName);
+                    _logger.LogWarning(ex, "Failed to discover models for provider '{ProviderName}' (ID: {ProviderId})", 
+                        provider.ProviderName, provider.Id);
                 }
             }
 
@@ -287,9 +315,16 @@ namespace ConduitLLM.Core.Services
             {
                 if (!allModels.ContainsKey(mapping.ModelAlias))
                 {
+                    // Look up the provider to get its type
+                    string providerTypeName = "unknown";
+                    if (mapping.ProviderId > 0 && providerIdLookup.TryGetValue(mapping.ProviderId, out var provider))
+                    {
+                        providerTypeName = provider.ProviderType.ToString();
+                    }
+                    
                     allModels[mapping.ModelAlias] = InferModelCapabilities(
                         mapping.ModelAlias, 
-                        mapping.ProviderName, 
+                        providerTypeName, 
                         mapping.ProviderModelId);
                 }
             }
@@ -299,90 +334,75 @@ namespace ConduitLLM.Core.Services
 
         /// <inheritdoc/>
         public async Task<Dictionary<string, DiscoveredModel>> DiscoverProviderModelsAsync(
-            string providerName, 
-            string? apiKey = null, 
+            Provider Provider, 
             CancellationToken cancellationToken = default)
         {
-            var cacheKey = $"{CacheKeyPrefix}{providerName}";
+            var cacheKey = $"{CacheKeyPrefix}{Provider.Id}_{Provider.ProviderType}";
             
             // Check cache first
             if (_cache.TryGetValue<Dictionary<string, DiscoveredModel>>(cacheKey, out var cachedModels))
             {
-                _logger.LogDebug("Using cached capabilities for provider {Provider}", providerName);
+                _logger.LogDebug("Using cached capabilities for provider '{ProviderName}' (ID: {ProviderId})", 
+                    Provider.ProviderName, Provider.Id);
                 return cachedModels!;
             }
 
             var models = new Dictionary<string, DiscoveredModel>();
 
-            // First try enhanced discovery providers
-            var discoveryProvider = _discoveryProviders.FirstOrDefault(p => 
-                string.Equals(p.ProviderName, providerName, StringComparison.OrdinalIgnoreCase));
-            
-            if (discoveryProvider != null && discoveryProvider.SupportsDiscovery)
+            _logger.LogInformation("Starting discovery for provider '{ProviderName}' (ID: {ProviderId}, Type: {ProviderType}). Provider discovery service available: {Available}", 
+                Provider.ProviderName, Provider.Id, Provider.ProviderType, _providerModelDiscovery != null);
+
+            // Try provider-specific discovery if available
+            if (_providerModelDiscovery != null && _providerModelDiscovery.SupportsDiscovery(Provider.ProviderType))
             {
                 try
                 {
-                    _logger.LogDebug("Using enhanced discovery provider for {Provider}", providerName);
-                    var modelMetadataList = await discoveryProvider.DiscoverModelsAsync(cancellationToken);
+                    _logger.LogDebug("Using provider-specific discovery for '{ProviderName}' (Type: {ProviderType})", 
+                        Provider.ProviderName, Provider.ProviderType);
+                    var discoveredModels = await _providerModelDiscovery.DiscoverModelsAsync(
+                        Provider,
+                        _httpClientFactory.CreateClient("DiscoveryProviders"),
+                        null, // API key will be retrieved from credential
+                        cancellationToken);
                     
-                    foreach (var metadata in modelMetadataList)
+                    _logger.LogDebug("Provider-specific discovery returned {Count} models", discoveredModels.Count);
+                    
+                    foreach (var model in discoveredModels)
                     {
-                        var discoveredModel = ConvertMetadataToDiscoveredModel(metadata);
-                        models[metadata.ModelId] = discoveredModel;
+                        models[model.ModelId] = model;
                     }
-
-                    _logger.LogInformation("Enhanced discovery found {Count} models from provider {Provider}", 
-                        models.Count, providerName);
+                    
+                    if (models.Count() > 0)
+                    {
+                        _logger.LogInformation("Provider-specific discovery found {Count} models for provider '{ProviderName}'", 
+                            models.Count, Provider.ProviderName);
+                        // Continue to cache and event publishing logic below
+                    }
+                }
+                catch (NotSupportedException)
+                {
+                    // Rethrow NotSupportedException to be handled by caller
+                    throw;
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Enhanced discovery failed for provider {Provider}, falling back to legacy methods", providerName);
-                    // Continue to fallback methods below
+                    _logger.LogWarning(ex, "Provider-specific discovery failed for provider '{ProviderName}' (Type: {ProviderType})", 
+                        Provider.ProviderName, Provider.ProviderType);
+                    // Continue to other discovery methods
                 }
             }
-            
-            // If enhanced discovery didn't work or found no models, try legacy client discovery
-            if (models.Count == 0)
+            else
             {
-                try
-                {
-                    // Get client for provider
-                    var client = _clientFactory.GetClientByProvider(providerName);
-
-                    // Try to list models from the provider
-                    try
-                    {
-                        var modelList = await client.ListModelsAsync(apiKey, cancellationToken);
-                        
-                        foreach (var modelId in modelList)
-                        {
-                            var discoveredModel = InferModelCapabilities(modelId, providerName, modelId);
-                            models[modelId] = discoveredModel;
-                        }
-
-                        _logger.LogInformation("Legacy discovery found {Count} models from provider {Provider}", 
-                            models.Count, providerName);
-                    }
-                    catch (NotSupportedException)
-                    {
-                        _logger.LogDebug("Provider {Provider} does not support listing models", providerName);
-                        // Fall back to known models for this provider
-                        AddKnownModelsForProvider(providerName, models);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to create client for provider {Provider}", providerName);
-                    // Fall back to known models for this provider
-                    AddKnownModelsForProvider(providerName, models);
-                }
+                _logger.LogDebug("No provider-specific discovery available for provider type {ProviderType}", Provider.ProviderType);
             }
+
+            // Legacy discovery removed - rely only on provider-specific discovery
 
             // Cache the results
             _cache.Set(cacheKey, models, _cacheExpiration);
 
             // Publish ModelCapabilitiesDiscovered event to eliminate redundant discovery calls
-            if (models.Count > 0)
+            if (models.Count() > 0)
             {
                 // Convert DiscoveredModel to ModelCapabilities for the event
                 var modelCapabilities = models.ToDictionary(
@@ -407,24 +427,20 @@ namespace ConduitLLM.Core.Services
                         }
                     });
 
-                // Get provider ID from credentials
-                var providerId = await GetProviderIdAsync(providerName);
-
                 await PublishEventAsync(
                     new ModelCapabilitiesDiscovered
                     {
-                        ProviderId = providerId,
-                        ProviderName = providerName,
+                        ProviderId = Provider.Id,
                         ModelCapabilities = modelCapabilities,
                         DiscoveredAt = DateTime.UtcNow,
                         CorrelationId = Guid.NewGuid().ToString()
                     },
-                    $"model discovery for provider {providerName}",
-                    new { ProviderName = providerName, ModelCount = models.Count });
+                    $"model discovery for provider {Provider.ProviderName}",
+                    new { ProviderName = Provider.ProviderName, ProviderId = Provider.Id, ModelCount = models.Count });
             }
             else
             {
-                _logger.LogDebug("No models discovered for provider {ProviderName} - skipping ModelCapabilitiesDiscovered event", providerName);
+                _logger.LogDebug("No models discovered for provider '{ProviderName}' - skipping ModelCapabilitiesDiscovered event", Provider.ProviderName);
             }
 
             return models;
@@ -480,32 +496,47 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
-        public async Task RefreshProviderCapabilitiesAsync(string providerName, CancellationToken cancellationToken = default)
+        public async Task RefreshProviderCapabilitiesAsync(int providerId, CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrWhiteSpace(providerName))
+            if (providerId <= 0)
             {
-                throw new ArgumentException("Provider name cannot be null or empty", nameof(providerName));
+                throw new ArgumentException("Provider ID must be greater than zero", nameof(providerId));
             }
 
-            _logger.LogInformation("Refreshing capabilities cache for provider: {ProviderName}", providerName);
-            
-            // Clear cached entries for the specific provider
-            var cacheKey = $"{CacheKeyPrefix}{providerName.ToLowerInvariant()}";
-            _cache.Remove(cacheKey);
+            _logger.LogInformation("Refreshing capabilities cache for provider ID: {ProviderId}", providerId);
             
             try
             {
-                // Re-discover models for this specific provider
-                var discoveredModels = await DiscoverProviderModelsAsync(providerName, null, cancellationToken);
-                
-                _logger.LogInformation("Successfully refreshed capabilities for provider {ProviderName}: {ModelCount} models discovered", 
-                    providerName, discoveredModels.Count);
+                await RefreshProviderCapabilitiesByIdAsync(providerId, cancellationToken);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to refresh capabilities for provider {ProviderName}", providerName);
-                // Don't throw - this is called from event handlers and shouldn't fail the entire event processing
+                _logger.LogError(ex, "Failed to refresh capabilities for provider ID {ProviderId}", providerId);
+                throw;
             }
+        }
+        
+        /// <summary>
+        /// Refreshes provider capabilities by provider ID
+        /// </summary>
+        private async Task RefreshProviderCapabilitiesByIdAsync(int providerId, CancellationToken cancellationToken)
+        {
+            var provider = await _credentialService.GetProviderByIdAsync(providerId);
+            if (provider == null)
+            {
+                _logger.LogWarning("No provider found with ID {ProviderId}", providerId);
+                return;
+            }
+            
+            // Clear cached entries for this specific provider instance
+            var cacheKey = $"{CacheKeyPrefix}{provider.Id}_{provider.ProviderType}";
+            _cache.Remove(cacheKey);
+            
+            // Re-discover models for this specific provider
+            var discoveredModels = await DiscoverProviderModelsAsync(provider, cancellationToken);
+            
+            _logger.LogInformation("Successfully refreshed capabilities for provider '{ProviderName}' (ID: {ProviderId}): {ModelCount} models discovered", 
+                provider.ProviderName, provider.Id, discoveredModels.Count);
         }
 
         private DiscoveredModel InferModelCapabilities(string modelAlias, string provider, string modelId)
@@ -597,102 +628,8 @@ namespace ConduitLLM.Core.Services
             };
         }
 
-        private void AddKnownModelsForProvider(string provider, Dictionary<string, DiscoveredModel> models)
-        {
-            var knownModels = provider.ToLowerInvariant() switch
-            {
-                "openai" => new[] { "gpt-4-turbo-preview", "gpt-4", "gpt-3.5-turbo", "dall-e-3", "dall-e-2" },
-                "anthropic" => new[] { "claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307" },
-                "google" => new[] { "gemini-1.5-pro", "gemini-1.5-flash", "gemini-pro" },
-                "minimax" => new[] { "abab6.5-chat", "abab6.5s-chat", "abab5.5-chat", "image-01", "video-01" },
-                "openrouter" => new[] { 
-                    "anthropic/claude-3-opus", "anthropic/claude-3-sonnet", "anthropic/claude-3-haiku",
-                    "openai/gpt-4-turbo", "openai/gpt-4", "openai/gpt-3.5-turbo",
-                    "google/gemini-pro", "google/gemini-pro-vision",
-                    "meta-llama/llama-3-70b-instruct", "mistralai/mistral-large"
-                },
-                _ => Array.Empty<string>()
-            };
+        // Legacy method no longer needed - all providers use provider-specific discovery
 
-            foreach (var modelId in knownModels)
-            {
-                models[modelId] = InferModelCapabilities(modelId, provider, modelId);
-            }
-        }
-
-        /// <summary>
-        /// Converts enhanced ModelMetadata from discovery providers to DiscoveredModel format.
-        /// This preserves all the rich metadata while maintaining compatibility with existing interfaces.
-        /// </summary>
-        /// <param name="metadata">Enhanced model metadata from discovery provider.</param>
-        /// <returns>DiscoveredModel compatible with existing code.</returns>
-        private DiscoveredModel ConvertMetadataToDiscoveredModel(ModelMetadata metadata)
-        {
-            var discoveredModel = new DiscoveredModel
-            {
-                ModelId = metadata.ModelId,
-                Provider = metadata.Provider,
-                DisplayName = metadata.DisplayName,
-                Capabilities = metadata.Capabilities,
-                LastVerified = metadata.LastUpdated,
-                Metadata = new Dictionary<string, object>(metadata.AdditionalMetadata)
-            };
-
-            // Add enhanced metadata to the metadata dictionary
-            if (metadata.MaxContextTokens.HasValue)
-            {
-                discoveredModel.Metadata["max_context_tokens"] = metadata.MaxContextTokens.Value;
-            }
-            
-            if (metadata.MaxOutputTokens.HasValue)
-            {
-                discoveredModel.Metadata["max_output_tokens"] = metadata.MaxOutputTokens.Value;
-            }
-            
-            if (metadata.InputTokenCost.HasValue)
-            {
-                discoveredModel.Metadata["input_token_cost"] = metadata.InputTokenCost.Value;
-            }
-            
-            if (metadata.OutputTokenCost.HasValue)
-            {
-                discoveredModel.Metadata["output_token_cost"] = metadata.OutputTokenCost.Value;
-            }
-            
-            if (metadata.ImageCostPerImage.HasValue)
-            {
-                discoveredModel.Metadata["image_cost_per_image"] = metadata.ImageCostPerImage.Value;
-            }
-            
-            if (metadata.SupportedImageSizes.Count > 0)
-            {
-                discoveredModel.Metadata["supported_image_sizes"] = metadata.SupportedImageSizes;
-            }
-            
-            if (metadata.SupportedVideoResolutions.Count > 0)
-            {
-                discoveredModel.Metadata["supported_video_resolutions"] = metadata.SupportedVideoResolutions;
-            }
-            
-            if (metadata.MaxVideoDurationSeconds.HasValue)
-            {
-                discoveredModel.Metadata["max_video_duration_seconds"] = metadata.MaxVideoDurationSeconds.Value;
-            }
-            
-            // Add discovery source information
-            discoveredModel.Metadata["discovery_source"] = metadata.Source.ToString();
-            
-            if (metadata.Warnings.Count > 0)
-            {
-                discoveredModel.Metadata["warnings"] = metadata.Warnings;
-            }
-            
-            // Mark as enhanced discovery
-            discoveredModel.Metadata["enhanced_discovery"] = true;
-            discoveredModel.Metadata["last_updated"] = metadata.LastUpdated;
-
-            return discoveredModel;
-        }
 
         private bool TestCapability(ConduitLLM.Core.Interfaces.ModelCapabilities capabilities, ModelCapability capability)
         {
@@ -712,30 +649,5 @@ namespace ConduitLLM.Core.Services
             };
         }
 
-        /// <summary>
-        /// Gets the provider ID from the credential service for a given provider name
-        /// </summary>
-        /// <param name="providerName">The provider name to look up</param>
-        /// <returns>The provider ID, or 0 if not found</returns>
-        private async Task<int> GetProviderIdAsync(string providerName)
-        {
-            try
-            {
-                // Get provider credential to find the ID
-                var credential = await _credentialService.GetCredentialByProviderNameAsync(providerName);
-                if (credential != null)
-                {
-                    return credential.Id;
-                }
-                
-                _logger.LogDebug("No provider credential found for provider name: {ProviderName}", providerName);
-                return 0; // Return 0 if provider not found
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Error getting provider ID for provider name: {ProviderName}", providerName);
-                return 0; // Return 0 on error to avoid failing event publishing
-            }
-        }
     }
 }

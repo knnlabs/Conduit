@@ -28,15 +28,15 @@ import {
   IconSearch,
 } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
-import { useDisclosure } from '@mantine/hooks';
 import { ProvidersTable } from '@/components/providers/ProvidersTable';
-import { CreateProviderModal } from '@/components/providers/CreateProviderModal';
-import { EditProviderModal } from '@/components/providers/EditProviderModal';
 import { notifications } from '@mantine/notifications';
+import { useRouter } from 'next/navigation';
 import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/export';
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
-import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+import { ApiKeyTestResult, type ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+import { withAdminClient } from '@/lib/client/adminClient';
+import { getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 
 // Use SDK types directly with health extensions
 interface ProviderWithHealth extends ProviderCredentialDto {
@@ -44,17 +44,16 @@ interface ProviderWithHealth extends ProviderCredentialDto {
   lastHealthCheck?: string;
   models?: string[];
   endpoint?: string;
+  keyCount?: number;
 }
 
 export default function ProvidersPage() {
-  const [createModalOpened, { open: openCreateModal, close: closeCreateModal }] = useDisclosure(false);
-  const [editModalOpened, { open: openEditModal, close: closeEditModal }] = useDisclosure(false);
-  const [selectedProvider, setSelectedProvider] = useState<ProviderWithHealth | null>(null);
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [providers, setProviders] = useState<ProviderWithHealth[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [testingProviders, setTestingProviders] = useState<Set<string>>(new Set());
+  const [testingProviders, setTestingProviders] = useState<Set<number>>(new Set());
 
   // Fetch providers on mount
   useEffect(() => {
@@ -64,23 +63,39 @@ export default function ProvidersPage() {
   const fetchProviders = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/providers');
-      if (!response.ok) {
-        throw new Error('Failed to fetch providers');
-      }
-      const data = await response.json() as ProviderCredentialDto[] | { items?: ProviderCredentialDto[]; providers?: ProviderCredentialDto[] };
+      const result = await withAdminClient(client => 
+        client.providers.list(1, 1000)
+      );
       
-      // Check if data is an array or if it's wrapped in a response object
-      const providersList = Array.isArray(data) ? data : (data.items ?? data.providers ?? []);
+      const providersList = result.items;
       
-      // Use SDK types directly and add health status (would need separate health fetch in real app)
-      const providersWithHealth: ProviderWithHealth[] = providersList.map((p: ProviderCredentialDto) => ({
-        ...p,
-        healthStatus: 'unknown' as const,
-        models: []
-      }));
+      // Fetch key counts for each provider
+      const providersWithKeyCount = await Promise.all(
+        providersList.map(async (provider: ProviderCredentialDto) => {
+          let keyCount = 0;
+          if (provider.id) {
+            try {
+              const keys = await withAdminClient(client => 
+                client.providers.listKeys(provider.id)
+              ) as unknown as ProviderCredentialDto[];
+              keyCount = Array.isArray(keys) ? keys.length : 0;
+            } catch {
+              // Silently fail, keyCount remains 0
+            }
+          }
+          
+          const providerWithHealth: ProviderWithHealth = {
+            ...provider,
+            healthStatus: 'unknown' as const,
+            models: [],
+            keyCount
+          };
+          
+          return providerWithHealth;
+        })
+      );
       
-      setProviders(providersWithHealth);
+      setProviders(providersWithKeyCount);
     } catch (error) {
       setError(error instanceof Error ? error : new Error('Unknown error'));
     } finally {
@@ -88,21 +103,17 @@ export default function ProvidersPage() {
     }
   };
 
-  const handleTestProvider = async (providerId: string) => {
+  const handleTestProvider = async (providerId: number) => {
     setTestingProviders(prev => new Set(prev).add(providerId));
     try {
-      const response = await fetch(`/api/providers/${providerId}/test-connection`, {
-        method: 'POST',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to test provider');
-      }
-      const result = await response.json() as { success?: boolean; message?: string };
+      const result = await withAdminClient(client => 
+        client.providers.testConnectionById(providerId)
+      );
       
       notifications.show({
-        title: result.success ? 'Connection Successful' : 'Connection Failed',
-        message: result.message ?? (result.success ? 'Provider is working correctly' : 'Failed to connect to provider'),
-        color: result.success ? 'green' : 'red',
+        title: result.result === ApiKeyTestResult.SUCCESS ? 'Connection Successful' : 'Connection Failed',
+        message: result.message ?? (result.result === ApiKeyTestResult.SUCCESS ? 'Provider is working correctly' : 'Failed to connect to provider'),
+        color: result.result === ApiKeyTestResult.SUCCESS ? 'green' : 'red',
       });
       
       // Refresh providers to get updated health status
@@ -122,14 +133,11 @@ export default function ProvidersPage() {
     }
   };
 
-  const handleDelete = async (providerId: string) => {
+  const handleDelete = async (providerId: number) => {
     try {
-      const response = await fetch(`/api/providers/${providerId}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete provider');
-      }
+      await withAdminClient(client => 
+        client.providers.deleteById(providerId)
+      );
       notifications.show({
         title: 'Success',
         message: 'Provider deleted successfully',
@@ -150,10 +158,13 @@ export default function ProvidersPage() {
     if (!searchQuery) return true;
     
     const query = searchQuery.toLowerCase();
+    const displayName = provider.providerType ? getProviderDisplayName(provider.providerType) : 'Unknown Provider';
+    
     return (
-      provider.providerName.toLowerCase().includes(query) ||
-      provider.id.toString().toLowerCase().includes(query) ||
-      (provider.endpoint?.toLowerCase().includes(query) ?? false)
+      displayName.toLowerCase().includes(query) ||
+      (provider.providerName?.toLowerCase().includes(query) ?? false) ||
+      (provider.id?.toString().toLowerCase().includes(query) ?? false) ||
+      (provider.baseUrl?.toLowerCase().includes(query) ?? false)
     );
   });
 
@@ -175,9 +186,9 @@ export default function ProvidersPage() {
   };
 
   const handleEdit = (provider: ProviderWithHealth) => {
-    setSelectedProvider(provider);
-    openEditModal();
+    router.push(`/llm-providers/edit/${provider.id}`);
   };
+
 
   const handleExportCSV = () => {
     if (filteredProviders.length === 0) {
@@ -189,16 +200,20 @@ export default function ProvidersPage() {
       return;
     }
 
-    const exportData = filteredProviders.map((provider) => ({
-      name: provider.providerName,
-      type: provider.providerName,
-      status: provider.isEnabled ? 'Enabled' : 'Disabled',
-      health: provider.healthStatus,
-      endpoint: provider.endpoint ?? '',
-      models: provider.models?.join('; ') ?? '',
-      lastHealthCheck: formatDateForExport(provider.lastHealthCheck),
-      createdAt: formatDateForExport(provider.createdAt),
-    }));
+    const exportData = filteredProviders.map((provider) => {
+      const displayName = provider.providerType ? getProviderDisplayName(provider.providerType) : 'Unknown Provider';
+      
+      return {
+        name: provider.providerName ?? displayName,
+        type: displayName,
+        status: provider.isEnabled ? 'Enabled' : 'Disabled',
+        health: provider.healthStatus,
+        endpoint: provider.baseUrl ?? '',
+        models: provider.models?.join('; ') ?? '',
+        lastHealthCheck: formatDateForExport(provider.lastHealthCheck),
+        createdAt: formatDateForExport(provider.createdAt),
+      };
+    });
 
     exportToCSV(
       exportData,
@@ -333,7 +348,7 @@ export default function ProvidersPage() {
 
           <Button
             leftSection={<IconPlus size={16} />}
-            onClick={openCreateModal}
+            onClick={() => router.push('/llm-providers/add')}
           >
             Add Provider
           </Button>
@@ -388,8 +403,8 @@ export default function ProvidersPage() {
           <ProvidersTable 
             data={paginatedData}
             onEdit={handleEdit}
-            onTest={(providerId: string) => void handleTestProvider(providerId)}
-            onDelete={(providerId: string) => void handleDelete(providerId)}
+            onTest={(providerId: number) => void handleTestProvider(providerId)}
+            onDelete={(providerId: number) => void handleDelete(providerId)}
             testingProviders={testingProviders}
           />
           {filteredProviders.length > 0 && (
@@ -404,20 +419,6 @@ export default function ProvidersPage() {
         </Card.Section>
       </Card>
 
-      {/* Create Provider Modal */}
-      <CreateProviderModal
-        opened={createModalOpened}
-        onClose={closeCreateModal}
-        onSuccess={() => void fetchProviders()}
-      />
-
-      {/* Edit Provider Modal */}
-      <EditProviderModal
-        opened={editModalOpened}
-        onClose={closeEditModal}
-        provider={selectedProvider}
-        onSuccess={() => void fetchProviders()}
-      />
     </Stack>
   );
 }

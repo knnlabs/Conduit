@@ -16,41 +16,39 @@ import { useForm } from '@mantine/form';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { validators } from '@/lib/utils/form-validators';
 import { notifications } from '@mantine/notifications';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
-
-// Extend VirtualKeyDto with UI-specific fields added by the API
-interface VirtualKeyWithUI extends VirtualKeyDto {
-  displayKey: string;
-}
+import { withAdminClient } from '@/lib/client/adminClient';
 
 interface EditVirtualKeyModalProps {
   opened: boolean;
   onClose: () => void;
-  virtualKey: VirtualKeyWithUI | null;
+  virtualKey: VirtualKeyDto | null;
   onSuccess?: () => void;
 }
 
 interface EditVirtualKeyForm {
   keyName: string;
   description?: string;
-  maxBudget?: number;
+  virtualKeyGroupId?: number;
   isEnabled: boolean;
   allowedModels: string[];
 }
 
 export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: EditVirtualKeyModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [initialFormValues, setInitialFormValues] = useState<EditVirtualKeyForm>(() => ({
+    keyName: '',
+    description: '',
+    virtualKeyGroupId: undefined,
+    isEnabled: true,
+    allowedModels: [],
+  }));
+  const lastVirtualKeyId = useRef<number | undefined>(undefined);
 
   const form = useForm<EditVirtualKeyForm>({
-    initialValues: {
-      keyName: '',
-      description: '',
-      maxBudget: undefined,
-      isEnabled: true,
-      allowedModels: [],
-    },
+    initialValues: initialFormValues,
     validate: {
       keyName: (value) => {
         const requiredError = validators.required('Key name')(value);
@@ -64,26 +62,41 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
         
         return null;
       },
-      maxBudget: validators.positiveNumber('Budget'),
+      virtualKeyGroupId: validators.positiveNumber('Virtual Key Group'),
     },
   });
 
+  // Reset tracking when modal closes
+  useEffect(() => {
+    if (!opened) {
+      lastVirtualKeyId.current = undefined;
+    }
+  }, [opened]);
+
   // Update form when virtualKey changes
   useEffect(() => {
-    if (virtualKey) {
-      // Parse allowedModels from string to array (it's stored as comma-separated in the DTO)
-      const models = virtualKey.allowedModels 
-        ? virtualKey.allowedModels.split(',').map(m => m.trim()).filter(m => m)
-        : ['*']; // Default to all models if none specified
-      
-      form.setValues({
-        keyName: virtualKey.keyName,
-        description: virtualKey.metadata ? JSON.stringify(virtualKey.metadata) : '',
-        maxBudget: virtualKey.maxBudget,
-        isEnabled: virtualKey.isEnabled,
-        allowedModels: models,
-      });
-    }
+    if (!virtualKey) return;
+    
+    // Only update if this is a different virtualKey than last time
+    if (lastVirtualKeyId.current === virtualKey.id) return;
+    lastVirtualKeyId.current = virtualKey.id;
+    
+    // Parse allowedModels from string to array (it's stored as comma-separated in the DTO)
+    const models = virtualKey.allowedModels 
+      ? virtualKey.allowedModels.split(',').map(m => m.trim()).filter(m => m)
+      : ['*']; // Default to all models if none specified
+    
+    const newFormValues: EditVirtualKeyForm = {
+      keyName: virtualKey.keyName,
+      description: virtualKey.metadata ? JSON.stringify(virtualKey.metadata) : '',
+      virtualKeyGroupId: virtualKey.virtualKeyGroupId ?? undefined,
+      isEnabled: virtualKey.isEnabled,
+      allowedModels: models,
+    };
+    
+    setInitialFormValues(newFormValues);
+    form.setValues(newFormValues);
+    form.resetDirty();
   }, [virtualKey, form]);
 
   const handleSubmit = async (values: EditVirtualKeyForm) => {
@@ -94,36 +107,16 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
       
       const payload = {
         keyName: values.keyName.trim(),
-        maxBudget: values.maxBudget ?? undefined,
+        virtualKeyGroupId: values.virtualKeyGroupId ?? undefined,
         isEnabled: values.isEnabled,
         allowedModels: values.allowedModels.length > 0 ? values.allowedModels.join(',') : undefined,
         // Note: description is stored in metadata for virtual keys
         metadata: values.description?.trim() ?? undefined,
       };
 
-      
-      const response = await fetch(`/api/virtualkeys/${virtualKey.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      
-      const responseText = await response.text();
-      
-      if (!response.ok) {
-        let errorMessage = 'Failed to update virtual key';
-        try {
-          const errorData = JSON.parse(responseText) as { message?: string; error?: string };
-          errorMessage = errorData.message ?? errorData.error ?? errorMessage;
-        } catch {
-          // If not JSON, use the text as is
-          errorMessage = responseText || errorMessage;
-        }
-        throw new Error(errorMessage);
-      }
+      await withAdminClient(client => 
+        client.virtualKeys.update(virtualKey.id.toString(), payload)
+      );
       
       // Response was successful
 
@@ -162,9 +155,9 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="md">
         <Alert icon={<IconAlertCircle size={16} />} color="blue">
-          <Text size="sm" fw={500}>Key Hash</Text>
+          <Text size="sm" fw={500}>Key Prefix</Text>
           <Text size="xs" style={{ fontFamily: 'monospace' }}>
-            {virtualKey.displayKey}
+            {virtualKey.keyPrefix ?? 'N/A'}
           </Text>
         </Alert>
 
@@ -189,20 +182,17 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
         />
 
         <NumberInput
-          label="Maximum Budget"
-          description="Maximum amount this key can spend (in USD)"
-          placeholder="No limit"
-          min={0}
-          step={10}
-          decimalScale={2}
-          prefix="$"
-          {...form.getInputProps('maxBudget')}
+          label="Virtual Key Group"
+          description="Group ID this key belongs to"
+          placeholder="Group ID"
+          min={1}
+          step={1}
+          {...form.getInputProps('virtualKeyGroupId')}
         />
 
         <Alert icon={<IconAlertCircle size={16} />} color="gray">
           <Text size="sm">
-            Current spend: ${virtualKey.currentSpend.toFixed(2)} | 
-            Requests: {virtualKey.requestCount?.toLocaleString() ?? '0'}
+            Virtual Key Group ID: {virtualKey.virtualKeyGroupId}
           </Text>
         </Alert>
         

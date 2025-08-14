@@ -25,7 +25,7 @@ namespace ConduitLLM.Admin.Services
         private readonly ILogger<SecurityService> _logger;
         private readonly IMemoryCache _memoryCache;
         private readonly IDistributedCache? _distributedCache;
-        private readonly IAdminIpFilterService _ipFilterService;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
 
         // Cache keys - same as WebUI for shared tracking
         private const string RATE_LIMIT_PREFIX = "rate_limit:";
@@ -44,14 +44,14 @@ namespace ConduitLLM.Admin.Services
             ILogger<SecurityService> logger,
             IMemoryCache memoryCache,
             IDistributedCache? distributedCache,
-            IAdminIpFilterService ipFilterService)
+            IServiceScopeFactory serviceScopeFactory)
         {
             _options = options.Value;
             _configuration = configuration;
             _logger = logger;
             _memoryCache = memoryCache;
             _distributedCache = distributedCache;
-            _ipFilterService = ipFilterService;
+            _serviceScopeFactory = serviceScopeFactory;
         }
 
         /// <inheritdoc/>
@@ -125,6 +125,14 @@ namespace ConduitLLM.Admin.Services
             // Check primary header
             if (context.Request.Headers.TryGetValue(_options.ApiAuth.ApiKeyHeader, out var apiKey))
             {
+                // Check if it's an ephemeral master key (starts with "emk_")
+                if (!string.IsNullOrEmpty(apiKey) && apiKey.ToString().StartsWith("emk_", StringComparison.Ordinal))
+                {
+                    // Ephemeral keys are validated by the authentication middleware
+                    // We just need to confirm it's present and has the right format
+                    return true;
+                }
+                
                 if (ValidateApiKey(apiKey!))
                     return true;
             }
@@ -134,6 +142,14 @@ namespace ConduitLLM.Admin.Services
             {
                 if (context.Request.Headers.TryGetValue(header, out var altKey))
                 {
+                    // Check if it's an ephemeral master key (starts with "emk_")
+                    if (!string.IsNullOrEmpty(altKey) && altKey.ToString().StartsWith("emk_", StringComparison.Ordinal))
+                    {
+                        // Ephemeral keys are validated by the authentication middleware
+                        // We just need to confirm it's present and has the right format
+                        return true;
+                    }
+                    
                     if (ValidateApiKey(altKey!))
                         return true;
                 }
@@ -394,7 +410,9 @@ namespace ConduitLLM.Admin.Services
             }
 
             // Also check database-based IP filters
-            var isAllowedByDb = await _ipFilterService.IsIpAllowedAsync(ipAddress);
+            using var scope = _serviceScopeFactory.CreateScope();
+            var ipFilterService = scope.ServiceProvider.GetRequiredService<IAdminIpFilterService>();
+            var isAllowedByDb = await ipFilterService.IsIpAllowedAsync(ipAddress);
             if (!isAllowedByDb)
             {
                 _logger.LogWarning("IP {IpAddress} blocked by database IP filter", ipAddress);

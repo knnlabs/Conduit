@@ -63,4 +63,4 @@ This document summarizes the fixes made to integrate the completed Admin SDK wit
 
 ## Warnings During Build
 
-The build shows warnings about `CONDUIT_ADMIN_LOGIN_PASSWORD` not being set. This is expected in the build environment and the actual value should be set when running the application.
+The WebUI now uses Clerk for authentication. Administrator access is controlled through Clerk user metadata (`siteadmin: true`).

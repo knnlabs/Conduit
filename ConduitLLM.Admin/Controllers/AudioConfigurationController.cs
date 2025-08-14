@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.Audio;
 
@@ -75,15 +76,15 @@ namespace ConduitLLM.Admin.Controllers
         }
 
         /// <summary>
-        /// Gets audio provider configurations by provider name.
+        /// Gets audio provider configurations by provider ID.
         /// </summary>
-        /// <param name="providerName">The provider name</param>
+        /// <param name="providerId">The provider ID</param>
         /// <response code="200">Returns the list of configurations for the provider</response>
-        [HttpGet("providers/by-name/{providerName}")]
+        [HttpGet("providers/by-id/{providerId}")]
         [ProducesResponseType(typeof(List<AudioProviderConfigDto>), 200)]
-        public async Task<IActionResult> GetProvidersByName(string providerName)
+        public async Task<IActionResult> GetProvidersById(int providerId)
         {
-            var providers = await _providerService.GetByProviderAsync(providerName);
+            var providers = await _providerService.GetByProviderAsync(providerId);
             return Ok(providers);
         }
 
@@ -219,20 +220,20 @@ namespace ConduitLLM.Admin.Controllers
         /// <summary>
         /// Gets audio costs by provider.
         /// </summary>
-        /// <param name="provider">The provider name</param>
+        /// <param name="providerId">The provider ID</param>
         /// <response code="200">Returns the list of costs for the provider</response>
-        [HttpGet("costs/by-provider/{provider}")]
+        [HttpGet("costs/by-provider/{providerId}")]
         [ProducesResponseType(typeof(List<AudioCostDto>), 200)]
-        public async Task<IActionResult> GetCostsByProvider(string provider)
+        public async Task<IActionResult> GetCostsByProvider(int providerId)
         {
-            var costs = await _costService.GetByProviderAsync(provider);
+            var costs = await _costService.GetByProviderAsync(providerId);
             return Ok(costs);
         }
 
         /// <summary>
         /// Gets the current cost for a specific operation.
         /// </summary>
-        /// <param name="provider">The provider name</param>
+        /// <param name="providerId">The provider ID</param>
         /// <param name="operationType">The operation type</param>
         /// <param name="model">The model name (optional)</param>
         /// <response code="200">Returns the current cost</response>
@@ -241,11 +242,11 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(AudioCostDto), 200)]
         [ProducesResponseType(404)]
         public async Task<IActionResult> GetCurrentCost(
-            [FromQuery] string provider,
+            [FromQuery] int providerId,
             [FromQuery] string operationType,
             [FromQuery] string? model = null)
         {
-            var cost = await _costService.GetCurrentCostAsync(provider, operationType, model);
+            var cost = await _costService.GetCurrentCostAsync(providerId, operationType, model);
             if (cost == null)
                 return NotFound();
 
@@ -334,7 +335,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="startDate">Start date for the summary</param>
         /// <param name="endDate">End date for the summary</param>
         /// <param name="virtualKey">Filter by virtual key (optional)</param>
-        /// <param name="provider">Filter by provider (optional)</param>
+        /// <param name="providerId">Filter by provider ID (optional)</param>
         /// <response code="200">Returns usage summary</response>
         [HttpGet("usage/summary")]
         [ProducesResponseType(typeof(AudioUsageSummaryDto), 200)]
@@ -342,9 +343,9 @@ namespace ConduitLLM.Admin.Controllers
             [FromQuery] DateTime startDate,
             [FromQuery] DateTime endDate,
             [FromQuery] string? virtualKey = null,
-            [FromQuery] string? provider = null)
+            [FromQuery] int? providerId = null)
         {
-            var summary = await _usageService.GetUsageSummaryAsync(startDate, endDate, virtualKey, provider);
+            var summary = await _usageService.GetUsageSummaryAsync(startDate, endDate, virtualKey, providerId);
             return Ok(summary);
         }
 
@@ -369,18 +370,18 @@ namespace ConduitLLM.Admin.Controllers
         /// <summary>
         /// Gets audio usage by provider.
         /// </summary>
-        /// <param name="provider">The provider name</param>
+        /// <param name="providerId">The provider ID</param>
         /// <param name="startDate">Start date (optional)</param>
         /// <param name="endDate">End date (optional)</param>
         /// <response code="200">Returns usage data for the provider</response>
-        [HttpGet("usage/by-provider/{provider}")]
+        [HttpGet("usage/by-provider/{providerId}")]
         [ProducesResponseType(typeof(AudioProviderUsageDto), 200)]
         public async Task<IActionResult> GetUsageByProvider(
-            string provider,
+            int providerId,
             [FromQuery] DateTime? startDate = null,
             [FromQuery] DateTime? endDate = null)
         {
-            var usage = await _usageService.GetUsageByProviderAsync(provider, startDate, endDate);
+            var usage = await _usageService.GetUsageByProviderAsync(providerId, startDate, endDate);
             return Ok(usage);
         }
 

@@ -33,25 +33,9 @@ public class VirtualKeyDto
     public string? AllowedModels { get; set; }
 
     /// <summary>
-    /// The maximum budget (in currency units) allocated to this key.
-    /// Null indicates no budget limit.
+    /// ID of the virtual key group this key belongs to.
     /// </summary>
-    public decimal? MaxBudget { get; set; }
-
-    /// <summary>
-    /// Current spending amount used from the budget.
-    /// </summary>
-    public decimal CurrentSpend { get; set; }
-
-    /// <summary>
-    /// Duration for budget renewal (e.g., "monthly", "weekly", "once").
-    /// </summary>
-    public string? BudgetDuration { get; set; }
-
-    /// <summary>
-    /// The date when the current budget period started.
-    /// </summary>
-    public DateTime? BudgetStartDate { get; set; }
+    public int VirtualKeyGroupId { get; set; }
 
     /// <summary>
     /// Indicates whether the key is currently active and can be used for API calls.
@@ -95,43 +79,4 @@ public class VirtualKeyDto
     /// </summary>
     public string? Description { get; set; }
 
-    #region Compatibility Properties
-
-    /// <summary>
-    /// Compatibility property for Name - maps to KeyName
-    /// </summary>
-    public string Name
-    {
-        get => KeyName;
-        set => KeyName = value;
-    }
-
-    /// <summary>
-    /// Compatibility property for IsActive - maps to IsEnabled
-    /// </summary>
-    public bool IsActive
-    {
-        get => IsEnabled;
-        set => IsEnabled = value;
-    }
-
-    /// <summary>
-    /// Compatibility property for UsageLimit - maps to MaxBudget
-    /// </summary>
-    public decimal? UsageLimit
-    {
-        get => MaxBudget;
-        set => MaxBudget = value;
-    }
-
-    /// <summary>
-    /// Compatibility property for RateLimit - maps to RateLimitRpm
-    /// </summary>
-    public int? RateLimit
-    {
-        get => RateLimitRpm;
-        set => RateLimitRpm = value;
-    }
-
-    #endregion
 }

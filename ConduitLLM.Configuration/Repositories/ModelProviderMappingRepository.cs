@@ -5,6 +5,8 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Data;
+using ConduitLLM.Configuration.Interfaces;
+using ModelProviderMappingEntity = ConduitLLM.Configuration.Entities.ModelProviderMapping;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -18,7 +20,7 @@ namespace ConduitLLM.Configuration.Repositories
     /// </summary>
     public class ModelProviderMappingRepository : IModelProviderMappingRepository
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly ILogger<ModelProviderMappingRepository> _logger;
 
         /// <summary>
@@ -27,7 +29,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="dbContextFactory">The database context factory</param>
         /// <param name="logger">The logger</param>
         public ModelProviderMappingRepository(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<ModelProviderMappingRepository> logger)
         {
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
@@ -35,7 +37,7 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
-        public async Task<ConduitLLM.Configuration.Entities.ModelProviderMapping?> GetByIdAsync(
+        public async Task<ModelProviderMappingEntity?> GetByIdAsync(
             int id,
             CancellationToken cancellationToken = default)
         {
@@ -43,7 +45,7 @@ namespace ConduitLLM.Configuration.Repositories
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ModelProviderMappings
-                    .Include(m => m.ProviderCredential)
+                    .Include(m => m.Provider)
                     .AsNoTracking()
                     .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
             }
@@ -55,7 +57,7 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
-        public async Task<ConduitLLM.Configuration.Entities.ModelProviderMapping?> GetByModelNameAsync(
+        public async Task<ModelProviderMappingEntity?> GetByModelNameAsync(
             string modelName,
             CancellationToken cancellationToken = default)
         {
@@ -68,7 +70,7 @@ namespace ConduitLLM.Configuration.Repositories
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ModelProviderMappings
-                    .Include(m => m.ProviderCredential)
+                    .Include(m => m.Provider)
                     .AsNoTracking()
                     .FirstOrDefaultAsync(m => m.ModelAlias == modelName, cancellationToken);
             }
@@ -80,14 +82,14 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
-        public async Task<List<ConduitLLM.Configuration.Entities.ModelProviderMapping>> GetAllAsync(
+        public async Task<List<ModelProviderMappingEntity>> GetAllAsync(
             CancellationToken cancellationToken = default)
         {
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ModelProviderMappings
-                    .Include(m => m.ProviderCredential)
+                    .Include(m => m.Provider)
                     .AsNoTracking()
                     .OrderBy(m => m.ModelAlias)
                     .ToListAsync(cancellationToken);
@@ -100,47 +102,41 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
-        public async Task<List<ConduitLLM.Configuration.Entities.ModelProviderMapping>> GetByProviderAsync(
-            string providerName,
+        public async Task<List<ModelProviderMappingEntity>> GetByProviderAsync(
+            ProviderType providerType,
             CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrEmpty(providerName))
-            {
-                throw new ArgumentException("Provider name cannot be null or empty", nameof(providerName));
-            }
-
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-                // First find the provider credential
-                var credential = await dbContext.ProviderCredentials
+                var credential = await dbContext.Providers
                     .AsNoTracking()
-                    .FirstOrDefaultAsync(pc => pc.ProviderName == providerName, cancellationToken);
+                    .FirstOrDefaultAsync(pc => pc.ProviderType == providerType, cancellationToken);
 
                 if (credential == null)
                 {
-                    return new List<ConduitLLM.Configuration.Entities.ModelProviderMapping>();
+                    return new List<ModelProviderMappingEntity>();
                 }
 
                 // Then find mappings with this credential ID
                 return await dbContext.ModelProviderMappings
-                    .Include(m => m.ProviderCredential)
+                    .Include(m => m.Provider)
                     .AsNoTracking()
-                    .Where(m => m.ProviderCredentialId == credential.Id)
+                    .Where(m => m.ProviderId == credential.Id)
                     .OrderBy(m => m.ModelAlias)
                     .ToListAsync(cancellationToken);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model provider mappings for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error getting model provider mappings for provider type {ProviderType}", providerType);
                 throw;
             }
         }
 
         /// <inheritdoc/>
         public async Task<int> CreateAsync(
-            ConduitLLM.Configuration.Entities.ModelProviderMapping modelProviderMapping,
+            ModelProviderMappingEntity modelProviderMapping,
             CancellationToken cancellationToken = default)
         {
             if (modelProviderMapping == null)
@@ -170,7 +166,7 @@ namespace ConduitLLM.Configuration.Repositories
 
         /// <inheritdoc/>
         public async Task<bool> UpdateAsync(
-            ConduitLLM.Configuration.Entities.ModelProviderMapping modelProviderMapping,
+            ModelProviderMappingEntity modelProviderMapping,
             CancellationToken cancellationToken = default)
         {
             if (modelProviderMapping == null)
@@ -194,8 +190,8 @@ namespace ConduitLLM.Configuration.Repositories
 
                 // Update fields
                 existingEntity.ModelAlias = modelProviderMapping.ModelAlias;
-                existingEntity.ProviderModelName = modelProviderMapping.ProviderModelName;
-                existingEntity.ProviderCredentialId = modelProviderMapping.ProviderCredentialId;
+                existingEntity.ProviderModelId = modelProviderMapping.ProviderModelId;
+                existingEntity.ProviderId = modelProviderMapping.ProviderId;
                 existingEntity.IsEnabled = modelProviderMapping.IsEnabled;
                 existingEntity.MaxContextTokens = modelProviderMapping.MaxContextTokens;
                 
@@ -205,6 +201,11 @@ namespace ConduitLLM.Configuration.Repositories
                 existingEntity.SupportsTextToSpeech = modelProviderMapping.SupportsTextToSpeech;
                 existingEntity.SupportsRealtimeAudio = modelProviderMapping.SupportsRealtimeAudio;
                 existingEntity.SupportsImageGeneration = modelProviderMapping.SupportsImageGeneration;
+                existingEntity.SupportsVideoGeneration = modelProviderMapping.SupportsVideoGeneration;
+                existingEntity.SupportsEmbeddings = modelProviderMapping.SupportsEmbeddings;
+                existingEntity.SupportsChat = modelProviderMapping.SupportsChat;
+                existingEntity.SupportsFunctionCalling = modelProviderMapping.SupportsFunctionCalling;
+                existingEntity.SupportsStreaming = modelProviderMapping.SupportsStreaming;
                 existingEntity.TokenizerType = modelProviderMapping.TokenizerType;
                 existingEntity.SupportedVoices = modelProviderMapping.SupportedVoices;
                 existingEntity.SupportedLanguages = modelProviderMapping.SupportedLanguages;

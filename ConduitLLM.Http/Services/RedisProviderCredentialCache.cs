@@ -5,19 +5,20 @@ using StackExchange.Redis;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Http.Services
 {
     /// <summary>
     /// Redis-based Provider Credential cache with event-driven invalidation
     /// </summary>
-    public class RedisProviderCredentialCache : IProviderCredentialCache
+    public class RedisProviderCache : IProviderCache
     {
         private readonly IDatabase _database;
-        private readonly ILogger<RedisProviderCredentialCache> _logger;
+        private readonly ILogger<RedisProviderCache> _logger;
         private readonly TimeSpan _defaultExpiry = TimeSpan.FromHours(1);
         private const string KeyPrefix = "provider:";
-        private const string NameKeyPrefix = "provider:name:";
+        private const string NameKeyPrefix = "provider:name:"; // DEPRECATED - only for cleanup
         
         // Statistics tracking keys
         private const string STATS_HIT_KEY = "conduit:cache:provider:stats:hits";
@@ -30,9 +31,9 @@ namespace ConduitLLM.Http.Services
             PropertyNameCaseInsensitive = true
         };
 
-        public RedisProviderCredentialCache(
+        public RedisProviderCache(
             IConnectionMultiplexer redis,
-            ILogger<RedisProviderCredentialCache> logger)
+            ILogger<RedisProviderCache> logger)
         {
             _database = redis.GetDatabase();
             _logger = logger;
@@ -44,9 +45,9 @@ namespace ConduitLLM.Http.Services
         /// <summary>
         /// Get Provider Credential from cache with database fallback
         /// </summary>
-        public async Task<ProviderCredential?> GetProviderCredentialAsync(
+        public async Task<CachedProvider?> GetProviderAsync(
             int providerId, 
-            Func<int, Task<ProviderCredential?>> databaseFallback)
+            Func<int, Task<CachedProvider?>> databaseFallback)
         {
             var cacheKey = KeyPrefix + providerId;
             
@@ -59,7 +60,7 @@ namespace ConduitLLM.Http.Services
                     var jsonString = (string?)cachedValue;
                     if (jsonString is not null)
                     {
-                        var credential = JsonSerializer.Deserialize<ProviderCredential>(jsonString, _jsonOptions);
+                        var credential = JsonSerializer.Deserialize<CachedProvider>(jsonString, _jsonOptions);
                         
                         if (credential != null)
                         {
@@ -79,7 +80,7 @@ namespace ConduitLLM.Http.Services
                 if (dbCredential != null)
                 {
                     // Cache the credential
-                    await SetProviderCredentialAsync(providerId, dbCredential);
+                    await SetProviderAsync(providerId, dbCredential);
                     return dbCredential;
                 }
                 
@@ -96,42 +97,23 @@ namespace ConduitLLM.Http.Services
         /// <summary>
         /// Get Provider Credential by name from cache with database fallback
         /// </summary>
-        public async Task<ProviderCredential?> GetProviderCredentialByNameAsync(
+        public async Task<CachedProvider?> GetProviderByNameAsync(
             string providerName, 
-            Func<string, Task<ProviderCredential?>> databaseFallback)
+            Func<string, Task<CachedProvider?>> databaseFallback)
         {
-            var cacheKey = NameKeyPrefix + providerName.ToLowerInvariant();
-            
+            // Always go to database for name lookups since names can change
+            // We cannot cache by name as it's mutable
             try
             {
-                var cachedValue = await _database.StringGetAsync(cacheKey);
-                
-                if (cachedValue.HasValue)
-                {
-                    var jsonString = (string?)cachedValue;
-                    if (jsonString is not null)
-                    {
-                        var credential = JsonSerializer.Deserialize<ProviderCredential>(jsonString, _jsonOptions);
-                        
-                        if (credential != null)
-                        {
-                            _logger.LogDebug("Provider credential cache hit by name: {ProviderName}", providerName);
-                            await _database.StringIncrementAsync(STATS_HIT_KEY);
-                            return credential;
-                        }
-                    }
-                }
-                
-                // Cache miss - fallback to database
-                _logger.LogDebug("Provider credential cache miss by name, querying database: {ProviderName}", providerName);
+                _logger.LogDebug("Provider credential lookup by name, querying database: {ProviderName}", providerName);
                 await _database.StringIncrementAsync(STATS_MISS_KEY);
                 
                 var dbCredential = await databaseFallback(providerName);
                 
                 if (dbCredential != null)
                 {
-                    // Cache by both ID and name
-                    await SetProviderCredentialAsync(dbCredential.Id, dbCredential);
+                    // Cache by ID only
+                    await SetProviderAsync(dbCredential.Provider.Id, dbCredential);
                     return dbCredential;
                 }
                 
@@ -139,8 +121,7 @@ namespace ConduitLLM.Http.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error accessing Provider Credential cache by name, falling back to database: {ProviderName}", providerName);
-                await _database.StringIncrementAsync(STATS_MISS_KEY);
+                _logger.LogError(ex, "Error accessing Provider Credential by name, falling back to database: {ProviderName}", providerName);
                 return await databaseFallback(providerName);
             }
         }
@@ -161,12 +142,10 @@ namespace ConduitLLM.Http.Services
                     var jsonString = (string?)cachedValue;
                     if (jsonString is not null)
                     {
-                        var credential = JsonSerializer.Deserialize<ProviderCredential>(jsonString, _jsonOptions);
+                        var credential = JsonSerializer.Deserialize<Provider>(jsonString, _jsonOptions);
                         if (credential != null)
                         {
-                            // Delete name-based key too
-                            var nameKey = NameKeyPrefix + credential.ProviderName.ToLowerInvariant();
-                            await _database.KeyDeleteAsync(nameKey);
+                            // No longer using name-based keys
                         }
                     }
                 }
@@ -186,39 +165,12 @@ namespace ConduitLLM.Http.Services
         /// <summary>
         /// Invalidate a Provider Credential by name in cache
         /// </summary>
-        public async Task InvalidateProviderByNameAsync(string providerName)
+        public Task InvalidateProviderByNameAsync(string providerName)
         {
-            try
-            {
-                var nameKey = NameKeyPrefix + providerName.ToLowerInvariant();
-                
-                // Get the provider to find its ID for ID-based key invalidation
-                var cachedValue = await _database.StringGetAsync(nameKey);
-                if (cachedValue.HasValue)
-                {
-                    var jsonString = (string?)cachedValue;
-                    if (jsonString is not null)
-                    {
-                        var credential = JsonSerializer.Deserialize<ProviderCredential>(jsonString, _jsonOptions);
-                        if (credential != null)
-                        {
-                            // Delete ID-based key too
-                            var idKey = KeyPrefix + credential.Id;
-                            await _database.KeyDeleteAsync(idKey);
-                        }
-                    }
-                }
-                
-                // Delete name-based key
-                await _database.KeyDeleteAsync(nameKey);
-                await _database.StringIncrementAsync(STATS_INVALIDATION_KEY);
-                
-                _logger.LogInformation("Provider credential cache invalidated by name: {ProviderName}", providerName);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error invalidating Provider Credential cache by name: {ProviderName}", providerName);
-            }
+            // Since we don't cache by name anymore, this is a no-op
+            // We would need the provider ID to invalidate the cache
+            _logger.LogWarning("InvalidateProviderByNameAsync called but we don't cache by name. Provider: {ProviderName}", providerName);
+            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -236,6 +188,7 @@ namespace ConduitLLM.Http.Services
                     await _database.KeyDeleteAsync(key);
                 }
                 
+                // Clean up any legacy name-based keys
                 var nameKeys = server.Keys(pattern: NameKeyPrefix + "*");
                 foreach (var key in nameKeys)
                 {
@@ -253,7 +206,7 @@ namespace ConduitLLM.Http.Services
         /// <summary>
         /// Get cache performance statistics
         /// </summary>
-        public async Task<ProviderCredentialCacheStats> GetStatsAsync()
+        public async Task<ProviderCacheStats> GetStatsAsync()
         {
             try
             {
@@ -271,7 +224,7 @@ namespace ConduitLLM.Http.Services
                     entryCount++;
                 }
                 
-                return new ProviderCredentialCacheStats
+                return new ProviderCacheStats
                 {
                     HitCount = hits.HasValue ? (long)hits : 0,
                     MissCount = misses.HasValue ? (long)misses : 0,
@@ -283,21 +236,20 @@ namespace ConduitLLM.Http.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting provider credential cache statistics");
-                return new ProviderCredentialCacheStats { LastResetTime = DateTime.UtcNow };
+                return new ProviderCacheStats { LastResetTime = DateTime.UtcNow };
             }
         }
 
-        private async Task SetProviderCredentialAsync(int providerId, ProviderCredential credential)
+        private async Task SetProviderAsync(int providerId, CachedProvider credential)
         {
             var cacheKey = KeyPrefix + providerId;
-            var nameKey = NameKeyPrefix + credential.ProviderName.ToLowerInvariant();
             var serialized = JsonSerializer.Serialize(credential, _jsonOptions);
             
-            // Cache by both ID and name with same expiry
+            // Cache by ID only - never by name since names can change
             await _database.StringSetAsync(cacheKey, serialized, _defaultExpiry);
-            await _database.StringSetAsync(nameKey, serialized, _defaultExpiry);
             
-            _logger.LogDebug("Provider credential cached: {ProviderId} / {ProviderName}", providerId, credential.ProviderName);
+            _logger.LogDebug("Provider credential cached: {ProviderId} with {KeyCount} keys", 
+                providerId, credential.Keys.Count);
         }
     }
 }

@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Prometheus;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Interfaces;
 
@@ -18,7 +19,7 @@ namespace ConduitLLM.Http.Services
     /// </summary>
     public class TaskProcessingMetricsService : BackgroundService
     {
-        private readonly IServiceProvider _serviceProvider;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<TaskProcessingMetricsService> _logger;
         private readonly TimeSpan _collectionInterval = TimeSpan.FromSeconds(30);
 
@@ -113,10 +114,10 @@ namespace ConduitLLM.Http.Services
                 });
 
         public TaskProcessingMetricsService(
-            IServiceProvider serviceProvider,
+            IServiceScopeFactory serviceScopeFactory,
             ILogger<TaskProcessingMetricsService> logger)
         {
-            _serviceProvider = serviceProvider;
+            _serviceScopeFactory = serviceScopeFactory;
             _logger = logger;
         }
 
@@ -143,7 +144,7 @@ namespace ConduitLLM.Http.Services
 
         private async Task CollectMetricsAsync()
         {
-            using var scope = _serviceProvider.CreateScope();
+            using var scope = _serviceScopeFactory.CreateScope();
 
             // Collect async task metrics
             await CollectAsyncTaskMetrics(scope);
@@ -181,7 +182,7 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>>();
+                var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>>();
                 await using var context = await dbContextFactory.CreateDbContextAsync();
 
                 // Get image generation task statistics from AsyncTasks
@@ -195,7 +196,7 @@ namespace ConduitLLM.Http.Services
                     {
                         State = g.Key.State,
                         Count = g.Count(),
-                        AvgDuration = g.Where(t => t.CompletedAt.HasValue).Any() 
+                        AvgDuration = g.Where(t => t.CompletedAt.HasValue).Count() > 0 
                             ? g.Where(t => t.CompletedAt.HasValue)
                                 .Average(t => (double)((t.CompletedAt!.Value - t.CreatedAt).TotalSeconds))
                             : (double?)null
@@ -227,7 +228,7 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>>();
+                var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>>();
                 await using var context = await dbContextFactory.CreateDbContextAsync();
 
                 // Get video generation task statistics from AsyncTasks
@@ -241,7 +242,7 @@ namespace ConduitLLM.Http.Services
                     {
                         State = g.Key.State,
                         Count = g.Count(),
-                        AvgDuration = g.Where(t => t.CompletedAt.HasValue).Any() 
+                        AvgDuration = g.Where(t => t.CompletedAt.HasValue).Count() > 0 
                             ? g.Where(t => t.CompletedAt.HasValue)
                                 .Average(t => (double)((t.CompletedAt!.Value - t.CreatedAt).TotalSeconds))
                             : (double?)null

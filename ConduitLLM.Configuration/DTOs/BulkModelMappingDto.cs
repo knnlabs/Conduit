@@ -44,10 +44,10 @@ namespace ConduitLLM.Configuration.DTOs
         public string ProviderModelId { get; set; } = string.Empty;
 
         /// <summary>
-        /// The provider identifier
+        /// The provider credential ID
         /// </summary>
         [Required(ErrorMessage = "Provider ID is required")]
-        public string ProviderId { get; set; } = string.Empty;
+        public int ProviderId { get; set; }
 
         /// <summary>
         /// The priority of this mapping (lower values have higher priority)
@@ -98,6 +98,26 @@ namespace ConduitLLM.Configuration.DTOs
         /// Whether this model supports video generation capabilities
         /// </summary>
         public bool SupportsVideoGeneration { get; set; } = false;
+
+        /// <summary>
+        /// Whether this model supports embedding generation capabilities
+        /// </summary>
+        public bool SupportsEmbeddings { get; set; } = false;
+
+        /// <summary>
+        /// Whether this model supports chat completions
+        /// </summary>
+        public bool SupportsChat { get; set; } = false;
+
+        /// <summary>
+        /// Whether this model supports function calling
+        /// </summary>
+        public bool SupportsFunctionCalling { get; set; } = false;
+
+        /// <summary>
+        /// Whether this model supports streaming responses
+        /// </summary>
+        public bool SupportsStreaming { get; set; } = false;
 
         /// <summary>
         /// The tokenizer type used by this model

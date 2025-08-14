@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -22,6 +23,7 @@ namespace ConduitLLM.Security.Services
         private readonly IMemoryCache _cache;
         private readonly ILogger<SecurityEventMonitoringService> _logger;
         private readonly SecurityMonitoringOptions _options;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
 
         // Event storage
         private readonly ConcurrentQueue<SecurityEvent> _recentEvents;
@@ -36,11 +38,13 @@ namespace ConduitLLM.Security.Services
         public SecurityEventMonitoringService(
             IMemoryCache cache,
             ILogger<SecurityEventMonitoringService> logger,
-            IOptions<SecurityMonitoringOptions> options)
+            IOptions<SecurityMonitoringOptions> options,
+            IServiceScopeFactory serviceScopeFactory)
         {
             _cache = cache;
             _logger = logger;
             _options = options.Value;
+            _serviceScopeFactory = serviceScopeFactory;
 
             _recentEvents = new ConcurrentQueue<SecurityEvent>();
             _ipProfiles = new ConcurrentDictionary<string, IpActivityProfile>();
@@ -238,15 +242,15 @@ namespace ConduitLLM.Security.Services
 
             var metrics = new SecurityMetricsDto
             {
-                TotalEvents = recentEvents.Count,
+                TotalEvents = recentEvents.Count(),
                 AuthenticationFailures = recentEvents.Count(e => e.EventType == SecurityEventType.AuthenticationFailure),
                 RateLimitViolations = recentEvents.Count(e => e.EventType == SecurityEventType.RateLimitViolation),
                 SuspiciousActivities = recentEvents.Count(e => e.EventType == SecurityEventType.SuspiciousActivity),
                 DataExfiltrationAttempts = recentEvents.Count(e => e.EventType == SecurityEventType.DataExfiltration),
                 AnomalousAccessPatterns = recentEvents.Count(e => e.EventType == SecurityEventType.AnomalousAccess),
                 ActiveIpBans = _ipProfiles.Count(p => p.Value.IsBanned),
-                UniqueIpsMonitored = _ipProfiles.Count,
-                UniqueKeysMonitored = _keyProfiles.Count,
+                UniqueIpsMonitored = _ipProfiles.Count(),
+                UniqueKeysMonitored = _keyProfiles.Count(),
                 ThreatLevel = CalculateThreatLevel(recentEvents),
                 MetricsStartTime = windowStart,
                 MetricsEndTime = now
@@ -398,7 +402,7 @@ namespace ConduitLLM.Security.Services
 
         private void TrimEventQueue()
         {
-            while (_recentEvents.Count > _options.MaxEventsRetention)
+            while (_recentEvents.Count() > _options.MaxEventsRetention)
             {
                 _recentEvents.TryDequeue(out _);
             }
@@ -406,10 +410,10 @@ namespace ConduitLLM.Security.Services
 
         private ThreatLevel CalculateThreatLevel(List<SecurityEvent> recentEvents)
         {
-            if (recentEvents.Count == 0)
+            if (recentEvents.Count() == 0)
                 return ThreatLevel.None;
 
-            var failureRate = (double)recentEvents.Count(e => e.EventType == SecurityEventType.AuthenticationFailure) / recentEvents.Count;
+            var failureRate = (double)recentEvents.Count(e => e.EventType == SecurityEventType.AuthenticationFailure) / recentEvents.Count();
             var suspiciousCount = recentEvents.Count(e => e.EventType == SecurityEventType.SuspiciousActivity);
             var exfiltrationCount = recentEvents.Count(e => e.EventType == SecurityEventType.DataExfiltration);
 
@@ -454,7 +458,12 @@ namespace ConduitLLM.Security.Services
             };
         }
 
-        private async void PerformSecurityAnalysis(object? state)
+        private void PerformSecurityAnalysis(object? state)
+        {
+            _ = PerformSecurityAnalysisAsync();
+        }
+
+        private async Task PerformSecurityAnalysisAsync()
         {
             if (!await _analysisSemaphore.WaitAsync(0))
             {
@@ -521,12 +530,12 @@ namespace ConduitLLM.Security.Services
                 var attackingIps = target.Select(e => e.IpAddress).Distinct().ToList();
                 
                 _logger.LogWarning("Distributed attack detected on virtual key {VirtualKey} from {IpCount} IPs",
-                    target.Key, attackingIps.Count);
+                    target.Key, attackingIps.Count());
                 
                 foreach (var ip in attackingIps)
                 {
                     RecordSuspiciousActivity(ip, "Distributed Attack",
-                        $"Part of distributed attack on virtual key from {attackingIps.Count} IPs");
+                        $"Part of distributed attack on virtual key from {attackingIps.Count()} IPs");
                 }
             }
 
@@ -568,17 +577,18 @@ namespace ConduitLLM.Security.Services
 
                 foreach (var access in recentAccesses)
                 {
-                    state.EndpointAccess.TryGetValue(access.Endpoint!, out var count);
-                    state.EndpointAccess[access.Endpoint!] = count + 1;
+                    var endpoint = access.Endpoint!; // We know it's not null from the filter above
+                    state.EndpointAccess.TryGetValue(endpoint, out var count);
+                    state.EndpointAccess[endpoint] = count + 1;
                     state.TotalRequests++;
                 }
 
                 // Detect anomalies
-                if (state.EndpointAccess.Count > _options.AnomalousEndpointThreshold &&
+                if (state.EndpointAccess.Count() == 0 && state.EndpointAccess.Count() > _options.AnomalousEndpointThreshold &&
                     state.TotalRequests > 50)
                 {
                     RecordAnomalousAccess(profile.Key, "", "Endpoint Scanning",
-                        $"Accessed {state.EndpointAccess.Count} different endpoints in {windowMinutes} minutes");
+                        $"Accessed {state.EndpointAccess.Count()} different endpoints in {windowMinutes} minutes");
                 }
             }
 
@@ -629,7 +639,7 @@ namespace ConduitLLM.Security.Services
                 }
 
                 _logger.LogInformation("Security monitoring cleanup completed. Removed {IpCount} inactive IPs and {KeyCount} inactive keys",
-                    inactiveIps.Count, inactiveKeys.Count);
+                    inactiveIps.Count(), inactiveKeys.Count());
             }
             catch (Exception ex)
             {

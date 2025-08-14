@@ -35,6 +35,7 @@ import {
 import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
 import { SystemInfoDto } from '@knn_labs/conduit-admin-client';
+import { withAdminClient } from '@/lib/client/adminClient';
 
 interface SystemMetric {
   name: string;
@@ -56,11 +57,13 @@ interface ServiceInfo {
 
 
 
+
 export default function SystemInfoPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [systemInfo, setSystemInfo] = useState<SystemInfoDto | null>(null);
   const [activeTab, setActiveTab] = useState<string | null>('overview');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     void fetchSystemInfo();
@@ -68,23 +71,20 @@ export default function SystemInfoPage() {
 
   const fetchSystemInfo = async () => {
     try {
-      const response = await fetch('/api/settings/system-info', {
-        headers: {
-          'xAdminAuthKey': localStorage.getItem('adminAuthKey') ?? '',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch system information');
-      }
-
-      const data = await response.json() as SystemInfoDto;
+      setError(null);
+      
+      const data = await withAdminClient(client => 
+        client.system.getSystemInfo()
+      );
+      
       setSystemInfo(data);
     } catch (error) {
-      console.error('Error fetching system info:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error fetching system info:', errorMessage);
+      setError(errorMessage);
       notifications.show({
         title: 'Error',
-        message: 'Failed to load system information',
+        message: errorMessage,
         color: 'red',
       });
     } finally {
@@ -144,37 +144,8 @@ export default function SystemInfoPage() {
   // Generate system metrics from real data
   const systemMetrics: SystemMetric[] = [];
   
-  if (systemInfo?.runtime?.memoryUsage !== undefined) {
-    let memStatus: 'healthy' | 'warning' | 'critical' = 'healthy';
-    if (systemInfo.runtime.memoryUsage > 80) {
-      memStatus = 'critical';
-    } else if (systemInfo.runtime.memoryUsage > 60) {
-      memStatus = 'warning';
-    }
-    systemMetrics.push({
-      name: 'Memory Usage',
-      value: systemInfo.runtime.memoryUsage,
-      unit: '%',
-      status: memStatus,
-      description: 'System memory utilization'
-    });
-  }
-
-  if (systemInfo?.runtime?.cpuUsage !== undefined) {
-    let cpuStatus: 'healthy' | 'warning' | 'critical' = 'healthy';
-    if (systemInfo.runtime.cpuUsage > 80) {
-      cpuStatus = 'critical';
-    } else if (systemInfo.runtime.cpuUsage > 60) {
-      cpuStatus = 'warning';
-    }
-    systemMetrics.push({
-      name: 'CPU Usage',
-      value: systemInfo.runtime.cpuUsage,
-      unit: '%',
-      status: cpuStatus,
-      description: 'Processor utilization'
-    });
-  }
+  // Note: Memory and CPU usage are not provided by the backend API
+  // Only show metrics that are actually available
 
   if (systemInfo?.database?.isConnected !== undefined) {
     systemMetrics.push({
@@ -244,6 +215,22 @@ export default function SystemInfoPage() {
       <Stack>
         <Card shadow="sm" p="md" radius="md" pos="relative" mih={200}>
           <LoadingOverlay visible={true} />
+        </Card>
+      </Stack>
+    );
+  }
+
+  if (error && !systemInfo) {
+    return (
+      <Stack gap="xl">
+        <Card shadow="sm" p="md" radius="md">
+          <Alert
+            icon={<IconAlertTriangle size={16} />}
+            title="Failed to load system information"
+            color="red"
+          >
+            {error}
+          </Alert>
         </Card>
       </Stack>
     );
@@ -400,7 +387,7 @@ export default function SystemInfoPage() {
                         {metric.status}
                       </Badge>
                       <Text fw={600}>
-                        {metric.value}{metric.unit}
+                        {String(metric.value)}{metric.unit ?? ''}
                       </Text>
                     </Group>
                   </Group>
@@ -505,7 +492,7 @@ export default function SystemInfoPage() {
                       <Code>Build Date</Code>
                     </Table.Td>
                     <Table.Td>
-                      <Code>{systemInfo?.buildDate ?? 'Unknown'}</Code>
+                      <Code>{systemInfo?.buildDate ? new Date(systemInfo.buildDate).toLocaleDateString() : 'Unknown'}</Code>
                     </Table.Td>
                     <Table.Td>
                       <Badge variant="light" size="sm" color="blue">
@@ -581,13 +568,17 @@ export default function SystemInfoPage() {
                       </Badge>
                     </Table.Td>
                   </Table.Tr>
-                  {systemInfo?.database?.pendingMigrations && systemInfo.database.pendingMigrations.length > 0 && (
+                  {systemInfo?.database?.pendingMigrations && Array.isArray(systemInfo.database.pendingMigrations) && systemInfo.database.pendingMigrations.length > 0 && (
                     <Table.Tr>
                       <Table.Td>
                         <Code>Pending Migrations</Code>
                       </Table.Td>
                       <Table.Td>
-                        <Code>{systemInfo.database.pendingMigrations.join(', ')}</Code>
+                        <Stack gap="xs">
+                          {systemInfo.database.pendingMigrations.map((migration) => (
+                            <Code key={migration}>{String(migration)}</Code>
+                          ))}
+                        </Stack>
                       </Table.Td>
                       <Table.Td>
                         <Badge variant="light" size="sm" color="orange">

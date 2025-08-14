@@ -5,14 +5,13 @@ import {
   Burger,
   Text,
   ActionIcon,
-  Divider,
 } from '@mantine/core';
 import {
   IconBell,
 } from '@tabler/icons-react';
 import { UserButton } from '@clerk/nextjs';
-import { ConnectionIndicator } from './ConnectionIndicator';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface HeaderProps {
   mobileOpened: boolean;
@@ -27,6 +26,8 @@ export function Header({
   toggleMobile,
   toggleDesktop,
 }: HeaderProps) {
+  const { isAuthDisabled } = useAuth();
+
   return (
     <Group h="100%" px="md" justify="space-between">
       <Group>
@@ -49,17 +50,13 @@ export function Header({
       </Group>
 
       <Group>
-        <ConnectionIndicator />
-        
-        <Divider orientation="vertical" />
-        
         <ThemeToggle />
         
         <ActionIcon variant="light" size="lg">
           <IconBell size={18} />
         </ActionIcon>
 
-        <UserButton />
+        {!isAuthDisabled && <UserButton />}
       </Group>
     </Group>
   );

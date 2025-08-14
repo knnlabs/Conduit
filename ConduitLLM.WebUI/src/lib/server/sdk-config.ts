@@ -23,19 +23,15 @@ export const SDK_CONFIG = {
   
   // Base URLs
   get adminBaseURL() {
-    return process.env.NODE_ENV === 'production' 
-      ? 'http://admin:8080' 
-      : (process.env.CONDUIT_ADMIN_API_BASE_URL ?? 'http://localhost:5002');
+    return process.env.CONDUIT_ADMIN_API_BASE_URL ?? 'http://localhost:5002';
   },
     
   get coreBaseURL() {
-    return process.env.NODE_ENV === 'production' 
-      ? 'http://api:8080' 
-      : (process.env.CONDUIT_API_BASE_URL ?? 'http://localhost:5000');
+    return process.env.CONDUIT_API_BASE_URL ?? 'http://localhost:5000';
   },
   
   // Common settings
-  timeout: 30000,
+  timeout: 60000, // Increased from 30s to 60s for better reliability in docker environment
   maxRetries: 3,
   
   // Disable SignalR for server-side usage
@@ -46,7 +42,7 @@ export const SDK_CONFIG = {
 
 // Singleton instances
 let adminClient: ConduitAdminClient | null = null;
-let coreClient: ConduitCoreClient | null = null;
+let coreClient: InstanceType<typeof ConduitCoreClient> | null = null;
 let webuiVirtualKey: string | null = null;
 
 export function getServerAdminClient(): ConduitAdminClient {
@@ -64,21 +60,22 @@ export function getServerAdminClient(): ConduitAdminClient {
   return adminClient;
 }
 
-export async function getServerCoreClient(): Promise<ConduitCoreClient> {
+export async function getServerCoreClient(): Promise<InstanceType<typeof ConduitCoreClient>> {
   if (!coreClient || !webuiVirtualKey) {
     // Validate environment at runtime
     validateEnvironment();
     
-    // Get the WebUI's virtual key from the Admin API
+    // Get the WebUI's virtual key - this will auto-create it with $1000 if it doesn't exist
     if (!webuiVirtualKey) {
       try {
-        const adminApi = getServerAdminClient();
-        webuiVirtualKey = await adminApi.system.getWebUIVirtualKey();
-        console.error('[SDK] WebUI virtual key fetched successfully');
+        console.warn('[SDK] Getting or creating WebUI virtual key...');
+        const adminClient = getServerAdminClient();
+        // Use the SystemService's getWebUIVirtualKey method which auto-creates with $1000
+        webuiVirtualKey = await adminClient.system.getWebUIVirtualKey();
+        console.warn('[SDK] WebUI virtual key obtained successfully');
       } catch (error) {
-        console.error('[SDK] Failed to fetch WebUI virtual key, falling back to master key:', error);
-        // Fallback to master key if we can't get the virtual key
-        webuiVirtualKey = SDK_CONFIG.masterKey;
+        console.error('[SDK] Failed to get or create WebUI virtual key:', error);
+        throw new Error('Failed to retrieve or create WebUI virtual key. Ensure the database is accessible and the Admin API is running.');
       }
     }
     

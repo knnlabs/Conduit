@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
-using ConduitLLM.Http.DTOs.HealthMonitoring;
+using ConduitLLM.Configuration.DTOs.HealthMonitoring;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
@@ -9,6 +9,7 @@ using System;
 using System.Threading;
 using System.Threading.Channels;
 using System.Runtime.CompilerServices;
+using ConduitLLM.Http.Interfaces;
 
 namespace ConduitLLM.Http.Hubs
 {
@@ -332,36 +333,5 @@ namespace ConduitLLM.Http.Hubs
             _logger.LogInformation("Health monitoring client disconnected: {ConnectionId}", Context.ConnectionId);
             await base.OnDisconnectedAsync(exception);
         }
-    }
-
-    /// <summary>
-    /// Health monitoring service interface
-    /// </summary>
-    public interface IHealthMonitoringService
-    {
-        Task<SystemHealthSnapshot> GetSystemHealthSnapshotAsync();
-        Task<ComponentHealth> GetComponentHealthAsync(string componentName);
-        Task<ComponentHealth> ForceHealthCheckAsync(string componentName);
-        Task<List<PerformanceMetrics>> GetPerformanceHistoryAsync(DateTime start, DateTime end, TimeSpan interval);
-        Task<List<ResourceMetrics>> GetResourceHistoryAsync(DateTime start, DateTime end, TimeSpan interval);
-    }
-
-    /// <summary>
-    /// Alert management service interface
-    /// </summary>
-    public interface IAlertManagementService
-    {
-        Task<List<HealthAlert>> GetActiveAlertsAsync();
-        IAsyncEnumerable<HealthAlert> GetAlertStreamAsync(CancellationToken cancellationToken);
-        Task<bool> AcknowledgeAlertAsync(string alertId, string user, string? notes);
-        Task<bool> ResolveAlertAsync(string alertId, string user, string? resolution);
-        Task<List<AlertHistoryEntry>> GetAlertHistoryAsync(string alertId);
-        Task<AlertRule> SaveAlertRuleAsync(AlertRule rule);
-        Task<bool> DeleteAlertRuleAsync(string ruleId);
-        Task<List<AlertRule>> GetAlertRulesAsync();
-        Task<AlertSuppression> CreateSuppressionAsync(AlertSuppression suppression);
-        Task<bool> CancelSuppressionAsync(string suppressionId);
-        Task<List<AlertSuppression>> GetActiveSuppressionsAsync();
-        Task TriggerAlertAsync(HealthAlert alert);
     }
 }

@@ -15,10 +15,15 @@ export default function VideoPlayer({ src, poster, title }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<Player | null>(null);
 
+  // Debug logging
+  console.warn('VideoPlayer rendering with src:', src);
+
   useEffect(() => {
     // Make sure Video.js player is only initialized once
     if (!playerRef.current && videoRef.current) {
       const videoElement = videoRef.current;
+      
+      console.warn('Initializing Video.js player with source:', src);
       
       playerRef.current = videojs(videoElement, {
         controls: true,
@@ -36,6 +41,16 @@ export default function VideoPlayer({ src, poster, title }: VideoPlayerProps) {
           },
           pictureInPictureToggle: false
         }
+      });
+
+      // Add error handler
+      playerRef.current.on('error', () => {
+        const error = playerRef.current?.error();
+        console.error('Video.js player error:', {
+          code: error?.code,
+          message: error?.message,
+          src: src
+        });
       });
 
       // Add custom class for styling

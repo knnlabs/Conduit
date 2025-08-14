@@ -2,26 +2,17 @@
 
 import { useState, useCallback } from 'react';
 import { notifications } from '@mantine/notifications';
-import type { ErrorResponse } from '@knn_labs/conduit-common';
+import { withAdminClient } from '@/lib/client/adminClient';
+import type { 
+  IpFilterDto,
+  CreateIpFilterDto,
+  UpdateIpFilterDto,
+  SecurityEvent,
+  ThreatDetection,
+  SecurityEventFilters,
+} from '@knn_labs/conduit-admin-client';
 
-interface SecurityEvent {
-  id: string;
-  timestamp: string;
-  eventType: string;
-  severity: 'info' | 'warning' | 'critical';
-  description: string;
-  metadata?: Record<string, unknown>;
-}
-
-interface Threat {
-  id: string;
-  threatType: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  description: string;
-  detectedAt: string;
-  status: 'active' | 'mitigated' | 'resolved';
-}
-
+// Legacy interface for backward compatibility - maps to IpFilterDto
 export interface IpRule {
   id?: string;
   ipAddress: string;
@@ -33,6 +24,7 @@ export interface IpRule {
   matchCount?: number;
 }
 
+// Legacy interface for backward compatibility - maps to IpFilterStatistics
 export interface IpStats {
   totalRules: number;
   allowRules: number;
@@ -41,6 +33,31 @@ export interface IpStats {
   blockedRequests24h: number;
   lastRuleUpdate: string | null;
 }
+
+// Helper functions to convert between legacy and new formats
+function ipFilterToLegacyRule(filter: IpFilterDto): IpRule {
+  return {
+    id: filter.id.toString(),
+    ipAddress: filter.ipAddressOrCidr,
+    action: filter.filterType === 'whitelist' ? 'allow' : 'block',
+    description: filter.description,
+    createdAt: filter.createdAt,
+    isEnabled: filter.isEnabled,
+    lastMatchedAt: filter.lastMatchedAt,
+    matchCount: filter.matchCount,
+  };
+}
+
+function legacyRuleToIpFilter(rule: IpRule): CreateIpFilterDto {
+  return {
+    name: rule.description ?? `Rule for ${rule.ipAddress}`,
+    ipAddressOrCidr: rule.ipAddress,
+    filterType: rule.action === 'allow' ? 'whitelist' : 'blacklist',
+    isEnabled: rule.isEnabled ?? true,
+    description: rule.description,
+  };
+}
+
 
 export function useSecurityApi() {
   const [isLoading, setIsLoading] = useState(false);
@@ -57,24 +74,19 @@ export function useSecurityApi() {
     setError(null);
     
     try {
-      const queryParams = new URLSearchParams();
-      if (params?.page) queryParams.append('page', params.page.toString());
-      if (params?.pageSize) queryParams.append('pageSize', params.pageSize.toString());
-      if (params?.severity) queryParams.append('severity', params.severity);
-      if (params?.startDate) queryParams.append('startDate', params.startDate);
-      if (params?.endDate) queryParams.append('endDate', params.endDate);
+      const filters: SecurityEventFilters = {
+        page: params?.page,
+        pageSize: params?.pageSize,
+        severity: params?.severity as SecurityEventFilters['severity'],
+        startDate: params?.startDate,
+        endDate: params?.endDate,
+      };
 
-      const response = await fetch(`/api/admin/security/events?${queryParams}`, {
-        method: 'GET',
-      });
+      const result = await withAdminClient(client =>
+        client.security.getEvents(filters)
+      );
 
-      const result = await response.json() as { events: SecurityEvent[]; total: number } | ErrorResponse;
-
-      if (!response.ok) {
-        throw new Error((result as ErrorResponse).error ?? 'Failed to fetch security events');
-      }
-
-      return result as { events: SecurityEvent[]; total: number };
+      return { events: result.items, total: result.totalCount };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch security events';
       setError(message);
@@ -87,26 +99,34 @@ export function useSecurityApi() {
   const getThreats = useCallback(async (params?: {
     status?: 'active' | 'mitigated' | 'resolved';
     severity?: string;
-  }): Promise<Threat[]> => {
+  }): Promise<ThreatDetection[]> => {
     setIsLoading(true);
     setError(null);
     
     try {
-      const queryParams = new URLSearchParams();
-      if (params?.status) queryParams.append('status', params.status);
-      if (params?.severity) queryParams.append('severity', params.severity);
+      const result = await withAdminClient(client =>
+        client.security.getThreats()
+      );
 
-      const response = await fetch(`/api/admin/security/threats?${queryParams}`, {
-        method: 'GET',
-      });
-
-      const result = await response.json() as Threat[] | ErrorResponse;
-
-      if (!response.ok) {
-        throw new Error((result as ErrorResponse).error ?? 'Failed to fetch threats');
+      // Filter threats based on parameters (client-side filtering since SDK doesn't support it yet)
+      let filteredThreats = result;
+      
+      if (params?.status) {
+        // Map 'mitigated' to 'acknowledged' since that's what the API supports
+        const mappedStatus = params.status === 'mitigated' ? 'acknowledged' : params.status;
+        filteredThreats = result.filter(threat => 
+          threat.status === mappedStatus || 
+          (params.status === 'mitigated' && threat.status === 'acknowledged')
+        );
+      }
+      
+      if (params?.severity) {
+        filteredThreats = filteredThreats.filter(threat => 
+          threat.severity === params.severity
+        );
       }
 
-      return result as Threat[];
+      return filteredThreats;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch threats';
       setError(message);
@@ -121,17 +141,12 @@ export function useSecurityApi() {
     setError(null);
     
     try {
-      const response = await fetch('/api/admin/security/ip-rules', {
-        method: 'GET',
-      });
+      const result = await withAdminClient(client =>
+        client.ipFilters.list()
+      );
 
-      const result = await response.json() as IpRule[] | ErrorResponse;
-
-      if (!response.ok) {
-        throw new Error((result as ErrorResponse).error ?? 'Failed to fetch IP rules');
-      }
-
-      return result as IpRule[];
+      // Convert IpFilterDto[] to IpRule[] for backward compatibility
+      return result.map(filter => ipFilterToLegacyRule(filter));
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch IP rules';
       setError(message);
@@ -146,19 +161,11 @@ export function useSecurityApi() {
     setError(null);
     
     try {
-      const response = await fetch('/api/admin/security/ip-rules', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(rule),
-      });
-
-      const result = await response.json() as IpRule | ErrorResponse;
-
-      if (!response.ok) {
-        throw new Error((result as ErrorResponse).error ?? 'Failed to create IP rule');
-      }
+      const createDto = legacyRuleToIpFilter(rule);
+      
+      const result = await withAdminClient(client =>
+        client.ipFilters.create(createDto)
+      );
 
       notifications.show({
         title: 'Success',
@@ -166,7 +173,8 @@ export function useSecurityApi() {
         color: 'green',
       });
 
-      return result as IpRule;
+      // Convert back to legacy format
+      return ipFilterToLegacyRule(result);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create IP rule';
       setError(message);
@@ -186,19 +194,23 @@ export function useSecurityApi() {
     setError(null);
     
     try {
-      const response = await fetch(`/api/admin/security/ip-rules/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(rule),
-      });
-
-      const result = await response.json() as IpRule | ErrorResponse;
-
-      if (!response.ok) {
-        throw new Error((result as ErrorResponse).error ?? 'Failed to update IP rule');
+      const numericId = parseInt(id, 10);
+      if (isNaN(numericId)) {
+        throw new Error('Invalid rule ID');
       }
+
+      const updateDto: UpdateIpFilterDto = {
+        id: numericId,
+        name: rule.description,
+        ipAddressOrCidr: rule.ipAddress,
+        filterType: rule.action === 'allow' ? 'whitelist' : 'blacklist',
+        isEnabled: rule.isEnabled,
+        description: rule.description,
+      };
+
+      await withAdminClient(client =>
+        client.ipFilters.update(numericId, updateDto)
+      );
 
       notifications.show({
         title: 'Success',
@@ -206,7 +218,12 @@ export function useSecurityApi() {
         color: 'green',
       });
 
-      return result as IpRule;
+      // Return the updated rule (we need to fetch it to get the complete data)
+      const updatedFilter = await withAdminClient(client =>
+        client.ipFilters.getById(numericId)
+      );
+
+      return ipFilterToLegacyRule(updatedFilter);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update IP rule';
       setError(message);
@@ -226,14 +243,14 @@ export function useSecurityApi() {
     setError(null);
     
     try {
-      const response = await fetch(`/api/admin/security/ip-rules/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const result = await response.json() as ErrorResponse;
-        throw new Error(result.error ?? 'Failed to delete IP rule');
+      const numericId = parseInt(id, 10);
+      if (isNaN(numericId)) {
+        throw new Error('Invalid rule ID');
       }
+
+      await withAdminClient(client =>
+        client.ipFilters.deleteById(numericId)
+      );
 
       notifications.show({
         title: 'Success',
@@ -259,17 +276,23 @@ export function useSecurityApi() {
     setError(null);
     
     try {
-      const response = await fetch('/api/admin/security/ip-rules/stats', {
-        method: 'GET',
-      });
+      // The Admin SDK doesn't have a direct stats endpoint, so we'll compute stats from the filters
+      const filters = await withAdminClient(client =>
+        client.ipFilters.list()
+      );
 
-      const result = await response.json() as IpStats | ErrorResponse;
+      const stats: IpStats = {
+        totalRules: filters.length,
+        allowRules: filters.filter(f => f.filterType === 'whitelist').length,
+        blockRules: filters.filter(f => f.filterType === 'blacklist').length,
+        activeRules: filters.filter(f => f.isEnabled).length,
+        blockedRequests24h: filters.reduce((sum, f) => sum + (f.matchCount ?? 0), 0),
+        lastRuleUpdate: filters.length > 0 ? 
+          Math.max(...filters.map(f => new Date(f.updatedAt).getTime())).toString() : 
+          null,
+      };
 
-      if (!response.ok) {
-        throw new Error((result as ErrorResponse).error ?? 'Failed to fetch IP stats');
-      }
-
-      return result as IpStats;
+      return stats;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch IP stats';
       setError(message);

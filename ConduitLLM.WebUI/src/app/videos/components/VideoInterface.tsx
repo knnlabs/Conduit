@@ -1,10 +1,13 @@
 'use client';
 
 import { useEffect } from 'react';
+import { Stack, Paper, LoadingOverlay, Text } from '@mantine/core';
 import { useVideoStore } from '../hooks/useVideoStore';
 import { useVideoModels } from '../hooks/useVideoModels';
+import { ErrorDisplay } from '@/components/common/ErrorDisplay';
+import { createEnhancedError } from '@/lib/utils/error-enhancement';
 import VideoSettings from './VideoSettings';
-import VideoPromptInput from './VideoPromptInput';
+import EnhancedVideoPromptInput from './EnhancedVideoPromptInput';
 import VideoGallery from './VideoGallery';
 import VideoQueue from './VideoQueue';
 
@@ -37,42 +40,66 @@ export default function VideoInterface() {
 
   if (modelsLoading) {
     return (
-      <div className="video-interface">
-        <div className="video-generation-status">
-          Loading video generation models...
-        </div>
-      </div>
+      <Stack gap="xl">
+        <Paper p="md" withBorder>
+          <LoadingOverlay visible={true} overlayProps={{ radius: 'sm', blur: 2 }} />
+          <Text c="dimmed">Loading video generation models...</Text>
+        </Paper>
+      </Stack>
     );
   }
 
   if (modelsError || !models || !Array.isArray(models) || models.length === 0) {
+    const errorInstance = modelsError 
+      ? new Error(`Error loading models: ${modelsError.message}`)
+      : new Error('No video generation models available. Please configure providers and add video generation models.');
+    
+    if (modelsError) {
+      errorInstance.name = 'ModelLoadError';
+    } else {
+      errorInstance.name = 'ConfigurationError';
+    }
+
     return (
-      <div className="video-interface">
-        <div className="video-generation-status status-error">
-          {modelsError 
-            ? `Error loading models: ${modelsError.message}`
-            : (
-              <div>
-                <strong>No video generation models available.</strong>
-                <p>To use video generation, you need to:</p>
-                <ol style={{ marginLeft: '1rem', marginTop: '0.5rem' }}>
-                  <li>Configure providers (MiniMax, etc.) in <strong>LLM Providers</strong></li>
-                  <li>Add video generation models in <strong>Model Mappings</strong></li>
-                  <li>Enable the <strong>&ldquo;Supports Video Generation&rdquo;</strong> checkbox for those models</li>
-                </ol>
-                <p style={{ marginTop: '0.5rem' }}>
-                  Example model: <code>minimax-video</code>
-                </p>
-              </div>
-            )
-          }
-        </div>
-      </div>
+      <Stack gap="xl">
+        <ErrorDisplay 
+          error={errorInstance}
+          variant="card"
+          showDetails={!!modelsError}
+          actions={[
+            {
+              label: 'Configure Providers',
+              onClick: () => window.location.href = '/llm-providers',
+              color: 'blue',
+              variant: 'filled',
+            },
+            {
+              label: 'Add Model Mappings', 
+              onClick: () => window.location.href = '/model-mappings',
+              color: 'blue',
+              variant: 'light',
+            }
+          ]}
+        />
+        {!modelsError && (
+          <Paper p="md" withBorder>
+            <Text size="sm" mb="sm">To use video generation, you need to:</Text>
+            <ol style={{ marginLeft: '1rem', marginTop: '0.5rem' }}>
+              <li>Configure providers (MiniMax, etc.) in <strong>LLM Providers</strong></li>
+              <li>Add video generation models in <strong>Model Mappings</strong></li>
+              <li>Enable the <strong>&ldquo;Supports Video Generation&rdquo;</strong> checkbox for those models</li>
+            </ol>
+            <Text size="sm" mt="sm">
+              Example model: <code>minimax-video</code>
+            </Text>
+          </Paper>
+        )}
+      </Stack>
     );
   }
 
   return (
-    <div className="video-interface">
+    <Stack gap="xl">
       {/* Header */}
       <div className="video-header">
         <h1>🎬 Video Generation</h1>
@@ -87,9 +114,20 @@ export default function VideoInterface() {
 
       {/* Error Display */}
       {error && (
-        <div className="video-generation-status status-error">
-          {error}
-        </div>
+        <ErrorDisplay 
+          error={createEnhancedError(error)}
+          variant="inline"
+          showDetails={true}
+          onRetry={() => setError(null)}
+          actions={[
+            {
+              label: 'Configure Providers',
+              onClick: () => window.location.href = '/llm-providers',
+              color: 'blue',
+              variant: 'light',
+            }
+          ]}
+        />
       )}
 
       {/* Settings Panel */}
@@ -103,10 +141,10 @@ export default function VideoInterface() {
       )}
 
       {/* Prompt Input */}
-      <VideoPromptInput models={models || []} />
+      <EnhancedVideoPromptInput models={models || []} />
 
       {/* Video Gallery */}
       <VideoGallery />
-    </div>
+    </Stack>
   );
 }

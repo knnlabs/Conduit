@@ -247,9 +247,10 @@ export function RuleEditor({ isOpen, rule, onClose, onSave }: RuleEditorProps) {
                   <Select
                     label="Type"
                     data={conditionTypes}
-                    value={condition.type}
+                    value={condition.type ?? null}
                     onChange={(value) => value && updateCondition(index, 'type', value)}
                     style={{ flex: 1 }}
+                    allowDeselect={false}
                   />
                   {(condition.type === 'header' || condition.type === 'metadata') && (
                     <TextInput
@@ -263,9 +264,10 @@ export function RuleEditor({ isOpen, rule, onClose, onSave }: RuleEditorProps) {
                   <Select
                     label="Operator"
                     data={operators}
-                    value={condition.operator}
+                    value={condition.operator ?? null}
                     onChange={(value) => value && updateCondition(index, 'operator', value)}
                     style={{ flex: 1 }}
+                    allowDeselect={false}
                   />
                   <TextInput
                     label="Value"
@@ -312,9 +314,10 @@ export function RuleEditor({ isOpen, rule, onClose, onSave }: RuleEditorProps) {
                   <Select
                     label="Type"
                     data={actionTypes}
-                    value={action.type}
+                    value={action.type ?? null}
                     onChange={(value) => value && updateAction(index, 'type', value)}
                     style={{ flex: 1 }}
+                    allowDeselect={false}
                   />
                   {(action.type === 'route' || action.type === 'transform') && (
                     <TextInput

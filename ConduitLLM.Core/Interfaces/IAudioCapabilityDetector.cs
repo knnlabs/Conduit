@@ -29,55 +29,55 @@ namespace ConduitLLM.Core.Interfaces
         /// <summary>
         /// Determines if a provider supports audio transcription (Speech-to-Text).
         /// </summary>
-        /// <param name="provider">The provider name (e.g., "openai", "azure", "google").</param>
+        /// <param name="providerId">The provider ID from the Provider entity.</param>
         /// <param name="model">Optional specific model to check. If null, checks general provider support.</param>
         /// <returns>True if the provider/model supports transcription, false otherwise.</returns>
         /// <remarks>
         /// This method helps determine routing for transcription requests. Some providers
         /// may support transcription only with specific models (e.g., OpenAI's Whisper models).
         /// </remarks>
-        bool SupportsTranscription(string provider, string? model = null);
+        bool SupportsTranscription(int providerId, string? model = null);
 
         /// <summary>
         /// Determines if a provider supports text-to-speech synthesis.
         /// </summary>
-        /// <param name="provider">The provider name (e.g., "openai", "elevenlabs", "google").</param>
+        /// <param name="providerId">The provider ID from the Provider entity.</param>
         /// <param name="model">Optional specific model to check. If null, checks general provider support.</param>
         /// <returns>True if the provider/model supports TTS, false otherwise.</returns>
         /// <remarks>
         /// Useful for routing TTS requests to appropriate providers. Some providers specialize
         /// in TTS (like ElevenLabs) while others offer it as an additional capability.
         /// </remarks>
-        bool SupportsTextToSpeech(string provider, string? model = null);
+        bool SupportsTextToSpeech(int providerId, string? model = null);
 
         /// <summary>
         /// Determines if a provider supports real-time conversational audio.
         /// </summary>
-        /// <param name="provider">The provider name (e.g., "openai", "ultravox", "elevenlabs").</param>
+        /// <param name="providerId">The provider ID from the Provider entity.</param>
         /// <param name="model">Optional specific model to check. If null, checks general provider support.</param>
         /// <returns>True if the provider/model supports real-time audio, false otherwise.</returns>
         /// <remarks>
         /// Real-time support is currently limited to specific providers and models.
         /// This method helps identify which providers can handle bidirectional audio streaming.
         /// </remarks>
-        bool SupportsRealtime(string provider, string? model = null);
+        bool SupportsRealtime(int providerId, string? model = null);
 
         /// <summary>
         /// Checks if a specific voice is available for a provider.
         /// </summary>
-        /// <param name="provider">The provider name.</param>
+        /// <param name="providerId">The provider ID from the Provider entity.</param>
         /// <param name="voiceId">The voice identifier to check.</param>
         /// <returns>True if the voice is available, false otherwise.</returns>
         /// <remarks>
         /// Voice IDs are provider-specific. This method validates that a requested voice
         /// exists before attempting to use it for TTS or real-time conversations.
         /// </remarks>
-        bool SupportsVoice(string provider, string voiceId);
+        bool SupportsVoice(int providerId, string voiceId);
 
         /// <summary>
         /// Gets the audio formats supported by a provider for a specific operation.
         /// </summary>
-        /// <param name="provider">The provider name.</param>
+        /// <param name="providerId">The provider ID from the Provider entity.</param>
         /// <param name="operation">The audio operation type (transcription, tts, realtime).</param>
         /// <returns>An array of supported audio format identifiers.</returns>
         /// <remarks>
@@ -90,12 +90,12 @@ namespace ConduitLLM.Core.Interfaces
         /// For real-time, separate input/output format queries may be needed.
         /// </para>
         /// </remarks>
-        AudioFormat[] GetSupportedFormats(string provider, AudioOperation operation);
+        AudioFormat[] GetSupportedFormats(int providerId, AudioOperation operation);
 
         /// <summary>
         /// Gets the languages supported by a provider for a specific audio operation.
         /// </summary>
-        /// <param name="provider">The provider name.</param>
+        /// <param name="providerId">The provider ID from the Provider entity.</param>
         /// <param name="operation">The audio operation type.</param>
         /// <returns>A collection of ISO 639-1 language codes.</returns>
         /// <remarks>
@@ -103,13 +103,13 @@ namespace ConduitLLM.Core.Interfaces
         /// supports for the specified operation. Some providers may support different languages
         /// for transcription vs. synthesis.
         /// </remarks>
-        IEnumerable<string> GetSupportedLanguages(string provider, AudioOperation operation);
+        IEnumerable<string> GetSupportedLanguages(int providerId, AudioOperation operation);
 
         /// <summary>
         /// Validates that an audio request can be processed by the specified provider.
         /// </summary>
         /// <param name="request">The audio request to validate.</param>
-        /// <param name="provider">The target provider.</param>
+        /// <param name="providerId">The target provider ID.</param>
         /// <param name="errorMessage">Detailed error message if validation fails.</param>
         /// <returns>True if the request is valid for the provider, false otherwise.</returns>
         /// <remarks>
@@ -124,36 +124,36 @@ namespace ConduitLLM.Core.Interfaces
         /// <item><description>Sample rate compatibility</description></item>
         /// </list>
         /// </remarks>
-        bool ValidateAudioRequest(AudioRequestBase request, string provider, out string errorMessage);
+        bool ValidateAudioRequest(AudioRequestBase request, int providerId, out string errorMessage);
 
         /// <summary>
-        /// Gets a list of all providers that support a specific audio capability.
+        /// Gets a list of all provider IDs that support a specific audio capability.
         /// </summary>
         /// <param name="capability">The audio capability to check.</param>
-        /// <returns>A collection of provider names that support the capability.</returns>
+        /// <returns>A collection of provider IDs that support the capability.</returns>
         /// <remarks>
         /// Useful for discovering which providers can handle specific audio operations,
         /// enabling intelligent routing and fallback strategies.
         /// </remarks>
-        IEnumerable<string> GetProvidersWithCapability(AudioCapability capability);
+        IEnumerable<int> GetProvidersWithCapability(AudioCapability capability);
 
         /// <summary>
         /// Gets detailed capability information for a specific provider.
         /// </summary>
-        /// <param name="provider">The provider name.</param>
+        /// <param name="providerId">The provider ID from the Provider entity.</param>
         /// <returns>Comprehensive capability information for the provider.</returns>
         /// <remarks>
         /// Returns a detailed breakdown of all audio capabilities, supported formats,
         /// languages, voices, and limitations for the specified provider.
         /// </remarks>
-        AudioProviderCapabilities GetProviderCapabilities(string provider);
+        AudioProviderCapabilities GetProviderCapabilities(int providerId);
 
         /// <summary>
         /// Determines the best provider for a specific audio request based on capabilities and requirements.
         /// </summary>
         /// <param name="request">The audio request with requirements.</param>
-        /// <param name="availableProviders">List of available providers to choose from.</param>
-        /// <returns>The recommended provider name, or null if none meet the requirements.</returns>
+        /// <param name="availableProviderIds">List of available provider IDs to choose from.</param>
+        /// <returns>The recommended provider ID, or null if none meet the requirements.</returns>
         /// <remarks>
         /// <para>
         /// Analyzes the request requirements and matches them against provider capabilities
@@ -167,7 +167,7 @@ namespace ConduitLLM.Core.Interfaces
         /// <item><description>Cost considerations</description></item>
         /// </list>
         /// </remarks>
-        string? RecommendProvider(AudioRequestBase request, IEnumerable<string> availableProviders);
+        int? RecommendProvider(AudioRequestBase request, IEnumerable<int> availableProviderIds);
     }
 
     /// <summary>

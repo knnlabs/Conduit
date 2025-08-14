@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
-using ConduitLLM.Http.DTOs.HealthMonitoring;
+using ConduitLLM.Configuration.DTOs.HealthMonitoring;
 using ConduitLLM.Http.Services;
 using ConduitLLM.Security.Interfaces;
 using ConduitLLM.Configuration.DTOs.Security;

@@ -4,10 +4,12 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Admin.Extensions
 {
     /// <summary>
@@ -87,14 +89,11 @@ namespace ConduitLLM.Admin.Extensions
         /// </summary>
         /// <param name="virtualKey">The virtual key entity</param>
         /// <returns>The remaining budget or null if no budget is set</returns>
+        [Obsolete("Budget tracking is now at the group level. Use VirtualKeyGroup.Balance instead.")]
         public static decimal? GetRemainingBudget(this VirtualKey virtualKey)
         {
-            if (!virtualKey.MaxBudget.HasValue)
-            {
-                return null;
-            }
-
-            return Math.Max(0, virtualKey.MaxBudget.Value - virtualKey.CurrentSpend);
+            // This method is deprecated - budget tracking is now at the group level
+            return null;
         }
 
         /// <summary>
@@ -102,20 +101,26 @@ namespace ConduitLLM.Admin.Extensions
         /// </summary>
         /// <param name="mapping">The entity to map</param>
         /// <returns>The mapped DTO</returns>
-        public static ModelProviderMappingDto ToDto(this ModelProviderMapping mapping)
+        public static ModelProviderMappingDto ToDto(this ConduitLLM.Configuration.Entities.ModelProviderMapping mapping)
         {
             if (mapping == null)
             {
                 throw new ArgumentNullException(nameof(mapping));
             }
 
-            return new ModelProviderMappingDto
+            return new ConduitLLM.Configuration.DTOs.ModelProviderMappingDto
             {
                 Id = mapping.Id,
                 ModelId = mapping.ModelAlias,
-                ProviderModelId = mapping.ProviderModelName,
-                ProviderId = mapping.ProviderCredentialId.ToString(),
-                ProviderName = mapping.ProviderCredential?.ProviderName,
+                ProviderModelId = mapping.ProviderModelId,
+                ProviderId = mapping.ProviderId,
+                Provider = mapping.Provider != null ? new ProviderReferenceDto
+                {
+                    Id = mapping.Provider.Id,
+                    ProviderType = mapping.Provider.ProviderType,
+                    DisplayName = mapping.Provider.ProviderName,
+                    IsEnabled = mapping.Provider.IsEnabled
+                } : null,
                 Priority = 0, // Default priority if not available in entity
                 IsEnabled = mapping.IsEnabled,
                 Capabilities = null, // Legacy field, superseded by individual capability fields
@@ -126,6 +131,10 @@ namespace ConduitLLM.Admin.Extensions
                 SupportsRealtimeAudio = mapping.SupportsRealtimeAudio,
                 SupportsImageGeneration = mapping.SupportsImageGeneration,
                 SupportsVideoGeneration = mapping.SupportsVideoGeneration,
+                SupportsEmbeddings = mapping.SupportsEmbeddings,
+                SupportsChat = mapping.SupportsChat,
+                SupportsFunctionCalling = mapping.SupportsFunctionCalling,
+                SupportsStreaming = mapping.SupportsStreaming,
                 TokenizerType = mapping.TokenizerType,
                 SupportedVoices = mapping.SupportedVoices,
                 SupportedLanguages = mapping.SupportedLanguages,
@@ -143,25 +152,19 @@ namespace ConduitLLM.Admin.Extensions
         /// </summary>
         /// <param name="dto">The DTO to map</param>
         /// <returns>The mapped entity</returns>
-        public static ModelProviderMapping ToEntity(this ModelProviderMappingDto dto)
+        public static ConduitLLM.Configuration.Entities.ModelProviderMapping ToEntity(this ModelProviderMappingDto dto)
         {
             if (dto == null)
             {
                 throw new ArgumentNullException(nameof(dto));
             }
 
-            int providerId = 0;
-            if (!string.IsNullOrEmpty(dto.ProviderId))
-            {
-                int.TryParse(dto.ProviderId, out providerId);
-            }
-
-            return new ModelProviderMapping
+            return new ConduitLLM.Configuration.Entities.ModelProviderMapping
             {
                 Id = dto.Id,
                 ModelAlias = dto.ModelId,
-                ProviderModelName = dto.ProviderModelId,
-                ProviderCredentialId = providerId,
+                ProviderModelId = dto.ProviderModelId,
+                ProviderId = dto.ProviderId,
                 IsEnabled = dto.IsEnabled,
                 MaxContextTokens = dto.MaxContextLength,
                 SupportsVision = dto.SupportsVision,
@@ -170,6 +173,10 @@ namespace ConduitLLM.Admin.Extensions
                 SupportsRealtimeAudio = dto.SupportsRealtimeAudio,
                 SupportsImageGeneration = dto.SupportsImageGeneration,
                 SupportsVideoGeneration = dto.SupportsVideoGeneration,
+                SupportsEmbeddings = dto.SupportsEmbeddings,
+                SupportsChat = dto.SupportsChat,
+                SupportsFunctionCalling = dto.SupportsFunctionCalling,
+                SupportsStreaming = dto.SupportsStreaming,
                 TokenizerType = dto.TokenizerType,
                 SupportedVoices = dto.SupportedVoices,
                 SupportedLanguages = dto.SupportedLanguages,
@@ -181,110 +188,9 @@ namespace ConduitLLM.Admin.Extensions
             };
         }
 
-        /// <summary>
-        /// Maps a ProviderCredential entity to a ProviderCredentialDto
-        /// </summary>
-        /// <param name="credential">The entity to map</param>
-        /// <returns>The mapped DTO</returns>
-        public static ProviderCredentialDto ToDto(this ProviderCredential credential)
-        {
-            if (credential == null)
-            {
-                throw new ArgumentNullException(nameof(credential));
-            }
 
-            return new ProviderCredentialDto
-            {
-                Id = credential.Id,
-                ProviderName = credential.ProviderName,
-                ApiBase = credential.BaseUrl ?? string.Empty,
-                ApiKey = "********", // Mask API key in DTOs
-                IsEnabled = credential.IsEnabled,
-                Organization = null, // Organization not available in entity
-                CreatedAt = credential.CreatedAt,
-                UpdatedAt = credential.UpdatedAt
-            };
-        }
 
-        /// <summary>
-        /// Maps a ProviderCredential entity to a simple ProviderDataDto
-        /// </summary>
-        /// <param name="credential">The entity to map</param>
-        /// <returns>The mapped DTO</returns>
-        public static ProviderDataDto ToProviderDataDto(this ProviderCredential credential)
-        {
-            if (credential == null)
-            {
-                throw new ArgumentNullException(nameof(credential));
-            }
 
-            return new ProviderDataDto
-            {
-                Id = credential.Id,
-                ProviderName = credential.ProviderName
-            };
-        }
-
-        /// <summary>
-        /// Maps a CreateProviderCredentialDto to a ProviderCredential entity
-        /// </summary>
-        /// <param name="dto">The DTO to map</param>
-        /// <returns>The mapped entity</returns>
-        public static ProviderCredential ToEntity(this CreateProviderCredentialDto dto)
-        {
-            if (dto == null)
-            {
-                throw new ArgumentNullException(nameof(dto));
-            }
-
-            return new ProviderCredential
-            {
-                ProviderName = dto.ProviderName,
-                ApiKey = dto.ApiKey,
-                BaseUrl = dto.ApiBase,
-                ApiVersion = null, // Not in the DTO
-                IsEnabled = dto.IsEnabled,
-                // Organization is not available in entity
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-        }
-
-        /// <summary>
-        /// Updates a ProviderCredential entity from an UpdateProviderCredentialDto
-        /// </summary>
-        /// <param name="entity">The entity to update</param>
-        /// <param name="dto">The DTO with updated values</param>
-        /// <returns>The updated entity</returns>
-        public static ProviderCredential UpdateFrom(this ProviderCredential entity, UpdateProviderCredentialDto dto)
-        {
-            if (entity == null)
-            {
-                throw new ArgumentNullException(nameof(entity));
-            }
-
-            if (dto == null)
-            {
-                throw new ArgumentNullException(nameof(dto));
-            }
-
-            entity.BaseUrl = dto.ApiBase;
-
-            // Handle API key special case:
-            // - If null or empty, keep existing
-            // - If equal to "[REMOVE]", set to null
-            // - Otherwise, update to new value
-            if (!string.IsNullOrEmpty(dto.ApiKey))
-            {
-                entity.ApiKey = dto.ApiKey == "[REMOVE]" ? null : dto.ApiKey;
-            }
-
-            entity.IsEnabled = dto.IsEnabled;
-            // Organization is not available in entity
-            entity.UpdatedAt = DateTime.UtcNow;
-
-            return entity;
-        }
 
         /// <summary>
         /// Maps a Notification entity to a NotificationDto
@@ -404,110 +310,6 @@ namespace ConduitLLM.Admin.Extensions
             return entity;
         }
 
-        /// <summary>
-        /// Maps a ProviderHealthConfiguration entity to a ProviderHealthConfigurationDto
-        /// </summary>
-        /// <param name="config">The entity to map</param>
-        /// <returns>The mapped DTO</returns>
-        public static ProviderHealthConfigurationDto ToDto(this ProviderHealthConfiguration config)
-        {
-            if (config == null)
-            {
-                throw new ArgumentNullException(nameof(config));
-            }
-
-            return new ProviderHealthConfigurationDto
-            {
-                Id = config.Id,
-                ProviderName = config.ProviderName,
-                MonitoringEnabled = config.MonitoringEnabled,
-                CheckIntervalMinutes = config.CheckIntervalMinutes,
-                TimeoutSeconds = config.TimeoutSeconds,
-                ConsecutiveFailuresThreshold = config.ConsecutiveFailuresThreshold,
-                NotificationsEnabled = config.NotificationsEnabled,
-                CustomEndpointUrl = config.CustomEndpointUrl,
-                LastCheckedUtc = config.LastCheckedUtc
-            };
-        }
-
-        /// <summary>
-        /// Maps a CreateProviderHealthConfigurationDto to a ProviderHealthConfiguration entity
-        /// </summary>
-        /// <param name="dto">The DTO to map</param>
-        /// <returns>The mapped entity</returns>
-        public static ProviderHealthConfiguration ToEntity(this CreateProviderHealthConfigurationDto dto)
-        {
-            if (dto == null)
-            {
-                throw new ArgumentNullException(nameof(dto));
-            }
-
-            return new ProviderHealthConfiguration
-            {
-                ProviderName = dto.ProviderName,
-                MonitoringEnabled = dto.MonitoringEnabled,
-                CheckIntervalMinutes = dto.CheckIntervalMinutes,
-                TimeoutSeconds = dto.TimeoutSeconds,
-                ConsecutiveFailuresThreshold = dto.ConsecutiveFailuresThreshold,
-                NotificationsEnabled = dto.NotificationsEnabled,
-                CustomEndpointUrl = dto.CustomEndpointUrl,
-                LastCheckedUtc = null
-            };
-        }
-
-        /// <summary>
-        /// Updates a ProviderHealthConfiguration entity from an UpdateProviderHealthConfigurationDto
-        /// </summary>
-        /// <param name="entity">The entity to update</param>
-        /// <param name="dto">The DTO with updated values</param>
-        /// <returns>The updated entity</returns>
-        public static ProviderHealthConfiguration UpdateFrom(this ProviderHealthConfiguration entity, UpdateProviderHealthConfigurationDto dto)
-        {
-            if (entity == null)
-            {
-                throw new ArgumentNullException(nameof(entity));
-            }
-
-            if (dto == null)
-            {
-                throw new ArgumentNullException(nameof(dto));
-            }
-
-            entity.MonitoringEnabled = dto.MonitoringEnabled;
-            entity.CheckIntervalMinutes = dto.CheckIntervalMinutes;
-            entity.TimeoutSeconds = dto.TimeoutSeconds;
-            entity.ConsecutiveFailuresThreshold = dto.ConsecutiveFailuresThreshold;
-            entity.NotificationsEnabled = dto.NotificationsEnabled;
-            entity.CustomEndpointUrl = dto.CustomEndpointUrl;
-
-            return entity;
-        }
-
-        /// <summary>
-        /// Maps a ProviderHealthRecord entity to a ProviderHealthRecordDto
-        /// </summary>
-        /// <param name="record">The entity to map</param>
-        /// <returns>The mapped DTO</returns>
-        public static ProviderHealthRecordDto ToDto(this ProviderHealthRecord record)
-        {
-            if (record == null)
-            {
-                throw new ArgumentNullException(nameof(record));
-            }
-
-            return new ProviderHealthRecordDto
-            {
-                Id = record.Id,
-                ProviderName = record.ProviderName,
-                Status = record.Status,
-                StatusMessage = record.StatusMessage,
-                TimestampUtc = record.TimestampUtc,
-                ResponseTimeMs = record.ResponseTimeMs,
-                ErrorCategory = record.ErrorCategory,
-                ErrorDetails = record.ErrorDetails,
-                EndpointUrl = record.EndpointUrl
-            };
-        }
 
         /// <summary>
         /// Maps a ModelCost entity to a ModelCostDto
@@ -524,10 +326,17 @@ namespace ConduitLLM.Admin.Extensions
             return new ModelCostDto
             {
                 Id = modelCost.Id,
-                ModelIdPattern = modelCost.ModelIdPattern,
-                InputTokenCost = modelCost.InputTokenCost,
-                OutputTokenCost = modelCost.OutputTokenCost,
-                EmbeddingTokenCost = modelCost.EmbeddingTokenCost,
+                CostName = modelCost.CostName,
+                AssociatedModelAliases = modelCost.ModelCostMappings?
+                    .Where(mcm => mcm.IsActive)
+                    .Select(mcm => mcm.ModelProviderMapping?.ModelAlias ?? "")
+                    .Where(alias => !string.IsNullOrEmpty(alias))
+                    .ToList() ?? new List<string>(),
+                PricingModel = modelCost.PricingModel,
+                PricingConfiguration = modelCost.PricingConfiguration,
+                InputCostPerMillionTokens = modelCost.InputCostPerMillionTokens,
+                OutputCostPerMillionTokens = modelCost.OutputCostPerMillionTokens,
+                EmbeddingCostPerMillionTokens = modelCost.EmbeddingCostPerMillionTokens,
                 ImageCostPerImage = modelCost.ImageCostPerImage,
                 AudioCostPerMinute = modelCost.AudioCostPerMinute,
                 AudioCostPerKCharacters = modelCost.AudioCostPerKCharacters,
@@ -535,14 +344,23 @@ namespace ConduitLLM.Admin.Extensions
                 AudioOutputCostPerMinute = modelCost.AudioOutputCostPerMinute,
                 VideoCostPerSecond = modelCost.VideoCostPerSecond,
                 VideoResolutionMultipliers = modelCost.VideoResolutionMultipliers,
+                ImageResolutionMultipliers = modelCost.ImageResolutionMultipliers,
                 BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
                 SupportsBatchProcessing = modelCost.SupportsBatchProcessing,
                 ImageQualityMultipliers = modelCost.ImageQualityMultipliers,
-                CachedInputTokenCost = modelCost.CachedInputTokenCost,
-                CachedInputWriteCost = modelCost.CachedInputWriteCost,
+                CachedInputCostPerMillionTokens = modelCost.CachedInputCostPerMillionTokens,
+                CachedInputWriteCostPerMillionTokens = modelCost.CachedInputWriteCostPerMillionTokens,
                 CostPerSearchUnit = modelCost.CostPerSearchUnit,
+                CostPerInferenceStep = modelCost.CostPerInferenceStep,
+                DefaultInferenceSteps = modelCost.DefaultInferenceSteps,
                 CreatedAt = modelCost.CreatedAt,
-                UpdatedAt = modelCost.UpdatedAt
+                UpdatedAt = modelCost.UpdatedAt,
+                ModelType = modelCost.ModelType,
+                IsActive = modelCost.IsActive,
+                EffectiveDate = modelCost.EffectiveDate,
+                ExpiryDate = modelCost.ExpiryDate,
+                Description = modelCost.Description,
+                Priority = modelCost.Priority
             };
         }
 
@@ -560,10 +378,12 @@ namespace ConduitLLM.Admin.Extensions
 
             return new ModelCost
             {
-                ModelIdPattern = dto.ModelIdPattern,
-                InputTokenCost = dto.InputTokenCost,
-                OutputTokenCost = dto.OutputTokenCost,
-                EmbeddingTokenCost = dto.EmbeddingTokenCost,
+                CostName = dto.CostName,
+                PricingModel = dto.PricingModel,
+                PricingConfiguration = dto.PricingConfiguration,
+                InputCostPerMillionTokens = dto.InputCostPerMillionTokens,
+                OutputCostPerMillionTokens = dto.OutputCostPerMillionTokens,
+                EmbeddingCostPerMillionTokens = dto.EmbeddingCostPerMillionTokens,
                 ImageCostPerImage = dto.ImageCostPerImage,
                 AudioCostPerMinute = dto.AudioCostPerMinute,
                 AudioCostPerKCharacters = dto.AudioCostPerKCharacters,
@@ -571,12 +391,15 @@ namespace ConduitLLM.Admin.Extensions
                 AudioOutputCostPerMinute = dto.AudioOutputCostPerMinute,
                 VideoCostPerSecond = dto.VideoCostPerSecond,
                 VideoResolutionMultipliers = dto.VideoResolutionMultipliers,
+                ImageResolutionMultipliers = dto.ImageResolutionMultipliers,
                 BatchProcessingMultiplier = dto.BatchProcessingMultiplier,
                 SupportsBatchProcessing = dto.SupportsBatchProcessing,
                 ImageQualityMultipliers = dto.ImageQualityMultipliers,
-                CachedInputTokenCost = dto.CachedInputTokenCost,
-                CachedInputWriteCost = dto.CachedInputWriteCost,
+                CachedInputCostPerMillionTokens = dto.CachedInputCostPerMillionTokens,
+                CachedInputWriteCostPerMillionTokens = dto.CachedInputWriteCostPerMillionTokens,
                 CostPerSearchUnit = dto.CostPerSearchUnit,
+                CostPerInferenceStep = dto.CostPerInferenceStep,
+                DefaultInferenceSteps = dto.DefaultInferenceSteps,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -600,10 +423,12 @@ namespace ConduitLLM.Admin.Extensions
                 throw new ArgumentNullException(nameof(dto));
             }
 
-            entity.ModelIdPattern = dto.ModelIdPattern;
-            entity.InputTokenCost = dto.InputTokenCost;
-            entity.OutputTokenCost = dto.OutputTokenCost;
-            entity.EmbeddingTokenCost = dto.EmbeddingTokenCost;
+            entity.CostName = dto.CostName;
+            entity.PricingModel = dto.PricingModel;
+            entity.PricingConfiguration = dto.PricingConfiguration;
+            entity.InputCostPerMillionTokens = dto.InputCostPerMillionTokens;
+            entity.OutputCostPerMillionTokens = dto.OutputCostPerMillionTokens;
+            entity.EmbeddingCostPerMillionTokens = dto.EmbeddingCostPerMillionTokens;
             entity.ImageCostPerImage = dto.ImageCostPerImage;
             entity.AudioCostPerMinute = dto.AudioCostPerMinute;
             entity.AudioCostPerKCharacters = dto.AudioCostPerKCharacters;
@@ -611,12 +436,15 @@ namespace ConduitLLM.Admin.Extensions
             entity.AudioOutputCostPerMinute = dto.AudioOutputCostPerMinute;
             entity.VideoCostPerSecond = dto.VideoCostPerSecond;
             entity.VideoResolutionMultipliers = dto.VideoResolutionMultipliers;
+            entity.ImageResolutionMultipliers = dto.ImageResolutionMultipliers;
             entity.BatchProcessingMultiplier = dto.BatchProcessingMultiplier;
             entity.SupportsBatchProcessing = dto.SupportsBatchProcessing;
             entity.ImageQualityMultipliers = dto.ImageQualityMultipliers;
-            entity.CachedInputTokenCost = dto.CachedInputTokenCost;
-            entity.CachedInputWriteCost = dto.CachedInputWriteCost;
+            entity.CachedInputCostPerMillionTokens = dto.CachedInputCostPerMillionTokens;
+            entity.CachedInputWriteCostPerMillionTokens = dto.CachedInputWriteCostPerMillionTokens;
             entity.CostPerSearchUnit = dto.CostPerSearchUnit;
+            entity.CostPerInferenceStep = dto.CostPerInferenceStep;
+            entity.DefaultInferenceSteps = dto.DefaultInferenceSteps;
             entity.UpdatedAt = DateTime.UtcNow;
 
             return entity;

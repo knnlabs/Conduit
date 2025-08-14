@@ -1,40 +1,46 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>disable</Nullable>
+    <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
-    <NoWarn>xUnit2013;CS8632</NoWarn>
+    <IsTestProject>true</IsTestProject>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="coverlet.collector" Version="6.0.4" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.0" />
-    <PackageReference Include="FluentAssertions" Version="6.12.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.7" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.7" />
-    <PackageReference Include="Testcontainers" Version="4.1.0" />
-    <PackageReference Include="Testcontainers.PostgreSql" Version="4.1.0" />
-    <PackageReference Include="Testcontainers.Redis" Version="4.1.0" />
-    <PackageReference Include="Testcontainers.RabbitMq" Version="4.1.0" />
-    <PackageReference Include="WireMock.Net" Version="1.6.8" />
-    <PackageReference Include="Respawn" Version="6.2.1" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.3">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="YamlDotNet" Version="16.3.0" />
+    <PackageReference Include="FluentAssertions" Version="8.5.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.8" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.8" />
+    <PackageReference Include="Polly" Version="8.6.2" />
+    <PackageReference Include="Npgsql" Version="9.0.3" />
+    <PackageReference Include="StackExchange.Redis" Version="2.8.58" />
   </ItemGroup>
 
   <ItemGroup>
-    <Using Include="Xunit" />
-    <Using Include="FluentAssertions" />
-    <Using Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <None Update="Config/**/*.yaml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="TestData/**/*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="xunit.runner.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ConduitLLM.Http\ConduitLLM.Http.csproj" />
-    <ProjectReference Include="..\ConduitLLM.Admin\ConduitLLM.Admin.csproj" />
-    <ProjectReference Include="..\ConduitLLM.Core\ConduitLLM.Core.csproj" />
     <ProjectReference Include="..\ConduitLLM.Configuration\ConduitLLM.Configuration.csproj" />
+    <ProjectReference Include="..\ConduitLLM.Core\ConduitLLM.Core.csproj" />
   </ItemGroup>
 
 </Project>

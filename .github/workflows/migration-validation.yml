@@ -8,12 +8,21 @@ on:
       - '**/*.csproj'
   push:
     branches:
-      - main
+      - master
       - dev
     paths:
       - '**.cs'
       - '**/Migrations/**'
       - '**/*.csproj'
+
+# IMPORTANT: Never set cancel-in-progress to true for migration validation!
+# Database migrations must complete validation to ensure:
+# - Schema changes are valid
+# - Migration scripts can be applied successfully
+# - No breaking changes are introduced
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   validate-migrations:
@@ -72,17 +81,25 @@ jobs:
       run: dotnet build --no-restore
     
     - name: Validate migrations
-      run: ./scripts/migrations/validate-migrations.sh --check-pending
+      run: |
+        export DATABASE_URL="${{ env.DATABASE_URL }}"
+        ./scripts/migrations/validate-migrations.sh --check-pending
+    
+    - name: Validate PostgreSQL syntax
+      run: |
+        ./scripts/migrations/validate-postgresql-syntax.sh
     
     - name: Test migration application
       run: |
         cd ConduitLLM.Configuration
+        export DATABASE_URL="${{ env.DATABASE_URL }}"
         dotnet ef database update --no-build
     
     - name: Generate migration script
       if: github.event_name == 'pull_request'
       run: |
         cd ConduitLLM.Configuration
+        export DATABASE_URL="${{ env.DATABASE_URL }}"
         ../scripts/migrations/ef-wrapper.sh migrations script --no-build -o ${{ github.workspace }}/migration-script.sql
     
     - name: Upload migration script

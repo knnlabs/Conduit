@@ -1,13 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { DiscoveredModel, ModelsDiscoveryResponse } from '@knn_labs/conduit-core-client';
+import { withAdminClient } from '@/lib/client/adminClient';
+import type { DiscoveredModel, ModelsDiscoveryResponse } from '../types/models';
 
 
-export interface ModelOption {
-  value: string;
-  label: string;
-}
 
 export function useModels() {
   const [models, setModels] = useState<DiscoveredModel[]>([]);
@@ -20,15 +17,19 @@ export function useModels() {
         setLoading(true);
         setError(null);
         
-        const response = await fetch('/api/discovery/models');
-        if (!response.ok) {
-          throw new Error(`Failed to fetch models: ${response.statusText}`);
-        }
+        const discoveredModels = await withAdminClient(client => 
+          client.modelMappings.discoverProviderModels(1)
+        );
         
-        const modelsData = await response.json() as ModelsDiscoveryResponse;
+        // Transform to expected format
+        const modelsData: ModelsDiscoveryResponse = {
+          models: discoveredModels as unknown as DiscoveredModel[],
+          totalCount: Array.isArray(discoveredModels) ? discoveredModels.length : 0,
+          providers: []
+        };
         
         // Extract models array from response
-        const modelsArray = modelsData.data ?? [];
+        const modelsArray = modelsData.models ?? [];
         setModels(modelsArray);
       } catch (err) {
         console.error('Error fetching models:', err);
@@ -43,9 +44,9 @@ export function useModels() {
   }, []);
 
   // Convert models to select options format
-  const modelOptions: ModelOption[] = models.map((model) => ({
+  const modelOptions: { value: string; label: string; }[] = models.map((model) => ({
     value: model.id,
-    label: model.display_name ?? model.id,
+    label: model.displayName ?? model.id,
   }));
 
   return {

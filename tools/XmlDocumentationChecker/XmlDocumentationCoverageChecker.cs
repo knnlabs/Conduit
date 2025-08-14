@@ -59,7 +59,7 @@ namespace ConduitLLM.Tools
                 }
                 
                 var csFiles = GetCSharpFiles(projectDir);
-                Console.WriteLine($"  Found {csFiles.Count} C# files");
+                Console.WriteLine($"  Found {csFiles.Count()} C# files");
                 
                 var undocumentedTypes = new List<string>();
                 var partiallyDocumentedTypes = new List<(string TypeName, List<string> UndocumentedMembers)>();
@@ -91,7 +91,7 @@ namespace ConduitLLM.Tools
                     {
                         // Check for method-level documentation
                         var undocumentedMembers = FindUndocumentedMethods(content, typeName);
-                        if (undocumentedMembers.Any())
+                        if (undocumentedMembers.Count() > 0)
                         {
                             partiallyDocumentedTypes.Add((typeName, undocumentedMembers));
                         }
@@ -209,20 +209,20 @@ namespace ConduitLLM.Tools
             
             foreach (var (projectName, undocumentedTypes, partiallyDocumentedTypes) in results)
             {
-                var projectTotalTypes = undocumentedTypes.Count + partiallyDocumentedTypes.Count;
+                var projectTotalTypes = undocumentedTypes.Count() + partiallyDocumentedTypes.Count();
                 if (projectTotalTypes == 0)
                     continue;
                 
                 totalTypesScanned += projectTotalTypes;
-                totalUndocumentedTypes += undocumentedTypes.Count;
-                totalPartiallyDocumentedTypes += partiallyDocumentedTypes.Count;
+                totalUndocumentedTypes += undocumentedTypes.Count();
+                totalPartiallyDocumentedTypes += partiallyDocumentedTypes.Count();
                 
                 Console.WriteLine($"PROJECT: {projectName}");
                 Console.WriteLine($"  Total Types: {projectTotalTypes}");
-                Console.WriteLine($"  Undocumented Types: {undocumentedTypes.Count}");
-                Console.WriteLine($"  Partially Documented Types: {partiallyDocumentedTypes.Count}");
+                Console.WriteLine($"  Undocumented Types: {undocumentedTypes.Count()}");
+                Console.WriteLine($"  Partially Documented Types: {partiallyDocumentedTypes.Count()}");
                 
-                if (undocumentedTypes.Any())
+                if (undocumentedTypes.Count() > 0)
                 {
                     Console.WriteLine("\n  UNDOCUMENTED TYPES:");
                     foreach (var type in undocumentedTypes.OrderBy(t => t))
@@ -231,16 +231,16 @@ namespace ConduitLLM.Tools
                     }
                 }
                 
-                if (partiallyDocumentedTypes.Any())
+                if (partiallyDocumentedTypes.Count() > 0)
                 {
                     Console.WriteLine("\n  PARTIALLY DOCUMENTED TYPES:");
                     foreach (var (typeName, undocumentedMembers) in partiallyDocumentedTypes.OrderBy(t => t.TypeName))
                     {
                         Console.WriteLine($"    - {typeName}");
                         Console.WriteLine($"      Undocumented Members: {string.Join(", ", undocumentedMembers.Take(5))}");
-                        if (undocumentedMembers.Count > 5)
+                        if (undocumentedMembers.Count() > 5)
                         {
-                            Console.WriteLine($"      ... and {undocumentedMembers.Count - 5} more");
+                            Console.WriteLine($"      ... and {undocumentedMembers.Count() - 5} more");
                         }
                     }
                 }

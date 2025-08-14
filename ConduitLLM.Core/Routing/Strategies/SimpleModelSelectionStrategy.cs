@@ -2,6 +2,7 @@ using System.Collections.Generic;
 
 using ConduitLLM.Core.Models.Routing;
 
+using ConduitLLM.Core.Interfaces;
 namespace ConduitLLM.Core.Routing.Strategies
 {
     /// <summary>
@@ -20,7 +21,7 @@ namespace ConduitLLM.Core.Routing.Strategies
             IReadOnlyDictionary<string, ModelDeployment> modelDeployments,
             IReadOnlyDictionary<string, int> modelUsageCounts)
         {
-            return availableModels.Count > 0 ? availableModels[0] : null;
+            return availableModels.Count() > 0 ? availableModels[0] : null;
         }
     }
 }

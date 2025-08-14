@@ -1,5 +1,6 @@
 using System;
 
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Configuration.Utilities;

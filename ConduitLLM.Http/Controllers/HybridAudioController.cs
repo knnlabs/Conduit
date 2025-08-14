@@ -2,12 +2,14 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Http.Security;
 
 using Microsoft.AspNetCore.Authorization;
+using ConduitLLM.Configuration.DTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -25,11 +27,11 @@ namespace ConduitLLM.Http.Controllers
     /// </remarks>
     [ApiController]
     [Route("v1/audio/hybrid")]
-    [Authorize(Policy = "MasterKeyOrVirtualKey")]
+    [Authorize(AuthenticationSchemes = "VirtualKey")]
     public class HybridAudioController : ControllerBase
     {
         private readonly IHybridAudioService _hybridAudioService;
-        private readonly ConduitLLM.Configuration.Services.IVirtualKeyService _virtualKeyService;
+        private readonly ConduitLLM.Configuration.Interfaces.IVirtualKeyService _virtualKeyService;
         private readonly ILogger<HybridAudioController> _logger;
 
         /// <summary>
@@ -40,7 +42,7 @@ namespace ConduitLLM.Http.Controllers
         /// <param name="logger">The logger instance.</param>
         public HybridAudioController(
             IHybridAudioService hybridAudioService,
-            ConduitLLM.Configuration.Services.IVirtualKeyService virtualKeyService,
+            ConduitLLM.Configuration.Interfaces.IVirtualKeyService virtualKeyService,
             ILogger<HybridAudioController> logger)
         {
             _hybridAudioService = hybridAudioService ?? throw new ArgumentNullException(nameof(hybridAudioService));
@@ -88,7 +90,7 @@ namespace ConduitLLM.Http.Controllers
                 // Validate file
                 if (file == null || file.Length == 0)
                 {
-                    return BadRequest(new { error = "No audio file provided" });
+                    return BadRequest(new ErrorResponseDto("No audio file provided"));
                 }
 
                 // Check permissions
@@ -125,7 +127,8 @@ namespace ConduitLLM.Http.Controllers
                     OutputFormat = outputFormat,
                     Temperature = temperature,
                     MaxTokens = maxTokens,
-                    EnableStreaming = false
+                    EnableStreaming = false,
+                    VirtualKey = apiKey
                 };
 
                 // Process audio
@@ -145,13 +148,13 @@ namespace ConduitLLM.Http.Controllers
             {
                 _logger.LogWarning(ex,
                 "Invalid hybrid audio request");
-                return BadRequest(new { error = ex.Message });
+                return BadRequest(new ErrorResponseDto(ex.Message));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex,
                 "Error processing hybrid audio");
-                return StatusCode(500, new { error = "An error occurred processing the audio" });
+                return StatusCode(500, new ErrorResponseDto("An error occurred processing the audio"));
             }
         }
 
@@ -192,13 +195,13 @@ namespace ConduitLLM.Http.Controllers
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { error = ex.Message });
+                return BadRequest(new ErrorResponseDto(ex.Message));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex,
                 "Error creating hybrid audio session");
-                return StatusCode(500, new { error = "An error occurred creating the session" });
+                return StatusCode(500, new ErrorResponseDto("An error occurred creating the session"));
             }
         }
 
@@ -223,13 +226,13 @@ namespace ConduitLLM.Http.Controllers
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { error = ex.Message });
+                return BadRequest(new ErrorResponseDto(ex.Message));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex,
                 "Error closing hybrid audio session");
-                return StatusCode(500, new { error = "An error occurred closing the session" });
+                return StatusCode(500, new ErrorResponseDto("An error occurred closing the session"));
             }
         }
 

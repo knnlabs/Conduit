@@ -12,6 +12,7 @@ using ConduitLLM.Core.Interfaces;
 
 using Microsoft.Extensions.Logging;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Core.Services
 {
     /// <summary>
@@ -394,7 +395,7 @@ _logger.LogDebug("Retrieved cached audio with key {Key}", key.Replace(Environmen
                 position += segmentBytes;
             }
 
-            _logger.LogDebug("Split audio into {Count} segments of {Duration}s each", segments.Count, segmentDuration);
+            _logger.LogDebug("Split audio into {Count} segments of {Duration}s each", segments.Count(), segmentDuration);
             return segments;
         }
 
@@ -404,7 +405,7 @@ _logger.LogDebug("Retrieved cached audio with key {Key}", key.Replace(Environmen
             string format,
             CancellationToken cancellationToken = default)
         {
-            if (segments == null || segments.Count == 0)
+            if (segments == null || segments.Count() == 0)
                 throw new ArgumentException("Segments cannot be null or empty", nameof(segments));
 
             format = format?.ToLowerInvariant() ?? throw new ArgumentNullException(nameof(format));
@@ -423,7 +424,7 @@ _logger.LogDebug("Retrieved cached audio with key {Key}", key.Replace(Environmen
             }
 
             var mergedData = stream.ToArray();
-            _logger.LogDebug("Merged {Count} audio segments into {Size} bytes", segments.Count, mergedData.Length);
+            _logger.LogDebug("Merged {Count} audio segments into {Size} bytes", segments.Count(), mergedData.Length);
 
             return mergedData;
         }

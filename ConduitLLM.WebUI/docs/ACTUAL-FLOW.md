@@ -26,7 +26,7 @@ Browser → Next.js Route → Admin SDK → Admin API (port 5002) → Database
   3. Calls Admin SDK: `adminClient.providers.testConnectionById(numericId)`
 
 ### 4. Admin SDK
-- File: `Clients/Node/Admin/src/services/ProviderService.ts`
+- File: `SDKs/Node/Admin/src/services/ProviderService.ts`
 - Makes HTTP request to: `POST /api/providercredentials/test/{id}`
 - Target: Admin API on port 5002
 
@@ -95,7 +95,7 @@ CONDUIT_ADMIN_API_KEY=your-admin-key
 
 ### Admin API
 ```
-CONDUIT_MASTER_KEY=alpha
+CONDUIT_API_TO_API_BACKEND_AUTH_KEY=alpha
 DATABASE_URL=postgresql://conduit:conduitpass@postgres:5432/conduitdb
 ```
 

@@ -14,11 +14,11 @@ namespace ConduitLLM.Configuration.Repositories
     /// </summary>
     public class BatchOperationHistoryRepository : IBatchOperationHistoryRepository
     {
-        private readonly ConfigurationDbContext _context;
+        private readonly ConduitDbContext _context;
         private readonly ILogger<BatchOperationHistoryRepository> _logger;
 
         public BatchOperationHistoryRepository(
-            ConfigurationDbContext context,
+            ConduitDbContext context,
             ILogger<BatchOperationHistoryRepository> logger)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
@@ -129,17 +129,17 @@ namespace ConduitLLM.Configuration.Repositories
                 .Where(h => h.StartedAt < olderThan)
                 .ToListAsync();
             
-            if (toDelete.Any())
+            if (toDelete.Count() > 0)
             {
                 _context.BatchOperationHistory.RemoveRange(toDelete);
                 await _context.SaveChangesAsync();
                 
                 _logger.LogInformation(
                     "Deleted {Count} batch operation history records older than {Date}",
-                    toDelete.Count, olderThan);
+                    toDelete.Count(), olderThan);
             }
             
-            return toDelete.Count;
+            return toDelete.Count();
         }
 
         public async Task<BatchOperationStatistics> GetStatisticsAsync(int virtualKeyId, DateTime? since = null)
@@ -154,14 +154,14 @@ namespace ConduitLLM.Configuration.Repositories
 
             var operations = await query.ToListAsync();
             
-            if (!operations.Any())
+            if (operations.Count() == 0)
             {
                 return new BatchOperationStatistics();
             }
 
             var stats = new BatchOperationStatistics
             {
-                TotalOperations = operations.Count,
+                TotalOperations = operations.Count(),
                 SuccessfulOperations = operations.Count(h => h.Status == "Completed"),
                 FailedOperations = operations.Count(h => h.Status == "Failed"),
                 CancelledOperations = operations.Count(h => h.Status == "Cancelled"),
@@ -172,7 +172,7 @@ namespace ConduitLLM.Configuration.Repositories
 
             // Calculate averages only for completed operations
             var completedOps = operations.Where(h => h.DurationSeconds.HasValue && h.ItemsPerSecond.HasValue).ToList();
-            if (completedOps.Any())
+            if (completedOps.Count() > 0)
             {
                 stats.AverageDurationSeconds = completedOps.Average(h => h.DurationSeconds!.Value);
                 stats.AverageItemsPerSecond = completedOps.Average(h => h.ItemsPerSecond!.Value);

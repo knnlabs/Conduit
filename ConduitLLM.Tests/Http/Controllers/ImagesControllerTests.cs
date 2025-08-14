@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Interfaces;
@@ -27,12 +28,12 @@ namespace ConduitLLM.Tests.Http.Controllers
         private readonly Mock<ILLMClientFactory> _mockClientFactory;
         private readonly Mock<IMediaStorageService> _mockStorageService;
         private readonly Mock<ILogger<ImagesController>> _mockLogger;
-        private readonly Mock<ConduitLLM.Configuration.IModelProviderMappingService> _mockModelMappingService;
+        private readonly Mock<ConduitLLM.Configuration.Interfaces.IModelProviderMappingService> _mockModelMappingService;
         private readonly Mock<IAsyncTaskService> _mockTaskService;
         private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
         private readonly Mock<IVirtualKeyService> _mockVirtualKeyService;
         private readonly Mock<IMediaLifecycleService> _mockMediaLifecycleService;
-        private readonly Mock<IImageGenerationMetricsService> _mockMetricsService;
+        private readonly Mock<IHttpClientFactory> _mockHttpClientFactory;
         private readonly Mock<ILLMClient> _mockLLMClient;
         private readonly Mock<IUrlHelper> _mockUrlHelper;
         private readonly ImagesController _controller;
@@ -42,12 +43,12 @@ namespace ConduitLLM.Tests.Http.Controllers
             _mockClientFactory = new Mock<ILLMClientFactory>();
             _mockStorageService = new Mock<IMediaStorageService>();
             _mockLogger = CreateLogger<ImagesController>();
-            _mockModelMappingService = new Mock<ConduitLLM.Configuration.IModelProviderMappingService>();
+            _mockModelMappingService = new Mock<ConduitLLM.Configuration.Interfaces.IModelProviderMappingService>();
             _mockTaskService = new Mock<IAsyncTaskService>();
             _mockPublishEndpoint = new Mock<IPublishEndpoint>();
             _mockVirtualKeyService = new Mock<IVirtualKeyService>();
             _mockMediaLifecycleService = new Mock<IMediaLifecycleService>();
-            _mockMetricsService = new Mock<IImageGenerationMetricsService>();
+            _mockHttpClientFactory = new Mock<IHttpClientFactory>();
             _mockLLMClient = new Mock<ILLMClient>();
             _mockUrlHelper = new Mock<IUrlHelper>();
 
@@ -60,7 +61,7 @@ namespace ConduitLLM.Tests.Http.Controllers
                 _mockPublishEndpoint.Object,
                 _mockVirtualKeyService.Object,
                 _mockMediaLifecycleService.Object,
-                _mockMetricsService.Object);
+                _mockHttpClientFactory.Object);
 
             // Setup default controller context
             _controller.ControllerContext = CreateControllerContext();
@@ -84,10 +85,10 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var errorResponse = badRequestResult.Value as dynamic;
+            var errorResponse = badRequestResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
-            Assert.Equal("Prompt is required", errorResponse.error.message.ToString());
-            Assert.Equal("invalid_request_error", errorResponse.error.type.ToString());
+            Assert.Equal("Prompt is required", errorResponse.Error.Message);
+            Assert.Equal("invalid_request_error", errorResponse.Error.Type);
         }
 
         [Fact]
@@ -101,12 +102,12 @@ namespace ConduitLLM.Tests.Http.Controllers
             };
 
             // Create a simple mapping with no image generation support
-            var mapping = new ConduitLLM.Configuration.ModelProviderMapping
+            var mapping = new ModelProviderMapping
             {
                 ModelAlias = "gpt-4",
-                ProviderName = "openai",
                 ProviderModelId = "gpt-4",
-                SupportsImageGeneration = false
+                SupportsImageGeneration = false,
+                Provider = new Provider { ProviderType = ProviderType.OpenAI }
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("gpt-4"))
@@ -117,10 +118,10 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var errorResponse = badRequestResult.Value as dynamic;
+            var errorResponse = badRequestResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
-            Assert.Equal("Model gpt-4 does not support image generation", errorResponse.error.message.ToString());
-            Assert.Equal("invalid_request_error", errorResponse.error.type.ToString());
+            Assert.Equal("Model gpt-4 does not support image generation", errorResponse.Error.Message);
+            Assert.Equal("invalid_request_error", errorResponse.Error.Type);
         }
 
         [Fact]
@@ -142,10 +143,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Assert
             var objectResult = Assert.IsType<ObjectResult>(result);
             Assert.Equal(500, objectResult.StatusCode);
-            var errorResponse = objectResult.Value as dynamic;
+            var errorResponse = objectResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
-            Assert.Equal("An error occurred while generating images", errorResponse.error.message.ToString());
-            Assert.Equal("server_error", errorResponse.error.type.ToString());
+            Assert.Equal("An error occurred while generating images", errorResponse.Error.Message);
+            Assert.Equal("server_error", errorResponse.Error.Type);
         }
 
         #endregion
@@ -167,9 +168,9 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var errorResponse = badRequestResult.Value as dynamic;
+            var errorResponse = badRequestResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
-            Assert.Equal("Prompt is required", errorResponse.error.message.ToString());
+            Assert.Equal("Prompt is required", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -183,12 +184,12 @@ namespace ConduitLLM.Tests.Http.Controllers
             };
 
             // Create a mapping that doesn't support image generation
-            var mapping = new ConduitLLM.Configuration.ModelProviderMapping
+            var mapping = new ModelProviderMapping
             {
                 ModelAlias = "gpt-4",
-                ProviderName = "openai",
                 ProviderModelId = "gpt-4",
-                SupportsImageGeneration = false
+                SupportsImageGeneration = false,
+                Provider = new Provider { ProviderType = ProviderType.OpenAI }
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("gpt-4"))
@@ -201,10 +202,10 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var errorResponse = badRequestResult.Value as dynamic;
+            var errorResponse = badRequestResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
-            Assert.Equal("Model gpt-4 does not support image generation", errorResponse.error.message.ToString());
-            Assert.Equal("invalid_request_error", errorResponse.error.type.ToString());
+            Assert.Equal("Model gpt-4 does not support image generation", errorResponse.Error.Message);
+            Assert.Equal("invalid_request_error", errorResponse.Error.Type);
         }
 
         #endregion
@@ -225,10 +226,10 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorResponse = notFoundResult.Value as dynamic;
+            var errorResponse = notFoundResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
-            Assert.Equal("Task not found", errorResponse.error.message.ToString());
-            Assert.Equal("not_found_error", errorResponse.error.type.ToString());
+            Assert.Equal("Task not found", errorResponse.Error.Message);
+            Assert.Equal("invalid_request_error", errorResponse.Error.Type);
         }
 
         [Fact]
@@ -246,9 +247,9 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Assert
             var objectResult = Assert.IsType<ObjectResult>(result);
             Assert.Equal(500, objectResult.StatusCode);
-            var errorResponse = objectResult.Value as dynamic;
+            var errorResponse = objectResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
-            Assert.Equal("An error occurred while getting task status", errorResponse.error.message.ToString());
+            Assert.Equal("An error occurred while getting task status", errorResponse.Error.Message);
         }
 
         #endregion
@@ -269,9 +270,9 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            var errorResponse = notFoundResult.Value as dynamic;
+            var errorResponse = notFoundResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
-            Assert.Equal("Task not found", errorResponse.error.message.ToString());
+            Assert.Equal("Task not found", errorResponse.Error.Message);
         }
 
         [Fact]
@@ -322,10 +323,10 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var errorResponse = badRequestResult.Value as dynamic;
+            var errorResponse = badRequestResult.Value as ConduitLLM.Core.Models.OpenAIErrorResponse;
             Assert.NotNull(errorResponse);
-            Assert.Equal("Task has already completed", errorResponse.error.message.ToString());
-            Assert.Equal("invalid_request_error", errorResponse.error.type.ToString());
+            Assert.Equal("Task has already completed", errorResponse.Error.Message);
+            Assert.Equal("invalid_request_error", errorResponse.Error.Type);
         }
 
         #endregion

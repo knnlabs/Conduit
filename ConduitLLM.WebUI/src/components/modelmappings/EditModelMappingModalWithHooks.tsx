@@ -12,10 +12,11 @@ import {
   Divider,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useUpdateModelMapping, useModelMappings } from '@/hooks/useModelMappingsApi';
 import { useProviders } from '@/hooks/useProviderApi';
 import type { ProviderCredentialDto, ModelProviderMappingDto, UpdateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
+import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 
 interface EditModelMappingModalProps {
   isOpen: boolean;
@@ -40,6 +41,7 @@ interface FormValues {
   supportsStreaming: boolean;
   supportsVideoGeneration: boolean;
   supportsEmbeddings: boolean;
+  supportsChat: boolean;
   // Metadata
   maxContextLength?: number;
   maxOutputTokens?: number;
@@ -56,26 +58,29 @@ export function EditModelMappingModal({
   const { providers } = useProviders();
   const { mappings } = useModelMappings();
 
+  const [initialFormValues, setInitialFormValues] = useState<FormValues>(() => ({
+    modelId: '',
+    providerId: '',
+    providerModelId: '',
+    priority: 100,
+    isEnabled: true,
+    supportsVision: false,
+    supportsImageGeneration: false,
+    supportsAudioTranscription: false,
+    supportsTextToSpeech: false,
+    supportsRealtimeAudio: false,
+    supportsFunctionCalling: false,
+    supportsStreaming: false,
+    supportsVideoGeneration: false,
+    supportsEmbeddings: false,
+    supportsChat: false,
+    maxContextLength: undefined,
+    maxOutputTokens: undefined,
+    isDefault: false,
+  }));
+
   const form = useForm<FormValues>({
-    initialValues: {
-      modelId: '',
-      providerId: '',
-      providerModelId: '',
-      priority: 100,
-      isEnabled: true,
-      supportsVision: false,
-      supportsImageGeneration: false,
-      supportsAudioTranscription: false,
-      supportsTextToSpeech: false,
-      supportsRealtimeAudio: false,
-      supportsFunctionCalling: false,
-      supportsStreaming: false,
-      supportsVideoGeneration: false,
-      supportsEmbeddings: false,
-      maxContextLength: undefined,
-      maxOutputTokens: undefined,
-      isDefault: false,
-    },
+    initialValues: initialFormValues,
     validate: {
       modelId: (value) => {
         if (!value?.trim()) return 'Model alias is required';
@@ -94,16 +99,22 @@ export function EditModelMappingModal({
     },
   });
 
+  // Stable callback for form updates
+  const updateForm = useCallback((newFormValues: FormValues) => {
+    setInitialFormValues(newFormValues);
+    form.setValues(newFormValues);
+    form.resetDirty();
+  }, [form]);
+
   // Update form when mapping changes
   useEffect(() => {
     if (mapping && providers) {
       
-      // The mapping.providerId is the provider name (string), we need to find the numeric ID
-      const provider = providers.find(p => p.providerName === mapping.providerId);
-      const providerIdForForm = provider?.id.toString() ?? '';
+      // The mapping.providerId is now a numeric ID
+      const providerIdForForm = mapping.providerId?.toString() ?? '';
       
       
-      const formData = {
+      const newFormValues: FormValues = {
         modelId: mapping.modelId,
         providerId: providerIdForForm, // Use the numeric ID for the form
         providerModelId: mapping.providerModelId,
@@ -118,25 +129,22 @@ export function EditModelMappingModal({
         supportsStreaming: mapping.supportsStreaming ?? false,
         supportsVideoGeneration: mapping.supportsVideoGeneration ?? false,
         supportsEmbeddings: mapping.supportsEmbeddings ?? false,
+        supportsChat: (mapping.supportsChat as boolean | undefined) ?? false,
         maxContextLength: mapping.maxContextLength,
         maxOutputTokens: mapping.maxOutputTokens,
         isDefault: mapping.isDefault ?? false,
       };
-      form.setValues(formData);
+      
+      updateForm(newFormValues);
     }
-  }, [mapping, providers, form]);
+  }, [mapping, providers, updateForm]);
 
   const handleSubmit = async (values: FormValues) => {
     if (!mapping) return;
 
-
-    // Convert the numeric provider ID back to provider name for the backend
-    const provider = providers?.find(p => p.id.toString() === values.providerId);
-    const providerName = provider?.providerName ?? values.providerId;
-
     const updateData: UpdateModelProviderMappingDto = {
       modelId: values.modelId,
-      providerId: providerName, // Backend expects provider name, not numeric ID
+      providerId: parseInt(values.providerId, 10), // Send numeric ID directly
       providerModelId: values.providerModelId,
       priority: values.priority,
       isEnabled: values.isEnabled,
@@ -149,11 +157,11 @@ export function EditModelMappingModal({
       supportsStreaming: values.supportsStreaming,
       supportsVideoGeneration: values.supportsVideoGeneration,
       supportsEmbeddings: values.supportsEmbeddings,
+      supportsChat: values.supportsChat,
       maxContextLength: values.maxContextLength,
       maxOutputTokens: values.maxOutputTokens,
       isDefault: values.isDefault,
     };
-
 
     try {
       await updateMapping.mutateAsync({
@@ -168,10 +176,20 @@ export function EditModelMappingModal({
     }
   };
 
-  const providerOptions = providers?.map((p: ProviderCredentialDto) => ({
-    value: p.id.toString(), // Form uses numeric ID, but we convert to provider name on submit
-    label: p.providerName,
-  })) || [];
+  const providerOptions = providers?.map((p: ProviderCredentialDto) => {
+    try {
+      const providerType = getProviderTypeFromDto(p);
+      return {
+        value: p.id?.toString() ?? '', // Form uses string representation of numeric ID
+        label: getProviderDisplayName(providerType),
+      };
+    } catch {
+      return {
+        value: p.id?.toString() ?? '',
+        label: 'Unknown Provider',
+      };
+    }
+  }).filter(opt => opt.value !== '') || [];
 
   return (
     <Modal
@@ -223,12 +241,23 @@ export function EditModelMappingModal({
 
           <Group grow>
             <Switch
-              label="Vision"
-              {...form.getInputProps('supportsVision', { type: 'checkbox' })}
+              label="Chat"
+              {...form.getInputProps('supportsChat', { type: 'checkbox' })}
             />
             <Switch
               label="Streaming"
               {...form.getInputProps('supportsStreaming', { type: 'checkbox' })}
+            />
+          </Group>
+
+          <Group grow>
+            <Switch
+              label="Vision"
+              {...form.getInputProps('supportsVision', { type: 'checkbox' })}
+            />
+            <Switch
+              label="Embeddings"
+              {...form.getInputProps('supportsEmbeddings', { type: 'checkbox' })}
             />
           </Group>
 
@@ -265,10 +294,6 @@ export function EditModelMappingModal({
             />
           </Group>
 
-          <Switch
-            label="Embeddings"
-            {...form.getInputProps('supportsEmbeddings', { type: 'checkbox' })}
-          />
 
           <Divider label="Context Limits" labelPosition="center" />
 

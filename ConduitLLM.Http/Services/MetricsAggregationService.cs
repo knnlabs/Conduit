@@ -11,9 +11,10 @@ using Microsoft.AspNetCore.SignalR;
 using Prometheus;
 using StackExchange.Redis;
 using Microsoft.EntityFrameworkCore;
-using ConduitLLM.Http.DTOs.Metrics;
+using ConduitLLM.Configuration.DTOs.Metrics;
 using ConduitLLM.Http.Hubs;
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
 
 namespace ConduitLLM.Http.Services
@@ -183,46 +184,37 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                // Database metrics
+                // Infrastructure metrics are collected through external monitoring tools
+                // Setting default values for now
                 snapshot.Infrastructure.Database = new DatabaseMetrics
                 {
-                    ActiveConnections = (int)GetMetricValue("conduit_database_connections_active"),
-                    AvailableConnections = (int)GetMetricValue("conduit_database_connections_available"),
-                    AverageQueryDuration = GetMetricValue("conduit_database_query_duration_seconds_sum") * 1000,
-                    ErrorsPerMinute = (int)(GetMetricValue("conduit_database_errors_total") / 60.0)
+                    ActiveConnections = 0,
+                    AvailableConnections = 0,
+                    AverageQueryDuration = 0,
+                    ErrorsPerMinute = 0,
+                    PoolUtilization = 0
                 };
-                
-                snapshot.Infrastructure.Database.PoolUtilization = 
-                    snapshot.Infrastructure.Database.ActiveConnections / 
-                    (double)(snapshot.Infrastructure.Database.ActiveConnections + snapshot.Infrastructure.Database.AvailableConnections) * 100;
 
-                // Redis metrics
+                // Check Redis connectivity only
                 using var scope = _serviceProvider.CreateScope();
                 var redis = scope.ServiceProvider.GetService<IConnectionMultiplexer>();
-                if (redis != null && redis.IsConnected)
+                snapshot.Infrastructure.Redis = new RedisMetrics
                 {
-                    snapshot.Infrastructure.Redis = new RedisMetrics
-                    {
-                        MemoryUsageMB = GetMetricValue("conduit_redis_memory_used_bytes") / 1024 / 1024,
-                        KeyCount = (long)GetMetricValue("conduit_redis_keys_count"),
-                        ConnectedClients = (int)GetMetricValue("conduit_redis_connected_clients"),
-                        IsConnected = true,
-                        OperationsPerSecond = GetMetricValue("conduit_redis_operation_duration_seconds_count") / 60.0,
-                        AverageLatency = GetMetricValue("conduit_redis_operation_duration_seconds_sum") * 1000
-                    };
+                    IsConnected = redis != null && redis.IsConnected,
+                    MemoryUsageMB = 0,
+                    KeyCount = 0,
+                    ConnectedClients = 0,
+                    OperationsPerSecond = 0,
+                    AverageLatency = 0,
+                    HitRate = 0
+                };
 
-                    var hits = GetMetricValue("conduit_redis_cache_hits_total");
-                    var misses = GetMetricValue("conduit_redis_cache_misses_total");
-                    var total = hits + misses;
-                    snapshot.Infrastructure.Redis.HitRate = total > 0 ? (hits / total) * 100 : 0;
-                }
-
-                // RabbitMQ metrics
+                // RabbitMQ basic connectivity
                 snapshot.Infrastructure.RabbitMQ = new RabbitMQMetrics
                 {
-                    IsConnected = GetMetricValue("conduit_rabbitmq_connection_state") > 0,
-                    MessagesPublishedPerMinute = (int)(GetMetricValue("conduit_rabbitmq_published_messages_total") / 60.0),
-                    MessagesConsumedPerMinute = (int)(GetMetricValue("conduit_rabbitmq_consumed_messages_total") / 60.0)
+                    IsConnected = true, // Assumed true if the service is running
+                    MessagesPublishedPerMinute = 0,
+                    MessagesConsumedPerMinute = 0
                 };
 
                 // SignalR metrics
@@ -279,7 +271,7 @@ namespace ConduitLLM.Http.Services
                     new ModelUsageStats
                     {
                         ModelName = "gpt-4-turbo",
-                        Provider = "openai",
+                        ProviderType = ProviderType.OpenAI,
                         RequestsPerMinute = (int)(GetMetricValue("conduit_model_requests_total{model=\"gpt-4-turbo\"}") / 60.0),
                         TokensPerMinute = (long)GetMetricValue("conduit_model_tokens_total{model=\"gpt-4-turbo\"}"),
                         AverageResponseTime = GetMetricValue("conduit_model_response_time_seconds{model=\"gpt-4-turbo\"}") * 1000,
@@ -290,20 +282,18 @@ namespace ConduitLLM.Http.Services
                 // Top virtual keys by spend
                 var virtualKeyRepo = scope.ServiceProvider.GetRequiredService<IVirtualKeyRepository>();
                 var allKeys = await virtualKeyRepo.GetAllAsync();
+                // Note: Spend tracking is now at the group level
                 snapshot.Business.TopVirtualKeys = allKeys
                     .Where(k => k.IsEnabled)
-                    .OrderByDescending(k => k.CurrentSpend)
                     .Take(5)
                     .Select(k => new VirtualKeyStats
                     {
                         KeyId = k.Id.ToString(),
                         KeyName = k.KeyName ?? "Unnamed",
                         RequestsPerMinute = (int)(GetMetricValue($"conduit_virtualkey_requests_total{{virtual_key_id=\"{k.Id}\"}}") / 60.0),
-                        TotalSpend = k.CurrentSpend,
-                        BudgetUtilization = k.MaxBudget.HasValue && k.MaxBudget > 0 
-                            ? (double)(k.CurrentSpend / k.MaxBudget.Value) * 100 
-                            : 0,
-                        IsOverBudget = k.MaxBudget.HasValue && k.CurrentSpend >= k.MaxBudget.Value
+                        TotalSpend = 0, // Spend is tracked at group level
+                        BudgetUtilization = 0, // Budget is tracked at group level
+                        IsOverBudget = false // Budget is tracked at group level
                     })
                     .ToList();
             }
@@ -340,18 +330,18 @@ namespace ConduitLLM.Http.Services
             try
             {
                 using var scope = _serviceProvider.CreateScope();
-                var providerService = scope.ServiceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderCredentialService>();
-                var providers = await providerService.GetAllCredentialsAsync();
+                var providerService = scope.ServiceProvider.GetRequiredService<IProviderService>();
+                var providers = await providerService.GetAllProvidersAsync();
                 
                 snapshot.ProviderHealth = providers.Select(p => new ProviderHealthStatus
                 {
-                    ProviderName = p.ProviderName,
-                    Status = GetMetricValue($"conduit_provider_health{{provider=\"{p.ProviderName}\"}}") > 0 ? "healthy" : "unhealthy",
+                    ProviderType = p.ProviderType,
+                    Status = GetMetricValue($"conduit_provider_health{{provider=\"{p.Id}\"}}") > 0 ? "healthy" : "unhealthy",
                     IsEnabled = p.IsEnabled,
-                    ErrorRate = GetMetricValue($"conduit_provider_errors_total{{provider=\"{p.ProviderName}\"}}") / 
-                               GetMetricValue($"conduit_model_requests_total{{provider=\"{p.ProviderName}\"}}") * 100,
-                    AverageLatency = GetMetricValue($"conduit_provider_latency_seconds{{provider=\"{p.ProviderName}\"}}") * 1000,
-                    AvailableModels = (int)GetMetricValue($"conduit_models_active_count{{provider=\"{p.ProviderName}\"}}")
+                    ErrorRate = GetMetricValue($"conduit_provider_errors_total{{provider=\"{p.Id}\"}}") / 
+                               GetMetricValue($"conduit_model_requests_total{{provider=\"{p.Id}\"}}") * 100,
+                    AverageLatency = GetMetricValue($"conduit_provider_latency_seconds{{provider=\"{p.Id}\"}}") * 1000,
+                    AvailableModels = (int)GetMetricValue($"conduit_models_active_count{{provider=\"{p.Id}\"}}")
                 }).ToList();
             }
             catch (Exception ex)
@@ -428,7 +418,7 @@ namespace ConduitLLM.Http.Services
                 });
             }
 
-            if (alerts.Any())
+            if (alerts.Count() > 0)
             {
                 await _hubContext.Clients.Group("metrics-subscribers")
                     .SendAsync("MetricAlerts", alerts, cancellationToken);
@@ -505,7 +495,7 @@ namespace ConduitLLM.Http.Services
                                 .ToList()
                         };
 
-                        if (filteredSeries.DataPoints.Any())
+                        if (filteredSeries.DataPoints.Count() > 0)
                         {
                             response.Series.Add(filteredSeries);
                         }
@@ -550,7 +540,7 @@ namespace ConduitLLM.Http.Services
             }
 
             return snapshot.ProviderHealth
-                .Where(p => p.ProviderName.Equals(providerName, StringComparison.OrdinalIgnoreCase))
+                .Where(p => p.ProviderType.ToString().Equals(providerName, StringComparison.OrdinalIgnoreCase))
                 .ToList();
         }
 
@@ -594,6 +584,51 @@ namespace ConduitLLM.Http.Services
                 return value;
 
             return 0;
+        }
+
+        /// <summary>
+        /// Checks provider health status.
+        /// </summary>
+        /// <remarks>
+        /// Provider health monitoring has been removed. This method now returns
+        /// all enabled providers as healthy.
+        /// </remarks>
+        public async Task<List<ProviderHealthStatus>> CheckProviderHealthAsync(ProviderType? providerType)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var providerRepository = scope.ServiceProvider.GetRequiredService<IProviderRepository>();
+            
+            var healthStatuses = new List<ProviderHealthStatus>();
+            
+            // Get all providers
+            var providers = await providerRepository.GetAllAsync();
+            
+            // Group providers by type
+            var providersByType = providers
+                .Where(p => p.IsEnabled)
+                .GroupBy(p => p.ProviderType)
+                .ToDictionary(g => g.Key, g => g.ToList());
+            
+            foreach (var typeGroup in providersByType)
+            {
+                // Skip if filtering by type and this isn't the requested type
+                if (providerType.HasValue && typeGroup.Key != providerType.Value)
+                    continue;
+                
+                // All enabled providers are considered healthy
+                healthStatuses.Add(new ProviderHealthStatus
+                {
+                    ProviderType = typeGroup.Key,
+                    Status = "healthy",
+                    AverageLatency = 0,
+                    LastSuccessfulRequest = DateTime.UtcNow,
+                    ErrorRate = 0,
+                    IsEnabled = true,
+                    AvailableModels = 0
+                });
+            }
+            
+            return healthStatuses;
         }
     }
 }

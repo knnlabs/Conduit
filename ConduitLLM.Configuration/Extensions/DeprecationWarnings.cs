@@ -40,13 +40,13 @@ namespace ConduitLLM.Configuration.Extensions
 
             // Check for deprecated master key
             var oldMasterKey = Environment.GetEnvironmentVariable("AdminApi__MasterKey");
-            var newMasterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY");
+            var newMasterKey = Environment.GetEnvironmentVariable("CONDUIT_API_TO_API_BACKEND_AUTH_KEY");
             
             if (!string.IsNullOrEmpty(oldMasterKey) && string.IsNullOrEmpty(newMasterKey))
             {
                 logger.LogWarning(
                     "DEPRECATION WARNING: Configuration key 'AdminApi__MasterKey' is deprecated. " +
-                    "Please use environment variable 'CONDUIT_MASTER_KEY' instead. " +
+                    "Please use environment variable 'CONDUIT_API_TO_API_BACKEND_AUTH_KEY' instead. " +
                     "The old configuration key will be removed in a future version.");
             }
         }
@@ -79,13 +79,13 @@ namespace ConduitLLM.Configuration.Extensions
             }
 
             var oldMasterKey = Environment.GetEnvironmentVariable("AdminApi__MasterKey");
-            var newMasterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY");
+            var newMasterKey = Environment.GetEnvironmentVariable("CONDUIT_API_TO_API_BACKEND_AUTH_KEY");
             if (!string.IsNullOrEmpty(oldMasterKey) && string.IsNullOrEmpty(newMasterKey))
             {
-                deprecatedVars.Add("AdminApi__MasterKey (use CONDUIT_MASTER_KEY)");
+                deprecatedVars.Add("AdminApi__MasterKey (use CONDUIT_API_TO_API_BACKEND_AUTH_KEY)");
             }
 
-            if (deprecatedVars.Count == 0)
+            if (deprecatedVars.Count() == 0)
             {
                 return null;
             }

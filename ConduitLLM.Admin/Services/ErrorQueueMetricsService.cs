@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Prometheus;
 
+using ConduitLLM.Admin.Interfaces;
 namespace ConduitLLM.Admin.Services
 {
     /// <summary>
@@ -213,7 +214,7 @@ namespace ConduitLLM.Admin.Services
             {
                 // Get a sample of messages to find the oldest
                 var messages = await _rabbitClient.GetMessagesAsync(queueName, 10, cancellationToken);
-                if (!messages.Any())
+                if (messages.Count() == 0)
                 {
                     return null;
                 }

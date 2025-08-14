@@ -23,13 +23,29 @@ namespace ConduitLLM.Configuration.DTOs
         public string? ErrorDetails { get; set; }
 
         /// <summary>
+        /// Gets or sets the provider type that was tested.
+        /// </summary>
+        public ProviderType ProviderType { get; set; }
+
+        /// <summary>
+        /// Gets or sets the provider ID that was tested.
+        /// </summary>
+        public int ProviderId { get; set; }
+
+        /// <summary>
         /// Gets or sets the provider name that was tested.
         /// </summary>
-        public string ProviderName { get; set; } = string.Empty;
+        public string? ProviderName { get; set; }
 
         /// <summary>
         /// Gets or sets the timestamp when the test was performed.
         /// </summary>
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+        
+        /// <summary>
+        /// Gets or sets the response time in milliseconds for the connection test.
+        /// </summary>
+        public double? ResponseTimeMs { get; set; }
+        
     }
 }

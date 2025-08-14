@@ -151,7 +151,7 @@ import { ConduitAdminClient } from '@knn_labs/conduit-admin-client';
 
 // Initialize the client
 const client = new ConduitAdminClient({
-  masterKey: process.env.CONDUIT_MASTER_KEY!,
+  masterKey: process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY!,
   adminApiUrl: process.env.CONDUIT_ADMIN_API_URL!,
 });
 
@@ -342,7 +342,7 @@ await client.virtualKeys.performMaintenance({
 
 ```typescript
 const client = new ConduitAdminClient({
-  masterKey: process.env.CONDUIT_MASTER_KEY!,
+  masterKey: process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY!,
   adminApiUrl: process.env.CONDUIT_ADMIN_API_URL!,
   options: {
     timeout: 30000,
@@ -747,7 +747,7 @@ print(f"Created key: {new_key['virtualKey']}")
 The Admin API uses master key authentication for all operations:
 
 - **Header**: `X-Master-Key: your-master-key`
-- **Environment Variable**: `CONDUIT_MASTER_KEY`
+- **Environment Variable**: `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`
 - **Security**: Use HTTPS in production, rotate keys regularly
 
 ### Authorization Levels
@@ -756,7 +756,7 @@ The Admin API uses master key authentication for all operations:
 2. **WebUI Backend**: Uses `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` for server-to-server communication
 3. **Virtual Keys**: Limited access for end-user applications (Core API only)
 
-**CRITICAL**: Never confuse `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` (server-to-server) with `CONDUIT_ADMIN_LOGIN_PASSWORD` (human admin UI login).
+**CRITICAL**: The `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` is used for server-to-server authentication between backend services. The WebUI uses Clerk for human administrator authentication.
 
 ### Security Best Practices
 
@@ -774,7 +774,7 @@ The Admin API uses master key authentication for all operations:
 
 #### Required Variables
 
-- `CONDUIT_MASTER_KEY` - Master key for Admin API authentication
+- `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` - Master key for Admin API authentication
 - `CONDUIT_ADMIN_API_URL` - Admin API base URL
 - `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` - Backend service authentication key
 
@@ -802,7 +802,7 @@ The Admin API uses master key authentication for all operations:
 #### Node.js (.env)
 
 ```bash
-CONDUIT_MASTER_KEY=your-master-key
+CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your-master-key
 CONDUIT_ADMIN_API_URL=http://localhost:5002
 CONDUIT_API_TO_API_BACKEND_AUTH_KEY=backend-auth-key
 NODE_ENV=development
@@ -814,7 +814,7 @@ NODE_ENV=development
 services:
   webui:
     environment:
-      CONDUIT_MASTER_KEY: alpha
+      CONDUIT_API_TO_API_BACKEND_AUTH_KEY: alpha
       CONDUIT_ADMIN_API_URL: http://admin:8080
       CONDUIT_API_TO_API_BACKEND_AUTH_KEY: backend-key
     depends_on:
@@ -979,7 +979,7 @@ dotnet run
 cd ConduitLLM.WebUI
 CONDUIT_USE_ADMIN_API=true \
 CONDUIT_ADMIN_API_URL=http://localhost:5002 \
-CONDUIT_MASTER_KEY=your-key \
+CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your-key \
 npm run dev
 
 # Or WebUI with direct DB access
@@ -1011,7 +1011,7 @@ services:
     image: conduit-webui:latest
     environment:
       - CONDUIT_ADMIN_API_URL=http://admin:8080
-      - CONDUIT_MASTER_KEY=production-master-key
+      - CONDUIT_API_TO_API_BACKEND_AUTH_KEY=production-master-key
       - CONDUIT_API_TO_API_BACKEND_AUTH_KEY=backend-key
       - NODE_ENV=production
     ports:

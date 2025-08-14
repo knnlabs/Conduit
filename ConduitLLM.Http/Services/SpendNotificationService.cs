@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs.SignalR;
 using ConduitLLM.Http.Hubs;
 using ConduitLLM.Core.Interfaces;
@@ -20,7 +21,7 @@ namespace ConduitLLM.Http.Services
     public class SpendNotificationService : ISpendNotificationService, IHostedService
     {
         private readonly IHubContext<SpendNotificationHub> _hubContext;
-        private readonly IServiceProvider _serviceProvider;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<SpendNotificationService> _logger;
         
         // Track spending patterns per virtual key
@@ -35,11 +36,11 @@ namespace ConduitLLM.Http.Services
 
         public SpendNotificationService(
             IHubContext<SpendNotificationHub> hubContext,
-            IServiceProvider serviceProvider,
+            IServiceScopeFactory serviceScopeFactory,
             ILogger<SpendNotificationService> logger)
         {
             _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
-            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+            _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -92,7 +93,7 @@ namespace ConduitLLM.Http.Services
                     Budget = budget,
                     BudgetPercentage = budgetPercentage,
                     Model = model,
-                    Provider = provider,
+                    Provider = provider, // Use provider name directly instead of ProviderType
                     Metadata = new RequestMetadata
                     {
                         RequestId = Guid.NewGuid().ToString(),
@@ -101,16 +102,19 @@ namespace ConduitLLM.Http.Services
                 };
 
                 // Get hub instance and send notification
-                var hub = _serviceProvider.GetService<SpendNotificationHub>();
-                if (hub != null)
+                using (var scope = _serviceScopeFactory.CreateScope())
                 {
-                    await hub.SendSpendUpdate(virtualKeyId, notification);
-                }
-                else
-                {
-                    // Fallback to hub context
-                    var groupName = $"vkey-{virtualKeyId}";
-                    await _hubContext.Clients.Group(groupName).SendAsync("SpendUpdate", notification);
+                    var hub = scope.ServiceProvider.GetService<SpendNotificationHub>();
+                    if (hub != null)
+                    {
+                        await hub.SendSpendUpdate(virtualKeyId, notification);
+                    }
+                    else
+                    {
+                        // Fallback to hub context
+                        var groupName = $"vkey-{virtualKeyId}";
+                        await _hubContext.Clients.Group(groupName).SendAsync("SpendUpdate", notification);
+                    }
                 }
 
                 // Check for unusual spending
@@ -233,7 +237,7 @@ namespace ConduitLLM.Http.Services
                 }
 
                 // Reset sent alerts if spending goes back down (e.g., new month)
-                if (percentageUsed < 50 && sentAlerts.Count > 0)
+                if (percentageUsed < 50 && sentAlerts.Count() > 0)
                 {
                     sentAlerts.Clear();
                     _logger.LogInformation("Budget alerts reset for VirtualKey {VirtualKeyId} as usage dropped below 50%", virtualKeyId);
@@ -281,7 +285,13 @@ namespace ConduitLLM.Http.Services
             }
         }
 
-        private async void AnalyzeSpendingPatterns(object? state)
+        private void AnalyzeSpendingPatterns(object? state)
+        {
+            // Fire and forget with proper error handling
+            _ = AnalyzeSpendingPatternsAsync();
+        }
+
+        private async Task AnalyzeSpendingPatternsAsync()
         {
             try
             {
@@ -327,7 +337,7 @@ namespace ConduitLLM.Http.Services
                     
                     // Keep only last hour of data
                     var cutoff = DateTime.UtcNow.AddHours(-1);
-                    while (_recentSpends.Count > 0 && _recentSpends.Peek().Timestamp < cutoff)
+                    while (_recentSpends.Count() > 0 && _recentSpends.Peek().Timestamp < cutoff)
                     {
                         _recentSpends.Dequeue();
                     }
@@ -338,7 +348,7 @@ namespace ConduitLLM.Http.Services
             {
                 lock (_lock)
                 {
-                    if (_recentSpends.Count < 5) // Need at least 5 records
+                    if (_recentSpends.Count() < 5) // Need at least 5 records
                     {
                         return new PatternAnalysis { IsUnusual = false };
                     }
@@ -347,7 +357,7 @@ namespace ConduitLLM.Http.Services
                     var lastHour = _recentSpends.Where(s => s.Timestamp > now.AddHours(-1)).ToList();
                     var previousHour = _recentSpends.Where(s => s.Timestamp <= now.AddHours(-1) && s.Timestamp > now.AddHours(-2)).ToList();
 
-                    if (lastHour.Count == 0 || previousHour.Count == 0)
+                    if (lastHour.Count() == 0 || previousHour.Count() == 0)
                     {
                         return new PatternAnalysis { IsUnusual = false };
                     }
@@ -379,7 +389,7 @@ namespace ConduitLLM.Http.Services
 
                     // Check for sustained high spending
                     var avgAmount = lastHour.Average(s => s.Amount);
-                    if (avgAmount > 10 && lastHour.Count > 20) // More than 20 requests in an hour with high avg cost
+                    if (avgAmount > 10 && lastHour.Count() > 20) // More than 20 requests in an hour with high avg cost
                     {
                         return new PatternAnalysis
                         {

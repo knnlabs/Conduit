@@ -7,6 +7,7 @@ using ConduitLLM.Core.Configuration;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
+using ConduitLLM.Core.Interfaces;
 namespace ConduitLLM.Core.Middleware
 {
     /// <summary>

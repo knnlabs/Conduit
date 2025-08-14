@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.Audio;
 using ConduitLLM.Configuration.Repositories;
@@ -23,6 +24,7 @@ using Microsoft.Extensions.Logging;
 
 using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Admin.Services
 {
     /// <summary>
@@ -66,9 +68,9 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <inheritdoc/>
-        public async Task<AudioUsageSummaryDto> GetUsageSummaryAsync(DateTime startDate, DateTime endDate, string? virtualKey = null, string? provider = null)
+        public async Task<AudioUsageSummaryDto> GetUsageSummaryAsync(DateTime startDate, DateTime endDate, string? virtualKey = null, int? providerId = null)
         {
-            return await _repository.GetUsageSummaryAsync(startDate, endDate, virtualKey, provider);
+            return await _repository.GetUsageSummaryAsync(startDate, endDate, virtualKey, providerId);
         }
 
         /// <inheritdoc/>
@@ -87,22 +89,22 @@ namespace ConduitLLM.Admin.Services
             {
                 VirtualKey = virtualKey,
                 KeyName = key?.KeyName ?? string.Empty,
-                TotalOperations = logs.Count,
+                TotalOperations = logs.Count(),
                 TotalCost = logs.Sum(l => l.Cost),
                 TotalDurationSeconds = logs.Where(l => l.DurationSeconds.HasValue).Sum(l => l.DurationSeconds!.Value),
                 LastUsed = logs.OrderByDescending(l => l.Timestamp).FirstOrDefault()?.Timestamp,
-                SuccessRate = logs.Count > 0 ? (logs.Count(l => l.StatusCode == null || (l.StatusCode >= 200 && l.StatusCode < 300)) / (double)logs.Count) * 100 : 100
+                SuccessRate = logs.Count() > 0 ? (logs.Count(l => l.StatusCode == null || (l.StatusCode >= 200 && l.StatusCode < 300)) / (double)logs.Count()) * 100 : 100
             };
         }
 
         /// <inheritdoc/>
-        public async Task<AudioProviderUsageDto> GetUsageByProviderAsync(string provider, DateTime? startDate = null, DateTime? endDate = null)
+        public async Task<AudioProviderUsageDto> GetUsageByProviderAsync(int providerId, DateTime? startDate = null, DateTime? endDate = null)
         {
-            var logs = await _repository.GetByProviderAsync(provider, startDate, endDate);
+            var logs = await _repository.GetByProviderAsync(providerId, startDate, endDate);
 
             var successCount = logs.Count(l => l.StatusCode == null || (l.StatusCode >= 200 && l.StatusCode < 300));
             var totalDuration = logs.Where(l => l.DurationSeconds.HasValue).Sum(l => l.DurationSeconds!.Value);
-            var avgResponseTime = logs.Count > 0 ? (totalDuration / logs.Count) * 1000 : 0; // Convert to ms
+            var avgResponseTime = logs.Count() > 0 ? (totalDuration / logs.Count()) * 1000 : 0; // Convert to ms
 
             // Count operations by type
             var transcriptionCount = logs.Count(l => l.OperationType?.ToLower() == "transcription");
@@ -116,16 +118,20 @@ namespace ConduitLLM.Admin.Services
                 .OrderByDescending(g => g.Count())
                 .FirstOrDefault()?.Key;
 
+            // Get provider name from first log or use provider ID
+            var providerName = logs.FirstOrDefault()?.Provider?.ProviderName ?? $"Provider {providerId}";
+
             return new AudioProviderUsageDto
             {
-                Provider = provider,
+                ProviderId = providerId,
+                ProviderName = providerName,
                 TotalOperations = logs.Count,
                 TranscriptionCount = transcriptionCount,
                 TextToSpeechCount = ttsCount,
                 RealtimeSessionCount = realtimeCount,
                 TotalCost = logs.Sum(l => l.Cost),
                 AverageResponseTime = avgResponseTime,
-                SuccessRate = logs.Count > 0 ? (successCount / (double)logs.Count) * 100 : 0,
+                SuccessRate = logs.Count() > 0 ? (successCount / (double)logs.Count) * 100 : 0,
                 MostUsedModel = mostUsedModel
             };
         }
@@ -160,7 +166,7 @@ namespace ConduitLLM.Admin.Services
                 .GroupBy(s => s.Provider)
                 .ToDictionary(g => g.Key, g => g.Count());
 
-            var averageDuration = sessions.Any()
+            var averageDuration = sessions.Count() > 0
                 ? sessions.Average(s => s.Statistics.Duration.TotalMinutes)
                 : 0;
 
@@ -168,11 +174,11 @@ namespace ConduitLLM.Admin.Services
                 .Sum(s => s.Statistics.Duration.TotalMinutes);
 
             var successfulSessions = sessions.Count(s => s.Statistics.ErrorCount == 0);
-            var successRate = sessions.Any()
+            var successRate = sessions.Count() > 0
                 ? (successfulSessions / (double)sessions.Count) * 100
                 : 100;
 
-            var averageTurns = sessions.Any()
+            var averageTurns = sessions.Count() > 0
                 ? sessions.Average(s => s.Statistics.TurnCount)
                 : 0;
 
@@ -304,7 +310,7 @@ namespace ConduitLLM.Admin.Services
             {
                 Id = log.Id,
                 VirtualKey = log.VirtualKey,
-                Provider = log.Provider,
+                ProviderId = log.ProviderId,
                 OperationType = log.OperationType,
                 Model = log.Model,
                 RequestId = log.RequestId,
@@ -326,11 +332,19 @@ namespace ConduitLLM.Admin.Services
 
         private static RealtimeSessionDto MapSessionToDto(RealtimeSession session)
         {
+            // Try to get ProviderId from metadata
+            var providerId = 0;
+            if (session.Metadata?.TryGetValue("ProviderId", out var idValue) == true && idValue != null)
+            {
+                int.TryParse(idValue.ToString(), out providerId);
+            }
+            
             return new RealtimeSessionDto
             {
                 SessionId = session.Id,
                 VirtualKey = session.Metadata?.GetValueOrDefault("VirtualKey")?.ToString() ?? "unknown",
-                Provider = session.Provider,
+                ProviderId = providerId,
+                ProviderName = session.Provider,
                 State = session.State.ToString(),
                 CreatedAt = session.CreatedAt,
                 DurationSeconds = session.Statistics.Duration.TotalSeconds,
@@ -368,7 +382,7 @@ namespace ConduitLLM.Admin.Services
             // Write header
             csv.WriteField("Timestamp");
             csv.WriteField("VirtualKey");
-            csv.WriteField("Provider");
+            csv.WriteField("ProviderId");
             csv.WriteField("Operation");
             csv.WriteField("Model");
             csv.WriteField("Duration");
@@ -383,7 +397,7 @@ namespace ConduitLLM.Admin.Services
             {
                 csv.WriteField(log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"));
                 csv.WriteField(log.VirtualKey);
-                csv.WriteField(log.Provider);
+                csv.WriteField(log.ProviderId);
                 csv.WriteField(log.OperationType);
                 csv.WriteField(log.Model);
                 csv.WriteField(log.DurationSeconds);
@@ -404,7 +418,8 @@ namespace ConduitLLM.Admin.Services
             {
                 timestamp = l.Timestamp,
                 virtualKey = l.VirtualKey,
-                provider = l.Provider,
+                providerId = l.ProviderId,
+                providerName = l.Provider?.ProviderName,
                 operation = l.OperationType,
                 model = l.Model,
                 duration = l.DurationSeconds,

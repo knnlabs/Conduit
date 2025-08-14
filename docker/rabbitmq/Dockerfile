@@ -26,8 +26,8 @@ RUN set -eux; \
 # Configure RabbitMQ for production use
 ENV RABBITMQ_CONFIG_FILE=/etc/rabbitmq/rabbitmq
 
-# Copy custom configuration if needed
-# COPY rabbitmq.conf /etc/rabbitmq/rabbitmq.conf
+# Copy custom configuration
+COPY rabbitmq.conf /etc/rabbitmq/rabbitmq.conf
 # COPY definitions.json /etc/rabbitmq/definitions.json
 
 # Labels for documentation

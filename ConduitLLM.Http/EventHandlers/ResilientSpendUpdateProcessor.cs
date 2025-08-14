@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Configuration.Interfaces;
 
 namespace ConduitLLM.Http.EventHandlers
 {
@@ -15,12 +16,14 @@ namespace ConduitLLM.Http.EventHandlers
     public class ResilientSpendUpdateProcessor : ResilientEventHandlerBase<SpendUpdateRequested>
     {
         private readonly IVirtualKeyRepository _virtualKeyRepository;
+        private readonly IVirtualKeyGroupRepository _groupRepository;
         private readonly IVirtualKeySpendHistoryRepository _spendHistoryRepository;
         private readonly IDistributedCache _cache;
         private readonly IDistributedLockService _lockService;
 
         public ResilientSpendUpdateProcessor(
             IVirtualKeyRepository virtualKeyRepository,
+            IVirtualKeyGroupRepository groupRepository,
             IVirtualKeySpendHistoryRepository spendHistoryRepository,
             IDistributedCache cache,
             IDistributedLockService lockService,
@@ -28,6 +31,7 @@ namespace ConduitLLM.Http.EventHandlers
             : base(logger)
         {
             _virtualKeyRepository = virtualKeyRepository ?? throw new ArgumentNullException(nameof(virtualKeyRepository));
+            _groupRepository = groupRepository ?? throw new ArgumentNullException(nameof(groupRepository));
             _spendHistoryRepository = spendHistoryRepository ?? throw new ArgumentNullException(nameof(spendHistoryRepository));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _lockService = lockService ?? throw new ArgumentNullException(nameof(lockService));
@@ -35,7 +39,24 @@ namespace ConduitLLM.Http.EventHandlers
 
         protected override async Task HandleEventAsync(SpendUpdateRequested message, CancellationToken cancellationToken)
         {
-            var lockKey = $"spend_update_{message.KeyId}";
+            // Get the virtual key first to find its group
+            var virtualKey = await _virtualKeyRepository.GetByIdAsync(message.KeyId);
+            if (virtualKey == null)
+            {
+                Logger.LogError("Virtual key {KeyId} not found in database", message.KeyId);
+                throw new InvalidOperationException($"Virtual key {message.KeyId} not found");
+            }
+
+            // Get the key's group
+            var group = await _groupRepository.GetByIdAsync(virtualKey.VirtualKeyGroupId);
+            if (group == null)
+            {
+                Logger.LogError("Virtual key {KeyId} has invalid group ID {GroupId}", message.KeyId, virtualKey.VirtualKeyGroupId);
+                throw new InvalidOperationException($"Virtual key {message.KeyId} has invalid group");
+            }
+
+            // Use group-based locking to handle concurrent updates properly
+            var lockKey = $"group_spend_update_{group.Id}";
             
             // Acquire distributed lock to prevent concurrent updates
             using var lockHandle = await _lockService.AcquireLockAsync(
@@ -46,33 +67,24 @@ namespace ConduitLLM.Http.EventHandlers
             if (lockHandle == null)
             {
                 throw new InvalidOperationException(
-                    $"Failed to acquire lock for virtual key {message.KeyId}. Another update may be in progress.");
+                    $"Failed to acquire lock for virtual key group {group.Id}. Another update may be in progress.");
             }
 
-            // Perform the spend update
-            var currentSpend = await _virtualKeyRepository.GetCurrentSpendAsync(message.KeyId);
-            var newSpend = currentSpend + message.Amount;
-
-            // Check budget limits
-            var virtualKey = await _virtualKeyRepository.GetByIdAsync(message.KeyId);
-            if (virtualKey == null)
-            {
-                Logger.LogError("Virtual key {KeyId} not found in database", message.KeyId);
-                throw new InvalidOperationException($"Virtual key {message.KeyId} not found");
-            }
-            
-            if (virtualKey.MaxBudget != null && newSpend > virtualKey.MaxBudget.Value)
+            // Check if group has sufficient balance
+            if (group.Balance < message.Amount)
             {
                 Logger.LogWarning(
-                    "Virtual key {KeyId} would exceed budget. Current: ${Current:F2}, New: ${New:F2}, Budget: ${Budget:F2}",
-                    message.KeyId, currentSpend, newSpend, virtualKey.MaxBudget.Value);
+                    "Virtual key group {GroupId} has insufficient balance. Current: ${Current:F2}, Requested: ${Amount:F2}",
+                    group.Id, group.Balance, message.Amount);
                 
                 // This is a business rule violation, not a technical error
                 return;
             }
 
-            // Update spend in database
-            virtualKey.CurrentSpend = newSpend;
+            // Update the group balance and lifetime spent
+            var newBalance = await _groupRepository.AdjustBalanceAsync(group.Id, -message.Amount);
+            
+            // Update virtual key's updated timestamp
             virtualKey.UpdatedAt = DateTime.UtcNow;
             await _virtualKeyRepository.UpdateAsync(virtualKey);
 
@@ -88,13 +100,15 @@ namespace ConduitLLM.Http.EventHandlers
             // Use the repository's Create method instead of AddAsync
             await _spendHistoryRepository.CreateAsync(spendHistory);
 
-            // Invalidate cache
-            var cacheKey = $"vkey_spend:{message.KeyId}";
-            await _cache.RemoveAsync(cacheKey, cancellationToken);
+            // Invalidate cache for both key and group
+            var keyCacheKey = $"vkey_spend:{message.KeyId}";
+            var groupCacheKey = $"vkey_group:{group.Id}";
+            await _cache.RemoveAsync(keyCacheKey, cancellationToken);
+            await _cache.RemoveAsync(groupCacheKey, cancellationToken);
 
             Logger.LogInformation(
-                "Successfully updated spend for virtual key {KeyId}: +${Amount:F2} = ${Total:F2}",
-                message.KeyId, message.Amount, newSpend);
+                "Successfully updated spend for virtual key {KeyId} in group {GroupId}: -${Amount:F2}, New Balance: ${Balance:F2}",
+                message.KeyId, group.Id, message.Amount, newBalance);
         }
 
         protected override async Task HandleEventFallbackAsync(SpendUpdateRequested message, CancellationToken cancellationToken)

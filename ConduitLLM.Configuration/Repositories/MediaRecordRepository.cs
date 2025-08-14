@@ -7,6 +7,7 @@ using ConduitLLM.Configuration.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Configuration.Repositories
 {
     /// <summary>
@@ -14,7 +15,7 @@ namespace ConduitLLM.Configuration.Repositories
     /// </summary>
     public class MediaRecordRepository : IMediaRecordRepository
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _contextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _contextFactory;
         private readonly ILogger<MediaRecordRepository> _logger;
 
         /// <summary>
@@ -23,7 +24,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="contextFactory">The database context factory.</param>
         /// <param name="logger">The logger instance.</param>
         public MediaRecordRepository(
-            IDbContextFactory<ConfigurationDbContext> contextFactory,
+            IDbContextFactory<ConduitDbContext> contextFactory,
             ILogger<MediaRecordRepository> logger)
         {
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
@@ -33,8 +34,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <inheritdoc/>
         public async Task<MediaRecord> CreateAsync(MediaRecord mediaRecord)
         {
-            if (mediaRecord == null)
-                throw new ArgumentNullException(nameof(mediaRecord));
+            ArgumentNullException.ThrowIfNull(mediaRecord);
 
             using var context = await _contextFactory.CreateDbContextAsync();
             
@@ -111,7 +111,7 @@ namespace ConduitLLM.Configuration.Repositories
                 .Where(m => !context.VirtualKeys.Any(vk => vk.Id == m.VirtualKeyId))
                 .ToListAsync();
             
-            if (orphanedMedia.Any())
+            if (orphanedMedia.Count() > 0)
             {
                 _logger.LogWarning("Found {Count} orphaned media records", orphanedMedia.Count);
             }
@@ -161,7 +161,7 @@ namespace ConduitLLM.Configuration.Repositories
                 .Where(m => idList.Contains(m.Id))
                 .ToListAsync();
             
-            if (mediaRecords.Any())
+            if (mediaRecords.Count() > 0)
             {
                 context.MediaRecords.RemoveRange(mediaRecords);
                 await context.SaveChangesAsync();

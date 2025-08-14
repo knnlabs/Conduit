@@ -11,6 +11,7 @@ using ConduitLLM.Configuration.Repositories;
 
 using Microsoft.Extensions.Logging;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Admin.Services
 {
     /// <summary>
@@ -54,7 +55,7 @@ namespace ConduitLLM.Admin.Services
 
                 // Get virtual key names for the notifications
                 var virtualKeys = new Dictionary<int, string>();
-                if (virtualKeyIds.Any())
+                if (virtualKeyIds.Count() > 0)
                 {
                     var keys = await _virtualKeyRepository.GetAllAsync();
                     virtualKeys = keys
@@ -102,7 +103,7 @@ namespace ConduitLLM.Admin.Services
 
                 // Get virtual key names for the notifications
                 var virtualKeys = new Dictionary<int, string>();
-                if (virtualKeyIds.Any())
+                if (virtualKeyIds.Count() > 0)
                 {
                     var keys = await _virtualKeyRepository.GetAllAsync();
                     virtualKeys = keys
@@ -269,7 +270,7 @@ namespace ConduitLLM.Admin.Services
 
                 // Get all unread notifications
                 var unreadNotifications = await _notificationRepository.GetUnreadAsync();
-                if (!unreadNotifications.Any())
+                if (unreadNotifications.Count() == 0)
                 {
                     return 0;
                 }

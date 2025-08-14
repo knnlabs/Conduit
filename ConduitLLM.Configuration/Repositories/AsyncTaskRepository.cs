@@ -9,6 +9,7 @@ using ConduitLLM.Configuration.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Configuration.Repositories
 {
     /// <summary>
@@ -16,7 +17,7 @@ namespace ConduitLLM.Configuration.Repositories
     /// </summary>
     public class AsyncTaskRepository : IAsyncTaskRepository
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly ILogger<AsyncTaskRepository> _logger;
 
         /// <summary>
@@ -25,7 +26,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="dbContextFactory">The database context factory.</param>
         /// <param name="logger">The logger instance.</param>
         public AsyncTaskRepository(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<AsyncTaskRepository> logger)
         {
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
@@ -289,7 +290,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
 
             var taskIdList = taskIds.ToList();
-            if (!taskIdList.Any())
+            if (taskIdList.Count() == 0)
             {
                 return 0;
             }

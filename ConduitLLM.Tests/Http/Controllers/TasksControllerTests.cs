@@ -104,8 +104,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             
             var errorResponse = notFoundResult.Value as dynamic;
             Assert.NotNull(errorResponse);
-            Assert.Equal("Task not found", errorResponse.error.message.ToString());
-            Assert.Equal("not_found", errorResponse.error.type.ToString());
+            Assert.Equal("Task not found", errorResponse.error.Message.ToString());
+            Assert.Equal("not_found", errorResponse.error.Type.ToString());
         }
 
         [Fact]
@@ -125,8 +125,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             
             var errorResponse = objectResult.Value as dynamic;
             Assert.NotNull(errorResponse);
-            Assert.Equal("An error occurred while retrieving the task", errorResponse.error.message.ToString());
-            Assert.Equal("server_error", errorResponse.error.type.ToString());
+            Assert.Equal("An error occurred while retrieving the task", errorResponse.error.Message.ToString());
+            Assert.Equal("server_error", errorResponse.error.Type.ToString());
         }
 
         #endregion
@@ -164,8 +164,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
             var errorResponse = notFoundResult.Value as dynamic;
             Assert.NotNull(errorResponse);
-            Assert.Equal("Task not found", errorResponse.error.message.ToString());
-            Assert.Equal("not_found", errorResponse.error.type.ToString());
+            Assert.Equal("Task not found", errorResponse.error.Message.ToString());
+            Assert.Equal("not_found", errorResponse.error.Type.ToString());
         }
 
         [Fact]
@@ -185,8 +185,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             
             var errorResponse = objectResult.Value as dynamic;
             Assert.NotNull(errorResponse);
-            Assert.Equal("An error occurred while cancelling the task", errorResponse.error.message.ToString());
-            Assert.Equal("server_error", errorResponse.error.type.ToString());
+            Assert.Equal("An error occurred while cancelling the task", errorResponse.error.Message.ToString());
+            Assert.Equal("server_error", errorResponse.error.Type.ToString());
         }
 
         #endregion
@@ -272,8 +272,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             
             var errorResponse = objectResult.Value as dynamic;
             Assert.NotNull(errorResponse);
-            Assert.Equal("Task polling timed out", errorResponse.error.message.ToString());
-            Assert.Equal("timeout", errorResponse.error.type.ToString());
+            Assert.Equal("Task polling timed out", errorResponse.error.Message.ToString());
+            Assert.Equal("timeout", errorResponse.error.Type.ToString());
         }
 
         [Fact]
@@ -295,7 +295,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
             var errorResponse = notFoundResult.Value as dynamic;
             Assert.NotNull(errorResponse);
-            Assert.Equal("Task not found", errorResponse.error.message.ToString());
+            Assert.Equal("Task not found", errorResponse.error.Message.ToString());
         }
 
         [Fact]
@@ -319,94 +319,11 @@ namespace ConduitLLM.Tests.Http.Controllers
             
             var errorResponse = objectResult.Value as dynamic;
             Assert.NotNull(errorResponse);
-            Assert.Equal("An error occurred while polling the task", errorResponse.error.message.ToString());
+            Assert.Equal("An error occurred while polling the task", errorResponse.error.Message.ToString());
         }
 
         #endregion
 
-        #region CleanupOldTasks Tests
-
-        [Fact]
-        public async Task CleanupOldTasks_WithValidRequest_ShouldReturnCleanedUpCount()
-        {
-            // Arrange
-            var expectedCount = 42;
-            _mockTaskService.Setup(x => x.CleanupOldTasksAsync(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(expectedCount);
-
-            _controller.ControllerContext = CreateControllerContextWithUser("admin-user");
-
-            // Act
-            var result = await _controller.CleanupOldTasks();
-
-            // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = okResult.Value as dynamic;
-            Assert.NotNull(response);
-            Assert.Equal(42, (int)response.cleaned_up);
-
-            _mockTaskService.Verify(x => x.CleanupOldTasksAsync(TimeSpan.FromHours(24), It.IsAny<CancellationToken>()), Times.Once);
-        }
-
-        [Fact]
-        public async Task CleanupOldTasks_WithCustomHours_ShouldUseProvidedValue()
-        {
-            // Arrange
-            var olderThanHours = 48;
-            _mockTaskService.Setup(x => x.CleanupOldTasksAsync(TimeSpan.FromHours(48), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(10);
-
-            _controller.ControllerContext = CreateControllerContextWithUser("admin-user");
-
-            // Act
-            var result = await _controller.CleanupOldTasks(olderThanHours);
-
-            // Assert
-            Assert.IsType<OkObjectResult>(result);
-            _mockTaskService.Verify(x => x.CleanupOldTasksAsync(TimeSpan.FromHours(48), It.IsAny<CancellationToken>()), Times.Once);
-        }
-
-        [Fact]
-        public async Task CleanupOldTasks_WithInvalidHours_ShouldClampToMinimum()
-        {
-            // Arrange
-            var olderThanHours = 0; // Below minimum
-            _mockTaskService.Setup(x => x.CleanupOldTasksAsync(TimeSpan.FromHours(1), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(5);
-
-            _controller.ControllerContext = CreateControllerContextWithUser("admin-user");
-
-            // Act
-            var result = await _controller.CleanupOldTasks(olderThanHours);
-
-            // Assert
-            Assert.IsType<OkObjectResult>(result);
-            _mockTaskService.Verify(x => x.CleanupOldTasksAsync(TimeSpan.FromHours(1), It.IsAny<CancellationToken>()), Times.Once);
-        }
-
-        [Fact]
-        public async Task CleanupOldTasks_WithServiceException_ShouldReturn500()
-        {
-            // Arrange
-            _mockTaskService.Setup(x => x.CleanupOldTasksAsync(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-                .ThrowsAsync(new Exception("Service error"));
-
-            _controller.ControllerContext = CreateControllerContextWithUser("admin-user");
-
-            // Act
-            var result = await _controller.CleanupOldTasks();
-
-            // Assert
-            var objectResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(500, objectResult.StatusCode);
-            
-            var errorResponse = objectResult.Value as dynamic;
-            Assert.NotNull(errorResponse);
-            Assert.Equal("An error occurred while cleaning up tasks", errorResponse.error.message.ToString());
-            Assert.Equal("server_error", errorResponse.error.type.ToString());
-        }
-
-        #endregion
 
         #region Authorization Tests
 
@@ -421,18 +338,6 @@ namespace ConduitLLM.Tests.Http.Controllers
             Assert.NotNull(authorizeAttribute);
         }
 
-        [Fact]
-        public void CleanupOldTasks_ShouldRequireMasterKeyPolicy()
-        {
-            // Arrange & Act
-            var method = typeof(TasksController).GetMethod(nameof(TasksController.CleanupOldTasks));
-            var authorizeAttribute = method.GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute), false)
-                .FirstOrDefault() as Microsoft.AspNetCore.Authorization.AuthorizeAttribute;
-
-            // Assert
-            Assert.NotNull(authorizeAttribute);
-            Assert.Equal("MasterKey", authorizeAttribute.Policy);
-        }
 
         #endregion
     }

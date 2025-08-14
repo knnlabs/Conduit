@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs.SignalR;
 using ConduitLLM.Http.Services;
 using ConduitLLM.Tests.TestHelpers;
@@ -37,7 +38,7 @@ namespace ConduitLLM.Tests.Http.Services
             var virtualKeyId = Guid.NewGuid();
             var filter = new ModelDiscoverySubscriptionFilter
             {
-                Providers = new List<string> { "openai", "anthropic" },
+                ProviderTypes = new List<ProviderType> { ProviderType.OpenAI, ProviderType.Groq },
                 Capabilities = new List<string> { "vision" },
                 MinSeverityLevel = NotificationSeverity.Medium
             };
@@ -124,7 +125,7 @@ namespace ConduitLLM.Tests.Http.Services
             var connectionId = "test-connection-1";
             var filter = new ModelDiscoverySubscriptionFilter
             {
-                Providers = new List<string> { "openai", "anthropic" }
+                ProviderTypes = new List<ProviderType> { ProviderType.OpenAI, ProviderType.Groq }
             };
             await _manager.AddOrUpdateSubscriptionAsync(connectionId, Guid.NewGuid(), filter);
 
@@ -143,7 +144,7 @@ namespace ConduitLLM.Tests.Http.Services
             var connectionId = "test-connection-1";
             var filter = new ModelDiscoverySubscriptionFilter
             {
-                Providers = new List<string> { "openai", "anthropic" }
+                ProviderTypes = new List<ProviderType> { ProviderType.OpenAI, ProviderType.Groq }
             };
             await _manager.AddOrUpdateSubscriptionAsync(connectionId, Guid.NewGuid(), filter);
 
@@ -241,7 +242,7 @@ namespace ConduitLLM.Tests.Http.Services
             // Arrange
             await _manager.AddOrUpdateSubscriptionAsync("conn1", Guid.NewGuid(), new ModelDiscoverySubscriptionFilter
             {
-                Providers = new List<string> { "openai" },
+                ProviderTypes = new List<ProviderType> { ProviderType.OpenAI },
                 EnableBatching = true,
                 MinSeverityLevel = NotificationSeverity.High
             });

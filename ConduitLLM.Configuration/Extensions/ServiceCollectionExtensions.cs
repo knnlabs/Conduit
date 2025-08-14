@@ -1,15 +1,18 @@
 using System;
 
 using ConduitLLM.Configuration.Data;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Configuration.Services;
 
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace ConduitLLM.Configuration.Extensions
@@ -28,15 +31,20 @@ namespace ConduitLLM.Configuration.Extensions
         {
             // Register DbContext interface
             services.AddScoped<IConfigurationDbContext>(provider =>
-                provider.GetRequiredService<ConfigurationDbContext>());
+                provider.GetRequiredService<ConduitDbContext>());
 
             // Register repositories
             services.AddScoped<IVirtualKeyRepository, VirtualKeyRepository>();
-            services.AddScoped<IProviderCredentialRepository, ProviderCredentialRepository>();
+            services.AddScoped<IVirtualKeyGroupRepository, VirtualKeyGroupRepository>();
+            services.AddScoped<IProviderRepository, ProviderRepository>();
+            services.AddScoped<IProviderKeyCredentialRepository, ProviderKeyCredentialRepository>();
             services.AddScoped<IGlobalSettingRepository, GlobalSettingRepository>();
             services.AddScoped<IModelProviderMappingRepository, ModelProviderMappingRepository>();
             services.AddScoped<IModelCostRepository, ModelCostRepository>();
             services.AddScoped<IRequestLogRepository, RequestLogRepository>();
+            
+            // Register validator
+            services.AddScoped<ProviderKeyCredentialValidator>();
 
             // Register new repositories
             services.AddScoped<INotificationRepository, NotificationRepository>();
@@ -45,7 +53,6 @@ namespace ConduitLLM.Configuration.Extensions
             services.AddScoped<IModelDeploymentRepository, ModelDeploymentRepository>();
             services.AddScoped<IFallbackConfigurationRepository, FallbackConfigurationRepository>();
             services.AddScoped<IFallbackModelMappingRepository, FallbackModelMappingRepository>();
-            services.AddScoped<IProviderHealthRepository, ProviderHealthRepository>();
             services.AddScoped<IIpFilterRepository, IpFilterRepository>();
 
             // Register audio-related repositories
@@ -124,11 +131,16 @@ namespace ConduitLLM.Configuration.Extensions
             // Register the ICacheService as a singleton but with factory-based initialization
             services.AddSingleton<ICacheService>(serviceProvider =>
             {
+                var logger = serviceProvider.GetRequiredService<ILogger<CacheServiceFactory>>();
+                logger.LogInformation("[CacheService] Creating cache service during service registration...");
+                
                 var factory = serviceProvider.GetRequiredService<CacheServiceFactory>();
 
                 // Create the appropriate cache service based on configuration
                 // For simplicity in the synchronous service provider context, we'll block on the async result here
-                return factory.CreateCacheServiceAsync().GetAwaiter().GetResult();
+                var cacheService = factory.CreateCacheServiceAsync().GetAwaiter().GetResult();
+                logger.LogInformation("[CacheService] Cache service created successfully");
+                return cacheService;
             });
 
             return services;
@@ -141,8 +153,8 @@ namespace ConduitLLM.Configuration.Extensions
         /// <returns>The service collection for chaining</returns>
         public static IServiceCollection AddDatabaseInitialization(this IServiceCollection services)
         {
-            // Register the database initializer
-            services.AddScoped<DatabaseInitializer>();
+            // Register the simple migration service
+            services.AddScoped<SimpleMigrationService>();
 
             return services;
         }

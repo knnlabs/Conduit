@@ -100,6 +100,14 @@ namespace ConduitLLM.Core.Models.Audio
         /// Additional key-value pairs for tracking or customization.
         /// </value>
         public Dictionary<string, string>? Metadata { get; set; }
+
+        /// <summary>
+        /// Gets or sets the virtual key for authentication and routing.
+        /// </summary>
+        /// <value>
+        /// The virtual key used to authenticate and route audio requests.
+        /// </value>
+        public string? VirtualKey { get; set; }
     }
 
     /// <summary>

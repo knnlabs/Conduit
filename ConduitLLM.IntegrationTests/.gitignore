@@ -1,0 +1,23 @@
+# Configuration files with secrets
+Config/test-config.yaml
+Config/providers/*.yaml
+!Config/providers/*.template.yaml
+
+# Test reports
+Reports/
+
+# Test context (shared state between test steps)
+test-context.json
+
+# Build output
+bin/
+obj/
+
+# User-specific files
+*.user
+
+# VS Code
+.vscode/
+
+# JetBrains Rider
+.idea/

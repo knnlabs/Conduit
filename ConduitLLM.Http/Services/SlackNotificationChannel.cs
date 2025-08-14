@@ -8,7 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using ConduitLLM.Http.DTOs.HealthMonitoring;
+using ConduitLLM.Configuration.DTOs.HealthMonitoring;
 
 namespace ConduitLLM.Http.Services
 {
@@ -61,7 +61,7 @@ namespace ConduitLLM.Http.Services
             };
 
             // Add suggested actions if any
-            if (alert.SuggestedActions.Any())
+            if (alert.SuggestedActions.Count() > 0)
             {
                 attachments.Add(new
                 {

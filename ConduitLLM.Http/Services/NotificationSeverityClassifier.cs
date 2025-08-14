@@ -67,7 +67,7 @@ namespace ConduitLLM.Http.Services
             // Capability removals are medium priority
             var removedCapabilities = changes
                 .Where(c => c.Contains("→ False", StringComparison.OrdinalIgnoreCase))
-                .Any();
+                .Count() > 0;
 
             if (removedCapabilities)
                 return NotificationSeverity.Medium;

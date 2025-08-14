@@ -31,7 +31,7 @@ namespace ConduitLLM.Http.Services
         private readonly ConcurrentDictionary<string, NotificationBatch> _batches = new();
         private Timer? _flushTimer;
         private readonly SemaphoreSlim _flushSemaphore = new(1, 1);
-        private bool _disposed = false;
+        private bool _disposed;
 
         public ModelDiscoveryNotificationBatcher(
             IHubContext<ModelDiscoveryHub> hubContext,
@@ -139,12 +139,13 @@ namespace ConduitLLM.Http.Services
 
         private void AddNewModelsToBatch(NotificationBatch batch, NewModelsDiscoveredNotification notification)
         {
-            if (!batch.NewModelsByProvider.ContainsKey(notification.Provider))
+            var providerName = $"provider_{notification.ProviderId}";
+            if (!batch.NewModelsByProvider.ContainsKey(providerName))
             {
-                batch.NewModelsByProvider[notification.Provider] = new List<DiscoveredModelInfo>();
+                batch.NewModelsByProvider[providerName] = new List<DiscoveredModelInfo>();
             }
-            batch.NewModelsByProvider[notification.Provider].AddRange(notification.NewModels);
-            batch.AffectedProviders.Add(notification.Provider);
+            batch.NewModelsByProvider[providerName].AddRange(notification.NewModels);
+            batch.AffectedProviders.Add(providerName);
         }
 
         private void AddCapabilityChangeToBatch(NotificationBatch batch, ModelCapabilitiesChangedNotification notification, NotificationSeverity severity)
@@ -154,17 +155,18 @@ namespace ConduitLLM.Http.Services
                 batch.CapabilityChanges[severity] = new List<ModelCapabilitiesChangedNotification>();
             }
             batch.CapabilityChanges[severity].Add(notification);
-            batch.AffectedProviders.Add(notification.Provider);
+            batch.AffectedProviders.Add($"provider_{notification.ProviderId}");
         }
 
         private void AddPriceUpdateToBatch(NotificationBatch batch, ModelPricingUpdatedNotification notification)
         {
-            if (!batch.PriceUpdatesByProvider.ContainsKey(notification.Provider))
+            var providerName = $"provider_{notification.ProviderId}";
+            if (!batch.PriceUpdatesByProvider.ContainsKey(providerName))
             {
-                batch.PriceUpdatesByProvider[notification.Provider] = new List<ModelPricingUpdatedNotification>();
+                batch.PriceUpdatesByProvider[providerName] = new List<ModelPricingUpdatedNotification>();
             }
-            batch.PriceUpdatesByProvider[notification.Provider].Add(notification);
-            batch.AffectedProviders.Add(notification.Provider);
+            batch.PriceUpdatesByProvider[providerName].Add(notification);
+            batch.AffectedProviders.Add(providerName);
         }
 
         private bool ShouldFlushBatch(NotificationBatch batch)

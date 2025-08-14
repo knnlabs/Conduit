@@ -22,7 +22,7 @@ namespace ConduitLLM.Http.Services
     /// </summary>
     public class RealtimeProxyService : IRealtimeProxyService
     {
-        private readonly IRealtimeMessageTranslator _translator;
+        private readonly IRealtimeMessageTranslatorFactory _translatorFactory;
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly IRealtimeConnectionManager _connectionManager;
         private readonly IRealtimeUsageTracker _usageTracker;
@@ -33,13 +33,13 @@ namespace ConduitLLM.Http.Services
         private readonly object _metricsLock = new();
 
         public RealtimeProxyService(
-            IRealtimeMessageTranslator translator,
+            IRealtimeMessageTranslatorFactory translatorFactory,
             IVirtualKeyService virtualKeyService,
             IRealtimeConnectionManager connectionManager,
             IRealtimeUsageTracker usageTracker,
             ILogger<RealtimeProxyService> logger)
         {
-            _translator = translator ?? throw new ArgumentNullException(nameof(translator));
+            _translatorFactory = translatorFactory ?? throw new ArgumentNullException(nameof(translatorFactory));
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
             _connectionManager = connectionManager ?? throw new ArgumentNullException(nameof(connectionManager));
             _usageTracker = usageTracker ?? throw new ArgumentNullException(nameof(usageTracker));
@@ -65,11 +65,13 @@ namespace ConduitLLM.Http.Services
                 _connectionMetrics[connectionId] = new ConnectionMetrics();
             }
 
-            // Validate virtual key has permissions
-            if (!virtualKey.IsEnabled || (virtualKey.MaxBudget.HasValue && virtualKey.CurrentSpend >= virtualKey.MaxBudget.Value))
+            // Validate virtual key is enabled
+            if (!virtualKey.IsEnabled)
             {
-                throw new UnauthorizedAccessException("Virtual key is not active or has exceeded budget");
+                throw new UnauthorizedAccessException("Virtual key is not active");
             }
+            
+            // Note: Budget validation happens at the service layer during key validation
 
             // Get the provider client and establish connection
             var audioRouter = _connectionManager as IAudioRouter ??
@@ -169,7 +171,8 @@ namespace ConduitLLM.Http.Services
             string virtualKey,
             CancellationToken cancellationToken)
         {
-            var buffer = new ArraySegment<byte>(new byte[4096]);
+            var bufferArray = new byte[4096];
+            var buffer = new ArraySegment<byte>(bufferArray);
 
             while (!cancellationToken.IsCancellationRequested &&
                    clientWs.State == WebSocketState.Open &&
@@ -191,7 +194,7 @@ namespace ConduitLLM.Http.Services
                         // Assume binary data is audio
                         var audioFrame = new RealtimeAudioFrame
                         {
-                            AudioData = buffer.Array!.Take(result.Count).ToArray(),
+                            AudioData = bufferArray.Take(result.Count).ToArray(),
                             IsOutput = false,
                             SampleRate = 24000, // Default, should be configurable
                             Channels = 1
@@ -208,7 +211,7 @@ namespace ConduitLLM.Http.Services
                     }
                     else if (result.MessageType == WebSocketMessageType.Text)
                     {
-                        var message = Encoding.UTF8.GetString(buffer.Array!, 0, result.Count);
+                        var message = Encoding.UTF8.GetString(bufferArray, 0, result.Count);
                         
                         // Track bytes sent to provider
                         UpdateConnectionMetrics(connectionId, bytesSent: result.Count);

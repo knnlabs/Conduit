@@ -40,8 +40,7 @@ namespace ConduitLLM.Core.Services
 
         public void RegisterRegion(CacheRegion region, CacheRegionConfig config)
         {
-            if (config == null)
-                throw new ArgumentNullException(nameof(config));
+            ArgumentNullException.ThrowIfNull(config);
 
             config.Region = region; // Ensure region is set correctly
             _regions[region] = config;
@@ -72,8 +71,7 @@ namespace ConduitLLM.Core.Services
         {
             if (string.IsNullOrWhiteSpace(regionName))
                 throw new ArgumentException("Region name cannot be empty", nameof(regionName));
-            if (config == null)
-                throw new ArgumentNullException(nameof(config));
+            ArgumentNullException.ThrowIfNull(config);
 
             _customRegions[regionName] = config;
 
@@ -121,8 +119,7 @@ namespace ConduitLLM.Core.Services
 
         public bool UpdateRegionConfig(CacheRegion region, CacheRegionConfig config)
         {
-            if (config == null)
-                throw new ArgumentNullException(nameof(config));
+            ArgumentNullException.ThrowIfNull(config);
 
             if (!_regions.ContainsKey(region))
                 return false;
@@ -201,7 +198,11 @@ namespace ConduitLLM.Core.Services
                 ? assemblies 
                 : AppDomain.CurrentDomain.GetAssemblies()
                     .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.FullName) && 
-                            !a.FullName.StartsWith("System") && !a.FullName.StartsWith("Microsoft"))
+                            // Only scan ConduitLLM assemblies to avoid scanning all dependencies
+                            a.FullName.StartsWith("ConduitLLM", StringComparison.OrdinalIgnoreCase) &&
+                            // Skip test assemblies
+                            !a.FullName.Contains(".Tests", StringComparison.OrdinalIgnoreCase) &&
+                            !a.FullName.Contains(".Test.", StringComparison.OrdinalIgnoreCase))
                     .ToArray();
 
             var discoveredCount = 0;
@@ -479,7 +480,7 @@ namespace ConduitLLM.Core.Services
                 CacheRegion.ProviderResponses => (TimeSpan.FromMinutes(60), 60, true),
                 CacheRegion.Embeddings => (TimeSpan.FromDays(7), 70, true),
                 CacheRegion.GlobalSettings => (TimeSpan.FromMinutes(30), 75, true),
-                CacheRegion.ProviderCredentials => (TimeSpan.FromHours(4), 80, true),
+                CacheRegion.Providers => (TimeSpan.FromHours(4), 80, true),
                 CacheRegion.ModelCosts => (TimeSpan.FromHours(12), 55, true),
                 CacheRegion.AudioStreams => (TimeSpan.FromMinutes(10), 30, false),
                 CacheRegion.Monitoring => (TimeSpan.FromMinutes(5), 45, false),

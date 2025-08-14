@@ -6,6 +6,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Services;
+using ConduitLLM.Configuration.DTOs.Audio;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Http.Security;
@@ -14,6 +15,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.Http.Authorization;
 
 using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
@@ -24,21 +26,26 @@ namespace ConduitLLM.Http.Controllers
     /// </summary>
     [ApiController]
     [Route("v1/audio")]
-    [Authorize]
+    [Authorize(AuthenticationSchemes = "VirtualKey")]
+    [RequireBalance]
+    [Tags("Audio")]
     public class AudioController : ControllerBase
     {
         private readonly IAudioRouter _audioRouter;
-        private readonly ConduitLLM.Configuration.Services.IVirtualKeyService _virtualKeyService;
+        private readonly ConduitLLM.Configuration.Interfaces.IVirtualKeyService _virtualKeyService;
         private readonly ILogger<AudioController> _logger;
+        private readonly ConduitLLM.Configuration.Interfaces.IModelProviderMappingService _modelMappingService;
 
         public AudioController(
             IAudioRouter audioRouter,
-            ConduitLLM.Configuration.Services.IVirtualKeyService virtualKeyService,
-            ILogger<AudioController> logger)
+            ConduitLLM.Configuration.Interfaces.IVirtualKeyService virtualKeyService,
+            ILogger<AudioController> logger,
+            ConduitLLM.Configuration.Interfaces.IModelProviderMappingService modelMappingService)
         {
             _audioRouter = audioRouter ?? throw new ArgumentNullException(nameof(audioRouter));
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _modelMappingService = modelMappingService ?? throw new ArgumentNullException(nameof(modelMappingService));
         }
 
         /// <summary>
@@ -101,6 +108,21 @@ namespace ConduitLLM.Http.Controllers
 
             try
             {
+                // Get provider info for usage tracking
+                try
+                {
+                    var modelMapping = await _modelMappingService.GetMappingByModelAliasAsync(model);
+                    if (modelMapping != null)
+                    {
+                        HttpContext.Items["ProviderId"] = modelMapping.ProviderId;
+                        HttpContext.Items["ProviderType"] = modelMapping.Provider?.ProviderType;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to get provider info for model {Model}", model);
+                }
+
                 // Read file into memory
                 byte[] audioData;
                 using (var memoryStream = new MemoryStream())
@@ -236,6 +258,21 @@ namespace ConduitLLM.Http.Controllers
 
             try
             {
+                // Get provider info for usage tracking
+                try
+                {
+                    var modelMapping = await _modelMappingService.GetMappingByModelAliasAsync(request.Model);
+                    if (modelMapping != null)
+                    {
+                        HttpContext.Items["ProviderId"] = modelMapping.ProviderId;
+                        HttpContext.Items["ProviderType"] = modelMapping.Provider?.ProviderType;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to get provider info for model {Model}", request.Model);
+                }
+
                 // Parse response format
                 AudioFormat format = AudioFormat.Mp3;
                 if (!string.IsNullOrEmpty(request.ResponseFormat))
@@ -380,29 +417,5 @@ namespace ConduitLLM.Http.Controllers
             return text.Length / 4;
         }
 
-        /// <summary>
-        /// DTO for text-to-speech requests.
-        /// </summary>
-        public class TextToSpeechRequestDto
-        {
-            [Required]
-            [JsonPropertyName("model")]
-            public string Model { get; set; } = "tts-1";
-
-            [Required]
-            [JsonPropertyName("input")]
-            public string Input { get; set; } = string.Empty;
-
-            [Required]
-            [JsonPropertyName("voice")]
-            public string Voice { get; set; } = "alloy";
-
-            [JsonPropertyName("response_format")]
-            public string? ResponseFormat { get; set; }
-
-            [JsonPropertyName("speed")]
-            [Range(0.25, 4.0)]
-            public double? Speed { get; set; }
-        }
     }
 }

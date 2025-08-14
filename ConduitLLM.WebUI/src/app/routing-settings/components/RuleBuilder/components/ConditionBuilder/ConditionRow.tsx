@@ -133,6 +133,7 @@ export function ConditionRow({ condition, index, onUpdate, onRemove, canRemove }
             value={typeof condition.value === 'string' ? condition.value : null}
             onChange={handleValueChange}
             style={{ flex: 1 }}
+            allowDeselect={false}
           />
         );
       }
@@ -167,9 +168,10 @@ export function ConditionRow({ condition, index, onUpdate, onRemove, canRemove }
           <Select
             label="Field"
             data={CONDITION_FIELDS}
-            value={condition.type}
+            value={condition.type ?? null}
             onChange={handleFieldChange}
             searchable
+            allowDeselect={false}
           />
         </div>
 
@@ -190,8 +192,9 @@ export function ConditionRow({ condition, index, onUpdate, onRemove, canRemove }
           <Select
             label="Operator"
             data={availableOperators}
-            value={condition.operator}
+            value={condition.operator ?? null}
             onChange={handleOperatorChange}
+            allowDeselect={false}
           />
         </div>
 

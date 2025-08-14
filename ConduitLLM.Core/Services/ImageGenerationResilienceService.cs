@@ -6,7 +6,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 using MassTransit;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,6 +13,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Core.Services
 {
     /// <summary>
@@ -28,9 +28,12 @@ namespace ConduitLLM.Core.Services
         private readonly ImageGenerationResilienceOptions _options;
         private readonly IPublishEndpoint? _publishEndpoint;
         
-        private readonly ConcurrentDictionary<string, ProviderHealthState> _providerStates = new();
-        private readonly ConcurrentDictionary<string, FailoverState> _failoverStates = new();
-        private readonly ConcurrentDictionary<string, RecoveryAttempt> _recoveryAttempts = new();
+        private readonly ConcurrentDictionary<int, ProviderHealthState> _providerStates = new();
+        private readonly ConcurrentDictionary<int, FailoverState> _failoverStates = new();
+        private readonly ConcurrentDictionary<int, RecoveryAttempt> _recoveryAttempts = new();
+        
+        // Cache for providers
+        private readonly ConcurrentDictionary<int, ConduitLLM.Configuration.Entities.Provider> _providerCache = new();
         
         private Timer? _healthCheckTimer;
         private Timer? _recoveryTimer;
@@ -64,7 +67,7 @@ namespace ConduitLLM.Core.Services
                 _options.HealthCheckIntervalMinutes, _options.RecoveryCheckIntervalMinutes);
             
             // Initialize provider states
-            InitializeProviderStates();
+            _ = RefreshProviderCacheAsync(stoppingToken);
             
             // Start health monitoring timer
             _healthCheckTimer = new Timer(
@@ -96,7 +99,16 @@ namespace ConduitLLM.Core.Services
                 // Check each provider
                 foreach (var (providerName, status) in metrics.ProviderStatuses)
                 {
-                    await CheckProviderHealthAsync(providerName, status, metrics);
+                    // Try to find provider ID from name
+                    var providerId = GetProviderIdFromName(providerName);
+                    if (providerId.HasValue)
+                    {
+                        await CheckProviderHealthAsync(providerId.Value, status, metrics);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Could not find provider ID for provider name: {ProviderName}", providerName);
+                    }
                 }
                 
                 // Check for global issues
@@ -112,13 +124,13 @@ namespace ConduitLLM.Core.Services
         }
 
         private async Task CheckProviderHealthAsync(
-            string providerName,
+            int providerId,
             ProviderStatus status,
             ImageGenerationMetricsSnapshot metrics)
         {
-            var state = _providerStates.GetOrAdd(providerName, new ProviderHealthState
+            var state = _providerStates.GetOrAdd(providerId, new ProviderHealthState
             {
-                ProviderName = providerName
+                ProviderId = providerId
             });
             
             // Update health state
@@ -130,60 +142,62 @@ namespace ConduitLLM.Core.Services
             // Check if provider needs intervention
             if (!status.IsHealthy || status.ConsecutiveFailures >= _options.FailureThreshold)
             {
-                await HandleUnhealthyProviderAsync(providerName, state, status);
+                await HandleUnhealthyProviderAsync(providerId, state, status);
             }
             else if (state.IsQuarantined && status.HealthScore > _options.RecoveryHealthScoreThreshold)
             {
                 // Provider appears to be recovering
-                await AttemptProviderRecoveryAsync(providerName, state);
+                await AttemptProviderRecoveryAsync(providerId, state);
             }
             
             // Check for performance degradation
             if (status.AverageResponseTimeMs > _options.SlowResponseThresholdMs)
             {
-                await HandleSlowProviderAsync(providerName, status);
+                await HandleSlowProviderAsync(providerId, status);
             }
         }
 
         private async Task HandleUnhealthyProviderAsync(
-            string providerName,
+            int providerId,
             ProviderHealthState state,
             ProviderStatus status)
         {
+            var providerName = GetProviderName(providerId);
             _logger.LogWarning(
-                "Provider {Provider} is unhealthy - Score: {Score}, Failures: {Failures}",
-                providerName, status.HealthScore, status.ConsecutiveFailures);
+                "Provider {ProviderId} ({ProviderName}) is unhealthy - Score: {Score}, Failures: {Failures}",
+                providerId, providerName, status.HealthScore, status.ConsecutiveFailures);
             
             // Check if already quarantined
             if (!state.IsQuarantined)
             {
                 // Quarantine the provider
-                await QuarantineProviderAsync(providerName, state, $"Health score: {status.HealthScore:F2}, Consecutive failures: {status.ConsecutiveFailures}");
+                await QuarantineProviderAsync(providerId, state, $"Health score: {status.HealthScore:F2}, Consecutive failures: {status.ConsecutiveFailures}");
                 
                 // Initiate failover if primary provider
-                if (IsPrimaryProvider(providerName))
+                if (IsPrimaryProvider(providerId))
                 {
-                    await InitiateFailoverAsync(providerName, status);
+                    await InitiateFailoverAsync(providerId, status);
                 }
             }
             
             // Update recovery attempts
-            _recoveryAttempts.AddOrUpdate(providerName,
-                new RecoveryAttempt { ProviderName = providerName, AttemptCount = 1 },
+            _recoveryAttempts.AddOrUpdate(providerId,
+                new RecoveryAttempt { ProviderId = providerId, AttemptCount = 1 },
                 (_, attempt) => { attempt.AttemptCount++; return attempt; });
         }
 
-        private async Task QuarantineProviderAsync(string providerName, ProviderHealthState state, string reason)
+        private async Task QuarantineProviderAsync(int providerId, ProviderHealthState state, string reason)
         {
             state.IsQuarantined = true;
             state.QuarantinedAt = DateTime.UtcNow;
             state.QuarantineReason = reason;
             
-            _logger.LogWarning("Quarantined provider {Provider}: {Reason}", providerName, reason);
+            var providerName = GetProviderName(providerId);
+            _logger.LogWarning("Quarantined provider {ProviderId} ({ProviderName}): {Reason}", providerId, providerName, reason);
             
             // Update provider configuration to disable it
             using var scope = _serviceProvider.CreateScope();
-            var mappingService = scope.ServiceProvider.GetService<Interfaces.Configuration.IModelProviderMappingService>();
+            var mappingService = scope.ServiceProvider.GetService<IModelProviderMappingService>();
             
             if (mappingService != null)
             {
@@ -191,7 +205,25 @@ namespace ConduitLLM.Core.Services
                 {
                     // Get all mappings for this provider
                     var allMappings = await mappingService.GetAllMappingsAsync();
-                    var providerMappings = allMappings.Where(m => m.ProviderName == providerName).ToList();
+                    
+                    // Get provider service to load provider information
+                    var providerService = scope.ServiceProvider.GetService<IProviderService>();
+                    if (providerService == null)
+                    {
+                        _logger.LogWarning("IProviderService not available, cannot quarantine provider");
+                        return;
+                    }
+                    
+                    // Load all providers to match by ProviderType
+                    var allProviders = await providerService.GetAllProvidersAsync();
+                    var providersByType = allProviders
+                        .Where(p => p.ProviderType.ToString() == providerName)
+                        .Select(p => p.Id)
+                        .ToList();
+                    
+                    var providerMappings = allMappings
+                        .Where(m => providersByType.Contains(m.ProviderId))
+                        .ToList();
                     
                     // TODO: Implement mapping updates when the service supports it
                     // foreach (var mapping in providerMappings)
@@ -211,7 +243,8 @@ namespace ConduitLLM.Core.Services
             {
                 await _publishEndpoint.Publish(new ProviderQuarantined
                 {
-                    ProviderName = providerName,
+                    ProviderId = providerId,
+                    ProviderName = GetProviderName(providerId),
                     Reason = reason,
                     QuarantinedAt = state.QuarantinedAt.Value,
                     CorrelationId = Guid.NewGuid().ToString()
@@ -219,58 +252,72 @@ namespace ConduitLLM.Core.Services
             }
         }
 
-        private async Task InitiateFailoverAsync(string failedProvider, ProviderStatus status)
+        private async Task InitiateFailoverAsync(int failedProviderId, ProviderStatus status)
         {
-            _logger.LogInformation("Initiating failover from {Provider}", failedProvider);
+            var failedProviderName = GetProviderName(failedProviderId);
+            _logger.LogInformation("Initiating failover from provider {ProviderId} ({ProviderName})", failedProviderId, failedProviderName);
             
             var failoverState = new FailoverState
             {
-                FailedProvider = failedProvider,
+                FailedProviderId = failedProviderId,
                 InitiatedAt = DateTime.UtcNow,
                 Reason = $"Provider unhealthy: {status.LastError}"
             };
             
             // Find alternative providers
             using var scope = _serviceProvider.CreateScope();
-            var mappingService = scope.ServiceProvider.GetService<Interfaces.Configuration.IModelProviderMappingService>();
+            var mappingService = scope.ServiceProvider.GetService<IModelProviderMappingService>();
             
             if (mappingService != null)
             {
                 var allMappings = await mappingService.GetAllMappingsAsync();
+                
+                // Get provider service to load provider information
+                var providerService = scope.ServiceProvider.GetService<IProviderService>();
+                if (providerService == null)
+                {
+                    _logger.LogWarning("IProviderService not available, cannot initiate failover");
+                    return;
+                }
+                
+                // Load all providers
+                var allProviders = await providerService.GetAllProvidersAsync();
+                var providerLookup = allProviders.ToDictionary(p => p.Id, p => p);
+                
+                // Find image generation mappings not from the failed provider
                 var imageProviders = allMappings
-                    .Where(m => m.SupportsImageGeneration && 
-                               m.ProviderName != failedProvider &&
-                               m.IsEnabled)
-                    .GroupBy(m => m.ProviderName)
+                    .Where(m => m.SupportsImageGeneration && m.IsEnabled && m.ProviderId != failedProviderId)
+                    .GroupBy(m => m.ProviderId)
                     .ToList();
                 
                 // Select best alternative based on health scores
-                string? selectedProvider = null;
+                int? selectedProviderId = null;
                 double bestScore = 0;
                 
                 foreach (var providerGroup in imageProviders)
                 {
-                    var providerName = providerGroup.Key;
-                    if (_providerStates.TryGetValue(providerName, out var state) && 
+                    var providerId = providerGroup.Key;
+                    if (_providerStates.TryGetValue(providerId, out var state) && 
                         state.IsHealthy && 
                         state.HealthScore > bestScore)
                     {
-                        selectedProvider = providerName;
+                        selectedProviderId = providerId;
                         bestScore = state.HealthScore;
                     }
                 }
                 
-                if (selectedProvider != null)
+                if (selectedProviderId.HasValue)
                 {
-                    failoverState.FailoverProvider = selectedProvider;
+                    failoverState.FailoverProviderId = selectedProviderId.Value;
                     failoverState.Status = FailoverStatus.Active;
                     
+                    var selectedProviderName = GetProviderName(selectedProviderId.Value);
                     _logger.LogInformation(
-                        "Failover initiated: {Failed} -> {Failover}",
-                        failedProvider, selectedProvider);
+                        "Failover initiated: {FailedId} ({FailedName}) -> {FailoverId} ({FailoverName})",
+                        failedProviderId, failedProviderName, selectedProviderId.Value, selectedProviderName);
                     
                     // Update failover configuration
-                    await UpdateFailoverConfigurationAsync(failedProvider, selectedProvider);
+                    await UpdateFailoverConfigurationAsync(failedProviderId, selectedProviderId.Value);
                 }
                 else
                 {
@@ -279,10 +326,10 @@ namespace ConduitLLM.Core.Services
                 }
             }
             
-            _failoverStates[failedProvider] = failoverState;
+            _failoverStates[failedProviderId] = failoverState;
         }
 
-        private async Task UpdateFailoverConfigurationAsync(string failedProvider, string failoverProvider)
+        private async Task UpdateFailoverConfigurationAsync(int failedProviderId, int failoverProviderId)
         {
             // This would update routing configuration to redirect traffic
             // In a real implementation, this might update a configuration service
@@ -292,33 +339,36 @@ namespace ConduitLLM.Core.Services
             {
                 await _publishEndpoint.Publish(new ProviderFailoverInitiated
                 {
-                    FailedProvider = failedProvider,
-                    FailoverProvider = failoverProvider,
+                    FailedProviderId = failedProviderId,
+                    FailedProviderName = GetProviderName(failedProviderId),
+                    FailoverProviderId = failoverProviderId,
+                    FailoverProviderName = GetProviderName(failoverProviderId),
                     InitiatedAt = DateTime.UtcNow,
                     CorrelationId = Guid.NewGuid().ToString()
                 });
             }
         }
 
-        private async Task HandleSlowProviderAsync(string providerName, ProviderStatus status)
+        private async Task HandleSlowProviderAsync(int providerId, ProviderStatus status)
         {
+            var providerName = GetProviderName(providerId);
             _logger.LogWarning(
-                "Provider {Provider} experiencing slow response times: {ResponseTime}ms",
-                providerName, status.AverageResponseTimeMs);
+                "Provider {ProviderId} ({ProviderName}) experiencing slow response times: {ResponseTime}ms",
+                providerId, providerName, status.AverageResponseTimeMs);
             
             // Reduce load on slow provider
-            var state = _providerStates[providerName];
+            var state = _providerStates[providerId];
             if (!state.IsThrottled)
             {
                 state.IsThrottled = true;
                 state.ThrottleLevel = 0.5; // Reduce to 50% traffic
                 
                 _logger.LogInformation(
-                    "Throttling provider {Provider} to {Level:P0} traffic",
-                    providerName, state.ThrottleLevel);
+                    "Throttling provider {ProviderId} ({ProviderName}) to {Level:P0} traffic",
+                    providerId, providerName, state.ThrottleLevel);
                 
                 // Update provider weight in load balancing
-                await UpdateProviderWeightAsync(providerName, state.ThrottleLevel);
+                await UpdateProviderWeightAsync(providerId, state.ThrottleLevel);
             }
         }
 
@@ -334,9 +384,9 @@ namespace ConduitLLM.Core.Services
                     .Where(p => p.Value.IsQuarantined)
                     .ToList();
                 
-                foreach (var (providerName, state) in quarantinedProviders)
+                foreach (var (providerId, state) in quarantinedProviders)
                 {
-                    await CheckProviderRecoveryAsync(providerName, state);
+                    await CheckProviderRecoveryAsync(providerId, state);
                 }
                 
                 // Check active failovers
@@ -344,9 +394,9 @@ namespace ConduitLLM.Core.Services
                     .Where(f => f.Value.Status == FailoverStatus.Active)
                     .ToList();
                 
-                foreach (var (originalProvider, failoverState) in activeFailovers)
+                foreach (var (originalProviderId, failoverState) in activeFailovers)
                 {
-                    await CheckFailoverRecoveryAsync(originalProvider, failoverState);
+                    await CheckFailoverRecoveryAsync(originalProviderId, failoverState);
                 }
                 
                 // Perform self-healing actions
@@ -358,7 +408,7 @@ namespace ConduitLLM.Core.Services
             }
         }
 
-        private async Task CheckProviderRecoveryAsync(string providerName, ProviderHealthState state)
+        private async Task CheckProviderRecoveryAsync(int providerId, ProviderHealthState state)
         {
             if (!state.QuarantinedAt.HasValue)
                 return;
@@ -369,27 +419,28 @@ namespace ConduitLLM.Core.Services
             if (quarantineDuration < _options.MinimumQuarantineTime)
                 return;
             
-            _logger.LogInformation("Checking recovery for quarantined provider {Provider}", providerName);
+            var providerName = GetProviderName(providerId);
+            _logger.LogInformation("Checking recovery for quarantined provider {ProviderId} ({ProviderName})", providerId, providerName);
             
             // Perform health probe
-            var isHealthy = await ProbeProviderHealthAsync(providerName);
+            var isHealthy = await ProbeProviderHealthAsync(providerId);
             
             if (isHealthy)
             {
-                await AttemptProviderRecoveryAsync(providerName, state);
+                await AttemptProviderRecoveryAsync(providerId, state);
             }
             else if (quarantineDuration > _options.MaximumQuarantineTime)
             {
                 _logger.LogError(
-                    "Provider {Provider} exceeded maximum quarantine time without recovery",
-                    providerName);
+                    "Provider {ProviderId} ({ProviderName}) exceeded maximum quarantine time without recovery",
+                    providerId, providerName);
                 
                 // Mark as permanently failed
                 state.IsPermanentlyFailed = true;
             }
         }
 
-        private Task<bool> ProbeProviderHealthAsync(string providerName)
+        private Task<bool> ProbeProviderHealthAsync(int providerId)
         {
             try
             {
@@ -402,14 +453,15 @@ namespace ConduitLLM.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Health probe failed for provider {Provider}", providerName);
+                _logger.LogError(ex, "Health probe failed for provider {ProviderId}", providerId);
                 return Task.FromResult(false);
             }
         }
 
-        private async Task AttemptProviderRecoveryAsync(string providerName, ProviderHealthState state)
+        private async Task AttemptProviderRecoveryAsync(int providerId, ProviderHealthState state)
         {
-            _logger.LogInformation("Attempting recovery for provider {Provider}", providerName);
+            var providerName = GetProviderName(providerId);
+            _logger.LogInformation("Attempting recovery for provider {ProviderId} ({ProviderName})", providerId, providerName);
             
             // Re-enable provider with limited traffic
             state.IsQuarantined = false;
@@ -419,14 +471,17 @@ namespace ConduitLLM.Core.Services
             
             // Re-enable provider mappings
             using var scope = _serviceProvider.CreateScope();
-            var mappingService = scope.ServiceProvider.GetService<Interfaces.Configuration.IModelProviderMappingService>();
+            var mappingService = scope.ServiceProvider.GetService<IModelProviderMappingService>();
             
             if (mappingService != null)
             {
                 try
                 {
+                    // Get all mappings for this specific provider ID
                     var allMappings = await mappingService.GetAllMappingsAsync();
-                    var providerMappings = allMappings.Where(m => m.ProviderName == providerName).ToList();
+                    var providerMappings = allMappings
+                        .Where(m => m.ProviderId == providerId)
+                        .ToList();
                     
                     // TODO: Implement mapping updates when the service supports it
                     // foreach (var mapping in providerMappings)
@@ -437,19 +492,20 @@ namespace ConduitLLM.Core.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to re-enable mappings for provider {Provider}", providerName);
+                    _logger.LogError(ex, "Failed to re-enable mappings for provider {ProviderId}", providerId);
                 }
             }
             
             // Update provider weight for gradual recovery
-            await UpdateProviderWeightAsync(providerName, state.ThrottleLevel);
+            await UpdateProviderWeightAsync(providerId, state.ThrottleLevel);
             
             // Publish recovery event
             if (_publishEndpoint != null)
             {
                 await _publishEndpoint.Publish(new ProviderRecoveryInitiated
                 {
-                    ProviderName = providerName,
+                    ProviderId = providerId,
+                    ProviderName = GetProviderName(providerId),
                     ThrottleLevel = state.ThrottleLevel,
                     InitiatedAt = DateTime.UtcNow,
                     CorrelationId = Guid.NewGuid().ToString()
@@ -457,40 +513,43 @@ namespace ConduitLLM.Core.Services
             }
         }
 
-        private async Task CheckFailoverRecoveryAsync(string originalProvider, FailoverState failoverState)
+        private async Task CheckFailoverRecoveryAsync(int originalProviderId, FailoverState failoverState)
         {
             // Check if original provider has recovered
-            if (_providerStates.TryGetValue(originalProvider, out var state) && 
+            if (_providerStates.TryGetValue(originalProviderId, out var state) && 
                 state.IsHealthy && 
                 !state.IsQuarantined)
             {
+                var originalProviderName = GetProviderName(originalProviderId);
                 _logger.LogInformation(
-                    "Original provider {Provider} has recovered, reversing failover",
-                    originalProvider);
+                    "Original provider {ProviderId} ({ProviderName}) has recovered, reversing failover",
+                    originalProviderId, originalProviderName);
                 
                 // Gradually shift traffic back
                 failoverState.Status = FailoverStatus.Recovering;
                 
                 // Update routing to gradually restore traffic
-                await RestoreOriginalProviderAsync(originalProvider, failoverState.FailoverProvider!);
+                await RestoreOriginalProviderAsync(originalProviderId, failoverState.FailoverProviderId);
             }
         }
 
-        private async Task RestoreOriginalProviderAsync(string originalProvider, string failoverProvider)
+        private async Task RestoreOriginalProviderAsync(int originalProviderId, int failoverProviderId)
         {
             if (_publishEndpoint != null)
             {
                 await _publishEndpoint.Publish(new ProviderFailoverReverted
                 {
-                    OriginalProvider = originalProvider,
-                    FailoverProvider = failoverProvider,
+                    OriginalProviderId = originalProviderId,
+                    OriginalProviderName = GetProviderName(originalProviderId),
+                    FailoverProviderId = failoverProviderId,
+                    FailoverProviderName = GetProviderName(failoverProviderId),
                     RevertedAt = DateTime.UtcNow,
                     CorrelationId = Guid.NewGuid().ToString()
                 });
             }
             
             // Remove failover state after successful restoration
-            _failoverStates.TryRemove(originalProvider, out _);
+            _failoverStates.TryRemove(originalProviderId, out _);
         }
 
         private async Task PerformSelfHealingAsync()
@@ -526,10 +585,11 @@ namespace ConduitLLM.Core.Services
                            DateTime.UtcNow - p.Value.QuarantinedAt.Value > TimeSpan.FromHours(1))
                 .ToList();
             
-            foreach (var (providerName, state) in stuckProviders)
+            foreach (var (providerId, state) in stuckProviders)
             {
-                _logger.LogInformation("Resetting stuck circuit breaker for {Provider}", providerName);
-                await CheckProviderRecoveryAsync(providerName, state);
+                var providerName = GetProviderName(providerId);
+                _logger.LogInformation("Resetting stuck circuit breaker for provider {ProviderId} ({ProviderName})", providerId, providerName);
+                await CheckProviderRecoveryAsync(providerId, state);
             }
         }
 
@@ -540,15 +600,15 @@ namespace ConduitLLM.Core.Services
                 .Where(p => p.Value.IsHealthy && !p.Value.IsQuarantined)
                 .ToList();
             
-            if (healthyProviders.Count > 1)
+            if (healthyProviders.Count() > 1)
             {
                 // Calculate optimal weights based on health scores
                 var totalScore = healthyProviders.Sum(p => p.Value.HealthScore);
                 
-                foreach (var (providerName, state) in healthyProviders)
+                foreach (var (providerId, state) in healthyProviders)
                 {
                     var weight = state.HealthScore / totalScore;
-                    await UpdateProviderWeightAsync(providerName, weight);
+                    await UpdateProviderWeightAsync(providerId, weight);
                 }
             }
             
@@ -562,10 +622,11 @@ namespace ConduitLLM.Core.Services
             await Task.CompletedTask;
         }
 
-        private async Task UpdateProviderWeightAsync(string providerName, double weight)
+        private async Task UpdateProviderWeightAsync(int providerId, double weight)
         {
             // This would update the provider's weight in the load balancing configuration
-            _logger.LogDebug("Updated provider {Provider} weight to {Weight:F2}", providerName, weight);
+            var providerName = GetProviderName(providerId);
+            _logger.LogDebug("Updated provider {ProviderId} ({ProviderName}) weight to {Weight:F2}", providerId, providerName, weight);
             await Task.CompletedTask;
         }
 
@@ -612,26 +673,79 @@ namespace ConduitLLM.Core.Services
             await Task.CompletedTask;
         }
 
-        private void InitializeProviderStates()
+        private int? GetProviderIdFromName(string providerName)
         {
-            // Initialize with known providers
-            var knownProviders = new[] { "OpenAI", "MiniMax", "Replicate" };
-            
-            foreach (var provider in knownProviders)
+            // Try to find provider by name in cache
+            var provider = _providerCache.Values.FirstOrDefault(p => 
+                p.ProviderName == providerName || p.ProviderType.ToString() == providerName);
+            return provider?.Id;
+        }
+        
+        private string GetProviderName(int providerId)
+        {
+            if (_providerCache.TryGetValue(providerId, out var provider))
             {
-                _providerStates[provider] = new ProviderHealthState
+                return provider.ProviderName ?? provider.ProviderType.ToString();
+            }
+            return $"Provider_{providerId}";
+        }
+        
+
+        private async Task RefreshProviderCacheAsync(CancellationToken cancellationToken)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var providerService = scope.ServiceProvider.GetService<IProviderService>();
+            
+            if (providerService == null)
+            {
+                _logger.LogWarning("IProviderService not available, cannot refresh provider cache");
+                return;
+            }
+            
+            try
+            {
+                var providers = await providerService.GetAllProvidersAsync();
+                
+                // Update the provider cache
+                _providerCache.Clear();
+                foreach (var provider in providers)
                 {
-                    ProviderName = provider,
-                    IsHealthy = true,
-                    HealthScore = 1.0
-                };
+                    _providerCache[provider.Id] = provider;
+                    
+                    // Initialize health state for enabled providers
+                    if (provider.IsEnabled && !_providerStates.ContainsKey(provider.Id))
+                    {
+                        _providerStates[provider.Id] = new ProviderHealthState
+                        {
+                            ProviderId = provider.Id,
+                            IsHealthy = true,
+                            HealthScore = 1.0
+                        };
+                    }
+                }
+                
+                _logger.LogInformation("Refreshed provider cache. Found {Count} providers", _providerCache.Count());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to refresh provider cache");
             }
         }
-
-        private bool IsPrimaryProvider(string providerName)
+        
+        private bool IsPrimaryProvider(int providerId)
         {
             // Determine if this is a primary provider that requires immediate failover
-            return providerName.Equals("OpenAI", StringComparison.OrdinalIgnoreCase);
+            // In the new model, this should be based on provider configuration, not hardcoded
+            // Determine if this is a primary provider that requires immediate failover
+            if (_providerCache.TryGetValue(providerId, out var provider))
+            {
+                // TODO: Add IsPrimary flag to Provider entity
+                // For now, check the provider name
+                var name = provider.ProviderName ?? string.Empty;
+                return name.Contains("Primary", StringComparison.OrdinalIgnoreCase) || 
+                       name.Contains("Production", StringComparison.OrdinalIgnoreCase);
+            }
+            return false;
         }
 
         public override async Task StopAsync(CancellationToken cancellationToken)
@@ -649,7 +763,7 @@ namespace ConduitLLM.Core.Services
 
         private class ProviderHealthState
         {
-            public string ProviderName { get; set; } = string.Empty;
+            public int ProviderId { get; set; }
             public bool IsHealthy { get; set; } = true;
             public double HealthScore { get; set; } = 1.0;
             public int ConsecutiveFailures { get; set; }
@@ -665,8 +779,8 @@ namespace ConduitLLM.Core.Services
 
         private class FailoverState
         {
-            public string FailedProvider { get; set; } = string.Empty;
-            public string? FailoverProvider { get; set; }
+            public int FailedProviderId { get; set; }
+            public int FailoverProviderId { get; set; }
             public DateTime InitiatedAt { get; set; }
             public FailoverStatus Status { get; set; }
             public string Reason { get; set; } = string.Empty;
@@ -683,7 +797,7 @@ namespace ConduitLLM.Core.Services
 
         private class RecoveryAttempt
         {
-            public string ProviderName { get; set; } = string.Empty;
+            public int ProviderId { get; set; }
             public int AttemptCount { get; set; }
             public DateTime LastAttempt { get; set; } = DateTime.UtcNow;
         }
@@ -709,6 +823,7 @@ namespace ConduitLLM.Core.Services
 
     public class ProviderQuarantined
     {
+        public int ProviderId { get; set; }
         public string ProviderName { get; set; } = string.Empty;
         public string Reason { get; set; } = string.Empty;
         public DateTime QuarantinedAt { get; set; }
@@ -717,14 +832,17 @@ namespace ConduitLLM.Core.Services
 
     public class ProviderFailoverInitiated
     {
-        public string FailedProvider { get; set; } = string.Empty;
-        public string FailoverProvider { get; set; } = string.Empty;
+        public int FailedProviderId { get; set; }
+        public string FailedProviderName { get; set; } = string.Empty;
+        public int FailoverProviderId { get; set; }
+        public string FailoverProviderName { get; set; } = string.Empty;
         public DateTime InitiatedAt { get; set; }
         public string CorrelationId { get; set; } = string.Empty;
     }
 
     public class ProviderRecoveryInitiated
     {
+        public int ProviderId { get; set; }
         public string ProviderName { get; set; } = string.Empty;
         public double ThrottleLevel { get; set; }
         public DateTime InitiatedAt { get; set; }
@@ -733,8 +851,10 @@ namespace ConduitLLM.Core.Services
 
     public class ProviderFailoverReverted
     {
-        public string OriginalProvider { get; set; } = string.Empty;
-        public string FailoverProvider { get; set; } = string.Empty;
+        public int OriginalProviderId { get; set; }
+        public string OriginalProviderName { get; set; } = string.Empty;
+        public int FailoverProviderId { get; set; }
+        public string FailoverProviderName { get; set; } = string.Empty;
         public DateTime RevertedAt { get; set; }
         public string CorrelationId { get; set; } = string.Empty;
     }

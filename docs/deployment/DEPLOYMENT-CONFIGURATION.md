@@ -32,7 +32,7 @@ NEXT_PUBLIC_CONDUIT_API_EXTERNAL_URL=https://api.yourdomain.com
 NEXT_PUBLIC_CONDUIT_ADMIN_API_EXTERNAL_URL=https://admin-api.yourdomain.com
 
 # Authentication
-CONDUIT_MASTER_KEY=your-master-key-here
+CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your-master-key-here
 NEXTAUTH_SECRET=your-nextauth-secret-here
 NEXTAUTH_URL=https://app.yourdomain.com
 
@@ -330,7 +330,7 @@ vercel
 3. Set environment variables:
 ```bash
 vercel env add CONDUIT_API_BASE_URL
-vercel env add CONDUIT_MASTER_KEY
+vercel env add CONDUIT_API_TO_API_BACKEND_AUTH_KEY
 # Add all required environment variables
 ```
 
@@ -366,7 +366,7 @@ vercel --prod
       ],
       "secrets": [
         {
-          "name": "CONDUIT_MASTER_KEY",
+          "name": "CONDUIT_API_TO_API_BACKEND_AUTH_KEY",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:123456789012:secret:conduit/master-key"
         }
       ],
@@ -420,7 +420,7 @@ spec:
         env:
         - name: NODE_ENV
           value: "production"
-        - name: CONDUIT_MASTER_KEY
+        - name: CONDUIT_API_TO_API_BACKEND_AUTH_KEY
           valueFrom:
             secretKeyRef:
               name: conduit-secrets
@@ -469,7 +469,7 @@ spec:
 |----------|-------------|----------|---------|
 | `CONDUIT_API_BASE_URL` | Internal Core API URL | Yes | - |
 | `CONDUIT_ADMIN_API_BASE_URL` | Internal Admin API URL | Yes | - |
-| `CONDUIT_MASTER_KEY` | Master API key | Yes | - |
+| `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` | Master API key | Yes | - |
 | `DATABASE_URL` | Database connection string | Yes | - |
 | `REDIS_URL` | Redis connection string | No | - |
 | `NEXTAUTH_SECRET` | NextAuth encryption secret | Yes | - |

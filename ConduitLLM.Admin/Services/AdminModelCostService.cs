@@ -7,13 +7,16 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Services;
 
 using MassTransit;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using static ConduitLLM.Core.Extensions.LoggingSanitizer;
@@ -28,23 +31,27 @@ namespace ConduitLLM.Admin.Services
         private readonly IModelCostRepository _modelCostRepository;
         private readonly IRequestLogRepository _requestLogRepository;
         private readonly ILogger<AdminModelCostService> _logger;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
 
         /// <summary>
         /// Initializes a new instance of the AdminModelCostService
         /// </summary>
         /// <param name="modelCostRepository">The model cost repository</param>
         /// <param name="requestLogRepository">The request log repository</param>
+        /// <param name="dbContextFactory">The database context factory</param>
         /// <param name="publishEndpoint">Optional event publishing endpoint (null if MassTransit not configured)</param>
         /// <param name="logger">The logger</param>
         public AdminModelCostService(
             IModelCostRepository modelCostRepository,
             IRequestLogRepository requestLogRepository,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             IPublishEndpoint? publishEndpoint,
             ILogger<AdminModelCostService> logger)
             : base(publishEndpoint, logger)
         {
             _modelCostRepository = modelCostRepository ?? throw new ArgumentNullException(nameof(modelCostRepository));
             _requestLogRepository = requestLogRepository ?? throw new ArgumentNullException(nameof(requestLogRepository));
+            _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -58,11 +65,11 @@ namespace ConduitLLM.Admin.Services
 
             try
             {
-                // Check if a model cost with the same pattern already exists
-                var existingModelCost = await _modelCostRepository.GetByModelIdPatternAsync(modelCost.ModelIdPattern);
+                // Check if a model cost with the same name already exists
+                var existingModelCost = await _modelCostRepository.GetByCostNameAsync(modelCost.CostName);
                 if (existingModelCost != null)
                 {
-                    throw new InvalidOperationException($"A model cost with pattern '{modelCost.ModelIdPattern}' already exists");
+                    throw new InvalidOperationException($"A model cost with name '{modelCost.CostName}' already exists");
                 }
 
                 // Convert DTO to entity
@@ -71,7 +78,25 @@ namespace ConduitLLM.Admin.Services
                 // Save to database
                 var id = await _modelCostRepository.CreateAsync(modelCostEntity);
 
-                // Get the created model cost
+                // Create model-cost mappings if provided
+                if (modelCost.ModelProviderMappingIds != null && modelCost.ModelProviderMappingIds.Count() > 0)
+                {
+                    using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+                    foreach (var mappingId in modelCost.ModelProviderMappingIds)
+                    {
+                        var modelCostMapping = new ModelCostMapping
+                        {
+                            ModelCostId = id,
+                            ModelProviderMappingId = mappingId,
+                            CreatedAt = DateTime.UtcNow,
+                            IsActive = true
+                        };
+                        dbContext.ModelCostMappings.Add(modelCostMapping);
+                    }
+                    await dbContext.SaveChangesAsync();
+                }
+
+                // Get the created model cost with mappings
                 var createdModelCost = await _modelCostRepository.GetByIdAsync(id);
                 if (createdModelCost == null)
                 {
@@ -83,19 +108,19 @@ namespace ConduitLLM.Admin.Services
                     new ModelCostChanged
                     {
                         ModelCostId = createdModelCost.Id,
-                        ModelIdPattern = createdModelCost.ModelIdPattern,
+                        CostName = createdModelCost.CostName,
                         ChangeType = "Created",
                         ChangedProperties = new[] { "Created" },
                         CorrelationId = Guid.NewGuid().ToString()
                     },
                     "CreateModelCost");
 
-                _logger.LogInformation("Created model cost with pattern '{Pattern}'", modelCost.ModelIdPattern.Replace(Environment.NewLine, ""));
+                _logger.LogInformation("Created model cost with name '{CostName}'", modelCost.CostName.Replace(Environment.NewLine, ""));
                 return createdModelCost.ToDto();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating model cost with pattern '{Pattern}'", modelCost.ModelIdPattern.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error creating model cost with name '{CostName}'", modelCost.CostName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -119,7 +144,7 @@ namespace ConduitLLM.Admin.Services
                             new ModelCostChanged
                             {
                                 ModelCostId = id,
-                                ModelIdPattern = modelCostToDelete.ModelIdPattern,
+                                CostName = modelCostToDelete.CostName,
                                 ChangeType = "Deleted",
                                 ChangedProperties = new[] { "Deleted" },
                                 CorrelationId = Guid.NewGuid().ToString()
@@ -181,21 +206,21 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <inheritdoc />
-        public async Task<ModelCostDto?> GetModelCostByPatternAsync(string modelIdPattern)
+        public async Task<ModelCostDto?> GetModelCostByCostNameAsync(string costName)
         {
-            if (string.IsNullOrWhiteSpace(modelIdPattern))
+            if (string.IsNullOrWhiteSpace(costName))
             {
-                throw new ArgumentException("Model ID pattern cannot be null or empty", nameof(modelIdPattern));
+                throw new ArgumentException("Cost name cannot be null or empty", nameof(costName));
             }
 
             try
             {
-                var modelCost = await _modelCostRepository.GetByModelIdPatternAsync(modelIdPattern);
+                var modelCost = await _modelCostRepository.GetByCostNameAsync(costName);
                 return modelCost?.ToDto();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost with pattern '{Pattern}'", modelIdPattern.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error getting model cost with name '{CostName}'", costName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -212,7 +237,7 @@ namespace ConduitLLM.Admin.Services
             {
                 // Get request logs for the specified time period
                 var logs = await _requestLogRepository.GetByDateRangeAsync(startDate, endDate);
-                if (logs == null || !logs.Any())
+                if (logs == null || logs.Count() == 0)
                 {
                     return Enumerable.Empty<ModelCostOverviewDto>();
                 }
@@ -245,21 +270,16 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <inheritdoc />
-        public async Task<IEnumerable<ModelCostDto>> GetModelCostsByProviderAsync(string providerName)
+        public async Task<IEnumerable<ModelCostDto>> GetModelCostsByProviderAsync(int providerId)
         {
-            if (string.IsNullOrWhiteSpace(providerName))
-            {
-                throw new ArgumentException("Provider name cannot be null or empty", nameof(providerName));
-            }
-
             try
             {
-                var modelCosts = await _modelCostRepository.GetByProviderAsync(providerName);
+                var modelCosts = await _modelCostRepository.GetByProviderAsync(providerId);
                 return modelCosts.Select(mc => mc.ToDto()).ToList();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model costs for provider '{ProviderName}'", providerName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error getting model costs for provider {ProviderId}", providerId);
                 throw;
             }
         }
@@ -272,7 +292,7 @@ namespace ConduitLLM.Admin.Services
                 throw new ArgumentNullException(nameof(modelCosts));
             }
 
-            if (!modelCosts.Any())
+            if (modelCosts.Count() == 0)
             {
                 return 0;
             }
@@ -286,8 +306,8 @@ namespace ConduitLLM.Admin.Services
                 {
                     try
                     {
-                        // Check if a model cost with the same pattern already exists
-                        var existingModelCost = await _modelCostRepository.GetByModelIdPatternAsync(modelCost.ModelIdPattern);
+                        // Check if a model cost with the same name already exists
+                        var existingModelCost = await _modelCostRepository.GetByCostNameAsync(modelCost.CostName);
 
                         if (existingModelCost != null)
                         {
@@ -295,10 +315,12 @@ namespace ConduitLLM.Admin.Services
                             var updateDto = new UpdateModelCostDto
                             {
                                 Id = existingModelCost.Id,
-                                ModelIdPattern = modelCost.ModelIdPattern,
-                                InputTokenCost = modelCost.InputTokenCost,
-                                OutputTokenCost = modelCost.OutputTokenCost,
-                                EmbeddingTokenCost = modelCost.EmbeddingTokenCost,
+                                CostName = modelCost.CostName,
+                                PricingModel = modelCost.PricingModel,
+                                PricingConfiguration = modelCost.PricingConfiguration,
+                                InputCostPerMillionTokens = modelCost.InputCostPerMillionTokens,
+                                OutputCostPerMillionTokens = modelCost.OutputCostPerMillionTokens,
+                                EmbeddingCostPerMillionTokens = modelCost.EmbeddingCostPerMillionTokens,
                                 ImageCostPerImage = modelCost.ImageCostPerImage,
                                 AudioCostPerMinute = modelCost.AudioCostPerMinute,
                                 AudioCostPerKCharacters = modelCost.AudioCostPerKCharacters,
@@ -306,6 +328,7 @@ namespace ConduitLLM.Admin.Services
                                 AudioOutputCostPerMinute = modelCost.AudioOutputCostPerMinute,
                                 VideoCostPerSecond = modelCost.VideoCostPerSecond,
                                 VideoResolutionMultipliers = modelCost.VideoResolutionMultipliers,
+                                ImageResolutionMultipliers = modelCost.ImageResolutionMultipliers,
                                 BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
                                 SupportsBatchProcessing = modelCost.SupportsBatchProcessing,
                                 CostPerSearchUnit = modelCost.CostPerSearchUnit,
@@ -321,7 +344,7 @@ namespace ConduitLLM.Admin.Services
                                 new ModelCostChanged
                                 {
                                     ModelCostId = existingModelCost.Id,
-                                    ModelIdPattern = existingModelCost.ModelIdPattern,
+                                    CostName = existingModelCost.CostName,
                                     ChangeType = "Updated",
                                     ChangedProperties = new[] { "ImportUpdated" },
                                     CorrelationId = Guid.NewGuid().ToString()
@@ -339,7 +362,7 @@ namespace ConduitLLM.Admin.Services
                                 new ModelCostChanged
                                 {
                                     ModelCostId = newId,
-                                    ModelIdPattern = modelCost.ModelIdPattern,
+                                    CostName = modelCost.CostName,
                                     ChangeType = "Created",
                                     ChangedProperties = new[] { "ImportCreated" },
                                     CorrelationId = Guid.NewGuid().ToString()
@@ -352,8 +375,8 @@ namespace ConduitLLM.Admin.Services
                     catch (Exception ex)
                     {
                         _logger.LogWarning(ex,
-                "Error importing model cost with pattern '{Pattern}'",
-                modelCost.ModelIdPattern.Replace(Environment.NewLine, ""));
+                "Error importing model cost with name '{CostName}'",
+                modelCost.CostName.Replace(Environment.NewLine, ""));
                         // Continue with next model cost
                     }
                 }
@@ -389,26 +412,26 @@ namespace ConduitLLM.Admin.Services
                     return false;
                 }
 
-                // Check if the pattern is being changed and a model cost with the new pattern already exists
-                if (existingModelCost.ModelIdPattern != modelCost.ModelIdPattern)
+                // Check if the cost name is being changed and a model cost with the new name already exists
+                if (existingModelCost.CostName != modelCost.CostName)
                 {
-                    var patternExists = await _modelCostRepository.GetByModelIdPatternAsync(modelCost.ModelIdPattern);
-                    if (patternExists != null && patternExists.Id != modelCost.Id)
+                    var nameExists = await _modelCostRepository.GetByCostNameAsync(modelCost.CostName);
+                    if (nameExists != null && nameExists.Id != modelCost.Id)
                     {
-                        throw new InvalidOperationException($"Another model cost with pattern '{modelCost.ModelIdPattern}' already exists");
+                        throw new InvalidOperationException($"Another model cost with name '{modelCost.CostName}' already exists");
                     }
                 }
 
                 // Track changes for event publishing
                 var changedProperties = new List<string>();
-                if (existingModelCost.ModelIdPattern != modelCost.ModelIdPattern)
-                    changedProperties.Add(nameof(modelCost.ModelIdPattern));
-                if (existingModelCost.InputTokenCost != modelCost.InputTokenCost)
-                    changedProperties.Add(nameof(modelCost.InputTokenCost));
-                if (existingModelCost.OutputTokenCost != modelCost.OutputTokenCost)
-                    changedProperties.Add(nameof(modelCost.OutputTokenCost));
-                if (existingModelCost.EmbeddingTokenCost != modelCost.EmbeddingTokenCost)
-                    changedProperties.Add(nameof(modelCost.EmbeddingTokenCost));
+                if (existingModelCost.CostName != modelCost.CostName)
+                    changedProperties.Add(nameof(modelCost.CostName));
+                if (existingModelCost.InputCostPerMillionTokens != modelCost.InputCostPerMillionTokens)
+                    changedProperties.Add(nameof(modelCost.InputCostPerMillionTokens));
+                if (existingModelCost.OutputCostPerMillionTokens != modelCost.OutputCostPerMillionTokens)
+                    changedProperties.Add(nameof(modelCost.OutputCostPerMillionTokens));
+                if (existingModelCost.EmbeddingCostPerMillionTokens != modelCost.EmbeddingCostPerMillionTokens)
+                    changedProperties.Add(nameof(modelCost.EmbeddingCostPerMillionTokens));
                 if (existingModelCost.ImageCostPerImage != modelCost.ImageCostPerImage)
                     changedProperties.Add(nameof(modelCost.ImageCostPerImage));
 
@@ -418,16 +441,42 @@ namespace ConduitLLM.Admin.Services
                 // Save changes
                 var result = await _modelCostRepository.UpdateAsync(existingModelCost);
 
+                // Update model-cost mappings if provided
+                if (modelCost.ModelProviderMappingIds != null)
+                {
+                    using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+                    
+                    // Remove existing mappings
+                    var existingMappings = await dbContext.ModelCostMappings
+                        .Where(mcm => mcm.ModelCostId == modelCost.Id)
+                        .ToListAsync();
+                    dbContext.ModelCostMappings.RemoveRange(existingMappings);
+                    
+                    // Add new mappings
+                    foreach (var mappingId in modelCost.ModelProviderMappingIds)
+                    {
+                        var modelCostMapping = new ModelCostMapping
+                        {
+                            ModelCostId = modelCost.Id,
+                            ModelProviderMappingId = mappingId,
+                            CreatedAt = DateTime.UtcNow,
+                            IsActive = true
+                        };
+                        dbContext.ModelCostMappings.Add(modelCostMapping);
+                    }
+                    await dbContext.SaveChangesAsync();
+                }
+
                 if (result)
                 {
                     // Publish ModelCostChanged event for cache invalidation and cross-service coordination
-                    if (changedProperties.Any())
+                    if (changedProperties.Count() > 0)
                     {
                         await PublishEventAsync(
                             new ModelCostChanged
                             {
                                 ModelCostId = modelCost.Id,
-                                ModelIdPattern = existingModelCost.ModelIdPattern,
+                                CostName = existingModelCost.CostName,
                                 ChangeType = "Updated",
                                 ChangedProperties = changedProperties.ToArray(),
                                 CorrelationId = Guid.NewGuid().ToString()
@@ -456,18 +505,24 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <inheritdoc />
-        public async Task<string> ExportModelCostsAsync(string format, string? providerName = null)
+        public async Task<string> ExportModelCostsAsync(string format, int? providerId = null)
         {
-            var modelCosts = providerName != null 
-                ? await _modelCostRepository.GetByProviderAsync(providerName)
-                : await _modelCostRepository.GetAllAsync();
+            IEnumerable<ModelCost> modelCosts;
+            if (providerId != null)
+            {
+                modelCosts = await _modelCostRepository.GetByProviderAsync(providerId.Value);
+            }
+            else
+            {
+                modelCosts = await _modelCostRepository.GetAllAsync();
+            }
 
             format = format?.ToLowerInvariant() ?? "json";
 
             return format switch
             {
-                "json" => GenerateJsonExport(modelCosts),
-                "csv" => GenerateCsvExport(modelCosts),
+                "json" => GenerateJsonExport(modelCosts.ToList()),
+                "csv" => GenerateCsvExport(modelCosts.ToList()),
                 _ => throw new ArgumentException($"Unsupported export format: {format}")
             };
         }
@@ -496,8 +551,8 @@ namespace ConduitLLM.Admin.Services
                 {
                     try
                     {
-                        // Check if model cost with the same pattern already exists
-                        var existingModelCost = await _modelCostRepository.GetByModelIdPatternAsync(modelCost.ModelIdPattern);
+                        // Check if model cost with the same name already exists
+                        var existingModelCost = await _modelCostRepository.GetByCostNameAsync(modelCost.CostName);
 
                         if (existingModelCost != null)
                         {
@@ -505,10 +560,12 @@ namespace ConduitLLM.Admin.Services
                             var updateDto = new UpdateModelCostDto
                             {
                                 Id = existingModelCost.Id,
-                                ModelIdPattern = modelCost.ModelIdPattern,
-                                InputTokenCost = modelCost.InputTokenCost,
-                                OutputTokenCost = modelCost.OutputTokenCost,
-                                EmbeddingTokenCost = modelCost.EmbeddingTokenCost,
+                                CostName = modelCost.CostName,
+                                PricingModel = modelCost.PricingModel,
+                                PricingConfiguration = modelCost.PricingConfiguration,
+                                InputCostPerMillionTokens = modelCost.InputCostPerMillionTokens,
+                                OutputCostPerMillionTokens = modelCost.OutputCostPerMillionTokens,
+                                EmbeddingCostPerMillionTokens = modelCost.EmbeddingCostPerMillionTokens,
                                 ImageCostPerImage = modelCost.ImageCostPerImage,
                                 AudioCostPerMinute = modelCost.AudioCostPerMinute,
                                 AudioCostPerKCharacters = modelCost.AudioCostPerKCharacters,
@@ -516,6 +573,7 @@ namespace ConduitLLM.Admin.Services
                                 AudioOutputCostPerMinute = modelCost.AudioOutputCostPerMinute,
                                 VideoCostPerSecond = modelCost.VideoCostPerSecond,
                                 VideoResolutionMultipliers = modelCost.VideoResolutionMultipliers,
+                                ImageResolutionMultipliers = modelCost.ImageResolutionMultipliers,
                                 BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
                                 SupportsBatchProcessing = modelCost.SupportsBatchProcessing,
                                 CostPerSearchUnit = modelCost.CostPerSearchUnit,
@@ -538,7 +596,7 @@ namespace ConduitLLM.Admin.Services
                     catch (Exception ex)
                     {
                         result.FailureCount++;
-                        result.Errors.Add($"Failed to import model cost for pattern '{modelCost.ModelIdPattern}': {ex.Message}");
+                        result.Errors.Add($"Failed to import model cost '{modelCost.CostName}': {ex.Message}");
                     }
                 }
             }
@@ -555,10 +613,12 @@ namespace ConduitLLM.Admin.Services
         {
             var exportData = modelCosts.Select(mc => new ModelCostExportDto
             {
-                ModelIdPattern = mc.ModelIdPattern,
-                InputTokenCost = mc.InputTokenCost,
-                OutputTokenCost = mc.OutputTokenCost,
-                EmbeddingTokenCost = mc.EmbeddingTokenCost,
+                CostName = mc.CostName,
+                PricingModel = mc.PricingModel,
+                PricingConfiguration = mc.PricingConfiguration,
+                InputCostPerMillionTokens = mc.InputCostPerMillionTokens,
+                OutputCostPerMillionTokens = mc.OutputCostPerMillionTokens,
+                EmbeddingCostPerMillionTokens = mc.EmbeddingCostPerMillionTokens,
                 ImageCostPerImage = mc.ImageCostPerImage,
                 AudioCostPerMinute = mc.AudioCostPerMinute,
                 AudioCostPerKCharacters = mc.AudioCostPerKCharacters,
@@ -566,6 +626,7 @@ namespace ConduitLLM.Admin.Services
                 AudioOutputCostPerMinute = mc.AudioOutputCostPerMinute,
                 VideoCostPerSecond = mc.VideoCostPerSecond,
                 VideoResolutionMultipliers = mc.VideoResolutionMultipliers,
+                ImageResolutionMultipliers = mc.ImageResolutionMultipliers,
                 BatchProcessingMultiplier = mc.BatchProcessingMultiplier,
                 SupportsBatchProcessing = mc.SupportsBatchProcessing,
                 CostPerSearchUnit = mc.CostPerSearchUnit,
@@ -582,14 +643,16 @@ namespace ConduitLLM.Admin.Services
         private string GenerateCsvExport(List<ModelCost> modelCosts)
         {
             var csv = new StringBuilder();
-            csv.AppendLine("Model Pattern,Input Cost (per 1K tokens),Output Cost (per 1K tokens),Embedding Cost (per 1K tokens),Image Cost (per image),Audio Cost (per minute),Audio Cost (per 1K chars),Audio Input Cost (per minute),Audio Output Cost (per minute),Video Cost (per second),Video Resolution Multipliers,Batch Processing Multiplier,Supports Batch Processing,Search Unit Cost (per 1K units),Inference Step Cost,Default Inference Steps");
+            csv.AppendLine("Cost Name,Pricing Model,Pricing Configuration,Input Cost (per million tokens),Output Cost (per million tokens),Embedding Cost (per million tokens),Image Cost (per image),Audio Cost (per minute),Audio Cost (per 1K chars),Audio Input Cost (per minute),Audio Output Cost (per minute),Video Cost (per second),Video Resolution Multipliers,Image Resolution Multipliers,Batch Processing Multiplier,Supports Batch Processing,Search Unit Cost (per 1K units),Inference Step Cost,Default Inference Steps");
 
-            foreach (var modelCost in modelCosts.OrderBy(mc => mc.ModelIdPattern))
+            foreach (var modelCost in modelCosts.OrderBy(mc => mc.CostName))
             {
-                csv.AppendLine($"{EscapeCsvValue(modelCost.ModelIdPattern)}," +
-                    $"{(modelCost.InputTokenCost * 1000):F6}," +
-                    $"{(modelCost.OutputTokenCost * 1000):F6}," +
-                    $"{(modelCost.EmbeddingTokenCost.HasValue ? (modelCost.EmbeddingTokenCost.Value * 1000).ToString("F6") : "")}," +
+                csv.AppendLine($"{EscapeCsvValue(modelCost.CostName)}," +
+                    $"{modelCost.PricingModel}," +
+                    $"{EscapeCsvValue(modelCost.PricingConfiguration ?? "")}," +
+                    $"{modelCost.InputCostPerMillionTokens:F6}," +
+                    $"{modelCost.OutputCostPerMillionTokens:F6}," +
+                    $"{(modelCost.EmbeddingCostPerMillionTokens.HasValue ? modelCost.EmbeddingCostPerMillionTokens.Value.ToString("F6") : "")}," +
                     $"{(modelCost.ImageCostPerImage?.ToString("F4") ?? "")}," +
                     $"{(modelCost.AudioCostPerMinute?.ToString("F4") ?? "")}," +
                     $"{(modelCost.AudioCostPerKCharacters?.ToString("F4") ?? "")}," +
@@ -597,6 +660,7 @@ namespace ConduitLLM.Admin.Services
                     $"{(modelCost.AudioOutputCostPerMinute?.ToString("F4") ?? "")}," +
                     $"{(modelCost.VideoCostPerSecond?.ToString("F4") ?? "")}," +
                     $"{EscapeCsvValue(modelCost.VideoResolutionMultipliers ?? "")}," +
+                    $"{EscapeCsvValue(modelCost.ImageResolutionMultipliers ?? "")}," +
                     $"{(modelCost.BatchProcessingMultiplier?.ToString("F4") ?? "")}," +
                     $"{(modelCost.SupportsBatchProcessing ? "Yes" : "No")}," +
                     $"{(modelCost.CostPerSearchUnit?.ToString("F6") ?? "")}," +
@@ -616,10 +680,12 @@ namespace ConduitLLM.Admin.Services
 
                 return importData.Select(d => new CreateModelCostDto
                 {
-                    ModelIdPattern = d.ModelIdPattern,
-                    InputTokenCost = d.InputTokenCost,
-                    OutputTokenCost = d.OutputTokenCost,
-                    EmbeddingTokenCost = d.EmbeddingTokenCost,
+                    CostName = d.CostName,
+                    PricingModel = d.PricingModel,
+                    PricingConfiguration = d.PricingConfiguration,
+                    InputCostPerMillionTokens = d.InputCostPerMillionTokens,
+                    OutputCostPerMillionTokens = d.OutputCostPerMillionTokens,
+                    EmbeddingCostPerMillionTokens = d.EmbeddingCostPerMillionTokens,
                     ImageCostPerImage = d.ImageCostPerImage,
                     AudioCostPerMinute = d.AudioCostPerMinute,
                     AudioCostPerKCharacters = d.AudioCostPerKCharacters,
@@ -627,6 +693,7 @@ namespace ConduitLLM.Admin.Services
                     AudioOutputCostPerMinute = d.AudioOutputCostPerMinute,
                     VideoCostPerSecond = d.VideoCostPerSecond,
                     VideoResolutionMultipliers = d.VideoResolutionMultipliers,
+                    ImageResolutionMultipliers = d.ImageResolutionMultipliers,
                     BatchProcessingMultiplier = d.BatchProcessingMultiplier,
                     SupportsBatchProcessing = d.SupportsBatchProcessing,
                     CostPerSearchUnit = d.CostPerSearchUnit,
@@ -665,22 +732,25 @@ namespace ConduitLLM.Admin.Services
                 {
                     var modelCost = new CreateModelCostDto
                     {
-                        ModelIdPattern = UnescapeCsvValue(parts[0]),
-                        InputTokenCost = decimal.TryParse(parts[1], out var inputCost) ? inputCost / 1000 : 0,
-                        OutputTokenCost = decimal.TryParse(parts[2], out var outputCost) ? outputCost / 1000 : 0,
-                        EmbeddingTokenCost = decimal.TryParse(parts[3], out var embeddingCost) ? embeddingCost / 1000 : null,
-                        ImageCostPerImage = decimal.TryParse(parts[4], out var imageCost) ? imageCost : null,
-                        AudioCostPerMinute = decimal.TryParse(parts[5], out var audioCost) ? audioCost : null,
-                        AudioCostPerKCharacters = decimal.TryParse(parts[6], out var audioKCharCost) ? audioKCharCost : null,
-                        AudioInputCostPerMinute = decimal.TryParse(parts[7], out var audioInputCost) ? audioInputCost : null,
-                        AudioOutputCostPerMinute = decimal.TryParse(parts[8], out var audioOutputCost) ? audioOutputCost : null,
-                        VideoCostPerSecond = decimal.TryParse(parts[9], out var videoCost) ? videoCost : null,
-                        VideoResolutionMultipliers = parts.Length > 10 ? UnescapeCsvValue(parts[10]) : null,
-                        BatchProcessingMultiplier = parts.Length > 11 && decimal.TryParse(parts[11], out var batchMultiplier) ? batchMultiplier : null,
-                        SupportsBatchProcessing = parts.Length > 12 && (parts[12].Trim().ToLower() == "yes" || parts[12].Trim().ToLower() == "true"),
-                        CostPerSearchUnit = parts.Length > 13 && decimal.TryParse(parts[13], out var searchUnitCost) ? searchUnitCost : null,
-                        CostPerInferenceStep = parts.Length > 14 && decimal.TryParse(parts[14], out var inferenceStepCost) ? inferenceStepCost : null,
-                        DefaultInferenceSteps = parts.Length > 15 && int.TryParse(parts[15], out var defaultSteps) ? defaultSteps : null
+                        CostName = UnescapeCsvValue(parts[0]),
+                        PricingModel = parts.Length > 1 && Enum.TryParse<PricingModel>(parts[1], out var pricingModel) ? pricingModel : PricingModel.Standard,
+                        PricingConfiguration = parts.Length > 2 ? UnescapeCsvValue(parts[2]) : null,
+                        InputCostPerMillionTokens = parts.Length > 3 && decimal.TryParse(parts[3], out var inputCost) ? inputCost : 0,
+                        OutputCostPerMillionTokens = parts.Length > 4 && decimal.TryParse(parts[4], out var outputCost) ? outputCost : 0,
+                        EmbeddingCostPerMillionTokens = parts.Length > 5 && decimal.TryParse(parts[5], out var embeddingCost) ? embeddingCost : null,
+                        ImageCostPerImage = parts.Length > 6 && decimal.TryParse(parts[6], out var imageCost) ? imageCost : null,
+                        AudioCostPerMinute = parts.Length > 7 && decimal.TryParse(parts[7], out var audioCost) ? audioCost : null,
+                        AudioCostPerKCharacters = parts.Length > 8 && decimal.TryParse(parts[8], out var audioKCharCost) ? audioKCharCost : null,
+                        AudioInputCostPerMinute = parts.Length > 9 && decimal.TryParse(parts[9], out var audioInputCost) ? audioInputCost : null,
+                        AudioOutputCostPerMinute = parts.Length > 10 && decimal.TryParse(parts[10], out var audioOutputCost) ? audioOutputCost : null,
+                        VideoCostPerSecond = parts.Length > 11 && decimal.TryParse(parts[11], out var videoCost) ? videoCost : null,
+                        VideoResolutionMultipliers = parts.Length > 12 ? UnescapeCsvValue(parts[12]) : null,
+                        ImageResolutionMultipliers = parts.Length > 13 ? UnescapeCsvValue(parts[13]) : null,
+                        BatchProcessingMultiplier = parts.Length > 14 && decimal.TryParse(parts[14], out var batchMultiplier) ? batchMultiplier : null,
+                        SupportsBatchProcessing = parts.Length > 15 && (parts[15].Trim().ToLower() == "yes" || parts[15].Trim().ToLower() == "true"),
+                        CostPerSearchUnit = parts.Length > 16 && decimal.TryParse(parts[16], out var searchUnitCost) ? searchUnitCost : null,
+                        CostPerInferenceStep = parts.Length > 17 && decimal.TryParse(parts[17], out var inferenceStepCost) ? inferenceStepCost : null,
+                        DefaultInferenceSteps = parts.Length > 18 && int.TryParse(parts[18], out var defaultSteps) ? defaultSteps : null
                     };
 
                     modelCosts.Add(modelCost);
@@ -723,26 +793,4 @@ namespace ConduitLLM.Admin.Services
         }
     }
 
-    /// <summary>
-    /// DTO for exporting model costs
-    /// </summary>
-    internal class ModelCostExportDto
-    {
-        public string ModelIdPattern { get; set; } = string.Empty;
-        public decimal InputTokenCost { get; set; }
-        public decimal OutputTokenCost { get; set; }
-        public decimal? EmbeddingTokenCost { get; set; }
-        public decimal? ImageCostPerImage { get; set; }
-        public decimal? AudioCostPerMinute { get; set; }
-        public decimal? AudioCostPerKCharacters { get; set; }
-        public decimal? AudioInputCostPerMinute { get; set; }
-        public decimal? AudioOutputCostPerMinute { get; set; }
-        public decimal? VideoCostPerSecond { get; set; }
-        public string? VideoResolutionMultipliers { get; set; }
-        public decimal? BatchProcessingMultiplier { get; set; }
-        public bool SupportsBatchProcessing { get; set; }
-        public decimal? CostPerSearchUnit { get; set; }
-        public decimal? CostPerInferenceStep { get; set; }
-        public int? DefaultInferenceSteps { get; set; }
-    }
 }

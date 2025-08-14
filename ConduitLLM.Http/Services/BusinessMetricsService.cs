@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Prometheus;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Interfaces;
 
@@ -19,7 +20,7 @@ namespace ConduitLLM.Http.Services
     /// </summary>
     public class BusinessMetricsService : BackgroundService
     {
-        private readonly IServiceProvider _serviceProvider;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<BusinessMetricsService> _logger;
         private readonly TimeSpan _collectionInterval = TimeSpan.FromMinutes(1);
 
@@ -152,10 +153,10 @@ namespace ConduitLLM.Http.Services
         private readonly Dictionary<string, decimal> _lastCostValue = new();
 
         public BusinessMetricsService(
-            IServiceProvider serviceProvider,
+            IServiceScopeFactory serviceScopeFactory,
             ILogger<BusinessMetricsService> logger)
         {
-            _serviceProvider = serviceProvider;
+            _serviceScopeFactory = serviceScopeFactory;
             _logger = logger;
         }
 
@@ -182,7 +183,7 @@ namespace ConduitLLM.Http.Services
 
         private async Task CollectMetricsAsync()
         {
-            using var scope = _serviceProvider.CreateScope();
+            using var scope = _serviceScopeFactory.CreateScope();
 
             var tasks = new[]
             {
@@ -207,22 +208,8 @@ namespace ConduitLLM.Http.Services
                 var allKeys = await virtualKeyRepo.GetAllAsync();
                 var activeKeys = allKeys.Where(k => k.IsEnabled && (k.ExpiresAt == null || k.ExpiresAt > DateTime.UtcNow)).ToList();
 
-                foreach (var key in activeKeys)
-                {
-                    // Calculate budget utilization
-                    if (key.MaxBudget.HasValue && key.MaxBudget > 0)
-                    {
-                        var utilization = (key.CurrentSpend / key.MaxBudget.Value) * 100;
-                        VirtualKeyBudgetUtilization.WithLabels(key.Id.ToString()).Set((double)utilization);
-
-                        if (key.CurrentSpend >= key.MaxBudget.Value)
-                        {
-                            VirtualKeyBudgetExceeded.WithLabels(key.Id.ToString()).Inc();
-                        }
-                    }
-
-                    VirtualKeySpendTotal.WithLabels(key.Id.ToString()).Set((double)key.CurrentSpend);
-                }
+                // Note: Budget tracking is now at the group level
+                // Individual key metrics are no longer tracked for budget/spend
             }
             catch (Exception ex)
             {
@@ -234,7 +221,7 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>>();
+                var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>>();
                 await using var context = await dbContextFactory.CreateDbContextAsync();
 
                 // Get model usage statistics for the last hour
@@ -289,7 +276,7 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>>();
+                var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>>();
                 await using var context = await dbContextFactory.CreateDbContextAsync();
 
                 // Calculate cost rate per provider
@@ -344,20 +331,20 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                var providerCredentialService = scope.ServiceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderCredentialService>();
-                var providers = await providerCredentialService.GetAllCredentialsAsync();
+                var ProviderService = scope.ServiceProvider.GetRequiredService<IProviderService>();
+                var providers = await ProviderService.GetAllProvidersAsync();
 
                 foreach (var provider in providers.Where(p => p.IsEnabled))
                 {
                     // Set provider health based on enabled status
                     // In a real implementation, this would check actual provider health
-                    ProviderHealth.WithLabels(provider.ProviderName).Set(1);
+                    ProviderHealth.WithLabels(provider.Id.ToString()).Set(1);
                 }
 
                 // Disabled providers
                 foreach (var provider in providers.Where(p => !p.IsEnabled))
                 {
-                    ProviderHealth.WithLabels(provider.ProviderName).Set(0);
+                    ProviderHealth.WithLabels(provider.Id.ToString()).Set(0);
                 }
             }
             catch (Exception ex)
@@ -371,7 +358,7 @@ namespace ConduitLLM.Http.Services
             try
             {
                 var virtualKeyRepo = scope.ServiceProvider.GetRequiredService<IVirtualKeyRepository>();
-                var modelMappingService = scope.ServiceProvider.GetRequiredService<ConduitLLM.Configuration.IModelProviderMappingService>();
+                var modelMappingService = scope.ServiceProvider.GetRequiredService<IModelProviderMappingService>();
 
                 // Count active virtual keys
                 var allKeys = await virtualKeyRepo.GetAllAsync();
@@ -380,11 +367,11 @@ namespace ConduitLLM.Http.Services
 
                 // Count active model mappings by provider
                 var mappings = await modelMappingService.GetAllMappingsAsync();
-                // Group by provider name (Core.ModelProviderMapping has ProviderName property)
+                // Group by provider type
                 // TODO: Fix IsEnabled check once we verify the return type
                 var mappingsByProvider = mappings
                     // .Where(m => m.IsEnabled)
-                    .GroupBy(m => m.ProviderName ?? "unknown")
+                    .GroupBy(m => m.ProviderId.ToString())
                     .Select(g => new { Provider = g.Key, Count = g.Count() });
 
                 foreach (var group in mappingsByProvider)

@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 
 using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Admin.Services;
 
 /// <summary>
@@ -179,7 +180,7 @@ _logger.LogInformationSecure("Getting logs summary with timeframe: {Timeframe}",
             var totalCost = logs.Sum(l => l.Cost);
             var totalInputTokens = logs.Sum(l => l.InputTokens);
             var totalOutputTokens = logs.Sum(l => l.OutputTokens);
-            var avgResponseTime = logs.Any() ? logs.Average(l => l.ResponseTimeMs) : 0;
+            var avgResponseTime = logs.Count() > 0 ? logs.Average(l => l.ResponseTimeMs) : 0;
 
             // Group logs by model
             var modelGroups = logs
@@ -255,7 +256,7 @@ _logger.LogInformationSecure("Getting logs summary with timeframe: {Timeframe}",
                 InputTokens = totalInputTokens, // Note the property name difference
                 OutputTokens = totalOutputTokens, // Note the property name difference
                 AverageResponseTime = avgResponseTime, // Note the property name difference
-                LastRequestDate = logs.Any() ? logs.Max(l => l.Timestamp) : null,
+                LastRequestDate = logs.Count() > 0 ? logs.Max(l => l.Timestamp) : null,
                 SuccessfulRequests = successfulRequests,
                 FailedRequests = failedRequests,
                 RequestsByModel = requestsByModel,

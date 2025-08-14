@@ -1,3 +1,4 @@
+
 export interface NavigationItem {
   id: string;
   label: string;
@@ -17,18 +18,6 @@ export interface NavigationSection {
   collapsed?: boolean;
 }
 
-export interface NavigationState {
-  sections: NavigationSection[];
-  activeItem: string | null;
-  isLoading: boolean;
-  lastUpdated: Date | null;
-  
-  // Actions
-  setActiveItem: (itemId: string) => void;
-  toggleSection: (sectionId: string) => void;
-  updateNavigationState: (state: Partial<NavigationState>) => void;
-  refreshNavigationState: () => Promise<void>;
-}
 
 export interface ConnectionStatus {
   coreApi: 'connected' | 'disconnected' | 'connecting' | 'error';

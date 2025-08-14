@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 
 using static ConduitLLM.Configuration.Utilities.LogSanitizer;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Configuration.Repositories
 {
     /// <summary>
@@ -19,7 +20,7 @@ namespace ConduitLLM.Configuration.Repositories
     /// </summary>
     public class NotificationRepository : INotificationRepository
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly ILogger<NotificationRepository> _logger;
 
         /// <summary>
@@ -28,7 +29,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="dbContextFactory">The database context factory</param>
         /// <param name="logger">The logger</param>
         public NotificationRepository(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<NotificationRepository> logger)
         {
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));

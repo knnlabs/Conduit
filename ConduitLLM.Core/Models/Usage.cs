@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Core.Models;
@@ -69,6 +71,17 @@ public class Usage
     [JsonPropertyName("image_quality")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ImageQuality { get; set; }
+
+    /// <summary>
+    /// Resolution for image generation (e.g., "1024x1024", "1792x1024").
+    /// </summary>
+    /// <remarks>
+    /// Used to apply resolution-based multipliers to image generation costs.
+    /// Format is typically "widthxheight" in pixels.
+    /// </remarks>
+    [JsonPropertyName("image_resolution")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ImageResolution { get; set; }
 
     /// <summary>
     /// Number of cached input tokens used (read from cache).
@@ -152,6 +165,18 @@ public class Usage
     [JsonPropertyName("metadata")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Dictionary<string, object>? Metadata { get; set; }
+
+    /// <summary>
+    /// Extension data to capture additional provider-specific fields not defined in the model.
+    /// </summary>
+    /// <remarks>
+    /// This property captures any JSON properties that don't map to defined properties.
+    /// For example, SambaNova includes performance metrics like completion_tokens_per_sec,
+    /// time_to_first_token, total_latency, etc. These will be captured here without
+    /// causing deserialization errors.
+    /// </remarks>
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 }
 
 /// <summary>

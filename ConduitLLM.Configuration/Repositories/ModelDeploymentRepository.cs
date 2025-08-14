@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 
 using static ConduitLLM.Configuration.Utilities.LogSanitizer;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Configuration.Repositories
 {
     /// <summary>
@@ -19,7 +20,7 @@ namespace ConduitLLM.Configuration.Repositories
     /// </summary>
     public class ModelDeploymentRepository : IModelDeploymentRepository
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly ILogger<ModelDeploymentRepository> _logger;
 
         /// <summary>
@@ -28,7 +29,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="dbContextFactory">The database context factory</param>
         /// <param name="logger">The logger</param>
         public ModelDeploymentRepository(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<ModelDeploymentRepository> logger)
         {
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
@@ -75,25 +76,20 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
-        public async Task<List<ModelDeploymentEntity>> GetByProviderAsync(string providerName, CancellationToken cancellationToken = default)
+        public async Task<List<ModelDeploymentEntity>> GetByProviderAsync(ProviderType providerType, CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrEmpty(providerName))
-            {
-                throw new ArgumentException("Provider name cannot be null or empty", nameof(providerName));
-            }
-
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ModelDeployments
                     .AsNoTracking()
-                    .Where(d => d.ProviderName == providerName)
+                    .Where(d => d.Provider.ProviderType == providerType)
                     .OrderBy(d => d.ModelName)
                     .ToListAsync(cancellationToken);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model deployments for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error getting model deployments for provider {ProviderType}", providerType);
                 throw;
             }
         }
@@ -112,7 +108,7 @@ namespace ConduitLLM.Configuration.Repositories
                 return await dbContext.ModelDeployments
                     .AsNoTracking()
                     .Where(d => d.ModelName == modelName)
-                    .OrderBy(d => d.ProviderName)
+                    .OrderBy(d => d.Provider.ProviderType)
                     .ToListAsync(cancellationToken);
             }
             catch (Exception ex)
@@ -130,7 +126,7 @@ namespace ConduitLLM.Configuration.Repositories
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ModelDeployments
                     .AsNoTracking()
-                    .OrderBy(d => d.ProviderName)
+                    .OrderBy(d => d.Provider.ProviderType)
                     .ThenBy(d => d.ModelName)
                     .ToListAsync(cancellationToken);
             }

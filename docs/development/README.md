@@ -18,7 +18,7 @@ This directory contains guides and best practices for developing with Conduit.
 3. Follow established patterns from existing code
 
 ### SDK Development
-- TypeScript SDKs are in `/Clients/Node/`
+- TypeScript SDKs are in `/SDKs/Node/`
 - Follow the patterns established in the migration guides
 - Ensure backward compatibility for API changes
 

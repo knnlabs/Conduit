@@ -1,4 +1,4 @@
-name: Auto-Version and Publish Node Clients
+name: Auto-Version and Publish Node SDKs
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
       - dev
       - master
     paths:
-      - 'Clients/Node/**'
-      - '!Clients/Node/**/package.json'  # Don't trigger on version bumps
+      - 'SDKs/Node/**'
+      - '!SDKs/Node/**/package.json'  # Don't trigger on version bumps
   workflow_dispatch:
     inputs:
       version_type:
@@ -25,6 +25,15 @@ on:
         default: false
         type: boolean
 
+# IMPORTANT: Never set cancel-in-progress to true for versioning workflows!
+# Interrupting could cause:
+# - Duplicate version numbers
+# - Partially published NPM packages
+# - Git push conflicts with version commits
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   detect-changes:
     runs-on: ubuntu-latest
@@ -40,14 +49,14 @@ jobs:
       - name: Detect changes
         id: changes
         run: |
-          if git diff --name-only HEAD~1 HEAD | grep -E '^Clients/Node/Core/' | grep -v package.json; then
+          if git diff --name-only HEAD~1 HEAD | grep -E '^SDKs/Node/Core/' | grep -v package.json; then
             echo "core=true" >> $GITHUB_OUTPUT
             echo "Core client changes detected"
           else
             echo "core=false" >> $GITHUB_OUTPUT
           fi
           
-          if git diff --name-only HEAD~1 HEAD | grep -E '^Clients/Node/Admin/' | grep -v package.json; then
+          if git diff --name-only HEAD~1 HEAD | grep -E '^SDKs/Node/Admin/' | grep -v package.json; then
             echo "admin=true" >> $GITHUB_OUTPUT
             echo "Admin client changes detected"
           else
@@ -116,18 +125,18 @@ jobs:
       # Build Common Package First
       - name: Build Common Package
         run: |
-          echo "🔨 Building Common package (dependency for Core and Admin clients)..."
-          cd Clients/Node/Common
+          echo "🔨 Building Common package (dependency for Core and Admin SDKs)..."
+          cd SDKs/Node/Common
           npm ci
           npm run build
           echo "✅ Common package built successfully"
 
-      # Core Client Processing
-      - name: Process Core Client
+      # Core SDK Processing
+      - name: Process Core SDK
         if: needs.detect-changes.outputs.core-changed == 'true' || github.event.inputs.force_run == 'true'
         run: |
-          echo "🔨 Processing Core client..."
-          cd Clients/Node/Core
+          echo "🔨 Processing Core SDK..."
+          cd SDKs/Node/Core
           
           # Install dependencies
           npm ci
@@ -152,14 +161,14 @@ jobs:
           npm run build
           npm test
           
-          echo "✅ Core client ready for publishing"
+          echo "✅ Core SDK ready for publishing"
 
-      # Admin Client Processing  
-      - name: Process Admin Client
+      # Admin SDK Processing  
+      - name: Process Admin SDK
         if: needs.detect-changes.outputs.admin-changed == 'true' || github.event.inputs.force_run == 'true'
         run: |
-          echo "🔨 Processing Admin client..."
-          cd Clients/Node/Admin
+          echo "🔨 Processing Admin SDK..."
+          cd SDKs/Node/Admin
           
           # Install dependencies
           npm ci
@@ -184,7 +193,7 @@ jobs:
           npm run build
           npm test
           
-          echo "✅ Admin client ready for publishing"
+          echo "✅ Admin SDK ready for publishing"
 
       # Commit version changes (master only)
       - name: Commit version changes
@@ -199,7 +208,7 @@ jobs:
           # Prepare commit message
           COMMIT_MSG="chore: bump client versions [skip ci]"
           if [[ -n "$CORE_NEW_VERSION" && -n "$ADMIN_NEW_VERSION" ]]; then
-            COMMIT_MSG="chore: bump clients to Core v$CORE_NEW_VERSION, Admin v$ADMIN_NEW_VERSION [skip ci]"
+            COMMIT_MSG="chore: bump SDKs to Core v$CORE_NEW_VERSION, Admin v$ADMIN_NEW_VERSION [skip ci]"
           elif [[ -n "$CORE_NEW_VERSION" ]]; then
             COMMIT_MSG="chore: bump @knn_labs/conduit-core-client to v$CORE_NEW_VERSION [skip ci]"
           elif [[ -n "$ADMIN_NEW_VERSION" ]]; then
@@ -207,7 +216,7 @@ jobs:
           fi
           
           # Stage and commit
-          git add Clients/Node/*/package.json
+          git add SDKs/Node/*/package.json
           git commit -m "$COMMIT_MSG"
           
           # Push with retry logic
@@ -242,25 +251,25 @@ jobs:
           fi
           echo "✅ NPM_TOKEN is configured"
 
-      # Publish Core Client to NPM
-      - name: Publish Core Client to NPM
+      # Publish Core SDK to NPM
+      - name: Publish Core SDK to NPM
         if: (needs.detect-changes.outputs.core-changed == 'true' || github.event.inputs.force_run == 'true') && env.CORE_NEW_VERSION != ''
         run: |
-          cd Clients/Node/Core
-          echo "📦 Publishing Core client v$CORE_NEW_VERSION to NPM with tag: ${{ steps.strategy.outputs.npm-tag }}"
+          cd SDKs/Node/Core
+          echo "📦 Publishing Core SDK v$CORE_NEW_VERSION to NPM with tag: ${{ steps.strategy.outputs.npm-tag }}"
           npm publish --tag ${{ steps.strategy.outputs.npm-tag }}
-          echo "✅ Core client published successfully"
+          echo "✅ Core SDK published successfully"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      # Publish Admin Client to NPM
-      - name: Publish Admin Client to NPM
+      # Publish Admin SDK to NPM
+      - name: Publish Admin SDK to NPM
         if: (needs.detect-changes.outputs.admin-changed == 'true' || github.event.inputs.force_run == 'true') && env.ADMIN_NEW_VERSION != ''
         run: |
-          cd Clients/Node/Admin
-          echo "📦 Publishing Admin client v$ADMIN_NEW_VERSION to NPM with tag: ${{ steps.strategy.outputs.npm-tag }}"
+          cd SDKs/Node/Admin
+          echo "📦 Publishing Admin SDK v$ADMIN_NEW_VERSION to NPM with tag: ${{ steps.strategy.outputs.npm-tag }}"
           npm publish --tag ${{ steps.strategy.outputs.npm-tag }}
-          echo "✅ Admin client published successfully"
+          echo "✅ Admin SDK published successfully"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -274,10 +283,10 @@ jobs:
           echo "  Version type: ${{ steps.strategy.outputs.version-type }}"
           echo "  NPM tag: ${{ steps.strategy.outputs.npm-tag }}"
           if [[ -n "$CORE_NEW_VERSION" ]]; then
-            echo "  Core client: v$CORE_NEW_VERSION"
+            echo "  Core SDK: v$CORE_NEW_VERSION"
           fi
           if [[ -n "$ADMIN_NEW_VERSION" ]]; then
-            echo "  Admin client: v$ADMIN_NEW_VERSION"
+            echo "  Admin SDK: v$ADMIN_NEW_VERSION"
           fi
           echo ""
           echo "📦 Installation commands:"

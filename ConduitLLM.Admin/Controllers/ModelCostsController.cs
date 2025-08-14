@@ -42,17 +42,42 @@ namespace ConduitLLM.Admin.Controllers
         }
 
         /// <summary>
-        /// Gets all model costs
+        /// Gets all model costs with optional pagination
         /// </summary>
-        /// <returns>List of all model costs</returns>
+        /// <param name="page">Page number (1-based)</param>
+        /// <param name="pageSize">Number of items per page</param>
+        /// <returns>List of all model costs or paginated response</returns>
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<ModelCostDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetAllModelCosts()
+        public async Task<IActionResult> GetAllModelCosts([FromQuery] int? page = null, [FromQuery] int? pageSize = null)
         {
             try
             {
                 var modelCosts = await _modelCostService.GetAllModelCostsAsync();
+                
+                // If pagination parameters are provided, return paginated response
+                if (page.HasValue && pageSize.HasValue)
+                {
+                    var totalCount = modelCosts.Count();
+                    var items = modelCosts
+                        .Skip((page.Value - 1) * pageSize.Value)
+                        .Take(pageSize.Value)
+                        .ToList();
+                    
+                    var paginatedResponse = new
+                    {
+                        items = items,
+                        totalCount = totalCount,
+                        page = page.Value,
+                        pageSize = pageSize.Value,
+                        totalPages = (int)Math.Ceiling(totalCount / (double)pageSize.Value)
+                    };
+                    
+                    return Ok(paginatedResponse);
+                }
+                
+                // Otherwise return all items (backward compatibility)
                 return Ok(modelCosts);
             }
             catch (Exception ex)
@@ -79,7 +104,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (modelCost == null)
                 {
-                    return NotFound(new { error = "Model cost not found" });
+                    return NotFound(new ErrorResponseDto("Model cost not found"));
                 }
 
                 return Ok(modelCost);
@@ -92,52 +117,52 @@ namespace ConduitLLM.Admin.Controllers
         }
 
         /// <summary>
-        /// Gets model costs by provider name
+        /// Gets model costs by provider ID
         /// </summary>
-        /// <param name="providerName">The name of the provider</param>
+        /// <param name="providerId">The ID of the provider</param>
         /// <returns>List of model costs for the specified provider</returns>
-        [HttpGet("provider/{providerName}")]
+        [HttpGet("provider/{providerId}")]
         [ProducesResponseType(typeof(IEnumerable<ModelCostDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetModelCostsByProvider(string providerName)
+        public async Task<IActionResult> GetModelCostsByProvider(int providerId)
         {
             try
             {
-                var modelCosts = await _modelCostService.GetModelCostsByProviderAsync(providerName);
+                var modelCosts = await _modelCostService.GetModelCostsByProviderAsync(providerId);
                 return Ok(modelCosts);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model costs for provider '{ProviderName}'", providerName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error getting model costs for provider {ProviderId}", providerId);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
 
         /// <summary>
-        /// Gets a model cost by pattern
+        /// Gets a model cost by cost name
         /// </summary>
-        /// <param name="pattern">The model ID pattern</param>
+        /// <param name="costName">The cost name</param>
         /// <returns>The model cost</returns>
-        [HttpGet("pattern/{pattern}")]
+        [HttpGet("name/{costName}")]
         [ProducesResponseType(typeof(ModelCostDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetModelCostByPattern(string pattern)
+        public async Task<IActionResult> GetModelCostByCostName(string costName)
         {
             try
             {
-                var modelCost = await _modelCostService.GetModelCostByPatternAsync(pattern);
+                var modelCost = await _modelCostService.GetModelCostByCostNameAsync(costName);
 
                 if (modelCost == null)
                 {
-                    return NotFound(new { error = "Model cost not found" });
+                    return NotFound(new ErrorResponseDto("Model cost not found"));
                 }
 
                 return Ok(modelCost);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost with pattern '{Pattern}'", pattern.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error getting model cost with name '{CostName}'", costName.Replace(Environment.NewLine, ""));
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -205,7 +230,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (!success)
                 {
-                    return NotFound(new { error = "Model cost not found" });
+                    return NotFound(new ErrorResponseDto("Model cost not found"));
                 }
 
                 return NoContent();
@@ -239,7 +264,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (!success)
                 {
-                    return NotFound(new { error = "Model cost not found" });
+                    return NotFound(new ErrorResponseDto("Model cost not found"));
                 }
 
                 return NoContent();
@@ -294,7 +319,7 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ImportModelCosts([FromBody] IEnumerable<CreateModelCostDto> modelCosts)
         {
-            if (modelCosts == null || !modelCosts.Any())
+            if (modelCosts == null || modelCosts.Count() == 0)
             {
                 return BadRequest("No model costs provided for import");
             }
@@ -314,16 +339,16 @@ namespace ConduitLLM.Admin.Controllers
         /// <summary>
         /// Exports model costs in CSV format
         /// </summary>
-        /// <param name="provider">Optional provider name to filter by</param>
+        /// <param name="providerId">Optional provider ID to filter by</param>
         /// <returns>CSV file containing model costs</returns>
         [HttpGet("export/csv")]
         [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> ExportCsv([FromQuery] string? provider = null)
+        public async Task<IActionResult> ExportCsv([FromQuery] int? providerId = null)
         {
             try
             {
-                var csvData = await _modelCostService.ExportModelCostsAsync("csv", provider);
+                var csvData = await _modelCostService.ExportModelCostsAsync("csv", providerId);
                 var bytes = Encoding.UTF8.GetBytes(csvData);
                 var fileName = $"model-costs-{DateTime.UtcNow:yyyy-MM-dd-HHmmss}.csv";
                 
@@ -339,16 +364,16 @@ namespace ConduitLLM.Admin.Controllers
         /// <summary>
         /// Exports model costs in JSON format
         /// </summary>
-        /// <param name="provider">Optional provider name to filter by</param>
+        /// <param name="providerId">Optional provider ID to filter by</param>
         /// <returns>JSON file containing model costs</returns>
         [HttpGet("export/json")]
         [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> ExportJson([FromQuery] string? provider = null)
+        public async Task<IActionResult> ExportJson([FromQuery] int? providerId = null)
         {
             try
             {
-                var jsonData = await _modelCostService.ExportModelCostsAsync("json", provider);
+                var jsonData = await _modelCostService.ExportModelCostsAsync("json", providerId);
                 var bytes = Encoding.UTF8.GetBytes(jsonData);
                 var fileName = $"model-costs-{DateTime.UtcNow:yyyy-MM-dd-HHmmss}.json";
                 
@@ -370,16 +395,16 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(BulkImportResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> ImportCsv([FromForm] IFormFile file)
+        public async Task<IActionResult> ImportCsv(IFormFile file)
         {
             if (file == null || file.Length == 0)
             {
-                return BadRequest("No file provided for import");
+                return BadRequest(new ErrorResponseDto("No file provided for import"));
             }
 
             if (!file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
             {
-                return BadRequest("File must be a CSV file");
+                return BadRequest(new ErrorResponseDto("File must be a CSV file"));
             }
 
             try
@@ -417,7 +442,7 @@ namespace ConduitLLM.Admin.Controllers
         [ProducesResponseType(typeof(BulkImportResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> ImportJson([FromForm] IFormFile file)
+        public async Task<IActionResult> ImportJson(IFormFile file)
         {
             if (file == null || file.Length == 0)
             {

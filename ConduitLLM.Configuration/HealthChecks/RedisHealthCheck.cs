@@ -81,10 +81,10 @@ namespace ConduitLLM.Configuration.HealthChecks
                     return HealthCheckResult.Unhealthy("No Redis servers are connected", data: healthData);
                 }
 
-                if (connectedServers < servers.Count)
+                if (connectedServers < servers.Count())
                 {
                     return HealthCheckResult.Degraded(
-                        $"Only {connectedServers} of {servers.Count} Redis servers are connected",
+                        $"Only {connectedServers} of {servers.Count()} Redis servers are connected",
                         data: healthData);
                 }
 

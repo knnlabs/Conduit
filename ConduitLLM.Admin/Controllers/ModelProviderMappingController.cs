@@ -1,12 +1,17 @@
+using ConduitLLM.Configuration.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ModelProviderMapping = ConduitLLM.Configuration.Entities.ModelProviderMapping;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -25,6 +30,7 @@ public class ModelProviderMappingController : ControllerBase
 {
     private readonly IAdminModelProviderMappingService _mappingService;
     private readonly IProviderDiscoveryService _discoveryService;
+    private readonly IProviderService _providerService;
     private readonly ILogger<ModelProviderMappingController> _logger;
 
     /// <summary>
@@ -32,14 +38,17 @@ public class ModelProviderMappingController : ControllerBase
     /// </summary>
     /// <param name="mappingService">The model provider mapping service</param>
     /// <param name="discoveryService">The provider discovery service</param>
+    /// <param name="providerService">The provider service</param>
     /// <param name="logger">The logger</param>
     public ModelProviderMappingController(
         IAdminModelProviderMappingService mappingService,
         IProviderDiscoveryService discoveryService,
+        IProviderService providerService,
         ILogger<ModelProviderMappingController> logger)
     {
         _mappingService = mappingService ?? throw new ArgumentNullException(nameof(mappingService));
         _discoveryService = discoveryService ?? throw new ArgumentNullException(nameof(discoveryService));
+        _providerService = providerService ?? throw new ArgumentNullException(nameof(providerService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -55,7 +64,8 @@ public class ModelProviderMappingController : ControllerBase
         try
         {
             var mappings = await _mappingService.GetAllMappingsAsync();
-            return Ok(mappings);
+            var dtos = mappings.Select(m => m.ToDto());
+            return Ok(dtos);
         }
         catch (Exception ex)
         {
@@ -81,43 +91,14 @@ public class ModelProviderMappingController : ControllerBase
 
             if (mapping == null)
             {
-                return NotFound(new { error = "Model provider mapping not found" });
+                return NotFound(new ErrorResponseDto("Model provider mapping not found"));
             }
 
-            return Ok(mapping);
+            return Ok(mapping.ToDto());
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting model provider mapping with ID {Id}", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving the model provider mapping");
-        }
-    }
-
-    /// <summary>
-    /// Gets a model provider mapping by model ID
-    /// </summary>
-    /// <param name="modelId">The model ID to look up</param>
-    /// <returns>The model provider mapping if found</returns>
-    [HttpGet("by-model/{modelId}")]
-    [ProducesResponseType(typeof(ModelProviderMappingDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetMappingByModelId(string modelId)
-    {
-        try
-        {
-            var mapping = await _mappingService.GetMappingByModelIdAsync(modelId);
-
-            if (mapping == null)
-            {
-                return NotFound(new { error = "Model provider mapping not found" });
-            }
-
-            return Ok(mapping);
-        }
-        catch (Exception ex)
-        {
-_logger.LogError(ex, "Error getting model provider mapping for model ID {ModelId}", modelId.Replace(Environment.NewLine, ""));
             return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving the model provider mapping");
         }
     }
@@ -128,35 +109,40 @@ _logger.LogError(ex, "Error getting model provider mapping for model ID {ModelId
     /// <param name="mappingDto">The mapping to create</param>
     /// <returns>The created mapping</returns>
     [HttpPost]
-    [Authorize(Policy = "MasterKeyPolicy")]
     [ProducesResponseType(typeof(ModelProviderMappingDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> CreateMapping([FromBody] ModelProviderMappingDto mappingDto)
     {
-        if (mappingDto == null)
-        {
-            return BadRequest("Mapping cannot be null");
-        }
-
         try
         {
-            bool success = await _mappingService.AddMappingAsync(mappingDto);
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            // Check if a mapping with the same model ID already exists
+            var existingMapping = await _mappingService.GetMappingByModelIdAsync(mappingDto.ModelId);
+            if (existingMapping != null)
+            {
+                return Conflict(new ErrorResponseDto($"A mapping for model ID '{mappingDto.ModelId}' already exists"));
+            }
+
+            var mapping = mappingDto.ToEntity();
+            var success = await _mappingService.AddMappingAsync(mapping);
 
             if (!success)
             {
-                return BadRequest("Failed to create model provider mapping. Verify that the provider exists and the model ID is unique.");
+                return BadRequest(new ErrorResponseDto("Failed to create model provider mapping. Please check the provider ID."));
             }
 
-            // Get the created mapping
             var createdMapping = await _mappingService.GetMappingByModelIdAsync(mappingDto.ModelId);
-            return CreatedAtAction(nameof(GetMappingByModelId), new { modelId = mappingDto.ModelId }, createdMapping);
+            return CreatedAtAction(nameof(GetMappingById), new { id = createdMapping?.Id }, createdMapping?.ToDto());
         }
         catch (Exception ex)
         {
-_logger.LogError(ex, "Error creating model provider mapping for model ID {ModelId}", mappingDto.ModelId.Replace(Environment.NewLine, ""));
+            _logger.LogError(ex, "Error creating model provider mapping");
             return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while creating the model provider mapping");
         }
     }
@@ -166,35 +152,38 @@ _logger.LogError(ex, "Error creating model provider mapping for model ID {ModelI
     /// </summary>
     /// <param name="id">The ID of the mapping to update</param>
     /// <param name="mappingDto">The updated mapping data</param>
-    /// <returns>No content if successful</returns>
+    /// <returns>No content on success</returns>
     [HttpPut("{id}")]
-    [Authorize(Policy = "MasterKeyPolicy")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UpdateMapping(int id, [FromBody] ModelProviderMappingDto mappingDto)
     {
-        if (mappingDto == null)
-        {
-            return BadRequest("Mapping cannot be null");
-        }
-
-        // Ensure ID in route matches ID in body
-        if (id != mappingDto.Id)
-        {
-            return BadRequest("ID in route must match ID in body");
-        }
-
         try
         {
-            bool success = await _mappingService.UpdateMappingAsync(mappingDto);
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (id != mappingDto.Id)
+            {
+                return BadRequest(new ErrorResponseDto("ID mismatch"));
+            }
+
+            var existingMapping = await _mappingService.GetMappingByIdAsync(id);
+            if (existingMapping == null)
+            {
+                return NotFound(new ErrorResponseDto("Model provider mapping not found"));
+            }
+
+            existingMapping.UpdateFromDto(mappingDto);
+            var success = await _mappingService.UpdateMappingAsync(existingMapping);
 
             if (!success)
             {
-                return NotFound(new { error = "Model provider mapping not found" });
+                return BadRequest(new ErrorResponseDto("Failed to update model provider mapping"));
             }
 
             return NoContent();
@@ -210,23 +199,26 @@ _logger.LogError(ex, "Error creating model provider mapping for model ID {ModelI
     /// Deletes a model provider mapping
     /// </summary>
     /// <param name="id">The ID of the mapping to delete</param>
-    /// <returns>No content if successful</returns>
+    /// <returns>No content on success</returns>
     [HttpDelete("{id}")]
-    [Authorize(Policy = "MasterKeyPolicy")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DeleteMapping(int id)
     {
         try
         {
-            bool success = await _mappingService.DeleteMappingAsync(id);
+            var existingMapping = await _mappingService.GetMappingByIdAsync(id);
+            if (existingMapping == null)
+            {
+                return NotFound(new ErrorResponseDto("Model provider mapping not found"));
+            }
+
+            var success = await _mappingService.DeleteMappingAsync(id);
 
             if (!success)
             {
-                return NotFound(new { error = "Model provider mapping not found" });
+                return BadRequest(new ErrorResponseDto("Failed to delete model provider mapping"));
             }
 
             return NoContent();
@@ -239,11 +231,11 @@ _logger.LogError(ex, "Error creating model provider mapping for model ID {ModelI
     }
 
     /// <summary>
-    /// Gets a list of all available providers
+    /// Gets all available providers
     /// </summary>
-    /// <returns>A list of provider names</returns>
+    /// <returns>List of providers with IDs and names</returns>
     [HttpGet("providers")]
-    [ProducesResponseType(typeof(IEnumerable<ProviderDataDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(IEnumerable<Provider>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetProviders()
     {
@@ -262,184 +254,114 @@ _logger.LogError(ex, "Error creating model provider mapping for model ID {ModelI
     /// <summary>
     /// Creates multiple model provider mappings in a single operation
     /// </summary>
-    /// <param name="request">The bulk mapping request containing mappings to create</param>
-    /// <returns>The bulk mapping response with results and errors</returns>
+    /// <param name="mappingDtos">The mappings to create</param>
+    /// <returns>The bulk mapping response with results</returns>
     [HttpPost("bulk")]
-    [Authorize(Policy = "MasterKeyPolicy")]
-    [ProducesResponseType(typeof(BulkModelMappingResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BulkMappingResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> CreateBulkMappings([FromBody] BulkModelMappingRequest request)
+    public async Task<IActionResult> CreateBulkMappings([FromBody] List<ModelProviderMappingDto> mappingDtos)
     {
-        if (request == null)
-        {
-            return BadRequest(new { error = "Bulk mapping request cannot be null" });
-        }
-
-        if (request.Mappings == null || !request.Mappings.Any())
-        {
-            return BadRequest(new { error = "No mappings provided" });
-        }
-
         try
         {
-            var response = await _mappingService.CreateBulkMappingsAsync(request);
-            
-            // Return 200 OK even if some mappings failed - the response contains success/failure details
-            return Ok(response);
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (mappingDtos == null || mappingDtos.Count() == 0)
+            {
+                return BadRequest(new ErrorResponseDto("No mappings provided"));
+            }
+
+            var mappings = mappingDtos.Select(dto => dto.ToEntity()).ToList();
+            var (created, errors) = await _mappingService.CreateBulkMappingsAsync(mappings);
+
+            var result = new BulkMappingResult
+            {
+                Created = created.Select(m => m.ToDto()).ToList(),
+                Errors = errors.ToList(),
+                TotalProcessed = mappingDtos.Count(),
+                SuccessCount = created.Count(),
+                FailureCount = errors.Count()
+            };
+
+            return Ok(result);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating bulk model provider mappings");
-            
-            // Return a response indicating complete failure
-            var errorResponse = new BulkModelMappingResponse
-            {
-                TotalProcessed = request.Mappings.Count,
-                Failed = request.Mappings.Select((mapping, index) => new BulkMappingError
-                {
-                    Index = index,
-                    Mapping = mapping,
-                    ErrorMessage = $"System error: {ex.Message}",
-                    ErrorType = BulkMappingErrorType.SystemError
-                }).ToList()
-            };
-
-            return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
+            return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while creating bulk model provider mappings");
         }
     }
 
     /// <summary>
-    /// Discovers available models for a specific provider
+    /// Discovers available models from a specific provider
     /// </summary>
-    /// <param name="providerName">The name of the provider to discover models for</param>
-    /// <returns>A list of discovered models with their capabilities</returns>
-    [HttpGet("discover/provider/{providerName}")]
-    [ProducesResponseType(typeof(IEnumerable<DiscoveredModel>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> DiscoverProviderModels(string providerName)
-    {
-        if (string.IsNullOrWhiteSpace(providerName))
-        {
-            return BadRequest("Provider name cannot be empty");
-        }
-
-        try
-        {
-            _logger.LogInformation("Discovering models for provider: {Provider}", providerName);
-            var models = await _discoveryService.DiscoverProviderModelsAsync(providerName);
-            
-            // Convert dictionary values to list
-            return Ok(models.Values);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error discovering models for provider {Provider}", providerName);
-            return StatusCode(StatusCodes.Status500InternalServerError, $"An error occurred while discovering models: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// Discovers capabilities for a specific model
-    /// </summary>
-    /// <param name="providerName">The name of the provider</param>
-    /// <param name="modelId">The model ID to check capabilities for</param>
-    /// <returns>Model information with detailed capabilities</returns>
-    [HttpGet("discover/model/{providerName}/{modelId}")]
-    [ProducesResponseType(typeof(DiscoveredModel), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    /// <param name="providerId">The provider ID to discover models from</param>
+    /// <returns>List of discovered models</returns>
+    [HttpGet("discover/{providerId}")]
+    [ProducesResponseType(typeof(List<DiscoveredModel>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> DiscoverModelCapabilities(string providerName, string modelId)
+    public async Task<IActionResult> DiscoverModels(int providerId)
     {
-        if (string.IsNullOrWhiteSpace(providerName))
-        {
-            return BadRequest("Provider name cannot be empty");
-        }
-
-        if (string.IsNullOrWhiteSpace(modelId))
-        {
-            return BadRequest("Model ID cannot be empty");
-        }
-
         try
         {
-            _logger.LogInformation("Discovering capabilities for model {ModelId} from provider {Provider}", modelId, providerName);
-            
-            // Discover all models for the provider
-            var models = await _discoveryService.DiscoverProviderModelsAsync(providerName);
-            
-            // Find the specific model by key or value
-            DiscoveredModel? model = null;
-            
-            // First try to find by dictionary key
-            if (models.TryGetValue(modelId, out var modelByKey))
+            var provider = await _providerService.GetProviderByIdAsync(providerId);
+            if (provider == null)
             {
-                model = modelByKey;
+                return NotFound(new ErrorResponseDto("Provider not found"));
             }
-            else
-            {
-                // Then try to find by ModelId property
-                model = models.Values.FirstOrDefault(m => m.ModelId.Equals(modelId, StringComparison.OrdinalIgnoreCase));
-            }
+
+            // Discover models for the provider
+            var discoveredModels = await _discoveryService.DiscoverProviderModelsAsync(provider);
             
-            if (model == null)
-            {
-                return NotFound(new { error = $"Model {modelId} not found for provider {providerName}" });
-            }
+            // Convert dictionary values to array for frontend compatibility
+            var modelsArray = discoveredModels.Values.ToList();
             
-            return Ok(model);
+            return Ok(modelsArray);
+        }
+        catch (NotSupportedException ex)
+        {
+            _logger.LogWarning(ex, "Provider {ProviderId} does not support model discovery", providerId);
+            return BadRequest(new { error = ex.Message });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error discovering capabilities for model {ModelId} from provider {Provider}", modelId, providerName);
-            return StatusCode(StatusCodes.Status500InternalServerError, $"An error occurred while discovering model capabilities: {ex.Message}");
+            _logger.LogError(ex, "Error discovering models for provider {ProviderId}", providerId);
+            return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while discovering models");
         }
     }
+}
+
+/// <summary>
+/// Result of a bulk mapping operation
+/// </summary>
+public class BulkMappingResult
+{
+    /// <summary>
+    /// Successfully created mappings
+    /// </summary>
+    public List<ModelProviderMappingDto> Created { get; set; } = new();
 
     /// <summary>
-    /// Tests a specific capability for a model
+    /// Error messages for failed mappings
     /// </summary>
-    /// <param name="modelAlias">The model alias to test</param>
-    /// <param name="capability">The capability to test (e.g., "ImageGeneration", "Vision", "ChatStream")</param>
-    /// <returns>Whether the model supports the capability</returns>
-    [HttpGet("discover/capability/{modelAlias}/{capability}")]
-    [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> TestModelCapability(string modelAlias, string capability)
-    {
-        if (string.IsNullOrWhiteSpace(modelAlias))
-        {
-            return BadRequest("Model alias cannot be empty");
-        }
+    public List<string> Errors { get; set; } = new();
 
-        if (string.IsNullOrWhiteSpace(capability))
-        {
-            return BadRequest("Capability cannot be empty");
-        }
+    /// <summary>
+    /// Total number of mappings processed
+    /// </summary>
+    public int TotalProcessed { get; set; }
 
-        try
-        {
-            // Parse the capability string to ModelCapability enum
-            if (!Enum.TryParse<ModelCapability>(capability, true, out var modelCapability))
-            {
-                return BadRequest($"Invalid capability: {capability}. Valid values are: {string.Join(", ", Enum.GetNames(typeof(ModelCapability)))}");
-            }
+    /// <summary>
+    /// Number of successful mappings
+    /// </summary>
+    public int SuccessCount { get; set; }
 
-            _logger.LogInformation("Testing capability {Capability} for model {ModelAlias}", capability, modelAlias);
-            
-            var supportsCapability = await _discoveryService.TestModelCapabilityAsync(modelAlias, modelCapability);
-            
-            return Ok(supportsCapability);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error testing capability {Capability} for model {ModelAlias}", capability, modelAlias);
-            return StatusCode(StatusCodes.Status500InternalServerError, $"An error occurred while testing model capability: {ex.Message}");
-        }
-    }
+    /// <summary>
+    /// Number of failed mappings
+    /// </summary>
+    public int FailureCount { get; set; }
 }

@@ -16,31 +16,27 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconInfoCircle, IconCircleCheck, IconCircleX } from '@tabler/icons-react';
-import { useState, useEffect } from 'react';
+import { IconInfoCircle } from '@tabler/icons-react';
+import { useState, useEffect, useCallback } from 'react';
 import { validators } from '@/lib/utils/form-validators';
 import { 
   ProviderType, 
-  PROVIDER_DISPLAY_NAMES, 
   PROVIDER_CONFIG_REQUIREMENTS 
 } from '@/lib/constants/providers';
 import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+import { withAdminClient } from '@/lib/client/adminClient';
+import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 
-// Use SDK types directly with health extensions
-interface Provider extends ProviderCredentialDto {
-  healthStatus?: 'healthy' | 'unhealthy' | 'unknown';
-  lastHealthCheck?: string;
-  models?: string[];
-}
 
 interface EditProviderModalProps {
   opened: boolean;
   onClose: () => void;
-  provider: Provider | null;
+  provider: ProviderCredentialDto | null;
   onSuccess?: () => void;
 }
 
 interface EditProviderForm {
+  providerName?: string;
   apiKey?: string;
   apiEndpoint?: string;
   organizationId?: string;
@@ -51,21 +47,23 @@ interface EditProviderForm {
 
 export function EditProviderModal({ opened, onClose, provider, onSuccess }: EditProviderModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const getHealthStatusColor = (status: string) => {
-    if (status === 'healthy') return 'green';
-    if (status === 'unhealthy') return 'red';
-    return 'gray';
-  };
+  const [initialFormValues, setInitialFormValues] = useState<EditProviderForm>(() => ({
+    providerName: '',
+    apiKey: '',
+    apiEndpoint: '',
+    organizationId: '',
+    isEnabled: true,
+  }));
 
   const form = useForm<EditProviderForm>({
-    initialValues: {
-      apiKey: '',
-      apiEndpoint: '',
-      organizationId: '',
-      isEnabled: true,
-    },
+    initialValues: initialFormValues,
     validate: {
+      providerName: (value) => {
+        if (!value) {
+          return 'Provider name is required';
+        }
+        return null;
+      },
       apiEndpoint: (value) => {
         if (value && !validators.url(value)) {
           return 'Please enter a valid URL';
@@ -75,19 +73,29 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
     },
   });
 
+  // Stable callback for form updates
+  const updateForm = useCallback((newFormValues: EditProviderForm) => {
+    setInitialFormValues(newFormValues);
+    form.setValues(newFormValues);
+    form.resetDirty();
+  }, [form]);
+
   // Update form when provider changes
   useEffect(() => {
-    if (provider) {
-      // Skip additionalConfig parsing as it's not in ProviderCredentialDto
-
-      form.setValues({
+    if (provider && opened) {
+      const apiProvider = provider;
+      
+      const newFormValues: EditProviderForm = {
+        providerName: typeof apiProvider.providerName === 'string' ? apiProvider.providerName : '',
         apiKey: '', // Don't show existing key for security
-        apiEndpoint: provider.apiBase ?? '',
-        organizationId: provider.organization ?? '',
-        isEnabled: provider.isEnabled,
-      });
+        apiEndpoint: apiProvider.baseUrl ?? '',
+        organizationId: typeof provider.organization === 'string' ? provider.organization : '',
+        isEnabled: provider.isEnabled === true,
+      };
+      
+      updateForm(newFormValues);
     }
-  }, [provider, form]);
+  }, [provider, opened, updateForm]);
 
   const handleSubmit = async (values: EditProviderForm) => {
     if (!provider) return;
@@ -95,23 +103,15 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
     setIsSubmitting(true);
     try {
       const payload = {
-        apiKey: values.apiKey ?? undefined, // Only send if changed
-        apiEndpoint: values.apiEndpoint ?? undefined,
-        organizationId: values.organizationId ?? undefined,
+        providerName: values.providerName ?? undefined,
+        baseUrl: values.apiEndpoint ?? undefined,
+        organization: values.organizationId ?? undefined,
         isEnabled: values.isEnabled,
       };
 
-      const response = await fetch(`/api/providers/${provider.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update provider');
-      }
+      await withAdminClient(client => 
+        client.providers.update(provider.id, payload)
+      );
 
       notifications.show({
         title: 'Success',
@@ -135,7 +135,10 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
   };
 
   const handleClose = () => {
-    form.reset();
+    // Delay reset to prevent flicker during close animation
+    setTimeout(() => {
+      form.reset();
+    }, 200);
     onClose();
   };
 
@@ -143,19 +146,15 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
     return null;
   }
 
-  const providerDisplayName = provider.providerName 
-    ? PROVIDER_DISPLAY_NAMES[provider.providerName as ProviderType] 
-    : provider.providerName;
-  const getHealthIcon = (status?: string) => {
-    switch (status) {
-      case 'healthy':
-        return <IconCircleCheck size={16} color="var(--mantine-color-green-6)" />;
-      case 'unhealthy':
-        return <IconCircleX size={16} color="var(--mantine-color-red-6)" />;
-      default:
-        return null;
-    }
-  };
+  let providerDisplayName = 'Unknown Provider';
+  try {
+    const providerType = getProviderTypeFromDto(provider);
+    providerDisplayName = getProviderDisplayName(providerType);
+  } catch {
+    // Fallback to provider name if available
+    const apiProvider = provider;
+    providerDisplayName = typeof apiProvider.providerName === 'string' ? apiProvider.providerName : 'Unknown Provider';
+  }
 
   return (
     <Modal opened={opened} onClose={handleClose} title="Edit Provider" size="lg">
@@ -166,52 +165,42 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
             <Stack gap="xs">
               <Group justify="space-between">
                 <Text size="sm" c="dimmed">Provider Type</Text>
-                <Badge>{providerDisplayName || provider.providerName || 'Unknown'}</Badge>
+                <Badge>{providerDisplayName}</Badge>
               </Group>
-              {provider.healthStatus && (
-                <Group justify="space-between">
-                  <Text size="sm" c="dimmed">Health Status</Text>
-                  <Group gap="xs">
-                    {getHealthIcon(provider.healthStatus)}
-                    <Text size="sm" fw={500} c={getHealthStatusColor(provider.healthStatus)}>
-                      {provider.healthStatus}
-                    </Text>
-                  </Group>
-                </Group>
-              )}
-              {provider.models && provider.models.length > 0 && (
-                <Group justify="space-between">
-                  <Text size="sm" c="dimmed">Models Available</Text>
-                  <Text size="sm">{provider.models.length}</Text>
-                </Group>
-              )}
-              {provider.lastHealthCheck && (
-                <Group justify="space-between">
-                  <Text size="sm" c="dimmed">Last Health Check</Text>
-                  <Text size="sm">{new Date(provider.lastHealthCheck).toLocaleString()}</Text>
-                </Group>
-              )}
+              {/* Health status, models, and lastHealthCheck are not available in ProviderCredentialDto */}
             </Stack>
           </Card>
 
           <Divider />
 
           <TextInput
+            key={`provider-name-${provider.id}`}
             label="Provider Name"
-            value={provider.providerName}
-            disabled
-            description="Provider name cannot be changed"
+            placeholder="Enter a friendly name for this provider"
+            description="A friendly name to identify this provider instance"
+            autoComplete="off"
+            aria-autocomplete="none"
+            list="autocompleteOff"
+            data-form-type="other"
+            {...form.getInputProps('providerName')}
+            autoFocus
           />
 
           <PasswordInput
             label="API Key"
             placeholder="Leave empty to keep existing key"
             description="Only enter if you want to update the API key"
+            autoComplete="off"
+            aria-autocomplete="none"
+            list="autocompleteOff"
+            data-form-type="other"
+            data-lpignore="true"
             {...form.getInputProps('apiKey')}
           />
 
           {(() => {
-            const config = PROVIDER_CONFIG_REQUIREMENTS[provider.providerName as ProviderType];
+            const providerTypeNum = getProviderTypeFromDto(provider);
+            const config = PROVIDER_CONFIG_REQUIREMENTS[providerTypeNum];
             if (!config) return null;
 
             return (
@@ -220,6 +209,10 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
                   <TextInput
                     label={config.requiresEndpoint ? "API Endpoint" : "Custom API Endpoint"}
                     placeholder={config.requiresEndpoint ? "API endpoint URL" : "Custom API endpoint URL (optional)"}
+                    autoComplete="off"
+                    aria-autocomplete="none"
+                    list="autocompleteOff"
+                    data-form-type="other"
                     {...form.getInputProps('apiEndpoint')}
                   />
                 )}
@@ -227,7 +220,11 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
                 {config.requiresOrganizationId && (
                   <TextInput
                     label="Organization ID"
-                    placeholder={provider.providerName === ProviderType.OpenAI.toString() ? "Optional OpenAI organization ID" : "Organization ID"}
+                    placeholder={getProviderTypeFromDto(provider) === ProviderType.OpenAI ? "Optional OpenAI organization ID" : "Organization ID"}
+                    autoComplete="off"
+                    aria-autocomplete="none"
+                    list="autocompleteOff"
+                    data-form-type="other"
                     {...form.getInputProps('organizationId')}
                   />
                 )}

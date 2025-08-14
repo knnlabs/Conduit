@@ -362,7 +362,7 @@ namespace ConduitLLM.Core.Services
         
         public double MinConfidence { get; private set; } = 1.0;
         public double MaxConfidence { get; private set; } = 0.0;
-        public long SampleCount => _confidenceSamples.Count;
+        public long SampleCount => _confidenceSamples.Count();
 
         public void UpdateMetrics(double? confidence, double? accuracy)
         {
@@ -388,41 +388,41 @@ namespace ConduitLLM.Core.Services
         public double GetAverageConfidence()
         {
             var samples = _confidenceSamples.ToList();
-            return samples.Any() ? samples.Average(s => s.Value) : 0;
+            return samples.Count() > 0 ? samples.Average(s => s.Value) : 0;
         }
 
         public double GetAverageAccuracy()
         {
             var samples = _accuracySamples.ToList();
-            return samples.Any() ? samples.Average(s => s.Value) : 0;
+            return samples.Count() > 0 ? samples.Average(s => s.Value) : 0;
         }
 
         public double GetConfidenceStdDev()
         {
             var samples = _confidenceSamples.Select(s => s.Value).ToList();
-            if (samples.Count < 2) return 0;
+            if (samples.Count() < 2) return 0;
 
             var avg = samples.Average();
             var sum = samples.Sum(d => Math.Pow(d - avg, 2));
-            return Math.Sqrt(sum / (samples.Count - 1));
+            return Math.Sqrt(sum / (samples.Count() - 1));
         }
 
         public double GetLowConfidenceRate(double threshold)
         {
             var samples = _confidenceSamples.ToList();
-            if (!samples.Any()) return 0;
+            if (samples.Count() == 0) return 0;
 
             var lowCount = samples.Count(s => s.Value < threshold);
-            return (double)lowCount / samples.Count;
+            return (double)lowCount / samples.Count();
         }
 
         public double GetHighConfidenceRate(double threshold)
         {
             var samples = _confidenceSamples.ToList();
-            if (!samples.Any()) return 0;
+            if (samples.Count() == 0) return 0;
 
             var highCount = samples.Count(s => s.Value >= threshold);
-            return (double)highCount / samples.Count;
+            return (double)highCount / samples.Count();
         }
 
         public AudioQualityTrendDirection CalculateTrend()
@@ -431,7 +431,7 @@ namespace ConduitLLM.Core.Services
                 .OrderBy(s => s.Timestamp)
                 .ToList();
 
-            if (samples.Count < 10) return AudioQualityTrendDirection.Stable;
+            if (samples.Count() < 10) return AudioQualityTrendDirection.Stable;
 
             var recentAvg = samples.TakeLast(5).Average(s => s.Value);
             var olderAvg = samples.Take(5).Average(s => s.Value);
@@ -449,7 +449,7 @@ namespace ConduitLLM.Core.Services
                 .OrderBy(s => s.Timestamp)
                 .ToList();
 
-            if (samples.Count < 10) return 0;
+            if (samples.Count() < 10) return 0;
 
             var recentAvg = samples.TakeLast(5).Average(s => s.Value);
             var olderAvg = samples.Take(5).Average(s => s.Value);
@@ -499,7 +499,7 @@ namespace ConduitLLM.Core.Services
         public double GetAverageWordErrorRate()
         {
             var samples = _werSamples.ToList();
-            return samples.Any() ? samples.Average(s => s.Value) : 0;
+            return samples.Count() > 0 ? samples.Average(s => s.Value) : 0;
         }
     }
 

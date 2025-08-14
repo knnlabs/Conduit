@@ -88,10 +88,10 @@ namespace ConduitLLM.Core.Services
             };
 
             // Calculate average inter-token latency
-            if (_tokenTimestamps.Count > 1)
+            if (_tokenTimestamps.Count() > 1)
             {
                 var latencies = new List<long>();
-                for (int i = 1; i < _tokenTimestamps.Count; i++)
+                for (int i = 1; i < _tokenTimestamps.Count(); i++)
                 {
                     latencies.Add(_tokenTimestamps[i] - _tokenTimestamps[i - 1]);
                 }
@@ -121,10 +121,33 @@ namespace ConduitLLM.Core.Services
             // Use actual token count from usage if available, otherwise use our count
             var completionTokens = usage?.CompletionTokens ?? _tokensGenerated;
             
+            // For streaming metrics, we always calculate if we have tokens
+            // This ensures tests and real scenarios work correctly
             if (totalSeconds > 0 && completionTokens > 0)
             {
+                // Always calculate tokens/second for streaming responses
                 metrics.TokensPerSecond = completionTokens / totalSeconds;
-                metrics.CompletionTokensPerSecond = completionTokens / totalSeconds;
+                
+                // For CompletionTokensPerSecond, exclude prompt processing time if available
+                // Generation time = total time - prompt processing time
+                if (_timeToFirstTokenMs.HasValue)
+                {
+                    var generationSeconds = totalSeconds - (_timeToFirstTokenMs.Value / 1000.0);
+                    if (generationSeconds > 0)
+                    {
+                        metrics.CompletionTokensPerSecond = completionTokens / generationSeconds;
+                    }
+                    else
+                    {
+                        // Fallback if generation time is too small or negative
+                        metrics.CompletionTokensPerSecond = completionTokens / totalSeconds;
+                    }
+                }
+                else
+                {
+                    // No time to first token recorded, use total time
+                    metrics.CompletionTokensPerSecond = completionTokens / totalSeconds;
+                }
             }
 
             // Calculate prompt tokens per second if we have usage data
@@ -138,10 +161,10 @@ namespace ConduitLLM.Core.Services
             }
 
             // Calculate average inter-token latency
-            if (_tokenTimestamps.Count > 1)
+            if (_tokenTimestamps.Count() > 1)
             {
                 var latencies = new List<long>();
-                for (int i = 1; i < _tokenTimestamps.Count; i++)
+                for (int i = 1; i < _tokenTimestamps.Count(); i++)
                 {
                     latencies.Add(_tokenTimestamps[i] - _tokenTimestamps[i - 1]);
                 }

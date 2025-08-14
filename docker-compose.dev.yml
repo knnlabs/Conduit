@@ -1,29 +1,134 @@
 # Development docker-compose with volume mounts for hot reloading
-# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# Usage: ./scripts/start-dev.sh
+# Features: User ID mapping, Swagger UI enabled, permission-free development
 
 services:
+  api:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      # Batch Cache Invalidation configuration (development settings)
+      CacheInvalidation__BatchingEnabled: "true"
+      CacheInvalidation__BatchWindow: "00:00:00.050"  # 50ms - Faster for development
+      CacheInvalidation__MaxBatchSize: "50"   # Smaller batches for easier debugging
+      CacheInvalidation__EnableCoalescing: "true"
+      # Batch Spending configuration (development settings)
+      BatchSpending__FlushIntervalSeconds: "1"        # 1 second - Fast for testing
+      BatchSpending__MinimumIntervalSeconds: "1"
+      BatchSpending__MaximumIntervalSeconds: "3600"   # 1 hour max for dev
+      BatchSpending__RedisTtlHours: "24"
+      # Health monitoring configuration - API endpoint checks
+      HealthMonitoring__ApiEndpoints__0__Name: AdminAPI
+      HealthMonitoring__ApiEndpoints__0__Url: http://admin:8080/health
+      HealthMonitoring__ApiEndpoints__0__TimeoutMs: 5000
+      HealthMonitoring__ApiEndpoints__0__WarningThresholdMs: 1000
+      # Cloudflare R2 configuration (default for development)
+      CONDUIT_MEDIA_STORAGE_TYPE: "${CONDUIT_MEDIA_STORAGE_TYPE:-S3}"
+      CONDUIT_S3_ENDPOINT: "${CONDUIT_S3_ENDPOINT}"
+      CONDUIT_S3_ACCESS_KEY: "${CONDUIT_S3_ACCESS_KEY}"
+      CONDUIT_S3_SECRET_KEY: "${CONDUIT_S3_SECRET_KEY}"
+      CONDUIT_S3_BUCKET_NAME: "${CONDUIT_S3_BUCKET_NAME:-conduit}"
+      CONDUIT_S3_REGION: "${CONDUIT_S3_REGION:-auto}"
+      # Public URL for R2 bucket (either public dev URL or custom domain)
+      CONDUIT_S3_PUBLIC_BASE_URL: "${CONDUIT_S3_PUBLIC_BASE_URL}"
+
+  admin:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      # Batch Cache Invalidation configuration (development settings)
+      CacheInvalidation__BatchingEnabled: "true"
+      CacheInvalidation__BatchWindow: "00:00:00.050"  # 50ms - Faster for development
+      CacheInvalidation__MaxBatchSize: "50"   # Smaller batches for easier debugging
+      CacheInvalidation__EnableCoalescing: "true"
+      # Batch Spending configuration (development settings)
+      BatchSpending__FlushIntervalSeconds: "1"        # 1 second - Fast for testing
+      BatchSpending__MinimumIntervalSeconds: "1"
+      BatchSpending__MaximumIntervalSeconds: "3600"   # 1 hour max for dev
+      BatchSpending__RedisTtlHours: "24"
+      # Cloudflare R2 configuration (default for development)
+      CONDUIT_MEDIA_STORAGE_TYPE: "${CONDUIT_MEDIA_STORAGE_TYPE:-S3}"
+      CONDUIT_S3_ENDPOINT: "${CONDUIT_S3_ENDPOINT}"
+      CONDUIT_S3_ACCESS_KEY: "${CONDUIT_S3_ACCESS_KEY}"
+      CONDUIT_S3_SECRET_KEY: "${CONDUIT_S3_SECRET_KEY}"
+      CONDUIT_S3_BUCKET_NAME: "${CONDUIT_S3_BUCKET_NAME:-conduit}"
+      CONDUIT_S3_REGION: "${CONDUIT_S3_REGION:-auto}"
+      # Public URL for R2 bucket (either public dev URL or custom domain)
+      CONDUIT_S3_PUBLIC_BASE_URL: "${CONDUIT_S3_PUBLIC_BASE_URL}"
+
   webui:
-    # Override user to root in development to avoid permission issues
+    # Use Node 22 to match host environment
+    image: node:22-alpine
+    # Start as root to fix volume ownership, then switch to user
     user: root
     volumes:
-      # Mount source code for hot reloading
-      - ./ConduitLLM.WebUI:/app/ConduitLLM.WebUI:delegated
-      - ./Clients/Node/Admin:/app/Clients/Node/Admin:delegated
-      - ./Clients/Node/Core:/app/Clients/Node/Core:delegated
-      # Prevent node_modules from being overwritten
-      - /app/ConduitLLM.WebUI/node_modules
-      - /app/Clients/Node/Admin/node_modules
-      - /app/Clients/Node/Core/node_modules
+      # Mount everything - no anonymous volumes so host can access node_modules
+      - ./ConduitLLM.WebUI:/app/ConduitLLM.WebUI
+      - ./SDKs:/app/SDKs
     environment:
-      # Enable Next.js development mode
+      # Next.js development settings
       NODE_ENV: development
       NEXT_TELEMETRY_DISABLED: 1
-      # Enhanced hot reload settings
       WATCHPACK_POLLING: "true"
       CHOKIDAR_USEPOLLING: "true"
       CHOKIDAR_INTERVAL: 1000
-      # Fast refresh
       FAST_REFRESH: "true"
+      PORT: 3000
+      # Backend service URLs
+      CONDUIT_API_TO_API_BACKEND_AUTH_KEY: alpha
+      CONDUIT_API_BASE_URL: http://api:8080
+      CONDUIT_ADMIN_API_BASE_URL: http://admin:8080
+      CONDUIT_API_EXTERNAL_URL: http://localhost:5000
+      CONDUIT_ADMIN_API_EXTERNAL_URL: http://localhost:5002
+      # Clerk authentication (using the test keys from docker-compose.yml)
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_cHJlY2lzZS1yaW5ndGFpbC0zMy5jbGVyay5hY2NvdW50cy5kZXYk"
+      CLERK_SECRET_KEY: "sk_test_oOI6FRt1EhRGaCVUc1zJVyWCNyqf3w1DSJnLZlxEQK"
+      # Development authentication bypass
+      DISABLE_CLERK_AUTH: "true"
     working_dir: /app/ConduitLLM.WebUI
-    # HACKY FIX: Build SDKs and install deps before starting
-    command: sh -c "cd /app/Clients/Node/Admin && npm run build && cd /app/Clients/Node/Core && npm run build && cd /app/ConduitLLM.WebUI && npm install && npm run dev"
+    # Smarter startup that handles both fresh installs and fast restarts
+    command: |
+      sh -c "
+        echo 'Installing su-exec for user switching...'
+        apk add --no-cache su-exec
+        
+        echo 'Fixing directory ownership...'
+        # Fix ownership of all mounted directories
+        chown -R ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} /app/ConduitLLM.WebUI || true
+        chown -R ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} /app/SDKs || true
+        
+        # Check if we should skip dependency installation (fast mode)
+        if [ \"\${SKIP_NPM_INSTALL:-false}\" = \"true\" ]; then
+          echo 'FAST MODE: Skipping dependency installation'
+        else
+          # Check if node_modules exists
+          if [ ! -d /app/ConduitLLM.WebUI/node_modules ] || [ \"\${FORCE_NPM_INSTALL:-false}\" = \"true\" ]; then
+            echo 'Installing dependencies (this will be visible on host)...'
+            su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c '
+              cd /app/SDKs/Node/Common && npm install && npm run build
+              cd /app/SDKs/Node/Admin && npm install && npm run build
+              cd /app/SDKs/Node/Core && npm install && npm run build
+              cd /app/ConduitLLM.WebUI && npm install
+            '
+          else
+            echo 'Dependencies already installed, checking for updates...'
+            su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c '
+              cd /app/SDKs/Node/Common && npm install
+              cd /app/SDKs/Node/Admin && npm install
+              cd /app/SDKs/Node/Core && npm install
+              cd /app/ConduitLLM.WebUI && npm install
+            '
+          fi
+        fi
+        
+        echo 'Starting development server...'
+        su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c 'cd /app/ConduitLLM.WebUI && npm run dev'
+      "
+    ports:
+      - "3000:3000"
+    depends_on:
+      admin:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+
+# MinIO services removed - using Cloudflare R2 instead
+# To use MinIO instead of R2, see docker-compose.minio.yml

@@ -12,9 +12,9 @@ on:
           - minor
           - major
       release_components:
-        description: 'Components to release (comma-separated: docker,npm-admin,npm-core)'
+        description: 'Components to release (docker only - NPM SDKs are auto-published)'
         required: true
-        default: 'docker,npm-admin,npm-core'
+        default: 'docker'
       dry_run:
         description: 'Dry run mode'
         required: false
@@ -22,6 +22,11 @@ on:
         type: boolean
 
 # Ensure only one release runs at a time
+# IMPORTANT: Never set cancel-in-progress to true for this workflow!
+# Interrupting releases could lead to:
+# - Partially published packages
+# - Inconsistent version numbers across components
+# - Broken release tags
 concurrency:
   group: release-orchestration
   cancel-in-progress: false
@@ -62,17 +67,9 @@ jobs:
             echo "release_docker=false" >> $GITHUB_OUTPUT
           fi
           
-          if [[ "$COMPONENTS" == *"npm-admin"* ]]; then
-            echo "release_npm_admin=true" >> $GITHUB_OUTPUT
-          else
-            echo "release_npm_admin=false" >> $GITHUB_OUTPUT
-          fi
-          
-          if [[ "$COMPONENTS" == *"npm-core"* ]]; then
-            echo "release_npm_core=true" >> $GITHUB_OUTPUT
-          else
-            echo "release_npm_core=false" >> $GITHUB_OUTPUT
-          fi
+          # NPM SDKs are now handled by separate automated workflow
+          echo "release_npm_admin=false" >> $GITHUB_OUTPUT
+          echo "release_npm_core=false" >> $GITHUB_OUTPUT
           
       - name: Determine next version
         id: version
@@ -133,13 +130,7 @@ jobs:
             echo "- ✅ Docker Images (WebUI, HTTP API, Admin API)" >> release-notes.md
           fi
           
-          if [[ "${{ steps.parse.outputs.release_npm_admin }}" == "true" ]]; then
-            echo "- ✅ NPM: @conduit/admin-client" >> release-notes.md
-          fi
-          
-          if [[ "${{ steps.parse.outputs.release_npm_core }}" == "true" ]]; then
-            echo "- ✅ NPM: @conduit/core-client" >> release-notes.md
-          fi
+          echo "- ℹ️ NPM SDKs: Published separately via automated workflow" >> release-notes.md
           
           cat >> release-notes.md << EOF
           
@@ -156,10 +147,10 @@ jobs:
           docker pull ghcr.io/knnlabs/conduit-admin:v$VERSION
           \`\`\`
           
-          ### NPM Packages
+          ### NPM SDKs
           \`\`\`bash
-          npm install @conduit/admin-client@$VERSION
-          npm install @conduit/core-client@$VERSION
+          npm install @knn_labs/conduit-admin-client@latest
+          npm install @knn_labs/conduit-core-client@latest
           \`\`\`
           
           ---
@@ -174,62 +165,16 @@ jobs:
           path: release-notes.md
           retention-days: 1
 
-  # NPM Admin Client Release
-  release-npm-admin:
-    name: Release NPM Admin Client
-    needs: prepare-release
-    if: needs.prepare-release.outputs.release_npm_admin == 'true'
-    uses: ./.github/workflows/npm-publish-admin-client.yml
-    with:
-      version_type: ${{ github.event.inputs.release_type }}
-      dry_run: ${{ github.event.inputs.dry_run == 'true' }}
-    secrets: inherit
+  # Note: NPM SDK releases are handled by the separate 'Auto-Version and Publish Node SDKs' workflow
+  # which triggers automatically on changes to SDKs/Node/** paths
 
-  # NPM Core Client Release
-  release-npm-core:
-    name: Release NPM Core Client
-    needs: prepare-release
-    if: needs.prepare-release.outputs.release_npm_core == 'true'
-    uses: ./.github/workflows/npm-publish-core-client.yml
-    with:
-      version_type: ${{ github.event.inputs.release_type }}
-      dry_run: ${{ github.event.inputs.dry_run == 'true' }}
-    secrets: inherit
-
-  # Wait for NPM releases before Docker
-  wait-for-npm:
-    name: Wait for NPM Releases
-    runs-on: ubuntu-latest
-    needs: [prepare-release, release-npm-admin, release-npm-core]
-    if: always()
-    
-    steps:
-      - name: Check NPM release status
-        run: |
-          echo "## NPM Release Status" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          if [[ "${{ needs.release-npm-admin.result }}" == "success" ]]; then
-            echo "✅ Admin Client: Released successfully" >> $GITHUB_STEP_SUMMARY
-          elif [[ "${{ needs.release-npm-admin.result }}" == "skipped" ]]; then
-            echo "⏭️ Admin Client: Skipped" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ Admin Client: Failed or cancelled" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          if [[ "${{ needs.release-npm-core.result }}" == "success" ]]; then
-            echo "✅ Core Client: Released successfully" >> $GITHUB_STEP_SUMMARY
-          elif [[ "${{ needs.release-npm-core.result }}" == "skipped" ]]; then
-            echo "⏭️ Core Client: Skipped" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ Core Client: Failed or cancelled" >> $GITHUB_STEP_SUMMARY
-          fi
+  # Note: NPM SDK publishing is now handled automatically by separate workflow
 
   # Create Git Tag and GitHub Release
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: [prepare-release, wait-for-npm]
+    needs: [prepare-release]
     if: ${{ !github.event.inputs.dry_run }}
     
     steps:
@@ -269,6 +214,7 @@ jobs:
   # Trigger Docker builds
   trigger-docker-release:
     name: Trigger Docker Release
+    runs-on: ubuntu-latest
     needs: [prepare-release, create-release]
     if: needs.prepare-release.outputs.release_docker == 'true' && !github.event.inputs.dry_run
     
@@ -312,7 +258,7 @@ jobs:
   release-summary:
     name: Release Summary
     runs-on: ubuntu-latest
-    needs: [prepare-release, release-npm-admin, release-npm-core, create-release, trigger-docker-release]
+    needs: [prepare-release, create-release, trigger-docker-release]
     if: always()
     
     steps:
@@ -335,27 +281,8 @@ jobs:
           echo "## Component Status" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
-          # NPM Admin
-          if [[ "${{ needs.prepare-release.outputs.release_npm_admin }}" == "true" ]]; then
-            if [[ "${{ needs.release-npm-admin.result }}" == "success" ]]; then
-              echo "✅ **NPM Admin Client**: Released" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "❌ **NPM Admin Client**: Failed" >> $GITHUB_STEP_SUMMARY
-            fi
-          else
-            echo "⏭️ **NPM Admin Client**: Skipped" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          # NPM Core
-          if [[ "${{ needs.prepare-release.outputs.release_npm_core }}" == "true" ]]; then
-            if [[ "${{ needs.release-npm-core.result }}" == "success" ]]; then
-              echo "✅ **NPM Core Client**: Released" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "❌ **NPM Core Client**: Failed" >> $GITHUB_STEP_SUMMARY
-            fi
-          else
-            echo "⏭️ **NPM Core Client**: Skipped" >> $GITHUB_STEP_SUMMARY
-          fi
+          # NPM SDKs
+          echo "ℹ️ **NPM SDKs**: Published via separate automated workflow" >> $GITHUB_STEP_SUMMARY
           
           # Docker
           if [[ "${{ needs.prepare-release.outputs.release_docker }}" == "true" ]]; then
@@ -384,7 +311,7 @@ jobs:
           if [[ "${{ github.event.inputs.dry_run }}" != "true" ]]; then
             echo "1. Monitor the Docker build workflow if triggered" >> $GITHUB_STEP_SUMMARY
             echo "2. Verify all packages are accessible:" >> $GITHUB_STEP_SUMMARY
-            echo "   - [NPM Registry](https://www.npmjs.com/~conduit)" >> $GITHUB_STEP_SUMMARY
+            echo "   - [NPM Registry](https://www.npmjs.com/~knn_labs)" >> $GITHUB_STEP_SUMMARY
             echo "   - [GitHub Container Registry](https://github.com/orgs/knnlabs/packages)" >> $GITHUB_STEP_SUMMARY
             echo "3. Update documentation if needed" >> $GITHUB_STEP_SUMMARY
             echo "4. Announce the release" >> $GITHUB_STEP_SUMMARY

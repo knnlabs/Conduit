@@ -257,7 +257,7 @@ namespace ConduitLLM.Core.Policies
             CachePolicyContext context,
             CancellationToken cancellationToken = default)
         {
-            if (!Policies.Any())
+            if (Policies.Count() == 0)
                 return Task.FromResult(Enumerable.Empty<ICacheEntry>());
 
             var entriesList = entries.ToList();
@@ -302,7 +302,7 @@ namespace ConduitLLM.Core.Policies
         /// </summary>
         public override double CalculateEvictionScore(ICacheEntry entry)
         {
-            if (!Policies.Any())
+            if (Policies.Count() == 0)
                 return 0;
 
             double totalWeight = Policies.Sum(p => p.Weight);

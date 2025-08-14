@@ -291,7 +291,7 @@ namespace ConduitLLM.Providers.Translators
             };
 
             // Add tools/functions if configured
-            if (config.Tools != null && config.Tools.Any())
+            if (config.Tools != null && config.Tools.Count() > 0)
             {
                 var tools = config.Tools.Select(t => new
                 {

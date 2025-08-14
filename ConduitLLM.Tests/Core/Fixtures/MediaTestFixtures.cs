@@ -14,6 +14,7 @@ using ConduitLLM.Tests.Core.Builders;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
+using ConduitLLM.Configuration.Interfaces;
 
 namespace ConduitLLM.Tests.Core.Fixtures
 {
@@ -30,8 +31,8 @@ namespace ConduitLLM.Tests.Core.Fixtures
             var mock = new Mock<IMediaStorageService>();
 
             // Setup default behaviors
-            mock.Setup(x => x.StoreAsync(It.IsAny<Stream>(), It.IsAny<MediaMetadata>()))
-                .ReturnsAsync((Stream stream, MediaMetadata metadata) => 
+            mock.Setup(x => x.StoreAsync(It.IsAny<Stream>(), It.IsAny<MediaMetadata>(), It.IsAny<IProgress<long>>()))
+                .ReturnsAsync((Stream stream, MediaMetadata metadata, IProgress<long> progress) => 
                 {
                     var storageKey = TestValueFactory.CreateStorageKey(metadata.MediaType);
                     return new MediaStorageResultBuilder()
@@ -146,9 +147,9 @@ namespace ConduitLLM.Tests.Core.Fixtures
         /// <summary>
         /// Creates a mock virtual key service with standard setup.
         /// </summary>
-        public static Mock<IVirtualKeyService> CreateMockVirtualKeyService()
+        public static Mock<ConduitLLM.Core.Interfaces.IVirtualKeyService> CreateMockVirtualKeyService()
         {
-            var mock = new Mock<IVirtualKeyService>();
+            var mock = new Mock<ConduitLLM.Core.Interfaces.IVirtualKeyService>();
 
             mock.Setup(x => x.ValidateVirtualKeyAsync(It.IsAny<string>(), It.IsAny<string>()))
                 .ReturnsAsync((string key, string model) => new VirtualKey

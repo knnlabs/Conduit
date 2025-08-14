@@ -33,6 +33,7 @@ import {
 import { useState, useEffect, useCallback } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { useSecurityApi, type IpRule, type IpStats } from '@/hooks/useSecurityApi';
+import { withAdminClient } from '@/lib/client/adminClient';
 import { notifications } from '@mantine/notifications';
 import { IpRulesTable } from '@/components/ip-filtering/IpRulesTable';
 import { IpRuleModal } from '@/components/ip-filtering/IpRuleModal';
@@ -85,31 +86,40 @@ export default function IpFilteringPage() {
     void fetchIpRules();
   }, [fetchIpRules]);
 
-  const handleCreateRule = () => {
-    setSelectedRule(null);
-    openModal();
-  };
+  // Removed old handleCreateRule
 
   const handleBulkOperation = async (operation: string) => {
     if (selectedRules.length === 0) return;
     
     try {
-      const response = await fetch('/api/admin/security/ip-rules/bulk', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          operation,
-          ruleIds: selectedRules,
-        }),
+      // Since bulk operations are not implemented in the Admin SDK, 
+      // we'll perform individual operations for each selected rule
+      const promises = selectedRules.map(async (ruleId) => {
+        const numericId = parseInt(ruleId, 10);
+        if (isNaN(numericId)) throw new Error(`Invalid rule ID: ${ruleId}`);
+
+        switch (operation) {
+          case 'enable':
+            await withAdminClient(client => 
+              client.ipFilters.enableFilter(numericId)
+            );
+            break;
+          case 'disable':
+            await withAdminClient(client => 
+              client.ipFilters.disableFilter(numericId)
+            );
+            break;
+          case 'delete':
+            await withAdminClient(client => 
+              client.ipFilters.deleteById(numericId)
+            );
+            break;
+          default:
+            throw new Error(`Unsupported operation: ${operation}`);
+        }
       });
 
-      const result = await response.json() as { error?: string };
-
-      if (!response.ok) {
-        throw new Error(result.error ?? `Failed to ${operation} rules`);
-      }
+      await Promise.all(promises);
 
       notifications.show({
         title: 'Success',
@@ -131,13 +141,37 @@ export default function IpFilteringPage() {
 
   const handleExport = async (format: string) => {
     try {
-      const response = await fetch(`/api/admin/security/ip-rules/export?format=${format}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to export IP rules');
+      // Get all rules using the Admin SDK
+      const filters = await withAdminClient(client => 
+        client.ipFilters.list()
+      );
+
+      let content: string;
+      let mimeType: string;
+
+      if (format === 'json') {
+        content = JSON.stringify(filters, null, 2);
+        mimeType = 'application/json';
+      } else if (format === 'csv') {
+        // Convert to CSV format
+        const headers = ['id', 'name', 'ipAddressOrCidr', 'filterType', 'isEnabled', 'description', 'createdAt'];
+        const csvContent = [
+          headers.join(','),
+          ...filters.map(filter => 
+            headers.map(header => {
+              const value = filter[header as keyof typeof filter];
+              return typeof value === 'string' ? `"${value}"` : String(value);
+            }).join(',')
+          )
+        ].join('\n');
+        content = csvContent;
+        mimeType = 'text/csv';
+      } else {
+        throw new Error(`Unsupported export format: ${format}`);
       }
 
-      const blob = await response.blob();
+      // Create and download the file
+      const blob = new Blob([content], { type: mimeType });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -152,10 +186,11 @@ export default function IpFilteringPage() {
         message: `IP rules exported as ${format.toUpperCase()}`,
         color: 'green',
       });
-    } catch {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to export IP rules';
       notifications.show({
         title: 'Error',
-        message: 'Failed to export IP rules',
+        message,
         color: 'red',
       });
     }
@@ -171,25 +206,73 @@ export default function IpFilteringPage() {
       if (!file) return;
 
       const format = file.name.endsWith('.csv') ? 'csv' : 'json';
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('format', format);
 
       try {
-        const response = await fetch('/api/admin/security/ip-rules/import', {
-          method: 'POST',
-          body: formData,
-        });
+        const content = await file.text();
+        let rulesData: Array<{
+          name: string;
+          ipAddressOrCidr: string;
+          filterType: 'whitelist' | 'blacklist';
+          isEnabled?: boolean;
+          description?: string;
+        }>;
 
-        const result = await response.json() as { error?: string; imported?: number; failed?: number };
+        if (format === 'json') {
+          const parsed = JSON.parse(content) as unknown;
+          if (Array.isArray(parsed)) {
+            rulesData = parsed as typeof rulesData;
+          } else if (typeof parsed === 'object' && parsed !== null) {
+            rulesData = [parsed as typeof rulesData[0]];
+          } else {
+            throw new Error('Invalid JSON format');
+          }
+        } else {
+          // Parse CSV
+          const lines = content.split('\n').filter(line => line.trim());
+          const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+          rulesData = lines.slice(1).map(line => {
+            const values = line.split(',').map(v => v.replace(/"/g, '').trim());
+            const rule: Record<string, string | boolean> = {};
+            headers.forEach((header, index) => {
+              if (header === 'isEnabled') {
+                rule[header] = values[index] === 'true';
+              } else {
+                rule[header] = values[index];
+              }
+            });
+            return rule as typeof rulesData[0];
+          });
+        }
 
-        if (!response.ok) {
-          throw new Error(result.error ?? 'Failed to import IP rules');
+        // Import rules using Admin SDK
+        let imported = 0;
+        let failed = 0;
+
+        for (const ruleData of rulesData) {
+          try {
+            if (!ruleData.name || !ruleData.ipAddressOrCidr || !ruleData.filterType) {
+              failed++;
+              continue;
+            }
+
+            await withAdminClient(client =>
+              client.ipFilters.create({
+                name: ruleData.name,
+                ipAddressOrCidr: ruleData.ipAddressOrCidr,
+                filterType: ruleData.filterType,
+                isEnabled: ruleData.isEnabled ?? true,
+                description: ruleData.description,
+              })
+            );
+            imported++;
+          } catch {
+            failed++;
+          }
         }
 
         notifications.show({
           title: 'Success',
-          message: `Imported ${result.imported ?? 0} rule(s) successfully${result.failed ? `, ${result.failed} failed` : ''}`,
+          message: `Imported ${imported} rule(s) successfully${failed > 0 ? `, ${failed} failed` : ''}`,
           color: 'green',
         });
 
@@ -244,25 +327,17 @@ export default function IpFilteringPage() {
       if (selectedRule?.id) {
         // Update existing rule
         await updateIpRule(selectedRule.id, values);
-        notifications.show({
-          title: 'Success',
-          message: 'IP rule updated successfully',
-          color: 'green',
-        });
       } else {
         // Create new rule
         await createIpRule(values as IpRule);
-        notifications.show({
-          title: 'Success',
-          message: 'IP rule created successfully',
-          color: 'green',
-        });
       }
       await fetchIpRules();
       closeModal();
+      setSelectedRule(null); // Clear selection after successful save
     } catch (error) {
-      // Error is already handled by useSecurityApi
+      // Error is already handled by useSecurityApi which shows notifications
       console.error('Failed to save IP rule:', error);
+      // Don't close modal on error so user can fix and retry
     } finally {
       setIsSubmitting(false);
     }
@@ -305,25 +380,6 @@ export default function IpFilteringPage() {
       color: 'orange',
     },
   ];
-
-  if (error) {
-    return (
-      <Stack gap="xl">
-        <div>
-          <Title order={1}>IP Filtering</Title>
-          <Text c="dimmed">Manage IP access control and filtering rules</Text>
-        </div>
-        
-        <Alert 
-          icon={<IconAlertCircle size={16} />} 
-          title="Error loading IP rules"
-          color="red"
-        >
-          {error}
-        </Alert>
-      </Stack>
-    );
-  }
 
   return (
     <>
@@ -382,13 +438,27 @@ export default function IpFilteringPage() {
             
             <Button
               leftSection={<IconPlus size={16} />}
-              onClick={handleCreateRule}
+              onClick={() => {
+                setSelectedRule(null);
+                openModal();
+              }}
             >
               Add Rule
             </Button>
           </Group>
         </Group>
       </Card>
+
+      {/* Error Alert */}
+      {error && (
+        <Alert 
+          icon={<IconAlertCircle size={16} />} 
+          title="Error loading IP rules"
+          color="red"
+        >
+          {error}
+        </Alert>
+      )}
 
       {/* Statistics Cards */}
       <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
@@ -512,7 +582,10 @@ export default function IpFilteringPage() {
     {/* IP Rule Modal */}
     <IpRuleModal
       opened={modalOpened}
-      onClose={closeModal}
+      onClose={() => {
+        closeModal();
+        setSelectedRule(null); // Clear selection when modal is closed
+      }}
       onSubmit={handleModalSubmit}
       rule={selectedRule}
       isLoading={isSubmitting}

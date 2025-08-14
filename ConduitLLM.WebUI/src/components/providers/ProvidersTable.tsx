@@ -8,85 +8,76 @@ import {
   rem,
   Box,
   Paper,
-  Tooltip,
   Stack,
   ActionIcon,
   Table,
+  Tooltip,
 } from '@mantine/core';
 import {
   IconTestPipe,
-  IconCircleCheck,
-  IconCircleX,
-  IconClock,
   IconEdit,
   IconTrash,
   IconDotsVertical,
+  IconKey,
+  IconAlertCircle,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
 import { formatters } from '@/lib/utils/formatters';
 import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+import { useRouter } from 'next/navigation';
+import { getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 
 // Use SDK types directly with health extensions  
 interface Provider extends ProviderCredentialDto {
   healthStatus: 'healthy' | 'unhealthy' | 'unknown';
   lastHealthCheck?: string;
   models?: string[];
+  keyCount?: number;
 }
 
 interface ProvidersTableProps {
   onEdit?: (provider: Provider) => void;
-  onTest?: (providerId: string) => void;
-  onDelete?: (providerId: string) => void;
+  onTest?: (providerId: number) => void;
+  onDelete?: (providerId: number) => void;
   data?: Provider[];
-  testingProviders?: Set<string>;
+  testingProviders?: Set<number>;
 }
 
 export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProviders = new Set() }: ProvidersTableProps) {
   const providers = data ?? [];
+  const router = useRouter();
 
   const handleDelete = (provider: Provider) => {
     void modals.openConfirmModal({
       title: 'Delete Provider',
       children: (
         <Text size="sm">
-          Are you sure you want to delete {provider.providerName}? This action cannot be undone.
+          Are you sure you want to delete {provider.providerName ?? (provider.providerType ? getProviderDisplayName(provider.providerType) : 'Unknown Provider')}? This action cannot be undone.
         </Text>
       ),
       labels: { confirm: 'Delete', cancel: 'Cancel' },
       confirmProps: { color: 'red' },
-      onConfirm: () => onDelete?.(provider.id.toString()),
+      onConfirm: () => provider.id && onDelete?.(provider.id),
     });
-  };
-
-  const getHealthIcon = (status: string) => {
-    switch (status) {
-      case 'healthy':
-        return <IconCircleCheck size={16} />;
-      case 'unhealthy':
-        return <IconCircleX size={16} />;
-      default:
-        return <IconClock size={16} />;
-    }
-  };
-
-  const getHealthColor = (status: string) => {
-    switch (status) {
-      case 'healthy':
-        return 'green';
-      case 'unhealthy':
-        return 'red';
-      default:
-        return 'gray';
-    }
   };
 
   const rows = providers.map((provider) => (
     <Table.Tr key={`provider-${provider.id}`}>
       <Table.Td>
         <Stack gap={4}>
-          <Text fw={500}>{provider.providerName}</Text>
-          <Text size="xs" c="dimmed">Type: {provider.providerName}</Text>
+          <Text fw={500}>{provider.providerName ?? (provider.providerType ? getProviderDisplayName(provider.providerType) : 'Unknown Provider')}</Text>
+          <Text size="xs" c="dimmed">ID: {provider.id}</Text>
         </Stack>
+      </Table.Td>
+
+      <Table.Td>
+        <Badge
+          color="blue"
+          variant="light"
+          size="sm"
+        >
+          {provider.providerType ? getProviderDisplayName(provider.providerType) : 'Unknown'}
+        </Badge>
       </Table.Td>
 
       <Table.Td>
@@ -100,14 +91,29 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
       </Table.Td>
 
       <Table.Td>
-        <Tooltip label={`Last checked: ${provider.lastHealthCheck ? formatters.date(provider.lastHealthCheck) : 'Never'}`}>
-          <Group gap="xs">
-            {getHealthIcon(provider.healthStatus)}
-            <Text size="sm" c={getHealthColor(provider.healthStatus)}>
-              {provider.healthStatus}
-            </Text>
-          </Group>
-        </Tooltip>
+        <Group gap="xs">
+          {provider.keyCount === 0 ? (
+            <Tooltip label="No API keys configured">
+              <Badge
+                color="orange"
+                variant="light"
+                size="sm"
+                leftSection={<IconAlertCircle size={14} />}
+              >
+                No Keys
+              </Badge>
+            </Tooltip>
+          ) : (
+            <Badge
+              color="blue"
+              variant="light"
+              size="sm"
+              leftSection={<IconKey size={14} />}
+            >
+              {provider.keyCount} {provider.keyCount === 1 ? 'Key' : 'Keys'}
+            </Badge>
+          )}
+        </Group>
       </Table.Td>
 
       <Table.Td>
@@ -147,11 +153,17 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
                 Edit
               </Menu.Item>
               <Menu.Item
-                leftSection={<IconTestPipe style={{ width: rem(14), height: rem(14) }} />}
-                onClick={() => onTest?.(provider.id.toString())}
-                disabled={testingProviders.has(provider.id.toString())}
+                leftSection={<IconKey style={{ width: rem(14), height: rem(14) }} />}
+                onClick={() => router.push(`/llm-providers/${provider.id}/keys`)}
               >
-                {testingProviders.has(provider.id.toString()) ? 'Testing...' : 'Test Connection'}
+                Manage Keys
+              </Menu.Item>
+              <Menu.Item
+                leftSection={<IconTestPipe style={{ width: rem(14), height: rem(14) }} />}
+                onClick={() => provider.id && onTest?.(provider.id)}
+                disabled={provider.id ? testingProviders.has(provider.id) : true}
+              >
+                {provider.id && testingProviders.has(provider.id) ? 'Testing...' : 'Test Connection'}
               </Menu.Item>
               <Menu.Divider />
               <Menu.Item
@@ -176,8 +188,9 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Provider</Table.Th>
+                <Table.Th>Type</Table.Th>
                 <Table.Th>Status</Table.Th>
-                <Table.Th>Health</Table.Th>
+                <Table.Th>API Keys</Table.Th>
                 <Table.Th>Models</Table.Th>
                 <Table.Th>Created</Table.Th>
                 <Table.Th />

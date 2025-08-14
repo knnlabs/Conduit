@@ -14,15 +14,15 @@ namespace ConduitLLM.Configuration.Entities
         public int Id { get; set; }
 
         /// <summary>
-        /// Foreign key to ProviderCredential.
+        /// Foreign key to Provider.
         /// </summary>
-        public int ProviderCredentialId { get; set; }
+        public int ProviderId { get; set; }
 
         /// <summary>
-        /// Navigation property to provider credentials.
+        /// Navigation property to provider.
         /// </summary>
-        [ForeignKey(nameof(ProviderCredentialId))]
-        public virtual ProviderCredential ProviderCredential { get; set; } = null!;
+        [ForeignKey(nameof(ProviderId))]
+        public virtual Provider Provider { get; set; } = null!;
 
         /// <summary>
         /// Whether transcription is enabled for this provider.

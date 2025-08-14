@@ -44,10 +44,75 @@ namespace ConduitLLM.Core.Utilities
         {
             var jsonOptions = options ?? DefaultJsonOptions;
 
-            // Process the stream outside of any try-catch
-            foreach (var data in await ExtractSseDataAsync<T>(response, logger, jsonOptions, cancellationToken))
+            logger?.LogDebug("Beginning to process SSE stream");
+            logger?.LogDebug("Response headers: {Headers}", response.Headers.ToString());
+            logger?.LogDebug("Content headers: {ContentHeaders}", response.Content.Headers.ToString());
+            
+            var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var reader = new StreamReader(stream, Encoding.UTF8);
+
+            string? line;
+            string dataBuffer = string.Empty;
+            int lineCount = 0;
+
+            while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
             {
-                yield return data;
+                line = await reader.ReadLineAsync();
+                lineCount++;
+                
+                // Log first few lines for debugging
+                if (lineCount <= 5)
+                {
+                    logger?.LogDebug("SSE line {LineNumber}: '{Line}'", lineCount, line);
+                }
+
+                if (string.IsNullOrEmpty(line))
+                {
+                    // Empty line indicates the end of an event
+                    if (!string.IsNullOrEmpty(dataBuffer))
+                    {
+                        // Process the complete event data
+                        if (dataBuffer == "[DONE]")
+                        {
+                            logger?.LogDebug("Received end of stream marker [DONE]");
+                            break;
+                        }
+
+                        T? data = default;
+                        try
+                        {
+                            data = JsonSerializer.Deserialize<T>(dataBuffer, jsonOptions);
+                        }
+                        catch (JsonException ex)
+                        {
+                            logger?.LogWarning(ex, "Error deserializing stream chunk: {Data}", dataBuffer);
+                        }
+                        
+                        if (data != null)
+                        {
+                            logger?.LogTrace("Yielding deserialized stream chunk");
+                            yield return data;
+                        }
+
+                        // Reset for next event
+                        dataBuffer = string.Empty;
+                    }
+                    continue;
+                }
+
+                // Check for event type
+                if (line.StartsWith("event:"))
+                {
+                    // Event line - just continue to the next line
+                    continue;
+                }
+
+                // Process data lines
+                if (line.StartsWith("data:"))
+                {
+                    var data = line.Substring(5).TrimStart();
+                    dataBuffer = data;
+                }
             }
         }
 
@@ -65,16 +130,27 @@ namespace ConduitLLM.Core.Utilities
             try
             {
                 logger?.LogDebug("Beginning to process SSE stream");
+                logger?.LogDebug("Response headers: {Headers}", response.Headers.ToString());
+                logger?.LogDebug("Content headers: {ContentHeaders}", response.Content.Headers.ToString());
+                
                 var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
                 using var reader = new StreamReader(stream, Encoding.UTF8);
 
                 string? line;
                 string dataBuffer = string.Empty;
+                int lineCount = 0;
                 // SSE event type (only used internally for parsing, not exposed)
 
                 while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
                 {
                     line = await reader.ReadLineAsync();
+                    lineCount++;
+                    
+                    // Log first few lines for debugging
+                    if (lineCount <= 5)
+                    {
+                        logger?.LogDebug("SSE line {LineNumber}: '{Line}'", lineCount, line);
+                    }
 
                     if (string.IsNullOrEmpty(line))
                     {

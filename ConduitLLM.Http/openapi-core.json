@@ -1,44 +1,934 @@
 {
-  "openapi": "3.1.0",
+  "openapi": "3.0.4",
   "info": {
     "title": "Conduit Core API",
-    "description": "OpenAI-compatible API gateway for multiple LLM providers.\n\nThis API provides a unified interface to interact with various Large Language Model providers including OpenAI, Anthropic, Azure OpenAI, Gemini, Cohere, and others.\n\n## Authentication\nAll endpoints require authentication using Virtual Keys. Include your key in the Authorization header:\n```\nAuthorization: Bearer condt_yourvirtualkey\n```\n\n## Base URL\n- Development: `http://localhost:5002/v1`\n- Production: Configure based on your deployment\n\n## Features\n- Full OpenAI client compatibility\n- Streaming responses via Server-Sent Events\n- Multimodal support (text + images)\n- Function calling\n- JSON response format\n- Multiple provider routing\n- Usage tracking and cost management",
-    "version": "1.0.0",
-    "contact": {
-      "name": "Conduit Support",
-      "url": "https://github.com/yourusername/conduit"
-    },
-    "license": {
-      "name": "MIT",
-      "url": "https://opensource.org/licenses/MIT"
-    }
+    "description": "OpenAI-compatible API for multi-provider LLM access",
+    "version": "v1"
   },
-  "servers": [
-    {
-      "url": "http://localhost:5002/v1",
-      "description": "Local development server"
-    },
-    {
-      "url": "https://api.conduit.example.com/v1",
-      "description": "Production server"
-    }
-  ],
-  "security": [
-    {
-      "bearerAuth": []
-    }
-  ],
   "paths": {
-    "/chat/completions": {
+    "/v1/audio/transcriptions": {
       "post": {
-        "summary": "Create chat completion",
-        "description": "Creates a model response for the given chat conversation. Compatible with OpenAI's chat completions API.",
-        "operationId": "createChatCompletion",
-        "tags": ["Chat"],
+        "tags": [
+          "Audio"
+        ],
+        "summary": "Transcribes audio into text.",
         "requestBody": {
-          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "file"
+                ],
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "description": "The audio file to transcribe.",
+                    "format": "binary"
+                  },
+                  "model": {
+                    "type": "string",
+                    "description": "The model to use for transcription (e.g., \"whisper-1\").",
+                    "default": "whisper-1"
+                  },
+                  "language": {
+                    "type": "string",
+                    "description": "The language of the input audio (ISO-639-1)."
+                  },
+                  "prompt": {
+                    "type": "string",
+                    "description": "Optional text to guide the model's style."
+                  },
+                  "response_format": {
+                    "type": "string",
+                    "description": "The format of the transcript output."
+                  },
+                  "temperature": {
+                    "maximum": 1,
+                    "minimum": 0,
+                    "type": "number",
+                    "description": "Sampling temperature between 0 and 1.",
+                    "format": "double"
+                  },
+                  "timestamp_granularities": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "The timestamp granularities to populate."
+                  }
+                }
+              },
+              "encoding": {
+                "file": {
+                  "style": "form"
+                },
+                "model": {
+                  "style": "form"
+                },
+                "language": {
+                  "style": "form"
+                },
+                "prompt": {
+                  "style": "form"
+                },
+                "response_format": {
+                  "style": "form"
+                },
+                "temperature": {
+                  "style": "form"
+                },
+                "timestamp_granularities": {
+                  "style": "form"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AudioTranscriptionResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AudioTranscriptionResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AudioTranscriptionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/audio/speech": {
+      "post": {
+        "tags": [
+          "Audio"
+        ],
+        "summary": "Generates audio from input text.",
+        "requestBody": {
+          "description": "The text-to-speech request.",
           "content": {
             "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextToSpeechRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "audio/mpeg": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "audio/opus": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "audio/aac": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "audio/flac": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "audio/wav": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "audio/pcm": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "audio/mpeg": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "audio/opus": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "audio/aac": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "audio/flac": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "audio/wav": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "audio/pcm": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "audio/mpeg": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "audio/opus": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "audio/aac": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "audio/flac": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "audio/wav": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "audio/pcm": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/audio/translations": {
+      "post": {
+        "tags": [
+          "Audio"
+        ],
+        "summary": "Translates audio into English text.",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "file"
+                ],
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "description": "The audio file to translate.",
+                    "format": "binary"
+                  },
+                  "model": {
+                    "type": "string",
+                    "description": "The model to use for translation.",
+                    "default": "whisper-1"
+                  },
+                  "prompt": {
+                    "type": "string",
+                    "description": "Optional text to guide the model's style."
+                  },
+                  "response_format": {
+                    "type": "string",
+                    "description": "The format of the translation output."
+                  },
+                  "temperature": {
+                    "maximum": 1,
+                    "minimum": 0,
+                    "type": "number",
+                    "description": "Sampling temperature between 0 and 1.",
+                    "format": "double"
+                  }
+                }
+              },
+              "encoding": {
+                "file": {
+                  "style": "form"
+                },
+                "model": {
+                  "style": "form"
+                },
+                "prompt": {
+                  "style": "form"
+                },
+                "response_format": {
+                  "style": "form"
+                },
+                "temperature": {
+                  "style": "form"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AudioTranscriptionResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AudioTranscriptionResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AudioTranscriptionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/ephemeral-key": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Generate an ephemeral key for the authenticated virtual key",
+        "requestBody": {
+          "description": "Optional metadata for the ephemeral key",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateEphemeralKeyRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateEphemeralKeyRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateEphemeralKeyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ephemeral key generated successfully",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/EphemeralKeyResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EphemeralKeyResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EphemeralKeyResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication failed",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/batch/spend-updates": {
+      "post": {
+        "tags": [
+          "BatchOperations"
+        ],
+        "summary": "Start a batch spend update operation",
+        "requestBody": {
+          "description": "Batch spend update request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchSpendUpdateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchSpendUpdateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchSpendUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchOperationStartResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchOperationStartResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchOperationStartResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/batch/virtual-key-updates": {
+      "post": {
+        "tags": [
+          "BatchOperations"
+        ],
+        "summary": "Start a batch virtual key update operation",
+        "requestBody": {
+          "description": "Batch virtual key update request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchVirtualKeyUpdateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchVirtualKeyUpdateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchVirtualKeyUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchOperationStartResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchOperationStartResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchOperationStartResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/batch/webhook-sends": {
+      "post": {
+        "tags": [
+          "BatchOperations"
+        ],
+        "summary": "Start a batch webhook send operation",
+        "requestBody": {
+          "description": "Batch webhook send request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchWebhookSendRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchWebhookSendRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchWebhookSendRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchOperationStartResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchOperationStartResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchOperationStartResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/batch/operations/{operationId}": {
+      "get": {
+        "tags": [
+          "BatchOperations"
+        ],
+        "summary": "Get the status of a batch operation",
+        "parameters": [
+          {
+            "name": "operationId",
+            "in": "path",
+            "description": "Operation ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchOperationStatusResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchOperationStatusResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchOperationStatusResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/batch/operations/{operationId}/cancel": {
+      "post": {
+        "tags": [
+          "BatchOperations"
+        ],
+        "summary": "Cancel an active batch operation",
+        "parameters": [
+          {
+            "name": "operationId",
+            "in": "path",
+            "description": "Operation ID to cancel",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/chat/completions": {
+      "post": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Creates a chat completion.",
+        "requestBody": {
+          "description": "The chat completion request.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatCompletionRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatCompletionRequest"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/ChatCompletionRequest"
               }
@@ -47,85 +937,260 @@
         },
         "responses": {
           "200": {
-            "description": "Successful response",
+            "description": "OK",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatCompletionResponse"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ChatCompletionResponse"
                 }
               },
-              "text/event-stream": {
+              "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ChatCompletionChunk"
-                },
-                "description": "Server-sent events stream when stream=true"
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "429": {
-            "$ref": "#/components/responses/RateLimitExceeded"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        }
-      }
-    },
-    "/models": {
-      "get": {
-        "summary": "List available models",
-        "description": "Lists the currently available models, and provides basic information about each one.",
-        "operationId": "listModels",
-        "tags": ["Models"],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": ["object", "data"],
-                  "properties": {
-                    "object": {
-                      "type": "string",
-                      "enum": ["list"]
-                    },
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/Model"
-                      }
-                    }
-                  }
+                  "$ref": "#/components/schemas/ChatCompletionResponse"
                 }
               }
             }
           },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              }
+            }
           },
           "500": {
-            "$ref": "#/components/responses/InternalServerError"
+            "description": "Internal Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              }
+            }
           }
         }
       }
     },
-    "/embeddings": {
+    "/v1/completions": {
       "post": {
-        "summary": "Create embeddings",
-        "description": "Creates an embedding vector representing the input text. Note: This endpoint is not fully implemented yet.",
-        "operationId": "createEmbedding",
-        "tags": ["Embeddings"],
+        "tags": [
+          "Completions"
+        ],
+        "summary": "Legacy completions endpoint - not implemented.",
+        "responses": {
+          "501": {
+            "description": "Not Implemented",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/discovery/models": {
+      "get": {
+        "tags": [
+          "Discovery"
+        ],
+        "summary": "Gets all discovered models and their capabilities, filtered by virtual key permissions.",
+        "parameters": [
+          {
+            "name": "capability",
+            "in": "query",
+            "description": "Optional capability filter (e.g., \"video_generation\", \"vision\")",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/discovery/capabilities": {
+      "get": {
+        "tags": [
+          "Discovery"
+        ],
+        "summary": "Gets all available capabilities in the system.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/downloads/{fileId}": {
+      "get": {
+        "tags": [
+          "Downloads"
+        ],
+        "summary": "Downloads a file by its identifier with support for range requests.",
+        "parameters": [
+          {
+            "name": "fileId",
+            "in": "path",
+            "description": "The file identifier (storage key or URL).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "inline",
+            "in": "query",
+            "description": "Whether to display inline (true) or force download (false).",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "head": {
+        "tags": [
+          "Downloads"
+        ],
+        "summary": "Checks if a file exists.",
+        "parameters": [
+          {
+            "name": "fileId",
+            "in": "path",
+            "description": "The file identifier.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/downloads/metadata/{fileId}": {
+      "get": {
+        "tags": [
+          "Downloads"
+        ],
+        "summary": "Gets metadata information about a file.",
+        "parameters": [
+          {
+            "name": "fileId",
+            "in": "path",
+            "description": "The file identifier.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/downloads/generate-url": {
+      "post": {
+        "tags": [
+          "Downloads"
+        ],
+        "summary": "Generates a temporary download URL for a file.",
         "requestBody": {
-          "required": true,
+          "description": "The URL generation request.",
           "content": {
             "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateUrlRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateUrlRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateUrlRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/embeddings": {
+      "post": {
+        "tags": [
+          "Embeddings"
+        ],
+        "summary": "Creates embeddings for the given input.",
+        "requestBody": {
+          "description": "The embedding request.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmbeddingRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmbeddingRequest"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/EmbeddingRequest"
               }
@@ -134,47 +1199,536 @@
         },
         "responses": {
           "200": {
-            "description": "Successful response",
+            "description": "OK",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmbeddingResponse"
+                }
+              },
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmbeddingResponse"
+                }
+              },
+              "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/EmbeddingResponse"
                 }
               }
             }
           },
-          "501": {
-            "description": "Not implemented",
+          "400": {
+            "description": "Bad Request",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/test/health-monitoring/scenarios": {
+      "get": {
+        "tags": [
+          "HealthMonitoringTest"
+        ],
+        "summary": "Get available test scenarios",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/test/health-monitoring/start/{scenario}": {
+      "post": {
+        "tags": [
+          "HealthMonitoringTest"
+        ],
+        "summary": "Start a test scenario",
+        "parameters": [
+          {
+            "name": "scenario",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "durationSeconds",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 60
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/test/health-monitoring/stop/{scenario}": {
+      "post": {
+        "tags": [
+          "HealthMonitoringTest"
+        ],
+        "summary": "Stop a running test scenario",
+        "parameters": [
+          {
+            "name": "scenario",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/test/health-monitoring/active": {
+      "get": {
+        "tags": [
+          "HealthMonitoringTest"
+        ],
+        "summary": "Get currently running scenarios",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/test/health-monitoring/alert": {
+      "post": {
+        "tags": [
+          "HealthMonitoringTest"
+        ],
+        "summary": "Trigger a custom alert",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomAlertRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomAlertRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomAlertRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/audio/hybrid/process": {
+      "post": {
+        "tags": [
+          "HybridAudio"
+        ],
+        "summary": "Processes audio input through the hybrid STT-LLM-TTS pipeline.",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "description": "The audio file to process.",
+                    "format": "binary"
+                  },
+                  "sessionId": {
+                    "type": "string",
+                    "description": "Optional session ID for maintaining conversation context."
+                  },
+                  "language": {
+                    "type": "string",
+                    "description": "Optional language code for transcription."
+                  },
+                  "systemPrompt": {
+                    "type": "string",
+                    "description": "Optional system prompt for the LLM."
+                  },
+                  "voiceId": {
+                    "type": "string",
+                    "description": "Optional voice ID for TTS synthesis."
+                  },
+                  "outputFormat": {
+                    "type": "string",
+                    "description": "Desired output audio format (default: mp3).",
+                    "default": "mp3"
+                  },
+                  "temperature": {
+                    "type": "number",
+                    "description": "Temperature for LLM response generation (0.0-2.0).",
+                    "format": "double",
+                    "default": 0.7
+                  },
+                  "maxTokens": {
+                    "type": "integer",
+                    "description": "Maximum tokens for the LLM response.",
+                    "format": "int32",
+                    "default": 150
+                  }
+                }
+              },
+              "encoding": {
+                "file": {
+                  "style": "form"
+                },
+                "sessionId": {
+                  "style": "form"
+                },
+                "language": {
+                  "style": "form"
+                },
+                "systemPrompt": {
+                  "style": "form"
+                },
+                "voiceId": {
+                  "style": "form"
+                },
+                "outputFormat": {
+                  "style": "form"
+                },
+                "temperature": {
+                  "style": "form"
+                },
+                "maxTokens": {
+                  "style": "form"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Returns the synthesized audio data.",
+            "content": {
+              "audio/mpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "audio/wav": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "audio/flac": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
                 }
               }
             }
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "description": "If the request is invalid.",
+            "content": {
+              "audio/mpeg": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "audio/wav": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "audio/flac": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           },
           "401": {
-            "$ref": "#/components/responses/Unauthorized"
+            "description": "If authentication fails.",
+            "content": {
+              "audio/mpeg": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "audio/wav": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "audio/flac": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "If the user lacks audio permissions.",
+            "content": {
+              "audio/mpeg": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "audio/wav": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "audio/flac": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           },
           "500": {
-            "$ref": "#/components/responses/InternalServerError"
+            "description": "If an internal error occurs."
           }
         }
       }
     },
-    "/images/generations": {
+    "/v1/audio/hybrid/sessions": {
       "post": {
-        "summary": "Create image",
-        "description": "Creates an image given a prompt.",
-        "operationId": "createImage",
-        "tags": ["Images"],
+        "tags": [
+          "HybridAudio"
+        ],
+        "summary": "Creates a new conversation session for maintaining context.",
         "requestBody": {
-          "required": true,
+          "description": "The session configuration.",
           "content": {
             "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HybridSessionConfig"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HybridSessionConfig"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/HybridSessionConfig"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Returns the session ID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateSessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "If the configuration is invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "If authentication fails.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "If the user lacks audio permissions.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/audio/hybrid/sessions/{sessionId}": {
+      "delete": {
+        "tags": [
+          "HybridAudio"
+        ],
+        "summary": "Closes an active conversation session.",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "description": "The session ID to close.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Session closed successfully."
+          },
+          "400": {
+            "description": "If the session ID is invalid.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "If authentication fails.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/audio/hybrid/status": {
+      "get": {
+        "tags": [
+          "HybridAudio"
+        ],
+        "summary": "Checks if the hybrid audio service is available.",
+        "responses": {
+          "200": {
+            "description": "Returns the availability status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "If authentication fails.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/images/generations": {
+      "post": {
+        "tags": [
+          "Images"
+        ],
+        "summary": "Creates one or more images given a prompt.",
+        "requestBody": {
+          "description": "The image generation request.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageGenerationRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageGenerationRequest"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/ImageGenerationRequest"
               }
@@ -183,41 +1737,1413 @@
         },
         "responses": {
           "200": {
-            "description": "Successful response",
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/images/generations/async": {
+      "post": {
+        "tags": [
+          "Images"
+        ],
+        "summary": "Creates an async image generation task.",
+        "requestBody": {
+          "description": "The image generation request.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageGenerationRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageGenerationRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageGenerationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/images/generations/{taskId}/status": {
+      "get": {
+        "tags": [
+          "Images"
+        ],
+        "summary": "Gets the status of an async image generation task.",
+        "parameters": [
+          {
+            "name": "taskId",
+            "in": "path",
+            "description": "The task ID.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/images/generations/{taskId}": {
+      "delete": {
+        "tags": [
+          "Images"
+        ],
+        "summary": "Cancels an async image generation task.",
+        "parameters": [
+          {
+            "name": "taskId",
+            "in": "path",
+            "description": "The task ID to cancel.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/media/{storageKey}": {
+      "get": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Retrieves a media file by its storage key.",
+        "parameters": [
+          {
+            "name": "storageKey",
+            "in": "path",
+            "description": "The unique storage key.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "head": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Checks if a media file exists.",
+        "parameters": [
+          {
+            "name": "storageKey",
+            "in": "path",
+            "description": "The unique storage key.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/media/info/{storageKey}": {
+      "get": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Gets metadata information about a media file.",
+        "parameters": [
+          {
+            "name": "storageKey",
+            "in": "path",
+            "description": "The unique storage key.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/models": {
+      "get": {
+        "tags": [
+          "Models"
+        ],
+        "summary": "Lists available models.",
+        "responses": {
+          "200": {
+            "description": "OK",
             "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ImageGenerationResponse"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/models/{modelId}/metadata": {
+      "get": {
+        "tags": [
+          "Models"
+        ],
+        "summary": "Gets metadata for a specific model.",
+        "parameters": [
+          {
+            "name": "modelId",
+            "in": "path",
+            "description": "The model ID.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/provider-models/{providerId}": {
+      "get": {
+        "tags": [
+          "ProviderModels"
+        ],
+        "summary": "Gets available models for a specified provider",
+        "parameters": [
+          {
+            "name": "providerId",
+            "in": "path",
+            "description": "ID of the provider",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "forceRefresh",
+            "in": "query",
+            "description": "Whether to bypass cache and force refresh",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/realtime/connect": {
+      "get": {
+        "tags": [
+          "Realtime"
+        ],
+        "summary": "Establishes a WebSocket connection for real-time audio streaming.",
+        "parameters": [
+          {
+            "name": "model",
+            "in": "query",
+            "description": "The model to use for the real-time session (e.g., \"gpt-4o-realtime-preview\")",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "provider",
+            "in": "query",
+            "description": "Optional provider override (defaults to routing based on model)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "101": {
+            "description": "WebSocket connection established"
+          },
+          "400": {
+            "description": "Invalid request or WebSocket not supported",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication failed",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Virtual key does not have access to real-time features",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No available providers for the requested model"
+          }
+        }
+      }
+    },
+    "/v1/realtime/connections": {
+      "get": {
+        "tags": [
+          "Realtime"
+        ],
+        "summary": "Gets the status of active real-time connections for the authenticated user.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionStatusResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionStatusResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionStatusResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/realtime/connections/{connectionId}": {
+      "delete": {
+        "tags": [
+          "Realtime"
+        ],
+        "summary": "Terminates a specific real-time connection.",
+        "parameters": [
+          {
+            "name": "connectionId",
+            "in": "path",
+            "description": "The ID of the connection to terminate",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/signalr/batching/statistics": {
+      "get": {
+        "tags": [
+          "SignalRBatching"
+        ],
+        "summary": "Gets current batching statistics",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchingStatistics"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchingStatistics"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchingStatistics"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/signalr/batching/pause": {
+      "post": {
+        "tags": [
+          "SignalRBatching"
+        ],
+        "summary": "Pauses message batching (messages sent immediately)",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/signalr/batching/resume": {
+      "post": {
+        "tags": [
+          "SignalRBatching"
+        ],
+        "summary": "Resumes message batching",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/signalr/batching/flush": {
+      "post": {
+        "tags": [
+          "SignalRBatching"
+        ],
+        "summary": "Forces immediate sending of all pending batches",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/signalr/batching/efficiency": {
+      "get": {
+        "tags": [
+          "SignalRBatching"
+        ],
+        "summary": "Gets batching efficiency metrics",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/health/signalr/connections": {
+      "get": {
+        "tags": [
+          "SignalRHealth"
+        ],
+        "summary": "Gets SignalR connection statistics",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionStatistics"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionStatistics"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionStatistics"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/signalr/queue": {
+      "get": {
+        "tags": [
+          "SignalRHealth"
+        ],
+        "summary": "Gets SignalR message queue statistics",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueStatistics"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueStatistics"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueStatistics"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/signalr/connections/details": {
+      "get": {
+        "tags": [
+          "SignalRHealth"
+        ],
+        "summary": "Gets detailed connection information (requires admin auth)",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/health/signalr/connections/hub/{hubName}": {
+      "get": {
+        "tags": [
+          "SignalRHealth"
+        ],
+        "summary": "Gets connections for a specific hub",
+        "parameters": [
+          {
+            "name": "hubName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/health/signalr/connections/key/{virtualKeyId}": {
+      "get": {
+        "tags": [
+          "SignalRHealth"
+        ],
+        "summary": "Gets connections for a specific virtual key",
+        "parameters": [
+          {
+            "name": "virtualKeyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/health/signalr/connections/group/{groupName}": {
+      "get": {
+        "tags": [
+          "SignalRHealth"
+        ],
+        "summary": "Gets connections in a specific group",
+        "parameters": [
+          {
+            "name": "groupName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/health/signalr/queue/deadletter": {
+      "get": {
+        "tags": [
+          "SignalRHealth"
+        ],
+        "summary": "Gets dead letter queue messages",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/health/signalr/queue/deadletter/{messageId}/requeue": {
+      "post": {
+        "tags": [
+          "SignalRHealth"
+        ],
+        "summary": "Requeues a dead letter message",
+        "parameters": [
+          {
+            "name": "messageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/health/signalr": {
+      "get": {
+        "tags": [
+          "SignalRHealth"
+        ],
+        "summary": "Gets overall SignalR health status",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/tasks/{taskId}": {
+      "get": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Gets the status of a specific task.",
+        "parameters": [
+          {
+            "name": "taskId",
+            "in": "path",
+            "description": "The ID of the task to retrieve.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/tasks/{taskId}/cancel": {
+      "post": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Cancels a running task.",
+        "parameters": [
+          {
+            "name": "taskId",
+            "in": "path",
+            "description": "The ID of the task to cancel.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/tasks/{taskId}/poll": {
+      "get": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Polls a task until it completes or times out.",
+        "parameters": [
+          {
+            "name": "taskId",
+            "in": "path",
+            "description": "The ID of the task to poll.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "timeout",
+            "in": "query",
+            "description": "Maximum time to wait in seconds (default: 300, max: 600).",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 300
+            }
+          },
+          {
+            "name": "interval",
+            "in": "query",
+            "description": "Polling interval in seconds (default: 2, min: 1).",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 2
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/videos/generations/async": {
+      "post": {
+        "tags": [
+          "Videos"
+        ],
+        "summary": "Starts an asynchronous video generation task.",
+        "requestBody": {
+          "description": "The video generation request.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VideoGenerationRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VideoGenerationRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VideoGenerationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Video generation task started.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoGenerationTaskResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoGenerationTaskResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoGenerationTaskResponse"
                 }
               }
             }
           },
           "400": {
-            "$ref": "#/components/responses/BadRequest"
+            "description": "Invalid request parameters.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           },
           "401": {
-            "$ref": "#/components/responses/Unauthorized"
+            "description": "Authentication failed.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Virtual key does not have permission.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           },
           "500": {
-            "$ref": "#/components/responses/InternalServerError"
+            "description": "Internal server error.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
     },
-    "/completions": {
-      "post": {
-        "summary": "Create completion (Legacy)",
-        "description": "Legacy completions endpoint. Use /chat/completions instead.",
-        "operationId": "createCompletion",
-        "deprecated": true,
-        "tags": ["Legacy"],
+    "/v1/videos/generations/tasks/{taskId}": {
+      "get": {
+        "tags": [
+          "Videos"
+        ],
+        "summary": "Gets the status of a video generation task.",
+        "parameters": [
+          {
+            "name": "taskId",
+            "in": "path",
+            "description": "The task ID returned from the async generation endpoint.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
-          "501": {
-            "description": "Not implemented",
+          "200": {
+            "description": "Task status retrieved successfully.",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoGenerationTaskStatus"
+                }
+              },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "#/components/schemas/VideoGenerationTaskStatus"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoGenerationTaskStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication failed.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found or access denied.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/videos/generations/tasks/{taskId}/retry": {
+      "post": {
+        "tags": [
+          "Videos"
+        ],
+        "summary": "Manually retries a failed video generation task.",
+        "parameters": [
+          {
+            "name": "taskId",
+            "in": "path",
+            "description": "The task ID to retry.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task queued for retry.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoGenerationTaskStatus"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoGenerationTaskStatus"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoGenerationTaskStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Task cannot be retried (not failed or exceeded max retries).",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication failed.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found or access denied.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/videos/generations/{taskId}": {
+      "delete": {
+        "tags": [
+          "Videos"
+        ],
+        "summary": "Cancels a video generation task.",
+        "parameters": [
+          {
+            "name": "taskId",
+            "in": "path",
+            "description": "The task ID to cancel.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Task cancelled successfully."
+          },
+          "401": {
+            "description": "Authentication failed.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found or access denied.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Task cannot be cancelled (already completed or failed).",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -227,746 +3153,1900 @@
     }
   },
   "components": {
-    "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "bearerFormat": "JWT",
-        "description": "Virtual Key authentication (condt_*)"
-      }
-    },
     "schemas": {
-      "ChatCompletionRequest": {
+      "AlertSeverity": {
+        "enum": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "AudioTranscriptionResponse": {
         "type": "object",
-        "required": ["model", "messages"],
+        "properties": {
+          "text": {
+            "type": "string",
+            "nullable": true
+          },
+          "language": {
+            "type": "string",
+            "nullable": true
+          },
+          "duration": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TranscriptionSegment"
+            },
+            "nullable": true
+          },
+          "words": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TranscriptionWord"
+            },
+            "nullable": true
+          },
+          "alternatives": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TranscriptionAlternative"
+            },
+            "nullable": true
+          },
+          "confidence": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": { },
+            "nullable": true
+          },
+          "model": {
+            "type": "string",
+            "nullable": true
+          },
+          "usage": {
+            "$ref": "#/components/schemas/AudioUsage"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AudioUsage": {
+        "type": "object",
+        "properties": {
+          "audioSeconds": {
+            "type": "number",
+            "format": "double"
+          },
+          "characterCount": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "additionalMetrics": {
+            "type": "object",
+            "additionalProperties": { },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BatchOperationStartResponse": {
+        "type": "object",
+        "properties": {
+          "operationId": {
+            "type": "string",
+            "nullable": true
+          },
+          "operationType": {
+            "type": "string",
+            "nullable": true
+          },
+          "totalItems": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "statusUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "taskId": {
+            "type": "string",
+            "nullable": true
+          },
+          "signalREvents": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BatchOperationStatusResponse": {
+        "type": "object",
+        "properties": {
+          "operationId": {
+            "type": "string",
+            "nullable": true
+          },
+          "operationType": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "totalItems": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "processedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "successCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "progressPercentage": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "elapsedTime": {
+            "type": "string",
+            "format": "date-span"
+          },
+          "estimatedTimeRemaining": {
+            "type": "string",
+            "format": "date-span"
+          },
+          "itemsPerSecond": {
+            "type": "number",
+            "format": "double"
+          },
+          "currentItem": {
+            "type": "string",
+            "nullable": true
+          },
+          "canCancel": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "BatchSpendUpdateRequest": {
+        "required": [
+          "updates"
+        ],
+        "type": "object",
+        "properties": {
+          "updates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpendUpdateDto"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "BatchVirtualKeyUpdateRequest": {
+        "required": [
+          "updates"
+        ],
+        "type": "object",
+        "properties": {
+          "updates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VirtualKeyUpdateDto"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "BatchWebhookSendRequest": {
+        "required": [
+          "webhooks"
+        ],
+        "type": "object",
+        "properties": {
+          "webhooks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WebhookSendDto"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "BatchingStatistics": {
+        "type": "object",
+        "properties": {
+          "totalMessagesBatched": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalBatchesSent": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "averageMessagesPerBatch": {
+            "type": "number",
+            "format": "double"
+          },
+          "currentPendingMessages": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lastBatchSentAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "averageBatchLatency": {
+            "type": "string",
+            "format": "date-span"
+          },
+          "networkCallsSaved": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "isBatchingEnabled": {
+            "type": "boolean"
+          },
+          "messagesByMethod": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "nullable": true
+          },
+          "batchEfficiencyPercentage": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Statistics about message batching"
+      },
+      "ChatCompletionRequest": {
+        "required": [
+          "messages",
+          "model"
+        ],
+        "type": "object",
         "properties": {
           "model": {
             "type": "string",
-            "description": "ID of the model to use",
-            "example": "gpt-4"
+            "nullable": true
           },
           "messages": {
             "type": "array",
-            "description": "List of messages comprising the conversation so far",
             "items": {
               "$ref": "#/components/schemas/Message"
             },
-            "minItems": 1
+            "nullable": true
           },
           "temperature": {
             "type": "number",
             "format": "double",
-            "minimum": 0,
-            "maximum": 2,
-            "default": 1,
-            "description": "Sampling temperature between 0 and 2"
+            "nullable": true
           },
           "max_tokens": {
             "type": "integer",
-            "description": "Maximum number of tokens to generate",
-            "example": 1024
+            "format": "int32",
+            "nullable": true
           },
           "top_p": {
             "type": "number",
             "format": "double",
-            "minimum": 0,
-            "maximum": 1,
-            "default": 1,
-            "description": "Nucleus sampling parameter"
+            "nullable": true
+          },
+          "top_k": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
           },
           "n": {
             "type": "integer",
-            "minimum": 1,
-            "default": 1,
-            "description": "Number of chat completion choices to generate"
+            "format": "int32",
+            "nullable": true
           },
           "stream": {
             "type": "boolean",
-            "default": false,
-            "description": "Whether to stream back partial progress"
+            "nullable": true
           },
           "stop": {
-            "oneOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "maxItems": 4
-              }
-            ],
-            "description": "Sequences where the API will stop generating further tokens"
-          },
-          "presence_penalty": {
-            "type": "number",
-            "format": "double",
-            "minimum": -2,
-            "maximum": 2,
-            "default": 0,
-            "description": "Penalize new tokens based on whether they appear in the text so far"
-          },
-          "frequency_penalty": {
-            "type": "number",
-            "format": "double",
-            "minimum": -2,
-            "maximum": 2,
-            "default": 0,
-            "description": "Penalize new tokens based on their existing frequency in the text"
-          },
-          "logit_bias": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "integer",
-              "minimum": -100,
-              "maximum": 100
+            "type": "array",
+            "items": {
+              "type": "string"
             },
-            "description": "Modify the likelihood of specified tokens appearing in the completion"
+            "nullable": true
           },
           "user": {
             "type": "string",
-            "description": "Unique identifier representing your end-user"
+            "nullable": true
           },
           "tools": {
             "type": "array",
-            "description": "List of tools the model may call",
             "items": {
               "$ref": "#/components/schemas/Tool"
-            }
+            },
+            "nullable": true
           },
           "tool_choice": {
-            "oneOf": [
-              {
-                "type": "string",
-                "enum": ["none", "auto"]
-              },
-              {
-                "$ref": "#/components/schemas/ToolChoice"
-              }
-            ],
-            "description": "Controls which tool is called by the model"
+            "$ref": "#/components/schemas/ToolChoice"
           },
           "response_format": {
             "$ref": "#/components/schemas/ResponseFormat"
           },
           "seed": {
             "type": "integer",
-            "description": "Random seed for deterministic outputs"
-          }
-        }
-      },
-      "Message": {
-        "type": "object",
-        "required": ["role", "content"],
-        "properties": {
-          "role": {
-            "type": "string",
-            "enum": ["system", "user", "assistant", "function", "tool"],
-            "description": "Role of the message author"
+            "format": "int32",
+            "nullable": true
           },
-          "content": {
-            "oneOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/ContentPart"
-                }
-              }
-            ],
-            "description": "Content of the message"
+          "presence_penalty": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
           },
-          "name": {
-            "type": "string",
-            "description": "Name of the function (when role is function)"
+          "frequency_penalty": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
           },
-          "function_call": {
-            "$ref": "#/components/schemas/FunctionCall",
-            "description": "Function call made by the assistant"
-          },
-          "tool_calls": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ToolCall"
+          "logit_bias": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32"
             },
-            "description": "Tool calls made by the assistant"
-          }
-        }
-      },
-      "ContentPart": {
-        "oneOf": [
-          {
-            "type": "object",
-            "required": ["type", "text"],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": ["text"]
-              },
-              "text": {
-                "type": "string"
-              }
-            }
-          },
-          {
-            "type": "object",
-            "required": ["type", "image_url"],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": ["image_url"]
-              },
-              "image_url": {
-                "type": "object",
-                "required": ["url"],
-                "properties": {
-                  "url": {
-                    "type": "string",
-                    "format": "uri"
-                  },
-                  "detail": {
-                    "type": "string",
-                    "enum": ["auto", "low", "high"],
-                    "default": "auto"
-                  }
-                }
-              }
-            }
-          }
-        ]
-      },
-      "Tool": {
-        "type": "object",
-        "required": ["type", "function"],
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": ["function"]
-          },
-          "function": {
-            "$ref": "#/components/schemas/FunctionDefinition"
-          }
-        }
-      },
-      "FunctionDefinition": {
-        "type": "object",
-        "required": ["name"],
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Name of the function"
-          },
-          "description": {
-            "type": "string",
-            "description": "Description of what the function does"
-          },
-          "parameters": {
-            "type": "object",
-            "description": "Parameters the function accepts (JSON Schema)"
-          }
-        }
-      },
-      "ToolChoice": {
-        "type": "object",
-        "required": ["type", "function"],
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": ["function"]
-          },
-          "function": {
-            "type": "object",
-            "required": ["name"],
-            "properties": {
-              "name": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      },
-      "ResponseFormat": {
-        "type": "object",
-        "required": ["type"],
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": ["text", "json_object"]
-          },
-          "schema": {
-            "type": "object",
-            "description": "JSON Schema for structured outputs"
-          }
-        }
-      },
-      "ChatCompletionResponse": {
-        "type": "object",
-        "required": ["id", "object", "created", "model", "choices"],
-        "properties": {
-          "id": {
-            "type": "string",
-            "description": "Unique identifier for the chat completion"
-          },
-          "object": {
-            "type": "string",
-            "enum": ["chat.completion"]
-          },
-          "created": {
-            "type": "integer",
-            "format": "int64",
-            "description": "Unix timestamp of when the completion was created"
-          },
-          "model": {
-            "type": "string",
-            "description": "Model used for the completion"
+            "nullable": true
           },
           "system_fingerprint": {
             "type": "string",
-            "description": "System fingerprint for the model configuration"
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ChatCompletionResponse": {
+        "required": [
+          "choices",
+          "created",
+          "id",
+          "model",
+          "object"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
           },
           "choices": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Choice"
-            }
-          },
-          "usage": {
-            "$ref": "#/components/schemas/Usage"
-          }
-        }
-      },
-      "Choice": {
-        "type": "object",
-        "required": ["index", "message", "finish_reason"],
-        "properties": {
-          "index": {
-            "type": "integer",
-            "description": "Index of the choice in the list"
-          },
-          "message": {
-            "$ref": "#/components/schemas/Message"
-          },
-          "finish_reason": {
-            "type": "string",
-            "enum": ["stop", "length", "tool_calls", "content_filter", "function_call"],
-            "description": "Reason the model stopped generating tokens"
-          },
-          "logprobs": {
-            "type": "object",
-            "nullable": true,
-            "description": "Log probabilities for the output tokens"
-          }
-        }
-      },
-      "ChatCompletionChunk": {
-        "type": "object",
-        "required": ["id", "object", "created", "model", "choices"],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "object": {
-            "type": "string",
-            "enum": ["chat.completion.chunk"]
+            },
+            "nullable": true
           },
           "created": {
             "type": "integer",
             "format": "int64"
           },
           "model": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "system_fingerprint": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
-          "choices": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/StreamingChoice"
-            }
+          "object": {
+            "type": "string",
+            "nullable": true
+          },
+          "usage": {
+            "$ref": "#/components/schemas/Usage"
+          },
+          "seed": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "performance_metrics": {
+            "$ref": "#/components/schemas/PerformanceMetrics"
           }
-        }
+        },
+        "additionalProperties": false
       },
-      "StreamingChoice": {
+      "Choice": {
+        "required": [
+          "finish_reason",
+          "index",
+          "message"
+        ],
         "type": "object",
-        "required": ["index", "delta"],
         "properties": {
-          "index": {
-            "type": "integer"
-          },
-          "delta": {
-            "$ref": "#/components/schemas/DeltaContent"
-          },
           "finish_reason": {
             "type": "string",
-            "enum": ["stop", "length", "tool_calls", "content_filter", "function_call"],
+            "nullable": true
+          },
+          "index": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "$ref": "#/components/schemas/Message"
+          },
+          "logprobs": {
             "nullable": true
           }
-        }
+        },
+        "additionalProperties": false
       },
-      "DeltaContent": {
+      "CircuitState": {
+        "enum": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "ConnectionInfo": {
+        "type": "object",
+        "properties": {
+          "connectionId": {
+            "type": "string",
+            "nullable": true
+          },
+          "model": {
+            "type": "string",
+            "nullable": true
+          },
+          "provider": {
+            "type": "string",
+            "nullable": true
+          },
+          "connectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "usage": {
+            "$ref": "#/components/schemas/ConnectionUsageStats"
+          },
+          "virtualKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "providerConnectionId": {
+            "type": "string",
+            "nullable": true
+          },
+          "startTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastActivity": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "audioBytesProcessed": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tokensUsed": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "estimatedCost": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConnectionStatistics": {
+        "type": "object",
+        "properties": {
+          "totalActiveConnections": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "connectionsByHub": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "connectionsByTransport": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "totalGroups": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "staleConnections": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "averageConnectionDurationMinutes": {
+            "type": "number",
+            "format": "double"
+          },
+          "averageIdleTimeMinutes": {
+            "type": "number",
+            "format": "double"
+          },
+          "oldestConnectionTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "newestConnectionTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "totalMessagesSent": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalMessagesAcknowledged": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "acknowledgmentRate": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Statistics about SignalR connections"
+      },
+      "ConnectionStatusResponse": {
+        "type": "object",
+        "properties": {
+          "virtualKeyId": {
+            "type": "integer",
+            "description": "The virtual key ID.",
+            "format": "int32"
+          },
+          "activeConnections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConnectionInfo"
+            },
+            "description": "List of active connections.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Response model for connection status queries."
+      },
+      "ConnectionUsageStats": {
+        "type": "object",
+        "properties": {
+          "audioDurationSeconds": {
+            "type": "number",
+            "format": "double"
+          },
+          "messagesSent": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "messagesReceived": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "estimatedCost": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateSessionResponse": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "description": "Gets or sets the created session ID.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Response for session creation."
+      },
+      "CustomAlertRequest": {
+        "type": "object",
+        "properties": {
+          "severity": {
+            "$ref": "#/components/schemas/AlertSeverity"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "component": {
+            "type": "string",
+            "nullable": true
+          },
+          "suggestedActions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "EmbeddingData": {
+        "required": [
+          "embedding",
+          "object"
+        ],
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "nullable": true
+          },
+          "embedding": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "nullable": true
+          },
+          "index": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EmbeddingRequest": {
+        "required": [
+          "encoding_format",
+          "input",
+          "model"
+        ],
+        "type": "object",
+        "properties": {
+          "input": {
+            "nullable": true
+          },
+          "model": {
+            "type": "string",
+            "nullable": true
+          },
+          "encoding_format": {
+            "type": "string",
+            "nullable": true
+          },
+          "dimensions": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "user": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "EmbeddingResponse": {
+        "required": [
+          "data",
+          "model",
+          "object",
+          "usage"
+        ],
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EmbeddingData"
+            },
+            "nullable": true
+          },
+          "model": {
+            "type": "string",
+            "nullable": true
+          },
+          "usage": {
+            "$ref": "#/components/schemas/Usage"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EphemeralKeyMetadata": {
+        "type": "object",
+        "properties": {
+          "sourceIP": {
+            "type": "string",
+            "description": "IP address that requested the ephemeral key",
+            "nullable": true
+          },
+          "userAgent": {
+            "type": "string",
+            "description": "User agent that requested the ephemeral key",
+            "nullable": true
+          },
+          "purpose": {
+            "type": "string",
+            "description": "Purpose or intended use of the ephemeral key",
+            "nullable": true
+          },
+          "requestId": {
+            "type": "string",
+            "description": "Request ID for correlation",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Optional metadata for tracking ephemeral key usage"
+      },
+      "EphemeralKeyResponse": {
+        "type": "object",
+        "properties": {
+          "ephemeralKey": {
+            "type": "string",
+            "description": "The ephemeral key token to use for authentication",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "When the ephemeral key expires",
+            "format": "date-time"
+          },
+          "expiresInSeconds": {
+            "type": "integer",
+            "description": "The TTL in seconds",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Response when creating an ephemeral key"
+      },
+      "FunctionCall": {
+        "required": [
+          "arguments",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "arguments": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FunctionDefinition": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonNode"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "GenerateEphemeralKeyRequest": {
+        "type": "object",
+        "properties": {
+          "metadata": {
+            "$ref": "#/components/schemas/EphemeralKeyMetadata"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request for generating an ephemeral key"
+      },
+      "GenerateUrlRequest": {
+        "required": [
+          "fileId"
+        ],
+        "type": "object",
+        "properties": {
+          "fileId": {
+            "type": "string",
+            "description": "The file identifier.",
+            "nullable": true
+          },
+          "expirationMinutes": {
+            "type": "integer",
+            "description": "How many minutes the URL should be valid (1-10080).",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request to generate a temporary download URL."
+      },
+      "HybridLatencyMetrics": {
+        "type": "object",
+        "properties": {
+          "averageSttLatencyMs": {
+            "type": "number",
+            "format": "double"
+          },
+          "averageLlmLatencyMs": {
+            "type": "number",
+            "format": "double"
+          },
+          "averageTtsLatencyMs": {
+            "type": "number",
+            "format": "double"
+          },
+          "averageTotalLatencyMs": {
+            "type": "number",
+            "format": "double"
+          },
+          "p95LatencyMs": {
+            "type": "number",
+            "format": "double"
+          },
+          "p99LatencyMs": {
+            "type": "number",
+            "format": "double"
+          },
+          "sampleCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "calculatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "HybridSessionConfig": {
+        "type": "object",
+        "properties": {
+          "sttProvider": {
+            "type": "string",
+            "nullable": true
+          },
+          "llmModel": {
+            "type": "string",
+            "nullable": true
+          },
+          "ttsProvider": {
+            "type": "string",
+            "nullable": true
+          },
+          "systemPrompt": {
+            "type": "string",
+            "nullable": true
+          },
+          "defaultVoice": {
+            "type": "string",
+            "nullable": true
+          },
+          "maxHistoryTurns": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32"
+          },
+          "sessionTimeout": {
+            "type": "string",
+            "format": "date-span"
+          },
+          "enableLatencyOptimization": {
+            "type": "boolean"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ImageGenerationRequest": {
+        "required": [
+          "model",
+          "prompt"
+        ],
+        "type": "object",
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "nullable": true
+          },
+          "model": {
+            "type": "string",
+            "nullable": true
+          },
+          "n": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "quality": {
+            "type": "string",
+            "nullable": true
+          },
+          "response_format": {
+            "type": "string",
+            "nullable": true
+          },
+          "size": {
+            "type": "string",
+            "nullable": true
+          },
+          "style": {
+            "type": "string",
+            "nullable": true
+          },
+          "user": {
+            "type": "string",
+            "nullable": true
+          },
+          "image": {
+            "type": "string",
+            "nullable": true
+          },
+          "mask": {
+            "type": "string",
+            "nullable": true
+          },
+          "operation": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "JsonNode": {
+        "type": "object",
+        "properties": {
+          "options": {
+            "$ref": "#/components/schemas/JsonNodeOptions"
+          },
+          "parent": {
+            "$ref": "#/components/schemas/JsonNode"
+          },
+          "root": {
+            "$ref": "#/components/schemas/JsonNode"
+          }
+        },
+        "additionalProperties": false
+      },
+      "JsonNodeOptions": {
+        "type": "object",
+        "properties": {
+          "propertyNameCaseInsensitive": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Message": {
+        "required": [
+          "role"
+        ],
         "type": "object",
         "properties": {
           "role": {
             "type": "string",
-            "enum": ["system", "user", "assistant", "function", "tool"]
-          },
-          "content": {
-            "type": "string",
             "nullable": true
           },
-          "function_call": {
-            "$ref": "#/components/schemas/FunctionCall"
+          "content": {
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
           },
           "tool_calls": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ToolCall"
-            }
-          }
-        }
-      },
-      "FunctionCall": {
-        "type": "object",
-        "required": ["name", "arguments"],
-        "properties": {
-          "name": {
-            "type": "string"
+            },
+            "nullable": true
           },
-          "arguments": {
+          "tool_call_id": {
             "type": "string",
-            "description": "JSON-encoded arguments"
+            "nullable": true
           }
-        }
+        },
+        "additionalProperties": false
       },
-      "ToolCall": {
+      "OpenAIError": {
+        "required": [
+          "message",
+          "type"
+        ],
         "type": "object",
-        "required": ["id", "type", "function"],
         "properties": {
-          "id": {
-            "type": "string"
+          "message": {
+            "type": "string",
+            "nullable": true
           },
           "type": {
             "type": "string",
-            "enum": ["function"]
+            "nullable": true
+          },
+          "param": {
+            "type": "string",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "OpenAIErrorResponse": {
+        "required": [
+          "error"
+        ],
+        "type": "object",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/OpenAIError"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PerformanceMetrics": {
+        "type": "object",
+        "properties": {
+          "total_latency_ms": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "time_to_first_token_ms": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tokens_per_second": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "prompt_tokens_per_second": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "completion_tokens_per_second": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "provider": {
+            "type": "string",
+            "nullable": true
+          },
+          "model": {
+            "type": "string",
+            "nullable": true
+          },
+          "streaming": {
+            "type": "boolean"
+          },
+          "retry_attempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "avg_inter_token_latency_ms": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "instance": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": { }
+      },
+      "ProviderType": {
+        "enum": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "QueueStatistics": {
+        "type": "object",
+        "properties": {
+          "pendingMessages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "deadLetterMessages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "processedMessages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failedMessages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lastProcessedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "circuitBreakerState": {
+            "$ref": "#/components/schemas/CircuitState"
+          },
+          "consecutiveFailures": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Statistics about the message queue"
+      },
+      "ResponseFormat": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SearchUsageMetadata": {
+        "type": "object",
+        "properties": {
+          "query_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "document_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "chunked_document_count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ServiceStatus": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "description": "Gets or sets whether the service is available."
+          },
+          "latencyMetrics": {
+            "$ref": "#/components/schemas/HybridLatencyMetrics"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Service status response."
+      },
+      "SpendUpdateDto": {
+        "required": [
+          "amount",
+          "model",
+          "providerType",
+          "virtualKeyId"
+        ],
+        "type": "object",
+        "properties": {
+          "virtualKeyId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "amount": {
+            "maximum": 1000000,
+            "minimum": 0.0001,
+            "type": "number",
+            "format": "double"
+          },
+          "model": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "providerType": {
+            "$ref": "#/components/schemas/ProviderType"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": { },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TextToSpeechRequestDto": {
+        "required": [
+          "input",
+          "model",
+          "voice"
+        ],
+        "type": "object",
+        "properties": {
+          "model": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "input": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "voice": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "response_format": {
+            "type": "string",
+            "nullable": true
+          },
+          "speed": {
+            "maximum": 4,
+            "minimum": 0.25,
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "Tool": {
+        "required": [
+          "function"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "function": {
+            "$ref": "#/components/schemas/FunctionDefinition"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ToolCall": {
+        "required": [
+          "function",
+          "id"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "nullable": true
           },
           "function": {
             "$ref": "#/components/schemas/FunctionCall"
           }
-        }
+        },
+        "additionalProperties": false
+      },
+      "ToolChoice": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "TranscriptionAlternative": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "nullable": true
+          },
+          "confidence": {
+            "type": "number",
+            "format": "double"
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TranscriptionSegment"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TranscriptionSegment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "start": {
+            "type": "number",
+            "format": "double"
+          },
+          "end": {
+            "type": "number",
+            "format": "double"
+          },
+          "text": {
+            "type": "string",
+            "nullable": true
+          },
+          "confidence": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "speaker": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TranscriptionWord": {
+        "type": "object",
+        "properties": {
+          "word": {
+            "type": "string",
+            "nullable": true
+          },
+          "start": {
+            "type": "number",
+            "format": "double"
+          },
+          "end": {
+            "type": "number",
+            "format": "double"
+          },
+          "confidence": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "speaker": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
       },
       "Usage": {
         "type": "object",
-        "required": ["prompt_tokens", "completion_tokens", "total_tokens"],
         "properties": {
           "prompt_tokens": {
             "type": "integer",
-            "description": "Number of tokens in the prompt"
+            "format": "int32",
+            "nullable": true
           },
           "completion_tokens": {
             "type": "integer",
-            "description": "Number of tokens in the generated completion"
+            "format": "int32",
+            "nullable": true
           },
           "total_tokens": {
             "type": "integer",
-            "description": "Total number of tokens used"
-          }
-        }
-      },
-      "Model": {
-        "type": "object",
-        "required": ["id", "object"],
-        "properties": {
-          "id": {
-            "type": "string",
-            "description": "Model identifier"
+            "format": "int32",
+            "nullable": true
           },
-          "object": {
-            "type": "string",
-            "enum": ["model"]
-          },
-          "created": {
+          "image_count": {
             "type": "integer",
-            "format": "int64",
-            "description": "Unix timestamp of model creation"
+            "format": "int32",
+            "nullable": true
           },
-          "owned_by": {
+          "video_duration_seconds": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "video_resolution": {
             "type": "string",
-            "description": "Organization that owns the model"
-          }
-        }
-      },
-      "EmbeddingRequest": {
-        "type": "object",
-        "required": ["model", "input"],
-        "properties": {
-          "model": {
+            "nullable": true
+          },
+          "is_batch": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "image_quality": {
             "type": "string",
-            "description": "ID of the model to use"
+            "nullable": true
           },
-          "input": {
-            "oneOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              }
-            ],
-            "description": "Input text to embed"
-          },
-          "encoding_format": {
+          "image_resolution": {
             "type": "string",
-            "enum": ["float", "base64"],
-            "default": "float",
-            "description": "Format to return embeddings in"
+            "nullable": true
           },
-          "dimensions": {
+          "cached_input_tokens": {
             "type": "integer",
-            "description": "Number of dimensions for the output embeddings"
+            "format": "int32",
+            "nullable": true
           },
-          "user": {
-            "type": "string",
-            "description": "Unique identifier representing your end-user"
-          }
-        }
-      },
-      "EmbeddingResponse": {
-        "type": "object",
-        "required": ["object", "data", "model", "usage"],
-        "properties": {
-          "object": {
-            "type": "string",
-            "enum": ["list"]
+          "cached_write_tokens": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
           },
-          "data": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": ["object", "embedding", "index"],
-              "properties": {
-                "object": {
-                  "type": "string",
-                  "enum": ["embedding"]
-                },
-                "embedding": {
-                  "type": "array",
-                  "items": {
-                    "type": "number",
-                    "format": "float"
-                  }
-                },
-                "index": {
-                  "type": "integer"
-                }
-              }
-            }
+          "search_units": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
           },
-          "model": {
-            "type": "string"
+          "search_metadata": {
+            "$ref": "#/components/schemas/SearchUsageMetadata"
           },
-          "usage": {
+          "inference_steps": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "audio_duration_seconds": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "metadata": {
             "type": "object",
-            "required": ["prompt_tokens", "total_tokens"],
-            "properties": {
-              "prompt_tokens": {
-                "type": "integer"
-              },
-              "total_tokens": {
-                "type": "integer"
-              }
-            }
+            "additionalProperties": { },
+            "nullable": true
           }
-        }
+        },
+        "additionalProperties": { }
       },
-      "ImageGenerationRequest": {
+      "VideoData": {
         "type": "object",
-        "required": ["model", "prompt"],
         "properties": {
-          "model": {
+          "url": {
             "type": "string",
-            "description": "ID of the model to use"
+            "nullable": true
           },
+          "b64_json": {
+            "type": "string",
+            "nullable": true
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/VideoMetadata"
+          },
+          "revised_prompt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "VideoGenerationRequest": {
+        "required": [
+          "model",
+          "prompt"
+        ],
+        "type": "object",
+        "properties": {
           "prompt": {
             "type": "string",
-            "description": "Text description of the desired image(s)"
+            "nullable": true
           },
-          "n": {
+          "model": {
+            "type": "string",
+            "nullable": true
+          },
+          "duration": {
             "type": "integer",
-            "minimum": 1,
-            "maximum": 10,
-            "default": 1,
-            "description": "Number of images to generate"
-          },
-          "quality": {
-            "type": "string",
-            "enum": ["standard", "hd"],
-            "default": "standard",
-            "description": "Quality of the image"
-          },
-          "response_format": {
-            "type": "string",
-            "enum": ["url", "b64_json"],
-            "default": "url",
-            "description": "Format in which generated images are returned"
+            "format": "int32",
+            "nullable": true
           },
           "size": {
             "type": "string",
-            "enum": ["256x256", "512x512", "1024x1024", "1792x1024", "1024x1792"],
-            "default": "1024x1024",
-            "description": "Size of the generated images"
+            "nullable": true
+          },
+          "fps": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
           },
           "style": {
             "type": "string",
-            "enum": ["vivid", "natural"],
-            "default": "vivid",
-            "description": "Style of the generated images"
+            "nullable": true
+          },
+          "response_format": {
+            "type": "string",
+            "nullable": true
           },
           "user": {
             "type": "string",
-            "description": "Unique identifier representing your end-user"
+            "nullable": true
+          },
+          "seed": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "n": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "webhook_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "webhook_headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "nullable": true
           }
-        }
+        },
+        "additionalProperties": false
       },
-      "ImageGenerationResponse": {
+      "VideoGenerationResponse": {
         "type": "object",
-        "required": ["created", "data"],
         "properties": {
           "created": {
             "type": "integer",
-            "format": "int64",
-            "description": "Unix timestamp of when the images were created"
+            "format": "int64"
           },
           "data": {
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "url": {
-                  "type": "string",
-                  "format": "uri",
-                  "description": "URL of the generated image"
-                },
-                "b64_json": {
-                  "type": "string",
-                  "description": "Base64-encoded JSON of the generated image"
-                },
-                "revised_prompt": {
-                  "type": "string",
-                  "description": "The prompt that was used to generate the image"
-                }
-              }
-            }
+              "$ref": "#/components/schemas/VideoData"
+            },
+            "nullable": true
+          },
+          "model": {
+            "type": "string",
+            "nullable": true
+          },
+          "usage": {
+            "$ref": "#/components/schemas/VideoGenerationUsage"
           }
-        }
+        },
+        "additionalProperties": false
       },
-      "Error": {
+      "VideoGenerationTaskResponse": {
         "type": "object",
-        "required": ["error"],
         "properties": {
-          "error": {
-            "oneOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "object",
-                "required": ["message", "type"],
-                "properties": {
-                  "message": {
-                    "type": "string",
-                    "description": "Human-readable error message"
-                  },
-                  "type": {
-                    "type": "string",
-                    "description": "Error type"
-                  },
-                  "code": {
-                    "type": "string",
-                    "description": "Error code"
-                  },
-                  "param": {
-                    "type": "string",
-                    "nullable": true,
-                    "description": "Parameter related to the error"
-                  }
-                }
-              }
-            ]
+          "taskId": {
+            "type": "string",
+            "description": "Unique identifier for the video generation task.",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "description": "Current status of the task (pending, processing, completed, failed).",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "When the task was created.",
+            "format": "date-time"
+          },
+          "estimatedCompletionTime": {
+            "type": "string",
+            "description": "Estimated time when the video will be ready.",
+            "format": "date-time",
+            "nullable": true
+          },
+          "checkStatusUrl": {
+            "type": "string",
+            "description": "URL to check the status of this task.",
+            "nullable": true
           }
-        }
+        },
+        "additionalProperties": false,
+        "description": "Response for async video generation task creation."
+      },
+      "VideoGenerationTaskStatus": {
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "description": "Unique identifier for the task.",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "description": "Current status (pending, running, completed, failed, cancelled).",
+            "nullable": true
+          },
+          "progress": {
+            "type": "integer",
+            "description": "Progress percentage (0-100).",
+            "format": "int32",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "When the task was created.",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "When the task was last updated.",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": "string",
+            "description": "When the task completed (if applicable).",
+            "format": "date-time",
+            "nullable": true
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message if the task failed.",
+            "nullable": true
+          },
+          "result": {
+            "type": "string",
+            "description": "Result data (internal use).",
+            "nullable": true
+          },
+          "videoResponse": {
+            "$ref": "#/components/schemas/VideoGenerationResponse"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Status information for a video generation task."
+      },
+      "VideoGenerationUsage": {
+        "type": "object",
+        "properties": {
+          "videos_generated": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "total_duration_seconds": {
+            "type": "number",
+            "format": "double"
+          },
+          "estimated_cost": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "VideoMetadata": {
+        "type": "object",
+        "properties": {
+          "width": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "height": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "duration": {
+            "type": "number",
+            "format": "double"
+          },
+          "fps": {
+            "type": "number",
+            "format": "double"
+          },
+          "codec": {
+            "type": "string",
+            "nullable": true
+          },
+          "audio_codec": {
+            "type": "string",
+            "nullable": true
+          },
+          "file_size_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "bitrate": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "mime_type": {
+            "type": "string",
+            "nullable": true
+          },
+          "format": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "VirtualKeyUpdateDto": {
+        "required": [
+          "virtualKeyId"
+        ],
+        "type": "object",
+        "properties": {
+          "virtualKeyId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxBudget": {
+            "maximum": 1000000,
+            "minimum": 0,
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "allowedModels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "rateLimits": {
+            "type": "object",
+            "additionalProperties": { },
+            "nullable": true
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WebhookSendDto": {
+        "required": [
+          "eventType",
+          "payload",
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "url": {
+            "minLength": 1,
+            "type": "string",
+            "format": "uri"
+          },
+          "eventType": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "payload": { },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "secret": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
       }
     },
-    "responses": {
-      "BadRequest": {
-        "description": "Bad request",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/Error"
-            }
-          }
-        }
-      },
-      "Unauthorized": {
-        "description": "Authentication required",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/Error"
-            }
-          }
-        }
-      },
-      "RateLimitExceeded": {
-        "description": "Rate limit exceeded",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/Error"
-            }
-          }
-        }
-      },
-      "InternalServerError": {
-        "description": "Internal server error",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/Error"
-            }
-          }
-        }
+    "securitySchemes": {
+      "ApiKey": {
+        "type": "apiKey",
+        "description": "Virtual Key authentication using Authorization header",
+        "name": "Authorization",
+        "in": "header"
       }
     }
   },
-  "tags": [
+  "security": [
     {
-      "name": "Chat",
-      "description": "Chat completion endpoints"
-    },
-    {
-      "name": "Models",
-      "description": "Model management endpoints"
-    },
-    {
-      "name": "Embeddings",
-      "description": "Text embedding endpoints"
-    },
-    {
-      "name": "Images",
-      "description": "Image generation endpoints"
-    },
-    {
-      "name": "Legacy",
-      "description": "Deprecated endpoints"
+      "ApiKey": [ ]
     }
   ]
 }

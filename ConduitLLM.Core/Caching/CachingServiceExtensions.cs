@@ -2,12 +2,12 @@ using System;
 
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Interfaces.Configuration;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Core.Caching
 {
     /// <summary>
@@ -77,6 +77,16 @@ namespace ConduitLLM.Core.Caching
     /// <summary>
     /// Factory that wraps LLM clients with the caching decorator
     /// </summary>
+    /// <remarks>
+    /// This is a decorator factory that adds caching functionality to any ILLMClientFactory implementation.
+    /// It intercepts client creation and wraps the returned clients with CachingLLMClient decorators.
+    /// 
+    /// This factory is automatically registered when caching is enabled through AddConduitCaching().
+    /// It wraps the existing factory registration, preserving the underlying factory's behavior
+    /// while adding caching capabilities to all created clients.
+    /// 
+    /// The caching behavior can be configured through CacheOptions in the application settings.
+    /// </remarks>
     public class CachingLLMClientFactory : ILLMClientFactory
     {
         private readonly ILLMClientFactory _innerFactory;
@@ -126,11 +136,12 @@ namespace ConduitLLM.Core.Caching
             return client;
         }
 
+        
         /// <inheritdoc />
-        public ILLMClient GetClientByProvider(string providerName)
+        public ILLMClient GetClientByProviderId(int providerId)
         {
             // Get the original client from the inner factory
-            var client = _innerFactory.GetClientByProvider(providerName);
+            var client = _innerFactory.GetClientByProviderId(providerId);
 
             // Only wrap the client if caching is enabled
             if (_cacheOptions.Value.IsEnabled)
@@ -148,6 +159,45 @@ namespace ConduitLLM.Core.Caching
 
             // Fall back to the original client if caching is disabled
             return client;
+        }
+
+        /// <inheritdoc />
+        public IProviderMetadata? GetProviderMetadata(ConduitLLM.Configuration.ProviderType providerType)
+        {
+            // Delegate to the inner factory
+            return _innerFactory.GetProviderMetadata(providerType);
+        }
+
+        /// <inheritdoc />
+        public ILLMClient GetClientByProviderType(ConduitLLM.Configuration.ProviderType providerType)
+        {
+            // Get the original client from the inner factory
+            var client = _innerFactory.GetClientByProviderType(providerType);
+
+            // Only wrap the client if caching is enabled
+            if (_cacheOptions.Value.IsEnabled)
+            {
+                var logger = _loggerFactory.CreateLogger<CachingLLMClient>();
+
+                // Wrap the client with the caching decorator
+                return new CachingLLMClient(
+                    client,
+                    _cacheService,
+                    _metricsService,
+                    _cacheOptions,
+                    logger);
+            }
+
+            // Fall back to the original client if caching is disabled
+            return client;
+        }
+
+        /// <inheritdoc />
+        public ILLMClient CreateTestClient(ConduitLLM.Configuration.Entities.Provider provider, ConduitLLM.Configuration.Entities.ProviderKeyCredential keyCredential)
+        {
+            // For test clients, we don't wrap with caching
+            // Test clients are used for authentication verification and should always hit the actual provider
+            return _innerFactory.CreateTestClient(provider, keyCredential);
         }
     }
 }

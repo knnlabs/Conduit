@@ -85,14 +85,14 @@ namespace ConduitLLM.Core.Services
             DetectAddresses(text, detectedEntities);
 
             result.Entities = detectedEntities.OrderBy(e => e.StartIndex).ToList();
-            result.ContainsPii = detectedEntities.Any();
+            result.ContainsPii = detectedEntities.Count() > 0;
             result.RiskScore = CalculateRiskScore(detectedEntities);
 
             if (result.ContainsPii)
             {
                 _logger.LogWarning(
                     "Detected {Count} PII entities with risk score {Score:F2}",
-                    result.Entities.Count,
+                    result.Entities.Count(),
                     result.RiskScore);
             }
 
@@ -124,7 +124,7 @@ namespace ConduitLLM.Core.Services
 
             _logger.LogInformation(
                 "Redacted {Count} PII entities using {Method} method",
-                detectionResult.Entities.Count,
+                detectionResult.Entities.Count(),
                 options.Method);
 
             return Task.FromResult(redactedText);
@@ -249,7 +249,7 @@ namespace ConduitLLM.Core.Services
 
         private double CalculateRiskScore(List<PiiEntity> entities)
         {
-            if (!entities.Any())
+            if (entities.Count() == 0)
                 return 0;
 
             var highRiskTypes = new[] { PiiType.SSN, PiiType.CreditCard, PiiType.BankAccount, PiiType.MedicalRecord };
@@ -257,10 +257,10 @@ namespace ConduitLLM.Core.Services
 
             var highRiskCount = entities.Count(e => highRiskTypes.Contains(e.Type));
             var mediumRiskCount = entities.Count(e => mediumRiskTypes.Contains(e.Type));
-            var lowRiskCount = entities.Count - highRiskCount - mediumRiskCount;
+            var lowRiskCount = entities.Count() - highRiskCount - mediumRiskCount;
 
             var score = (highRiskCount * 0.4) + (mediumRiskCount * 0.3) + (lowRiskCount * 0.1);
-            return Math.Min(1.0, score / entities.Count);
+            return Math.Min(1.0, score / entities.Count());
         }
     }
 }

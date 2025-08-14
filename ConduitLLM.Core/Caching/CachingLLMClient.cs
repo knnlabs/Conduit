@@ -10,12 +10,12 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Core.Caching
 {
     /// <summary>
@@ -248,7 +248,7 @@ namespace ConduitLLM.Core.Caching
             var options = _cacheOptions.Value;
 
             // Check model-specific rules first
-            if (options.ModelSpecificRules != null && options.ModelSpecificRules.Any())
+            if (options.ModelSpecificRules != null && options.ModelSpecificRules.Count() > 0)
             {
                 foreach (var rule in options.ModelSpecificRules)
                 {

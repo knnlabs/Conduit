@@ -7,13 +7,15 @@ using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Events;
-using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using ConduitLLM.Configuration.Interfaces;
+using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
+using ConduitLLM.Core.Interfaces;
 namespace ConduitLLM.Core.Services
 {
     /// <summary>
@@ -30,7 +32,8 @@ namespace ConduitLLM.Core.Services
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ICancellableTaskRegistry _taskRegistry;
-        private readonly IImageGenerationMetricsService _metricsService;
+        private readonly ICostCalculationService _costCalculationService;
+        private readonly IProviderService _providerService;
         private readonly ImageGenerationPerformanceConfiguration _performanceConfig;
         private readonly ILogger<ImageGenerationOrchestrator> _logger;
 
@@ -44,7 +47,8 @@ namespace ConduitLLM.Core.Services
             IVirtualKeyService virtualKeyService,
             IHttpClientFactory httpClientFactory,
             ICancellableTaskRegistry taskRegistry,
-            IImageGenerationMetricsService metricsService,
+            ICostCalculationService costCalculationService,
+            IProviderService providerService,
             IOptions<ImageGenerationPerformanceConfiguration> performanceOptions,
             ILogger<ImageGenerationOrchestrator> logger)
         {
@@ -57,7 +61,8 @@ namespace ConduitLLM.Core.Services
             _virtualKeyService = virtualKeyService;
             _httpClientFactory = httpClientFactory;
             _taskRegistry = taskRegistry;
-            _metricsService = metricsService;
+            _costCalculationService = costCalculationService;
+            _providerService = providerService;
             _performanceConfig = performanceOptions.Value;
             _logger = logger;
         }
@@ -128,7 +133,7 @@ namespace ConduitLLM.Core.Services
                 var totalImages = response.Data?.Count ?? 0;
                 
                 // Determine optimal concurrency for image processing
-                var concurrency = GetOptimalConcurrency(modelInfo.Provider, totalImages);
+                var concurrency = GetOptimalConcurrency(modelInfo.ProviderType.ToString(), totalImages);
                 var semaphore = new SemaphoreSlim(concurrency);
                 _logger.LogInformation("Processing {Count} images in parallel with concurrency limit of {Concurrency}", 
                     totalImages, concurrency);
@@ -178,30 +183,8 @@ namespace ConduitLLM.Core.Services
                 
                 stopwatch.Stop();
                 
-                // Record performance metrics
-                var metric = new ImageGenerationMetrics
-                {
-                    Provider = modelInfo.Provider,
-                    Model = modelInfo.ModelId,
-                    TotalGenerationTimeMs = stopwatch.ElapsedMilliseconds,
-                    AvgGenerationTimePerImageMs = stopwatch.ElapsedMilliseconds / (double)totalImages,
-                    DownloadTimeMs = downloadTime,
-                    StorageTimeMs = storageTime,
-                    ImageCount = totalImages,
-                    ImageSize = request.Request.Size ?? "1024x1024",
-                    Quality = request.Request.Quality,
-                    Success = true,
-                    IsRetry = false, // TODO: Track retry attempts
-                    ConcurrencyLevel = concurrency,
-                    VirtualKeyId = request.VirtualKeyId,
-                    StartedAt = DateTime.UtcNow.AddMilliseconds(-stopwatch.ElapsedMilliseconds),
-                    CompletedAt = DateTime.UtcNow
-                };
-                
-                await _metricsService.RecordMetricAsync(metric, taskCts.Token);
-                
-                // Calculate cost (simplified - would need provider-specific pricing)
-                var cost = CalculateImageGenerationCost(modelInfo.Provider, modelInfo.ModelId, totalImages);
+                // Calculate cost using the centralized cost calculation service
+                var cost = await CalculateImageGenerationCostAsync(modelInfo.ProviderType, modelInfo.ModelId, totalImages, taskCts.Token);
                 
                 // Update task with results
                 await _taskService.UpdateTaskStatusAsync(
@@ -213,7 +196,7 @@ namespace ConduitLLM.Core.Services
                         images = processedImages,
                         duration = stopwatch.Elapsed.TotalSeconds,
                         cost = cost,
-                        provider = modelInfo.Provider,
+                        provider = modelInfo.ProviderName,
                         model = modelInfo.ModelId
                     });
                 
@@ -225,7 +208,7 @@ namespace ConduitLLM.Core.Services
                     Images = processedImages,
                     Duration = stopwatch.Elapsed,
                     Cost = cost,
-                    Provider = modelInfo.Provider,
+                    Provider = modelInfo.ProviderName,
                     Model = modelInfo.ModelId,
                     CorrelationId = request.CorrelationId
                 });
@@ -334,28 +317,6 @@ namespace ConduitLLM.Core.Services
                 
                 stopwatch.Stop();
                 
-                // Record failure metric
-                if (modelInfo != null)
-                {
-                    var failureMetric = new ImageGenerationMetrics
-                    {
-                        Provider = modelInfo.Provider,
-                        Model = modelInfo.ModelId,
-                        TotalGenerationTimeMs = stopwatch.ElapsedMilliseconds,
-                        ImageCount = request.Request.N,
-                        ImageSize = request.Request.Size ?? "1024x1024",
-                        Quality = request.Request.Quality,
-                        Success = false,
-                        ErrorCode = ex.GetType().Name,
-                        IsRetry = false, // TODO: Track retry attempts
-                        VirtualKeyId = request.VirtualKeyId,
-                        StartedAt = DateTime.UtcNow.AddMilliseconds(-stopwatch.ElapsedMilliseconds),
-                        CompletedAt = DateTime.UtcNow
-                    };
-                    
-                    await _metricsService.RecordMetricAsync(failureMetric);
-                }
-                
                 // Update task status
                 await _taskService.UpdateTaskStatusAsync(
                     request.TaskId,
@@ -447,29 +408,34 @@ namespace ConduitLLM.Core.Services
                 return null;
             }
             
+            // Get the provider entity
+            var provider = await _providerService.GetProviderByIdAsync(mapping.ProviderId);
+            if (provider == null)
+            {
+                _logger.LogWarning("Provider not found for ProviderId {ProviderId}", mapping.ProviderId);
+                return null;
+            }
+            
             return new ModelInfo
             {
-                Provider = mapping.ProviderName,
+                Provider = provider,
                 ModelId = mapping.ProviderModelId,
-                ProviderCredentialId = 0 // We don't have this in the mapping
+                ProviderId = mapping.ProviderId
             };
         }
 
-        private decimal CalculateImageGenerationCost(string provider, string model, int imageCount)
+        private async Task<decimal> CalculateImageGenerationCostAsync(ProviderType providerType, string model, int imageCount, CancellationToken cancellationToken)
         {
-            // Simplified cost calculation - in production would use provider-specific pricing
-            return provider.ToLowerInvariant() switch
+            // Create usage object for cost calculation
+            var usage = new Usage
             {
-                "openai" => model switch
-                {
-                    "dall-e-3" => 0.040m * imageCount, // $0.040 per image for standard
-                    "dall-e-2" => 0.020m * imageCount, // $0.020 per image
-                    _ => 0.030m * imageCount
-                },
-                "minimax" => 0.010m * imageCount, // Estimated
-                "replicate" => 0.025m * imageCount, // Varies by model
-                _ => 0.020m * imageCount // Default estimate
+                ImageCount = imageCount
             };
+            
+            // Use the centralized cost calculation service
+            var cost = await _costCalculationService.CalculateCostAsync(model, usage, cancellationToken);
+            
+            return cost;
         }
 
         private bool IsRetryableError(Exception ex)
@@ -540,13 +506,12 @@ namespace ConduitLLM.Core.Services
                 
                 if (!string.IsNullOrEmpty(imageData.B64Json))
                 {
-                    // Store base64 image
-                    var imageBytes = Convert.FromBase64String(imageData.B64Json);
+                    // Store base64 image using streaming to avoid loading entire content into memory
                     var metadata = new Dictionary<string, string>
                     {
                         ["prompt"] = request.Request.Prompt,
                         ["model"] = modelInfo.ModelId,
-                        ["provider"] = modelInfo.Provider
+                        ["provider"] = modelInfo.ProviderName
                     };
                     
                     var mediaMetadata = new MediaMetadata
@@ -557,8 +522,14 @@ namespace ConduitLLM.Core.Services
                         CustomMetadata = metadata
                     };
                     
-                    using var imageStream = new System.IO.MemoryStream(imageBytes);
-                    var storageResult = await _storageService.StoreAsync(imageStream, mediaMetadata);
+                    // Use streaming to decode base64
+                    using var base64Stream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(imageData.B64Json));
+                    using var decodedStream = new System.Security.Cryptography.CryptoStream(
+                        base64Stream, 
+                        new System.Security.Cryptography.FromBase64Transform(), 
+                        System.Security.Cryptography.CryptoStreamMode.Read);
+                    
+                    var storageResult = await _storageService.StoreAsync(decodedStream, mediaMetadata);
                     finalUrl = storageResult.Url;
                     
                     // Publish MediaGenerationCompleted event for lifecycle tracking
@@ -568,14 +539,14 @@ namespace ConduitLLM.Core.Services
                         VirtualKeyId = request.VirtualKeyId,
                         MediaUrl = storageResult.Url,
                         StorageKey = storageResult.StorageKey,
-                        FileSizeBytes = imageBytes.Length,
+                        FileSizeBytes = storageResult.SizeBytes,
                         ContentType = mediaMetadata.ContentType,
                         GeneratedByModel = modelInfo.ModelId,
                         GenerationPrompt = request.Request.Prompt,
                         GeneratedAt = DateTime.UtcNow,
                         Metadata = new Dictionary<string, object>
                         {
-                            ["provider"] = modelInfo.Provider,
+                            ["provider"] = modelInfo.ProviderName,
                             ["model"] = modelInfo.ModelId,
                             ["index"] = index,
                             ["format"] = "b64_json"
@@ -607,7 +578,7 @@ namespace ConduitLLM.Core.Services
                     RevisedPrompt = null,
                     Metadata = new Dictionary<string, object>
                     {
-                        ["provider"] = modelInfo.Provider,
+                        ["provider"] = modelInfo.ProviderName,
                         ["model"] = modelInfo.ModelId,
                         ["index"] = index
                     }
@@ -632,7 +603,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 using var httpClient = _httpClientFactory.CreateClient();
-                httpClient.Timeout = GetProviderTimeout(modelInfo.Provider);
+                httpClient.Timeout = GetProviderTimeout(modelInfo.ProviderType);
                 
                 // Use streaming for better memory efficiency
                 using var response = await httpClient.GetAsync(imageUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -666,7 +637,7 @@ namespace ConduitLLM.Core.Services
                 {
                     ["prompt"] = request.Request.Prompt,
                     ["model"] = modelInfo.ModelId,
-                    ["provider"] = modelInfo.Provider,
+                    ["provider"] = modelInfo.ProviderName,
                     ["originalUrl"] = imageUrl
                 };
                 
@@ -710,7 +681,7 @@ namespace ConduitLLM.Core.Services
                     GeneratedAt = DateTime.UtcNow,
                     Metadata = new Dictionary<string, object>
                     {
-                        ["provider"] = modelInfo.Provider,
+                        ["provider"] = modelInfo.ProviderName,
                         ["model"] = modelInfo.ModelId,
                         ["index"] = index
                     },
@@ -800,11 +771,12 @@ namespace ConduitLLM.Core.Services
             return Math.Min(maxConcurrency, imageCount);
         }
 
-        private TimeSpan GetProviderTimeout(string provider)
+        private TimeSpan GetProviderTimeout(ProviderType providerType)
         {
             // Use configuration or fallback to defaults
+            var providerKey = providerType.ToString().ToLowerInvariant();
             var timeoutSeconds = _performanceConfig.ProviderDownloadTimeouts.TryGetValue(
-                provider.ToLowerInvariant(), 
+                providerKey, 
                 out var timeout) ? timeout : 30;
             
             return TimeSpan.FromSeconds(timeoutSeconds);
@@ -812,9 +784,15 @@ namespace ConduitLLM.Core.Services
 
         private class ModelInfo
         {
-            public string Provider { get; set; } = string.Empty;
+            public ConduitLLM.Configuration.Entities.Provider? Provider { get; set; }
             public string ModelId { get; set; } = string.Empty;
-            public int ProviderCredentialId { get; set; }
+            public int ProviderId { get; set; }
+            
+            // Convenience property to get ProviderType from Provider
+            public ProviderType ProviderType => Provider?.ProviderType ?? ProviderType.OpenAI;
+            
+            // Convenience property to get provider name for responses
+            public string ProviderName => Provider?.ProviderName ?? Provider?.ProviderType.ToString() ?? "unknown";
         }
     }
 }

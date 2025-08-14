@@ -1,79 +1,81 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { handleSDKError } from '@/lib/errors/sdk-errors';
-import { getServerCoreClient } from '@/lib/server/coreClient';
-// Note: ChatCompletionChunk import temporarily removed due to SDK export issues
+import { getServerCoreClient } from '@/lib/server/sdk-config';
+import type { ChatCompletionRequest } from '@knn_labs/conduit-core-client';
 
 // POST /api/chat/completions - Create chat completions using Core SDK
 export async function POST(request: NextRequest) {
-
   try {
+    const body = await request.json() as ChatCompletionRequest;
     const coreClient = await getServerCoreClient();
-    const body = await request.json() as unknown as Parameters<typeof coreClient.chat.create>[0];
     
-    // Check if streaming is requested
-    if (body.stream === true) {
-      // Create a TransformStream for SSE
-      const encoder = new TextEncoder();
-      const stream = new TransformStream();
-      const writer = stream.writable.getWriter();
-      
-      // Start the streaming request
-      void (async () => {
-        try {
-          // Create the streaming request - the SDK will handle validation
-          const streamResponse = await coreClient.chat.create(body);
-          
-          // Handle the async iterator from the SDK
-          let chunkCount = 0;
-          for await (const chunk of streamResponse) {
-            // Debug first few chunks to see what we're receiving
-            if (process.env.NODE_ENV === 'development' && chunkCount < 3) {
-              console.warn('SDK chunk:', JSON.stringify(chunk, null, 2));
-              chunkCount++;
-            }
-            
-            // The SDK returns ChatCompletionChunk objects
-            // Format as SSE data event
-            const data = `data: ${JSON.stringify(chunk)}\n\n`;
-            await writer.write(encoder.encode(data));
-            
-            // Check for metrics in the chunk - using generic type due to SDK export issues
-            const typedChunk = chunk as { performance?: Record<string, unknown> };
-            if (typedChunk.performance && Object.keys(typedChunk.performance).length > 0) {
-              const metricsEvent = `event: metrics\ndata: ${JSON.stringify(typedChunk.performance)}\n\n`;
-              await writer.write(encoder.encode(metricsEvent));
-            }
-          }
-          
-          // Send the [DONE] message
-          await writer.write(encoder.encode('data: [DONE]\n\n'));
-        } catch (error: unknown) { // Keep as unknown - generic error handling for various API errors
-          console.error('Streaming error:', error);
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          const errorData = `data: ${JSON.stringify({ error: errorMessage })}
-
-`;
-          await writer.write(encoder.encode(errorData));
-        } finally {
-          await writer.close();
-        }
-      })();
-      
-      // Return SSE response
-      return new Response(stream.readable, {
-        headers: new Headers([
-          ['Content-Type', 'text/event-stream'],
-          ['Cache-Control', 'no-cache'],
-          ['Connection', 'keep-alive'],
-        ]),
+    // Handle both streaming and non-streaming requests
+    if (body.stream) {
+      // For streaming, we need to return a proper SSE response
+      // The SDK returns an async iterable for streaming
+      const stream = await coreClient.chat.create({
+        ...body,
+        stream: true
       });
+
+      // Create a TransformStream to convert SDK chunks to SSE format
+      const encoder = new TextEncoder();
+      const transformStream = new TransformStream({
+        async start(controller) {
+          try {
+            for await (const chunk of stream) {
+              // Format as Server-Sent Events
+              const sseData = `data: ${JSON.stringify(chunk)}\n\n`;
+              controller.enqueue(encoder.encode(sseData));
+            }
+            // Send the final [DONE] message
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+            controller.terminate();
+          } catch (error) {
+            // Send error as SSE event
+            const errorData = {
+              error: {
+                message: error instanceof Error ? error.message : 'Stream error',
+                type: 'stream_error'
+              }
+            };
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(errorData)}\n\n`));
+            controller.terminate();
+          }
+        }
+      });
+
+      // Return streaming response with proper headers
+      const headers = new Headers();
+      headers.set('Content-Type', 'text/event-stream');
+      headers.set('Cache-Control', 'no-cache');
+      headers.set('Connection', 'keep-alive');
+      
+      return new Response(transformStream.readable, { headers });
     } else {
       // Non-streaming request
-      const result = await coreClient.chat.create(body);
+      const result = await coreClient.chat.create({
+        ...body,
+        stream: false
+      });
       
-      return NextResponse.json(result);
+      return Response.json(result);
     }
   } catch (error) {
+    // For non-streaming errors, use the standard error handler
     return handleSDKError(error);
   }
+}
+
+// OPTIONS for CORS if needed
+export async function OPTIONS() {
+  const headers = new Headers();
+  headers.set('Access-Control-Allow-Origin', '*');
+  headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  return new Response(null, {
+    status: 200,
+    headers,
+  });
 }

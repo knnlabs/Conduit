@@ -34,6 +34,7 @@ import {
 import { useState, useEffect, useCallback } from 'react';
 import { notifications } from '@mantine/notifications';
 import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
+import { withAdminClient } from '@/lib/client/adminClient';
 import { useClipboard } from '@mantine/hooks';
 
 interface CapabilityDetails {
@@ -91,17 +92,17 @@ export default function VirtualKeyDiscoveryPreviewPage() {
       setIsLoadingKeys(true);
       setError(null);
       
-      const response = await fetch('/api/virtualkeys');
+      const result = await withAdminClient(client => 
+        client.virtualKeys.list(1, 1000)
+      );
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to fetch virtual keys: ${errorText}`);
-      }
+      const data = result.items;
       
-      const result = await response.json() as { items?: VirtualKeyDto[] } | VirtualKeyDto[];
-      const data = Array.isArray(result) ? result : (result.items ?? []);
-      
-      setVirtualKeys(data);
+      // Filter out items without valid IDs and ensure they match VirtualKeyDto type
+      const validKeys = data.filter((key): key is VirtualKeyDto => 
+        key.id !== undefined && key.id !== null
+      );
+      setVirtualKeys(validKeys);
     } catch (err) {
       console.error('Error fetching virtual keys:', err);
       setError(err as Error);
@@ -129,21 +130,14 @@ export default function VirtualKeyDiscoveryPreviewPage() {
       setIsLoadingDiscovery(true);
       setError(null);
       
-      const params = new URLSearchParams();
-      if (selectedCapability) {
-        params.append('capability', selectedCapability);
-      }
+      const data = await withAdminClient(client =>
+        client.virtualKeys.previewDiscovery(
+          selectedKeyId,
+          selectedCapability || undefined
+        )
+      );
       
-      const url = `/api/virtualkeys/${selectedKeyId}/discovery-preview${params.toString() ? `?${params.toString()}` : ''}`;
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to fetch discovery preview: ${errorText}`);
-      }
-      
-      const data = await response.json() as DiscoveryPreviewResponse;
-      setDiscoveryData(data);
+      setDiscoveryData(data as DiscoveryPreviewResponse);
     } catch (err) {
       console.error('Error fetching discovery preview:', err);
       setError(err as Error);

@@ -1,52 +1,57 @@
 import { useQuery } from '@tanstack/react-query';
 import type { VideoModel } from '../types';
+import { ProviderType, type ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
+import { withAdminClient } from '@/lib/client/adminClient';
 
-interface ApiModelResponse {
-  data: ApiModel[];
-}
-
-interface ApiModel {
-  id: string;
-  provider: string;
-  displayName?: string;
-  capabilities?: {
-    videoGeneration?: boolean;
-    maxVideoDurationSeconds?: number;
-    supportedVideoResolutions?: string[];
-    supportedFps?: number[];
-    supportsCustomStyles?: boolean;
-    supportsSeed?: boolean;
-    maxVideos?: number;
+// Helper function to convert ProviderType enum to string
+function getProviderName(providerType: ProviderType): string {
+  const providerNames: Record<ProviderType, string> = {
+    [ProviderType.OpenAI]: 'OpenAI',
+    [ProviderType.Groq]: 'Groq',
+    [ProviderType.Replicate]: 'Replicate',
+    [ProviderType.Fireworks]: 'Fireworks',
+    [ProviderType.OpenAICompatible]: 'OpenAI Compatible',
+    [ProviderType.MiniMax]: 'MiniMax',
+    [ProviderType.Ultravox]: 'Ultravox',
+    [ProviderType.ElevenLabs]: 'ElevenLabs',
+    [ProviderType.Cerebras]: 'Cerebras',
+    [ProviderType.SambaNova]: 'SambaNova',
+    [ProviderType.DeepInfra]: 'DeepInfra',
   };
+  return providerNames[providerType] || `Provider ${providerType}`;
 }
 
 async function fetchVideoModels(): Promise<VideoModel[]> {
-  const response = await fetch('/api/discovery/models?capability=video_generation');
-  if (!response.ok) {
-    throw new Error(`Failed to fetch video models: ${response.statusText}`);
-  }
+  const result = await withAdminClient(client => 
+    client.modelMappings.list()
+  );
   
-  const data = await response.json() as ApiModelResponse;
+  const mappings = result;
   
-  // Filter and transform models that support video generation
-  return data.data
-    .filter((model: ApiModel) => model.capabilities?.videoGeneration === true)
-    .map((model: ApiModel) => {
-      return {
-        id: model.id,
-        provider: model.provider,
-        displayName: model.displayName ?? model.id,
-        capabilities: {
-          videoGeneration: model.capabilities?.videoGeneration ?? false,
-          maxDuration: model.capabilities?.maxVideoDurationSeconds,
-          supportedResolutions: model.capabilities?.supportedVideoResolutions,
-          supportedFps: model.capabilities?.supportedFps,
-          supportsCustomStyles: model.capabilities?.supportsCustomStyles,
-          supportsSeed: model.capabilities?.supportsSeed,
-          maxVideos: model.capabilities?.maxVideos ?? 1,
-        },
-      };
-    });
+  // Filter to only include video generation capable models that are enabled
+  const videoModels = mappings.filter((mapping: ModelProviderMappingDto) => 
+    mapping.supportsVideoGeneration === true && mapping.isEnabled !== false
+  );
+  
+  return videoModels.map((mapping: ModelProviderMappingDto) => {
+    const providerDisplayName = mapping.provider?.displayName ?? 
+      (mapping.provider?.providerType !== undefined ? getProviderName(mapping.provider.providerType) : 'Unknown');
+    return {
+      id: mapping.modelId,
+      provider: providerDisplayName,
+      displayName: `${mapping.modelId} (${providerDisplayName})`,
+      capabilities: {
+        videoGeneration: true,
+        // Default values since model mappings don't store detailed video capabilities yet
+        maxDuration: 10, // seconds
+        supportedResolutions: ['1280x720', '720x480'],
+        supportedFps: [24, 30],
+        supportsCustomStyles: true,
+        supportsSeed: true,
+        maxVideos: 1,
+      },
+    };
+  });
 }
 
 export function useVideoModels() {

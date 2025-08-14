@@ -204,12 +204,12 @@ namespace ConduitLLM.Core.Services
 
             var statistics = new TraceStatistics
             {
-                TotalTraces = relevantTraces.Count,
+                TotalTraces = relevantTraces.Count(),
                 SuccessfulTraces = relevantTraces.Count(t => t.Status == TraceStatus.Ok),
                 FailedTraces = relevantTraces.Count(t => t.Status == TraceStatus.Error)
             };
 
-            if (relevantTraces.Any())
+            if (relevantTraces.Count() > 0)
             {
                 var durations = relevantTraces
                     .Where(t => t.DurationMs.HasValue)
@@ -217,7 +217,7 @@ namespace ConduitLLM.Core.Services
                     .OrderBy(d => d)
                     .ToList();
 
-                if (durations.Any())
+                if (durations.Count() > 0)
                 {
                     statistics.AverageDurationMs = durations.Average();
                     statistics.P95DurationMs = GetPercentile(durations, 0.95);
@@ -310,7 +310,7 @@ namespace ConduitLLM.Core.Services
             if (query.MaxDurationMs.HasValue && (!trace.DurationMs.HasValue || trace.DurationMs.Value > query.MaxDurationMs.Value))
                 return false;
 
-            if (query.TagFilters.Any())
+            if (query.TagFilters.Count() > 0)
             {
                 foreach (var filter in query.TagFilters)
                 {
@@ -382,10 +382,10 @@ namespace ConduitLLM.Core.Services
 
         private double GetPercentile(List<double> sortedValues, double percentile)
         {
-            if (!sortedValues.Any()) return 0;
+            if (sortedValues.Count() == 0) return 0;
 
-            var index = (int)Math.Ceiling(percentile * sortedValues.Count) - 1;
-            return sortedValues[Math.Max(0, Math.Min(index, sortedValues.Count - 1))];
+            var index = (int)Math.Ceiling(percentile * sortedValues.Count()) - 1;
+            return sortedValues[Math.Max(0, Math.Min(index, sortedValues.Count() - 1))];
         }
 
         private List<TraceTimelinePoint> GenerateTimeline(
@@ -403,12 +403,12 @@ namespace ConduitLLM.Core.Services
                     .Where(t => t.StartTime >= timestamp && t.StartTime < windowEnd)
                     .ToList();
 
-                if (windowTraces.Any())
+                if (windowTraces.Count() > 0)
                 {
                     timeline.Add(new TraceTimelinePoint
                     {
                         Timestamp = timestamp,
-                        TraceCount = windowTraces.Count,
+                        TraceCount = windowTraces.Count(),
                         ErrorCount = windowTraces.Count(t => t.Status == TraceStatus.Error),
                         AverageDurationMs = windowTraces
                             .Where(t => t.DurationMs.HasValue)
@@ -434,7 +434,7 @@ namespace ConduitLLM.Core.Services
                     lock (kvp.Value)
                     {
                         kvp.Value.RemoveAll(t => t.StartTime < cutoff);
-                        if (!kvp.Value.Any())
+                        if (kvp.Value.Count() == 0)
                         {
                             _completedTraces.TryRemove(kvp.Key, out _);
                         }

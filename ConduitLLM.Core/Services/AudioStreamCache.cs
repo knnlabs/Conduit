@@ -15,6 +15,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Core.Services
 {
     /// <summary>
@@ -40,7 +41,7 @@ namespace ConduitLLM.Core.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
             _distributedCache = distributedCache ?? throw new ArgumentNullException(nameof(distributedCache));
-            if (options == null) throw new ArgumentNullException(nameof(options));
+            ArgumentNullException.ThrowIfNull(options);
             _options = options.Value ?? throw new ArgumentNullException(nameof(options));
         }
 

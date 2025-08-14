@@ -1,0 +1,33 @@
+# Groq Provider Configuration Template
+# Copy this file to groq.yaml and fill in your actual API key
+# groq.yaml is gitignored to protect secrets
+
+provider:
+  type: "Groq"
+  name: "TEST_Groq_Provider"
+  apiKey: "gsk_YOUR_GROQ_API_KEY_HERE"  # Replace with your actual Groq API key
+  # baseUrl: "https://api.groq.com/openai/v1"  # Optional - defaults to https://api.groq.com/openai/v1
+
+models:
+  - alias: "TEST_llama-3.3-70b"
+    actual: "llama-3.3-70b-versatile"
+    capabilities:
+      chat: true
+      multimodal: false
+      streaming: true
+    cost:
+      inputPerMillion: 0.59   # $0.59 per million input tokens
+      outputPerMillion: 0.79  # $0.79 per million output tokens
+
+testCases:
+  basicChat:
+    prompt: "What is the history of France? Include information about Paris, the French Revolution, and Napoleon."
+    validation:
+      minInputTokens: 15     # Instructive prompt ~15-20 tokens
+      minOutputTokens: 100   # Expect substantial response
+      requiredPatterns:
+        - "(?i)revolution"   # Case-insensitive: Revolution
+        - "(?i)napoleon"     # Napoleon
+        - "(?i)paris"        # Paris
+        - "\\d{4}"           # Any 4-digit year
+        - "(?i)french"       # French

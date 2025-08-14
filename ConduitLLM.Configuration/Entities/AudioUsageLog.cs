@@ -21,11 +21,15 @@ namespace ConduitLLM.Configuration.Entities
         public string VirtualKey { get; set; } = string.Empty;
 
         /// <summary>
-        /// Provider that handled the request.
+        /// Provider ID that handled the request.
         /// </summary>
         [Required]
-        [MaxLength(100)]
-        public string Provider { get; set; } = string.Empty;
+        public int ProviderId { get; set; }
+        
+        /// <summary>
+        /// Navigation property to Provider.
+        /// </summary>
+        public Provider? Provider { get; set; }
 
         /// <summary>
         /// Type of audio operation.

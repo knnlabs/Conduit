@@ -2,6 +2,7 @@ using System.Reflection;
 
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Services;
+using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Caching;
@@ -16,6 +17,7 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using Prometheus;
 
+using ConduitLLM.Admin.Interfaces;
 namespace ConduitLLM.Admin;
 
 /// <summary>
@@ -38,6 +40,10 @@ public partial class Program
                 // Configure JSON to use camelCase for compatibility with TypeScript clients
                 options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
                 options.JsonSerializerOptions.DictionaryKeyPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+                
+                // IMPORTANT: Make JSON deserialization case-insensitive to prevent bugs
+                // This allows the API to accept both "initialBalance" and "InitialBalance"
+                options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
             });
         builder.Services.AddEndpointsApiExplorer();
 
@@ -63,6 +69,9 @@ public partial class Program
                     Name = "ConduitLLM Team"
                 }
             });
+
+            // Use fully qualified type names to avoid schema ID conflicts
+            c.CustomSchemaIds(type => type.FullName?.Replace("+", ".") ?? type.Name);
 
             // Add XML comments
             var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
@@ -126,6 +135,23 @@ public partial class Program
 
         builder.Services.AddRedisDataProtection(redisConnectionString, "Conduit");
 
+        // Add Redis as distributed cache for ephemeral key storage
+        if (!string.IsNullOrEmpty(redisConnectionString))
+        {
+            builder.Services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = redisConnectionString;
+                options.InstanceName = "conduit:";
+            });
+            Console.WriteLine("[ConduitLLM.Admin] Distributed cache configured with Redis");
+        }
+        else
+        {
+            // Fallback to in-memory cache if Redis is not configured
+            builder.Services.AddDistributedMemoryCache();
+            Console.WriteLine("[ConduitLLM.Admin] WARNING: Using in-memory cache - ephemeral keys will not work across instances");
+        }
+
         // Add SignalR with configuration
         var signalRBuilder = builder.Services.AddSignalR(options =>
         {
@@ -163,7 +189,7 @@ public partial class Program
         builder.Services.AddMassTransit(x =>
         {
             // Register consumers for Admin API SignalR notifications
-            x.AddConsumer<ConduitLLM.Admin.Consumers.ProviderHealthChangedConsumer>();
+            // Provider health consumer removed
             
             if (useRabbitMq)
             {
@@ -194,8 +220,8 @@ public partial class Program
                 Console.WriteLine("[ConduitLLM.Admin] Event publishing ENABLED - Admin services will publish:");
                 Console.WriteLine("  - VirtualKeyUpdated events (triggers cache invalidation in Core API)");
                 Console.WriteLine("  - VirtualKeyDeleted events (triggers cache cleanup in Core API)");
-                Console.WriteLine("  - ProviderCredentialUpdated events (triggers capability refresh)");
-                Console.WriteLine("  - ProviderCredentialDeleted events (triggers cache cleanup)");
+                Console.WriteLine("  - ProviderUpdated events (triggers capability refresh)");
+                Console.WriteLine("  - ProviderDeleted events (triggers cache cleanup)");
                 Console.WriteLine("[ConduitLLM.Admin] Event consuming ENABLED - Admin services will consume:");
                 Console.WriteLine("  - ProviderHealthChanged events (forwards to Admin SignalR clients)");
             }
@@ -226,9 +252,8 @@ public partial class Program
             }
         });
 
-        // Add standardized health checks
-        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-        builder.Services.AddConduitHealthChecks(connectionString, redisConnectionString, false, rabbitMqConfig);
+        // Add basic health checks
+        builder.Services.AddHealthChecks();
         
         // Add connection pool warmer for better startup performance
         builder.Services.AddHostedService<ConduitLLM.Core.Services.ConnectionPoolWarmer>(serviceProvider =>
@@ -258,9 +283,8 @@ public partial class Program
         // Add error queue metrics collection service
         builder.Services.AddHostedService<ConduitLLM.Admin.Services.ErrorQueueMetricsService>();
         
-        // Add cache monitoring and alerting services
-        builder.Services.AddCacheMonitoring(builder.Configuration);
-        builder.Services.AddHostedService<ConduitLLM.Admin.Services.CacheAlertNotificationService>();
+        // Add cache infrastructure
+        builder.Services.AddCacheInfrastructure(builder.Configuration);
 
         var app = builder.Build();
 
@@ -278,43 +302,8 @@ public partial class Program
             }
         }
 
-        // Initialize database - Always run unless explicitly told to skip
-        // This ensures users get automatic schema updates when pulling new versions
-        var skipDatabaseInit = Environment.GetEnvironmentVariable("CONDUIT_SKIP_DATABASE_INIT") == "true";
-        if (!skipDatabaseInit)
-        {
-            using (var scope = app.Services.CreateScope())
-            {
-                var dbInitializer = scope.ServiceProvider.GetRequiredService<ConduitLLM.Configuration.Data.DatabaseInitializer>();
-                var initLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-
-                try
-                {
-                    initLogger.LogInformation("Starting database initialization for Admin API...");
-
-                    // Wait for database to be available (especially important in Docker)
-                    var maxRetries = 10;
-                    var retryDelay = 3000; // 3 seconds between retries
-
-                    var success = await dbInitializer.InitializeDatabaseAsync(maxRetries, retryDelay);
-
-                    if (success)
-                    {
-                        initLogger.LogInformation("Database initialization completed successfully");
-                    }
-                    else
-                    {
-                        initLogger.LogError("Database initialization failed after {MaxRetries} attempts", maxRetries);
-                        throw new InvalidOperationException($"Database initialization failed after {maxRetries} attempts. Please check database connectivity and logs.");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    initLogger.LogError(ex, "Critical error during database initialization");
-                    throw new InvalidOperationException("Failed to initialize database. Application cannot start.", ex);
-                }
-            }
-        }
+        // Run database migrations
+        await app.RunDatabaseMigrationAsync();
 
         // Configure the HTTP request pipeline
         if (app.Environment.IsDevelopment())
@@ -344,8 +333,16 @@ public partial class Program
         // Map SignalR hub with master key authentication (filter applied globally in AddSignalR)
         app.MapHub<ConduitLLM.Admin.Hubs.AdminNotificationHub>("/hubs/admin-notifications");
 
-        // Map health check endpoints with authentication requirement
-        app.MapSecureConduitHealthChecks(requireAuthorization: true);
+        // Map health check endpoints
+        app.MapHealthChecks("/health");
+        app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+        {
+            Predicate = check => check.Tags.Contains("live")
+        });
+        app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+        {
+            Predicate = check => check.Tags.Contains("ready") || check.Tags.Count == 0
+        });
 
         // Map Prometheus metrics endpoint - requires authentication
         app.UseOpenTelemetryPrometheusScrapingEndpoint(

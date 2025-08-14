@@ -8,7 +8,7 @@ Based on the pattern used in `FetchVirtualKeyService`, here's how the `FetchProv
 
 ### 1. Service Implementation
 
-**File**: `/Clients/Node/Admin/src/services/FetchProvidersService.ts`
+**File**: `/SDKs/Node/Admin/src/services/FetchProvidersService.ts`
 
 ```typescript
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
@@ -163,7 +163,7 @@ export class FetchProvidersService {
 
 ### 2. Update Constants
 
-**File**: `/Clients/Node/Admin/src/constants.ts`
+**File**: `/SDKs/Node/Admin/src/constants.ts`
 
 ```typescript
 export const ENDPOINTS = {
@@ -184,7 +184,7 @@ export const ENDPOINTS = {
 
 ### 3. Update the Main Client
 
-**File**: `/Clients/Node/Admin/src/FetchConduitAdminClient.ts`
+**File**: `/SDKs/Node/Admin/src/FetchConduitAdminClient.ts`
 
 ```typescript
 import { FetchBaseApiClient } from './client/FetchBaseApiClient';
@@ -232,7 +232,7 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
 
 ### 4. Export Services and Types
 
-**File**: `/Clients/Node/Admin/src/index.ts`
+**File**: `/SDKs/Node/Admin/src/index.ts`
 
 ```typescript
 // Services

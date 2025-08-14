@@ -151,37 +151,38 @@ namespace ConduitLLM.Core.Services
                     .Where(json => !string.IsNullOrEmpty(json))
                     .Select(json => JsonSerializer.Deserialize<CacheStatistics>(json!))
                     .Where(stats => stats != null)
+                    .Cast<CacheStatistics>()
                     .ToList();
 
-                if (validStats.Count > 0)
+                if (validStats.Count() > 0)
                 {
                     // Aggregate statistics
-                    aggregated.HitCount = validStats.Sum(s => s!.HitCount);
-                    aggregated.MissCount = validStats.Sum(s => s!.MissCount);
-                    aggregated.SetCount = validStats.Sum(s => s!.SetCount);
-                    aggregated.RemoveCount = validStats.Sum(s => s!.RemoveCount);
-                    aggregated.EvictionCount = validStats.Sum(s => s!.EvictionCount);
-                    aggregated.ErrorCount = validStats.Sum(s => s!.ErrorCount);
+                    aggregated.HitCount = validStats.Sum(s => s.HitCount);
+                    aggregated.MissCount = validStats.Sum(s => s.MissCount);
+                    aggregated.SetCount = validStats.Sum(s => s.SetCount);
+                    aggregated.RemoveCount = validStats.Sum(s => s.RemoveCount);
+                    aggregated.EvictionCount = validStats.Sum(s => s.EvictionCount);
+                    aggregated.ErrorCount = validStats.Sum(s => s.ErrorCount);
 
                     // Average response times
                     var avgGetTimes = validStats
-                        .Where(s => s!.AverageGetTime > TimeSpan.Zero)
-                        .Select(s => s!.AverageGetTime.TotalMilliseconds)
+                        .Where(s => s.AverageGetTime > TimeSpan.Zero)
+                        .Select(s => s.AverageGetTime.TotalMilliseconds)
                         .ToList();
 
-                    if (avgGetTimes.Count > 0)
+                    if (avgGetTimes.Count() > 0)
                     {
                         aggregated.AverageGetTime = TimeSpan.FromMilliseconds(avgGetTimes.Average());
                     }
 
                     // Take the latest values for current state
-                    var latest = validStats.OrderByDescending(s => s!.LastUpdateTime).First();
-                    aggregated.EntryCount = latest!.EntryCount;
+                    var latest = validStats.OrderByDescending(s => s.LastUpdateTime).First();
+                    aggregated.EntryCount = latest.EntryCount;
                     aggregated.MemoryUsageBytes = latest.MemoryUsageBytes;
                 }
 
                 _logger.LogDebug("Aggregated {DataPoints} data points for region {Region} window {StartTime} to {EndTime}",
-                    validStats.Count, region, startTime, endTime);
+                    validStats.Count() == 0, region, startTime, endTime);
             }
             catch (Exception ex)
             {

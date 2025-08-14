@@ -13,7 +13,7 @@ The Admin API client provides a way for the WebUI project to communicate with th
 The Admin API client can be configured using environment variables:
 
 - `CONDUIT_ADMIN_API_URL` - The base URL of the Admin API. Default is "http://localhost:5000".
-- `CONDUIT_MASTER_KEY` - The master key for authenticating with the Admin API.
+- `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` - The master key for authenticating with the Admin API.
 - `CONDUIT_USE_ADMIN_API` - Whether to use the Admin API client (true) or direct repository access (false). Default is true.
 
 ### appsettings.json

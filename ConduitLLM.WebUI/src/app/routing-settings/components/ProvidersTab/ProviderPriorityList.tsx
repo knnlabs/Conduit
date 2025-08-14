@@ -125,8 +125,9 @@ export function ProviderPriorityList({
               { value: 'cost_optimized', label: 'Cost Optimized' },
               { value: 'priority', label: 'Priority Based' },
             ]}
-            value={localConfig.defaultStrategy ?? config?.defaultStrategy}
+            value={localConfig.defaultStrategy ?? config?.defaultStrategy ?? null}
             onChange={(value) => value && handleConfigChange('defaultStrategy', value)}
+            allowDeselect={false}
           />
           <div>
             <Text size="sm" fw={500} mb="xs">Fallback Enabled</Text>

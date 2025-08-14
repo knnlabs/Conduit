@@ -131,9 +131,11 @@ export const formatters = {
       ...intlOptions
     } = options;
 
-    // Determine appropriate precision based on amount size
-    const minimumFractionDigits = precision ?? (amount < 0.01 ? 4 : 2);
-    const maximumFractionDigits = precision ?? (amount < 0.01 ? 4 : 2);
+    // Determine appropriate precision based on context
+    // If precision is explicitly provided, use it
+    // Otherwise, use 6 decimals for micro-transactions, 4 for everything else
+    const minimumFractionDigits = precision ?? (amount < 0.01 ? 6 : 4);
+    const maximumFractionDigits = precision ?? (amount < 0.01 ? 6 : 4);
 
     const formatOptions: Intl.NumberFormatOptions = {
       style: 'currency',

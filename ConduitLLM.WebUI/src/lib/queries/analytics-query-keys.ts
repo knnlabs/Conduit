@@ -31,27 +31,14 @@ export const usageAnalyticsKeys = {
   endpoints: (timeRange: unknown) => [...usageAnalyticsKeys.all, 'endpoints', timeRange] as const,
 } as const;
 
-// Virtual Keys Analytics Query Keys
-export const virtualKeysAnalyticsKeys = {
-  all: [...analyticsBase, 'virtual-keys'] as const,
-  overview: () => [...virtualKeysAnalyticsKeys.all, 'overview'] as const,
-  usage: (keyId: string, timeRange: string) => [...virtualKeysAnalyticsKeys.all, 'usage', keyId, timeRange] as const,
-  budget: (keyId: string, period: string) => [...virtualKeysAnalyticsKeys.all, 'budget', keyId, period] as const,
-  performance: (keyId: string, timeRange: string) => [...virtualKeysAnalyticsKeys.all, 'performance', keyId, timeRange] as const,
-  security: (keyId: string, timeRange: string) => [...virtualKeysAnalyticsKeys.all, 'security', keyId, timeRange] as const,
-  trends: (keyId: string, timeRange: string) => [...virtualKeysAnalyticsKeys.all, 'trends', keyId, timeRange] as const,
-  leaderboard: (period: string) => [...virtualKeysAnalyticsKeys.all, 'leaderboard', period] as const,
-} as const;
 
 // Aggregated key factory for invalidation
 export const analyticsKeys = {
   all: analyticsBase,
   cost: costAnalyticsKeys,
   usage: usageAnalyticsKeys,
-  virtualKeys: virtualKeysAnalyticsKeys,
   // Helper functions for broad invalidation
   invalidateAll: () => analyticsBase,
   invalidateCost: () => costAnalyticsKeys.all,
   invalidateUsage: () => usageAnalyticsKeys.all,
-  invalidateVirtualKeys: () => virtualKeysAnalyticsKeys.all,
 } as const;

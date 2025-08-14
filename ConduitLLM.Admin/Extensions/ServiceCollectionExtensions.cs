@@ -1,12 +1,16 @@
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Admin.Options;
 using ConduitLLM.Admin.Security;
 using ConduitLLM.Admin.Services;
+using ConduitLLM.Core.Extensions; // For AddMediaServices extension method
 using ConduitLLM.Core.Interfaces; // For IVirtualKeyCache and ILLMClientFactory
+using ConduitLLM.Configuration.Interfaces; // For repository interfaces  
 using ConduitLLM.Configuration.Repositories; // For repository interfaces
 using ConduitLLM.Configuration.Options;
 
 using MassTransit; // For IPublishEndpoint
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore; // For IDbContextFactory
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
@@ -30,11 +34,24 @@ public static class ServiceCollectionExtensions
         // Configure security options from environment variables
         services.ConfigureAdminSecurityOptions(configuration);
 
-        // Register security service
-        services.AddSingleton<ISecurityService, SecurityService>();
+        // Register security service as singleton with factory to handle scoped dependencies
+        services.AddSingleton<ISecurityService>(serviceProvider =>
+        {
+            var options = serviceProvider.GetRequiredService<IOptions<SecurityOptions>>();
+            var config = serviceProvider.GetRequiredService<IConfiguration>();
+            var logger = serviceProvider.GetRequiredService<ILogger<SecurityService>>();
+            var memoryCache = serviceProvider.GetRequiredService<IMemoryCache>();
+            var distributedCache = serviceProvider.GetService<IDistributedCache>(); // Optional
+            var serviceScopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
+            
+            return new SecurityService(options, config, logger, memoryCache, distributedCache, serviceScopeFactory);
+        });
 
         // Add memory cache if not already registered
         services.AddMemoryCache();
+
+        // Register Ephemeral Master Key Service
+        services.AddSingleton<IEphemeralMasterKeyService, EphemeralMasterKeyService>();
 
         // Add authentication with a custom scheme
         services.AddAuthentication("MasterKey")
@@ -44,8 +61,15 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAuthorizationHandler, MasterKeyAuthorizationHandler>();
         services.AddAuthorization(options =>
         {
+            // Define the MasterKeyPolicy
             options.AddPolicy("MasterKeyPolicy", policy =>
                 policy.Requirements.Add(new MasterKeyRequirement()));
+            
+            // Set MasterKeyPolicy as the default policy for all controllers
+            // This ensures any controller with [Authorize] will use MasterKeyPolicy by default
+            options.DefaultPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+                .AddRequirements(new MasterKeyRequirement())
+                .Build();
         });
 
         // Register AdminVirtualKeyService with optional cache and event publishing dependencies
@@ -53,6 +77,7 @@ public static class ServiceCollectionExtensions
         {
             var virtualKeyRepository = serviceProvider.GetRequiredService<IVirtualKeyRepository>();
             var spendHistoryRepository = serviceProvider.GetRequiredService<IVirtualKeySpendHistoryRepository>();
+            var groupRepository = serviceProvider.GetRequiredService<IVirtualKeyGroupRepository>();
             var cache = serviceProvider.GetService<IVirtualKeyCache>(); // Optional - null if not registered
             var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
             var logger = serviceProvider.GetRequiredService<ILogger<AdminVirtualKeyService>>();
@@ -60,13 +85,13 @@ public static class ServiceCollectionExtensions
             var modelCapabilityService = serviceProvider.GetRequiredService<IModelCapabilityService>();
             var mediaLifecycleService = serviceProvider.GetService<IMediaLifecycleService>(); // Optional - null if not configured
             
-            return new AdminVirtualKeyService(virtualKeyRepository, spendHistoryRepository, cache, publishEndpoint, logger, modelProviderMappingRepository, modelCapabilityService, mediaLifecycleService);
+            return new AdminVirtualKeyService(virtualKeyRepository, spendHistoryRepository, groupRepository, cache, publishEndpoint, logger, modelProviderMappingRepository, modelCapabilityService, mediaLifecycleService);
         });
         // Register AdminModelProviderMappingService with optional event publishing dependency
         services.AddScoped<IAdminModelProviderMappingService>(serviceProvider =>
         {
             var mappingRepository = serviceProvider.GetRequiredService<IModelProviderMappingRepository>();
-            var credentialRepository = serviceProvider.GetRequiredService<IProviderCredentialRepository>();
+            var credentialRepository = serviceProvider.GetRequiredService<IProviderRepository>();
             var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
             var logger = serviceProvider.GetRequiredService<ILogger<AdminModelProviderMappingService>>();
             
@@ -97,26 +122,16 @@ public static class ServiceCollectionExtensions
             
             return new AdminGlobalSettingService(globalSettingRepository, publishEndpoint, logger);
         });
-        services.AddScoped<IAdminProviderHealthService, AdminProviderHealthService>();
         // Register AdminModelCostService with optional event publishing dependency
         services.AddScoped<IAdminModelCostService>(serviceProvider =>
         {
             var modelCostRepository = serviceProvider.GetRequiredService<IModelCostRepository>();
             var requestLogRepository = serviceProvider.GetRequiredService<IRequestLogRepository>();
+            var dbContextFactory = serviceProvider.GetRequiredService<IDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>>();
             var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
             var logger = serviceProvider.GetRequiredService<ILogger<AdminModelCostService>>();
             
-            return new AdminModelCostService(modelCostRepository, requestLogRepository, publishEndpoint, logger);
-        });
-        // Register AdminProviderCredentialService with optional event publishing dependency
-        services.AddScoped<IAdminProviderCredentialService>(serviceProvider =>
-        {
-            var providerCredentialRepository = serviceProvider.GetRequiredService<IProviderCredentialRepository>();
-            var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-            var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
-            var logger = serviceProvider.GetRequiredService<ILogger<AdminProviderCredentialService>>();
-            
-            return new AdminProviderCredentialService(providerCredentialRepository, httpClientFactory, publishEndpoint, logger);
+            return new AdminModelCostService(modelCostRepository, requestLogRepository, dbContextFactory, publishEndpoint, logger);
         });
 
         // Register Error Queue monitoring services
@@ -145,97 +160,47 @@ public static class ServiceCollectionExtensions
         });
 
         // Register database-aware LLM client factory (must be registered before discovery service)
-        services.AddScoped<ILLMClientFactory, DatabaseAwareLLMClientFactory>();
+        services.AddScoped<ILLMClientFactory, ConduitLLM.Providers.DatabaseAwareLLMClientFactory>();
 
-        // Register enhanced model discovery providers
-        // Configure HttpClients for each discovery provider
-        services.AddHttpClient<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>(client =>
+        // Configure HttpClient for discovery providers
+        services.AddHttpClient("DiscoveryProviders", client =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);
             client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM-Admin/1.0");
         });
 
-        services.AddHttpClient<ConduitLLM.Core.Services.AnthropicDiscoveryProvider>(client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(30);
-            client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM-Admin/1.0");
-        });
+        // Model discovery providers have been migrated to sister classes
 
-        // Register discovery providers as concrete implementations first
-        services.AddScoped<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>(serviceProvider =>
+        // Register provider model discovery
+        services.AddScoped<IProviderModelDiscovery, ProviderModelDiscoveryService>();
+        services.AddScoped<IProviderInstanceModelDiscovery, ProviderInstanceModelDiscoveryService>();
+        
+        // Register discovery service with explicit dependency injection
+        services.AddScoped<IProviderDiscoveryService>(serviceProvider =>
         {
+            var clientFactory = serviceProvider.GetRequiredService<ILLMClientFactory>();
+            var credentialService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IProviderService>();
+            var mappingService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IModelProviderMappingService>();
+            var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.ProviderDiscoveryService>>();
+            var cache = serviceProvider.GetRequiredService<IMemoryCache>();
             var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-            var httpClient = httpClientFactory.CreateClient(nameof(ConduitLLM.Core.Services.OpenRouterDiscoveryProvider));
-            var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>>();
-            var credentialService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderCredentialService>();
+            var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional
+            var providerModelDiscovery = serviceProvider.GetRequiredService<IProviderModelDiscovery>(); // Required
             
-            // Get API key from provider credentials
-            try
-            {
-                var credential = credentialService.GetCredentialByProviderNameAsync("openrouter").GetAwaiter().GetResult();
-                var apiKey = credential?.ApiKey;
-                return new ConduitLLM.Core.Services.OpenRouterDiscoveryProvider(httpClient, logger, apiKey);
-            }
-            catch
-            {
-                // If we can't get credentials, still register the provider (it will fall back to patterns)
-                return new ConduitLLM.Core.Services.OpenRouterDiscoveryProvider(httpClient, logger, null);
-            }
+            return new ConduitLLM.Core.Services.ProviderDiscoveryService(
+                clientFactory,
+                credentialService,
+                mappingService,
+                logger,
+                cache,
+                httpClientFactory,
+                publishEndpoint,
+                providerModelDiscovery);
         });
 
-        services.AddScoped<ConduitLLM.Core.Services.AnthropicDiscoveryProvider>(serviceProvider =>
-        {
-            var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-            var httpClient = httpClientFactory.CreateClient(nameof(ConduitLLM.Core.Services.AnthropicDiscoveryProvider));
-            var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.AnthropicDiscoveryProvider>>();
-            var credentialService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderCredentialService>();
-            
-            // Get API key from provider credentials
-            try
-            {
-                var credential = credentialService.GetCredentialByProviderNameAsync("anthropic").GetAwaiter().GetResult();
-                var apiKey = credential?.ApiKey;
-                return new ConduitLLM.Core.Services.AnthropicDiscoveryProvider(httpClient, logger, apiKey);
-            }
-            catch
-            {
-                // If we can't get credentials, still register the provider (it will fall back to patterns)
-                return new ConduitLLM.Core.Services.AnthropicDiscoveryProvider(httpClient, logger, null);
-            }
-        });
+        // Register Media Services using shared configuration from Core
+        services.AddMediaServices(configuration);
 
-        // Register the providers as IModelDiscoveryProvider interfaces
-        services.AddScoped<ConduitLLM.Core.Interfaces.IModelDiscoveryProvider>(serviceProvider =>
-            serviceProvider.GetRequiredService<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>());
-
-        services.AddScoped<ConduitLLM.Core.Interfaces.IModelDiscoveryProvider>(serviceProvider =>
-            serviceProvider.GetRequiredService<ConduitLLM.Core.Services.AnthropicDiscoveryProvider>());
-
-        // Register discovery service
-        services.AddScoped<IProviderDiscoveryService, ConduitLLM.Core.Services.ProviderDiscoveryService>();
-
-        // Register Media Lifecycle Service (optional - for virtual key cleanup)
-        // Only register if we have a media storage service configured
-        var storageProvider = configuration.GetValue<string>("ConduitLLM:Storage:Provider");
-        if (!string.IsNullOrEmpty(storageProvider))
-        {
-            services.Configure<ConduitLLM.Core.Services.MediaManagementOptions>(
-                configuration.GetSection("ConduitLLM:MediaManagement"));
-            
-            // Register media storage service based on configuration
-            if (storageProvider.Equals("S3", StringComparison.OrdinalIgnoreCase))
-            {
-                services.Configure<ConduitLLM.Core.Options.S3StorageOptions>(
-                    configuration.GetSection(ConduitLLM.Core.Options.S3StorageOptions.SectionName));
-                services.AddSingleton<IMediaStorageService, ConduitLLM.Core.Services.S3MediaStorageService>();
-            }
-            
-            services.AddScoped<IMediaLifecycleService, ConduitLLM.Core.Services.MediaLifecycleService>();
-        }
-
-        // Register provider health monitoring background service
-        services.Configure<ProviderHealthOptions>(configuration.GetSection(ProviderHealthOptions.SectionName));
-        services.AddHostedService<ProviderHealthMonitoringService>();
 
         // Register SignalR admin notification service
         services.AddScoped<ConduitLLM.Admin.Hubs.AdminNotificationService>();
@@ -248,12 +213,21 @@ public static class ServiceCollectionExtensions
         {
             options.AddPolicy("AdminCorsPolicy", policy =>
             {
-                policy.WithOrigins(
-                        configuration.GetSection("AdminApi:AllowedOrigins").Get<string[]>() ??
-                        new[] { "http://localhost:5000", "https://localhost:5001" })
-                    .AllowAnyMethod()
-                    .AllowAnyHeader()
-                    .AllowCredentials(); // Required for SignalR
+                var allowedOrigins = configuration.GetSection("AdminApi:AllowedOrigins").Get<string[]>();
+                if (allowedOrigins != null && allowedOrigins.Length == 0)
+                {
+                    policy.WithOrigins(allowedOrigins)
+                        .AllowAnyMethod()
+                        .AllowAnyHeader()
+                        .AllowCredentials();
+                }
+                else
+                {
+                    policy.SetIsOriginAllowed(_ => true)
+                        .AllowAnyMethod()
+                        .AllowAnyHeader()
+                        .AllowCredentials();
+                }
             });
         });
 

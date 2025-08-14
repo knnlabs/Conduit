@@ -179,7 +179,7 @@ NEXTAUTH_SECRET=your-generated-secret
 1. **Verify Key Format:**
 ```typescript
 // Ensure proper format
-const masterKey = process.env.CONDUIT_MASTER_KEY;
+const masterKey = process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY;
 console.log('Master key format:', {
   length: masterKey?.length,
   prefix: masterKey?.substring(0, 5),
@@ -227,7 +227,7 @@ try {
 const required = [
   'CONDUIT_API_BASE_URL',
   'CONDUIT_ADMIN_API_BASE_URL',
-  'CONDUIT_MASTER_KEY',
+  'CONDUIT_API_TO_API_BACKEND_AUTH_KEY',
 ];
 
 const missing = required.filter(key => !process.env[key]);
@@ -689,7 +689,7 @@ module.exports = {
 export function validateEnvironment() {
   const required = {
     CONDUIT_API_BASE_URL: process.env.CONDUIT_API_BASE_URL,
-    CONDUIT_MASTER_KEY: process.env.CONDUIT_MASTER_KEY,
+    CONDUIT_API_TO_API_BACKEND_AUTH_KEY: process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY,
   };
   
   const missing = Object.entries(required)

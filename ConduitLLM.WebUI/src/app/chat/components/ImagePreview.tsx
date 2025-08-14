@@ -25,7 +25,7 @@ export function ImagePreview({ images, compact = false }: ImagePreviewProps) {
         {displayedImages.map((image) => (
           <Stack key={image.name || image.url} gap="xs" align="center">
             <Image
-              src={image.url}
+              src={image.base64 ? `data:${image.mimeType};base64,${image.base64}` : image.url}
               alt={image.name}
               width={imageSize}
               height={imageSize}
@@ -70,7 +70,7 @@ export function ImagePreview({ images, compact = false }: ImagePreviewProps) {
         {selectedImage && (
           <Stack>
             <Image
-              src={selectedImage.url}
+              src={selectedImage.base64 ? `data:${selectedImage.mimeType};base64,${selectedImage.base64}` : selectedImage.url}
               alt={selectedImage.name}
               fit="contain"
               style={{ maxHeight: '70vh' }}

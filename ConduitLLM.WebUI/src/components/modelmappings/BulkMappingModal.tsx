@@ -32,9 +32,12 @@ import {
   IconPlayerPlay,
   IconVideo,
   IconVectorBezier,
+  IconMessageCircle,
 } from '@tabler/icons-react';
 import { useProviders } from '@/hooks/useProviderApi';
 import { useBulkDiscoverModels, useBulkCreateMappings } from '@/hooks/useModelMappingsApi';
+import { getProviderTypeFromDto, providerTypeToName } from '@/lib/utils/providerTypeUtils';
+import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
 
 interface BulkMappingModalProps {
   isOpen: boolean;
@@ -58,6 +61,7 @@ interface DiscoveredModel {
     supportsStreaming: boolean;
     supportsVideoGeneration: boolean;
     supportsEmbeddings: boolean;
+    supportsChat: boolean;
     maxContextLength?: number | null;
     maxOutputTokens?: number | null;
   };
@@ -76,6 +80,7 @@ const CapabilityIcon = ({ capability, supported }: { capability: string; support
     supportsStreaming: <IconPlayerPlay {...iconProps} />,
     supportsVideoGeneration: <IconVideo {...iconProps} />,
     supportsEmbeddings: <IconVectorBezier {...iconProps} />,
+    supportsChat: <IconMessageCircle {...iconProps} />,
   };
   
   const labels: Record<string, string> = {
@@ -88,6 +93,7 @@ const CapabilityIcon = ({ capability, supported }: { capability: string; support
     supportsStreaming: 'Streaming',
     supportsVideoGeneration: 'Video Generation',
     supportsEmbeddings: 'Embeddings',
+    supportsChat: 'Chat',
   };
   
   return (
@@ -123,11 +129,20 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
     setSelectedProviderId(providerId);
     setSelectedModels(new Set());
     
-    const provider = providers?.find(p => p.id.toString() === providerId);
+    const provider = providers?.find((p: ProviderCredentialDto) => p.id?.toString() === providerId);
     if (!provider) return;
     
+    console.warn('[BulkMappingModal] Selected provider:', provider);
+    
     try {
-      const result = await discoverModels(providerId, provider.providerName);
+      // Ensure providerType exists
+      if (!provider.providerType) {
+        throw new Error('Provider must have providerType');
+      }
+      const providerType = getProviderTypeFromDto(provider as { providerType: number });
+      const providerName = providerTypeToName(providerType);
+      console.warn('[BulkMappingModal] Provider type:', providerType, 'Name:', providerName);
+      const result = await discoverModels(providerId, providerName);
       setDiscoveredModels(result.models.map(model => ({
         ...model,
         existingMapping: model.existingMapping as Record<string, unknown> | null
@@ -227,10 +242,10 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
         <Select
           label="Select Provider"
           placeholder="Choose a provider to discover models"
-          data={providers?.map(p => ({
-            value: p.id.toString(),
-            label: p.providerName,
-          })) || []}
+          data={providers?.map((p: ProviderCredentialDto) => ({
+            value: p.id?.toString() ?? '',
+            label: p.providerName ?? `Provider ${p.id}`,
+          })).filter(opt => opt.value !== '' && opt.label !== '') ?? []}
           value={selectedProviderId}
           onChange={(value) => { void handleProviderSelect(value); }}
           disabled={isLoadingProviders}

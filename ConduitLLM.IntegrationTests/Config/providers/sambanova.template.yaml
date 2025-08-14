@@ -1,0 +1,45 @@
+# SambaNova Provider Configuration Template
+# Copy this file to sambanova.yaml and fill in your actual API key
+# sambanova.yaml is gitignored to protect secrets
+
+provider:
+  type: "SambaNova"
+  name: "TEST_SambaNova_Provider"
+  apiKey: "YOUR_SAMBANOVA_API_KEY_HERE"  # Replace with your actual SambaNova API key
+  # baseUrl: "https://api.sambanova.ai/v1"  # Optional - defaults to https://api.sambanova.ai/v1
+
+models:
+  - alias: "TEST_llama-3.3-70b"
+    actual: "Meta-Llama-3.3-70B-Instruct"
+    capabilities:
+      chat: true
+      multimodal: false  # Llama 3.3 70B is text-only, does not support images
+      streaming: true
+    cost:
+      inputPerMillion: 0.45   # $0.45 per million input tokens
+      outputPerMillion: 0.60  # $0.60 per million output tokens
+
+testCases:
+  basicChat:
+    prompt: "Tell me about the history of France. Include information about the French Revolution, Napoleon, and Paris. Mention specific years when important events happened."
+    validation:
+      minInputTokens: 25     # Longer instructive prompt ~25-30 tokens
+      minOutputTokens: 100   # Expect substantial response
+      requiredPatterns:
+        - "(?i)revolution"   # Case-insensitive: Revolution
+        - "(?i)napoleon"     # Napoleon
+        - "(?i)paris"        # Paris
+        - "\\d{4}"           # Any 4-digit year
+        - "(?i)french"       # French
+  
+  multimodal:
+    enabled: false  # Disabled - Llama 3.3 70B does not support multimodal/vision
+    imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Tux.png/220px-Tux.png"  # Tux penguin logo
+    prompt: "What do you see in this image? Please describe any text, logos, or symbols you can identify."
+    validation:
+      minInputTokens: 20     # Image + prompt tokens
+      minOutputTokens: 50    # Expect descriptive response
+      requiredPatterns:
+        - "(?i)penguin"      # Should identify penguin
+        - "(?i)(linux|tux)"  # Should identify Linux mascot or Tux
+        - "(?i)(black|white|yellow|orange)" # Should describe colors

@@ -5,13 +5,15 @@ using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration;
 using Microsoft.AspNetCore.Authorization;
+using ConduitLLM.Configuration.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using ConduitLLM.Admin.Services;
-using ConduitLLM.Admin.Models;
+using ConduitLLM.Configuration.DTOs.Cache;
+using ConduitLLM.Configuration.DTOs.Routing;
 
 namespace ConduitLLM.Admin.Controllers
 {
@@ -23,7 +25,7 @@ namespace ConduitLLM.Admin.Controllers
     [Authorize(Policy = "MasterKeyPolicy")]
     public class ConfigurationController : ControllerBase
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly ILogger<ConfigurationController> _logger;
         private readonly IMemoryCache _cache;
         private readonly IConfiguration _configuration;
@@ -38,7 +40,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="configuration">Application configuration.</param>
         /// <param name="cacheManagementService">Service for cache maintenance operations.</param>
         public ConfigurationController(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<ConfigurationController> logger,
             IMemoryCache cache,
             IConfiguration configuration,
@@ -65,17 +67,19 @@ namespace ConduitLLM.Admin.Controllers
 
                 // Get model-to-provider mappings
                 var modelMappings = await dbContext.ModelProviderMappings
-                    .Include(m => m.ProviderCredential)
+                    .Include(m => m.Provider)
                     .Select(m => new
                     {
                         Id = m.Id,
                         ModelAlias = m.ModelAlias,
-                        ProviderModelName = m.ProviderModelName,
+                        ProviderModelId = m.ProviderModelId,
                         IsEnabled = m.IsEnabled,
                         Provider = new
                         {
-                            Name = m.ProviderCredential.ProviderName,
-                            IsEnabled = m.ProviderCredential.IsEnabled
+                            Id = m.Provider.Id,
+                            Name = m.Provider.ProviderName,
+                            Type = m.Provider.ProviderType,
+                            IsEnabled = m.Provider.IsEnabled
                         }
                     })
                     .ToListAsync(cancellationToken);
@@ -295,7 +299,7 @@ namespace ConduitLLM.Admin.Controllers
             {
                 if (take > 1000)
                 {
-                    return BadRequest(new { error = "Cannot retrieve more than 1000 entries at once" });
+                    return BadRequest(new ErrorResponseDto("Cannot retrieve more than 1000 entries at once"));
                 }
 
                 var entries = await _cacheManagementService.GetEntriesAsync(regionId, skip, take, cancellationToken);
@@ -371,33 +375,32 @@ namespace ConduitLLM.Admin.Controllers
             }
         }
 
-        private async Task<List<object>> GetProviderEndpoints(ConfigurationDbContext dbContext, CancellationToken cancellationToken)
+        private async Task<List<object>> GetProviderEndpoints(ConduitDbContext dbContext, CancellationToken cancellationToken)
         {
-            var providers = await dbContext.ProviderCredentials
+            var providers = await dbContext.Providers
                 .Where(p => p.IsEnabled)
                 .Select(p => new
                 {
+                    p.Id,
                     p.ProviderName,
-                    p.BaseUrl,
-                    LastHealth = dbContext.ProviderHealthRecords
-                        .Where(h => h.ProviderName == p.ProviderName)
-                        .OrderByDescending(h => h.TimestampUtc)
-                        .Select(h => new { IsHealthy = h.IsOnline, ResponseTime = h.ResponseTimeMs })
-                        .FirstOrDefault()
+                    p.ProviderType,
+                    p.BaseUrl
                 })
                 .ToListAsync(cancellationToken);
 
             return providers.Select(p => (object)new
             {
+                Id = p.Id,
                 Name = p.ProviderName,
-                Url = p.BaseUrl ?? $"https://api.{p.ProviderName.ToLower()}.com",
+                Type = p.ProviderType.ToString(),
+                Url = p.BaseUrl ?? $"https://api.{p.ProviderType.ToString().ToLower()}.com",
                 Weight = 1,
-                HealthStatus = p.LastHealth?.IsHealthy ?? false ? "healthy" : "unhealthy",
-                ResponseTime = p.LastHealth?.ResponseTime ?? 0
+                HealthStatus = "healthy", // Provider health tracking removed
+                ResponseTime = 0 // Provider health tracking removed
             }).ToList();
         }
 
-        private async Task<object> GetRoutingStatistics(ConfigurationDbContext dbContext, CancellationToken cancellationToken)
+        private async Task<object> GetRoutingStatistics(ConduitDbContext dbContext, CancellationToken cancellationToken)
         {
             var oneDayAgo = DateTime.UtcNow.AddDays(-1);
 
@@ -422,7 +425,7 @@ namespace ConduitLLM.Admin.Controllers
             };
         }
 
-        private async Task<object> GetCacheStatistics(ConfigurationDbContext dbContext, CancellationToken cancellationToken)
+        private async Task<object> GetCacheStatistics(ConduitDbContext dbContext, CancellationToken cancellationToken)
         {
             // In a real implementation, these would come from actual cache metrics
         // Added to ensure the method remains asynchronous and to avoid CS1998 warning
@@ -451,32 +454,6 @@ namespace ConduitLLM.Admin.Controllers
                 }
             };
         }
-    }
-
-    /// <summary>
-    /// DTO for updating routing configuration.
-    /// </summary>
-    public class UpdateRoutingConfigDto
-    {
-        /// <summary>
-        /// Enable or disable failover.
-        /// </summary>
-        public bool EnableFailover { get; set; }
-
-        /// <summary>
-        /// Enable or disable load balancing.
-        /// </summary>
-        public bool EnableLoadBalancing { get; set; }
-
-        /// <summary>
-        /// Request timeout in seconds.
-        /// </summary>
-        public int RequestTimeoutSeconds { get; set; }
-
-        /// <summary>
-        /// Circuit breaker threshold.
-        /// </summary>
-        public int CircuitBreakerThreshold { get; set; }
     }
 
 }

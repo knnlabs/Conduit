@@ -43,8 +43,7 @@ namespace ConduitLLM.Core.Services
             if (string.IsNullOrWhiteSpace(taskId))
                 throw new ArgumentException("Task ID cannot be null or whitespace.", nameof(taskId));
             
-            if (cts == null)
-                throw new ArgumentNullException(nameof(cts));
+            ArgumentNullException.ThrowIfNull(cts);
 
             var registration = new TaskRegistration
             {

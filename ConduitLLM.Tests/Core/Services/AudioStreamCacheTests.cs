@@ -16,6 +16,7 @@ using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
+using ConduitLLM.Configuration.Interfaces;
 
 namespace ConduitLLM.Tests.Core.Services
 {
@@ -334,7 +335,7 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _cache.ClearExpiredAsync();
 
             // Assert
-            result.Should().BeGreaterOrEqualTo(0);
+            result.Should().BeGreaterThanOrEqualTo(0);
         }
 
         [Fact]
