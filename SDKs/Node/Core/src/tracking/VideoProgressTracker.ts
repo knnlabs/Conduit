@@ -406,7 +406,7 @@ export class VideoProgressTracker {
     // Unsubscribe from SignalR
     if (this.isSignalRConnected) {
       this.videoHubClient.unsubscribeFromTask(this.taskId).catch(error => {
-        console.error('Failed to unsubscribe from task:', error);
+        console.warn('Failed to unsubscribe from task:', error);
       });
     }
 
