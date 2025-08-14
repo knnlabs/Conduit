@@ -1,6 +1,12 @@
-name: "CodeQL Scheduled Scan"
+name: "CodeQL"
 
 on:
+  push:
+    branches: [ master, dev ]
+  pull_request:
+    branches: [ master ]
+  schedule:
+    - cron: '30 5 * * 1'  # Weekly on Monday at 5:30 AM UTC
   workflow_dispatch: # Allow manual runs
     inputs:
       branch:
@@ -117,77 +123,5 @@ jobs:
       uses: github/codeql-action/analyze@v3
       with:
         category: "/language:${{ matrix.language }}"
-        output: sarif-results
-        upload: true
 
-    - name: Upload SARIF Results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: codeql-results-${{ matrix.language }}
-        path: sarif-results/
-        retention-days: 30
 
-    - name: Generate Security Summary
-      if: always()
-      run: |
-        echo "## CodeQL Security Scan Results - ${{ matrix.language }}" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Branch**: ${{ github.event.inputs.branch || 'master' }}" >> $GITHUB_STEP_SUMMARY
-        echo "**Language**: ${{ matrix.language }}" >> $GITHUB_STEP_SUMMARY
-        echo "**Scan Date**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        
-        if [ -d sarif-results ]; then
-          # Count issues by severity
-          HIGH_COUNT=0
-          MEDIUM_COUNT=0
-          LOW_COUNT=0
-          
-          for sarif in sarif-results/*.sarif; do
-            if [ -f "$sarif" ]; then
-              HIGH=$(jq '[.runs[].results[] | select(.level == "error")] | length' "$sarif" 2>/dev/null || echo "0")
-              MEDIUM=$(jq '[.runs[].results[] | select(.level == "warning")] | length' "$sarif" 2>/dev/null || echo "0")
-              LOW=$(jq '[.runs[].results[] | select(.level == "note")] | length' "$sarif" 2>/dev/null || echo "0")
-              
-              HIGH_COUNT=$((HIGH_COUNT + HIGH))
-              MEDIUM_COUNT=$((MEDIUM_COUNT + MEDIUM))
-              LOW_COUNT=$((LOW_COUNT + LOW))
-            fi
-          done
-          
-          echo "### Security Issues Found:" >> $GITHUB_STEP_SUMMARY
-          echo "- 🔴 **High Severity**: $HIGH_COUNT" >> $GITHUB_STEP_SUMMARY
-          echo "- 🟡 **Medium Severity**: $MEDIUM_COUNT" >> $GITHUB_STEP_SUMMARY
-          echo "- 🟢 **Low Severity**: $LOW_COUNT" >> $GITHUB_STEP_SUMMARY
-          
-          if [ $HIGH_COUNT -gt 0 ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "⚠️ **Action Required**: High severity security issues detected!" >> $GITHUB_STEP_SUMMARY
-          fi
-        else
-          echo "No SARIF results found for analysis." >> $GITHUB_STEP_SUMMARY
-        fi
-
-  # Summary job to aggregate results
-  scan-summary:
-    name: Scan Summary
-    runs-on: ubuntu-latest
-    needs: analyze
-    if: always()
-    
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: codeql-results-*
-          path: all-results
-
-      - name: Generate Combined Report
-        run: |
-          echo "# 🔒 CodeQL Security Scan Complete" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Scan Type**: ${{ github.event_name == 'schedule' && 'Scheduled' || 'Manual' }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Completion Time**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Results have been uploaded to the Security tab for review." >> $GITHUB_STEP_SUMMARY
