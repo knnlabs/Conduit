@@ -42,3 +42,19 @@ export const createMocks = () => {
 };
 
 export type { VideoProgressTrackerTestable };
+
+// Placeholder test to prevent Jest from failing
+describe('VideoProgressTracker setup utilities', () => {
+  it('should export createMocks function', () => {
+    expect(createMocks).toBeDefined();
+    expect(typeof createMocks).toBe('function');
+  });
+
+  it('should create proper mock objects', () => {
+    const mocks = createMocks();
+    expect(mocks.mockVideosService).toBeDefined();
+    expect(mocks.mockSignalRService).toBeDefined();
+    expect(mocks.mockVideoHubClient).toBeDefined();
+    expect(mocks.mockCallbacks).toBeDefined();
+  });
+});
