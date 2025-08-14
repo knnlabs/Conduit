@@ -398,9 +398,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - service: webui
-            image: ghcr.io/knnlabs/conduit-webui
-            dockerfile: ./ConduitLLM.WebUI/Dockerfile
           - service: http
             image: ghcr.io/knnlabs/conduit-http
             dockerfile: ./ConduitLLM.Http/Dockerfile
@@ -514,8 +511,9 @@ jobs:
         run: |
           # Get all tags from metadata
           TAGS="${{ steps.meta.outputs.tags }}"
+          SERVICE="${{ matrix.service }}"
           
-          # For each tag, create a manifest that includes both architectures
+          # For each tag, create a manifest that includes appropriate architectures
           echo "$TAGS" | while read -r TAG; do
             if [ -n "$TAG" ]; then
               echo "Creating manifest for $TAG"
@@ -523,11 +521,19 @@ jobs:
               # Extract the base tag without registry
               BASE_TAG="${TAG#ghcr.io/}"
               
-              # Create manifest
-              docker buildx imagetools create \
-                --tag "$TAG" \
-                "$TAG-amd64" \
-                "$TAG-arm64"
+              # For WebUI, only use AMD64; for others, use both architectures
+              if [ "$SERVICE" = "webui" ]; then
+                # WebUI only has AMD64 build
+                docker buildx imagetools create \
+                  --tag "$TAG" \
+                  "$TAG-amd64"
+              else
+                # HTTP and Admin have both architectures
+                docker buildx imagetools create \
+                  --tag "$TAG" \
+                  "$TAG-amd64" \
+                  "$TAG-arm64"
+              fi
             fi
           done
 
@@ -535,12 +541,20 @@ jobs:
         run: |
           echo "### Docker Image: ${{ matrix.service }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Multi-arch tags pushed:**" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ matrix.service }}" = "webui" ]; then
+            echo "**Tags pushed (AMD64 only):**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Multi-arch tags pushed:**" >> $GITHUB_STEP_SUMMARY
+          fi
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Architectures**: linux/amd64, linux/arm64" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ matrix.service }}" = "webui" ]; then
+            echo "**Architecture**: linux/amd64" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Architectures**: linux/amd64, linux/arm64" >> $GITHUB_STEP_SUMMARY
+          fi
 
   # Summary job
   summary:
@@ -559,9 +573,9 @@ jobs:
           echo "**Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Docker Images" >> $GITHUB_STEP_SUMMARY
-          echo "All Docker images have been successfully built for **linux/amd64** and **linux/arm64** architectures." >> $GITHUB_STEP_SUMMARY
+          echo "Docker images have been successfully built:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Images are available at:" >> $GITHUB_STEP_SUMMARY
-          echo "- 🌐 `ghcr.io/knnlabs/conduit-webui`" >> $GITHUB_STEP_SUMMARY
-          echo "- 🔌 `ghcr.io/knnlabs/conduit-http`" >> $GITHUB_STEP_SUMMARY
-          echo "- 🛠️ `ghcr.io/knnlabs/conduit-admin`" >> $GITHUB_STEP_SUMMARY
+          echo "- 🌐 `ghcr.io/knnlabs/conduit-webui` (linux/amd64 only)" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔌 `ghcr.io/knnlabs/conduit-http` (linux/amd64, linux/arm64)" >> $GITHUB_STEP_SUMMARY
+          echo "- 🛠️ `ghcr.io/knnlabs/conduit-admin` (linux/amd64, linux/arm64)" >> $GITHUB_STEP_SUMMARY
