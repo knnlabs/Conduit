@@ -12,7 +12,8 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test": "echo 'No tests for Common package' && exit 0"
   },
   "keywords": [
     "conduit",
