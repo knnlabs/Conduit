@@ -98,13 +98,22 @@ jobs:
         run: |
           VERSION=${{ needs.release.outputs.version }}
           
-          # Update package versions
-          cd SDKs/Node/Common
+          cd SDKs/Node
+          
+          # Update Common version first
+          cd Common
           npm version $VERSION --no-git-tag-version
-          cd ../Admin
+          cd ..
+          
+          # Update Admin and Core versions AND their Common dependency
+          cd Admin
           npm version $VERSION --no-git-tag-version
+          # Update the Common dependency to use the new version
+          npm install @knn_labs/conduit-common@$VERSION --save-exact
           cd ../Core
           npm version $VERSION --no-git-tag-version
+          # Update the Common dependency to use the new version
+          npm install @knn_labs/conduit-common@$VERSION --save-exact
           
           # Build all packages
           cd ..
@@ -112,6 +121,7 @@ jobs:
           npm run build
           
           # Publish with 'latest' tag for stable releases
+          # Publish Common first since others depend on it
           cd Common && npm publish --tag latest --access public
           cd ../Admin && npm publish --tag latest --access public
           cd ../Core && npm publish --tag latest --access public
