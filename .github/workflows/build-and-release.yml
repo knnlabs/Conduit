@@ -512,27 +512,32 @@ jobs:
           # Get all tags from metadata
           TAGS="${{ steps.meta.outputs.tags }}"
           SERVICE="${{ matrix.service }}"
+          IMAGE="${{ matrix.image }}"
+          
+          # Get the base source tag (branch name or sha)
+          if [ "${{ github.ref_name }}" = "master" ]; then
+            SOURCE_TAG="${IMAGE}:master"
+          else
+            SOURCE_TAG="${IMAGE}:${{ github.ref_name }}"
+          fi
           
           # For each tag, create a manifest that includes appropriate architectures
           echo "$TAGS" | while read -r TAG; do
             if [ -n "$TAG" ]; then
               echo "Creating manifest for $TAG"
               
-              # Extract the base tag without registry
-              BASE_TAG="${TAG#ghcr.io/}"
-              
               # For WebUI, only use AMD64; for others, use both architectures
               if [ "$SERVICE" = "webui" ]; then
                 # WebUI only has AMD64 build
                 docker buildx imagetools create \
                   --tag "$TAG" \
-                  "$TAG-amd64"
+                  "${SOURCE_TAG}-amd64"
               else
                 # HTTP and Admin have both architectures
                 docker buildx imagetools create \
                   --tag "$TAG" \
-                  "$TAG-amd64" \
-                  "$TAG-arm64"
+                  "${SOURCE_TAG}-amd64" \
+                  "${SOURCE_TAG}-arm64"
               fi
             fi
           done
