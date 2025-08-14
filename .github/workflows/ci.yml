@@ -48,7 +48,7 @@ jobs:
           dotnet restore
           dotnet build --no-restore
           # Run tests but exclude integration tests and timing-sensitive tests
-          dotnet test --no-build --verbosity normal --filter "FullyQualifiedName!~IntegrationTests&FullyQualifiedName!~BatchWindow_Should_Trigger_Processing"
+          dotnet test --no-build --verbosity normal --filter "FullyQualifiedName!~IntegrationTests&Category!=TimingSensitive"
       
       - name: NPM Build
         run: |
