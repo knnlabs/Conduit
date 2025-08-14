@@ -11,6 +11,10 @@ env:
   DOTNET_VERSION: '9.0.x'
   NODE_VERSION: '20'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   # Quick validation that everything builds
   validate:
@@ -51,6 +55,14 @@ jobs:
           npm ci
           npm run build
           npm test
+      
+      - name: WebUI Type Check
+        run: |
+          cd ConduitLLM.WebUI
+          npm ci
+          # Clean any stale .next directory before type checking
+          rm -rf .next
+          npm run type-check
 
   # Build Docker images (push only from master)
   docker:
@@ -138,8 +150,9 @@ jobs:
           npm run build
           
           # Publish with 'next' tag for continuous releases from master
-          cd Common && npm publish --tag next --access public || true
-          cd ../Admin && npm publish --tag next --access public || true
-          cd ../Core && npm publish --tag next --access public || true
+          # Fail fast if any publish fails
+          cd Common && npm publish --tag next --access public
+          cd ../Admin && npm publish --tag next --access public
+          cd ../Core && npm publish --tag next --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
