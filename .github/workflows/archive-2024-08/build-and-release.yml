@@ -67,44 +67,6 @@ jobs:
       uses: github/codeql-action/analyze@v3
       with:
         category: "/language:csharp"
-        # Upload to GitHub for main branches, skip for PRs
-        upload: ${{ github.event_name != 'pull_request' }}
-        output: codeql-results
-
-    - name: Check for Security Issues
-      id: check-security
-      run: |
-        if [ -d codeql-results ]; then
-          # Check for high severity issues in SARIF files
-          HIGH_SEVERITY_COUNT=0
-          for sarif in codeql-results/*.sarif; do
-            if [ -f "$sarif" ]; then
-              # Count high severity results
-              COUNT=$(jq '[.runs[].results[] | select(.level == "error" or .level == "critical")] | length' "$sarif" 2>/dev/null || echo "0")
-              HIGH_SEVERITY_COUNT=$((HIGH_SEVERITY_COUNT + COUNT))
-            fi
-          done
-          
-          echo "high_severity_count=$HIGH_SEVERITY_COUNT" >> $GITHUB_OUTPUT
-          
-          if [ $HIGH_SEVERITY_COUNT -gt 0 ]; then
-            echo "❌ Found $HIGH_SEVERITY_COUNT high severity security issues!" >> $GITHUB_STEP_SUMMARY
-            echo "Docker images will not be built until these issues are resolved." >> $GITHUB_STEP_SUMMARY
-            exit 1
-          else
-            echo "✅ No high severity security issues found!" >> $GITHUB_STEP_SUMMARY
-          fi
-        else
-          echo "⚠️ No CodeQL results found to analyze" >> $GITHUB_STEP_SUMMARY
-        fi
-
-    - name: Upload CodeQL Results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: codeql-results
-        path: codeql-results/
-        retention-days: 7
 
   # Build and Test
   build-and-test:
