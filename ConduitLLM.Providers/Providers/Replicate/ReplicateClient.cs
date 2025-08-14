@@ -84,9 +84,11 @@ namespace ConduitLLM.Providers.Replicate
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Token", apiKey);
 
             // Set the base address if not already set
+            // Ensure base URL ends with trailing slash for relative path resolution
             if (client.BaseAddress == null && !string.IsNullOrEmpty(BaseUrl))
             {
-                client.BaseAddress = new Uri(BaseUrl.TrimEnd('/'));
+                var baseUrl = BaseUrl.EndsWith('/') ? BaseUrl : BaseUrl + '/';
+                client.BaseAddress = new Uri(baseUrl);
             }
         }
 
@@ -433,7 +435,28 @@ namespace ConduitLLM.Providers.Replicate
             try
             {
                 using var client = CreateHttpClient(apiKey);
-                var response = await client.PostAsJsonAsync("predictions", request, cancellationToken);
+                
+                // Determine the endpoint based on the model ID format
+                string endpoint;
+                if (ProviderModelId.Contains('/') && !ProviderModelId.Contains(':'))
+                {
+                    // Model slug format (e.g., "bytedance/seedream-3")
+                    // Use the models/{owner}/{name}/predictions endpoint (relative path)
+                    endpoint = $"models/{ProviderModelId}/predictions";
+                    // Remove the version field from the request since we're using the model endpoint
+                    request.Version = null;
+                    Logger.LogInformation("Using model endpoint: {Endpoint} for model {ModelId}", endpoint, ProviderModelId);
+                }
+                else
+                {
+                    // Version hash format (e.g., "a1b2c3...")
+                    // Use the predictions endpoint with version in body (relative path)
+                    endpoint = "predictions";
+                    Logger.LogInformation("Using version endpoint: {Endpoint} with version {Version}", endpoint, request.Version);
+                }
+                
+                Logger.LogInformation("Sending request to Replicate: {BaseUrl}{Endpoint}", client.BaseAddress, endpoint);
+                var response = await client.PostAsJsonAsync(endpoint, request, cancellationToken);
 
                 if (!response.IsSuccessStatusCode)
                 {

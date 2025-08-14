@@ -184,18 +184,42 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
           providerName = selectedProvider?.label ?? 'Unknown Provider';
         }
 
-        const payload = {
+        // First create the provider without the API key
+        const createPayload = {
           providerType: parseInt(values.providerType, 10),
           providerName: providerName,
-          apiKey: values.apiKey,
           baseUrl: values.apiEndpoint ?? undefined,
-          organization: values.organizationId ?? undefined,
           isEnabled: values.isEnabled,
         };
 
-        await withAdminClient(client => 
-          client.providers.create(payload)
+        const createdProvider = await withAdminClient(client => 
+          client.providers.create(createPayload)
         );
+
+        // Then add the API key to the created provider
+        if (values.apiKey) {
+          try {
+            await withAdminClient(client =>
+              client.providers.createKey(createdProvider.id, {
+                apiKey: values.apiKey,
+                keyName: 'Primary Key',
+                organization: values.organizationId ?? undefined,
+                isPrimary: true,
+                isEnabled: true,
+              })
+            );
+          } catch (keyError) {
+            // If key creation fails, we should inform the user
+            console.error('Failed to create API key:', keyError);
+            notifications.show({
+              title: 'Warning',
+              message: 'Provider created but failed to save API key. Please add it manually in the provider settings.',
+              color: 'orange',
+            });
+            router.push('/llm-providers');
+            return;
+          }
+        }
 
         notifications.show({
           title: 'Success',
