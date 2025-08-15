@@ -113,11 +113,12 @@ export class FetchMediaService {
         endpoint = ENDPOINTS.MEDIA.STATS.BY_VIRTUAL_KEY(virtualKeyId.toString());
         break;
       case 'overall':
-      default:
+      default: {
         // Add virtualKeyGroupId param if provided
         const params = virtualKeyGroupId ? `?virtualKeyGroupId=${virtualKeyGroupId}` : '';
         endpoint = `${ENDPOINTS.MEDIA.STATS.BASE}${params}`;
         break;
+      }
     }
 
     return this.client['get'](endpoint, {
