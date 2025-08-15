@@ -83,6 +83,10 @@ namespace ConduitLLM.Tests.Core.Services
             _mockVirtualKeyService.Setup(x => x.ValidateVirtualKeyAsync("test-virtual-key", "test-model"))
                 .ReturnsAsync(virtualKey);
 
+            // Setup capability service to indicate model supports video generation
+            _mockCapabilityService.Setup(x => x.SupportsVideoGenerationAsync("test-model"))
+                .ReturnsAsync(true);
+
             // Setup model capabilities
             var modelCapabilities = new Dictionary<string, DiscoveredModel>
             {
@@ -110,7 +114,7 @@ namespace ConduitLLM.Tests.Core.Services
             // Assert
             _mockModelMappingService.Verify(x => x.GetMappingByModelAliasAsync("test-model"), Times.Once);
             // Should not call discovery service since mapping was found
-            _mockDiscoveryService.Verify(x => x.DiscoverModelsAsync(It.IsAny<CancellationToken>()), Times.Once);
+            _mockDiscoveryService.Verify(x => x.DiscoverModelsAsync(It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact(Skip = "Video generation uses reflection which cannot be easily mocked in unit tests")]

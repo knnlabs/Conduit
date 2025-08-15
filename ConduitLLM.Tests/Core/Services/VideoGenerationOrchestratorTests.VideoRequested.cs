@@ -437,6 +437,10 @@ namespace ConduitLLM.Tests.Core.Services
             _mockVirtualKeyService.Setup(x => x.ValidateVirtualKeyAsync("test-virtual-key", "test-model"))
                 .ReturnsAsync(virtualKey);
 
+            // Setup capability service to indicate model supports video generation
+            _mockCapabilityService.Setup(x => x.SupportsVideoGenerationAsync("test-model"))
+                .ReturnsAsync(true);
+
             // Setup model capabilities
             var modelCapabilities = new Dictionary<string, DiscoveredModel>
             {
@@ -467,7 +471,7 @@ namespace ConduitLLM.Tests.Core.Services
                 TaskState.Pending,
                 null,
                 null,
-                It.Is<string>(error => error.Contains("Retry 1/3")),
+                It.Is<string>(error => error.Contains("Retry 1/3 scheduled: Request timeout")),
                 It.IsAny<CancellationToken>()), Times.Once);
 
             _mockPublishEndpoint.Verify(x => x.Publish(
