@@ -68,8 +68,9 @@ namespace ConduitLLM.Core.Interfaces
         /// <summary>
         /// Gets overall storage statistics.
         /// </summary>
+        /// <param name="virtualKeyGroupId">Optional filter by virtual key group ID</param>
         /// <returns>Overall storage statistics.</returns>
-        Task<OverallMediaStorageStats> GetOverallStorageStatsAsync();
+        Task<OverallMediaStorageStats> GetOverallStorageStatsAsync(int? virtualKeyGroupId = null);
 
         /// <summary>
         /// Gets media records for a virtual key.
@@ -196,6 +197,11 @@ namespace ConduitLLM.Core.Interfaces
         /// Gets or sets the breakdown by provider.
         /// </summary>
         public Dictionary<string, long> ByProvider { get; set; } = new();
+
+        /// <summary>
+        /// Gets or sets the storage breakdown by virtual key ID.
+        /// </summary>
+        public Dictionary<string, long> StorageByVirtualKey { get; set; } = new();
 
         /// <summary>
         /// Gets or sets the breakdown by media type.

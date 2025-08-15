@@ -95,6 +95,21 @@ namespace ConduitLLM.Configuration.Interfaces
         Task<List<VirtualKey>> GetAllAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Retrieves all virtual key entities belonging to a specific group.
+        /// </summary>
+        /// <param name="virtualKeyGroupId">The ID of the virtual key group.</param>
+        /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+        /// <returns>
+        /// A task that represents the asynchronous operation. The task result contains
+        /// a list of virtual key entities belonging to the specified group.
+        /// </returns>
+        /// <remarks>
+        /// This method is used for filtering virtual keys by their group membership,
+        /// which is useful for organizational and reporting purposes.
+        /// </remarks>
+        Task<List<VirtualKey>> GetByVirtualKeyGroupIdAsync(int virtualKeyGroupId, CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Creates a new virtual key entity in the database.
         /// </summary>
         /// <param name="virtualKey">The virtual key entity to create.</param>

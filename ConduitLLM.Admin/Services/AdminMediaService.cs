@@ -37,12 +37,19 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <inheritdoc/>
-        public async Task<OverallMediaStorageStats> GetOverallStorageStatsAsync()
+        public async Task<OverallMediaStorageStats> GetOverallStorageStatsAsync(int? virtualKeyGroupId = null)
         {
             try
             {
-                _logger.LogInformation("Getting overall storage statistics");
-                return await _mediaLifecycleService.GetOverallStorageStatsAsync();
+                if (virtualKeyGroupId.HasValue)
+                {
+                    _logger.LogInformation("Getting storage statistics for virtual key group {GroupId}", virtualKeyGroupId.Value);
+                }
+                else
+                {
+                    _logger.LogInformation("Getting overall storage statistics");
+                }
+                return await _mediaLifecycleService.GetOverallStorageStatsAsync(virtualKeyGroupId);
             }
             catch (Exception ex)
             {

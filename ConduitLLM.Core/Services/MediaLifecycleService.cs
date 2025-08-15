@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Interfaces;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Core.Services
 {
     /// <summary>
@@ -18,6 +18,7 @@ namespace ConduitLLM.Core.Services
     {
         private readonly IMediaRecordRepository _mediaRepository;
         private readonly IMediaStorageService _storageService;
+        private readonly IVirtualKeyRepository? _virtualKeyRepository;
         private readonly ILogger<MediaLifecycleService> _logger;
         private readonly MediaManagementOptions _options;
 
@@ -28,16 +29,19 @@ namespace ConduitLLM.Core.Services
         /// <param name="storageService">The media storage service.</param>
         /// <param name="logger">The logger instance.</param>
         /// <param name="options">Media management configuration options.</param>
+        /// <param name="virtualKeyRepository">The virtual key repository (optional, needed for group filtering).</param>
         public MediaLifecycleService(
             IMediaRecordRepository mediaRepository,
             IMediaStorageService storageService,
             ILogger<MediaLifecycleService> logger,
-            IOptions<MediaManagementOptions> options)
+            IOptions<MediaManagementOptions> options,
+            IVirtualKeyRepository? virtualKeyRepository = null)
         {
             _mediaRepository = mediaRepository ?? throw new ArgumentNullException(nameof(mediaRepository));
             _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _options = options?.Value ?? new MediaManagementOptions();
+            _virtualKeyRepository = virtualKeyRepository;
         }
 
         /// <inheritdoc/>
@@ -338,15 +342,45 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
-        public async Task<OverallMediaStorageStats> GetOverallStorageStatsAsync()
+        public async Task<OverallMediaStorageStats> GetOverallStorageStatsAsync(int? virtualKeyGroupId = null)
         {
             try
             {
-                var byProvider = await _mediaRepository.GetStorageStatsByProviderAsync();
-                var orphanedMedia = await _mediaRepository.GetOrphanedMediaAsync();
+                List<MediaRecord> allMedia;
+                Dictionary<string, long> byProvider;
+                List<MediaRecord> orphanedMedia;
                 
-                // Get all media records to calculate proper stats by type
-                var allMedia = await _mediaRepository.GetMediaOlderThanAsync(DateTime.UtcNow.AddYears(10));
+                if (virtualKeyGroupId.HasValue)
+                {
+                    if (_virtualKeyRepository == null)
+                    {
+                        throw new InvalidOperationException("Virtual key repository is not configured. Cannot filter by group.");
+                    }
+                    
+                    // Get virtual keys for this group
+                    var virtualKeys = await _virtualKeyRepository.GetByVirtualKeyGroupIdAsync(virtualKeyGroupId.Value);
+                    var virtualKeyIds = virtualKeys.Select(vk => vk.Id).ToList();
+                    
+                    // Get media only for these virtual keys
+                    allMedia = new List<MediaRecord>();
+                    foreach (var keyId in virtualKeyIds)
+                    {
+                        var keyMedia = await _mediaRepository.GetByVirtualKeyIdAsync(keyId);
+                        allMedia.AddRange(keyMedia);
+                    }
+                    
+                    byProvider = allMedia.GroupBy(m => m.Provider ?? "unknown")
+                        .ToDictionary(g => g.Key, g => g.Sum(m => m.SizeBytes ?? 0));
+                    orphanedMedia = new List<MediaRecord>(); // No orphaned media when filtering by group
+                }
+                else
+                {
+                    byProvider = await _mediaRepository.GetStorageStatsByProviderAsync();
+                    orphanedMedia = await _mediaRepository.GetOrphanedMediaAsync();
+                    
+                    // Get all media records to calculate proper stats by type
+                    allMedia = await _mediaRepository.GetMediaOlderThanAsync(DateTime.UtcNow.AddYears(10));
+                }
                 
                 // Group by media type to get both file count and size
                 var byMediaType = new Dictionary<string, MediaTypeStats>();
@@ -361,13 +395,23 @@ namespace ConduitLLM.Core.Services
                     };
                 }
 
+                // Group by virtual key to get storage per key
+                var storageByVirtualKey = new Dictionary<string, long>();
+                var virtualKeyGroups = allMedia.GroupBy(m => m.VirtualKeyId);
+                
+                foreach (var group in virtualKeyGroups)
+                {
+                    storageByVirtualKey[group.Key.ToString()] = group.Sum(m => m.SizeBytes ?? 0);
+                }
+
                 var stats = new OverallMediaStorageStats
                 {
                     TotalSizeBytes = allMedia.Sum(m => m.SizeBytes ?? 0),
                     TotalFiles = allMedia.Count,
                     OrphanedFiles = orphanedMedia.Count,
                     ByProvider = byProvider,
-                    ByMediaType = byMediaType
+                    ByMediaType = byMediaType,
+                    StorageByVirtualKey = storageByVirtualKey
                 };
 
                 return stats;
