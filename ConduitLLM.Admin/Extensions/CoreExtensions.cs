@@ -1,4 +1,3 @@
-using ConduitLLM.Admin.Adapters;
 using ConduitLLM.Core.Data;
 using ConduitLLM.Core.Data.Extensions;
 using ConduitLLM.Core.Extensions;
@@ -75,9 +74,6 @@ namespace ConduitLLM.Admin.Extensions
 
             // Add context management services
             services.AddConduitContextManagement(configuration);
-
-            // Add Configuration adapters (moved from Core)
-            services.AddConfigurationAdapters();
 
             // Add Provider Registry - single source of truth for provider metadata
             services.AddSingleton<IProviderMetadataRegistry, ProviderMetadataRegistry>();

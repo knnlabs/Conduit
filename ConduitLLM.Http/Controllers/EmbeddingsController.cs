@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using ConduitLLM.Core.Controllers;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
-using ConduitLLM.Http.Adapters;
 using ConduitLLM.Http.Models;
 
 using MassTransit;

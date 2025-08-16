@@ -14,7 +14,6 @@ using ConduitLLM.Core.Interfaces; // Added for IVirtualKeyCache
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Routing;
 using ConduitLLM.Core.Services;
-using ConduitLLM.Http.Adapters;
 using ConduitLLM.Http.Authentication; // Added for VirtualKeyAuthenticationHandler
 using ConduitLLM.Http.Controllers; // Added for RealtimeController
 using ConduitLLM.Http.Extensions; // Added for AudioServiceExtensions
