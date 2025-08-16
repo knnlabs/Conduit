@@ -74,13 +74,8 @@ namespace ConduitLLM.Http.Services
                         return openAIModels;
                         
                     case ProviderType.Groq:
-                        var groqModels = await ConduitLLM.Providers.GroqModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
-                        // Ensure provider field is set correctly
-                        foreach (var model in groqModels)
-                        {
-                            model.Provider = Provider.ProviderName;
-                        }
-                        return groqModels;
+                        // Groq provider does not have static model discovery anymore
+                        return new List<DiscoveredModel>();
                         
                     case ProviderType.Cerebras:
                         var cerebrasModels = await ConduitLLM.Providers.CerebrasModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
@@ -91,12 +86,8 @@ namespace ConduitLLM.Http.Services
                         return cerebrasModels;
                     
                     case ProviderType.MiniMax:
-                        var miniMaxModels = await ConduitLLM.Providers.MiniMaxModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
-                        foreach (var model in miniMaxModels)
-                        {
-                            model.Provider = Provider.ProviderName;
-                        }
-                        return miniMaxModels;
+                        // MiniMax provider does not have static model discovery anymore
+                        return new List<DiscoveredModel>();
                     
                     case ProviderType.Replicate:
                         var replicateModels = await ConduitLLM.Providers.ReplicateModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
@@ -123,12 +114,8 @@ namespace ConduitLLM.Http.Services
                         return openAICompatibleModels;
                     
                     case ProviderType.SambaNova:
-                        var sambaNovaModels = await ConduitLLM.Providers.SambaNovaModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
-                        foreach (var model in sambaNovaModels)
-                        {
-                            model.Provider = Provider.ProviderName;
-                        }
-                        return sambaNovaModels;
+                        // SambaNova provider does not have static model discovery anymore
+                        return new List<DiscoveredModel>();
                     
                     case ProviderType.DeepInfra:
                         var deepInfraModels = await ConduitLLM.Providers.OpenAICompatibleModelDiscovery.DiscoverAsync(httpClient, apiKey, cancellationToken);

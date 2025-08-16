@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Providers;
 using Moq;
 using Moq.Protected;
@@ -142,7 +143,7 @@ namespace ConduitLLM.Tests.Providers.Discovery
 
         #region Groq Tests
 
-        [Fact]
+        [Fact(Skip = "GroqModels class removed - no static fallbacks")]
         public async Task GroqModels_WithValidApiKey_ReturnsModels()
         {
             // Arrange
@@ -157,9 +158,11 @@ namespace ConduitLLM.Tests.Providers.Discovery
             var httpClient = CreateMockHttpClient(HttpStatusCode.OK, responseContent);
 
             // Act
-            var models = await GroqModels.DiscoverAsync(httpClient, "test-api-key");
+            var models = await Task.FromResult(new List<DiscoveredModel>()); // await GroqModels.DiscoverAsync(httpClient, "test-api-key");
 
             // Assert
+            // Test is skipped, so assertions won't run
+            /*
             Assert.NotEmpty(models);
             var llama = models.First(m => m.ModelId == "llama3-70b-8192");
             Assert.True(llama.Capabilities.Chat);
@@ -167,24 +170,27 @@ namespace ConduitLLM.Tests.Providers.Discovery
             
             var mixtral = models.First(m => m.ModelId == "mixtral-8x7b-32768");
             Assert.Equal(32768, mixtral.Capabilities.MaxTokens);
+            */
         }
 
         #endregion
 
         #region MiniMax Tests
 
-        [Fact]
+        [Fact(Skip = "MiniMaxModels class removed - no static fallbacks")]
         public async Task MiniMaxModels_WithValidApiKey_ReturnsModelsFromStaticFile()
         {
             // Arrange
             var httpClient = CreateMockHttpClient(HttpStatusCode.OK);
 
             // Act
-            var models = await MiniMaxModels.DiscoverAsync(httpClient, "test-api-key");
+            var models = await Task.FromResult(new List<DiscoveredModel>()); // await MiniMaxModels.DiscoverAsync(httpClient, "test-api-key");
 
             // Assert
+            // Test is skipped, so assertions won't run
             // If JSON file exists (in test environment), it should return models
             // If not, it should throw NotSupportedException
+            /*
             if (models.Count() > 0)
             {
                 // Verify we get the expected static models
@@ -199,16 +205,17 @@ namespace ConduitLLM.Tests.Providers.Discovery
                 Assert.NotNull(chat.Capabilities.MaxTokens);
                 Assert.Equal(1000000, chat.Capabilities.MaxTokens.Value);
             }
+            */
         }
 
-        [Fact]
+        [Fact(Skip = "MiniMaxModels class removed - no static fallbacks")]
         public async Task MiniMaxModels_WithoutApiKey_ReturnsEmptyList()
         {
             // Arrange
             var httpClient = CreateMockHttpClient(HttpStatusCode.OK);
 
             // Act
-            var models = await MiniMaxModels.DiscoverAsync(httpClient, null);
+            var models = await Task.FromResult(new List<DiscoveredModel>()); // await MiniMaxModels.DiscoverAsync(httpClient, null);
 
             // Assert
             Assert.Empty(models);

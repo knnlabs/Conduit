@@ -76,15 +76,8 @@ namespace ConduitLLM.Admin.Services
                         return openAIModels;
                         
                     case ProviderType.Groq:
-                        _logger.LogDebug("Calling GroqModels.DiscoverAsync with API key: {HasKey}", !string.IsNullOrEmpty(apiKey));
-                        var groqModels = await ConduitLLM.Providers.GroqModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
-                        _logger.LogDebug("GroqModels.DiscoverAsync returned {Count} models", groqModels.Count);
-                        // Ensure provider field is set correctly
-                        foreach (var model in groqModels)
-                        {
-                            model.Provider = Provider.ProviderName;
-                        }
-                        return groqModels;
+                        _logger.LogDebug("Groq provider does not have static model discovery anymore");
+                        return new List<DiscoveredModel>();
                         
                     case ProviderType.Cerebras:
                         _logger.LogDebug("Calling CerebrasModels.DiscoverAsync with API key: {HasKey}", !string.IsNullOrEmpty(apiKey));
@@ -98,15 +91,8 @@ namespace ConduitLLM.Admin.Services
                         return cerebrasModels;
                     
                     case ProviderType.MiniMax:
-                        _logger.LogDebug("Calling MiniMaxModels.DiscoverAsync with API key: {HasKey}", !string.IsNullOrEmpty(apiKey));
-                        var miniMaxModels = await ConduitLLM.Providers.MiniMaxModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
-                        _logger.LogDebug("MiniMaxModels.DiscoverAsync returned {Count} models", miniMaxModels.Count);
-                        // Ensure provider field is set correctly
-                        foreach (var model in miniMaxModels)
-                        {
-                            model.Provider = Provider.ProviderName;
-                        }
-                        return miniMaxModels;
+                        _logger.LogDebug("MiniMax provider does not have static model discovery anymore");
+                        return new List<DiscoveredModel>();
                     
                     case ProviderType.Replicate:
                         _logger.LogDebug("Calling ReplicateModels.DiscoverAsync with API key: {HasKey}", !string.IsNullOrEmpty(apiKey));
@@ -139,14 +125,8 @@ namespace ConduitLLM.Admin.Services
                         return openAICompatibleModels;
                     
                     case ProviderType.SambaNova:
-                        _logger.LogDebug("Calling SambaNovaModels.DiscoverAsync with API key: {HasKey}", !string.IsNullOrEmpty(apiKey));
-                        var sambaNovaModels = await ConduitLLM.Providers.SambaNovaModels.DiscoverAsync(httpClient, apiKey, cancellationToken);
-                        _logger.LogDebug("SambaNovaModels.DiscoverAsync returned {Count} models", sambaNovaModels.Count);
-                        foreach (var model in sambaNovaModels)
-                        {
-                            model.Provider = Provider.ProviderName;
-                        }
-                        return sambaNovaModels;
+                        _logger.LogDebug("SambaNova provider does not have static model discovery anymore");
+                        return new List<DiscoveredModel>();
                     
                     case ProviderType.DeepInfra:
                         _logger.LogDebug("Calling OpenAICompatibleModelDiscovery.DiscoverAsync for DeepInfra with API key: {HasKey}", !string.IsNullOrEmpty(apiKey));
