@@ -186,7 +186,7 @@ export function useUsageAnalytics(timeRange = '7d') {
           previousCostSummary,
         ] = await Promise.all([
           withAdminClient(client => 
-            client.costDashboard.getCostSummary(
+            client.analytics.getCostSummary(
               'daily',
               startDate.toISOString().split('T')[0],
               now.toISOString().split('T')[0]
@@ -201,7 +201,7 @@ export function useUsageAnalytics(timeRange = '7d') {
             })
           ),
           withAdminClient(client => 
-            client.costDashboard.getCostSummary(
+            client.analytics.getCostSummary(
               'daily',
               previousStartDate.toISOString().split('T')[0],
               previousEndDate.toISOString().split('T')[0]
@@ -304,31 +304,26 @@ export function useCostAnalytics(timeRange = '30d') {
           startDate.setDate(now.getDate() - 30);
       }
       
-      // Get data from cost dashboard endpoints
-      const [costSummary, costTrends, modelCosts, virtualKeyCosts] = await Promise.all([
+      // Get data from analytics endpoints
+      const [costSummary, costTrends] = await Promise.all([
         withAdminClient(client => 
-          client.costDashboard.getCostSummary('daily', startDate.toISOString(), now.toISOString())
+          client.analytics.getCostSummary('daily', startDate.toISOString(), now.toISOString())
         ),
         withAdminClient(client => 
-          client.costDashboard.getCostTrends('daily', startDate.toISOString(), now.toISOString())
-        ),
-        withAdminClient(client => 
-          client.costDashboard.getModelCosts(startDate.toISOString(), now.toISOString())
-        ),
-        withAdminClient(client => 
-          client.costDashboard.getVirtualKeyCosts(startDate.toISOString(), now.toISOString())
+          client.analytics.getCostTrends('daily', startDate.toISOString(), now.toISOString())
         ),
       ]);
 
       // Transform the data
       const summary = costSummary as { 
         totalCost: number; 
-        costChangePercentage: number;
+        last24HoursCost: number;
+        last7DaysCost: number;
+        last30DaysCost: number;
         topProvidersBySpend?: Array<{ name: string; cost: number; percentage: number }>;
+        topModelsBySpend?: Array<{ name: string; cost: number; percentage: number; requestCount: number }>;
       };
-      const trends = costTrends as { data?: Array<{ date: string; cost: number }> };
-      const models = modelCosts as Array<{ model: string; requestCount: number; cost: number }>;
-      const vkCosts = virtualKeyCosts as Array<{ budgetUsed?: number; budgetRemaining?: number }>;
+      const trends = costTrends as { data?: Array<{ date: string; cost: number; requestCount: number }> };
 
       // Calculate daily average
       const dayCount = Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -339,26 +334,29 @@ export function useCostAnalytics(timeRange = '30d') {
       const dayOfMonth = now.getDate();
       const projectedMonthlySpend = (summary.totalCost / dayOfMonth) * daysInMonth;
 
+      // Calculate trend from last 7 days vs previous 7 days
+      const projectedTrend = summary.last7DaysCost > 0 && summary.last30DaysCost > 0
+        ? ((summary.last7DaysCost - (summary.last30DaysCost - summary.last7DaysCost) / 3) / ((summary.last30DaysCost - summary.last7DaysCost) / 3)) * 100
+        : 0;
+
       const response: CostAnalytics = {
         totalSpend: summary.totalCost,
         averageDailyCost,
         projectedMonthlySpend,
-        monthlyBudget: vkCosts?.find(vk => vk.budgetUsed !== undefined)
-          ? vkCosts.reduce((sum, vk) => sum + (vk.budgetUsed ?? 0) + (vk.budgetRemaining ?? 0), 0)
-          : undefined,
-        projectedTrend: summary.costChangePercentage,
+        monthlyBudget: undefined, // Budget info not available from new endpoint
+        projectedTrend,
         providerCosts: summary.topProvidersBySpend?.map(provider => ({
           provider: provider.name,
           cost: provider.cost,
           usage: provider.percentage,
           trend: 0, // Not available
         })) ?? [],
-        modelUsage: models?.map(model => ({
-          model: model.model,
-          provider: model.model.includes('/') ? model.model.split('/')[0] : 'unknown',
+        modelUsage: summary.topModelsBySpend?.map(model => ({
+          model: model.name,
+          provider: model.name.includes('/') ? model.name.split('/')[0] : 'unknown',
           requests: model.requestCount,
-          tokensIn: 0, // Not available
-          tokensOut: 0, // Not available
+          tokensIn: 0, // Not available from cost summary
+          tokensOut: 0, // Not available from cost summary
           cost: model.cost,
         })) ?? [],
         dailyCosts: trends?.data?.map(trend => {

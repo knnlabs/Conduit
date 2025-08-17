@@ -14,7 +14,6 @@ import { FetchMonitoringService } from './services/FetchMonitoringService';
 import { AudioConfigurationService } from './services/AudioConfigurationService';
 import { FetchIpFilterService } from './services/FetchIpFilterService';
 import { FetchErrorQueueService } from './services/FetchErrorQueueService';
-import { FetchCostDashboardService } from './services/FetchCostDashboardService';
 import { FetchModelCostService } from './services/FetchModelCostService';
 import { FetchMediaService } from './services/FetchMediaService';
 import type { ApiClientConfig } from './client/types';
@@ -53,7 +52,6 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
   public readonly audio: AudioConfigurationService;
   public readonly ipFilters: FetchIpFilterService;
   public readonly errorQueues: FetchErrorQueueService;
-  public readonly costDashboard: FetchCostDashboardService;
   public readonly modelCosts: FetchModelCostService;
   public readonly media: FetchMediaService;
 
@@ -76,7 +74,6 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
     this.audio = new AudioConfigurationService(this);
     this.ipFilters = new FetchIpFilterService(this);
     this.errorQueues = new FetchErrorQueueService(this);
-    this.costDashboard = new FetchCostDashboardService(this);
     this.modelCosts = new FetchModelCostService(this);
     this.media = new FetchMediaService(this);
   }

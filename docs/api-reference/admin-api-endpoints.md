@@ -703,6 +703,213 @@ Performs maintenance tasks including disabling expired keys.
 
 **Response:** System information object with environment, database, and runtime details
 
+## Analytics
+
+### Get Request Logs
+**GET** `/api/analytics/logs`
+
+**Query Parameters:**
+- `page` (int, default: 1): Page number (1-based)
+- `pageSize` (int, default: 50, max: 100): Number of items per page
+- `startDate` (DateTime, optional): Filter by start date
+- `endDate` (DateTime, optional): Filter by end date
+- `model` (string, optional): Filter by model name
+- `virtualKeyId` (int, optional): Filter by virtual key ID
+- `status` (int, optional): Filter by HTTP status code
+
+**Response:** PagedResult<LogRequestDto>
+```json
+{
+  "page": 1,
+  "pageSize": 50,
+  "totalItems": 150,
+  "totalPages": 3,
+  "items": [
+    {
+      "id": 1234,
+      "virtualKeyId": 5,
+      "modelName": "gpt-4",
+      "requestType": "chat",
+      "inputTokens": 500,
+      "outputTokens": 250,
+      "cost": 0.0125,
+      "responseTimeMs": 1250.5,
+      "statusCode": 200,
+      "timestamp": "2024-05-15T14:30:00Z"
+    }
+  ]
+}
+```
+
+### Get Log by ID
+**GET** `/api/analytics/logs/{id}`
+
+**Response:** LogRequestDto object
+
+### Get Distinct Models
+**GET** `/api/analytics/models`
+
+**Response:** Array of model names
+```json
+["gpt-4", "gpt-3.5-turbo", "claude-3-opus", "llama-3"]
+```
+
+### Get Cost Summary
+**GET** `/api/analytics/costs/summary`
+
+**Query Parameters:**
+- `timeframe` (string, default: "daily"): One of "daily", "weekly", "monthly"
+- `startDate` (DateTime, optional): Start date for analysis
+- `endDate` (DateTime, optional): End date for analysis
+
+**Response:** CostDashboardDto
+```json
+{
+  "timeFrame": "daily",
+  "startDate": "2024-05-01T00:00:00Z",
+  "endDate": "2024-05-15T23:59:59Z",
+  "totalCost": 125.50,
+  "last24HoursCost": 8.75,
+  "last7DaysCost": 45.20,
+  "last30DaysCost": 125.50,
+  "topModelsBySpend": [
+    {
+      "name": "gpt-4",
+      "cost": 75.25,
+      "percentage": 60,
+      "requestCount": 500
+    }
+  ],
+  "topProvidersBySpend": [...],
+  "topVirtualKeysBySpend": [...]
+}
+```
+
+### Get Cost Trends
+**GET** `/api/analytics/costs/trends`
+
+**Query Parameters:**
+- `period` (string, default: "daily"): One of "daily", "weekly", "monthly"
+- `startDate` (DateTime, optional): Start date
+- `endDate` (DateTime, optional): End date
+
+**Response:** CostTrendDto
+```json
+{
+  "period": "daily",
+  "startDate": "2024-05-01T00:00:00Z",
+  "endDate": "2024-05-15T23:59:59Z",
+  "data": [
+    {
+      "date": "2024-05-01T00:00:00Z",
+      "cost": 8.50,
+      "requestCount": 125
+    }
+  ]
+}
+```
+
+### Get Model Costs
+**GET** `/api/analytics/costs/models`
+
+**Query Parameters:**
+- `startDate` (DateTime, optional): Start date
+- `endDate` (DateTime, optional): End date
+- `topN` (int, default: 10): Number of top models to return
+
+**Response:** ModelCostBreakdownDto
+
+### Get Virtual Key Costs
+**GET** `/api/analytics/costs/virtualkeys`
+
+**Query Parameters:**
+- `startDate` (DateTime, optional): Start date
+- `endDate` (DateTime, optional): End date
+- `topN` (int, default: 10): Number of top virtual keys to return
+
+**Response:** VirtualKeyCostBreakdownDto
+
+### Get Analytics Summary
+**GET** `/api/analytics/summary`
+
+**Query Parameters:**
+- `timeframe` (string, default: "daily"): One of "daily", "weekly", "monthly"
+- `startDate` (DateTime, optional): Start date
+- `endDate` (DateTime, optional): End date
+
+**Response:** AnalyticsSummaryDto with comprehensive analytics data including:
+- Total requests, cost, tokens
+- Success rate and response times
+- Top models and virtual keys
+- Daily statistics
+- Period-over-period comparison
+
+### Get Virtual Key Usage
+**GET** `/api/analytics/virtualkeys/{virtualKeyId}/usage`
+
+**Query Parameters:**
+- `startDate` (DateTime, optional): Start date
+- `endDate` (DateTime, optional): End date
+
+**Response:** UsageStatisticsDto
+
+### Export Analytics Data
+**GET** `/api/analytics/export`
+
+**Query Parameters:**
+- `format` (string, default: "csv"): Export format ("csv" or "json")
+- `startDate` (DateTime, optional): Start date
+- `endDate` (DateTime, optional): End date
+- `model` (string, optional): Filter by model
+- `virtualKeyId` (int, optional): Filter by virtual key
+
+**Response:** File download (CSV or JSON)
+
+### Get Cache Metrics
+**GET** `/api/analytics/metrics/cache`
+
+**Response:** Cache performance metrics
+```json
+{
+  "TotalHits": 5000,
+  "TotalMisses": 1200,
+  "HitRate": 80.65,
+  "CacheMemoryMB": 45.2,
+  "TotalInvalidations": 15,
+  "UptimeMinutes": 1440,
+  "TopHitKeys": [...],
+  "TopMissKeys": [...]
+}
+```
+
+### Get Operation Metrics
+**GET** `/api/analytics/metrics/operations`
+
+**Response:** Operation performance metrics
+```json
+{
+  "GetLogsAsync_avg_ms": 125.5,
+  "GetLogsAsync_p95_ms": 250.0,
+  "GetLogsAsync_max_ms": 500.0,
+  "fetch_RequestLogRepository.GetAllAsync_avg_ms": 75.2,
+  "fetch_RequestLogRepository.GetAllAsync_p95_ms": 150.0
+}
+```
+
+### Invalidate Analytics Cache
+**POST** `/api/analytics/cache/invalidate`
+
+**Query Parameters:**
+- `reason` (string, optional): Reason for invalidation
+
+**Response:** Success message
+```json
+{
+  "message": "Cache invalidation initiated",
+  "reason": "Manual invalidation"
+}
+```
+
 ## Additional Controllers
 
 The following controllers provide additional administrative functionality:

@@ -104,19 +104,25 @@ export const ENDPOINTS = {
     OVERVIEW: '/api/ModelCosts/overview',
   },
 
-  // Analytics & Cost Dashboard
+  // Unified Analytics endpoints
   ANALYTICS: {
-    REQUEST_LOGS: '/api/Logs',
-    REQUEST_LOG_BY_ID: (id: string) => `/api/Logs/${id}`,
+    // Request Logs
+    REQUEST_LOGS: '/api/analytics/logs',
+    REQUEST_LOG_BY_ID: (id: string) => `/api/analytics/logs/${id}`,
+    DISTINCT_MODELS: '/api/analytics/logs/models',
+    
+    // Cost Analytics
+    COST_SUMMARY: '/api/analytics/costs/summary',
+    COST_TRENDS: '/api/analytics/costs/trends', 
+    MODEL_COSTS: '/api/analytics/costs/models',
+    VIRTUAL_KEY_COSTS: '/api/analytics/costs/virtualkeys',
+    
+    // Combined Analytics
+    SUMMARY: '/api/analytics/summary',
+    VIRTUAL_KEY_USAGE: (virtualKeyId: number) => `/api/analytics/virtualkeys/${virtualKeyId}/usage`,
+    EXPORT: '/api/analytics/export',
   },
 
-  // Cost Dashboard (actual endpoints)
-  COSTS: {
-    SUMMARY: '/api/costs/summary',
-    TRENDS: '/api/costs/trends',
-    MODELS: '/api/costs/models',
-    VIRTUAL_KEYS: '/api/costs/virtualkeys',
-  },
 
   // Audio Provider Management
   AUDIO: {
@@ -186,13 +192,6 @@ export const ENDPOINTS = {
     },
   },
 
-  // Logs endpoints
-  LOGS: {
-    BASE: '/api/Logs',
-    BY_ID: (id: string) => `/api/Logs/${id}`,
-    MODELS: '/api/Logs/models',
-    SUMMARY: '/api/Logs/summary',
-  },
 
   // Notifications endpoints
   NOTIFICATIONS: {

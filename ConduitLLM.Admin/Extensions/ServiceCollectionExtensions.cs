@@ -98,7 +98,11 @@ public static class ServiceCollectionExtensions
             return new AdminModelProviderMappingService(mappingRepository, credentialRepository, publishEndpoint, logger);
         });
         services.AddScoped<IAdminRouterService, AdminRouterService>();
-        services.AddScoped<IAdminLogService, AdminLogService>();
+        
+        // Register Analytics services
+        services.AddSingleton<IAnalyticsMetrics, AnalyticsMetricsService>();
+        services.AddScoped<IAnalyticsService, AnalyticsService>();
+        
         // Register AdminIpFilterService with optional event publishing dependency
         services.AddScoped<IAdminIpFilterService>(serviceProvider =>
         {
@@ -109,7 +113,6 @@ public static class ServiceCollectionExtensions
             
             return new AdminIpFilterService(ipFilterRepository, ipFilterOptions, publishEndpoint, logger);
         });
-        services.AddScoped<IAdminCostDashboardService, AdminCostDashboardService>();
         services.AddScoped<IAdminDatabaseBackupService, AdminDatabaseBackupService>();
         services.AddScoped<IAdminSystemInfoService, AdminSystemInfoService>();
         services.AddScoped<IAdminNotificationService, AdminNotificationService>();

@@ -151,18 +151,14 @@ export { FetchConfigurationService } from './services/FetchConfigurationService'
 export { FetchMonitoringService } from './services/FetchMonitoringService';
 export { FetchIpFilterService } from './services/FetchIpFilterService';
 export { FetchErrorQueueService } from './services/FetchErrorQueueService';
-export { FetchCostDashboardService } from './services/FetchCostDashboardService';
 export { FetchMediaService } from './services/FetchMediaService';
 export { FetchModelCostService } from './services/FetchModelCostService';
+// Cost types now exported from FetchAnalyticsService
 export type {
   CostDashboardDto,
-  ModelCostDto as CostModelCostDto,
-  ProviderCostDto,
-  DailyCostDto,
   CostTrendDto,
-  ModelCostDataDto,
-  VirtualKeyCostDataDto,
-} from './services/FetchCostDashboardService';
+  DetailedCostDataDto,
+} from './services/FetchAnalyticsService';
 export type {
   ErrorQueueInfo,
   ErrorQueueSummary,

@@ -19,5 +19,10 @@ namespace ConduitLLM.Configuration.DTOs.Costs
         /// Percentage of total cost
         /// </summary>
         public decimal Percentage { get; set; }
+
+        /// <summary>
+        /// Number of requests
+        /// </summary>
+        public int RequestCount { get; set; }
     }
 }

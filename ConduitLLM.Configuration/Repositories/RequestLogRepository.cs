@@ -135,6 +135,63 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
+        public async Task<(List<RequestLog> Logs, int TotalCount)> GetByDateRangePaginatedAsync(
+            DateTime startDate, 
+            DateTime endDate, 
+            int pageNumber, 
+            int pageSize, 
+            CancellationToken cancellationToken = default)
+        {
+            if (pageNumber < 1)
+            {
+                throw new ArgumentException("Page number must be greater than or equal to 1", nameof(pageNumber));
+            }
+
+            if (pageSize < 1)
+            {
+                throw new ArgumentException("Page size must be greater than or equal to 1", nameof(pageSize));
+            }
+
+            // Add upper bound to prevent resource exhaustion
+            const int maxPageSize = 1000;
+            if (pageSize > maxPageSize)
+            {
+                _logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum", 
+                    LogSanitizer.SanitizeObject(pageSize), LogSanitizer.SanitizeObject(maxPageSize));
+                pageSize = maxPageSize;
+            }
+
+            try
+            {
+                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+                // Build the query with date range filter
+                var query = dbContext.RequestLogs
+                    .AsNoTracking()
+                    .Where(r => r.Timestamp >= startDate && r.Timestamp <= endDate);
+
+                // Get total count
+                var totalCount = await query.CountAsync(cancellationToken);
+
+                // Get paginated data
+                var logs = await query
+                    .OrderByDescending(r => r.Timestamp)
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync(cancellationToken);
+
+                return (logs, totalCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting paginated request logs for date range {StartDate} to {EndDate}, page {PageNumber}, size {PageSize}",
+                    LogSanitizer.SanitizeObject(startDate), LogSanitizer.SanitizeObject(endDate),
+                    LogSanitizer.SanitizeObject(pageNumber), LogSanitizer.SanitizeObject(pageSize));
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
         public async Task<(List<RequestLog> Logs, int TotalCount)> GetPaginatedAsync(int pageNumber, int pageSize, CancellationToken cancellationToken = default)
         {
             if (pageNumber < 1)

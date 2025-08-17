@@ -11,8 +11,7 @@ The Admin API is production-ready with all major architectural issues resolved:
 3. ✅ **Complete Services**: All core services fully implemented:
    - AdminVirtualKeyService
    - AdminIpFilterService  
-   - AdminCostDashboardService
-   - AdminLogService
+   - AnalyticsService (unified logs, costs, and usage analytics)
    - AdminModelCostService
    - AdminSystemInfoService
    - Plus additional specialized services
