@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Configuration.Entities
@@ -54,10 +55,17 @@ namespace ConduitLLM.Configuration.Entities
         public bool IsEnabled { get; set; } = true;
 
         /// <summary>
-        /// The maximum number of tokens the model's context window can handle.
-        /// Used for automatic context management to prevent exceeding model limits.
+        /// Provider-specific override for maximum context tokens.
+        /// If null, uses Model.Capabilities.MaxTokens.
+        /// Some providers may have different limits than the base model.
         /// </summary>
-        public int? MaxContextTokens { get; set; }
+        public int? MaxContextTokensOverride { get; set; }
+
+        /// <summary>
+        /// Gets the effective maximum context tokens for this provider mapping.
+        /// </summary>
+        [NotMapped]
+        public int MaxContextTokens => MaxContextTokensOverride ?? Model?.Capabilities?.MaxTokens ?? 4096;
 
         /// <summary>
         /// The UTC timestamp when this mapping was created.
@@ -69,78 +77,108 @@ namespace ConduitLLM.Configuration.Entities
         /// </summary>
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-        // Model Capability Properties
+        /// <summary>
+        /// JSON object containing provider-specific capability overrides.
+        /// Use this when a provider has different capabilities than the base model.
+        /// Example: {"supportsFunctionCalling": false} if provider disabled this feature.
+        /// </summary>
+        public string? CapabilityOverrides { get; set; }
+
+        // Helper properties that read from Model.Capabilities with optional overrides
 
         /// <summary>
-        /// Indicates whether this model supports vision/image inputs.
+        /// Gets whether this model supports vision, checking overrides first.
         /// </summary>
-        public bool SupportsVision { get; set; } = false;
+        [NotMapped]
+        public bool SupportsVision => GetCapability(nameof(SupportsVision), 
+            () => Model?.Capabilities?.SupportsVision ?? false);
 
         /// <summary>
-        /// Indicates whether this model supports audio transcription (Speech-to-Text).
+        /// Gets whether this model supports chat, checking overrides first.
         /// </summary>
-        public bool SupportsAudioTranscription { get; set; } = false;
+        [NotMapped]
+        public bool SupportsChat => GetCapability(nameof(SupportsChat), 
+            () => Model?.Capabilities?.SupportsChat ?? false);
 
         /// <summary>
-        /// Indicates whether this model supports text-to-speech generation.
+        /// Gets whether this model supports function calling, checking overrides first.
         /// </summary>
-        public bool SupportsTextToSpeech { get; set; } = false;
+        [NotMapped]
+        public bool SupportsFunctionCalling => GetCapability(nameof(SupportsFunctionCalling), 
+            () => Model?.Capabilities?.SupportsFunctionCalling ?? false);
 
         /// <summary>
-        /// Indicates whether this model supports real-time audio streaming.
+        /// Gets whether this model supports streaming, checking overrides first.
         /// </summary>
-        public bool SupportsRealtimeAudio { get; set; } = false;
+        [NotMapped]
+        public bool SupportsStreaming => GetCapability(nameof(SupportsStreaming), 
+            () => Model?.Capabilities?.SupportsStreaming ?? false);
 
         /// <summary>
-        /// Indicates whether this model supports image generation.
+        /// Gets whether this model supports audio transcription, checking overrides first.
         /// </summary>
-        public bool SupportsImageGeneration { get; set; } = false;
+        [NotMapped]
+        public bool SupportsAudioTranscription => GetCapability(nameof(SupportsAudioTranscription),
+            () => Model?.Capabilities?.SupportsAudioTranscription ?? false);
 
         /// <summary>
-        /// Indicates whether this model supports video generation.
+        /// Gets whether this model supports text-to-speech, checking overrides first.
         /// </summary>
-        public bool SupportsVideoGeneration { get; set; } = false;
+        [NotMapped]
+        public bool SupportsTextToSpeech => GetCapability(nameof(SupportsTextToSpeech),
+            () => Model?.Capabilities?.SupportsTextToSpeech ?? false);
 
         /// <summary>
-        /// Indicates whether this model supports embedding generation.
+        /// Gets whether this model supports realtime audio, checking overrides first.
         /// </summary>
-        public bool SupportsEmbeddings { get; set; } = false;
+        [NotMapped]
+        public bool SupportsRealtimeAudio => GetCapability(nameof(SupportsRealtimeAudio),
+            () => Model?.Capabilities?.SupportsRealtimeAudio ?? false);
 
         /// <summary>
-        /// Indicates whether this model supports chat completions.
+        /// Gets whether this model supports image generation, checking overrides first.
         /// </summary>
-        public bool SupportsChat { get; set; } = false;
+        [NotMapped]
+        public bool SupportsImageGeneration => GetCapability(nameof(SupportsImageGeneration),
+            () => Model?.Capabilities?.SupportsImageGeneration ?? false);
 
         /// <summary>
-        /// Indicates whether this model supports function calling.
+        /// Gets whether this model supports video generation, checking overrides first.
         /// </summary>
-        public bool SupportsFunctionCalling { get; set; } = false;
+        [NotMapped]
+        public bool SupportsVideoGeneration => GetCapability(nameof(SupportsVideoGeneration),
+            () => Model?.Capabilities?.SupportsVideoGeneration ?? false);
 
         /// <summary>
-        /// Indicates whether this model supports streaming responses.
+        /// Gets whether this model supports embeddings, checking overrides first.
         /// </summary>
-        public bool SupportsStreaming { get; set; } = false;
+        [NotMapped]
+        public bool SupportsEmbeddings => GetCapability(nameof(SupportsEmbeddings),
+            () => Model?.Capabilities?.SupportsEmbeddings ?? false);
 
         /// <summary>
-        /// The tokenizer type used by this model (e.g., "cl100k_base", "p50k_base", "claude").
+        /// Gets the tokenizer type from Model.Capabilities.
         /// </summary>
-        [MaxLength(50)]
-        public string? TokenizerType { get; set; }
+        [NotMapped]
+        public TokenizerType? TokenizerType => Model?.Capabilities?.TokenizerType;
 
         /// <summary>
-        /// JSON array of supported voices for TTS models (e.g., ["alloy", "echo", "nova"]).
+        /// Gets supported voices from Model.Capabilities.
         /// </summary>
-        public string? SupportedVoices { get; set; }
+        [NotMapped]
+        public string? SupportedVoices => Model?.Capabilities?.SupportedVoices;
 
         /// <summary>
-        /// JSON array of supported languages (e.g., ["en", "es", "fr", "de"]).
+        /// Gets supported languages from Model.Capabilities.
         /// </summary>
-        public string? SupportedLanguages { get; set; }
+        [NotMapped]
+        public string? SupportedLanguages => Model?.Capabilities?.SupportedLanguages;
 
         /// <summary>
-        /// JSON array of supported audio formats (e.g., ["mp3", "opus", "aac", "flac"]).
+        /// Gets supported formats from Model.Capabilities.
         /// </summary>
-        public string? SupportedFormats { get; set; }
+        [NotMapped]
+        public string? SupportedFormats => Model?.Capabilities?.SupportedFormats;
 
         /// <summary>
         /// Indicates whether this is the default model for its provider and capability type.
@@ -155,6 +193,36 @@ namespace ConduitLLM.Configuration.Entities
         public string? DefaultCapabilityType { get; set; }
 
         /// <summary>
+        /// Required foreign key to the associated Model entity.
+        /// Every provider mapping must reference a canonical model.
+        /// </summary>
+        [Required]
+        public int ModelId { get; set; }
+
+        /// <summary>
+        /// Navigation property to the associated Model.
+        /// Contains metadata, capabilities, and configuration for the model.
+        /// </summary>
+        [ForeignKey("ModelId")]
+        public virtual Model Model { get; set; } = null!;
+
+
+        /// <summary>
+        /// Represents the variation of the model provided by the provider.
+        /// Examples: "Q4_K_M", "GGUF", "4bit-128g", "fine-tuned-medical", "instruct"
+        /// </summary>
+        public string? ProviderVariation { get; set; } // // "4-bit-quantized", "fine-tuned-v2"
+
+        /// <summary>
+        /// Represents the quality score of the model provided by the provider.
+        /// 1.0 = identical to original
+        /// 0.95 = 5% quality loss (typical for good quantization)
+        /// 0.8 = 20% quality loss (aggressive quantization)
+        /// </summary>
+
+        public decimal? QualityScore { get; set; } // Provider's quality vs original
+
+        /// <summary>
         /// Gets or sets the collection of cost configurations applied to this model mapping.
         /// </summary>
         /// <remarks>
@@ -162,5 +230,35 @@ namespace ConduitLLM.Configuration.Entities
         /// A model can have multiple cost configurations (e.g., different costs for different time periods or regions).
         /// </remarks>
         public virtual ICollection<ModelCostMapping> ModelCostMappings { get; set; } = new List<ModelCostMapping>();
+
+        /// <summary>
+        /// Helper method to get capability value, checking overrides first.
+        /// </summary>
+        /// <param name="capabilityName">The name of the capability to check.</param>
+        /// <param name="defaultValue">Function to get the default value from Model.Capabilities.</param>
+        /// <returns>The capability value, considering overrides.</returns>
+        private bool GetCapability(string capabilityName, Func<bool> defaultValue)
+        {
+            if (string.IsNullOrEmpty(CapabilityOverrides))
+                return defaultValue();
+
+            try
+            {
+                var overrides = JsonDocument.Parse(CapabilityOverrides);
+                var propertyName = char.ToLower(capabilityName[0]) + capabilityName.Substring(1);
+                
+                if (overrides.RootElement.TryGetProperty(propertyName, out var element) &&
+                    (element.ValueKind == JsonValueKind.True || element.ValueKind == JsonValueKind.False))
+                {
+                    return element.GetBoolean();
+                }
+            }
+            catch
+            {
+                // Invalid JSON or parsing error, fall back to default
+            }
+
+            return defaultValue();
+        }
     }
 }

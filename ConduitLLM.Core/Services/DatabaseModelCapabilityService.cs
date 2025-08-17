@@ -164,13 +164,10 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var mapping = await GetMappingByModelNameAsync(model);
-                var result = mapping?.TokenizerType;
+                var tokenizerType = mapping?.TokenizerType;
 
                 // Default to cl100k_base if not specified
-                if (string.IsNullOrEmpty(result))
-                {
-                    result = "cl100k_base";
-                }
+                string result = tokenizerType?.ToString() ?? "Cl100KBase";
 
                 _cache.Set(cacheKey, result, _cacheExpiration);
                 return result;
@@ -178,7 +175,7 @@ namespace ConduitLLM.Core.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting tokenizer type for model {Model}", model);
-                return "cl100k_base"; // Default fallback
+                return "Cl100KBase"; // Default fallback
             }
         }
 

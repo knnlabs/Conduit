@@ -1,0 +1,61 @@
+using ConduitLLM.Configuration.Entities;
+
+namespace ConduitLLM.Configuration.Repositories
+{
+    /// <summary>
+    /// Repository interface for Model entity operations.
+    /// Models must be pre-created through seed data or admin operations.
+    /// </summary>
+    public interface IModelRepository
+    {
+        /// <summary>
+        /// Gets a model by its ID.
+        /// </summary>
+        Task<Model?> GetByIdAsync(int id);
+
+        /// <summary>
+        /// Gets a model by its ID, including related entities.
+        /// </summary>
+        Task<Model?> GetByIdWithDetailsAsync(int id);
+
+        /// <summary>
+        /// Gets all models.
+        /// </summary>
+        Task<List<Model>> GetAllAsync();
+
+        /// <summary>
+        /// Gets all models with their details (capabilities, series, etc.).
+        /// </summary>
+        Task<List<Model>> GetAllWithDetailsAsync();
+
+        /// <summary>
+        /// Finds a model by its primary identifier.
+        /// </summary>
+        Task<Model?> GetByIdentifierAsync(string identifier);
+
+        /// <summary>
+        /// Gets models by type (Text, Image, Video, etc.).
+        /// </summary>
+        Task<List<Model>> GetByTypeAsync(ModelType modelType);
+
+        /// <summary>
+        /// Gets models by series.
+        /// </summary>
+        Task<List<Model>> GetBySeriesAsync(int seriesId);
+
+        /// <summary>
+        /// Creates a new model.
+        /// </summary>
+        Task<Model> CreateAsync(Model model);
+
+        /// <summary>
+        /// Updates an existing model.
+        /// </summary>
+        Task<Model> UpdateAsync(Model model);
+
+        /// <summary>
+        /// Checks if a model exists.
+        /// </summary>
+        Task<bool> ExistsAsync(int id);
+    }
+}

@@ -30,28 +30,17 @@ namespace ConduitLLM.Configuration.Extensions
             return new ModelProviderMappingDto
             {
                 Id = mapping.Id,
-                ModelId = mapping.ModelAlias,
+                ModelAlias = mapping.ModelAlias,
+                ModelId = mapping.ModelId,
                 ProviderModelId = mapping.ProviderModelId,
                 ProviderId = mapping.ProviderId,
                 Provider = mapping.Provider?.ToReferenceDto(),
                 Priority = 0, // Entity doesn't have Priority
                 IsEnabled = mapping.IsEnabled,
-                Capabilities = null, // Entity doesn't have this as a string
-                MaxContextLength = mapping.MaxContextTokens,
-                SupportsVision = mapping.SupportsVision,
-                SupportsAudioTranscription = mapping.SupportsAudioTranscription,
-                SupportsTextToSpeech = mapping.SupportsTextToSpeech,
-                SupportsRealtimeAudio = mapping.SupportsRealtimeAudio,
-                SupportsImageGeneration = mapping.SupportsImageGeneration,
-                SupportsVideoGeneration = mapping.SupportsVideoGeneration,
-                SupportsEmbeddings = mapping.SupportsEmbeddings,
-                SupportsChat = mapping.SupportsChat,
-                SupportsFunctionCalling = mapping.SupportsFunctionCalling,
-                SupportsStreaming = mapping.SupportsStreaming,
-                TokenizerType = mapping.TokenizerType,
-                SupportedVoices = mapping.SupportedVoices,
-                SupportedLanguages = mapping.SupportedLanguages,
-                SupportedFormats = mapping.SupportedFormats,
+                MaxContextTokensOverride = mapping.MaxContextTokensOverride,
+                CapabilityOverrides = mapping.CapabilityOverrides,
+                ProviderVariation = mapping.ProviderVariation,
+                QualityScore = mapping.QualityScore,
                 IsDefault = mapping.IsDefault,
                 DefaultCapabilityType = mapping.DefaultCapabilityType,
                 CreatedAt = mapping.CreatedAt,
@@ -65,31 +54,19 @@ namespace ConduitLLM.Configuration.Extensions
         /// </summary>
         public static void UpdateFromDto(this ModelProviderMapping mapping, ModelProviderMappingDto dto)
         {
-            mapping.ModelAlias = dto.ModelId;
+            mapping.ModelAlias = dto.ModelAlias;
+            mapping.ModelId = dto.ModelId;
             mapping.ProviderModelId = dto.ProviderModelId;
             mapping.ProviderId = dto.ProviderId;
-            // Entity doesn't have Priority property
             mapping.IsEnabled = dto.IsEnabled;
-            // Entity doesn't have Capabilities as a single string
-            mapping.MaxContextTokens = dto.MaxContextLength;
-            mapping.SupportsVision = dto.SupportsVision;
-            mapping.SupportsAudioTranscription = dto.SupportsAudioTranscription;
-            mapping.SupportsTextToSpeech = dto.SupportsTextToSpeech;
-            mapping.SupportsRealtimeAudio = dto.SupportsRealtimeAudio;
-            mapping.SupportsImageGeneration = dto.SupportsImageGeneration;
-            mapping.SupportsVideoGeneration = dto.SupportsVideoGeneration;
-            mapping.SupportsEmbeddings = dto.SupportsEmbeddings;
-            mapping.SupportsChat = dto.SupportsChat;
-            mapping.SupportsFunctionCalling = dto.SupportsFunctionCalling;
-            mapping.SupportsStreaming = dto.SupportsStreaming;
-            mapping.TokenizerType = dto.TokenizerType;
-            mapping.SupportedVoices = dto.SupportedVoices;
-            mapping.SupportedLanguages = dto.SupportedLanguages;
-            mapping.SupportedFormats = dto.SupportedFormats;
+            mapping.MaxContextTokensOverride = dto.MaxContextTokensOverride;
+            mapping.CapabilityOverrides = dto.CapabilityOverrides;
+            mapping.ProviderVariation = dto.ProviderVariation;
+            mapping.QualityScore = dto.QualityScore;
             mapping.IsDefault = dto.IsDefault;
             mapping.DefaultCapabilityType = dto.DefaultCapabilityType;
             mapping.UpdatedAt = System.DateTime.UtcNow;
-            // Entity doesn't have Notes property
+            // Note: Priority and Notes are DTO-only properties
         }
 
         /// <summary>

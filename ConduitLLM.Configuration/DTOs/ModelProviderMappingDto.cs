@@ -14,10 +14,16 @@ namespace ConduitLLM.Configuration.DTOs
         public int Id { get; set; }
 
         /// <summary>
-        /// The model identifier used in client requests
+        /// The model alias used in client requests
         /// </summary>
         [Required(ErrorMessage = "Model Alias is required")]
-        public string ModelId { get; set; } = string.Empty;
+        public string ModelAlias { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// The ID of the canonical Model entity
+        /// </summary>
+        [Required(ErrorMessage = "Model ID is required")]
+        public int ModelId { get; set; }
 
         /// <summary>
         /// The provider-specific model identifier
@@ -47,84 +53,28 @@ namespace ConduitLLM.Configuration.DTOs
         public bool IsEnabled { get; set; } = true;
 
         /// <summary>
-        /// Optional model capabilities (e.g., vision, function-calling)
+        /// Provider-specific override for maximum context tokens.
+        /// If null, uses Model.Capabilities.MaxTokens.
         /// </summary>
-        public string? Capabilities { get; set; }
+        public int? MaxContextTokensOverride { get; set; }
 
         /// <summary>
-        /// Optional maximum context length
+        /// JSON object containing provider-specific capability overrides.
+        /// Use this when a provider has different capabilities than the base model.
+        /// Example: {"supportsFunctionCalling": false} if provider disabled this feature.
         /// </summary>
-        public int? MaxContextLength { get; set; }
+        public string? CapabilityOverrides { get; set; }
 
         /// <summary>
-        /// Whether this model supports vision/image input capabilities
+        /// Provider variation of the model (e.g., "Q4_K_M", "GGUF", "4bit-128g", "instruct")
         /// </summary>
-        public bool SupportsVision { get; set; } = false;
+        public string? ProviderVariation { get; set; }
 
         /// <summary>
-        /// Whether this model supports audio transcription capabilities
+        /// Quality score of the provider's model version.
+        /// 1.0 = identical to original, 0.95 = 5% quality loss, etc.
         /// </summary>
-        public bool SupportsAudioTranscription { get; set; } = false;
-
-        /// <summary>
-        /// Whether this model supports text-to-speech capabilities
-        /// </summary>
-        public bool SupportsTextToSpeech { get; set; } = false;
-
-        /// <summary>
-        /// Whether this model supports real-time audio streaming capabilities
-        /// </summary>
-        public bool SupportsRealtimeAudio { get; set; } = false;
-
-        /// <summary>
-        /// Whether this model supports image generation capabilities
-        /// </summary>
-        public bool SupportsImageGeneration { get; set; } = false;
-
-        /// <summary>
-        /// Whether this model supports video generation capabilities
-        /// </summary>
-        public bool SupportsVideoGeneration { get; set; } = false;
-
-        /// <summary>
-        /// Whether this model supports embedding generation capabilities
-        /// </summary>
-        public bool SupportsEmbeddings { get; set; } = false;
-
-        /// <summary>
-        /// Whether this model supports chat completions
-        /// </summary>
-        public bool SupportsChat { get; set; } = false;
-
-        /// <summary>
-        /// Whether this model supports function calling
-        /// </summary>
-        public bool SupportsFunctionCalling { get; set; } = false;
-
-        /// <summary>
-        /// Whether this model supports streaming responses
-        /// </summary>
-        public bool SupportsStreaming { get; set; } = false;
-
-        /// <summary>
-        /// The tokenizer type used by this model
-        /// </summary>
-        public string? TokenizerType { get; set; }
-
-        /// <summary>
-        /// JSON array of supported voices for TTS models
-        /// </summary>
-        public string? SupportedVoices { get; set; }
-
-        /// <summary>
-        /// JSON array of supported languages for this model
-        /// </summary>
-        public string? SupportedLanguages { get; set; }
-
-        /// <summary>
-        /// JSON array of supported audio formats for this model
-        /// </summary>
-        public string? SupportedFormats { get; set; }
+        public decimal? QualityScore { get; set; }
 
         /// <summary>
         /// Whether this model is the default for its capability type
