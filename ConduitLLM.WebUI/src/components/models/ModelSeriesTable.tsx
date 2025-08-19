@@ -24,6 +24,7 @@ export function ModelSeriesTable({ onRefresh }: ModelSeriesTableProps) {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [modelCounts, setModelCounts] = useState<Record<number, number>>({});
   
   const { executeWithAdmin } = useAdminClient();
 
@@ -33,6 +34,9 @@ export function ModelSeriesTable({ onRefresh }: ModelSeriesTableProps) {
       const data = await executeWithAdmin(client => client.modelSeries.list());
       setSeries(data);
       setFilteredSeries(data);
+      
+      // Load model counts for each series
+      await loadModelCounts(data);
     } catch (error) {
       console.error('Failed to load model series:', error);
       notifications.show({
@@ -43,6 +47,28 @@ export function ModelSeriesTable({ onRefresh }: ModelSeriesTableProps) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadModelCounts = async (seriesList: ModelSeriesDto[]) => {
+    const counts: Record<number, number> = {};
+    
+    await Promise.all(
+      seriesList.map(async (seriesItem) => {
+        if (seriesItem.id) {
+          try {
+            const models = await executeWithAdmin(client => 
+              client.modelSeries.getModels(seriesItem.id as number)
+            );
+            counts[seriesItem.id] = models.length;
+          } catch (error) {
+            console.error(`Failed to load model count for series ${seriesItem.id}:`, error);
+            counts[seriesItem.id] = 0;
+          }
+        }
+      })
+    );
+    
+    setModelCounts(counts);
   };
 
   useEffect(() => {
@@ -135,7 +161,7 @@ export function ModelSeriesTable({ onRefresh }: ModelSeriesTableProps) {
                 </Table.Td>
                 <Table.Td>
                   <Badge variant="light">
-                    0 models
+                    {item.id ? (modelCounts[item.id] ?? 0) : 0} models
                   </Badge>
                 </Table.Td>
                 <Table.Td>

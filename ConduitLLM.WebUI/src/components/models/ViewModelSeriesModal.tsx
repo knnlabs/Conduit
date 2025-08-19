@@ -83,7 +83,13 @@ export function ViewModelSeriesModal({ isOpen, series, onClose }: ViewModelSerie
               <Text fw={500}>UI Parameters:</Text>
               <ScrollArea h={200}>
                 <CodeHighlight
-                  code={series.parameters}
+                  code={(() => {
+                    try {
+                      return JSON.stringify(JSON.parse(series.parameters), null, 2);
+                    } catch {
+                      return series.parameters;
+                    }
+                  })()}
                   language="json"
                   withCopyButton={false}
                 />

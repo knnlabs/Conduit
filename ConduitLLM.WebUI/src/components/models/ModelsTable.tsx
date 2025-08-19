@@ -25,6 +25,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [seriesNames, setSeriesNames] = useState<Record<number, string>>({});
   
   const { executeWithAdmin } = useAdminClient();
 
@@ -34,6 +35,9 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
       const data = await executeWithAdmin(client => client.models.list());
       setModels(data);
       setFilteredModels(data);
+      
+      // Load series names for models that have a series
+      await loadSeriesNames(data);
     } catch (error) {
       console.error('Failed to load models:', error);
       notifications.show({
@@ -44,6 +48,39 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadSeriesNames = async (modelsList: ModelDto[]) => {
+    const uniqueSeriesIds = Array.from(
+      new Set(
+        modelsList
+          .map(model => model.modelSeriesId)
+          .filter((id): id is number => id !== undefined && id !== null)
+      )
+    );
+
+    if (uniqueSeriesIds.length === 0) {
+      setSeriesNames({});
+      return;
+    }
+
+    const names: Record<number, string> = {};
+    
+    await Promise.all(
+      uniqueSeriesIds.map(async (seriesId) => {
+        try {
+          const series = await executeWithAdmin(client => 
+            client.modelSeries.get(seriesId)
+          );
+          names[seriesId] = series.name ?? `Series ${seriesId}`;
+        } catch (error) {
+          console.error(`Failed to load series name for ID ${seriesId}:`, error);
+          names[seriesId] = `Series ${seriesId}`;
+        }
+      })
+    );
+    
+    setSeriesNames(names);
   };
 
   useEffect(() => {
@@ -183,7 +220,11 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
                   </Badge>
                 </Table.Td>
                 <Table.Td>
-                  <Text c="dimmed">{model.modelSeriesId ? `ID: ${model.modelSeriesId}` : '-'}</Text>
+                  {model.modelSeriesId ? (
+                    <Text>{seriesNames[model.modelSeriesId] ?? `Series ${model.modelSeriesId}`}</Text>
+                  ) : (
+                    <Text c="dimmed">-</Text>
+                  )}
                 </Table.Td>
                 <Table.Td>
                   <Badge color={model.isActive ? 'green' : 'gray'} variant="light">

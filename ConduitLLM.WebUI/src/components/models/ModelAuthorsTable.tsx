@@ -24,6 +24,7 @@ export function ModelAuthorsTable({ onRefresh }: ModelAuthorsTableProps) {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [seriesCounts, setSeriesCounts] = useState<Record<number, number>>({});
   
   const { executeWithAdmin } = useAdminClient();
 
@@ -33,6 +34,9 @@ export function ModelAuthorsTable({ onRefresh }: ModelAuthorsTableProps) {
       const data = await executeWithAdmin(client => client.modelAuthors.list());
       setAuthors(data);
       setFilteredAuthors(data);
+      
+      // Load series counts for each author
+      await loadSeriesCounts(data);
     } catch (error) {
       console.error('Failed to load authors:', error);
       notifications.show({
@@ -43,6 +47,28 @@ export function ModelAuthorsTable({ onRefresh }: ModelAuthorsTableProps) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadSeriesCounts = async (authorsList: ModelAuthorDto[]) => {
+    const counts: Record<number, number> = {};
+    
+    await Promise.all(
+      authorsList.map(async (author) => {
+        if (author.id) {
+          try {
+            const series = await executeWithAdmin(client => 
+              client.modelAuthors.getSeries(author.id as number)
+            );
+            counts[author.id] = series.length;
+          } catch (error) {
+            console.error(`Failed to load series count for author ${author.id}:`, error);
+            counts[author.id] = 0;
+          }
+        }
+      })
+    );
+    
+    setSeriesCounts(counts);
   };
 
   useEffect(() => {
@@ -100,7 +126,6 @@ export function ModelAuthorsTable({ onRefresh }: ModelAuthorsTableProps) {
             <Table.Th>Name</Table.Th>
             <Table.Th>Website</Table.Th>
             <Table.Th>Series Count</Table.Th>
-            <Table.Th>Status</Table.Th>
             <Table.Th>Actions</Table.Th>
           </Table.Tr>
         </Table.Thead>
@@ -109,7 +134,7 @@ export function ModelAuthorsTable({ onRefresh }: ModelAuthorsTableProps) {
             if (loading) {
               return (
                 <Table.Tr>
-                  <Table.Td colSpan={5}>
+                  <Table.Td colSpan={4}>
                     <Text ta="center" c="dimmed">Loading...</Text>
                   </Table.Td>
                 </Table.Tr>
@@ -118,7 +143,7 @@ export function ModelAuthorsTable({ onRefresh }: ModelAuthorsTableProps) {
             if (filteredAuthors.length === 0) {
               return (
                 <Table.Tr>
-                  <Table.Td colSpan={5}>
+                  <Table.Td colSpan={4}>
                     <Text ta="center" c="dimmed">No authors found</Text>
                   </Table.Td>
                 </Table.Tr>
@@ -140,11 +165,8 @@ export function ModelAuthorsTable({ onRefresh }: ModelAuthorsTableProps) {
                 </Table.Td>
                 <Table.Td>
                   <Badge variant="light">
-                    Author
+                    {author.id ? (seriesCounts[author.id] ?? 0) : 0} series
                   </Badge>
-                </Table.Td>
-                <Table.Td>
-                  {/* isActive field doesn't exist in ModelAuthorDto */}
                 </Table.Td>
                 <Table.Td>
                   <Group gap="xs">
