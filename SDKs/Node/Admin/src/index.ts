@@ -17,6 +17,28 @@ export * from './models/providerModels';
 export * from './models/settings';
 export * from './models/ipFilter';
 export * from './models/media';
+// Re-export model types except ModelCapabilities (conflicts with providerModels)
+export {
+  ModelType,
+  ModelDto,
+  CreateModelDto, 
+  UpdateModelDto,
+  ModelSeriesDto,
+  CreateModelSeriesDto,
+  UpdateModelSeriesDto,
+  SimpleModelSeriesDto,
+  SeriesSimpleModelDto,
+  ModelAuthorDto,
+  CreateModelAuthorDto,
+  UpdateModelAuthorDto,
+  ModelCapabilitiesDto,
+  CreateCapabilitiesDto,
+  UpdateCapabilitiesDto,
+  CapabilitiesSimpleModelDto,
+  Model,
+  ModelSeries,
+  ModelAuthor
+} from './models/model';
 // Re-export modelCost types except CostTrend (conflicts with analytics)
 export {
   PricingModel,
@@ -123,18 +145,10 @@ export type {
   ModelProviderMappingDto,
   CreateModelProviderMappingDto,
   UpdateModelProviderMappingDto,
-  ModelMappingFilters,
-  ModelProviderInfo,
-  ModelRoutingInfo,
-  BulkMappingRequest,
-  BulkMappingResponse,
-  ModelMappingSuggestion,
-  DiscoveredModel,
-  ModelCapabilities
+  BulkMappingResult,
+  ModelMappingFilterOptions
 } from './models/modelMapping';
 
-// Re-export CapabilityTestResult from modelMapping (more complete version)
-export type { CapabilityTestResult } from './models/modelMapping';
 
 // Services
 export { FetchVirtualKeyService as VirtualKeyService } from './services/FetchVirtualKeyService';
@@ -184,6 +198,10 @@ export { ModelMappingService } from './services/ModelMappingService';
 export { SettingsService } from './services/SettingsService';
 export { IpFilterService } from './services/IpFilterService';
 export { FetchModelCostService as ModelCostService } from './services/FetchModelCostService'; // Alias for backward compatibility
+export { FetchModelService } from './services/FetchModelService';
+export { FetchModelSeriesService } from './services/FetchModelSeriesService';
+export { FetchModelAuthorService } from './services/FetchModelAuthorService';
+export { FetchModelCapabilitiesService } from './services/FetchModelCapabilitiesService';
 export { AnalyticsService } from './services/AnalyticsService';
 export { SystemService } from './services/SystemService';
 // DiscoveryService removed - use ModelMappingService.discoverProviderModels() instead
@@ -203,7 +221,6 @@ export { NavigationStateHubClient } from './signalr/NavigationStateHubClient';
 
 // Utilities
 export * from './utils/errors';
-export * from './utils/capabilities';
 
 // Models
 export * from './models/metadata';

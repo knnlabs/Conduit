@@ -172,34 +172,7 @@ public static class ServiceCollectionExtensions
             client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM-Admin/1.0");
         });
 
-        // Model discovery providers have been migrated to sister classes
-
-        // Register provider model discovery
-        services.AddScoped<IProviderModelDiscovery, ProviderModelDiscoveryService>();
-        services.AddScoped<IProviderInstanceModelDiscovery, ProviderInstanceModelDiscoveryService>();
-        
-        // Register discovery service with explicit dependency injection
-        services.AddScoped<IProviderDiscoveryService>(serviceProvider =>
-        {
-            var clientFactory = serviceProvider.GetRequiredService<ILLMClientFactory>();
-            var credentialService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IProviderService>();
-            var mappingService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IModelProviderMappingService>();
-            var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.ProviderDiscoveryService>>();
-            var cache = serviceProvider.GetRequiredService<IMemoryCache>();
-            var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-            var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional
-            var providerModelDiscovery = serviceProvider.GetRequiredService<IProviderModelDiscovery>(); // Required
-            
-            return new ConduitLLM.Core.Services.ProviderDiscoveryService(
-                clientFactory,
-                credentialService,
-                mappingService,
-                logger,
-                cache,
-                httpClientFactory,
-                publishEndpoint,
-                providerModelDiscovery);
-        });
+        // Model discovery providers have been removed - capabilities now come from ModelProviderMapping
 
         // Register Media Services using shared configuration from Core
         services.AddMediaServices(configuration);

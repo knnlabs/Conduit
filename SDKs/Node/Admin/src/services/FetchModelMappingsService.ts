@@ -5,7 +5,6 @@ import type {
   ModelProviderMappingDto,
   CreateModelProviderMappingDto,
   UpdateModelProviderMappingDto,
-  DiscoveredModel,
   BulkMappingRequest,
   BulkMappingResponse,
 } from '../models/modelMapping';
@@ -101,22 +100,6 @@ export class FetchModelMappingsService {
   }
 
 
-  /**
-   * Discover models from a specific provider
-   */
-  async discoverProviderModels(
-    providerId: number,
-    config?: RequestConfig
-  ): Promise<DiscoveredModel[]> {
-    return this.client['get']<DiscoveredModel[]>(
-      ENDPOINTS.MODEL_MAPPINGS.DISCOVER(providerId),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
 
 
   /**
@@ -161,56 +144,9 @@ export class FetchModelMappingsService {
   }
 
   /**
-   * Helper method to get mapping capabilities
-   */
-  getMappingCapabilities(mapping: ModelProviderMappingDto): string[] {
-    const capabilities: string[] = [];
-    
-    if (mapping.supportsVision) capabilities.push('vision');
-    if (mapping.supportsImageGeneration) capabilities.push('image-generation');
-    if (mapping.supportsAudioTranscription) capabilities.push('audio-transcription');
-    if (mapping.supportsTextToSpeech) capabilities.push('text-to-speech');
-    if (mapping.supportsRealtimeAudio) capabilities.push('realtime-audio');
-    if (mapping.supportsFunctionCalling) capabilities.push('function-calling');
-    if (mapping.supportsStreaming) capabilities.push('streaming');
-    if (mapping.supportsVideoGeneration) capabilities.push('video-generation');
-    if (mapping.supportsEmbeddings) capabilities.push('embeddings');
-    
-    return capabilities;
-  }
-
-  /**
    * Helper method to format mapping display name
    */
   formatMappingName(mapping: ModelProviderMappingDto): string {
     return `${mapping.modelId} → ${mapping.providerId}:${mapping.providerModelId}`;
-  }
-
-  /**
-   * Helper method to check if a model supports a specific capability
-   */
-  supportsCapability(mapping: ModelProviderMappingDto, capability: string): boolean {
-    switch (capability) {
-      case 'vision':
-        return mapping.supportsVision;
-      case 'image-generation':
-        return mapping.supportsImageGeneration;
-      case 'audio-transcription':
-        return mapping.supportsAudioTranscription;
-      case 'text-to-speech':
-        return mapping.supportsTextToSpeech;
-      case 'realtime-audio':
-        return mapping.supportsRealtimeAudio;
-      case 'function-calling':
-        return mapping.supportsFunctionCalling;
-      case 'streaming':
-        return mapping.supportsStreaming;
-      case 'video-generation':
-        return mapping.supportsVideoGeneration;
-      case 'embeddings':
-        return mapping.supportsEmbeddings;
-      default:
-        return false;
-    }
   }
 }

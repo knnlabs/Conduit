@@ -57,5 +57,25 @@ namespace ConduitLLM.Configuration.Repositories
         /// Checks if a model exists.
         /// </summary>
         Task<bool> ExistsAsync(int id);
+
+        /// <summary>
+        /// Gets a model by its name.
+        /// </summary>
+        Task<Model?> GetByNameAsync(string name);
+
+        /// <summary>
+        /// Searches for models by name.
+        /// </summary>
+        Task<List<Model>> SearchByNameAsync(string query);
+
+        /// <summary>
+        /// Checks if a model has any mapping references.
+        /// </summary>
+        Task<bool> HasMappingReferencesAsync(int modelId);
+
+        /// <summary>
+        /// Deletes a model by ID.
+        /// </summary>
+        Task<bool> DeleteAsync(int id);
     }
 }

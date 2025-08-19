@@ -150,8 +150,8 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
             providerName: typeof apiProvider.providerName === 'string' ? apiProvider.providerName : '',
             apiKey: '', // Don't show existing key for security
             apiEndpoint: apiProvider.baseUrl ?? '',
-            organizationId: (provider as unknown as { organization?: string; organizationId?: string }).organization ?? 
-                          (provider as unknown as { organization?: string; organizationId?: string }).organizationId ?? '',
+            organizationId: (provider as { organization?: string; organizationId?: string }).organization ?? 
+                          (provider as { organization?: string; organizationId?: string }).organizationId ?? '',
             isEnabled: provider.isEnabled === true,
           };
           

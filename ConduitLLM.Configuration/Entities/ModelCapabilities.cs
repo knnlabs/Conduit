@@ -10,7 +10,7 @@ namespace ConduitLLM.Configuration.Entities
         /// <summary>
         /// The maximum tokens that can be generated for this capability.
         /// </summary>
-        public int MaxTokens { get; set; } = 1024;
+        public int MaxTokens { get; set; } = 4096;
 
         /// <summary>
         /// The minimum tokens that can be generated for this capability.

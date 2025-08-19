@@ -147,7 +147,7 @@ export default function CostDashboard() {
   });
 
   const isLoading = isLoadingSummary || isLoadingTrends;
-  const error = summaryError || trendsError;
+  const error = summaryError ?? trendsError;
 
   // Calculate derived metrics
   const totalSpend = costSummary?.totalCost ?? 0;
@@ -155,7 +155,14 @@ export default function CostDashboard() {
   const last30DaysCost = costSummary?.last30DaysCost ?? 0;
   
   // Calculate average daily cost based on the time range
-  const daysInRange = timeRange === '7d' ? 7 : (timeRange === '30d' ? 30 : 90);
+  let daysInRange: number;
+  if (timeRange === '7d') {
+    daysInRange = 7;
+  } else if (timeRange === '30d') {
+    daysInRange = 30;
+  } else {
+    daysInRange = 90;
+  }
   const averageDailyCost = totalSpend / daysInRange;
   
   // Calculate projected monthly spend
@@ -230,7 +237,7 @@ export default function CostDashboard() {
       
       // Create a blob from the Uint8Array and download
       // Cast to unknown then to BlobPart to avoid TypeScript ArrayBufferLike vs ArrayBuffer issue
-      const blob = new Blob([exportData as unknown as BlobPart], { type: 'text/csv; charset=utf-8' });
+      const blob = new Blob([exportData as BlobPart], { type: 'text/csv; charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -271,7 +278,7 @@ export default function CostDashboard() {
   const isOverBudget = budgetUtilization !== null ? budgetUtilization > 100 : false;
 
   if (error) {
-    return <ErrorDisplay error={error as Error} />;
+    return <ErrorDisplay error={error} />;
   }
 
   return (
@@ -367,7 +374,11 @@ export default function CostDashboard() {
               )}
             </Group>
             <Text size="xs" c="dimmed" mt="xs">
-              {timeRange === '7d' ? 'Last 7 days' : (timeRange === '30d' ? 'Last 30 days' : 'Last 90 days')}
+              {(() => {
+                if (timeRange === '7d') return 'Last 7 days';
+                if (timeRange === '30d') return 'Last 30 days';
+                return 'Last 90 days';
+              })()}
             </Text>
           </Card>
         </Grid.Col>

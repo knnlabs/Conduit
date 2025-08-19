@@ -44,18 +44,20 @@ export function useProviderApi() {
     setError(null);
     
     try {
-      interface ProviderListResponse {
-        items: ProviderCredentialDto[];
-        totalCount: number;
-        page: number;
-        pageSize: number;
-      }
-      
       const result = await withAdminClient(client => 
-        client.providers.list(1, 1000)
-      ) as ProviderListResponse;
+        client.providers.list()
+      );
       
-      return result.items;
+      // Check if result is a paginated response or direct array
+      if (Array.isArray(result)) {
+        return result as ProviderCredentialDto[];
+      } else if (result && typeof result === 'object' && 'items' in result) {
+        interface PaginatedResponse {
+          items: ProviderCredentialDto[];
+        }
+        return (result as PaginatedResponse).items;
+      }
+      return [] as ProviderCredentialDto[];
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch providers';
       setError(message);
@@ -90,7 +92,7 @@ export function useProviderApi() {
     
     try {
       const result = await withAdminClient(client => 
-        client.providers.create(provider as unknown as CreateProviderCredentialDto)
+        client.providers.create(provider)
       );
 
       notifications.show({
@@ -120,7 +122,7 @@ export function useProviderApi() {
     
     try {
       const result = await withAdminClient(client => 
-        client.providers.update(id, updates as unknown as UpdateProviderCredentialDto)
+        client.providers.update(id, updates)
       );
 
       notifications.show({

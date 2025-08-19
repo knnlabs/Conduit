@@ -58,12 +58,6 @@ namespace ConduitLLM.Configuration.DTOs
         /// </summary>
         public int? MaxContextTokensOverride { get; set; }
 
-        /// <summary>
-        /// JSON object containing provider-specific capability overrides.
-        /// Use this when a provider has different capabilities than the base model.
-        /// Example: {"supportsFunctionCalling": false} if provider disabled this feature.
-        /// </summary>
-        public string? CapabilityOverrides { get; set; }
 
         /// <summary>
         /// Provider variation of the model (e.g., "Q4_K_M", "GGUF", "4bit-128g", "instruct")

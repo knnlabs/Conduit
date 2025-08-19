@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -71,6 +72,21 @@ namespace ConduitLLM.Configuration.Entities
         /// Navigation property for all provider mappings using this model.
         /// </summary>
         public virtual ICollection<ModelProviderMapping> ProviderMappings { get; set; } = new List<ModelProviderMapping>();
+
+        /// <summary>
+        /// Whether the model is active and available for use.
+        /// </summary>
+        public bool IsActive { get; set; } = true;
+
+        /// <summary>
+        /// Date the model was created.
+        /// </summary>
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// Date the model was last updated.
+        /// </summary>
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 
 }

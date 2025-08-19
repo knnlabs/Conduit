@@ -108,6 +108,7 @@ namespace ConduitLLM.Tests.Admin.Integration
                 new ModelProviderMapping
                 {
                     ModelAlias = "gpt-4",
+                    ModelId = 1,
                     ProviderModelId = "gpt-4",
                     ProviderId = provider.Id,
                     IsEnabled = true,
@@ -116,6 +117,7 @@ namespace ConduitLLM.Tests.Admin.Integration
                 new ModelProviderMapping
                 {
                     ModelAlias = "gpt-3.5-turbo",
+                    ModelId = 1,
                     ProviderModelId = "gpt-3.5-turbo",
                     ProviderId = provider.Id,
                     IsEnabled = true,
@@ -124,6 +126,7 @@ namespace ConduitLLM.Tests.Admin.Integration
                 new ModelProviderMapping
                 {
                     ModelAlias = "text-embedding-ada-002",
+                    ModelId = 1,
                     ProviderModelId = "text-embedding-ada-002",
                     ProviderId = provider.Id,
                     IsEnabled = true,

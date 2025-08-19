@@ -253,8 +253,10 @@ export class FetchAnalyticsService {
     const url = `${ENDPOINTS.ANALYTICS.EXPORT}?${queryString}`;
 
     // Make a direct fetch request for binary data
-    const baseUrl = (this.client as any).baseUrl || '';
-    const masterKey = (this.client as any).masterKey || '';
+    // Access the protected properties through type assertion
+    const clientWithProps = this.client as unknown as { baseUrl: string; masterKey: string };
+    const baseUrl = clientWithProps.baseUrl ?? '';
+    const masterKey = clientWithProps.masterKey ?? '';
     
     const response = await fetch(`${baseUrl}${url}`, {
       method: 'GET',

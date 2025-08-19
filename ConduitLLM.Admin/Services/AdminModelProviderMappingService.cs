@@ -60,10 +60,11 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
     }
 
     /// <inheritdoc />
-    public async Task<ModelProviderMapping?> GetMappingByModelIdAsync(string modelId)
+    public async Task<ModelProviderMapping?> GetMappingByModelIdAsync(int modelId)
     {
-        _logger.LogInformation("Getting model provider mapping for model ID: {ModelId}", modelId.Replace(Environment.NewLine, ""));
-        return await _mappingRepository.GetByModelNameAsync(modelId);
+        _logger.LogInformation("Getting model provider mapping for model ID: {ModelId}", modelId);
+        var mappings = await _mappingRepository.GetAllAsync();
+        return mappings.FirstOrDefault(m => m.ModelId == modelId);
     }
 
     /// <inheritdoc />
@@ -149,7 +150,6 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
             existingMapping.ProviderId = mapping.ProviderId;
             existingMapping.IsEnabled = mapping.IsEnabled;
             existingMapping.MaxContextTokensOverride = mapping.MaxContextTokensOverride;
-            existingMapping.CapabilityOverrides = mapping.CapabilityOverrides;
             existingMapping.ProviderVariation = mapping.ProviderVariation;
             existingMapping.QualityScore = mapping.QualityScore;
             existingMapping.IsDefault = mapping.IsDefault;

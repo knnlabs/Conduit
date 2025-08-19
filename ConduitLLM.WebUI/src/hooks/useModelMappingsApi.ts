@@ -150,37 +150,46 @@ export function useBulkDiscoverModels() {
   const discoverModels = async (providerId: string, providerName: string): Promise<BulkDiscoverResult> => {
     setIsDiscovering(true);
     try {
-      const models = await withAdminClient(client => 
-        client.modelMappings.discoverProviderModels(parseInt(providerId, 10))
-      ) as unknown as Array<{ modelId: string; displayName?: string; capabilities?: Record<string, boolean>; contextWindow?: number; maxOutputTokens?: number }>;
+      // Discovery service has been removed - fetch models from catalog instead
+      const [catalogModels, existingMappings] = await Promise.all([
+        withAdminClient(client => client.models.list()),
+        withAdminClient(client => client.modelMappings.list())
+      ]);
 
-      // Transform the discovered models to match the expected interface
+      // Create a set of model IDs that already have mappings for this provider
+      const mappedModelIds = new Set(
+        existingMappings
+          .filter(m => m.providerId?.toString() === providerId)
+          .map(m => m.modelId)
+      );
+
+      // Transform catalog models to discovery result format
       const result: BulkDiscoverResult = {
         providerId,
         providerName,
-        models: (models as Array<{ modelId: string; displayName?: string; capabilities?: Record<string, boolean>; contextWindow?: number; maxOutputTokens?: number }>).map(model => ({
-          modelId: model.modelId,
-          displayName: model.displayName ?? model.modelId,
+        models: catalogModels.map(model => ({
+          modelId: model.id?.toString() ?? '',
+          displayName: model.name ?? model.id?.toString() ?? '',
           providerId,
-          hasConflict: false, // The SDK doesn't provide this info directly
-          existingMapping: null, // Would need a separate lookup
+          hasConflict: model.id ? mappedModelIds.has(model.id) : false,
+          existingMapping: null,
           capabilities: {
-            supportsVision: (model.capabilities?.supportsVision as boolean) ?? false,
-            supportsImageGeneration: (model.capabilities?.supportsImageGeneration as boolean) ?? false,
-            supportsAudioTranscription: (model.capabilities?.supportsAudioTranscription as boolean) ?? false,
-            supportsTextToSpeech: (model.capabilities?.supportsTextToSpeech as boolean) ?? false,
-            supportsRealtimeAudio: (model.capabilities?.supportsRealtimeAudio as boolean) ?? false,
-            supportsFunctionCalling: (model.capabilities?.supportsFunctionCalling as boolean) ?? false,
-            supportsStreaming: (model.capabilities?.supportsStreaming as boolean) ?? true,
-            supportsVideoGeneration: (model.capabilities?.supportsVideoGeneration as boolean) ?? false,
-            supportsEmbeddings: (model.capabilities?.supportsEmbeddings as boolean) ?? false,
-            supportsChat: (model.capabilities?.supportsChat as boolean) ?? true,
-            maxContextLength: model.contextWindow ?? null,
-            maxOutputTokens: model.maxOutputTokens ?? null,
+            supportsVision: model.capabilities?.supportsVision ?? false,
+            supportsImageGeneration: model.capabilities?.supportsImageGeneration ?? false,
+            supportsAudioTranscription: model.capabilities?.supportsAudioTranscription ?? false,
+            supportsTextToSpeech: model.capabilities?.supportsTextToSpeech ?? false,
+            supportsRealtimeAudio: model.capabilities?.supportsRealtimeAudio ?? false,
+            supportsFunctionCalling: model.capabilities?.supportsFunctionCalling ?? false,
+            supportsStreaming: model.capabilities?.supportsStreaming ?? true,
+            supportsVideoGeneration: model.capabilities?.supportsVideoGeneration ?? false,
+            supportsEmbeddings: model.capabilities?.supportsEmbeddings ?? false,
+            supportsChat: model.capabilities?.supportsChat ?? true,
+            maxContextLength: model.capabilities?.maxTokens ?? null,
+            maxOutputTokens: null,
           },
         })),
-        totalModels: Array.isArray(models) ? models.length : 0,
-        conflictCount: 0,
+        totalModels: catalogModels.length,
+        conflictCount: catalogModels.filter(m => m.id && mappedModelIds.has(m.id)).length,
       };
 
       return result;
@@ -250,25 +259,14 @@ export function useBulkCreateMappings() {
       // Transform request to Admin SDK format
       const bulkRequest = {
         mappings: request.models.map(model => ({
-          modelId: model.modelId,
+          modelAlias: model.modelId,  // Use modelId as alias for bulk creation
+          modelId: 0,  // Required field, use 0 for bulk creation without Model entity
           providerId: parseInt(model.providerId, 10),
           providerModelId: model.modelId,
           isEnabled: request.enableByDefault ?? true,
           priority: request.defaultPriority ?? 50,
           isDefault: false,
-          // Capability flags
-          supportsVision: model.capabilities.supportsVision,
-          supportsImageGeneration: model.capabilities.supportsImageGeneration,
-          supportsAudioTranscription: model.capabilities.supportsAudioTranscription,
-          supportsTextToSpeech: model.capabilities.supportsTextToSpeech,
-          supportsRealtimeAudio: model.capabilities.supportsRealtimeAudio,
-          supportsFunctionCalling: model.capabilities.supportsFunctionCalling,
-          supportsStreaming: model.capabilities.supportsStreaming,
-          supportsVideoGeneration: model.capabilities.supportsVideoGeneration,
-          supportsEmbeddings: model.capabilities.supportsEmbeddings,
-          supportsChat: model.capabilities.supportsChat,
-          maxContextLength: model.capabilities.maxContextLength ?? undefined,
-          maxOutputTokens: model.capabilities.maxOutputTokens ?? undefined,
+          maxContextTokensOverride: model.capabilities.maxContextLength ?? undefined,
         })),
         replaceExisting: false,
       };

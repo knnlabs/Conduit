@@ -15,6 +15,7 @@ import {
   IconDeviceDesktop,
   IconAlertTriangle,
   IconEye,
+  IconBrain,
 } from '@tabler/icons-react';
 import { NavigationSection } from '@/types/navigation';
 
@@ -73,6 +74,14 @@ export const navigationSections: NavigationSection[] = [
         href: '/llm-providers',
         description: 'Manage LLM provider credentials',
         color: 'purple',
+      },
+      {
+        id: 'models',
+        label: 'Models',
+        icon: IconBrain,
+        href: '/models',
+        description: 'Manage AI models and capabilities',
+        color: 'violet',
       },
       {
         id: 'model-mappings',

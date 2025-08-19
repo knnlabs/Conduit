@@ -78,7 +78,6 @@ export const ENDPOINTS = {
     BY_ID: (id: number) => `/api/ModelProviderMapping/${id}`,
     PROVIDERS: '/api/ModelProviderMapping/providers',
     BULK: '/api/ModelProviderMapping/bulk',
-    DISCOVER: (providerId: number) => `/api/ModelProviderMapping/discover/${providerId}`,
   },
 
   // IP Filters
@@ -102,6 +101,35 @@ export const ENDPOINTS = {
     EXPORT_CSV: '/api/ModelCosts/export/csv',
     EXPORT_JSON: '/api/ModelCosts/export/json',
     OVERVIEW: '/api/ModelCosts/overview',
+  },
+
+  // Model Management
+  MODELS: {
+    BASE: '/api/Model',
+    BY_ID: (id: number) => `/api/Model/${id}`,
+    BY_TYPE: (type: string) => `/api/Model/type/${type}`,
+    SEARCH: '/api/Model/search',
+  },
+
+  // Model Series Management
+  MODEL_SERIES: {
+    BASE: '/api/ModelSeries',
+    BY_ID: (id: number) => `/api/ModelSeries/${id}`,
+    MODELS: (id: number) => `/api/ModelSeries/${id}/models`,
+  },
+
+  // Model Author Management
+  MODEL_AUTHORS: {
+    BASE: '/api/ModelAuthor',
+    BY_ID: (id: number) => `/api/ModelAuthor/${id}`,
+    SERIES: (id: number) => `/api/ModelAuthor/${id}/series`,
+  },
+
+  // Model Capabilities Management
+  MODEL_CAPABILITIES: {
+    BASE: '/api/ModelCapabilities',
+    BY_ID: (id: number) => `/api/ModelCapabilities/${id}`,
+    MODELS: (id: number) => `/api/ModelCapabilities/${id}/models`,
   },
 
   // Unified Analytics endpoints

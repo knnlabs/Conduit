@@ -46,6 +46,10 @@ namespace ConduitLLM.Configuration.Repositories
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ModelProviderMappings
                     .Include(m => m.Provider)
+                    .Include(m => m.Model)
+                        .ThenInclude(m => m!.Capabilities)
+                    .Include(m => m.Model)
+                        .ThenInclude(m => m!.Series)
                     .AsNoTracking()
                     .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
             }
@@ -71,6 +75,8 @@ namespace ConduitLLM.Configuration.Repositories
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ModelProviderMappings
                     .Include(m => m.Provider)
+                    .Include(m => m.Model)
+                        .ThenInclude(m => m!.Capabilities)
                     .AsNoTracking()
                     .FirstOrDefaultAsync(m => m.ModelAlias == modelName, cancellationToken);
             }
@@ -195,7 +201,6 @@ namespace ConduitLLM.Configuration.Repositories
                 existingEntity.IsEnabled = modelProviderMapping.IsEnabled;
                 existingEntity.ModelId = modelProviderMapping.ModelId;
                 existingEntity.MaxContextTokensOverride = modelProviderMapping.MaxContextTokensOverride;
-                existingEntity.CapabilityOverrides = modelProviderMapping.CapabilityOverrides;
                 existingEntity.ProviderVariation = modelProviderMapping.ProviderVariation;
                 existingEntity.QualityScore = modelProviderMapping.QualityScore;
                 existingEntity.IsDefault = modelProviderMapping.IsDefault;

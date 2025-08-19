@@ -81,7 +81,7 @@ export default function ProviderKeysPage() {
       setIsLoading(true);
       const data = await withAdminClient(client => 
         client.providers.listKeys(providerId)
-) as unknown as ProviderKeyCredentialDto[];
+);
       setKeys(data);
     } catch (error) {
       console.error('Error fetching provider keys:', error);

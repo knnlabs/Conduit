@@ -181,7 +181,7 @@ services:
         condition: service_healthy
     environment:
       # Next.js specific environment variables
-      NODE_ENV: production
+      NODE_ENV: development
       PORT: 3000
       # Server-side environment variables
       CONDUIT_API_TO_API_BACKEND_AUTH_KEY: alpha
@@ -200,6 +200,8 @@ services:
       # Example: ACCESS_DENIED_REDIRECT: "https://your-main-site.com"
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_cHJlY2lzZS1yaW5ndGFpbC0zMy5jbGVyay5hY2NvdW50cy5kZXYk"
       CLERK_SECRET_KEY: "sk_test_oOI6FRt1EhRGaCVUc1zJVyWCNyqf3w1DSJnLZlxEQK"
+      # Disable Clerk authentication for development
+      DISABLE_CLERK_AUTH: "true"
     ports:
       - "3000:3000"
     restart: on-failure

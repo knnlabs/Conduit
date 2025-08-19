@@ -6,44 +6,36 @@ export function useModels() {
   return useQuery({
     queryKey: ['chat-models'],
     queryFn: async () => {
-      // Fetch model mappings through the Admin SDK
-      const result = await withAdminClient(client => 
-        client.modelMappings.list()
+      // Fetch models through the Admin SDK
+      const models = await withAdminClient(client => 
+        client.models.list()
       );
       
-      const mappings = result.map(mapping => ({
-        ...mapping,
-        providerId: mapping.providerId.toString(),
-      }));
+      // Filter to only include chat-capable models (modelType === 0 is Text/Chat)
+      const chatModels = models.filter(model => model.modelType === 0);
       
-      // Filter to only include chat-capable models
-      const chatModels = mappings.filter(mapping => mapping.supportsChat === true);
-      
-      const models: ModelWithCapabilities[] = chatModels.map(mapping => {
-        const providerName = mapping.provider?.displayName ?? 'unknown';
+      // Map to the expected format
+      // Note: We're using simplified data since the new schema doesn't have all the old properties
+      const mappedModels: ModelWithCapabilities[] = chatModels.map(model => {
         return {
-          id: mapping.modelId,
-          providerId: mapping.providerType?.toString() ?? 'unknown',
-          providerName: providerName,
-          displayName: `${mapping.modelId} (${providerName})`,
-          maxContextTokens: mapping.maxContextLength,
-          supportsVision: mapping.supportsVision ?? false,
-          // Function calling support will need to be detected at runtime
-          // since it's not stored in the database
-          supportsFunctionCalling: false,
-          supportsToolUsage: false,
-          supportsJsonMode: false,
-          supportsStreaming: true,
+          id: model.id?.toString() ?? 'unknown',
+          providerId: 'unknown', // Provider info is on ModelProviderMapping, not Model
+          providerName: 'Model Provider',
+          displayName: model.name ?? 'Unnamed Model',
+          maxContextTokens: model.capabilities?.maxTokens ?? 128000,
+          supportsVision: model.capabilities?.supportsVision ?? false,
+          supportsFunctionCalling: model.capabilities?.supportsFunctionCalling ?? false,
+          supportsToolUsage: false, // Not in the new schema
+          supportsJsonMode: false, // Not in the new schema
+          supportsStreaming: model.capabilities?.supportsStreaming ?? true,
         };
       });
       
-      return models.sort((a, b) => {
-        if (a.providerId !== b.providerId) {
-          return a.providerId.localeCompare(b.providerId);
-        }
-        return a.id.localeCompare(b.id);
+      return mappedModels.sort((a, b) => {
+        // Sort by display name
+        return a.displayName.localeCompare(b.displayName);
       });
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }

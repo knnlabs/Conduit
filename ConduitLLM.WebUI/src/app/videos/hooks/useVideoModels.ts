@@ -1,48 +1,29 @@
 import { useQuery } from '@tanstack/react-query';
 import type { VideoModel } from '../types';
-import { ProviderType, type ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 import { withAdminClient } from '@/lib/client/adminClient';
 
-// Helper function to convert ProviderType enum to string
-function getProviderName(providerType: ProviderType): string {
-  const providerNames: Record<ProviderType, string> = {
-    [ProviderType.OpenAI]: 'OpenAI',
-    [ProviderType.Groq]: 'Groq',
-    [ProviderType.Replicate]: 'Replicate',
-    [ProviderType.Fireworks]: 'Fireworks',
-    [ProviderType.OpenAICompatible]: 'OpenAI Compatible',
-    [ProviderType.MiniMax]: 'MiniMax',
-    [ProviderType.Ultravox]: 'Ultravox',
-    [ProviderType.ElevenLabs]: 'ElevenLabs',
-    [ProviderType.Cerebras]: 'Cerebras',
-    [ProviderType.SambaNova]: 'SambaNova',
-    [ProviderType.DeepInfra]: 'DeepInfra',
-  };
-  return providerNames[providerType] || `Provider ${providerType}`;
-}
-
 async function fetchVideoModels(): Promise<VideoModel[]> {
-  const result = await withAdminClient(client => 
-    client.modelMappings.list()
+  // Fetch models from the Models endpoint
+  const models = await withAdminClient(client => 
+    client.models.list()
   );
   
-  const mappings = result;
-  
-  // Filter to only include video generation capable models that are enabled
-  const videoModels = mappings.filter((mapping: ModelProviderMappingDto) => 
-    mapping.supportsVideoGeneration === true && mapping.isEnabled !== false
+  // Filter to only include video generation models (modelType === 3)
+  const videoModels = models.filter((model) => 
+    model.modelType === 3 && model.isActive !== false
   );
   
-  return videoModels.map((mapping: ModelProviderMappingDto) => {
-    const providerDisplayName = mapping.provider?.displayName ?? 
-      (mapping.provider?.providerType !== undefined ? getProviderName(mapping.provider.providerType) : 'Unknown');
+  return videoModels.map((model) => {
+    // Check if capabilities support video generation
+    const supportsVideo = model.capabilities?.supportsVideoGeneration === true;
+    
     return {
-      id: mapping.modelId,
-      provider: providerDisplayName,
-      displayName: `${mapping.modelId} (${providerDisplayName})`,
+      id: model.id?.toString() ?? 'unknown',
+      provider: 'Video Provider', // Author info is not directly on Model, would need to fetch from series
+      displayName: model.name ?? 'Unnamed Video Model',
       capabilities: {
-        videoGeneration: true,
-        // Default values since model mappings don't store detailed video capabilities yet
+        videoGeneration: supportsVideo,
+        // Default values since models don't store detailed video capabilities yet
         maxDuration: 10, // seconds
         supportedResolutions: ['1280x720', '720x480'],
         supportedFps: [24, 30],

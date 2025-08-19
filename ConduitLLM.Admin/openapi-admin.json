@@ -9,6 +9,911 @@
     "version": "v1"
   },
   "paths": {
+    "/api/Analytics/logs": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Gets paginated request logs",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "The page number (1-based)",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "The number of items per page",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "description": "Optional filter by start date",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "description": "Optional filter by end date",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "model",
+            "in": "query",
+            "description": "Optional filter by model",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "virtualKeyId",
+            "in": "query",
+            "description": "Optional filter by virtual key ID",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Optional filter by status code",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.LogRequestDto, ConduitLLM.Configuration, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.LogRequestDto, ConduitLLM.Configuration, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.LogRequestDto, ConduitLLM.Configuration, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/Analytics/logs/{id}": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Gets a single log entry by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The ID of the log to retrieve",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.LogRequestDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.LogRequestDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.LogRequestDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/Analytics/logs/models": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Gets a list of distinct model names from request logs",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/Analytics/costs/summary": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Gets cost dashboard summary data",
+        "parameters": [
+          {
+            "name": "timeframe",
+            "in": "query",
+            "description": "The timeframe for the summary (daily, weekly, monthly)",
+            "schema": {
+              "type": "string",
+              "default": "daily"
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "description": "The start date for the summary",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "description": "The end date for the summary",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Costs.CostDashboardDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Costs.CostDashboardDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Costs.CostDashboardDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/Analytics/costs/trends": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Gets cost trend data",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "description": "The period for the trend (daily, weekly, monthly)",
+            "schema": {
+              "type": "string",
+              "default": "daily"
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "description": "The start date for the trend",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "description": "The end date for the trend",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Costs.CostTrendDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Costs.CostTrendDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Costs.CostTrendDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/Analytics/costs/models": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Gets costs grouped by model",
+        "parameters": [
+          {
+            "name": "startDate",
+            "in": "query",
+            "description": "The start date for the analysis",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "description": "The end date for the analysis",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "topN",
+            "in": "query",
+            "description": "Number of top models to return",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Costs.ModelCostBreakdownDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Costs.ModelCostBreakdownDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Costs.ModelCostBreakdownDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/Analytics/costs/virtualkeys": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Gets costs grouped by virtual key",
+        "parameters": [
+          {
+            "name": "startDate",
+            "in": "query",
+            "description": "The start date for the analysis",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "description": "The end date for the analysis",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "topN",
+            "in": "query",
+            "description": "Number of top virtual keys to return",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Costs.VirtualKeyCostBreakdownDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Costs.VirtualKeyCostBreakdownDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Costs.VirtualKeyCostBreakdownDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/Analytics/summary": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Gets comprehensive analytics summary",
+        "parameters": [
+          {
+            "name": "timeframe",
+            "in": "query",
+            "description": "The timeframe for the summary (daily, weekly, monthly)",
+            "schema": {
+              "type": "string",
+              "default": "daily"
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "description": "The start date for the summary",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "description": "The end date for the summary",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.AnalyticsSummaryDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.AnalyticsSummaryDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.AnalyticsSummaryDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/Analytics/virtualkeys/{virtualKeyId}/usage": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Gets usage statistics for a specific virtual key",
+        "parameters": [
+          {
+            "name": "virtualKeyId",
+            "in": "path",
+            "description": "The virtual key ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "description": "The start date for the analysis",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "description": "The end date for the analysis",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.UsageStatisticsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.UsageStatisticsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.UsageStatisticsDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/Analytics/export": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Exports analytics data",
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "description": "Export format (csv, json)",
+            "schema": {
+              "type": "string",
+              "default": "csv"
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "description": "The start date for the export",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "description": "The end date for the export",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "model",
+            "in": "query",
+            "description": "Optional model filter",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "virtualKeyId",
+            "in": "query",
+            "description": "Optional virtual key filter",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/Analytics/metrics/cache": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Gets analytics cache metrics",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": { }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": { }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": { }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Analytics/metrics/operations": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Gets analytics operation performance metrics",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "number",
+                    "format": "double"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "number",
+                    "format": "double"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "number",
+                    "format": "double"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Analytics/cache/invalidate": {
+      "post": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Invalidates analytics cache",
+        "parameters": [
+          {
+            "name": "reason",
+            "in": "query",
+            "description": "Reason for cache invalidation",
+            "schema": {
+              "type": "string",
+              "default": "Manual invalidation"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
     "/api/admin/audio/providers": {
       "get": {
         "tags": [
@@ -972,17 +1877,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.Audio.AudioUsageDto, ConduitLLM.Configuration, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null]]"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.Audio.AudioUsageDto, ConduitLLM.Configuration, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.Audio.AudioUsageDto, ConduitLLM.Configuration, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null]]"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.Audio.AudioUsageDto, ConduitLLM.Configuration, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.Audio.AudioUsageDto, ConduitLLM.Configuration, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null]]"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.Audio.AudioUsageDto, ConduitLLM.Configuration, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]"
                 }
               }
             }
@@ -1401,6 +2306,137 @@
         }
       }
     },
+    "/api/batch-spending/flush": {
+      "post": {
+        "tags": [
+          "BatchSpending"
+        ],
+        "summary": "Triggers immediate flushing of all pending batch spend updates.\n\nThis endpoint publishes a BatchSpendFlushRequestedEvent which is consumed by the Core API\nto immediately process all queued spending charges instead of waiting for the scheduled\nbatch interval. This is essential for:\n\n- Integration testing (deterministic billing verification)\n- Administrative operations (manual reconciliation)\n- Maintenance scenarios (pre-deployment charge processing)\n- Emergency operations (immediate financial updates)\n\nThe operation is asynchronous and event-driven for proper architectural decoupling.",
+        "parameters": [
+          {
+            "name": "reason",
+            "in": "query",
+            "description": "Optional reason for the flush operation (for audit trail)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "priority",
+            "in": "query",
+            "description": "Priority level: Normal (default) or High for urgent operations",
+            "schema": {
+              "$ref": "#/components/schemas/ConduitLLM.Configuration.Events.FlushPriority"
+            }
+          },
+          {
+            "name": "timeoutSeconds",
+            "in": "query",
+            "description": "Optional timeout in seconds (default: service timeout)",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "includeStatistics",
+            "in": "query",
+            "description": "Whether to include detailed statistics in logs (default: true)",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/batch-spending/status": {
+      "get": {
+        "tags": [
+          "BatchSpending"
+        ],
+        "summary": "Gets information about the batch spending system status.\n\nThis endpoint provides operational visibility into:\n- Event publishing capability\n- System readiness for flush operations\n- Configuration details\n\nNote: This endpoint checks the Admin API's ability to publish events,\nnot the Core API's batch spending service status (which is internal).",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/batch-spending/info": {
+      "get": {
+        "tags": [
+          "BatchSpending"
+        ],
+        "summary": "Gets operational information about the batch spending flush capability.\n\nThis endpoint provides documentation and operational guidance for administrators\nwithout exposing internal Core API details.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/config/routing": {
       "get": {
         "tags": [
@@ -1665,294 +2701,6 @@
         "responses": {
           "200": {
             "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/costs/summary": {
-      "get": {
-        "tags": [
-          "CostDashboard"
-        ],
-        "summary": "Gets cost dashboard summary data",
-        "parameters": [
-          {
-            "name": "timeframe",
-            "in": "query",
-            "description": "The timeframe for the summary (daily, weekly, monthly)",
-            "schema": {
-              "type": "string",
-              "default": "daily"
-            }
-          },
-          {
-            "name": "startDate",
-            "in": "query",
-            "description": "The start date for the summary",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          },
-          {
-            "name": "endDate",
-            "in": "query",
-            "description": "The end date for the summary",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Costs.CostDashboardDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Costs.CostDashboardDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Costs.CostDashboardDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/costs/trends": {
-      "get": {
-        "tags": [
-          "CostDashboard"
-        ],
-        "summary": "Gets cost trend data",
-        "parameters": [
-          {
-            "name": "period",
-            "in": "query",
-            "description": "The period for the trend (daily, weekly, monthly)",
-            "schema": {
-              "type": "string",
-              "default": "daily"
-            }
-          },
-          {
-            "name": "startDate",
-            "in": "query",
-            "description": "The start date for the trend",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          },
-          {
-            "name": "endDate",
-            "in": "query",
-            "description": "The end date for the trend",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Costs.CostTrendDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Costs.CostTrendDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Costs.CostTrendDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/costs/models": {
-      "get": {
-        "tags": [
-          "CostDashboard"
-        ],
-        "summary": "Gets model costs data",
-        "parameters": [
-          {
-            "name": "startDate",
-            "in": "query",
-            "description": "The start date for the data",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          },
-          {
-            "name": "endDate",
-            "in": "query",
-            "description": "The end date for the data",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Costs.ModelCostDataDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Costs.ModelCostDataDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Costs.ModelCostDataDto"
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/costs/virtualkeys": {
-      "get": {
-        "tags": [
-          "CostDashboard"
-        ],
-        "summary": "Gets virtual key costs data",
-        "parameters": [
-          {
-            "name": "startDate",
-            "in": "query",
-            "description": "The start date for the data",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          },
-          {
-            "name": "endDate",
-            "in": "query",
-            "description": "The end date for the data",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Costs.VirtualKeyCostDataDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Costs.VirtualKeyCostDataDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Costs.VirtualKeyCostDataDto"
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }
@@ -3749,314 +4497,6 @@
         }
       }
     },
-    "/api/Logs": {
-      "get": {
-        "tags": [
-          "Logs"
-        ],
-        "summary": "Gets paginated request logs",
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "description": "The page number (1-based)",
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 1
-            }
-          },
-          {
-            "name": "pageSize",
-            "in": "query",
-            "description": "The number of items per page",
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 50
-            }
-          },
-          {
-            "name": "startDate",
-            "in": "query",
-            "description": "Optional filter by start date",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          },
-          {
-            "name": "endDate",
-            "in": "query",
-            "description": "Optional filter by end date",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          },
-          {
-            "name": "model",
-            "in": "query",
-            "description": "Optional filter by model",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "virtualKeyId",
-            "in": "query",
-            "description": "Optional filter by virtual key ID",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "description": "Optional filter by status code",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.LogRequestDto, ConduitLLM.Configuration, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null]]"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.LogRequestDto, ConduitLLM.Configuration, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null]]"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.LogRequestDto, ConduitLLM.Configuration, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null]]"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/Logs/models": {
-      "get": {
-        "tags": [
-          "Logs"
-        ],
-        "summary": "Gets a list of distinct model names from request logs",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/Logs/{id}": {
-      "get": {
-        "tags": [
-          "Logs"
-        ],
-        "summary": "Gets a single log entry by ID",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The ID of the log to retrieve",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.LogRequestDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.LogRequestDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.LogRequestDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/Logs/summary": {
-      "get": {
-        "tags": [
-          "Logs"
-        ],
-        "summary": "Gets logs summarized by the specified timeframe",
-        "parameters": [
-          {
-            "name": "timeframe",
-            "in": "query",
-            "description": "The timeframe for the summary (daily, weekly, monthly)",
-            "schema": {
-              "type": "string",
-              "default": "daily"
-            }
-          },
-          {
-            "name": "startDate",
-            "in": "query",
-            "description": "The start date for the summary",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          },
-          {
-            "name": "endDate",
-            "in": "query",
-            "description": "The end date for the summary",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.LogsSummaryDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.LogsSummaryDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.LogsSummaryDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
     "/api/admin/Media/stats": {
       "get": {
         "tags": [
@@ -4279,12 +4719,1375 @@
         }
       }
     },
+    "/api/Model": {
+      "get": {
+        "tags": [
+          "Model"
+        ],
+        "summary": "Gets all models with their capabilities",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelDto"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Model"
+        ],
+        "summary": "Creates a new model",
+        "requestBody": {
+          "description": "The model to create",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CreateModelDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CreateModelDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CreateModelDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/Model/{id}": {
+      "get": {
+        "tags": [
+          "Model"
+        ],
+        "summary": "Gets a specific model by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The model ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Model"
+        ],
+        "summary": "Updates an existing model",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The model ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The updated model data",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateModelDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateModelDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateModelDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Model"
+        ],
+        "summary": "Deletes a model",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The model ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/Model/type/{type}": {
+      "get": {
+        "tags": [
+          "Model"
+        ],
+        "summary": "Gets models by type",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "path",
+            "description": "The model type (Text, Image, Audio, Video, Embedding)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/Model/search": {
+      "get": {
+        "tags": [
+          "Model"
+        ],
+        "summary": "Searches for models by name",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "description": "The search query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelDto"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/ModelAuthor": {
+      "get": {
+        "tags": [
+          "ModelAuthor"
+        ],
+        "summary": "Gets all model authors",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelAuthorDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelAuthorDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelAuthorDto"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "ModelAuthor"
+        ],
+        "summary": "Creates a new model author",
+        "requestBody": {
+          "description": "The model author to create",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CreateModelAuthorDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CreateModelAuthorDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CreateModelAuthorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelAuthorDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelAuthorDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelAuthorDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/ModelAuthor/{id}": {
+      "get": {
+        "tags": [
+          "ModelAuthor"
+        ],
+        "summary": "Gets a specific model author by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The author ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelAuthorDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelAuthorDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelAuthorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "ModelAuthor"
+        ],
+        "summary": "Updates an existing model author",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The author ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The updated model author data",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateModelAuthorDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateModelAuthorDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateModelAuthorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ModelAuthor"
+        ],
+        "summary": "Deletes a model author",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The author ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/ModelAuthor/{id}/series": {
+      "get": {
+        "tags": [
+          "ModelAuthor"
+        ],
+        "summary": "Gets series by author",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The author ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.SimpleModelSeriesDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.SimpleModelSeriesDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.SimpleModelSeriesDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/ModelCapabilities": {
+      "get": {
+        "tags": [
+          "ModelCapabilities"
+        ],
+        "summary": "Gets all model capabilities",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CapabilitiesDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CapabilitiesDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CapabilitiesDto"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "ModelCapabilities"
+        ],
+        "summary": "Creates a new model capabilities",
+        "requestBody": {
+          "description": "The model capabilities to create",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CreateCapabilitiesDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CreateCapabilitiesDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CreateCapabilitiesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CapabilitiesDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CapabilitiesDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CapabilitiesDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/ModelCapabilities/{id}": {
+      "get": {
+        "tags": [
+          "ModelCapabilities"
+        ],
+        "summary": "Gets a specific model capabilities by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The capabilities ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CapabilitiesDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CapabilitiesDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CapabilitiesDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "ModelCapabilities"
+        ],
+        "summary": "Updates an existing model capabilities",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The capabilities ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The updated model capabilities data",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateCapabilitiesDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateCapabilitiesDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateCapabilitiesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ModelCapabilities"
+        ],
+        "summary": "Deletes a model capabilities",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The capabilities ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/ModelCapabilities/{id}/models": {
+      "get": {
+        "tags": [
+          "ModelCapabilities"
+        ],
+        "summary": "Gets models using specific capabilities",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The capabilities ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CapabilitiesSimpleModelDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CapabilitiesSimpleModelDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CapabilitiesSimpleModelDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
     "/api/ModelCosts": {
       "get": {
         "tags": [
           "ModelCosts"
         ],
-        "summary": "Gets all model costs",
+        "summary": "Gets all model costs with optional pagination",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (1-based)",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "Number of items per page",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -5613,6 +7416,450 @@
                   "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/ConduitLLM.Core.Interfaces.DiscoveredModel"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/ModelSeries": {
+      "get": {
+        "tags": [
+          "ModelSeries"
+        ],
+        "summary": "Gets all model series",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelSeriesDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelSeriesDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelSeriesDto"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "ModelSeries"
+        ],
+        "summary": "Creates a new model series",
+        "requestBody": {
+          "description": "The model series to create",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CreateModelSeriesDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CreateModelSeriesDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CreateModelSeriesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelSeriesDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelSeriesDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelSeriesDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/ModelSeries/{id}": {
+      "get": {
+        "tags": [
+          "ModelSeries"
+        ],
+        "summary": "Gets a specific model series by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The series ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelSeriesDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelSeriesDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelSeriesDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "ModelSeries"
+        ],
+        "summary": "Updates an existing model series",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The series ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The updated model series data",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateModelSeriesDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateModelSeriesDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateModelSeriesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ModelSeries"
+        ],
+        "summary": "Deletes a model series",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The series ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/ModelSeries/{id}/models": {
+      "get": {
+        "tags": [
+          "ModelSeries"
+        ],
+        "summary": "Gets models in a series",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The series ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.SeriesSimpleModelDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.SeriesSimpleModelDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.SeriesSimpleModelDto"
                   }
                 }
               }
@@ -8127,17 +10374,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null]]"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null]]"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null]]"
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]"
                 }
               }
             }
@@ -9148,6 +11395,190 @@
         "additionalProperties": false,
         "description": "Result of a bulk mapping operation"
       },
+      "ConduitLLM.Admin.Controllers.CapabilitiesDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Capabilities ID",
+            "format": "int32"
+          },
+          "maxTokens": {
+            "type": "integer",
+            "description": "Maximum tokens",
+            "format": "int32"
+          },
+          "minTokens": {
+            "type": "integer",
+            "description": "Minimum tokens",
+            "format": "int32"
+          },
+          "supportsVision": {
+            "type": "boolean",
+            "description": "Supports vision"
+          },
+          "supportsAudioTranscription": {
+            "type": "boolean",
+            "description": "Supports audio transcription"
+          },
+          "supportsTextToSpeech": {
+            "type": "boolean",
+            "description": "Supports text to speech"
+          },
+          "supportsRealtimeAudio": {
+            "type": "boolean",
+            "description": "Supports realtime audio"
+          },
+          "supportsImageGeneration": {
+            "type": "boolean",
+            "description": "Supports image generation"
+          },
+          "supportsVideoGeneration": {
+            "type": "boolean",
+            "description": "Supports video generation"
+          },
+          "supportsEmbeddings": {
+            "type": "boolean",
+            "description": "Supports embeddings"
+          },
+          "supportsChat": {
+            "type": "boolean",
+            "description": "Supports chat"
+          },
+          "supportsFunctionCalling": {
+            "type": "boolean",
+            "description": "Supports function calling"
+          },
+          "supportsStreaming": {
+            "type": "boolean",
+            "description": "Supports streaming"
+          },
+          "tokenizerType": {
+            "$ref": "#/components/schemas/TokenizerType"
+          },
+          "supportedVoices": {
+            "type": "string",
+            "description": "Supported voices (JSON)",
+            "nullable": true
+          },
+          "supportedLanguages": {
+            "type": "string",
+            "description": "Supported languages (JSON)",
+            "nullable": true
+          },
+          "supportedFormats": {
+            "type": "string",
+            "description": "Supported formats (JSON)",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model capabilities data transfer object"
+      },
+      "ConduitLLM.Admin.Controllers.CapabilitiesSimpleModelDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Model ID",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Model name",
+            "nullable": true
+          },
+          "version": {
+            "type": "string",
+            "description": "Model version",
+            "nullable": true
+          },
+          "modelType": {
+            "$ref": "#/components/schemas/ModelType"
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Is model active"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Simple model DTO for listing capabilities"
+      },
+      "ConduitLLM.Admin.Controllers.CreateCapabilitiesDto": {
+        "type": "object",
+        "properties": {
+          "maxTokens": {
+            "type": "integer",
+            "description": "Maximum tokens",
+            "format": "int32"
+          },
+          "minTokens": {
+            "type": "integer",
+            "description": "Minimum tokens",
+            "format": "int32"
+          },
+          "supportsVision": {
+            "type": "boolean",
+            "description": "Supports vision"
+          },
+          "supportsAudioTranscription": {
+            "type": "boolean",
+            "description": "Supports audio transcription"
+          },
+          "supportsTextToSpeech": {
+            "type": "boolean",
+            "description": "Supports text to speech"
+          },
+          "supportsRealtimeAudio": {
+            "type": "boolean",
+            "description": "Supports realtime audio"
+          },
+          "supportsImageGeneration": {
+            "type": "boolean",
+            "description": "Supports image generation"
+          },
+          "supportsVideoGeneration": {
+            "type": "boolean",
+            "description": "Supports video generation"
+          },
+          "supportsEmbeddings": {
+            "type": "boolean",
+            "description": "Supports embeddings"
+          },
+          "supportsChat": {
+            "type": "boolean",
+            "description": "Supports chat"
+          },
+          "supportsFunctionCalling": {
+            "type": "boolean",
+            "description": "Supports function calling"
+          },
+          "supportsStreaming": {
+            "type": "boolean",
+            "description": "Supports streaming"
+          },
+          "tokenizerType": {
+            "$ref": "#/components/schemas/TokenizerType"
+          },
+          "supportedVoices": {
+            "type": "string",
+            "description": "Supported voices (JSON)",
+            "nullable": true
+          },
+          "supportedLanguages": {
+            "type": "string",
+            "description": "Supported languages (JSON)",
+            "nullable": true
+          },
+          "supportedFormats": {
+            "type": "string",
+            "description": "Supported formats (JSON)",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Create model capabilities DTO"
+      },
       "ConduitLLM.Admin.Controllers.CreateKeyRequest": {
         "type": "object",
         "properties": {
@@ -9189,6 +11620,83 @@
         "additionalProperties": false,
         "description": "Request model for creating a key credential"
       },
+      "ConduitLLM.Admin.Controllers.CreateModelAuthorDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Author name",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "description": "Author description",
+            "nullable": true
+          },
+          "websiteUrl": {
+            "type": "string",
+            "description": "Author website URL",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Create model author DTO"
+      },
+      "ConduitLLM.Admin.Controllers.CreateModelDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "modelType": {
+            "$ref": "#/components/schemas/ModelType"
+          },
+          "modelSeriesId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "modelCapabilitiesId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isActive": {
+            "type": "boolean",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Admin.Controllers.CreateModelSeriesDto": {
+        "type": "object",
+        "properties": {
+          "authorId": {
+            "type": "integer",
+            "description": "Author ID",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Series name",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "description": "Series description",
+            "nullable": true
+          },
+          "tokenizerType": {
+            "$ref": "#/components/schemas/TokenizerType"
+          },
+          "parameters": {
+            "type": "string",
+            "description": "UI parameters JSON",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Create model series DTO"
+      },
       "ConduitLLM.Admin.Controllers.CreateProviderRequest": {
         "type": "object",
         "properties": {
@@ -9228,6 +11736,172 @@
         "additionalProperties": false,
         "description": "Request model for replay operations."
       },
+      "ConduitLLM.Admin.Controllers.ModelAuthorDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Author ID",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Author name",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "description": "Author description",
+            "nullable": true
+          },
+          "websiteUrl": {
+            "type": "string",
+            "description": "Author website URL",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model author data transfer object"
+      },
+      "ConduitLLM.Admin.Controllers.ModelCapabilitiesDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "supportsChat": {
+            "type": "boolean"
+          },
+          "supportsVision": {
+            "type": "boolean"
+          },
+          "supportsFunctionCalling": {
+            "type": "boolean"
+          },
+          "supportsStreaming": {
+            "type": "boolean"
+          },
+          "supportsAudioTranscription": {
+            "type": "boolean"
+          },
+          "supportsTextToSpeech": {
+            "type": "boolean"
+          },
+          "supportsRealtimeAudio": {
+            "type": "boolean"
+          },
+          "supportsImageGeneration": {
+            "type": "boolean"
+          },
+          "supportsVideoGeneration": {
+            "type": "boolean"
+          },
+          "supportsEmbeddings": {
+            "type": "boolean"
+          },
+          "maxTokens": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tokenizerType": {
+            "type": "string",
+            "nullable": true
+          },
+          "supportedVoices": {
+            "type": "string",
+            "nullable": true
+          },
+          "supportedLanguages": {
+            "type": "string",
+            "nullable": true
+          },
+          "supportedFormats": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Admin.Controllers.ModelDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "modelType": {
+            "$ref": "#/components/schemas/ModelType"
+          },
+          "modelSeriesId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "modelCapabilitiesId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.ModelCapabilitiesDto"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Admin.Controllers.ModelSeriesDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Series ID",
+            "format": "int32"
+          },
+          "authorId": {
+            "type": "integer",
+            "description": "Author ID",
+            "format": "int32"
+          },
+          "authorName": {
+            "type": "string",
+            "description": "Author name",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "Series name",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "description": "Series description",
+            "nullable": true
+          },
+          "tokenizerType": {
+            "$ref": "#/components/schemas/TokenizerType"
+          },
+          "parameters": {
+            "type": "string",
+            "description": "UI parameters JSON",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model series data transfer object"
+      },
       "ConduitLLM.Admin.Controllers.PruneMediaRequest": {
         "type": "object",
         "properties": {
@@ -9240,6 +11914,60 @@
         },
         "additionalProperties": false,
         "description": "Request model for pruning old media."
+      },
+      "ConduitLLM.Admin.Controllers.SeriesSimpleModelDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Model ID",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Model name",
+            "nullable": true
+          },
+          "version": {
+            "type": "string",
+            "description": "Model version",
+            "nullable": true
+          },
+          "modelType": {
+            "$ref": "#/components/schemas/ModelType"
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Is model active"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Simple model DTO for series listing"
+      },
+      "ConduitLLM.Admin.Controllers.SimpleModelSeriesDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Series ID",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Series name",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "description": "Series description",
+            "nullable": true
+          },
+          "tokenizerType": {
+            "$ref": "#/components/schemas/TokenizerType"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Simple model series DTO for listing"
       },
       "ConduitLLM.Admin.Controllers.TestProviderRequest": {
         "type": "object",
@@ -9265,6 +11993,98 @@
         },
         "additionalProperties": false,
         "description": "Request model for testing a provider connection"
+      },
+      "ConduitLLM.Admin.Controllers.UpdateCapabilitiesDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Capabilities ID",
+            "format": "int32"
+          },
+          "maxTokens": {
+            "type": "integer",
+            "description": "Maximum tokens",
+            "format": "int32",
+            "nullable": true
+          },
+          "minTokens": {
+            "type": "integer",
+            "description": "Minimum tokens",
+            "format": "int32",
+            "nullable": true
+          },
+          "supportsVision": {
+            "type": "boolean",
+            "description": "Supports vision",
+            "nullable": true
+          },
+          "supportsAudioTranscription": {
+            "type": "boolean",
+            "description": "Supports audio transcription",
+            "nullable": true
+          },
+          "supportsTextToSpeech": {
+            "type": "boolean",
+            "description": "Supports text to speech",
+            "nullable": true
+          },
+          "supportsRealtimeAudio": {
+            "type": "boolean",
+            "description": "Supports realtime audio",
+            "nullable": true
+          },
+          "supportsImageGeneration": {
+            "type": "boolean",
+            "description": "Supports image generation",
+            "nullable": true
+          },
+          "supportsVideoGeneration": {
+            "type": "boolean",
+            "description": "Supports video generation",
+            "nullable": true
+          },
+          "supportsEmbeddings": {
+            "type": "boolean",
+            "description": "Supports embeddings",
+            "nullable": true
+          },
+          "supportsChat": {
+            "type": "boolean",
+            "description": "Supports chat",
+            "nullable": true
+          },
+          "supportsFunctionCalling": {
+            "type": "boolean",
+            "description": "Supports function calling",
+            "nullable": true
+          },
+          "supportsStreaming": {
+            "type": "boolean",
+            "description": "Supports streaming",
+            "nullable": true
+          },
+          "tokenizerType": {
+            "$ref": "#/components/schemas/TokenizerType"
+          },
+          "supportedVoices": {
+            "type": "string",
+            "description": "Supported voices (JSON)",
+            "nullable": true
+          },
+          "supportedLanguages": {
+            "type": "string",
+            "description": "Supported languages (JSON)",
+            "nullable": true
+          },
+          "supportedFormats": {
+            "type": "string",
+            "description": "Supported formats (JSON)",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Update model capabilities DTO"
       },
       "ConduitLLM.Admin.Controllers.UpdateKeyRequest": {
         "type": "object",
@@ -9309,6 +12129,94 @@
         "additionalProperties": false,
         "description": "Request model for updating a key credential"
       },
+      "ConduitLLM.Admin.Controllers.UpdateModelAuthorDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Author ID",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Author name",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "description": "Author description",
+            "nullable": true
+          },
+          "websiteUrl": {
+            "type": "string",
+            "description": "Author website URL",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Update model author DTO"
+      },
+      "ConduitLLM.Admin.Controllers.UpdateModelDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "modelType": {
+            "$ref": "#/components/schemas/ModelType"
+          },
+          "modelSeriesId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "modelCapabilitiesId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Admin.Controllers.UpdateModelSeriesDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Series ID",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Series name",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "description": "Series description",
+            "nullable": true
+          },
+          "tokenizerType": {
+            "$ref": "#/components/schemas/TokenizerType"
+          },
+          "parameters": {
+            "type": "string",
+            "description": "UI parameters JSON",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Update model series DTO"
+      },
       "ConduitLLM.Admin.Controllers.UpdateProviderRequest": {
         "type": "object",
         "properties": {
@@ -9329,6 +12237,80 @@
         },
         "additionalProperties": false,
         "description": "Request model for updating a provider"
+      },
+      "ConduitLLM.Admin.Interfaces.AnalyticsSummaryDto": {
+        "type": "object",
+        "properties": {
+          "totalRequests": {
+            "type": "integer",
+            "description": "Total number of requests in the period",
+            "format": "int32"
+          },
+          "totalCost": {
+            "type": "number",
+            "description": "Total cost in the period",
+            "format": "double"
+          },
+          "totalInputTokens": {
+            "type": "integer",
+            "description": "Total input tokens processed",
+            "format": "int64"
+          },
+          "totalOutputTokens": {
+            "type": "integer",
+            "description": "Total output tokens generated",
+            "format": "int64"
+          },
+          "averageResponseTime": {
+            "type": "number",
+            "description": "Average response time in milliseconds",
+            "format": "double"
+          },
+          "successRate": {
+            "type": "number",
+            "description": "Success rate as percentage (0-100)",
+            "format": "double"
+          },
+          "uniqueVirtualKeys": {
+            "type": "integer",
+            "description": "Number of unique virtual keys used",
+            "format": "int32"
+          },
+          "uniqueModels": {
+            "type": "integer",
+            "description": "Number of unique models used",
+            "format": "int32"
+          },
+          "topModels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.ModelUsageSummary"
+            },
+            "description": "Top models by usage",
+            "nullable": true
+          },
+          "topVirtualKeys": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.VirtualKeyUsageSummary"
+            },
+            "description": "Top virtual keys by cost",
+            "nullable": true
+          },
+          "dailyStats": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.DailyStatistics"
+            },
+            "description": "Daily statistics for the period",
+            "nullable": true
+          },
+          "comparison": {
+            "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.PeriodComparison"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Combined analytics summary DTO"
       },
       "ConduitLLM.Admin.Interfaces.AudioProviderTestResult": {
         "type": "object",
@@ -9416,6 +12398,168 @@
         },
         "additionalProperties": false,
         "description": "Result of bulk cost import operation."
+      },
+      "ConduitLLM.Admin.Interfaces.DailyStatistics": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "description": "Date for these statistics",
+            "format": "date-time"
+          },
+          "requestCount": {
+            "type": "integer",
+            "description": "Number of requests on this date",
+            "format": "int32"
+          },
+          "cost": {
+            "type": "number",
+            "description": "Total cost for this date",
+            "format": "double"
+          },
+          "inputTokens": {
+            "type": "integer",
+            "description": "Total input tokens for this date",
+            "format": "int64"
+          },
+          "outputTokens": {
+            "type": "integer",
+            "description": "Total output tokens for this date",
+            "format": "int64"
+          },
+          "averageResponseTime": {
+            "type": "number",
+            "description": "Average response time for this date",
+            "format": "double"
+          },
+          "errorCount": {
+            "type": "integer",
+            "description": "Number of errors on this date",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Daily statistics"
+      },
+      "ConduitLLM.Admin.Interfaces.ModelUsageSummary": {
+        "type": "object",
+        "properties": {
+          "modelName": {
+            "type": "string",
+            "description": "Name of the model",
+            "nullable": true
+          },
+          "requestCount": {
+            "type": "integer",
+            "description": "Total number of requests for this model",
+            "format": "int32"
+          },
+          "totalCost": {
+            "type": "number",
+            "description": "Total cost incurred by this model",
+            "format": "double"
+          },
+          "inputTokens": {
+            "type": "integer",
+            "description": "Total input tokens processed",
+            "format": "int64"
+          },
+          "outputTokens": {
+            "type": "integer",
+            "description": "Total output tokens generated",
+            "format": "int64"
+          },
+          "averageResponseTime": {
+            "type": "number",
+            "description": "Average response time in milliseconds",
+            "format": "double"
+          },
+          "errorRate": {
+            "type": "number",
+            "description": "Error rate as percentage (0-100)",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Model usage summary"
+      },
+      "ConduitLLM.Admin.Interfaces.PeriodComparison": {
+        "type": "object",
+        "properties": {
+          "costChange": {
+            "type": "number",
+            "description": "Absolute change in cost compared to previous period",
+            "format": "double"
+          },
+          "costChangePercentage": {
+            "type": "number",
+            "description": "Percentage change in cost compared to previous period",
+            "format": "double"
+          },
+          "requestChange": {
+            "type": "integer",
+            "description": "Absolute change in request count compared to previous period",
+            "format": "int32"
+          },
+          "requestChangePercentage": {
+            "type": "number",
+            "description": "Percentage change in request count compared to previous period",
+            "format": "double"
+          },
+          "responseTimeChange": {
+            "type": "number",
+            "description": "Change in average response time compared to previous period",
+            "format": "double"
+          },
+          "errorRateChange": {
+            "type": "number",
+            "description": "Change in error rate compared to previous period",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Period comparison for trend analysis"
+      },
+      "ConduitLLM.Admin.Interfaces.VirtualKeyUsageSummary": {
+        "type": "object",
+        "properties": {
+          "virtualKeyId": {
+            "type": "integer",
+            "description": "Virtual key identifier",
+            "format": "int32"
+          },
+          "keyName": {
+            "type": "string",
+            "description": "Name of the virtual key",
+            "nullable": true
+          },
+          "requestCount": {
+            "type": "integer",
+            "description": "Total number of requests",
+            "format": "int32"
+          },
+          "totalCost": {
+            "type": "number",
+            "description": "Total cost incurred",
+            "format": "double"
+          },
+          "lastUsed": {
+            "type": "string",
+            "description": "Last time this key was used",
+            "format": "date-time",
+            "nullable": true
+          },
+          "modelsUsed": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of model names used with this key",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Virtual key usage summary"
       },
       "ConduitLLM.Admin.Models.EphemeralMasterKeyResponse": {
         "type": "object",
@@ -10877,6 +14021,10 @@
           "cost": {
             "type": "number",
             "format": "double"
+          },
+          "requestCount": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -10920,18 +14068,51 @@
           "percentage": {
             "type": "number",
             "format": "double"
+          },
+          "requestCount": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
       },
-      "ConduitLLM.Configuration.DTOs.Costs.ModelCostDataDto": {
+      "ConduitLLM.Configuration.DTOs.Costs.ModelCostBreakdownDto": {
         "type": "object",
         "properties": {
-          "model": {
+          "startDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Costs.ModelCostDetail"
+            },
+            "nullable": true
+          },
+          "totalCost": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalRequests": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.DTOs.Costs.ModelCostDetail": {
+        "type": "object",
+        "properties": {
+          "modelName": {
             "type": "string",
             "nullable": true
           },
-          "cost": {
+          "totalCost": {
             "type": "number",
             "format": "double"
           },
@@ -10939,22 +14120,55 @@
             "type": "integer",
             "format": "int32"
           },
-          "totalTokens": {
+          "inputTokens": {
             "type": "integer",
-            "format": "int32"
+            "format": "int64"
           },
-          "costPerToken": {
+          "outputTokens": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "averageCostPerRequest": {
             "type": "number",
             "format": "double"
           },
-          "averageCostPerRequest": {
+          "costPercentage": {
             "type": "number",
             "format": "double"
           }
         },
         "additionalProperties": false
       },
-      "ConduitLLM.Configuration.DTOs.Costs.VirtualKeyCostDataDto": {
+      "ConduitLLM.Configuration.DTOs.Costs.VirtualKeyCostBreakdownDto": {
+        "type": "object",
+        "properties": {
+          "startDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "virtualKeys": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Costs.VirtualKeyCostDetail"
+            },
+            "nullable": true
+          },
+          "totalCost": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalRequests": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.DTOs.Costs.VirtualKeyCostDetail": {
         "type": "object",
         "properties": {
           "virtualKeyId": {
@@ -10965,7 +14179,7 @@
             "type": "string",
             "nullable": true
           },
-          "cost": {
+          "totalCost": {
             "type": "number",
             "format": "double"
           },
@@ -10976,6 +14190,15 @@
           "averageCostPerRequest": {
             "type": "number",
             "format": "double"
+          },
+          "lastUsed": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "uniqueModels": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -11157,36 +14380,6 @@
           "message": {
             "type": "string",
             "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.DailyUsageStatsDto": {
-        "type": "object",
-        "properties": {
-          "date": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "modelId": {
-            "type": "string",
-            "nullable": true
-          },
-          "requestCount": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "inputTokens": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "outputTokens": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "cost": {
-            "type": "number",
-            "format": "double"
           }
         },
         "additionalProperties": false
@@ -11484,86 +14677,6 @@
         },
         "additionalProperties": false
       },
-      "ConduitLLM.Configuration.DTOs.LogsSummaryDto": {
-        "type": "object",
-        "properties": {
-          "totalRequests": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "estimatedCost": {
-            "type": "number",
-            "format": "double"
-          },
-          "inputTokens": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "outputTokens": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "totalTokens": {
-            "type": "integer",
-            "format": "int32",
-            "readOnly": true
-          },
-          "averageResponseTime": {
-            "type": "number",
-            "format": "double"
-          },
-          "successfulRequests": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "failedRequests": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "successRate": {
-            "type": "number",
-            "format": "double",
-            "readOnly": true
-          },
-          "lastRequestDate": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "requestsByModel": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "integer",
-              "format": "int32"
-            },
-            "nullable": true
-          },
-          "costByModel": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "number",
-              "format": "double"
-            },
-            "nullable": true
-          },
-          "requestsByStatus": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "integer",
-              "format": "int32"
-            },
-            "nullable": true
-          },
-          "dailyStats": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.DailyUsageStatsDto"
-            },
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
       "ConduitLLM.Configuration.DTOs.ModelCostDto": {
         "required": [
           "costName",
@@ -11750,6 +14863,7 @@
       },
       "ConduitLLM.Configuration.DTOs.ModelProviderMappingDto": {
         "required": [
+          "modelAlias",
           "modelId",
           "providerId",
           "providerModelId"
@@ -11760,9 +14874,13 @@
             "type": "integer",
             "format": "int32"
           },
-          "modelId": {
+          "modelAlias": {
             "minLength": 1,
             "type": "string"
+          },
+          "modelId": {
+            "type": "integer",
+            "format": "int32"
           },
           "providerModelId": {
             "minLength": 1,
@@ -11782,59 +14900,18 @@
           "isEnabled": {
             "type": "boolean"
           },
-          "capabilities": {
-            "type": "string",
-            "nullable": true
-          },
-          "maxContextLength": {
+          "maxContextTokensOverride": {
             "type": "integer",
             "format": "int32",
             "nullable": true
           },
-          "supportsVision": {
-            "type": "boolean"
-          },
-          "supportsAudioTranscription": {
-            "type": "boolean"
-          },
-          "supportsTextToSpeech": {
-            "type": "boolean"
-          },
-          "supportsRealtimeAudio": {
-            "type": "boolean"
-          },
-          "supportsImageGeneration": {
-            "type": "boolean"
-          },
-          "supportsVideoGeneration": {
-            "type": "boolean"
-          },
-          "supportsEmbeddings": {
-            "type": "boolean"
-          },
-          "supportsChat": {
-            "type": "boolean"
-          },
-          "supportsFunctionCalling": {
-            "type": "boolean"
-          },
-          "supportsStreaming": {
-            "type": "boolean"
-          },
-          "tokenizerType": {
+          "providerVariation": {
             "type": "string",
             "nullable": true
           },
-          "supportedVoices": {
-            "type": "string",
-            "nullable": true
-          },
-          "supportedLanguages": {
-            "type": "string",
-            "nullable": true
-          },
-          "supportedFormats": {
-            "type": "string",
+          "qualityScore": {
+            "type": "number",
+            "format": "double",
             "nullable": true
           },
           "isDefault": {
@@ -11855,6 +14932,28 @@
           "notes": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.DTOs.ModelUsage": {
+        "type": "object",
+        "properties": {
+          "requestCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cost": {
+            "type": "number",
+            "format": "double"
+          },
+          "inputTokens": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "outputTokens": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -12070,7 +15169,7 @@
         },
         "additionalProperties": false
       },
-      "ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.Audio.AudioUsageDto, ConduitLLM.Configuration, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null]]": {
+      "ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.Audio.AudioUsageDto, ConduitLLM.Configuration, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]": {
         "type": "object",
         "properties": {
           "items": {
@@ -12115,7 +15214,7 @@
         },
         "additionalProperties": false
       },
-      "ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.LogRequestDto, ConduitLLM.Configuration, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null]]": {
+      "ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.LogRequestDto, ConduitLLM.Configuration, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]": {
         "type": "object",
         "properties": {
           "items": {
@@ -12160,7 +15259,7 @@
         },
         "additionalProperties": false
       },
-      "ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null]]": {
+      "ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]": {
         "type": "object",
         "properties": {
           "items": {
@@ -12447,6 +15546,44 @@
           },
           "message": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.DTOs.UsageStatisticsDto": {
+        "type": "object",
+        "properties": {
+          "totalRequests": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCost": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalInputTokens": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalOutputTokens": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalTokens": {
+            "type": "integer",
+            "format": "int32",
+            "readOnly": true
+          },
+          "averageResponseTimeMs": {
+            "type": "number",
+            "format": "double"
+          },
+          "modelUsage": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelUsage"
+            },
             "nullable": true
           }
         },
@@ -13072,6 +16209,14 @@
         "type": "integer",
         "format": "int32"
       },
+      "ConduitLLM.Configuration.Events.FlushPriority": {
+        "enum": [
+          0,
+          1
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
       "ConduitLLM.Configuration.PricingModel": {
         "enum": [
           0,
@@ -13377,6 +16522,44 @@
           }
         },
         "additionalProperties": { }
+      },
+      "ModelType": {
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "TokenizerType": {
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "type": "integer",
+        "format": "int32"
       }
     },
     "securitySchemes": {

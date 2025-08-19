@@ -77,7 +77,7 @@ export default function ProvidersPage() {
             try {
               const keys = await withAdminClient(client => 
                 client.providers.listKeys(provider.id)
-              ) as unknown as ProviderCredentialDto[];
+              );
               keyCount = Array.isArray(keys) ? keys.length : 0;
             } catch {
               // Silently fail, keyCount remains 0

@@ -877,8 +877,14 @@ namespace ConduitLLM.Configuration.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Description")
                         .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
 
                     b.Property<int>("ModelCapabilitiesId")
                         .HasColumnType("integer");
@@ -896,16 +902,27 @@ namespace ConduitLLM.Configuration.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Version")
                         .HasColumnType("text");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ModelCapabilitiesId");
+                    b.HasIndex("ModelCapabilitiesId")
+                        .HasDatabaseName("IX_Model_ModelCapabilitiesId");
 
-                    b.HasIndex("ModelSeriesId");
+                    b.HasIndex("ModelSeriesId")
+                        .HasDatabaseName("IX_Model_ModelSeriesId");
 
-                    b.ToTable("Model");
+                    b.HasIndex("ModelType")
+                        .HasDatabaseName("IX_Model_ModelType");
+
+                    b.HasIndex("ModelSeriesId", "ModelType")
+                        .HasDatabaseName("IX_Model_ModelSeriesId_ModelType");
+
+                    b.ToTable("Models");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelAuthor", b =>
@@ -931,7 +948,11 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ModelAuthor");
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ModelAuthor_Name_Unique");
+
+                    b.ToTable("ModelAuthors");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelCapabilities", b =>
@@ -991,6 +1012,29 @@ namespace ConduitLLM.Configuration.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SupportsChat")
+                        .HasDatabaseName("IX_ModelCapabilities_SupportsChat")
+                        .HasFilter("\"SupportsChat\" = true");
+
+                    b.HasIndex("SupportsFunctionCalling")
+                        .HasDatabaseName("IX_ModelCapabilities_SupportsFunctionCalling")
+                        .HasFilter("\"SupportsFunctionCalling\" = true");
+
+                    b.HasIndex("SupportsImageGeneration")
+                        .HasDatabaseName("IX_ModelCapabilities_SupportsImageGeneration")
+                        .HasFilter("\"SupportsImageGeneration\" = true");
+
+                    b.HasIndex("SupportsVideoGeneration")
+                        .HasDatabaseName("IX_ModelCapabilities_SupportsVideoGeneration")
+                        .HasFilter("\"SupportsVideoGeneration\" = true");
+
+                    b.HasIndex("SupportsVision")
+                        .HasDatabaseName("IX_ModelCapabilities_SupportsVision")
+                        .HasFilter("\"SupportsVision\" = true");
+
+                    b.HasIndex("SupportsChat", "SupportsFunctionCalling", "SupportsStreaming")
+                        .HasDatabaseName("IX_ModelCapabilities_Chat_Function_Streaming");
 
                     b.ToTable("ModelCapabilities");
                 });
@@ -1238,9 +1282,21 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ModelId");
+                    b.HasIndex("Identifier")
+                        .HasDatabaseName("IX_ModelIdentifier_Identifier");
 
-                    b.ToTable("ModelIdentifier");
+                    b.HasIndex("IsPrimary")
+                        .HasDatabaseName("IX_ModelIdentifier_IsPrimary")
+                        .HasFilter("\"IsPrimary\" = true");
+
+                    b.HasIndex("ModelId")
+                        .HasDatabaseName("IX_ModelIdentifier_ModelId");
+
+                    b.HasIndex("Provider", "Identifier")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ModelIdentifier_Provider_Identifier_Unique");
+
+                    b.ToTable("ModelIdentifiers");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelProviderMapping", b =>
@@ -1297,12 +1353,23 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ModelId");
+                    b.HasIndex("CapabilityOverrides")
+                        .HasDatabaseName("IX_ModelProviderMapping_CapabilityOverrides")
+                        .HasFilter("\"CapabilityOverrides\" IS NOT NULL");
 
-                    b.HasIndex("ProviderId");
+                    b.HasIndex("ModelId")
+                        .HasDatabaseName("IX_ModelProviderMapping_ModelId");
 
                     b.HasIndex("ModelAlias", "ProviderId")
                         .IsUnique();
+
+                    b.HasIndex("ModelId", "QualityScore")
+                        .HasDatabaseName("IX_ModelProviderMapping_ModelId_QualityScore")
+                        .HasFilter("\"QualityScore\" IS NOT NULL");
+
+                    b.HasIndex("ProviderId", "IsEnabled")
+                        .HasDatabaseName("IX_ModelProviderMapping_ProviderId_IsEnabled")
+                        .HasFilter("\"IsEnabled\" = true");
 
                     b.ToTable("ModelProviderMappings");
                 });
@@ -1334,7 +1401,15 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AuthorId");
+                    b.HasIndex("AuthorId")
+                        .HasDatabaseName("IX_ModelSeries_AuthorId");
+
+                    b.HasIndex("TokenizerType")
+                        .HasDatabaseName("IX_ModelSeries_TokenizerType");
+
+                    b.HasIndex("AuthorId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ModelSeries_AuthorId_Name_Unique");
 
                     b.ToTable("ModelSeries");
                 });
@@ -1949,13 +2024,13 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasOne("ConduitLLM.Configuration.Entities.Model", "Model")
                         .WithMany("ProviderMappings")
                         .HasForeignKey("ModelId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("ConduitLLM.Configuration.Entities.Provider", "Provider")
                         .WithMany()
                         .HasForeignKey("ProviderId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Model");

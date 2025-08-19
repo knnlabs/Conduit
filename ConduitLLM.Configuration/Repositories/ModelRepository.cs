@@ -118,5 +118,43 @@ namespace ConduitLLM.Configuration.Repositories
             return await context.Set<Model>()
                 .AnyAsync(m => m.Id == id);
         }
+
+        public async Task<Model?> GetByNameAsync(string name)
+        {
+            using var context = await _dbContextFactory.CreateDbContextAsync();
+            return await context.Set<Model>()
+                .Include(m => m.Capabilities)
+                .FirstOrDefaultAsync(m => m.Name == name);
+        }
+
+        public async Task<List<Model>> SearchByNameAsync(string query)
+        {
+            using var context = await _dbContextFactory.CreateDbContextAsync();
+            var lowerQuery = query.ToLower();
+            return await context.Set<Model>()
+                .Include(m => m.Capabilities)
+                .Where(m => m.Name.ToLower().Contains(lowerQuery) && m.IsActive)
+                .OrderBy(m => m.Name)
+                .ToListAsync();
+        }
+
+        public async Task<bool> HasMappingReferencesAsync(int modelId)
+        {
+            using var context = await _dbContextFactory.CreateDbContextAsync();
+            return await context.Set<ModelProviderMapping>()
+                .AnyAsync(m => m.ModelId == modelId);
+        }
+
+        public async Task<bool> DeleteAsync(int id)
+        {
+            using var context = await _dbContextFactory.CreateDbContextAsync();
+            var model = await context.Set<Model>().FindAsync(id);
+            if (model == null)
+                return false;
+            
+            context.Set<Model>().Remove(model);
+            await context.SaveChangesAsync();
+            return true;
+        }
     }
 }

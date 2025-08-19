@@ -50,9 +50,6 @@ public partial class Program
             .RequireAuthorization();
         Console.WriteLine("[Conduit API] SignalR WebhookDeliveryHub registered at /hubs/webhooks (requires authentication)");
 
-        app.MapHub<ConduitLLM.Http.Hubs.ModelDiscoveryHub>("/hubs/model-discovery")
-            .RequireAuthorization();
-        Console.WriteLine("[Conduit API] SignalR ModelDiscoveryHub registered at /hubs/model-discovery (requires authentication)");
 
         // Admin-only hub for metrics dashboard
         app.MapHub<ConduitLLM.Http.Hubs.MetricsHub>("/hubs/metrics")

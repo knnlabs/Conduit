@@ -16,6 +16,10 @@ import { FetchIpFilterService } from './services/FetchIpFilterService';
 import { FetchErrorQueueService } from './services/FetchErrorQueueService';
 import { FetchModelCostService } from './services/FetchModelCostService';
 import { FetchMediaService } from './services/FetchMediaService';
+import { FetchModelService } from './services/FetchModelService';
+import { FetchModelSeriesService } from './services/FetchModelSeriesService';
+import { FetchModelAuthorService } from './services/FetchModelAuthorService';
+import { FetchModelCapabilitiesService } from './services/FetchModelCapabilitiesService';
 import type { ApiClientConfig } from './client/types';
 import { ConduitError } from './utils/errors';
 
@@ -54,6 +58,10 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
   public readonly errorQueues: FetchErrorQueueService;
   public readonly modelCosts: FetchModelCostService;
   public readonly media: FetchMediaService;
+  public readonly models: FetchModelService;
+  public readonly modelSeries: FetchModelSeriesService;
+  public readonly modelAuthors: FetchModelAuthorService;
+  public readonly modelCapabilities: FetchModelCapabilitiesService;
 
   constructor(config: ApiClientConfig) {
     super(config);
@@ -76,6 +84,10 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
     this.errorQueues = new FetchErrorQueueService(this);
     this.modelCosts = new FetchModelCostService(this);
     this.media = new FetchMediaService(this);
+    this.models = new FetchModelService(this);
+    this.modelSeries = new FetchModelSeriesService(this);
+    this.modelAuthors = new FetchModelAuthorService(this);
+    this.modelCapabilities = new FetchModelCapabilitiesService(this);
   }
 
   /**

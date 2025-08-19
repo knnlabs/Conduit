@@ -128,21 +128,21 @@ namespace ConduitLLM.Tests.Admin.Services
                         ModelCostId = 1, 
                         ModelProviderMappingId = 1, 
                         IsActive = true,
-                        ModelProviderMapping = new ModelProviderMapping { Id = 1, ModelAlias = "model1" }
+                        ModelProviderMapping = new ModelProviderMapping { Id = 1, ModelAlias = "model1", ModelId = 1 }
                     },
                     new ModelCostMapping 
                     { 
                         ModelCostId = 1, 
                         ModelProviderMappingId = 2, 
                         IsActive = true,
-                        ModelProviderMapping = new ModelProviderMapping { Id = 2, ModelAlias = "model2" }
+                        ModelProviderMapping = new ModelProviderMapping { Id = 2, ModelAlias = "model2", ModelId = 1 }
                     },
                     new ModelCostMapping 
                     { 
                         ModelCostId = 1, 
                         ModelProviderMappingId = 3, 
                         IsActive = true,
-                        ModelProviderMapping = new ModelProviderMapping { Id = 3, ModelAlias = "model3" }
+                        ModelProviderMapping = new ModelProviderMapping { Id = 3, ModelAlias = "model3", ModelId = 1 }
                     }
                 }
             };
@@ -409,7 +409,7 @@ namespace ConduitLLM.Tests.Admin.Services
                     { 
                         ModelProviderMappingId = 1, 
                         IsActive = true,
-                        ModelProviderMapping = new ModelProviderMapping { ModelAlias = "gpt-4" }
+                        ModelProviderMapping = new ModelProviderMapping { ModelAlias = "gpt-4", ModelId = 1 }
                     }
                 }
             };
@@ -541,12 +541,12 @@ namespace ConduitLLM.Tests.Admin.Services
                     new ModelCostMapping 
                     { 
                         IsActive = true,
-                        ModelProviderMapping = new ModelProviderMapping { ModelAlias = "active-model" }
+                        ModelProviderMapping = new ModelProviderMapping { ModelAlias = "active-model", ModelId = 1 }
                     },
                     new ModelCostMapping 
                     { 
                         IsActive = false, // Inactive mapping
-                        ModelProviderMapping = new ModelProviderMapping { ModelAlias = "inactive-model" }
+                        ModelProviderMapping = new ModelProviderMapping { ModelAlias = "inactive-model", ModelId = 1 }
                     }
                 }
             };
