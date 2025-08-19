@@ -57,6 +57,20 @@ export class FetchModelService {
   }
 
   /**
+   * Get models by provider
+   */
+  async getByProvider(provider: string, config?: RequestConfig): Promise<ModelDto[]> {
+    return this.client['get']<ModelDto[]>(
+      ENDPOINTS.MODELS.BY_PROVIDER(provider),
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
    * Search for models by name
    */
   async search(query: string, config?: RequestConfig): Promise<ModelDto[]> {

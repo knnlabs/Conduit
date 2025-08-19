@@ -108,6 +108,7 @@ export const ENDPOINTS = {
     BASE: '/api/Model',
     BY_ID: (id: number) => `/api/Model/${id}`,
     BY_TYPE: (type: string) => `/api/Model/type/${type}`,
+    BY_PROVIDER: (provider: string) => `/api/Model/provider/${provider}`,
     SEARCH: '/api/Model/search',
   },
 

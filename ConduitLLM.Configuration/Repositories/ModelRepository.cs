@@ -156,5 +156,27 @@ namespace ConduitLLM.Configuration.Repositories
             await context.SaveChangesAsync();
             return true;
         }
+
+        public async Task<List<Model>> GetByProviderAsync(string providerName)
+        {
+            using var context = await _dbContextFactory.CreateDbContextAsync();
+            
+            // Get model IDs that have identifiers for this provider
+            var modelIds = await context.Set<ModelIdentifier>()
+                .Where(mi => mi.Provider == providerName.ToLower())
+                .Select(mi => mi.ModelId)
+                .Distinct()
+                .ToListAsync();
+
+            // Return models with those IDs, including capabilities and identifiers
+            return await context.Set<Model>()
+                .Include(m => m.Capabilities)
+                .Include(m => m.Series)
+                    .ThenInclude(s => s.Author)
+                .Include(m => m.Identifiers)
+                .Where(m => modelIds.Contains(m.Id))
+                .OrderBy(m => m.Name)
+                .ToListAsync();
+        }
     }
 }

@@ -123,6 +123,7 @@ interface BulkDiscoverResult {
     modelId: string;
     displayName: string;
     providerId: string;
+    providerModelId?: string;
     hasConflict: boolean;
     existingMapping: ModelProviderMappingDto | null;
     capabilities: {
@@ -150,9 +151,9 @@ export function useBulkDiscoverModels() {
   const discoverModels = async (providerId: string, providerName: string): Promise<BulkDiscoverResult> => {
     setIsDiscovering(true);
     try {
-      // Discovery service has been removed - fetch models from catalog instead
-      const [catalogModels, existingMappings] = await Promise.all([
-        withAdminClient(client => client.models.list()),
+      // Fetch models available from this specific provider using the new SDK method
+      const [providerModels, existingMappings] = await Promise.all([
+        withAdminClient(client => client.models.getByProvider(providerName.toLowerCase())),
         withAdminClient(client => client.modelMappings.list())
       ]);
 
@@ -163,33 +164,39 @@ export function useBulkDiscoverModels() {
           .map(m => m.modelId)
       );
 
-      // Transform catalog models to discovery result format
+      // Transform provider-specific models to discovery result format
       const result: BulkDiscoverResult = {
         providerId,
         providerName,
-        models: catalogModels.map(model => ({
-          modelId: model.id?.toString() ?? '',
-          displayName: model.name ?? model.id?.toString() ?? '',
-          providerId,
-          hasConflict: model.id ? mappedModelIds.has(model.id) : false,
-          existingMapping: null,
-          capabilities: {
-            supportsVision: model.capabilities?.supportsVision ?? false,
-            supportsImageGeneration: model.capabilities?.supportsImageGeneration ?? false,
-            supportsAudioTranscription: model.capabilities?.supportsAudioTranscription ?? false,
-            supportsTextToSpeech: model.capabilities?.supportsTextToSpeech ?? false,
-            supportsRealtimeAudio: model.capabilities?.supportsRealtimeAudio ?? false,
-            supportsFunctionCalling: model.capabilities?.supportsFunctionCalling ?? false,
-            supportsStreaming: model.capabilities?.supportsStreaming ?? true,
-            supportsVideoGeneration: model.capabilities?.supportsVideoGeneration ?? false,
-            supportsEmbeddings: model.capabilities?.supportsEmbeddings ?? false,
-            supportsChat: model.capabilities?.supportsChat ?? true,
-            maxContextLength: model.capabilities?.maxTokens ?? null,
-            maxOutputTokens: null,
-          },
-        })),
-        totalModels: catalogModels.length,
-        conflictCount: catalogModels.filter(m => m.id && mappedModelIds.has(m.id)).length,
+        models: providerModels.map(model => {
+          // The backend now returns providerModelId for provider-specific endpoints
+          const providerModelId = (model as { providerModelId?: string }).providerModelId ?? model.name ?? undefined;
+          
+          return {
+            modelId: model.id?.toString() ?? '',
+            displayName: model.name ?? model.id?.toString() ?? '',
+            providerId,
+            providerModelId, // Store the provider-specific model ID
+            hasConflict: model.id ? mappedModelIds.has(model.id) : false,
+            existingMapping: null,
+            capabilities: {
+              supportsVision: model.capabilities?.supportsVision ?? false,
+              supportsImageGeneration: model.capabilities?.supportsImageGeneration ?? false,
+              supportsAudioTranscription: model.capabilities?.supportsAudioTranscription ?? false,
+              supportsTextToSpeech: model.capabilities?.supportsTextToSpeech ?? false,
+              supportsRealtimeAudio: model.capabilities?.supportsRealtimeAudio ?? false,
+              supportsFunctionCalling: model.capabilities?.supportsFunctionCalling ?? false,
+              supportsStreaming: model.capabilities?.supportsStreaming ?? true,
+              supportsVideoGeneration: model.capabilities?.supportsVideoGeneration ?? false,
+              supportsEmbeddings: model.capabilities?.supportsEmbeddings ?? false,
+              supportsChat: model.capabilities?.supportsChat ?? true,
+              maxContextLength: model.capabilities?.maxTokens ?? null,
+              maxOutputTokens: null,
+            },
+          };
+        }),
+        totalModels: providerModels.length,
+        conflictCount: providerModels.filter(m => m.id && mappedModelIds.has(m.id)).length,
       };
 
       return result;
@@ -217,6 +224,7 @@ interface BulkCreateRequest {
     modelId: string;
     displayName: string;
     providerId: string;
+    providerModelId?: string;
     capabilities: {
       supportsVision: boolean;
       supportsImageGeneration: boolean;
@@ -259,10 +267,10 @@ export function useBulkCreateMappings() {
       // Transform request to Admin SDK format
       const bulkRequest = {
         mappings: request.models.map(model => ({
-          modelAlias: model.modelId,  // Use modelId as alias for bulk creation
-          modelId: 0,  // Required field, use 0 for bulk creation without Model entity
+          modelAlias: model.providerModelId ?? model.displayName,  // Use provider model ID as alias
+          modelId: parseInt(model.modelId, 10),  // Use the actual model ID from the Model entity
           providerId: parseInt(model.providerId, 10),
-          providerModelId: model.modelId,
+          providerModelId: model.providerModelId ?? model.displayName,  // Provider-specific model identifier
           isEnabled: request.enableByDefault ?? true,
           priority: request.defaultPriority ?? 50,
           isDefault: false,

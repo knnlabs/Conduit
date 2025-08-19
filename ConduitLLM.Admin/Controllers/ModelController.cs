@@ -142,6 +142,55 @@ namespace ConduitLLM.Admin.Controllers
         }
 
         /// <summary>
+        /// Gets models available from a specific provider
+        /// </summary>
+        /// <param name="provider">The provider name (e.g., "groq", "openai", "anthropic")</param>
+        /// <returns>List of models available from the provider</returns>
+        [HttpGet("provider/{provider}")]
+        [ProducesResponseType(typeof(IEnumerable<ModelWithProviderIdDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetModelsByProvider(string provider)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(provider))
+                {
+                    return BadRequest("Provider name is required");
+                }
+
+                var models = await _modelRepository.GetByProviderAsync(provider);
+                var dtos = models.Select(m => 
+                {
+                    // Find the identifier for this specific provider
+                    var providerIdentifier = m.Identifiers?.FirstOrDefault(i => 
+                        string.Equals(i.Provider, provider, StringComparison.OrdinalIgnoreCase))?.Identifier 
+                        ?? m.Name; // Fallback to model name if no specific identifier
+
+                    return new ModelWithProviderIdDto
+                    {
+                        Id = m.Id,
+                        Name = m.Name,
+                        ProviderModelId = providerIdentifier,
+                        ModelType = m.ModelType,
+                        ModelSeriesId = m.ModelSeriesId,
+                        ModelCapabilitiesId = m.ModelCapabilitiesId,
+                        Capabilities = m.Capabilities != null ? MapCapabilitiesToDto(m.Capabilities) : null,
+                        IsActive = m.IsActive,
+                        CreatedAt = m.CreatedAt,
+                        UpdatedAt = m.UpdatedAt
+                    };
+                });
+                return Ok(dtos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting models for provider {Provider}", provider);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving models");
+            }
+        }
+
+        /// <summary>
         /// Creates a new model
         /// </summary>
         /// <param name="dto">The model to create</param>
@@ -393,5 +442,10 @@ namespace ConduitLLM.Admin.Controllers
         public string? SupportedVoices { get; set; }
         public string? SupportedLanguages { get; set; }
         public string? SupportedFormats { get; set; }
+    }
+
+    public class ModelWithProviderIdDto : ModelDto
+    {
+        public string ProviderModelId { get; set; } = string.Empty;
     }
 }
