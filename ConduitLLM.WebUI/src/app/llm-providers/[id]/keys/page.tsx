@@ -35,7 +35,7 @@ import {
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { modals } from '@mantine/modals';
-import type { ProviderCredentialDto, ProviderKeyCredentialDto, CreateProviderKeyCredentialDto } from '@knn_labs/conduit-admin-client';
+import type { ProviderDto, ProviderKeyCredentialDto, CreateProviderKeyCredentialDto } from '@knn_labs/conduit-admin-client';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { formatters } from '@/lib/utils/formatters';
 import { getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
@@ -46,7 +46,7 @@ export default function ProviderKeysPage() {
   const router = useRouter();
   const providerId = Number(params.id);
   
-  const [provider, setProvider] = useState<ProviderCredentialDto | null>(null);
+  const [provider, setProvider] = useState<ProviderDto | null>(null);
   const [keys, setKeys] = useState<ProviderKeyCredentialDto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isAddingKey, setIsAddingKey] = useState(false);
@@ -65,7 +65,7 @@ export default function ProviderKeysPage() {
       const data = await withAdminClient(client => 
         client.providers.getById(providerId)
       );
-      setProvider(data as ProviderCredentialDto);
+      setProvider(data);
     } catch (error) {
       console.error('Error fetching provider:', error);
       notifications.show({

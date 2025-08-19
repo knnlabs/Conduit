@@ -5,9 +5,9 @@ import { notifications } from '@mantine/notifications';
 import { useQuery } from '@tanstack/react-query';
 
 import type { 
-  ProviderCredentialDto, 
-  CreateProviderCredentialDto, 
-  UpdateProviderCredentialDto,
+  ProviderDto, 
+  CreateProviderDto, 
+  UpdateProviderDto,
   ProviderHealthStatusDto,
   ProviderKeyCredentialDto,
   CreateProviderKeyCredentialDto
@@ -39,7 +39,7 @@ export function useProviderApi() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const getProviders = useCallback(async (): Promise<ProviderCredentialDto[]> => {
+  const getProviders = useCallback(async (): Promise<ProviderDto[]> => {
     setIsLoading(true);
     setError(null);
     
@@ -50,14 +50,14 @@ export function useProviderApi() {
       
       // Check if result is a paginated response or direct array
       if (Array.isArray(result)) {
-        return result as ProviderCredentialDto[];
+        return result as ProviderDto[];
       } else if (result && typeof result === 'object' && 'items' in result) {
         interface PaginatedResponse {
-          items: ProviderCredentialDto[];
+          items: ProviderDto[];
         }
         return (result as PaginatedResponse).items;
       }
-      return [] as ProviderCredentialDto[];
+      return [] as ProviderDto[];
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch providers';
       setError(message);
@@ -67,7 +67,7 @@ export function useProviderApi() {
     }
   }, []);
 
-  const getProvider = useCallback(async (id: number): Promise<ProviderCredentialDto> => {
+  const getProvider = useCallback(async (id: number): Promise<ProviderDto> => {
     setIsLoading(true);
     setError(null);
     
@@ -86,7 +86,7 @@ export function useProviderApi() {
     }
   }, []);
 
-  const createProvider = useCallback(async (provider: CreateProviderCredentialDto): Promise<ProviderCredentialDto> => {
+  const createProvider = useCallback(async (provider: CreateProviderDto): Promise<ProviderDto> => {
     setIsLoading(true);
     setError(null);
     
@@ -116,7 +116,7 @@ export function useProviderApi() {
     }
   }, []);
 
-  const updateProvider = useCallback(async (id: number, updates: UpdateProviderCredentialDto): Promise<ProviderCredentialDto> => {
+  const updateProvider = useCallback(async (id: number, updates: UpdateProviderDto): Promise<ProviderDto> => {
     setIsLoading(true);
     setError(null);
     
@@ -408,7 +408,7 @@ export function useProviders() {
       const result = await withAdminClient(client => 
         client.providers.list(1, 1000)
       );
-      return result.items as ProviderCredentialDto[];
+      return result.items;
     },
   });
 

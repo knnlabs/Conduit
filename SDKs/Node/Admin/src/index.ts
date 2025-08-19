@@ -192,7 +192,7 @@ export type {
   MessageReplayResponse,
   MessageDeleteResponse
 } from './services/FetchErrorQueueService';
-export { ProviderService } from './services/ProviderService';
+// ProviderService removed - use FetchProvidersService instead which is exported via the client
 export { ProviderModelsService } from './services/ProviderModelsService';
 export { ModelMappingService } from './services/ModelMappingService';
 export { SettingsService } from './services/SettingsService';

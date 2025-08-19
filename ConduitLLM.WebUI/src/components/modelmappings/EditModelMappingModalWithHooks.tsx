@@ -15,7 +15,7 @@ import { useForm } from '@mantine/form';
 import { useEffect, useState, useCallback } from 'react';
 import { useUpdateModelMapping, useModelMappings } from '@/hooks/useModelMappingsApi';
 import { useProviders } from '@/hooks/useProviderApi';
-import type { ProviderCredentialDto, ModelProviderMappingDto, UpdateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
+import type { ProviderDto, ModelProviderMappingDto, UpdateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 
 interface EditModelMappingModalProps {
@@ -152,7 +152,7 @@ export function EditModelMappingModal({
     }
   };
 
-  const providerOptions = providers?.map((p: ProviderCredentialDto) => {
+  const providerOptions = providers?.map((p: ProviderDto) => {
     try {
       const providerType = getProviderTypeFromDto(p);
       return {

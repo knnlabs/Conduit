@@ -27,25 +27,6 @@ export interface UpdateProviderDto {
   isEnabled?: boolean;
 }
 
-// Deprecated - kept for reference during migration
-/** @deprecated Use ProviderDto instead */
-export interface ProviderCredentialDto extends ProviderDto {
-  apiKey?: string;
-  organization?: string | null;
-}
-
-/** @deprecated Use CreateProviderDto instead */
-export interface CreateProviderCredentialDto extends CreateProviderDto {
-  apiKey?: string;
-  organization?: string | null;
-}
-
-/** @deprecated Use UpdateProviderDto instead */
-export interface UpdateProviderCredentialDto extends UpdateProviderDto {
-  id: number;
-  apiKey?: string;
-  organization?: string | null;
-}
 
 export interface ProviderConnectionTestRequest {
   providerType: ProviderType;

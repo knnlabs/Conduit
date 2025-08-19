@@ -34,12 +34,12 @@ import { useRouter } from 'next/navigation';
 import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/export';
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
-import { ApiKeyTestResult, type ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+import { ApiKeyTestResult, type ProviderDto } from '@knn_labs/conduit-admin-client';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 
 // Use SDK types directly with health extensions
-interface ProviderWithHealth extends ProviderCredentialDto {
+interface ProviderWithHealth extends ProviderDto {
   healthStatus: 'healthy' | 'unhealthy' | 'unknown';
   lastHealthCheck?: string;
   models?: string[];
@@ -71,7 +71,7 @@ export default function ProvidersPage() {
       
       // Fetch key counts for each provider
       const providersWithKeyCount = await Promise.all(
-        providersList.map(async (provider: ProviderCredentialDto) => {
+        providersList.map(async (provider: ProviderDto) => {
           let keyCount = 0;
           if (provider.id) {
             try {

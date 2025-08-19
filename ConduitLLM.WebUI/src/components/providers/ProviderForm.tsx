@@ -28,7 +28,7 @@ import {
   ProviderType, 
   PROVIDER_CONFIG_REQUIREMENTS
 } from '@/lib/constants/providers';
-import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+import type { ProviderDto } from '@knn_labs/conduit-admin-client';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 import { validators } from '@/lib/utils/form-validators';
@@ -59,7 +59,7 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [availableProviders, setAvailableProviders] = useState<ProviderOption[]>([]);
   const [isLoadingProviders, setIsLoadingProviders] = useState(mode === 'add');
-  const [existingProvider, setExistingProvider] = useState<ProviderCredentialDto | null>(null);
+  const [existingProvider, setExistingProvider] = useState<ProviderDto | null>(null);
   const [isLoadingProvider, setIsLoadingProvider] = useState(mode === 'edit');
   const [initialFormValues, setInitialFormValues] = useState<ProviderFormData>(() => ({
     providerType: '',

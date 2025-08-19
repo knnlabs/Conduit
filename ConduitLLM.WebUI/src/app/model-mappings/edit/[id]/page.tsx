@@ -6,7 +6,7 @@ import { Container, Title, Paper, TextInput, Select, NumberInput, Switch, Button
 import { IconAlertCircle } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
-import type { ModelProviderMappingDto, UpdateModelProviderMappingDto, ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+import type { ModelProviderMappingDto, UpdateModelProviderMappingDto, ProviderDto } from '@knn_labs/conduit-admin-client';
 
 export default function EditModelMappingPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -34,7 +34,7 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
-  const [providers, setProviders] = useState<ProviderCredentialDto[]>([]);
+  const [providers, setProviders] = useState<ProviderDto[]>([]);
   const [existingMappings, setExistingMappings] = useState<ModelProviderMappingDto[]>([]);
   const [modelAliasError, setModelAliasError] = useState<string>('');
 
@@ -57,7 +57,7 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
         client.providers.list()
       );
       interface ProvidersResponse {
-        items: ProviderCredentialDto[];
+        items: ProviderDto[];
       }
       const providersData = (providersResponse as ProvidersResponse).items;
       
