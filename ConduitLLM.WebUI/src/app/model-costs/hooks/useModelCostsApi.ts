@@ -248,18 +248,6 @@ export function useModelCostsApi() {
     }
   };
 
-  const getModelCostsByProvider = async (providerType: number): Promise<ModelCost[]> => {
-    try {
-      const result = await withAdminClient(client => 
-        client.modelCosts.getByProvider(providerType)
-      );
-      return result;
-    } catch (error) {
-      console.warn('Error fetching model costs by provider:', error);
-      return [];
-    }
-  };
-
   return {
     isLoading,
     isExporting,
@@ -271,6 +259,5 @@ export function useModelCostsApi() {
     importModelCostsWithAliases,
     exportModelCosts,
     getModelCostByPattern,
-    getModelCostsByProvider,
   };
 }

@@ -8,18 +8,6 @@ export const API_VERSION = 'v1';
 export const API_PREFIX = '/api';
 
 /**
- * HTTP method constants for type-safe method specification.
- * @deprecated Use HttpMethod enum from '@knn_labs/conduit-common' instead
- */
-export const HTTP_METHODS = {
-  GET: 'GET',
-  POST: 'POST',
-  PUT: 'PUT',
-  DELETE: 'DELETE',
-  PATCH: 'PATCH',
-} as const;
-
-/**
  * Client information constants.
  */
 export const CLIENT_INFO = {

@@ -76,11 +76,7 @@ export class VideosService {
     this.videoHubClient = videoHubClient;
   }
 
-  /**
-   * @deprecated The synchronous video generation endpoint does not exist. Use generateAsync() instead.
-   * This method has been removed to prevent runtime errors.
-   */
-  // Removed synchronous generate method - endpoint does not exist
+  // Synchronous generate method removed - endpoint does not exist
 
   /**
    * Generates videos asynchronously from a text prompt

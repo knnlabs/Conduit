@@ -12,10 +12,8 @@ import {
   AnomalyDto,
 } from '../models/analytics';
 import {
-  ExportResult,
   RequestLogStatistics,
   RequestLog,
-  ExportStatus,
 } from '../models/analyticsExport';
 import { PaginatedResponse, DateRange } from '../models/common';
 import { ValidationError, NotImplementedError } from '../utils/errors';
@@ -117,13 +115,7 @@ export class AnalyticsService extends FetchBaseApiClient {
     );
   }
 
-  // Request logs export and analytics
-  /**
-   * @deprecated EXPORT_REQUEST_LOGS endpoint no longer exists
-   */
-  async exportRequestLogs(): Promise<ExportResult> {
-    throw new Error('Export request logs endpoint no longer exists in the API');
-  }
+  // Request logs export and analytics removed - no longer supported
 
   getRequestLogStatistics(logs: RequestLog[]): RequestLogStatistics {
     // Client-side calculation of statistics
@@ -196,19 +188,6 @@ export class AnalyticsService extends FetchBaseApiClient {
 
 
 
-  /**
-   * @deprecated EXPORT_STATUS endpoint no longer exists
-   */
-  async getExportStatus(): Promise<ExportStatus> {
-    throw new Error('Export status endpoint no longer exists in the API');
-  }
-
-  /**
-   * @deprecated EXPORT_DOWNLOAD endpoint no longer exists
-   */
-  async downloadExport(): Promise<Blob> {
-    throw new Error('Export download endpoint no longer exists in the API');
-  }
 
   // Stub methods
   getDetailedCostBreakdown(_filters: AnalyticsFilters): Promise<never> {

@@ -18,18 +18,6 @@ export {
   HttpMethod 
 };
 
-/**
- * HTTP method constants for type-safe method specification.
- * @deprecated Use HttpMethod enum from '@knn_labs/conduit-common' instead
- */
-export const HTTP_METHODS = {
-  GET: 'GET',
-  POST: 'POST',
-  PUT: 'PUT',
-  DELETE: 'DELETE',
-  PATCH: 'PATCH',
-} as const;
-
 // Re-export HTTP_HEADERS with Core SDK specific overrides
 export const HTTP_HEADERS = {
   ...COMMON_HTTP_HEADERS,

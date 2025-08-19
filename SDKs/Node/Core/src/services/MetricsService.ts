@@ -144,43 +144,7 @@ export class MetricsService {
     return snapshot.infrastructure;
   }
 
-  /**
-   * Gets current provider health status for all providers
-   * This method is deprecated as provider health tracking has been removed from the backend
-   * 
-   * @deprecated Provider health tracking has been removed from the backend
-   * @returns Promise<never[]> Empty array
-   */
-  async getProviderHealth(): Promise<never[]> {
-    // Provider health tracking has been removed from the backend
-    return [];
-  }
-
-  /**
-   * Gets health status for a specific provider by ID
-   * This method is deprecated as provider health tracking has been removed from the backend
-   * 
-   * @deprecated Provider health tracking has been removed from the backend
-   * @param providerId - The ID of the provider
-   * @returns Promise<null> Always returns null
-   */
-  async getProviderHealthById(_providerId: number): Promise<null> {
-    // Provider health tracking has been removed from the backend
-    return null;
-  }
-
-  /**
-   * @deprecated Provider names are no longer unique identifiers and provider health tracking has been removed.
-   * Gets health status for a specific provider by name
-   * 
-   * @deprecated Provider health tracking has been removed from the backend
-   * @param providerName - The name of the provider
-   * @returns Promise<null> Always returns null
-   */
-  async getProviderHealthByName(): Promise<null> {
-    // Provider health tracking has been removed from the backend
-    return null;
-  }
+  // Provider health tracking methods removed - no longer supported by backend
 
   /**
    * Gets the top performing models by request volume
@@ -216,17 +180,7 @@ export class MetricsService {
       .slice(0, count);
   }
 
-  /**
-   * Gets providers that are currently unhealthy
-   * This method is deprecated as provider health tracking has been removed from the backend
-   * 
-   * @deprecated Provider health tracking has been removed from the backend
-   * @returns Promise<never[]> Empty array
-   */
-  async getUnhealthyProviders(): Promise<never[]> {
-    // Provider health tracking has been removed from the backend
-    return [];
-  }
+  // getUnhealthyProviders method removed - provider health tracking no longer supported
 
   /**
    * Calculates the overall system health percentage

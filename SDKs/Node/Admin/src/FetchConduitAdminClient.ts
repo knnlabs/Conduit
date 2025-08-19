@@ -5,7 +5,6 @@ import { FetchVirtualKeyGroupService } from './services/FetchVirtualKeyGroupServ
 import { FetchProvidersService } from './services/FetchProvidersService';
 import { FetchSystemService } from './services/FetchSystemService';
 import { FetchModelMappingsService } from './services/FetchModelMappingsService';
-import { FetchProviderModelsService } from './services/FetchProviderModelsService';
 import { FetchSettingsService } from './services/FetchSettingsService';
 import { FetchAnalyticsService } from './services/FetchAnalyticsService';
 import { FetchSecurityService } from './services/FetchSecurityService';
@@ -47,7 +46,6 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
   public readonly providers: FetchProvidersService;
   public readonly system: FetchSystemService;
   public readonly modelMappings: FetchModelMappingsService;
-  public readonly providerModels: FetchProviderModelsService;
   public readonly settings: FetchSettingsService;
   public readonly analytics: FetchAnalyticsService;
   public readonly security: FetchSecurityService;
@@ -73,7 +71,6 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
     this.providers = new FetchProvidersService(this);
     this.system = new FetchSystemService(this);
     this.modelMappings = new FetchModelMappingsService(this);
-    this.providerModels = new FetchProviderModelsService(this);
     this.settings = new FetchSettingsService(this);
     this.analytics = new FetchAnalyticsService(this);
     this.security = new FetchSecurityService(this);

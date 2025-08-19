@@ -25,8 +25,8 @@ import {
 } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useModelCostsApi } from '../hooks/useModelCostsApi';
-import { ModelCostDto, UpdateModelCostDto, ModelType } from '@knn_labs/conduit-admin-client';
-import { getModelTypeSelectOptions } from '@/lib/constants/modelTypes';
+import { ModelCostDto, UpdateModelCostDto, ModelType, ModelTypeUtils } from '@knn_labs/conduit-admin-client';
+const getModelTypeSelectOptions = ModelTypeUtils.getSelectOptions;
 import { formatters } from '@/lib/utils/formatters';
 import { ModelMappingSelector } from './ModelMappingSelector';
 import { useModelMappings } from '@/hooks/useModelMappingsApi';

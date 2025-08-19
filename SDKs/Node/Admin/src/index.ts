@@ -42,7 +42,6 @@ export {
 // Re-export modelCost types except CostTrend (conflicts with analytics)
 export {
   PricingModel,
-  ModelCost,
   ModelCostDto,
   CreateModelCostDto,
   UpdateModelCostDto,
@@ -156,7 +155,6 @@ export type { VirtualKeyListResponseDto } from './services/FetchVirtualKeyServic
 export { FetchProvidersService as ProvidersService } from './services/FetchProvidersService';
 export { FetchSystemService } from './services/FetchSystemService';
 export { FetchModelMappingsService } from './services/FetchModelMappingsService';
-export { FetchProviderModelsService } from './services/FetchProviderModelsService';
 export { FetchSettingsService } from './services/FetchSettingsService';
 export type { SettingUpdate, SettingsDto, SettingsListResponseDto } from './services/FetchSettingsService';
 export { FetchAnalyticsService } from './services/FetchAnalyticsService';

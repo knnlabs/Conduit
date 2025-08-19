@@ -26,9 +26,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   ProviderType, 
-  PROVIDER_CONFIG_REQUIREMENTS
-} from '@/lib/constants/providers';
-import type { ProviderDto } from '@knn_labs/conduit-admin-client';
+  PROVIDER_CONFIG_REQUIREMENTS,
+  type ProviderDto
+} from '@knn_labs/conduit-admin-client';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 import { validators } from '@/lib/utils/form-validators';
