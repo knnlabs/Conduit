@@ -184,22 +184,36 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
           providerName = selectedProvider?.label ?? 'Unknown Provider';
         }
 
-        const payload = {
+        // First create the provider (without API key)
+        const providerPayload = {
           providerType: parseInt(values.providerType, 10),
           providerName: providerName,
-          apiKey: values.apiKey,
           baseUrl: values.apiEndpoint ?? undefined,
-          organization: values.organizationId ?? undefined,
           isEnabled: values.isEnabled,
         };
 
-        await withAdminClient(client => 
-          client.providers.create(payload)
+        const createdProvider = await withAdminClient(client => 
+          client.providers.create(providerPayload)
         );
+
+        // Then add the API key as a key credential
+        if (values.apiKey) {
+          const keyPayload = {
+            apiKey: values.apiKey,
+            keyName: 'Primary Key',
+            organization: values.organizationId ?? undefined,
+            isPrimary: true,
+            isEnabled: true,
+          };
+
+          await withAdminClient(client =>
+            client.providers.createKey(createdProvider.id, keyPayload)
+          );
+        }
 
         notifications.show({
           title: 'Success',
-          message: 'Provider created successfully',
+          message: 'Provider and API key created successfully',
           color: 'green',
         });
       } else {
