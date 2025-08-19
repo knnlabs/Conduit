@@ -34,9 +34,6 @@ export function useImageModels() {
         const model = modelsMap.get(mapping.modelId);
         if (!model) return false;
         
-        // Must be an image model (modelType === 1)
-        if (model.modelType !== 1) return false;
-        
         // Must support image generation capability
         if (!model.capabilities?.supportsImageGeneration) return false;
         

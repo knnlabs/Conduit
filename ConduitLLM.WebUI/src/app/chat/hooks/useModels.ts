@@ -26,9 +26,6 @@ export function useModels() {
         const model = modelsMap.get(mapping.modelId);
         if (!model) return false;
         
-        // Must be a text/chat model (modelType === 0)
-        if (model.modelType !== 0) return false;
-        
         // Must support chat capability
         if (!model.capabilities?.supportsChat) return false;
         

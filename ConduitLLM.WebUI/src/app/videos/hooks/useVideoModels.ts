@@ -23,9 +23,6 @@ async function fetchVideoModels(): Promise<VideoModel[]> {
     const model = modelsMap.get(mapping.modelId);
     if (!model) return false;
     
-    // Must be a video model (modelType === 3)
-    if (model.modelType !== 3) return false;
-    
     // Must support video generation capability
     if (!model.capabilities?.supportsVideoGeneration) return false;
     
