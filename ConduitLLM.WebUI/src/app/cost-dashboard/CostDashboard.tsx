@@ -10,87 +10,25 @@ import {
   Grid,
   Select,
   Badge,
-  Progress,
-  ThemeIcon,
   Paper,
   Table,
   ScrollArea,
   Alert,
 } from '@mantine/core';
 import {
-  IconCurrencyDollar,
-  IconTrendingUp,
-  IconTrendingDown,
   IconRefresh,
   IconDownload,
   IconAlertCircle,
-  IconChartBar,
   IconCalendar,
   IconFilter,
 } from '@tabler/icons-react';
 import { useState } from 'react';
-import { notifications } from '@mantine/notifications';
 import { CostChart } from '@/components/charts/CostChart';
 import { ErrorDisplay } from '@/components/common/ErrorDisplay';
-import { safeLog } from '@/lib/utils/logging';
-import { useQuery } from '@tanstack/react-query';
-import { withAdminClient } from '@/lib/client/adminClient';
-// Define types locally since SDK exports may not be fully available
-interface DetailedCostDataDto {
-  name: string;
-  cost: number;
-  percentage: number;
-  requestCount: number;
-}
-
-interface CostTrendDataDto {
-  date: string;
-  cost: number;
-  requestCount: number;
-}
-
-interface CostDashboardDto {
-  timeFrame: string;
-  startDate: string;
-  endDate: string;
-  last24HoursCost: number;
-  last7DaysCost: number;
-  last30DaysCost: number;
-  totalCost: number;
-  topModelsBySpend: DetailedCostDataDto[];
-  topProvidersBySpend: DetailedCostDataDto[];
-  topVirtualKeysBySpend: DetailedCostDataDto[];
-}
-
-interface CostTrendDto {
-  period: string;
-  startDate: string;
-  endDate: string;
-  data: CostTrendDataDto[];
-}
-
-// Local types for transformed data
-interface ProviderCost {
-  provider: string;
-  cost: number;
-  usage: number;
-  trend: number;
-}
-
-interface ModelUsage {
-  model: string;
-  provider: string;
-  requests: number;
-  tokensIn: number;
-  tokensOut: number;
-  cost: number;
-}
-
-interface DailyCost {
-  date: string;
-  cost: number;
-  [providerName: string]: string | number;
-}
+import { useCostData, useTransformedData } from './hooks';
+import { useCostDashboardHandlers } from './handlers';
+import { CostMetricsCards } from './CostMetricsCards';
+import type { ProviderCost, ModelUsage } from './types';
 
 export default function CostDashboard() {
   const [timeRange, setTimeRange] = useState('30d');
@@ -321,7 +259,7 @@ export default function CostDashboard() {
           <Button
             variant="light"
             leftSection={<IconDownload size={16} />}
-            onClick={() => void handleExport()}
+            onClick={() => void handleExport(setIsExporting)}
             loading={isExporting}
           >
             Export
@@ -346,121 +284,16 @@ export default function CostDashboard() {
         </Alert>
       )}
 
-      <Grid>
-        <Grid.Col span={{ base: 12, md: 6, lg: 3 }}>
-          <Card padding="lg" radius="md" withBorder>
-            <Group justify="space-between" mb="xs">
-              <Text size="sm" c="dimmed" tt="uppercase" fw={600}>
-                Total Spend
-              </Text>
-              <ThemeIcon color="blue" variant="light" radius="md" size="md">
-                <IconCurrencyDollar size={18} />
-              </ThemeIcon>
-            </Group>
-            <Group align="baseline" gap="xs">
-              <Text size="xl" fw={700}>
-                ${totalSpend.toFixed(2)}
-              </Text>
-              {projectedTrend !== 0 && (
-                <Badge
-                  color={projectedTrend > 0 ? 'red' : 'green'}
-                  variant="light"
-                  leftSection={
-                    projectedTrend > 0 ? <IconTrendingUp size={12} /> : <IconTrendingDown size={12} />
-                  }
-                >
-                  {Math.abs(projectedTrend).toFixed(1)}%
-                </Badge>
-              )}
-            </Group>
-            <Text size="xs" c="dimmed" mt="xs">
-              {(() => {
-                if (timeRange === '7d') return 'Last 7 days';
-                if (timeRange === '30d') return 'Last 30 days';
-                return 'Last 90 days';
-              })()}
-            </Text>
-          </Card>
-        </Grid.Col>
-
-        <Grid.Col span={{ base: 12, md: 6, lg: 3 }}>
-          <Card padding="lg" radius="md" withBorder>
-            <Group justify="space-between" mb="xs">
-              <Text size="sm" c="dimmed" tt="uppercase" fw={600}>
-                Daily Average
-              </Text>
-              <ThemeIcon color="teal" variant="light" radius="md" size="md">
-                <IconChartBar size={18} />
-              </ThemeIcon>
-            </Group>
-            <Text size="xl" fw={700}>
-              ${averageDailyCost.toFixed(2)}
-            </Text>
-            <Text size="xs" c="dimmed" mt="xs">
-              Per day average
-            </Text>
-          </Card>
-        </Grid.Col>
-
-        <Grid.Col span={{ base: 12, md: 6, lg: 3 }}>
-          <Card padding="lg" radius="md" withBorder>
-            <Group justify="space-between" mb="xs">
-              <Text size="sm" c="dimmed" tt="uppercase" fw={600}>
-                Projected Monthly
-              </Text>
-              <ThemeIcon color="orange" variant="light" radius="md" size="md">
-                <IconTrendingUp size={18} />
-              </ThemeIcon>
-            </Group>
-            <Text size="xl" fw={700}>
-              ${projectedMonthlySpend.toFixed(2)}
-            </Text>
-            <Text size="xs" c="dimmed" mt="xs">
-              Based on current usage
-            </Text>
-          </Card>
-        </Grid.Col>
-
-        <Grid.Col span={{ base: 12, md: 6, lg: 3 }}>
-          <Card padding="lg" radius="md" withBorder>
-            <Group justify="space-between" mb="xs">
-              <Text size="sm" c="dimmed" tt="uppercase" fw={600}>
-                Budget Status
-              </Text>
-              <ThemeIcon 
-                color={isOverBudget ? 'red' : 'green'} 
-                variant="light" 
-                radius="md" 
-                size="md"
-              >
-                <IconCurrencyDollar size={18} />
-              </ThemeIcon>
-            </Group>
-            {monthlyBudget ? (
-              <>
-                <Text size="xl" fw={700}>
-                  {budgetUtilization?.toFixed(1)}%
-                </Text>
-                <Progress 
-                  value={budgetUtilization ?? 0} 
-                  color={isOverBudget ? 'red' : 'green'} 
-                  size="sm" 
-                  mt="xs" 
-                />
-              </>
-            ) : (
-              <>
-                <Text size="xl" fw={700} c="dimmed">
-                  N/A
-                </Text>
-                <Text size="xs" c="dimmed" mt="xs">
-                  No budget set
-                </Text>
-              </>
-            )}
-          </Card>
-        </Grid.Col>
-      </Grid>
+      <CostMetricsCards
+        totalSpend={totalSpend}
+        projectedTrend={projectedTrend}
+        averageDailyCost={averageDailyCost}
+        projectedMonthlySpend={projectedMonthlySpend}
+        monthlyBudget={monthlyBudget}
+        budgetUtilization={budgetUtilization}
+        isOverBudget={isOverBudget}
+        timeRange={timeRange}
+      />
 
       <Grid>
         <Grid.Col span={{ base: 12, lg: 8 }}>
