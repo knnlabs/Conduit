@@ -336,7 +336,7 @@ export class FetchVirtualKeyService {
     // Add media count to each key
     const itemsWithMediaCount = keysWithMedia.map(key => ({
       ...key,
-      mediaCount: overallStats.storageByVirtualKey[key.id!.toString()] || 0
+      mediaCount: overallStats.storageByVirtualKey[key.id?.toString() ?? ''] || 0
     }));
     
     // Apply pagination
