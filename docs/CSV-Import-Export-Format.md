@@ -102,12 +102,14 @@ The CSV import maintains backward compatibility:
 - Missing batch processing fields default to: no batch support, no multiplier
 - Missing quality/resolution multipliers are left empty
 
-## Sample Files
+## Creating CSV Files
 
-See the following sample CSV files in the repository:
-- `openai-model-costs-updated.csv` - OpenAI models with batch processing
-- `anthropic-model-costs-updated.csv` - Anthropic models with batch API support
-- `minimax-model-costs-updated.csv` - MiniMax models with image quality tiers
+To create CSV files for importing model costs:
+
+1. Use the format and examples shown above
+2. Ensure all required headers are present
+3. Follow the validation rules for proper data format
+4. Test with a small subset before importing large datasets
 
 ## Error Handling
 
