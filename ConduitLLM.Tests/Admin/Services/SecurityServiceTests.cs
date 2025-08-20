@@ -15,7 +15,7 @@ using ConduitLLM.Admin.Models;
 using ConduitLLM.Admin.Options;
 using ConduitLLM.Admin.Services;
 
-namespace ConduitLLM.Admin.Tests.Services
+namespace ConduitLLM.Tests.Admin.Services
 {
     public class SecurityServiceTests
     {

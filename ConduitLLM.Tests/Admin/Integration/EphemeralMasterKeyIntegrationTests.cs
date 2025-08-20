@@ -24,7 +24,7 @@ using ConduitLLM.Admin.Services;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Models;
 
-namespace ConduitLLM.Admin.Tests.Integration
+namespace ConduitLLM.Tests.Admin.Integration
 {
     public class EphemeralMasterKeyIntegrationTests : IDisposable
     {

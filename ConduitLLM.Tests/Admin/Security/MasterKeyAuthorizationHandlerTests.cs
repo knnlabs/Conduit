@@ -9,7 +9,7 @@ using Moq;
 using Xunit;
 using ConduitLLM.Admin.Security;
 
-namespace ConduitLLM.Admin.Tests.Security
+namespace ConduitLLM.Tests.Admin.Security
 {
     public class MasterKeyAuthorizationHandlerTests
     {
