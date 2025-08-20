@@ -5,9 +5,9 @@ using System.ComponentModel.DataAnnotations;
 namespace ConduitLLM.Configuration.DTOs
 {
     /// <summary>
-    /// Data transfer object for model cost information
+    /// Data transfer object for updating a model cost entry
     /// </summary>
-    public class ModelCostDto
+    public class UpdateModelCostDto
     {
         /// <summary>
         /// Unique identifier for the model cost entry
@@ -33,23 +33,38 @@ namespace ConduitLLM.Configuration.DTOs
         /// <summary>
         /// JSON configuration for complex pricing models
         /// </summary>
-        /// <remarks>
-        /// Structure depends on PricingModel:
-        /// - PerVideo: {"rates": {"512p_6": 0.10, "720p_10": 0.15}}
-        /// - PerSecondVideo: {"baseRate": 0.09, "resolutionMultipliers": {"720p": 1.0}}
-        /// - InferenceSteps: {"costPerStep": 0.00013, "defaultSteps": 30}
-        /// - TieredTokens: {"tiers": [{"maxContext": 200000, "inputCost": 400}]}
-        /// </remarks>
         public string? PricingConfiguration { get; set; }
 
         /// <summary>
-        /// List of model aliases that use this cost configuration
+        /// List of model mapping IDs to associate with this cost
         /// </summary>
         /// <remarks>
-        /// This is populated from the ModelCostMappings relationship.
-        /// Shows which models are associated with this cost configuration.
+        /// These are the IDs of ModelProviderMapping entities that should use this cost configuration.
         /// </remarks>
-        public List<string> AssociatedModelAliases { get; set; } = new List<string>();
+        public List<int> ModelProviderMappingIds { get; set; } = new List<int>();
+
+        /// <summary>
+        /// Model type for categorization
+        /// </summary>
+        [Required]
+        [MaxLength(50)]
+        public string ModelType { get; set; } = "chat";
+
+        /// <summary>
+        /// Priority value for pattern matching
+        /// </summary>
+        public int Priority { get; set; } = 0;
+
+        /// <summary>
+        /// Optional description
+        /// </summary>
+        [MaxLength(500)]
+        public string? Description { get; set; }
+
+        /// <summary>
+        /// Indicates whether this cost configuration is active
+        /// </summary>
+        public bool IsActive { get; set; } = true;
 
         /// <summary>
         /// Cost per million input tokens for chat/completion requests in USD
@@ -72,55 +87,6 @@ namespace ConduitLLM.Configuration.DTOs
         /// Cost per image for image generation requests in USD, if applicable
         /// </summary>
         public decimal? ImageCostPerImage { get; set; }
-
-        /// <summary>
-        /// Creation timestamp of this cost record
-        /// </summary>
-        public DateTime CreatedAt { get; set; }
-
-        /// <summary>
-        /// Last update timestamp of this cost record
-        /// </summary>
-        public DateTime UpdatedAt { get; set; }
-
-        /// <summary>
-        /// Model type for categorization
-        /// </summary>
-        /// <remarks>
-        /// Indicates the type of operations this model cost applies to (chat, embedding, image, audio, video).
-        /// </remarks>
-        [Required]
-        [MaxLength(50)]
-        public string ModelType { get; set; } = "chat";
-
-        /// <summary>
-        /// Indicates whether this cost configuration is active
-        /// </summary>
-        public bool IsActive { get; set; } = true;
-
-        /// <summary>
-        /// Effective date for this pricing
-        /// </summary>
-        public DateTime EffectiveDate { get; set; }
-
-        /// <summary>
-        /// Optional expiry date for this pricing
-        /// </summary>
-        public DateTime? ExpiryDate { get; set; }
-
-        /// <summary>
-        /// Optional description for this model cost entry
-        /// </summary>
-        [MaxLength(500)]
-        public string? Description { get; set; }
-
-        /// <summary>
-        /// Priority value for this model cost entry
-        /// </summary>
-        /// <remarks>
-        /// Higher priority patterns are evaluated first when matching model names.
-        /// </remarks>
-        public int Priority { get; set; }
 
         /// <summary>
         /// Cost per minute for audio transcription (speech-to-text) in USD, if applicable
