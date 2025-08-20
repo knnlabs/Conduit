@@ -1,1 +1,175 @@
-import { useQuery } from '@tanstack/react-query';\nimport { withAdminClient } from '@/lib/client/adminClient';\nimport type {\n  CostDashboardDto,\n  CostTrendDto,\n  DateRange,\n  ProviderCost,\n  ModelUsage,\n  DailyCost,\n  DetailedCostDataDto,\n  CostTrendDataDto,\n} from './types';\n\nexport function useTimeRangeUtils(timeRange: string) {\n  // Calculate date range based on timeRange\n  const getDateRange = (): DateRange => {\n    const now = new Date();\n    const startDate = new Date();\n    \n    switch (timeRange) {\n      case '7d':\n        startDate.setDate(now.getDate() - 7);\n        break;\n      case '30d':\n        startDate.setDate(now.getDate() - 30);\n        break;\n      case '90d':\n        startDate.setDate(now.getDate() - 90);\n        break;\n      default:\n        startDate.setDate(now.getDate() - 30);\n    }\n    \n    return {\n      startDate: startDate.toISOString().split('T')[0],\n      endDate: now.toISOString().split('T')[0],\n    };\n  };\n\n  return { getDateRange };\n}\n\nexport function useCostData(timeRange: string) {\n  const { getDateRange } = useTimeRangeUtils(timeRange);\n\n  // Fetch cost summary from Admin SDK\n  const { \n    data: costSummary, \n    isLoading: isLoadingSummary, \n    error: summaryError, \n    refetch: refetchSummary \n  } = useQuery<CostDashboardDto>({\n    queryKey: ['cost-summary', timeRange],\n    queryFn: async () => {\n      const { startDate, endDate } = getDateRange();\n      return withAdminClient(client => \n        client.analytics.getCostSummary('daily', startDate, endDate)\n      );\n    },\n    refetchInterval: 300000, // Refresh every 5 minutes\n  });\n\n  // Fetch cost trends from Admin SDK\n  const { \n    data: costTrends, \n    isLoading: isLoadingTrends, \n    error: trendsError, \n    refetch: refetchTrends \n  } = useQuery<CostTrendDto>({\n    queryKey: ['cost-trends', timeRange],\n    queryFn: async () => {\n      const { startDate, endDate } = getDateRange();\n      return withAdminClient(client => \n        client.analytics.getCostTrends('daily', startDate, endDate)\n      );\n    },\n    refetchInterval: 300000, // Refresh every 5 minutes\n  });\n\n  const isLoading = isLoadingSummary || isLoadingTrends;\n  const error = summaryError ?? trendsError;\n\n  return {\n    costSummary,\n    costTrends,\n    isLoading,\n    error,\n    refetch: async () => {\n      await Promise.all([refetchSummary(), refetchTrends()]);\n    },\n    getDateRange,\n  };\n}\n\nexport function useTransformedData(costSummary: CostDashboardDto | undefined, costTrends: CostTrendDto | undefined, timeRange: string) {\n  // Calculate derived metrics\n  const totalSpend = costSummary?.totalCost ?? 0;\n  const last7DaysCost = costSummary?.last7DaysCost ?? 0;\n  const last30DaysCost = costSummary?.last30DaysCost ?? 0;\n  \n  // Calculate average daily cost based on the time range\n  let daysInRange: number;\n  if (timeRange === '7d') {\n    daysInRange = 7;\n  } else if (timeRange === '30d') {\n    daysInRange = 30;\n  } else {\n    daysInRange = 90;\n  }\n  const averageDailyCost = totalSpend / daysInRange;\n  \n  // Calculate projected monthly spend\n  const daysInMonth = 30;\n  const projectedMonthlySpend = averageDailyCost * daysInMonth;\n  \n  // Calculate trend (comparing last 7 days to previous 7 days)\n  const projectedTrend = last7DaysCost > 0 && last30DaysCost > 0\n    ? ((last7DaysCost - (last30DaysCost - last7DaysCost) / 3) / ((last30DaysCost - last7DaysCost) / 3)) * 100\n    : 0;\n\n  // Transform provider costs\n  const providerCosts: ProviderCost[] = costSummary?.topProvidersBySpend?.map((provider: DetailedCostDataDto) => ({\n    provider: provider.name,\n    cost: provider.cost,\n    usage: provider.percentage,\n    trend: 0, // Trend calculation would require historical data\n  })) ?? [];\n\n  // Transform model usage\n  const modelUsage: ModelUsage[] = costSummary?.topModelsBySpend?.map((model: DetailedCostDataDto) => ({\n    model: model.name,\n    provider: model.name.includes('/') ? model.name.split('/')[0] : 'unknown',\n    requests: model.requestCount,\n    tokensIn: 0, // Not available in cost summary\n    tokensOut: 0, // Not available in cost summary\n    cost: model.cost,\n  })) ?? [];\n\n  // Transform daily costs from trends - flatten providers for chart compatibility\n  const dailyCosts: DailyCost[] = costTrends?.data?.map((trend: CostTrendDataDto) => {\n    const result: DailyCost = {\n      date: trend.date,\n      cost: trend.cost,\n    };\n    \n    // Add provider costs as separate fields for chart compatibility\n    costSummary?.topProvidersBySpend?.forEach((provider: DetailedCostDataDto) => {\n      result[provider.name] = (trend.cost * provider.percentage) / 100;\n    });\n\n    return result;\n  }) ?? [];\n\n  // Calculate budget utilization (if we had budget data)\n  const monthlyBudget: number | null = null; // Budget feature not yet implemented\n  const budgetUtilization = monthlyBudget !== null ? (projectedMonthlySpend / monthlyBudget) * 100 : null;\n  const isOverBudget = budgetUtilization !== null ? budgetUtilization > 100 : false;\n\n  return {\n    totalSpend,\n    last7DaysCost,\n    last30DaysCost,\n    averageDailyCost,\n    projectedMonthlySpend,\n    projectedTrend,\n    providerCosts,\n    modelUsage,\n    dailyCosts,\n    monthlyBudget,\n    budgetUtilization,\n    isOverBudget,\n  };\n}"
+import { useQuery } from '@tanstack/react-query';
+import { withAdminClient } from '@/lib/client/adminClient';
+import type {
+  CostDashboardDto,
+  CostTrendDto,
+  DateRange,
+  ProviderCost,
+  ModelUsage,
+  DailyCost,
+  DetailedCostDataDto,
+  CostTrendDataDto,
+} from './types';
+
+export function useTimeRangeUtils(timeRange: string) {
+  // Calculate date range based on timeRange
+  const getDateRange = (): DateRange => {
+    const now = new Date();
+    const startDate = new Date();
+    
+    switch (timeRange) {
+      case '7d':
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case '30d':
+        startDate.setDate(now.getDate() - 30);
+        break;
+      case '90d':
+        startDate.setDate(now.getDate() - 90);
+        break;
+      default:
+        startDate.setDate(now.getDate() - 30);
+    }
+    
+    return {
+      startDate: startDate.toISOString().split('T')[0],
+      endDate: now.toISOString().split('T')[0],
+    };
+  };
+
+  return { getDateRange };
+}
+
+export function useCostData(timeRange: string) {
+  const { getDateRange } = useTimeRangeUtils(timeRange);
+
+  // Fetch cost summary from Admin SDK
+  const { 
+    data: costSummary, 
+    isLoading: isLoadingSummary, 
+    error: summaryError, 
+    refetch: refetchSummary 
+  } = useQuery<CostDashboardDto>({
+    queryKey: ['cost-summary', timeRange],
+    queryFn: async () => {
+      const { startDate, endDate } = getDateRange();
+      return withAdminClient(client => 
+        client.analytics.getCostSummary('daily', startDate, endDate)
+      );
+    },
+    refetchInterval: 300000, // Refresh every 5 minutes
+  });
+
+  // Fetch cost trends from Admin SDK
+  const { 
+    data: costTrends, 
+    isLoading: isLoadingTrends, 
+    error: trendsError, 
+    refetch: refetchTrends 
+  } = useQuery<CostTrendDto>({
+    queryKey: ['cost-trends', timeRange],
+    queryFn: async () => {
+      const { startDate, endDate } = getDateRange();
+      return withAdminClient(client => 
+        client.analytics.getCostTrends('daily', startDate, endDate)
+      );
+    },
+    refetchInterval: 300000, // Refresh every 5 minutes
+  });
+
+  const isLoading = isLoadingSummary || isLoadingTrends;
+  const error = summaryError ?? trendsError;
+
+  const refetchAll = async () => {
+    await Promise.all([refetchSummary(), refetchTrends()]);
+  };
+
+  return {
+    costSummary,
+    costTrends,
+    isLoading,
+    error,
+    refetchAll,
+    getDateRange,
+  };
+}
+
+export function useTransformedData(costSummary: CostDashboardDto | undefined, costTrends: CostTrendDto | undefined, timeRange: string) {
+  // Calculate derived metrics
+  const totalSpend = costSummary?.totalCost ?? 0;
+  const last7DaysCost = costSummary?.last7DaysCost ?? 0;
+  const last30DaysCost = costSummary?.last30DaysCost ?? 0;
+  
+  // Calculate average daily cost based on the time range
+  let daysInRange: number;
+  if (timeRange === '7d') {
+    daysInRange = 7;
+  } else if (timeRange === '30d') {
+    daysInRange = 30;
+  } else {
+    daysInRange = 90;
+  }
+  const averageDailyCost = totalSpend / daysInRange;
+  
+  // Calculate projected monthly spend
+  const daysInMonth = 30;
+  const projectedMonthlySpend = averageDailyCost * daysInMonth;
+  
+  // Calculate trend (comparing last 7 days to previous 7 days)
+  const projectedTrend = last7DaysCost > 0 && last30DaysCost > 0
+    ? ((last7DaysCost - (last30DaysCost - last7DaysCost) / 3) / ((last30DaysCost - last7DaysCost) / 3)) * 100
+    : 0;
+
+  // Transform provider costs
+  const providerCosts: ProviderCost[] = costSummary?.topProvidersBySpend?.map((provider: DetailedCostDataDto) => ({
+    provider: provider.name,
+    cost: provider.cost,
+    usage: provider.percentage,
+    trend: 0, // Trend calculation would require historical data
+  })) ?? [];
+
+  // Transform model usage
+  const modelUsage: ModelUsage[] = costSummary?.topModelsBySpend?.map((model: DetailedCostDataDto) => ({
+    model: model.name,
+    provider: model.name.includes('/') ? model.name.split('/')[0] : 'unknown',
+    requests: model.requestCount,
+    tokensIn: 0, // Not available in cost summary
+    tokensOut: 0, // Not available in cost summary
+    cost: model.cost,
+  })) ?? [];
+
+  // Transform daily costs from trends - flatten providers for chart compatibility
+  const dailyCosts: DailyCost[] = costTrends?.data?.map((trend: CostTrendDataDto) => {
+    const result: DailyCost = {
+      date: trend.date,
+      cost: trend.cost,
+    };
+    
+    // Add provider costs as separate fields for chart compatibility
+    costSummary?.topProvidersBySpend?.forEach((provider: DetailedCostDataDto) => {
+      result[provider.name] = (trend.cost * provider.percentage) / 100;
+    });
+
+    return result;
+  }) ?? [];
+
+  // Calculate budget utilization (if we had budget data)
+  const monthlyBudget: number | null = null; // Budget feature not yet implemented
+  const budgetUtilization = monthlyBudget !== null ? (projectedMonthlySpend / monthlyBudget) * 100 : null;
+  const isOverBudget = budgetUtilization !== null ? budgetUtilization > 100 : false;
+
+  return {
+    totalSpend,
+    last7DaysCost,
+    last30DaysCost,
+    averageDailyCost,
+    projectedMonthlySpend,
+    projectedTrend,
+    providerCosts,
+    modelUsage,
+    dailyCosts,
+    monthlyBudget,
+    budgetUtilization,
+    isOverBudget,
+  };
+}

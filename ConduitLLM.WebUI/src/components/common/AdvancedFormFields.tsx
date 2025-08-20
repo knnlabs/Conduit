@@ -1,1 +1,114 @@
-'use client';\n\nimport {\n  Textarea,\n  MultiSelect,\n  NumberInput,\n  Text,\n} from '@mantine/core';\nimport { FieldGroup } from './BasicFormFields';\nimport { BaseFieldProps } from './FormFieldTypes';\n\n// Description field component\nexport interface DescriptionFieldProps extends BaseFieldProps {\n  placeholder?: string;\n  minRows?: number;\n  maxRows?: number;\n}\n\nexport function DescriptionField({\n  form,\n  fieldName,\n  label = 'Description',\n  placeholder = 'Enter description (optional)',\n  description,\n  required = false,\n  minRows = 3,\n  maxRows = 6,\n  disabled = false,\n}: DescriptionFieldProps) {\n  return (\n    <FieldGroup\n      label={label}\n      description={description}\n      required={required}\n    >\n      <Textarea\n        placeholder={placeholder}\n        minRows={minRows}\n        maxRows={maxRows}\n        autosize\n        disabled={disabled}\n        {...form.getInputProps(fieldName)}\n      />\n    </FieldGroup>\n  );\n}\n\n// Capabilities multi-select field\nexport interface CapabilitiesFieldProps extends BaseFieldProps {\n  data: Array<{ value: string; label: string; }>;\n}\n\nexport function CapabilitiesField({\n  form,\n  fieldName,\n  label = 'Capabilities',\n  description = 'Select the capabilities this item supports',\n  required = false,\n  data,\n  disabled = false,\n}: CapabilitiesFieldProps) {\n  return (\n    <FieldGroup\n      label={label}\n      description={description}\n      required={required}\n    >\n      <MultiSelect\n        placeholder=\"Select capabilities\"\n        data={data}\n        searchable\n        clearable\n        disabled={disabled}\n        {...form.getInputProps(fieldName)}\n      />\n    </FieldGroup>\n  );\n}\n\n// Rate limit field component\nexport interface RateLimitFieldProps extends BaseFieldProps {\n  min?: number;\n  max?: number;\n  unit?: string;\n}\n\nexport function RateLimitField({\n  form,\n  fieldName,\n  label = 'Rate Limit',\n  description = 'Maximum requests per minute (0 = unlimited)',\n  required = false,\n  min = 0,\n  max = 10000,\n  unit = 'req/min',\n  disabled = false,\n}: RateLimitFieldProps) {\n  return (\n    <FieldGroup\n      label={label}\n      description={description}\n      required={required}\n    >\n      <NumberInput\n        placeholder=\"0\"\n        min={min}\n        max={max}\n        rightSection={<Text size=\"xs\" c=\"dimmed\">{unit}</Text>}\n        disabled={disabled}\n        {...form.getInputProps(fieldName)}\n      />\n    </FieldGroup>\n  );\n}"
+'use client';
+
+import {
+  Textarea,
+  MultiSelect,
+  NumberInput,
+  Text,
+} from '@mantine/core';
+import { FieldGroup } from './BasicFormFields';
+import { BaseFieldProps } from './FormFieldTypes';
+
+// Description field component
+export interface DescriptionFieldProps extends BaseFieldProps {
+  placeholder?: string;
+  minRows?: number;
+  maxRows?: number;
+}
+
+export function DescriptionField({
+  form,
+  fieldName,
+  label = 'Description',
+  placeholder = 'Enter description (optional)',
+  description,
+  required = false,
+  minRows = 3,
+  maxRows = 6,
+  disabled = false,
+}: DescriptionFieldProps) {
+  return (
+    <FieldGroup
+      label={label}
+      description={description}
+      required={required}
+    >
+      <Textarea
+        placeholder={placeholder}
+        minRows={minRows}
+        maxRows={maxRows}
+        autosize
+        disabled={disabled}
+        {...form.getInputProps(fieldName)}
+      />
+    </FieldGroup>
+  );
+}
+
+// Capabilities multi-select field
+export interface CapabilitiesFieldProps extends BaseFieldProps {
+  data: Array<{ value: string; label: string; }>;
+}
+
+export function CapabilitiesField({
+  form,
+  fieldName,
+  label = 'Capabilities',
+  description = 'Select the capabilities this item supports',
+  required = false,
+  data,
+  disabled = false,
+}: CapabilitiesFieldProps) {
+  return (
+    <FieldGroup
+      label={label}
+      description={description}
+      required={required}
+    >
+      <MultiSelect
+        placeholder="Select capabilities"
+        data={data}
+        searchable
+        clearable
+        disabled={disabled}
+        {...form.getInputProps(fieldName)}
+      />
+    </FieldGroup>
+  );
+}
+
+// Rate limit field component
+export interface RateLimitFieldProps extends BaseFieldProps {
+  min?: number;
+  max?: number;
+  unit?: string;
+}
+
+export function RateLimitField({
+  form,
+  fieldName,
+  label = 'Rate Limit',
+  description = 'Maximum requests per minute (0 = unlimited)',
+  required = false,
+  min = 0,
+  max = 10000,
+  unit = 'req/min',
+  disabled = false,
+}: RateLimitFieldProps) {
+  return (
+    <FieldGroup
+      label={label}
+      description={description}
+      required={required}
+    >
+      <NumberInput
+        placeholder="0"
+        min={min}
+        max={max}
+        rightSection={<Text size="xs" c="dimmed">{unit}</Text>}
+        disabled={disabled}
+        {...form.getInputProps(fieldName)}
+      />
+    </FieldGroup>
+  );
+}

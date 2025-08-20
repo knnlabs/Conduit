@@ -8,7 +8,6 @@ import {
   Group,
   Button,
   LoadingOverlay,
-  Alert,
   Tabs,
   Badge,
   Menu,
@@ -21,7 +20,6 @@ import {
   IconFilter,
   IconShieldCheck,
   IconShieldX,
-  IconAlertCircle,
   IconFileTypeCsv,
   IconJson,
   IconTestPipe,
@@ -72,7 +70,7 @@ export default function IpFilteringPage() {
       await handleModalSubmit(values, selectedRule, setIsSubmitting);
       closeModal();
       setSelectedRule(null);
-    } catch (error) {
+    } catch {
       // Don't close modal on error so user can fix and retry
     }
   };
@@ -152,16 +150,6 @@ export default function IpFilteringPage() {
         </Group>
       </Card>
 
-      {/* Error Alert */}
-      {error && (
-        <Alert 
-          icon={<IconAlertCircle size={16} />} 
-          title="Error loading IP rules"
-          color="red"
-        >
-          {error}
-        </Alert>
-      )}
 
       {/* Statistics Cards */}
       <IpFilteringStats stats={stats} isLoading={isLoading} />

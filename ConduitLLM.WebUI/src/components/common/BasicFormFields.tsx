@@ -1,1 +1,177 @@
-'use client';\n\nimport {\n  TextInput,\n  NumberInput,\n  Switch,\n  Stack,\n  Group,\n  Text,\n} from '@mantine/core';\nimport { FieldGroupProps, BaseFieldProps } from './FormFieldTypes';\n\n// Base field group component for consistent layout\nexport function FieldGroup({\n  label,\n  description,\n  required = false,\n  children,\n  gap = 'xs',\n  className,\n}: FieldGroupProps) {\n  return (\n    <Stack gap={gap} className={className}>\n      {label && (\n        <Text size=\"sm\" fw={500}>\n          {label}\n          {required && <Text span c=\"red\"> *</Text>}\n        </Text>\n      )}\n      {children}\n      {description && (\n        <Text size=\"xs\" c=\"dimmed\">\n          {description}\n        </Text>\n      )}\n    </Stack>\n  );\n}\n\n// Name field component with standard validation\nexport interface NameFieldProps extends BaseFieldProps {\n  placeholder?: string;\n  minLength?: number;\n  maxLength?: number;\n}\n\nexport function NameField({\n  form,\n  fieldName,\n  label = 'Name',\n  placeholder,\n  description,\n  required = true,\n  disabled = false,\n}: NameFieldProps) {\n  return (\n    <FieldGroup\n      label={label}\n      description={description}\n      required={required}\n    >\n      <TextInput\n        placeholder={placeholder ?? `Enter ${label.toLowerCase()}`}\n        disabled={disabled}\n        {...form.getInputProps(fieldName)}\n      />\n    </FieldGroup>\n  );\n}\n\n// Budget field component with proper number formatting\nexport interface BudgetFieldProps extends BaseFieldProps {\n  min?: number;\n  max?: number;\n  precision?: number;\n  currency?: string;\n}\n\nexport function BudgetField({\n  form,\n  fieldName,\n  label = 'Budget',\n  description,\n  required = false,\n  min = 0,\n  max = 10000,\n  precision = 2,\n  disabled = false,\n  currency = '$',\n}: BudgetFieldProps) {\n  return (\n    <FieldGroup\n      label={label}\n      description={description}\n      required={required}\n    >\n      <NumberInput\n        placeholder=\"0.00\"\n        min={min}\n        max={max}\n        decimalScale={precision}\n        prefix={currency}\n        disabled={disabled}\n        {...form.getInputProps(fieldName)}\n      />\n    </FieldGroup>\n  );\n}\n\n// Enable/disable switch field\nexport interface EnableFieldProps extends BaseFieldProps {\n  enabledLabel?: string;\n  disabledLabel?: string;\n}\n\nexport function EnableField({\n  form,\n  fieldName,\n  label = 'Status',\n  description,\n  enabledLabel = 'Enabled',\n  disabledLabel = 'Disabled',\n  disabled = false,\n}: EnableFieldProps) {\n  const isEnabled = form.values[fieldName];\n  \n  return (\n    <FieldGroup\n      label={label}\n      description={description}\n    >\n      <Group>\n        <Switch\n          size=\"md\"\n          disabled={disabled}\n          {...form.getInputProps(fieldName, { type: 'checkbox' })}\n        />\n        <Text size=\"sm\" c={isEnabled ? 'green' : 'dimmed'}>\n          {isEnabled ? enabledLabel : disabledLabel}\n        </Text>\n      </Group>\n    </FieldGroup>\n  );\n}\n\n// Priority field component with standard range\nexport interface PriorityFieldProps extends BaseFieldProps {\n  min?: number;\n  max?: number;\n}\n\nexport function PriorityField({\n  form,\n  fieldName,\n  label = 'Priority',\n  description = 'Higher values have higher priority (0-1000)',\n  required = false,\n  min = 0,\n  max = 1000,\n  disabled = false,\n}: PriorityFieldProps) {\n  return (\n    <FieldGroup\n      label={label}\n      description={description}\n      required={required}\n    >\n      <NumberInput\n        placeholder=\"0\"\n        min={min}\n        max={max}\n        disabled={disabled}\n        {...form.getInputProps(fieldName)}\n      />\n    </FieldGroup>\n  );\n}"
+'use client';
+
+import {
+  TextInput,
+  NumberInput,
+  Switch,
+  Stack,
+  Group,
+  Text,
+} from '@mantine/core';
+import { FieldGroupProps, BaseFieldProps } from './FormFieldTypes';
+
+// Base field group component for consistent layout
+export function FieldGroup({
+  label,
+  description,
+  required = false,
+  children,
+  gap = 'xs',
+  className,
+}: FieldGroupProps) {
+  return (
+    <Stack gap={gap} className={className}>
+      {label && (
+        <Text size="sm" fw={500}>
+          {label}
+          {required && <Text span c="red"> *</Text>}
+        </Text>
+      )}
+      {children}
+      {description && (
+        <Text size="xs" c="dimmed">
+          {description}
+        </Text>
+      )}
+    </Stack>
+  );
+}
+
+// Name field component with standard validation
+export interface NameFieldProps extends BaseFieldProps {
+  placeholder?: string;
+  minLength?: number;
+  maxLength?: number;
+}
+
+export function NameField({
+  form,
+  fieldName,
+  label = 'Name',
+  placeholder,
+  description,
+  required = true,
+  disabled = false,
+}: NameFieldProps) {
+  return (
+    <FieldGroup
+      label={label}
+      description={description}
+      required={required}
+    >
+      <TextInput
+        placeholder={placeholder ?? `Enter ${label.toLowerCase()}`}
+        disabled={disabled}
+        {...form.getInputProps(fieldName)}
+      />
+    </FieldGroup>
+  );
+}
+
+// Budget field component with proper number formatting
+export interface BudgetFieldProps extends BaseFieldProps {
+  min?: number;
+  max?: number;
+  precision?: number;
+  currency?: string;
+}
+
+export function BudgetField({
+  form,
+  fieldName,
+  label = 'Budget',
+  description,
+  required = false,
+  min = 0,
+  max = 10000,
+  precision = 2,
+  disabled = false,
+  currency = '$',
+}: BudgetFieldProps) {
+  return (
+    <FieldGroup
+      label={label}
+      description={description}
+      required={required}
+    >
+      <NumberInput
+        placeholder="0.00"
+        min={min}
+        max={max}
+        decimalScale={precision}
+        prefix={currency}
+        disabled={disabled}
+        {...form.getInputProps(fieldName)}
+      />
+    </FieldGroup>
+  );
+}
+
+// Enable/disable switch field
+export interface EnableFieldProps extends BaseFieldProps {
+  enabledLabel?: string;
+  disabledLabel?: string;
+}
+
+export function EnableField({
+  form,
+  fieldName,
+  label = 'Status',
+  description,
+  enabledLabel = 'Enabled',
+  disabledLabel = 'Disabled',
+  disabled = false,
+}: EnableFieldProps) {
+  const isEnabled = form.values[fieldName] as boolean;
+  
+  return (
+    <FieldGroup
+      label={label}
+      description={description}
+    >
+      <Group>
+        <Switch
+          size="md"
+          disabled={disabled}
+          {...form.getInputProps(fieldName, { type: 'checkbox' })}
+        />
+        <Text size="sm" c={isEnabled ? 'green' : 'dimmed'}>
+          {isEnabled ? enabledLabel : disabledLabel}
+        </Text>
+      </Group>
+    </FieldGroup>
+  );
+}
+
+// Priority field component with standard range
+export interface PriorityFieldProps extends BaseFieldProps {
+  min?: number;
+  max?: number;
+}
+
+export function PriorityField({
+  form,
+  fieldName,
+  label = 'Priority',
+  description = 'Higher values have higher priority (0-1000)',
+  required = false,
+  min = 0,
+  max = 1000,
+  disabled = false,
+}: PriorityFieldProps) {
+  return (
+    <FieldGroup
+      label={label}
+      description={description}
+      required={required}
+    >
+      <NumberInput
+        placeholder="0"
+        min={min}
+        max={max}
+        disabled={disabled}
+        {...form.getInputProps(fieldName)}
+      />
+    </FieldGroup>
+  );
+}

@@ -1,1 +1,43 @@
-import { validators } from '@/lib/utils/form-validators';\n\n// Validation helpers for common form field patterns\nexport const formValidation = {\n  // Standard name validation\n  name: (minLength = 3, maxLength = 100) => (value: string) => {\n    const requiredError = validators.required('Name')(value);\n    if (requiredError) return requiredError;\n    const minLengthError = validators.minLength('Name', minLength)(value);\n    if (minLengthError) return minLengthError;\n    const maxLengthError = validators.maxLength('Name', maxLength)(value);\n    if (maxLengthError) return maxLengthError;\n    return null;\n  },\n\n  // API key validation\n  apiKey: validators.required('API Key'),\n\n  // Budget validation\n  budget: validators.positiveNumber('Budget'),\n\n  // Priority validation\n  priority: (min = 0, max = 1000) => (value: number | undefined) => {\n    if (value === undefined) return null;\n    if (value < min) return `Priority must be at least ${min}`;\n    if (value > max) return `Priority must be no more than ${max}`;\n    return null;\n  },\n\n  // Rate limit validation\n  rateLimit: (value: number | undefined) => {\n    if (value === undefined) return null;\n    if (value < 0) return 'Rate limit must be non-negative';\n    if (!Number.isInteger(value)) return 'Rate limit must be a whole number';\n    return null;\n  },\n\n  // URL validation\n  url: validators.url('URL'),\n\n  // Array minimum length validation\n  capabilities: (minLength = 1) => validators.arrayMinLength('capability', minLength),\n};"
+import { validators } from '@/lib/utils/form-validators';
+
+// Validation helpers for common form field patterns
+export const formValidation = {
+  // Standard name validation
+  name: (minLength = 3, maxLength = 100) => (value: string) => {
+    const requiredError = validators.required('Name')(value);
+    if (requiredError) return requiredError;
+    const minLengthError = validators.minLength('Name', minLength)(value);
+    if (minLengthError) return minLengthError;
+    const maxLengthError = validators.maxLength('Name', maxLength)(value);
+    if (maxLengthError) return maxLengthError;
+    return null;
+  },
+
+  // API key validation
+  apiKey: validators.required('API Key'),
+
+  // Budget validation
+  budget: validators.positiveNumber('Budget'),
+
+  // Priority validation
+  priority: (min = 0, max = 1000) => (value: number | undefined) => {
+    if (value === undefined) return null;
+    if (value < min) return `Priority must be at least ${min}`;
+    if (value > max) return `Priority must be no more than ${max}`;
+    return null;
+  },
+
+  // Rate limit validation
+  rateLimit: (value: number | undefined) => {
+    if (value === undefined) return null;
+    if (value < 0) return 'Rate limit must be non-negative';
+    if (!Number.isInteger(value)) return 'Rate limit must be a whole number';
+    return null;
+  },
+
+  // URL validation
+  url: validators.url('URL'),
+
+  // Array minimum length validation
+  capabilities: (minLength = 1) => validators.arrayMinLength('capability', minLength),
+};

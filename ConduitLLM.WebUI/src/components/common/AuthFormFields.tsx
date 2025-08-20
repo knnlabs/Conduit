@@ -1,1 +1,71 @@
-'use client';\n\nimport {\n  TextInput,\n  PasswordInput,\n} from '@mantine/core';\nimport { FieldGroup } from './BasicFormFields';\nimport { BaseFieldProps } from './FormFieldTypes';\n\n// API Key field component\nexport interface ApiKeyFieldProps extends BaseFieldProps {\n  placeholder?: string;\n}\n\nexport function ApiKeyField({\n  form,\n  fieldName,\n  label = 'API Key',\n  placeholder = 'Enter your API key',\n  description = 'Your API key will be encrypted and stored securely',\n  required = true,\n  disabled = false,\n}: ApiKeyFieldProps) {\n  return (\n    <FieldGroup\n      label={label}\n      description={description}\n      required={required}\n    >\n      <PasswordInput\n        placeholder={placeholder}\n        disabled={disabled}\n        autoComplete=\"off\"\n        aria-autocomplete=\"none\"\n        list=\"autocompleteOff\"\n        data-form-type=\"other\"\n        data-lpignore=\"true\"\n        {...form.getInputProps(fieldName)}\n      />\n    </FieldGroup>\n  );\n}\n\n// Endpoint URL field component\nexport interface EndpointFieldProps extends BaseFieldProps {\n  placeholder?: string;\n}\n\nexport function EndpointField({\n  form,\n  fieldName,\n  label = 'API Endpoint',\n  placeholder = 'https://api.example.com',\n  description = 'The base URL for API requests',\n  required = true,\n  disabled = false,\n}: EndpointFieldProps) {\n  return (\n    <FieldGroup\n      label={label}\n      description={description}\n      required={required}\n    >\n      <TextInput\n        placeholder={placeholder}\n        disabled={disabled}\n        {...form.getInputProps(fieldName)}\n      />\n    </FieldGroup>\n  );\n}"
+'use client';
+
+import {
+  TextInput,
+  PasswordInput,
+} from '@mantine/core';
+import { FieldGroup } from './BasicFormFields';
+import { BaseFieldProps } from './FormFieldTypes';
+
+// API Key field component
+export interface ApiKeyFieldProps extends BaseFieldProps {
+  placeholder?: string;
+}
+
+export function ApiKeyField({
+  form,
+  fieldName,
+  label = 'API Key',
+  placeholder = 'Enter your API key',
+  description = 'Your API key will be encrypted and stored securely',
+  required = true,
+  disabled = false,
+}: ApiKeyFieldProps) {
+  return (
+    <FieldGroup
+      label={label}
+      description={description}
+      required={required}
+    >
+      <PasswordInput
+        placeholder={placeholder}
+        disabled={disabled}
+        autoComplete="off"
+        aria-autocomplete="none"
+        list="autocompleteOff"
+        data-form-type="other"
+        data-lpignore="true"
+        {...form.getInputProps(fieldName)}
+      />
+    </FieldGroup>
+  );
+}
+
+// Endpoint URL field component
+export interface EndpointFieldProps extends BaseFieldProps {
+  placeholder?: string;
+}
+
+export function EndpointField({
+  form,
+  fieldName,
+  label = 'API Endpoint',
+  placeholder = 'https://api.example.com',
+  description = 'The base URL for API requests',
+  required = true,
+  disabled = false,
+}: EndpointFieldProps) {
+  return (
+    <FieldGroup
+      label={label}
+      description={description}
+      required={required}
+    >
+      <TextInput
+        placeholder={placeholder}
+        disabled={disabled}
+        {...form.getInputProps(fieldName)}
+      />
+    </FieldGroup>
+  );
+}

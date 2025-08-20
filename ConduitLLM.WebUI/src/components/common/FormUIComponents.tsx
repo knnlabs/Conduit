@@ -1,1 +1,114 @@
-'use client';\n\nimport {\n  Stack,\n  Group,\n  Text,\n  Alert,\n  Card,\n  Divider,\n} from '@mantine/core';\nimport { IconAlertCircle, IconInfoCircle } from '@tabler/icons-react';\n\n// Form section divider with label\nexport interface FormSectionProps {\n  title: string;\n  description?: string;\n  children: React.ReactNode;\n  collapsible?: boolean;\n  defaultCollapsed?: boolean;\n}\n\nexport function FormSection({\n  title,\n  description,\n  children,\n}: FormSectionProps) {\n  return (\n    <Stack gap=\"md\">\n      <Divider\n        label={\n          <Group gap=\"xs\">\n            <Text fw={500}>{title}</Text>\n          </Group>\n        }\n        labelPosition=\"left\"\n      />\n      {description && (\n        <Text size=\"sm\" c=\"dimmed\">\n          {description}\n        </Text>\n      )}\n      {children}\n    </Stack>\n  );\n}\n\n// Info alert component for form guidance\nexport interface FormInfoAlertProps {\n  title?: string;\n  message: string;\n  type?: 'info' | 'warning' | 'error';\n  variant?: 'light' | 'filled' | 'outline';\n}\n\nexport function FormInfoAlert({\n  title,\n  message,\n  type = 'info',\n  variant = 'light',\n}: FormInfoAlertProps) {\n  const colors = {\n    info: 'blue',\n    warning: 'orange',\n    error: 'red',\n  };\n\n  const icons = {\n    info: <IconInfoCircle size={16} />,\n    warning: <IconAlertCircle size={16} />,\n    error: <IconAlertCircle size={16} />,\n  };\n\n  return (\n    <Alert\n      icon={icons[type]}\n      title={title}\n      color={colors[type]}\n      variant={variant}\n    >\n      {message}\n    </Alert>\n  );\n}\n\n// Form card container for grouping related fields\nexport interface FormCardProps {\n  title?: string;\n  description?: string;\n  children: React.ReactNode;\n  withBorder?: boolean;\n  padding?: 'xs' | 'sm' | 'md' | 'lg';\n}\n\nexport function FormCard({\n  title,\n  description,\n  children,\n  withBorder = true,\n  padding = 'md',\n}: FormCardProps) {\n  return (\n    <Card withBorder={withBorder} padding={padding}>\n      {(title ?? description) && (\n        <Card.Section inheritPadding py=\"sm\" withBorder>\n          {title && <Text fw={500}>{title}</Text>}\n          {description && <Text size=\"sm\" c=\"dimmed\">{description}</Text>}\n        </Card.Section>\n      )}\n      <Card.Section inheritPadding py=\"sm\">\n        {children}\n      </Card.Section>\n    </Card>\n  );\n}"
+'use client';
+
+import {
+  Stack,
+  Group,
+  Text,
+  Alert,
+  Card,
+  Divider,
+} from '@mantine/core';
+import { IconAlertCircle, IconInfoCircle } from '@tabler/icons-react';
+
+// Form section divider with label
+export interface FormSectionProps {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+  collapsible?: boolean;
+  defaultCollapsed?: boolean;
+}
+
+export function FormSection({
+  title,
+  description,
+  children,
+}: FormSectionProps) {
+  return (
+    <Stack gap="md">
+      <Divider
+        label={
+          <Group gap="xs">
+            <Text fw={500}>{title}</Text>
+          </Group>
+        }
+        labelPosition="left"
+      />
+      {description && (
+        <Text size="sm" c="dimmed">
+          {description}
+        </Text>
+      )}
+      {children}
+    </Stack>
+  );
+}
+
+// Info alert component for form guidance
+export interface FormInfoAlertProps {
+  title?: string;
+  message: string;
+  type?: 'info' | 'warning' | 'error';
+  variant?: 'light' | 'filled' | 'outline';
+}
+
+export function FormInfoAlert({
+  title,
+  message,
+  type = 'info',
+  variant = 'light',
+}: FormInfoAlertProps) {
+  const colors = {
+    info: 'blue',
+    warning: 'orange',
+    error: 'red',
+  };
+
+  const icons = {
+    info: <IconInfoCircle size={16} />,
+    warning: <IconAlertCircle size={16} />,
+    error: <IconAlertCircle size={16} />,
+  };
+
+  return (
+    <Alert
+      icon={icons[type]}
+      title={title}
+      color={colors[type]}
+      variant={variant}
+    >
+      {message}
+    </Alert>
+  );
+}
+
+// Form card container for grouping related fields
+export interface FormCardProps {
+  title?: string;
+  description?: string;
+  children: React.ReactNode;
+  withBorder?: boolean;
+  padding?: 'xs' | 'sm' | 'md' | 'lg';
+}
+
+export function FormCard({
+  title,
+  description,
+  children,
+  withBorder = true,
+  padding = 'md',
+}: FormCardProps) {
+  return (
+    <Card withBorder={withBorder} padding={padding}>
+      {(title ?? description) && (
+        <Card.Section inheritPadding py="sm" withBorder>
+          {title && <Text fw={500}>{title}</Text>}
+          {description && <Text size="sm" c="dimmed">{description}</Text>}
+        </Card.Section>
+      )}
+      <Card.Section inheritPadding py="sm">
+        {children}
+      </Card.Section>
+    </Card>
+  );
+}
