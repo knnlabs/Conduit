@@ -1,0 +1,23 @@
+{
+  "name": "@conduit/sdk-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Workspace for Conduit SDK packages",
+  "workspaces": [
+    "Common",
+    "Admin", 
+    "Core"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "test": "npm test --workspaces",
+    "clean": "npm run clean --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "type-check": "npm run type-check --workspaces --if-present"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

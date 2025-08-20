@@ -14,8 +14,9 @@ namespace ConduitLLM.Admin.Interfaces
         /// <summary>
         /// Gets storage statistics for all virtual keys.
         /// </summary>
+        /// <param name="virtualKeyGroupId">Optional filter by virtual key group ID</param>
         /// <returns>Overall storage statistics.</returns>
-        Task<OverallMediaStorageStats> GetOverallStorageStatsAsync();
+        Task<OverallMediaStorageStats> GetOverallStorageStatsAsync(int? virtualKeyGroupId = null);
 
         /// <summary>
         /// Gets storage statistics for a specific virtual key.

@@ -35,13 +35,14 @@ namespace ConduitLLM.Admin.Controllers
         /// <summary>
         /// Gets overall storage statistics across all virtual keys.
         /// </summary>
+        /// <param name="virtualKeyGroupId">Optional filter by virtual key group ID</param>
         /// <returns>Overall storage statistics.</returns>
         [HttpGet("stats")]
-        public async Task<IActionResult> GetOverallStats()
+        public async Task<IActionResult> GetOverallStats([FromQuery] int? virtualKeyGroupId = null)
         {
             try
             {
-                var stats = await _mediaService.GetOverallStorageStatsAsync();
+                var stats = await _mediaService.GetOverallStorageStatsAsync(virtualKeyGroupId);
                 return Ok(stats);
             }
             catch (Exception ex)

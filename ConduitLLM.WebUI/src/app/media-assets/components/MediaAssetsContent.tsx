@@ -18,8 +18,11 @@ import CleanupModal from './CleanupModal';
 
 export default function MediaAssetsContent() {
   const [selectedVirtualKey, setSelectedVirtualKey] = useState<number | undefined>();
+  const [selectedKeyGroup, setSelectedKeyGroup] = useState<number | undefined>();
   const [virtualKeys, setVirtualKeys] = useState<VirtualKeyInfo[]>([]);
+  const [keyGroups, setKeyGroups] = useState<Array<{ id: number; name: string }>>([]);
   const [loadingVirtualKeys, setLoadingVirtualKeys] = useState(true);
+  const [loadingKeyGroups, setLoadingKeyGroups] = useState(true);
   const [selectedMedia, setSelectedMedia] = useState<MediaRecord | null>(null);
   const [cleanupModalOpened, setCleanupModalOpened] = useState(false);
 
@@ -40,13 +43,41 @@ export default function MediaAssetsContent() {
     getSelectedMedia,
   } = useBulkSelection(media);
 
-  // Fetch virtual keys
+  // Fetch key groups
+  useEffect(() => {
+    const fetchKeyGroups = async () => {
+      try {
+        setLoadingKeyGroups(true);
+        const result = await withAdminClient(client => 
+          client.virtualKeyGroups.list()
+        );
+        const groups = result.map((group) => ({
+          id: group.id,
+          name: group.groupName
+        }));
+        setKeyGroups(groups);
+      } catch (error) {
+        console.error('Failed to fetch key groups:', error);
+        notifications.show({
+          title: 'Error',
+          message: 'Failed to load key groups',
+          color: 'red',
+        });
+      } finally {
+        setLoadingKeyGroups(false);
+      }
+    };
+
+    void fetchKeyGroups();
+  }, []);
+
+  // Fetch virtual keys based on selected group
   useEffect(() => {
     const fetchVirtualKeys = async () => {
       try {
         setLoadingVirtualKeys(true);
         const result = await withAdminClient(client => 
-          client.virtualKeys.list(1, 1000)
+          client.virtualKeys.list(1, 1000, selectedKeyGroup)
         );
         const items = result.items;
           
@@ -61,6 +92,8 @@ export default function MediaAssetsContent() {
         // Select first virtual key by default
         if (virtualKeysData.length > 0) {
           setSelectedVirtualKey(virtualKeysData[0].id);
+        } else {
+          setSelectedVirtualKey(undefined);
         }
       } catch (error) {
         console.error('Failed to fetch virtual keys:', error);
@@ -75,7 +108,7 @@ export default function MediaAssetsContent() {
     };
 
     void fetchVirtualKeys();
-  }, []);
+  }, [selectedKeyGroup]);
 
   const handleDeleteMedia = async (id: string) => {
     modals.openConfirmModal({
@@ -155,18 +188,35 @@ export default function MediaAssetsContent() {
       <MediaStatsCards />
 
       <Group justify="space-between">
-        <Select
-          placeholder={loadingVirtualKeys ? "Loading virtual keys..." : "Select a virtual key"}
-          data={virtualKeys.map(vk => ({
-            value: vk.id.toString(),
-            label: `${vk.name} (${vk.key.substring(0, 8)}...)`,
-          }))}
-          value={selectedVirtualKey?.toString()}
-          onChange={(value) => setSelectedVirtualKey(value ? parseInt(value) : undefined)}
-          w={300}
-          disabled={loadingVirtualKeys || virtualKeys.length === 0}
-          nothingFoundMessage="No virtual keys found"
-        />
+        <Group>
+          <Select
+            placeholder={loadingKeyGroups ? "Loading groups..." : "All Key Groups"}
+            data={[
+              { value: '', label: 'All Key Groups' },
+              ...keyGroups.map(group => ({
+                value: group.id.toString(),
+                label: group.name,
+              }))
+            ]}
+            value={selectedKeyGroup?.toString() ?? ''}
+            onChange={(value) => setSelectedKeyGroup(value ? parseInt(value) : undefined)}
+            w={200}
+            disabled={loadingKeyGroups}
+            clearable
+          />
+          <Select
+            placeholder={loadingVirtualKeys ? "Loading virtual keys..." : "Select a virtual key"}
+            data={virtualKeys.map(vk => ({
+              value: vk.id.toString(),
+              label: `${vk.name} (${vk.key.substring(0, 8)}...)`,
+            }))}
+            value={selectedVirtualKey?.toString()}
+            onChange={(value) => setSelectedVirtualKey(value ? parseInt(value) : undefined)}
+            w={350}
+            disabled={loadingVirtualKeys || virtualKeys.length === 0}
+            nothingFoundMessage="No virtual keys found"
+          />
+        </Group>
 
         <Group>
           <Button

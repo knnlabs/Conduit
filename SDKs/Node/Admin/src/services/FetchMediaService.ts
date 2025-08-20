@@ -57,6 +57,7 @@ export class FetchMediaService {
    * 
    * @param type - Type of stats to retrieve ('overall', 'by-provider', 'by-type', 'virtual-key')
    * @param virtualKeyId - Required when type is 'virtual-key'
+   * @param virtualKeyGroupId - Optional filter by virtual key group ID (only for 'overall' type)
    * @param config - Optional request configuration
    * @returns Promise resolving to stats based on type
    * 
@@ -75,21 +76,25 @@ export class FetchMediaService {
   async getMediaStats(
     type: 'overall',
     virtualKeyId?: never,
+    virtualKeyGroupId?: number,
     config?: RequestConfig
   ): Promise<OverallMediaStorageStats>;
   async getMediaStats(
     type: 'virtual-key',
     virtualKeyId: number,
+    virtualKeyGroupId?: never,
     config?: RequestConfig
   ): Promise<MediaStorageStats>;
   async getMediaStats(
     type: 'by-provider' | 'by-type',
     virtualKeyId?: never,
+    virtualKeyGroupId?: never,
     config?: RequestConfig
   ): Promise<Record<string, number>>;
   async getMediaStats(
     type: 'overall' | 'by-provider' | 'by-type' | 'virtual-key' = 'overall',
     virtualKeyId?: number,
+    virtualKeyGroupId?: number,
     config?: RequestConfig
   ): Promise<OverallMediaStorageStats | MediaStorageStats | Record<string, number>> {
     let endpoint: string;
@@ -108,9 +113,12 @@ export class FetchMediaService {
         endpoint = ENDPOINTS.MEDIA.STATS.BY_VIRTUAL_KEY(virtualKeyId.toString());
         break;
       case 'overall':
-      default:
-        endpoint = ENDPOINTS.MEDIA.STATS.BASE;
+      default: {
+        // Add virtualKeyGroupId param if provided
+        const params = virtualKeyGroupId ? `?virtualKeyGroupId=${virtualKeyGroupId}` : '';
+        endpoint = `${ENDPOINTS.MEDIA.STATS.BASE}${params}`;
         break;
+      }
     }
 
     return this.client['get'](endpoint, {

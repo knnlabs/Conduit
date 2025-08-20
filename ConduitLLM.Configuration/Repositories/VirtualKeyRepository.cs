@@ -134,6 +134,25 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
+        public async Task<List<VirtualKey>> GetByVirtualKeyGroupIdAsync(int virtualKeyGroupId, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+                return await dbContext.VirtualKeys
+                    .AsNoTracking()
+                    .Where(vk => vk.VirtualKeyGroupId == virtualKeyGroupId)
+                    .OrderBy(vk => vk.KeyName)
+                    .ToListAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting virtual keys for group {GroupId}", virtualKeyGroupId);
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
         public async Task<int> CreateAsync(VirtualKey virtualKey, CancellationToken cancellationToken = default)
         {
             if (virtualKey == null)

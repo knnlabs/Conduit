@@ -73,16 +73,17 @@ public class VirtualKeysController : ControllerBase
     /// <summary>
     /// Retrieves a list of all virtual keys
     /// </summary>
+    /// <param name="virtualKeyGroupId">Optional filter by virtual key group ID</param>
     /// <returns>List of all virtual keys</returns>
     [HttpGet]
     [Authorize(Policy = "MasterKeyPolicy")]
     [ProducesResponseType(typeof(List<VirtualKeyDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> ListKeys()
+    public async Task<IActionResult> ListKeys([FromQuery] int? virtualKeyGroupId = null)
     {
         try
         {
-            var keys = await _virtualKeyService.ListVirtualKeysAsync();
+            var keys = await _virtualKeyService.ListVirtualKeysAsync(virtualKeyGroupId);
             return Ok(keys);
         }
         catch (Exception ex)
