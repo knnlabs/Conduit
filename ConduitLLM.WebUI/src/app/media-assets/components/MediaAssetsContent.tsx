@@ -76,10 +76,16 @@ export default function MediaAssetsContent() {
     const fetchVirtualKeys = async () => {
       try {
         setLoadingVirtualKeys(true);
-        const result = await withAdminClient(client => 
-          client.virtualKeys.list(1, 1000, selectedKeyGroup)
-        );
-        const items = result.items;
+        const result = await withAdminClient(client => {
+          // If selectedKeyGroup is defined, we need to filter after getting all keys
+          // The SDK list method doesn't support virtualKeyGroupId directly
+          return client.virtualKeys.list(1, 1000);
+        });
+        
+        // Filter by key group if one is selected
+        const items = selectedKeyGroup 
+          ? result.items.filter(item => item.virtualKeyGroupId === selectedKeyGroup)
+          : result.items;
           
         const virtualKeysData: VirtualKeyInfo[] = items.map(item => ({
           id: item.id ?? 0,
