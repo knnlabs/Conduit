@@ -4,76 +4,45 @@ import {
   ModelProviderMappingDto,
   CreateModelProviderMappingDto,
   UpdateModelProviderMappingDto,
-  ModelMappingFilters,
+  ModelMappingFilterOptions,
   ModelRoutingInfo,
   BulkMappingRequest,
   BulkMappingResponse,
   ModelMappingSuggestion,
-  DiscoveredModel,
   CapabilityTestResult,
 } from '../models/modelMapping';
 import { ValidationError } from '../utils/errors';
 import { z } from 'zod';
 
 const createMappingSchema = z.object({
-  modelId: z.string().min(1),
-  providerId: z.number().int().positive(), // Changed from string to number to match backend
+  modelAlias: z.string().min(1),
+  modelId: z.number().int().positive(),
+  providerId: z.number().int().positive(),
   providerModelId: z.string().min(1),
   isEnabled: z.boolean().optional(),
   priority: z.number().min(0).max(1000).optional(),
-  metadata: z.string().optional(),
-  // Model Capability Flags
-  supportsVision: z.boolean().optional(),
-  supportsImageGeneration: z.boolean().optional(),
-  supportsAudioTranscription: z.boolean().optional(),
-  supportsTextToSpeech: z.boolean().optional(),
-  supportsRealtimeAudio: z.boolean().optional(),
-  supportsFunctionCalling: z.boolean().optional(),
-  supportsStreaming: z.boolean().optional(),
-  supportsVideoGeneration: z.boolean().optional(),
-  supportsEmbeddings: z.boolean().optional(),
-  // Extended Metadata Fields
-  capabilities: z.string().optional(),
-  maxContextLength: z.number().optional(),
-  maxOutputTokens: z.number().optional(),
-  supportedLanguages: z.string().optional(),
-  supportedVoices: z.string().optional(),
-  supportedFormats: z.string().optional(),
-  tokenizerType: z.string().optional(),
-  // Advanced Routing Fields
+  maxContextTokensOverride: z.number().optional(),
+  providerVariation: z.string().optional(),
+  qualityScore: z.number().optional(),
   isDefault: z.boolean().optional(),
   defaultCapabilityType: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 const updateMappingSchema = z.object({
   id: z.number().optional(),
-  modelId: z.string().min(1).optional(),
-  providerId: z.number().int().positive().optional(), // Changed from string to number to match backend
+  modelAlias: z.string().optional(),
+  modelId: z.number().int().positive().optional(),
+  providerId: z.number().int().positive().optional(),
   providerModelId: z.string().min(1).optional(),
   isEnabled: z.boolean().optional(),
   priority: z.number().min(0).max(1000).optional(),
-  metadata: z.string().optional(),
-  // Model Capability Flags
-  supportsVision: z.boolean().optional(),
-  supportsImageGeneration: z.boolean().optional(),
-  supportsAudioTranscription: z.boolean().optional(),
-  supportsTextToSpeech: z.boolean().optional(),
-  supportsRealtimeAudio: z.boolean().optional(),
-  supportsFunctionCalling: z.boolean().optional(),
-  supportsStreaming: z.boolean().optional(),
-  supportsVideoGeneration: z.boolean().optional(),
-  supportsEmbeddings: z.boolean().optional(),
-  // Extended Metadata Fields
-  capabilities: z.string().optional(),
-  maxContextLength: z.number().optional(),
-  maxOutputTokens: z.number().optional(),
-  supportedLanguages: z.string().optional(),
-  supportedVoices: z.string().optional(),
-  supportedFormats: z.string().optional(),
-  tokenizerType: z.string().optional(),
-  // Advanced Routing Fields
+  maxContextTokensOverride: z.number().optional(),
+  providerVariation: z.string().optional(),
+  qualityScore: z.number().optional(),
   isDefault: z.boolean().optional(),
   defaultCapabilityType: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 export class ModelMappingService extends FetchBaseApiClient {
@@ -93,7 +62,7 @@ export class ModelMappingService extends FetchBaseApiClient {
     return response;
   }
 
-  async list(filters?: ModelMappingFilters): Promise<ModelProviderMappingDto[]> {
+  async list(filters?: ModelMappingFilterOptions): Promise<ModelProviderMappingDto[]> {
     const params = filters
       ? {
           modelId: filters.modelId,
@@ -219,19 +188,6 @@ export class ModelMappingService extends FetchBaseApiClient {
     throw new Error('EXPORT endpoint no longer exists in the API.');
   }
 
-  // Discovery Operations
-  async discoverProviderModels(providerId: number): Promise<DiscoveredModel[]> {
-    const cacheKey = this.getCacheKey('discover-provider', providerId.toString());
-    return this.withCache(
-      cacheKey,
-      () => super.get<DiscoveredModel[]>(ENDPOINTS.MODEL_MAPPINGS.DISCOVER(providerId)),
-      CACHE_TTL.SHORT
-    );
-  }
-
-  async discoverModelCapabilities(): Promise<DiscoveredModel> {
-    throw new Error('DISCOVER_MODEL endpoint no longer exists. Use DISCOVER with a specific provider ID instead.');
-  }
 
   async testCapability(): Promise<CapabilityTestResult> {
     throw new Error('TEST_CAPABILITY endpoint no longer exists in the API.');

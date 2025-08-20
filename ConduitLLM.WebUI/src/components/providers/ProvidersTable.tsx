@@ -23,12 +23,12 @@ import {
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
 import { formatters } from '@/lib/utils/formatters';
-import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+import type { ProviderDto } from '@knn_labs/conduit-admin-client';
 import { useRouter } from 'next/navigation';
 import { getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 
 // Use SDK types directly with health extensions  
-interface Provider extends ProviderCredentialDto {
+interface Provider extends ProviderDto {
   healthStatus: 'healthy' | 'unhealthy' | 'unknown';
   lastHealthCheck?: string;
   models?: string[];

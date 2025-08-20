@@ -7,6 +7,40 @@ import type {
   RequestLogDto,
 } from '../models/analytics';
 
+// Cost-related types
+export interface CostDashboardDto {
+  timeFrame: string;
+  startDate: string;
+  endDate: string;
+  last24HoursCost: number;
+  last7DaysCost: number;
+  last30DaysCost: number;
+  totalCost: number;
+  topModelsBySpend: DetailedCostDataDto[];
+  topProvidersBySpend: DetailedCostDataDto[];
+  topVirtualKeysBySpend: DetailedCostDataDto[];
+}
+
+export interface DetailedCostDataDto {
+  name: string;
+  cost: number;
+  percentage: number;
+  requestCount: number;
+}
+
+export interface CostTrendDto {
+  period: string;
+  startDate: string;
+  endDate: string;
+  data: CostTrendDataDto[];
+}
+
+export interface CostTrendDataDto {
+  date: string;
+  cost: number;
+  requestCount: number;
+}
+
 /**
  * Type-safe Analytics service using native fetch
  */
@@ -142,7 +176,103 @@ export class FetchAnalyticsService {
     return start <= end && end <= new Date();
   }
 
+  /**
+   * Get cost dashboard summary
+   */
+  async getCostSummary(
+    timeframe: string = 'daily',
+    startDate?: string,
+    endDate?: string,
+    config?: RequestConfig
+  ): Promise<CostDashboardDto> {
+    const queryParams = new URLSearchParams();
+    queryParams.append('timeframe', timeframe);
+    if (startDate) queryParams.append('startDate', startDate);
+    if (endDate) queryParams.append('endDate', endDate);
 
+    const queryString = queryParams.toString();
+    const url = `${ENDPOINTS.ANALYTICS.COST_SUMMARY}?${queryString}`;
 
+    return this.client['get']<CostDashboardDto>(
+      url,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
 
+  /**
+   * Get cost trends over time
+   */
+  async getCostTrends(
+    period: string = 'daily',
+    startDate?: string,
+    endDate?: string,
+    config?: RequestConfig
+  ): Promise<CostTrendDto> {
+    const queryParams = new URLSearchParams();
+    queryParams.append('period', period);
+    if (startDate) queryParams.append('startDate', startDate);
+    if (endDate) queryParams.append('endDate', endDate);
+
+    const queryString = queryParams.toString();
+    const url = `${ENDPOINTS.ANALYTICS.COST_TRENDS}?${queryString}`;
+
+    return this.client['get']<CostTrendDto>(
+      url,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Export analytics data in specified format
+   * Returns the data as a Uint8Array for binary compatibility
+   */
+  async exportAnalyticsAsync(
+    format: string = 'csv',
+    startDate?: string,
+    endDate?: string,
+    model?: string,
+    virtualKeyId?: number,
+    config?: RequestConfig
+  ): Promise<Uint8Array> {
+    const queryParams = new URLSearchParams();
+    queryParams.append('format', format);
+    if (startDate) queryParams.append('startDate', startDate);
+    if (endDate) queryParams.append('endDate', endDate);
+    if (model) queryParams.append('model', model);
+    if (virtualKeyId) queryParams.append('virtualKeyId', virtualKeyId.toString());
+
+    const queryString = queryParams.toString();
+    const url = `${ENDPOINTS.ANALYTICS.EXPORT}?${queryString}`;
+
+    // Make a direct fetch request for binary data
+    // Access the protected properties through type assertion
+    const clientWithProps = this.client as unknown as { baseUrl: string; masterKey: string };
+    const baseUrl = clientWithProps.baseUrl ?? '';
+    const masterKey = clientWithProps.masterKey ?? '';
+    
+    const response = await fetch(`${baseUrl}${url}`, {
+      method: 'GET',
+      headers: {
+        'X-API-Key': masterKey,
+        'Accept': format === 'csv' ? 'text/csv' : 'application/json',
+        ...config?.headers,
+      },
+      signal: config?.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Export failed: ${response.statusText}`);
+    }
+
+    const buffer = await response.arrayBuffer();
+    return new Uint8Array(buffer);
+  }
 }

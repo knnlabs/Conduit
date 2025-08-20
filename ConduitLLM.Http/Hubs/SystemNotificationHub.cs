@@ -231,25 +231,6 @@ namespace ConduitLLM.Http.Hubs
             }
         }
 
-        /// <summary>
-        /// Notifies clients of model capabilities discovery.
-        /// </summary>
-        public async Task ModelCapabilitiesDiscovered(int providerId, string providerName, int modelCount, int embeddingCount = 0, int visionCount = 0, int imageGenCount = 0, int videoGenCount = 0)
-        {
-            var notification = new ModelCapabilitiesNotification
-            {
-                ProviderId = providerId,
-                ProviderName = providerName,
-                ModelCount = modelCount,
-                EmbeddingCount = embeddingCount,
-                VisionCount = visionCount,
-                ImageGenCount = imageGenCount,
-                VideoGenCount = videoGenCount,
-                Priority = NotificationPriority.Low
-            };
-
-            await BroadcastNotification(notification);
-        }
 
         /// <summary>
         /// Notifies clients of model availability change.

@@ -33,9 +33,25 @@ export async function POST(request: NextRequest) {
                      'unknown';
     const userAgent = request.headers.get('user-agent') ?? 'unknown';
     
-    // Call the Admin API's ephemeral master key endpoint directly
-    // The SDK method doesn't work because it requires the master key in the client config,
-    // but we need to pass it as a header for this specific endpoint
+    // In development mode with DISABLE_CLERK_AUTH=true, 
+    // we return the master key directly without calling the Admin API
+    // In production, this would call the Admin API to generate a real ephemeral key
+    
+    const isDevelopment = process.env.DISABLE_CLERK_AUTH === 'true';
+    
+    if (isDevelopment) {
+      // Development mode: return the master key directly
+      const result: EphemeralMasterKeyResponse = {
+        ephemeralMasterKey: masterKey,
+        expiresAt: new Date(Date.now() + 3600000).toISOString(), // 1 hour from now
+        expiresInSeconds: 3600,
+        adminApiUrl: process.env.CONDUIT_ADMIN_API_EXTERNAL_URL ?? 'http://localhost:5002',
+      };
+      
+      return NextResponse.json(result);
+    }
+    
+    // Production mode: call the Admin API's ephemeral master key endpoint
     const adminApiUrl = process.env.CONDUIT_ADMIN_API_BASE_URL ?? 'http://admin-api:5002';
     const masterKeyHeader = 'X-Master-Key';
     const ephemeralKeyResponse = await fetch(`${adminApiUrl}/api/admin/auth/ephemeral-master-key`, {

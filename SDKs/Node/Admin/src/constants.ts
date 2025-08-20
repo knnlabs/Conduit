@@ -8,18 +8,6 @@ export const API_VERSION = 'v1';
 export const API_PREFIX = '/api';
 
 /**
- * HTTP method constants for type-safe method specification.
- * @deprecated Use HttpMethod enum from '@knn_labs/conduit-common' instead
- */
-export const HTTP_METHODS = {
-  GET: 'GET',
-  POST: 'POST',
-  PUT: 'PUT',
-  DELETE: 'DELETE',
-  PATCH: 'PATCH',
-} as const;
-
-/**
  * Client information constants.
  */
 export const CLIENT_INFO = {
@@ -78,7 +66,6 @@ export const ENDPOINTS = {
     BY_ID: (id: number) => `/api/ModelProviderMapping/${id}`,
     PROVIDERS: '/api/ModelProviderMapping/providers',
     BULK: '/api/ModelProviderMapping/bulk',
-    DISCOVER: (providerId: number) => `/api/ModelProviderMapping/discover/${providerId}`,
   },
 
   // IP Filters
@@ -104,19 +91,55 @@ export const ENDPOINTS = {
     OVERVIEW: '/api/ModelCosts/overview',
   },
 
-  // Analytics & Cost Dashboard
-  ANALYTICS: {
-    REQUEST_LOGS: '/api/Logs',
-    REQUEST_LOG_BY_ID: (id: string) => `/api/Logs/${id}`,
+  // Model Management
+  MODELS: {
+    BASE: '/api/Model',
+    BY_ID: (id: number) => `/api/Model/${id}`,
+    BY_TYPE: (type: string) => `/api/Model/type/${type}`,
+    BY_PROVIDER: (provider: string) => `/api/Model/provider/${provider}`,
+    SEARCH: '/api/Model/search',
   },
 
-  // Cost Dashboard (actual endpoints)
-  COSTS: {
-    SUMMARY: '/api/costs/summary',
-    TRENDS: '/api/costs/trends',
-    MODELS: '/api/costs/models',
-    VIRTUAL_KEYS: '/api/costs/virtualkeys',
+  // Model Series Management
+  MODEL_SERIES: {
+    BASE: '/api/ModelSeries',
+    BY_ID: (id: number) => `/api/ModelSeries/${id}`,
+    MODELS: (id: number) => `/api/ModelSeries/${id}/models`,
   },
+
+  // Model Author Management
+  MODEL_AUTHORS: {
+    BASE: '/api/ModelAuthor',
+    BY_ID: (id: number) => `/api/ModelAuthor/${id}`,
+    SERIES: (id: number) => `/api/ModelAuthor/${id}/series`,
+  },
+
+  // Model Capabilities Management
+  MODEL_CAPABILITIES: {
+    BASE: '/api/ModelCapabilities',
+    BY_ID: (id: number) => `/api/ModelCapabilities/${id}`,
+    MODELS: (id: number) => `/api/ModelCapabilities/${id}/models`,
+  },
+
+  // Unified Analytics endpoints
+  ANALYTICS: {
+    // Request Logs
+    REQUEST_LOGS: '/api/analytics/logs',
+    REQUEST_LOG_BY_ID: (id: string) => `/api/analytics/logs/${id}`,
+    DISTINCT_MODELS: '/api/analytics/logs/models',
+    
+    // Cost Analytics
+    COST_SUMMARY: '/api/analytics/costs/summary',
+    COST_TRENDS: '/api/analytics/costs/trends', 
+    MODEL_COSTS: '/api/analytics/costs/models',
+    VIRTUAL_KEY_COSTS: '/api/analytics/costs/virtualkeys',
+    
+    // Combined Analytics
+    SUMMARY: '/api/analytics/summary',
+    VIRTUAL_KEY_USAGE: (virtualKeyId: number) => `/api/analytics/virtualkeys/${virtualKeyId}/usage`,
+    EXPORT: '/api/analytics/export',
+  },
+
 
   // Audio Provider Management
   AUDIO: {
@@ -186,13 +209,6 @@ export const ENDPOINTS = {
     },
   },
 
-  // Logs endpoints
-  LOGS: {
-    BASE: '/api/Logs',
-    BY_ID: (id: string) => `/api/Logs/${id}`,
-    MODELS: '/api/Logs/models',
-    SUMMARY: '/api/Logs/summary',
-  },
 
   // Notifications endpoints
   NOTIFICATIONS: {

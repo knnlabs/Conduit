@@ -277,21 +277,7 @@ namespace ConduitLLM.Core.Services
                 };
             }
             
-            // Fall back to discovery service
-            var discovered = await _discoveryService.DiscoverModelsAsync();
-            var model = discovered.Values.FirstOrDefault(m => 
-                m.ModelId.Equals(modelAlias, StringComparison.OrdinalIgnoreCase));
-            
-            if (model != null)
-            {
-                return new ModelInfo
-                {
-                    ModelId = model.ModelId,
-                    Provider = model.Provider,
-                    ModelAlias = modelAlias
-                };
-            }
-            
+            // No fallback - model must be in ModelProviderMapping
             return null;
         }
 

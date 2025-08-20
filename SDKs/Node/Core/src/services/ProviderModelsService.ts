@@ -39,16 +39,7 @@ export class ProviderModelsService {
     return response;
   }
 
-  /**
-   * @deprecated Use getProviderModels with provider ID instead
-   * Gets available models for a specified provider by name.
-   * @param providerName - Name of the provider
-   * @param forceRefresh - Whether to bypass cache and force refresh
-   * @returns List of available model IDs
-   */
-  async getProviderModelsByName(): Promise<string[]> {
-    throw new Error('Provider names are no longer unique identifiers. Use getProviderModels with provider ID instead.');
-  }
+  // getProviderModelsByName removed - use getProviderModels with provider ID
 
   /**
    * Static validation helper to validate provider ID.
@@ -59,11 +50,5 @@ export class ProviderModelsService {
     }
   }
 
-  /**
-   * @deprecated Use validateProviderId instead
-   * Static validation helper to validate provider name.
-   */
-  static validateProviderName(): void {
-    throw new Error('Provider names are no longer unique identifiers. Use validateProviderId instead.');
-  }
+  // validateProviderName removed - use validateProviderId
 }

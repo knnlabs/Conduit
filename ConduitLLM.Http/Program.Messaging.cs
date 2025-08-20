@@ -25,8 +25,6 @@ public partial class Program
             // Add spend notification consumer
             x.AddConsumer<ConduitLLM.Http.EventHandlers.SpendUpdatedHandler>();
             
-            // Add model capabilities consumer
-            x.AddConsumer<ConduitLLM.Http.EventHandlers.ModelCapabilitiesDiscoveredHandler>();
             
             // Add image generation consumers
             x.AddConsumer<ConduitLLM.Core.Services.ImageGenerationOrchestrator>();
@@ -52,7 +50,6 @@ public partial class Program
             // Add navigation state event consumers for real-time updates
             x.AddConsumer<ConduitLLM.Http.Consumers.ModelMappingChangedNotificationConsumer>();
             // Provider health consumer removed
-            x.AddConsumer<ConduitLLM.Http.Consumers.ModelCapabilitiesDiscoveredNotificationConsumer>();
             
             // Add settings refresh consumers for runtime configuration updates
             x.AddConsumer<ConduitLLM.Http.EventHandlers.ModelMappingCacheInvalidationHandler>();
@@ -66,9 +63,6 @@ public partial class Program
             
             // Add webhook delivery consumer for scalable webhook processing
             x.AddConsumer<ConduitLLM.Http.Consumers.WebhookDeliveryConsumer>();
-            
-            // Add model discovery notification handler for real-time model updates
-            x.AddConsumer<ConduitLLM.Http.EventHandlers.ModelDiscoveryNotificationHandler>();
             
             // Add batch spend flush handler for admin operations and integration testing
             x.AddConsumer<ConduitLLM.Http.EventHandlers.BatchSpendFlushRequestedHandler>();

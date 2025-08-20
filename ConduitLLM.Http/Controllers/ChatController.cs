@@ -12,7 +12,6 @@ using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
-using ConduitLLM.Http.Adapters;
 using ConduitLLM.Http.Models;
 using ConduitLLM.Http.Services;
 

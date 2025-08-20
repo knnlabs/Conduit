@@ -1,97 +1,51 @@
 import { FilterOptions } from './common';
-import { ProviderType } from './providerType';
 import { ProviderReferenceDto } from './provider';
 
 export interface ModelProviderMappingDto {
   id: number;
-  modelId: string;
+  modelAlias: string;  // The alias used by clients
+  modelId: number;     // Reference to canonical Model entity
   providerId: number;
-  providerType: ProviderType; // Added to match backend DTO
-  provider?: ProviderReferenceDto; // Provider reference information (populated when retrieving mappings)
+  provider?: ProviderReferenceDto;
   providerModelId: string;
   isEnabled: boolean;
   priority: number;
   createdAt: string;
   updatedAt: string;
-  metadata?: string;
+  notes?: string;
   
-  // Model Capability Flags
-  /** Whether this model supports vision/image input capabilities */
-  supportsVision: boolean;
-  /** Whether this model supports image generation capabilities */
-  supportsImageGeneration: boolean;
-  /** Whether this model supports audio transcription capabilities */
-  supportsAudioTranscription: boolean;
-  /** Whether this model supports text-to-speech capabilities */
-  supportsTextToSpeech: boolean;
-  /** Whether this model supports real-time audio streaming capabilities */
-  supportsRealtimeAudio: boolean;
-  /** Whether this model supports function calling */
-  supportsFunctionCalling: boolean;
-  /** Whether this model supports streaming responses */
-  supportsStreaming: boolean;
-  /** Whether this model supports video generation capabilities */
-  supportsVideoGeneration: boolean;
-  /** Whether this model supports embeddings generation */
-  supportsEmbeddings: boolean;
-  /** Whether this model supports chat completions */
-  supportsChat: boolean;
+  // Provider-specific overrides
+  maxContextTokensOverride?: number;
   
-  // Extended Metadata Fields
-  /** Optional model capabilities (e.g., vision, function-calling) */
-  capabilities?: string;
-  /** Optional maximum context length */
-  maxContextLength?: number;
-  /** The maximum output tokens for this model */
-  maxOutputTokens?: number;
-  /** Supported languages for transcription/TTS (comma-separated) */
-  supportedLanguages?: string;
-  /** Supported voices for TTS (comma-separated) */
-  supportedVoices?: string;
-  /** Supported input formats (comma-separated) */
-  supportedFormats?: string;
-  /** The tokenizer type used by this model */
-  tokenizerType?: string;
+  // Provider metadata
+  providerVariation?: string;  // e.g., "Q4_K_M", "GGUF", "instruct"
+  qualityScore?: number;        // 1.0 = identical to original
   
   // Advanced Routing Fields
-  /** Whether this mapping is the default for its capability type */
   isDefault: boolean;
-  /** The capability type this mapping is default for (e.g., 'chat', 'image-generation') */
   defaultCapabilityType?: string;
 }
 
 export interface CreateModelProviderMappingDto {
-  modelId: string;
-  providerId: number; // Changed from string to number to match backend
+  modelAlias: string;   // The alias used by clients
+  modelId: number;      // Reference to canonical Model entity (required)
+  providerId: number;
   providerModelId: string;
   isEnabled?: boolean;
   priority?: number;
-  metadata?: string;
   
-  // Model Capability Flags
-  supportsVision?: boolean;
-  supportsImageGeneration?: boolean;
-  supportsAudioTranscription?: boolean;
-  supportsTextToSpeech?: boolean;
-  supportsRealtimeAudio?: boolean;
-  supportsFunctionCalling?: boolean;
-  supportsStreaming?: boolean;
-  supportsVideoGeneration?: boolean;
-  supportsEmbeddings?: boolean;
-  supportsChat?: boolean;
+  // Provider-specific overrides
+  maxContextTokensOverride?: number;
   
-  // Extended Metadata Fields
-  capabilities?: string;
-  maxContextLength?: number;
-  maxOutputTokens?: number;
-  supportedLanguages?: string;
-  supportedVoices?: string;
-  supportedFormats?: string;
-  tokenizerType?: string;
+  // Provider metadata
+  providerVariation?: string;
+  qualityScore?: number;
   
   // Advanced Routing Fields
   isDefault?: boolean;
   defaultCapabilityType?: string;
+  
+  notes?: string;
 }
 
 export interface UpdateModelProviderMappingDto {
@@ -100,95 +54,29 @@ export interface UpdateModelProviderMappingDto {
    * Required by backend for validation - must match the ID in the route.
    */
   id?: number;
-  
-  /**
-   * The model ID/alias.
-   * Required by backend even for updates (not just creates).
-   */
-  modelId?: string;
-  
-  providerId?: number; // Changed from string to number to match backend
+  modelAlias?: string;
+  modelId?: number;
+  providerId?: number;
   providerModelId?: string;
   isEnabled?: boolean;
   priority?: number;
-  metadata?: string;
   
-  // Model Capability Flags
-  supportsVision?: boolean;
-  supportsImageGeneration?: boolean;
-  supportsAudioTranscription?: boolean;
-  supportsTextToSpeech?: boolean;
-  supportsRealtimeAudio?: boolean;
-  supportsFunctionCalling?: boolean;
-  supportsStreaming?: boolean;
-  supportsVideoGeneration?: boolean;
-  supportsEmbeddings?: boolean;
-  supportsChat?: boolean;
+  // Provider-specific overrides
+  maxContextTokensOverride?: number;
   
-  // Extended Metadata Fields
-  /**
-   * @deprecated Legacy field - backend should derive this from individual capability flags
-   */
-  capabilities?: string;
-  maxContextLength?: number;
-  maxOutputTokens?: number;
-  supportedLanguages?: string;
-  supportedVoices?: string;
-  supportedFormats?: string;
-  tokenizerType?: string;
+  // Provider metadata
+  providerVariation?: string;
+  qualityScore?: number;
   
   // Advanced Routing Fields
   isDefault?: boolean;
   defaultCapabilityType?: string;
-}
-
-export interface ModelMappingFilters extends FilterOptions {
-  modelId?: string;
-  providerId?: number;
-  isEnabled?: boolean;
-  minPriority?: number;
-  maxPriority?: number;
   
-  // Capability Filters
-  supportsVision?: boolean;
-  supportsImageGeneration?: boolean;
-  supportsAudioTranscription?: boolean;
-  supportsTextToSpeech?: boolean;
-  supportsRealtimeAudio?: boolean;
-  supportsFunctionCalling?: boolean;
-  supportsStreaming?: boolean;
-  isDefault?: boolean;
-  defaultCapabilityType?: string;
+  notes?: string;
 }
 
-export interface ModelProviderInfo {
-  providerId: number;
-  providerType: ProviderType;
-  providerModelId: string;
-  isAvailable: boolean;
-  isEnabled: boolean;
-  priority: number;
-  estimatedCost?: {
-    inputTokenCost: number;
-    outputTokenCost: number;
-    currency: string;
-  };
-}
-
-export interface ModelRoutingInfo {
-  modelId: string;
-  primaryProvider?: ModelProviderInfo;
-  fallbackProviders: ModelProviderInfo[];
-  loadBalancingEnabled: boolean;
-  routingStrategy: 'priority' | 'round-robin' | 'least-cost' | 'fastest';
-}
-
-export interface BulkMappingRequest {
-  mappings: CreateModelProviderMappingDto[];
-  replaceExisting?: boolean;
-}
-
-export interface BulkMappingResponse {
+// For bulk operations
+export interface BulkMappingResult {
   created: ModelProviderMappingDto[];
   errors: string[];
   totalProcessed: number;
@@ -196,106 +84,80 @@ export interface BulkMappingResponse {
   failureCount: number;
 }
 
-export interface ModelMappingSuggestion {
-  modelId: string;
-  suggestedProviders: {
-    providerId: number;
-    providerType: ProviderType;
-    providerModelId: string;
-    confidence: number;
-    reasoning: string;
-    estimatedPerformance?: {
-      latency: number;
-      reliability: number;
-      costEfficiency: number;
-    };
-  }[];
+// For bulk mapping requests
+export interface BulkMappingRequest {
+  mappings: CreateModelProviderMappingDto[];
 }
 
-/** Represents a discovered model from a provider */
+// For bulk mapping responses
+export type BulkMappingResponse = BulkMappingResult;
+
+// For discovered models
 export interface DiscoveredModel {
-  /** The model ID */
-  modelId: string;
-  /** The provider name */
-  provider: string;
-  /** The model display name */
-  displayName: string;
-  /** The discovered capabilities */
-  capabilities: {
-    chat?: boolean;
-    chatStream?: boolean;
-    embeddings?: boolean;
-    imageGeneration?: boolean;
-    vision?: boolean;
-    videoGeneration?: boolean;
-    videoUnderstanding?: boolean;
-    functionCalling?: boolean;
-    toolUse?: boolean;
-    jsonMode?: boolean;
-    maxTokens?: number;
-    maxOutputTokens?: number;
-    supportedImageSizes?: string[] | null;
-    supportedVideoResolutions?: string[] | null;
-    maxVideoDurationSeconds?: number | null;
-  };
-  /** Model metadata */
-  metadata?: {
-    original_model_id?: string;
-    inferred?: boolean;
-    [key: string]: unknown;
-  };
-  /** When the model was last verified */
-  lastVerified?: string;
+  id: string;
+  name: string;
+  description?: string;
+  capabilities?: string[];
+  maxTokens?: number;
 }
 
-/** Represents model capabilities discovered during model discovery */
-export interface ModelCapabilities {
-  /** Whether the model supports chat completions */
-  supportsChat: boolean;
-  /** Whether the model supports vision/image input */
-  supportsVision: boolean;
-  /** Whether the model supports image generation */
-  supportsImageGeneration: boolean;
-  /** Whether the model supports audio transcription */
-  supportsAudioTranscription: boolean;
-  /** Whether the model supports text-to-speech */
-  supportsTextToSpeech: boolean;
-  /** Whether the model supports real-time audio streaming */
-  supportsRealtimeAudio: boolean;
-  /** Whether the model supports function calling */
-  supportsFunctionCalling: boolean;
-  /** Whether the model supports streaming responses */
-  supportsStreaming: boolean;
-  /** The maximum context length */
-  maxContextLength?: number;
-  /** The maximum output tokens */
-  maxOutputTokens?: number;
-  /** Supported languages (comma-separated) */
-  supportedLanguages?: string;
-  /** Supported voices for TTS (comma-separated) */
-  supportedVoices?: string;
-  /** Supported input formats (comma-separated) */
-  supportedFormats?: string;
-  /** The tokenizer type */
-  tokenizerType?: string;
-}
 
-/** Represents the result of a capability test for a specific model */
-export interface CapabilityTestResult {
-  /** The model alias that was tested */
+// For model routing information
+export interface ModelRoutingInfo {
   modelAlias: string;
-  /** The capability that was tested */
-  capability: string;
-  /** Whether the capability test was successful */
-  isSupported: boolean;
-  /** The confidence score of the test result (0-1) */
+  providerId: number;
+  providerModelId: string;
+  priority: number;
+}
+
+// For model mapping suggestions
+export interface ModelMappingSuggestion {
+  modelAlias: string;
+  providerModelId: string;
   confidence: number;
-  /** Additional details about the test result */
+  reason?: string;
+}
+
+// For capability test results
+export interface CapabilityTestResult {
+  capability: string;
+  supported: boolean;
   details?: string;
-  /** Any error that occurred during testing */
-  error?: string;
-  /** The test duration in milliseconds */
-  testDurationMs: number;
-  /** When the test was performed */
-  testedAt: string;
+}
+
+export interface ModelMappingFilterOptions extends FilterOptions {
+  /**
+   * Filter by model ID
+   */
+  modelId?: number;
+  
+  /**
+   * Filter by provider ID
+   */
+  providerId?: number;
+  
+  /**
+   * Filter by enabled status
+   */
+  isEnabled?: boolean;
+  
+  /**
+   * Filter by default status
+   */
+  isDefault?: boolean;
+  
+  /**
+   * Filter by capability type
+   */
+  capabilityType?: string;
+  
+  /**
+   * Filter by minimum priority
+   */
+  minPriority?: number;
+  
+  /**
+   * Filter by maximum priority
+   */
+  maxPriority?: number;
 }

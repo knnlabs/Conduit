@@ -17,7 +17,6 @@ import type {
   ProviderKeyCredentialDto,
   CreateProviderKeyCredentialDto,
   UpdateProviderKeyCredentialDto,
-  ProviderKeyRotationDto,
   StandardApiKeyTestResponse
 } from '../models/provider';
 import { ENDPOINTS } from '../constants';
@@ -318,16 +317,6 @@ export class FetchProvidersService {
     return provider.isEnabled === true;
   }
 
-  /**
-   * Helper method to check if provider has API key configured
-   * Note: API keys are now managed separately via Provider Key endpoints
-   * @deprecated Use listKeys() to check if provider has keys
-   */
-  hasApiKey(provider: ProviderDto): boolean {
-    // API keys are now managed as separate entities
-    // This method is kept for backward compatibility
-    return provider.isEnabled === true;
-  }
 
   /**
    * Helper method to format provider display name
@@ -341,10 +330,11 @@ export class FetchProvidersService {
    * Helper method to get provider status
    */
   getProviderStatus(provider: ProviderDto): 'active' | 'inactive' | 'unconfigured' {
-    if (!this.hasApiKey(provider)) {
-      return 'unconfigured';
+    // Check if provider is enabled instead of checking for API key
+    if (!provider.isEnabled) {
+      return 'inactive';
     }
-    return provider.isEnabled ? 'active' : 'inactive';
+    return 'active';
   }
 
   /**
@@ -637,22 +627,6 @@ export class FetchProvidersService {
     return primaryKey;
   }
 
-
-  /**
-   * Rotate a key credential
-   * @deprecated ROTATE endpoint no longer exists - use update instead
-   */
-  async rotateKey(
-    providerId: number,
-    keyId: number,
-    data: ProviderKeyRotationDto,
-    config?: RequestConfig
-  ): Promise<ProviderKeyCredentialDto> {
-    // ROTATE endpoint was removed - use update with new key
-    return this.updateKey(providerId, keyId, {
-      apiKey: data.newApiKey,
-    }, config);
-  }
 
   /**
    * Test a key credential

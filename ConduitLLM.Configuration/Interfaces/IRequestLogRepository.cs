@@ -45,6 +45,22 @@ namespace ConduitLLM.Configuration.Interfaces
         Task<List<RequestLog>> GetByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Gets paginated request logs for a specific date range
+        /// </summary>
+        /// <param name="startDate">The start date</param>
+        /// <param name="endDate">The end date</param>
+        /// <param name="pageNumber">The page number (1-based)</param>
+        /// <param name="pageSize">The page size</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>A paginated list of request logs within the specified date range</returns>
+        Task<(List<RequestLog> Logs, int TotalCount)> GetByDateRangePaginatedAsync(
+            DateTime startDate, 
+            DateTime endDate, 
+            int pageNumber, 
+            int pageSize, 
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Gets request logs for a specific model
         /// </summary>
         /// <param name="modelName">The model name</param>

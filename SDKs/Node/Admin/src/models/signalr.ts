@@ -159,18 +159,6 @@ export interface INavigationStateHubServer {
 }
 
 /**
- * @deprecated AdminNotificationHub has been removed from the backend
- */
-export interface IAdminNotificationHubServer {
-  SubscribeToVirtualKey(virtualKeyId: number): Promise<void>;
-  UnsubscribeFromVirtualKey(virtualKeyId: number): Promise<void>;
-  SubscribeToProvider(providerType: ProviderType): Promise<void>;
-  UnsubscribeFromProvider(providerType: ProviderType): Promise<void>;
-  RefreshProviderHealth(): Promise<void>;
-  AcknowledgeNotification?(notificationId: string): Promise<void>;
-}
-
-/**
  * Hub client interfaces
  */
 export interface INavigationStateHubClient {
@@ -179,11 +167,10 @@ export interface INavigationStateHubClient {
   onProviderHealthChange(callback: (event: ProviderHealthChangeEvent) => void): void;
 }
 
-/**
- * @deprecated AdminNotificationHub has been removed from the backend
- */
+// AdminNotificationHub interfaces removed - hub has been deprecated
+
+// Placeholder interface for backward compatibility
 export interface IAdminNotificationHubClient {
-  onVirtualKeyEvent(callback: (event: VirtualKeyEvent) => void): void;
-  onConfigurationChange(callback: (event: ConfigurationChangeEvent) => void): void;
+  // Hub has been removed from backend
   onAdminNotification(callback: (event: AdminNotificationEvent) => void): void;
 }

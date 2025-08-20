@@ -16,7 +16,6 @@ import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 
 // Extended type to include additional fields from API response
 interface ExtendedModelProviderMappingDto extends ModelProviderMappingDto {
-  modelAlias?: string;
   providerName?: string;
   providerTypeName?: string;
 }

@@ -28,7 +28,7 @@ public interface IAdminModelProviderMappingService
     /// </summary>
     /// <param name="modelId">The model ID to look up</param>
     /// <returns>The model provider mapping, or null if not found</returns>
-    Task<ModelProviderMapping?> GetMappingByModelIdAsync(string modelId);
+    Task<ModelProviderMapping?> GetMappingByModelIdAsync(int modelId);
 
     /// <summary>
     /// Adds a new model provider mapping

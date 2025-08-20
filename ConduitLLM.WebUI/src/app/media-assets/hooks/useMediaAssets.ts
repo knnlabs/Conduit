@@ -22,7 +22,7 @@ export function useMediaAssets(virtualKeyId?: number) {
     try {
       const data = await withAdminClient(client => 
         client.media.getMediaByVirtualKey(virtualKeyId)
-      ) as MediaRecord[];
+      );
       setMedia(data);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
@@ -68,7 +68,7 @@ export function useMediaAssets(virtualKeyId?: number) {
     try {
       const data = await withAdminClient(client => 
         client.media.searchMedia(pattern)
-      ) as MediaRecord[];
+      );
       setMedia(data);
     } catch {
       notifications.show({

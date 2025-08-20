@@ -1,5 +1,4 @@
 import { FilterOptions } from './common';
-import type { ModelConfigMetadata } from './metadata';
 import { ProviderType } from './providerType';
 import { ModelType } from './modelType';
 
@@ -13,36 +12,6 @@ export enum PricingModel {
   PerImage = 5,
   PerMinuteAudio = 6,
   PerThousandCharacters = 7
-}
-
-/** @deprecated Use ModelCostDto instead - pattern matching has been removed */
-export interface ModelCost {
-  id: number;
-  modelIdPattern: string; // @deprecated - no longer used
-  providerType: ProviderType; // @deprecated - costs are now mapped to specific models
-  modelType: ModelType;
-  inputCostPerMillionTokens?: number;
-  outputCostPerMillionTokens?: number;
-  costPerRequest?: number;
-  costPerSecond?: number;
-  costPerImage?: number;
-  isActive: boolean;
-  priority: number;
-  effectiveDate: string;
-  expiryDate?: string;
-  metadata?: ModelConfigMetadata;
-  createdAt: string;
-  updatedAt: string;
-  // Phase 1 fields
-  batchProcessingMultiplier?: number;
-  supportsBatchProcessing: boolean;
-  imageQualityMultipliers?: string;
-  // Phase 2 fields
-  cachedInputTokenCost?: number;
-  cachedInputWriteCost?: number;
-  costPerSearchUnit?: number;
-  costPerInferenceStep?: number;
-  defaultInferenceSteps?: number;
 }
 
 export interface ModelCostDto {
@@ -203,7 +172,7 @@ export interface ModelCostMappingDto {
   createdAt: string;
   modelAlias?: string; // From ModelProviderMapping
   providerModelId?: string; // From ModelProviderMapping
-  costName?: string; // From ModelCost
+  costName?: string; // Cost name for display
 }
 
 export interface CreateModelCostMappingDto {

@@ -17,7 +17,7 @@ export function useMediaStats() {
       // Fetch overall stats using Admin SDK
       const overallData = await withAdminClient(client => 
         client.media.getMediaStats('overall')
-      ) as OverallMediaStorageStats;
+      );
       setStats(overallData);
 
       // Fetch provider stats using Admin SDK

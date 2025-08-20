@@ -1,7 +1,6 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { RequestConfig } from '../client/types';
 import { ENDPOINTS } from '../constants';
-import { ProviderType } from '../models/providerType';
 import {
   ModelCostDto,
   CreateModelCostDto,
@@ -100,25 +99,6 @@ export class FetchModelCostService {
   async getById(id: number, config?: RequestConfig): Promise<ModelCostDto> {
     return this.client['get']<ModelCostDto>(
       ENDPOINTS.MODEL_COSTS.BY_ID(id),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  /**
-   * Get model costs by provider type
-   * @deprecated Provider type is no longer used for cost lookups - costs are mapped to specific models
-   */
-  async getByProvider(
-    providerType: ProviderType,
-    config?: RequestConfig
-  ): Promise<ModelCostDto[]> {
-    // This endpoint may not work as expected with the new model
-    return this.client['get']<ModelCostDto[]>(
-      ENDPOINTS.MODEL_COSTS.BY_PROVIDER(providerType),
       {
         signal: config?.signal,
         timeout: config?.timeout,

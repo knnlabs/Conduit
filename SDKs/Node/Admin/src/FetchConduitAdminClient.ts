@@ -5,7 +5,6 @@ import { FetchVirtualKeyGroupService } from './services/FetchVirtualKeyGroupServ
 import { FetchProvidersService } from './services/FetchProvidersService';
 import { FetchSystemService } from './services/FetchSystemService';
 import { FetchModelMappingsService } from './services/FetchModelMappingsService';
-import { FetchProviderModelsService } from './services/FetchProviderModelsService';
 import { FetchSettingsService } from './services/FetchSettingsService';
 import { FetchAnalyticsService } from './services/FetchAnalyticsService';
 import { FetchSecurityService } from './services/FetchSecurityService';
@@ -14,9 +13,12 @@ import { FetchMonitoringService } from './services/FetchMonitoringService';
 import { AudioConfigurationService } from './services/AudioConfigurationService';
 import { FetchIpFilterService } from './services/FetchIpFilterService';
 import { FetchErrorQueueService } from './services/FetchErrorQueueService';
-import { FetchCostDashboardService } from './services/FetchCostDashboardService';
 import { FetchModelCostService } from './services/FetchModelCostService';
 import { FetchMediaService } from './services/FetchMediaService';
+import { FetchModelService } from './services/FetchModelService';
+import { FetchModelSeriesService } from './services/FetchModelSeriesService';
+import { FetchModelAuthorService } from './services/FetchModelAuthorService';
+import { FetchModelCapabilitiesService } from './services/FetchModelCapabilitiesService';
 import type { ApiClientConfig } from './client/types';
 import { ConduitError } from './utils/errors';
 
@@ -44,7 +46,6 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
   public readonly providers: FetchProvidersService;
   public readonly system: FetchSystemService;
   public readonly modelMappings: FetchModelMappingsService;
-  public readonly providerModels: FetchProviderModelsService;
   public readonly settings: FetchSettingsService;
   public readonly analytics: FetchAnalyticsService;
   public readonly security: FetchSecurityService;
@@ -53,9 +54,12 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
   public readonly audio: AudioConfigurationService;
   public readonly ipFilters: FetchIpFilterService;
   public readonly errorQueues: FetchErrorQueueService;
-  public readonly costDashboard: FetchCostDashboardService;
   public readonly modelCosts: FetchModelCostService;
   public readonly media: FetchMediaService;
+  public readonly models: FetchModelService;
+  public readonly modelSeries: FetchModelSeriesService;
+  public readonly modelAuthors: FetchModelAuthorService;
+  public readonly modelCapabilities: FetchModelCapabilitiesService;
 
   constructor(config: ApiClientConfig) {
     super(config);
@@ -67,7 +71,6 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
     this.providers = new FetchProvidersService(this);
     this.system = new FetchSystemService(this);
     this.modelMappings = new FetchModelMappingsService(this);
-    this.providerModels = new FetchProviderModelsService(this);
     this.settings = new FetchSettingsService(this);
     this.analytics = new FetchAnalyticsService(this);
     this.security = new FetchSecurityService(this);
@@ -76,9 +79,12 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
     this.audio = new AudioConfigurationService(this);
     this.ipFilters = new FetchIpFilterService(this);
     this.errorQueues = new FetchErrorQueueService(this);
-    this.costDashboard = new FetchCostDashboardService(this);
     this.modelCosts = new FetchModelCostService(this);
     this.media = new FetchMediaService(this);
+    this.models = new FetchModelService(this);
+    this.modelSeries = new FetchModelSeriesService(this);
+    this.modelAuthors = new FetchModelAuthorService(this);
+    this.modelCapabilities = new FetchModelCapabilitiesService(this);
   }
 
   /**

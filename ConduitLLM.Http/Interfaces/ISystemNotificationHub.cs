@@ -60,18 +60,6 @@ namespace ConduitLLM.Http.Interfaces
         /// <returns>A task representing the asynchronous operation.</returns>
         Task ModelMappingChanged(int mappingId, string modelAlias, string changeType);
 
-        /// <summary>
-        /// Notifies clients of model capabilities discovery.
-        /// </summary>
-        /// <param name="providerId">The provider ID.</param>
-        /// <param name="providerName">The provider name.</param>
-        /// <param name="modelCount">Total number of models.</param>
-        /// <param name="embeddingCount">Number of embedding models.</param>
-        /// <param name="visionCount">Number of vision models.</param>
-        /// <param name="imageGenCount">Number of image generation models.</param>
-        /// <param name="videoGenCount">Number of video generation models.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        Task ModelCapabilitiesDiscovered(int providerId, string providerName, int modelCount, int embeddingCount = 0, int visionCount = 0, int imageGenCount = 0, int videoGenCount = 0);
 
         /// <summary>
         /// Notifies clients of model availability change.

@@ -29,7 +29,6 @@ namespace ConduitLLM.Admin.Controllers;
 public class ModelProviderMappingController : ControllerBase
 {
     private readonly IAdminModelProviderMappingService _mappingService;
-    private readonly IProviderDiscoveryService _discoveryService;
     private readonly IProviderService _providerService;
     private readonly ILogger<ModelProviderMappingController> _logger;
 
@@ -37,17 +36,14 @@ public class ModelProviderMappingController : ControllerBase
     /// Initializes a new instance of the ModelProviderMappingController
     /// </summary>
     /// <param name="mappingService">The model provider mapping service</param>
-    /// <param name="discoveryService">The provider discovery service</param>
     /// <param name="providerService">The provider service</param>
     /// <param name="logger">The logger</param>
     public ModelProviderMappingController(
         IAdminModelProviderMappingService mappingService,
-        IProviderDiscoveryService discoveryService,
         IProviderService providerService,
         ILogger<ModelProviderMappingController> logger)
     {
         _mappingService = mappingService ?? throw new ArgumentNullException(nameof(mappingService));
-        _discoveryService = discoveryService ?? throw new ArgumentNullException(nameof(discoveryService));
         _providerService = providerService ?? throw new ArgumentNullException(nameof(providerService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -295,44 +291,6 @@ public class ModelProviderMappingController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Discovers available models from a specific provider
-    /// </summary>
-    /// <param name="providerId">The provider ID to discover models from</param>
-    /// <returns>List of discovered models</returns>
-    [HttpGet("discover/{providerId}")]
-    [ProducesResponseType(typeof(List<DiscoveredModel>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> DiscoverModels(int providerId)
-    {
-        try
-        {
-            var provider = await _providerService.GetProviderByIdAsync(providerId);
-            if (provider == null)
-            {
-                return NotFound(new ErrorResponseDto("Provider not found"));
-            }
-
-            // Discover models for the provider
-            var discoveredModels = await _discoveryService.DiscoverProviderModelsAsync(provider);
-            
-            // Convert dictionary values to array for frontend compatibility
-            var modelsArray = discoveredModels.Values.ToList();
-            
-            return Ok(modelsArray);
-        }
-        catch (NotSupportedException ex)
-        {
-            _logger.LogWarning(ex, "Provider {ProviderId} does not support model discovery", providerId);
-            return BadRequest(new { error = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error discovering models for provider {ProviderId}", providerId);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while discovering models");
-        }
-    }
 }
 
 /// <summary>

@@ -120,13 +120,7 @@ public partial class Program
         // Register usage analytics notification service
         builder.Services.AddSingleton<IUsageAnalyticsNotificationService, UsageAnalyticsNotificationService>();
 
-        // Register model discovery notification services
-        builder.Services.Configure<NotificationBatchingOptions>(builder.Configuration.GetSection("ConduitLLM:NotificationBatching"));
-        builder.Services.AddSingleton<IModelDiscoverySubscriptionManager, ModelDiscoverySubscriptionManager>();
-        builder.Services.AddSingleton<INotificationSeverityClassifier, NotificationSeverityClassifier>();
-        builder.Services.AddSingleton<IModelDiscoveryNotificationBatcher, ModelDiscoveryNotificationBatcher>();
-        builder.Services.AddHostedService<ModelDiscoveryNotificationBatcher>(sp => 
-            (ModelDiscoveryNotificationBatcher)sp.GetRequiredService<IModelDiscoveryNotificationBatcher>());
+        // Model discovery notification services removed - capabilities now come from ModelProviderMapping
 
         // Register batch spend update service for optimized Virtual Key operations
         builder.Services.AddSingleton<ConduitLLM.Configuration.Services.BatchSpendUpdateService>(serviceProvider =>

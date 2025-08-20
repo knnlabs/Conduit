@@ -46,6 +46,10 @@ namespace ConduitLLM.Configuration.Repositories
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ModelProviderMappings
                     .Include(m => m.Provider)
+                    .Include(m => m.Model)
+                        .ThenInclude(m => m!.Capabilities)
+                    .Include(m => m.Model)
+                        .ThenInclude(m => m!.Series)
                     .AsNoTracking()
                     .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
             }
@@ -71,6 +75,8 @@ namespace ConduitLLM.Configuration.Repositories
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ModelProviderMappings
                     .Include(m => m.Provider)
+                    .Include(m => m.Model)
+                        .ThenInclude(m => m!.Capabilities)
                     .AsNoTracking()
                     .FirstOrDefaultAsync(m => m.ModelAlias == modelName, cancellationToken);
             }
@@ -193,36 +199,19 @@ namespace ConduitLLM.Configuration.Repositories
                 existingEntity.ProviderModelId = modelProviderMapping.ProviderModelId;
                 existingEntity.ProviderId = modelProviderMapping.ProviderId;
                 existingEntity.IsEnabled = modelProviderMapping.IsEnabled;
-                existingEntity.MaxContextTokens = modelProviderMapping.MaxContextTokens;
-                
-                // Update capability fields
-                existingEntity.SupportsVision = modelProviderMapping.SupportsVision;
-                existingEntity.SupportsAudioTranscription = modelProviderMapping.SupportsAudioTranscription;
-                existingEntity.SupportsTextToSpeech = modelProviderMapping.SupportsTextToSpeech;
-                existingEntity.SupportsRealtimeAudio = modelProviderMapping.SupportsRealtimeAudio;
-                existingEntity.SupportsImageGeneration = modelProviderMapping.SupportsImageGeneration;
-                existingEntity.SupportsVideoGeneration = modelProviderMapping.SupportsVideoGeneration;
-                existingEntity.SupportsEmbeddings = modelProviderMapping.SupportsEmbeddings;
-                existingEntity.SupportsChat = modelProviderMapping.SupportsChat;
-                existingEntity.SupportsFunctionCalling = modelProviderMapping.SupportsFunctionCalling;
-                existingEntity.SupportsStreaming = modelProviderMapping.SupportsStreaming;
-                existingEntity.TokenizerType = modelProviderMapping.TokenizerType;
-                existingEntity.SupportedVoices = modelProviderMapping.SupportedVoices;
-                existingEntity.SupportedLanguages = modelProviderMapping.SupportedLanguages;
-                existingEntity.SupportedFormats = modelProviderMapping.SupportedFormats;
+                existingEntity.ModelId = modelProviderMapping.ModelId;
+                existingEntity.MaxContextTokensOverride = modelProviderMapping.MaxContextTokensOverride;
+                existingEntity.ProviderVariation = modelProviderMapping.ProviderVariation;
+                existingEntity.QualityScore = modelProviderMapping.QualityScore;
                 existingEntity.IsDefault = modelProviderMapping.IsDefault;
                 existingEntity.DefaultCapabilityType = modelProviderMapping.DefaultCapabilityType;
                 
                 existingEntity.UpdatedAt = DateTime.UtcNow;
 
                 _logger.LogInformation(
-                    "Updating model mapping {ModelAlias}: ImageGen={ImageGen}, Vision={Vision}, TTS={TTS}, Audio={Audio}, Realtime={Realtime}",
+                    "Updating model mapping {ModelAlias} with ModelId={ModelId}",
                     existingEntity.ModelAlias,
-                    existingEntity.SupportsImageGeneration,
-                    existingEntity.SupportsVision,
-                    existingEntity.SupportsTextToSpeech,
-                    existingEntity.SupportsAudioTranscription,
-                    existingEntity.SupportsRealtimeAudio);
+                    existingEntity.ModelId);
 
                 await dbContext.SaveChangesAsync(cancellationToken);
                 return true;

@@ -5,53 +5,6 @@ using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Core.Events
 {
-    // ===============================
-    // Model Capability Domain Events
-    // ===============================
-
-    /// <summary>
-    /// Raised when model capabilities are discovered for a provider
-    /// Eliminates redundant external API calls across services
-    /// </summary>
-    public record ModelCapabilitiesDiscovered : DomainEvent
-    {
-        /// <summary>
-        /// Provider credential database ID
-        /// </summary>
-        public int ProviderId { get; init; }
-        
-        /// <summary>
-        /// Discovered models and their capabilities
-        /// Key: ModelId, Value: Capability flags
-        /// </summary>
-        public Dictionary<string, ModelCapabilities> ModelCapabilities { get; init; } = new();
-        
-        /// <summary>
-        /// When the discovery was performed
-        /// </summary>
-        public DateTime DiscoveredAt { get; init; } = DateTime.UtcNow;
-        
-        /// <summary>
-        /// Partition key for ordered processing per provider
-        /// </summary>
-        public string PartitionKey => ProviderId.ToString();
-    }
-
-    /// <summary>
-    /// Model capability flags
-    /// </summary>
-    public record ModelCapabilities
-    {
-        public bool SupportsImageGeneration { get; init; }
-        public bool SupportsVision { get; init; }
-        public bool SupportsEmbeddings { get; init; }
-        public bool SupportsVideoGeneration { get; init; }
-        public bool SupportsAudioTranscription { get; init; }
-        public bool SupportsTextToSpeech { get; init; }
-        public bool SupportsRealtimeAudio { get; init; }
-        public bool SupportsFunctionCalling { get; init; }
-        public Dictionary<string, object> AdditionalCapabilities { get; init; } = new();
-    }
 
     // ===============================
     // Model Cost Domain Events

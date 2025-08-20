@@ -17,7 +17,8 @@ import {
   IconCoin,
   IconInfoCircle,
   IconEye,
-  IconUsers
+  IconUsers,
+  IconBrain
 } from '@tabler/icons-react';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -34,6 +35,7 @@ const navigationSections = [
   {
     title: 'Provider & Model Management',
     items: [
+      { id: 'models', label: 'Models', href: '/models', icon: IconBrain },
       { id: 'llm-providers', label: 'LLM Providers', href: '/llm-providers', icon: IconServer },
       { id: 'model-mappings', label: 'Model Mappings', href: '/model-mappings', icon: IconRoute },
       { id: 'routing-settings', label: 'Routing Settings', href: '/routing-settings', icon: IconSettings },

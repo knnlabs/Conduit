@@ -37,7 +37,7 @@ import {
 import { useProviders } from '@/hooks/useProviderApi';
 import { useBulkDiscoverModels, useBulkCreateMappings } from '@/hooks/useModelMappingsApi';
 import { getProviderTypeFromDto, providerTypeToName } from '@/lib/utils/providerTypeUtils';
-import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+import type { ProviderDto } from '@knn_labs/conduit-admin-client';
 
 interface BulkMappingModalProps {
   isOpen: boolean;
@@ -129,7 +129,7 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
     setSelectedProviderId(providerId);
     setSelectedModels(new Set());
     
-    const provider = providers?.find((p: ProviderCredentialDto) => p.id?.toString() === providerId);
+    const provider = providers?.find((p: ProviderDto) => p.id?.toString() === providerId);
     if (!provider) return;
     
     console.warn('[BulkMappingModal] Selected provider:', provider);
@@ -242,7 +242,7 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
         <Select
           label="Select Provider"
           placeholder="Choose a provider to discover models"
-          data={providers?.map((p: ProviderCredentialDto) => ({
+          data={providers?.map((p: ProviderDto) => ({
             value: p.id?.toString() ?? '',
             label: p.providerName ?? `Provider ${p.id}`,
           })).filter(opt => opt.value !== '' && opt.label !== '') ?? []}

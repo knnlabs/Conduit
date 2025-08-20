@@ -7,6 +7,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Tests.Helpers;
 using MassTransit;
 using Moq;
 using Xunit;
@@ -81,10 +82,16 @@ namespace ConduitLLM.Tests.Core.Services
             _mockTaskService.Setup(x => x.GetTaskStatusAsync("test-request-id", It.IsAny<CancellationToken>()))
                 .ReturnsAsync(taskStatus);
 
-            // Setup model mapping
+            // Setup model mapping with a complete model that doesn't support video
+            var model = ModelTestHelper.CreateCompleteTestModel(
+                modelName: "test-model",
+                supportsVideoGeneration: false);
+            
             var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = "test-model",
+                ModelId = model.Id,
+                Model = model,
                 ProviderId = 1,
                 ProviderModelId = "test-provider-model",
                 Provider = new Provider { ProviderType = ProviderType.Replicate }
@@ -105,22 +112,8 @@ namespace ConduitLLM.Tests.Core.Services
             _mockVirtualKeyService.Setup(x => x.ValidateVirtualKeyAsync("test-virtual-key", "test-model"))
                 .ReturnsAsync(virtualKey);
 
-            // Setup model capabilities
-            var modelCapabilities = new Dictionary<string, DiscoveredModel>
-            {
-                ["test-model"] = new DiscoveredModel
-                {
-                    ModelId = "test-model",
-                    Provider = "test-provider",
-                    Capabilities = new ConduitLLM.Core.Interfaces.ModelCapabilities
-                    {
-                        VideoGeneration = true
-                    }
-                }
-            };
+            // Model capabilities are now accessed through ModelProviderMapping
 
-            _mockDiscoveryService.Setup(x => x.DiscoverModelsAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(modelCapabilities);
 
             // Setup client factory to return null (will cause NotSupportedException)
             _mockClientFactory.Setup(x => x.GetClient("test-model"))
@@ -185,9 +178,7 @@ namespace ConduitLLM.Tests.Core.Services
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("invalid-model"))
                 .Returns(Task.FromResult((ModelProviderMapping?)null));
 
-            // Setup discovery service to return empty models
-            _mockDiscoveryService.Setup(x => x.DiscoverModelsAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new Dictionary<string, DiscoveredModel>());
+            // Model mapping already returns null, indicating model not found
 
             // Act
             await _orchestrator.Consume(context.Object);
@@ -244,10 +235,16 @@ namespace ConduitLLM.Tests.Core.Services
             _mockTaskService.Setup(x => x.GetTaskStatusAsync("test-request-id", It.IsAny<CancellationToken>()))
                 .ReturnsAsync(taskStatus);
 
-            // Setup model mapping
+            // Setup model mapping with a complete model that doesn't support video
+            var model = ModelTestHelper.CreateCompleteTestModel(
+                modelName: "test-model",
+                supportsVideoGeneration: false);
+            
             var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = "test-model",
+                ModelId = model.Id,
+                Model = model,
                 ProviderId = 1,
                 ProviderModelId = "test-provider-model",
                 Provider = new Provider { ProviderType = ProviderType.Replicate }
@@ -319,6 +316,7 @@ namespace ConduitLLM.Tests.Core.Services
             var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = "text-model",
+                    ModelId = 1,
                 ProviderId = 1,
                 ProviderModelId = "test-provider-model",
                 Provider = new Provider { ProviderType = ProviderType.Replicate }
@@ -339,22 +337,9 @@ namespace ConduitLLM.Tests.Core.Services
             _mockVirtualKeyService.Setup(x => x.ValidateVirtualKeyAsync("test-virtual-key", "text-model"))
                 .ReturnsAsync(virtualKey);
 
-            // Setup model capabilities without video generation
-            var modelCapabilities = new Dictionary<string, DiscoveredModel>
-            {
-                ["text-model"] = new DiscoveredModel
-                {
-                    ModelId = "text-model",
-                    Provider = "test-provider",
-                    Capabilities = new ConduitLLM.Core.Interfaces.ModelCapabilities
-                    {
-                        VideoGeneration = false // No video generation support
-                    }
-                }
-            };
+            // Model capabilities are now accessed through ModelProviderMapping
+            // The mapping doesn't support video generation
 
-            _mockDiscoveryService.Setup(x => x.DiscoverModelsAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(modelCapabilities);
 
             // Act
             await _orchestrator.Consume(context.Object);
@@ -413,10 +398,17 @@ namespace ConduitLLM.Tests.Core.Services
             _mockTaskService.Setup(x => x.GetTaskStatusAsync("test-request-id", It.IsAny<CancellationToken>()))
                 .ReturnsAsync(taskStatus);
 
-            // Setup model mapping
+            // Setup model mapping with a complete model that DOES support video (for testing retry logic)
+            var model = ModelTestHelper.CreateCompleteTestModel(
+                modelName: "test-model",
+                
+                supportsVideoGeneration: true);
+            
             var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = "test-model",
+                ModelId = model.Id,
+                Model = model,
                 ProviderId = 1,
                 ProviderModelId = "test-provider-model",
                 Provider = new Provider { ProviderType = ProviderType.Replicate }
@@ -437,26 +429,8 @@ namespace ConduitLLM.Tests.Core.Services
             _mockVirtualKeyService.Setup(x => x.ValidateVirtualKeyAsync("test-virtual-key", "test-model"))
                 .ReturnsAsync(virtualKey);
 
-            // Setup capability service to indicate model supports video generation
-            _mockCapabilityService.Setup(x => x.SupportsVideoGenerationAsync("test-model"))
-                .ReturnsAsync(true);
+            // Model capabilities are now accessed through ModelProviderMapping
 
-            // Setup model capabilities
-            var modelCapabilities = new Dictionary<string, DiscoveredModel>
-            {
-                ["test-model"] = new DiscoveredModel
-                {
-                    ModelId = "test-model",
-                    Provider = "test-provider",
-                    Capabilities = new ConduitLLM.Core.Interfaces.ModelCapabilities
-                    {
-                        VideoGeneration = true
-                    }
-                }
-            };
-
-            _mockDiscoveryService.Setup(x => x.DiscoverModelsAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(modelCapabilities);
 
             // Setup client factory to throw a retryable exception
             _mockClientFactory.Setup(x => x.GetClient("test-model"))

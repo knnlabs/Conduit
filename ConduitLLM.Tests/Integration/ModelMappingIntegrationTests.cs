@@ -44,6 +44,7 @@ namespace ConduitLLM.Tests.Integration
             var mapping = new ModelProviderMapping
             {
                 ModelAlias = modelAlias,
+                    ModelId = 1,
                 ProviderModelId = providerModelId,
                 ProviderId = providerId,
                 Provider = new Provider { Id = providerId, ProviderType = ProviderType.OpenAI }
@@ -89,6 +90,7 @@ namespace ConduitLLM.Tests.Integration
             var mapping = new ModelProviderMapping
             {
                 ModelAlias = modelAlias,
+                    ModelId = 1,
                 ProviderModelId = providerModelId,
                 ProviderId = providerId,
                 Provider = new Provider { Id = providerId, ProviderType = ProviderType.OpenAI }
@@ -134,10 +136,11 @@ namespace ConduitLLM.Tests.Integration
             var mapping = new ModelProviderMapping
             {
                 ModelAlias = modelAlias,
+                    ModelId = 1,
                 ProviderModelId = providerModelId,
                 ProviderId = providerId,
                 Provider = new Provider { Id = providerId, ProviderType = ProviderType.MiniMax },
-                SupportsVideoGeneration = true
+                // SupportsVideoGeneration = true
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync(modelAlias))
@@ -238,6 +241,7 @@ namespace ConduitLLM.Tests.Integration
             var mapping = new ModelProviderMapping
             {
                 ModelAlias = modelAlias,
+                    ModelId = 1,
                 ProviderModelId = providerModelId,
                 ProviderId = 1,
                 Provider = new Provider { Id = 1, ProviderType = ProviderType.OpenAI }

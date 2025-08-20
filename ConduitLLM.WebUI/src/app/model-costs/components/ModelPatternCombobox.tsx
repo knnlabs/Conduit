@@ -5,7 +5,6 @@ import { Combobox, useCombobox, Loader, Text, Stack, Badge, Group, TextInput, Di
 import { useDebouncedValue } from '@mantine/hooks';
 import { IconSearch } from '@tabler/icons-react';
 import { useModelMappings } from '@/hooks/useModelMappingsApi';
-import type { ProviderType } from '@knn_labs/conduit-admin-client';
 
 interface ModelPatternComboboxProps {
   value: string;
@@ -56,14 +55,13 @@ export function ModelPatternCombobox({
       return items;
     }
 
-    // Filter mappings by selected provider - prefer providerId, fall back to providerType
+    // Filter mappings by selected provider using providerId only
     const providerMappings = mappings.filter((mapping) => {
       if (selectedProviderId && mapping.providerId) {
         return mapping.providerId === selectedProviderId;
       }
-      if (selectedProviderType !== undefined && mapping.providerType !== undefined) {
-        return mapping.providerType === selectedProviderType as ProviderType;
-      }
+      // Note: providerType is no longer on ModelProviderMappingDto
+      // It's now only accessible through the provider relationship
       return false;
     });
 
@@ -76,20 +74,20 @@ export function ModelPatternCombobox({
       });
     }
 
-    // Add filtered model IDs
+    // Add filtered model aliases (not modelId which is now a number)
     const filteredModels = providerMappings.filter((mapping) => {
       if (!debouncedSearch.trim()) return true;
-      return mapping.modelId.toLowerCase().includes(debouncedSearch.toLowerCase());
+      return mapping.modelAlias.toLowerCase().includes(debouncedSearch.toLowerCase());
     });
 
     // Remove duplicates and add to options
-    const uniqueModelIds = Array.from(new Set(filteredModels.map(m => m.modelId)));
-    uniqueModelIds.forEach((modelId) => {
+    const uniqueModelAliases = Array.from(new Set(filteredModels.map(m => m.modelAlias)));
+    uniqueModelAliases.forEach((modelAlias) => {
       items.push({
-        value: modelId,
-        label: modelId,
+        value: modelAlias,
+        label: modelAlias,
         group: 'models',
-        modelId: modelId,
+        modelId: modelAlias,
       });
     });
 

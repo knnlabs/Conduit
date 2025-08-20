@@ -28,7 +28,6 @@ namespace ConduitLLM.Core.Services
         private readonly IMediaStorageService _storageService;
         private readonly IPublishEndpoint _publishEndpoint;
         private readonly IModelProviderMappingService _modelMappingService;
-        private readonly IProviderDiscoveryService _discoveryService;
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ICancellableTaskRegistry _taskRegistry;
@@ -43,7 +42,6 @@ namespace ConduitLLM.Core.Services
             IMediaStorageService storageService,
             IPublishEndpoint publishEndpoint,
             IModelProviderMappingService modelMappingService,
-            IProviderDiscoveryService discoveryService,
             IVirtualKeyService virtualKeyService,
             IHttpClientFactory httpClientFactory,
             ICancellableTaskRegistry taskRegistry,
@@ -57,7 +55,6 @@ namespace ConduitLLM.Core.Services
             _storageService = storageService;
             _publishEndpoint = publishEndpoint;
             _modelMappingService = modelMappingService;
-            _discoveryService = discoveryService;
             _virtualKeyService = virtualKeyService;
             _httpClientFactory = httpClientFactory;
             _taskRegistry = taskRegistry;

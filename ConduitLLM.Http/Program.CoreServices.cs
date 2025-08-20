@@ -8,7 +8,6 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Routing;
 using ConduitLLM.Core.Services;
-using ConduitLLM.Http.Adapters;
 using ConduitLLM.Http.Extensions;
 using ConduitLLM.Http.Security;
 using ConduitLLM.Http.Services;
@@ -165,9 +164,6 @@ public partial class Program
 
         // Add video generation HTTP clients without timeout for long-running operations
         builder.Services.AddVideoGenerationHttpClients();
-
-        // Register Configuration adapters early - required for DatabaseAwareLLMClientFactory
-        builder.Services.AddConfigurationAdapters();
 
         // Register operation timeout provider for operation-aware timeout policies
         builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IOperationTimeoutProvider, ConduitLLM.Core.Configuration.OperationTimeoutProvider>();
@@ -378,31 +374,6 @@ public partial class Program
             client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM/1.0");
         });
 
-        // Register provider model discovery
-        builder.Services.AddScoped<IProviderModelDiscovery, ConduitLLM.Http.Services.ProviderModelDiscoveryService>();
-
-        // Register discovery service with explicit dependency injection
-        builder.Services.AddScoped<IProviderDiscoveryService>(serviceProvider =>
-        {
-            var clientFactory = serviceProvider.GetRequiredService<ILLMClientFactory>();
-            var credentialService = serviceProvider.GetRequiredService<IProviderService>();
-            var mappingService = serviceProvider.GetRequiredService<IModelProviderMappingService>();
-            var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.ProviderDiscoveryService>>();
-            var cache = serviceProvider.GetRequiredService<IMemoryCache>();
-            var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-            var publishEndpoint = serviceProvider.GetService<MassTransit.IPublishEndpoint>(); // Optional
-            var providerModelDiscovery = serviceProvider.GetRequiredService<IProviderModelDiscovery>(); // Required
-            
-            return new ConduitLLM.Core.Services.ProviderDiscoveryService(
-                clientFactory,
-                credentialService,
-                mappingService,
-                logger,
-                cache,
-                httpClientFactory,
-                publishEndpoint,
-                providerModelDiscovery);
-        });
 
         // Register async task service
         // Register cancellable task registry

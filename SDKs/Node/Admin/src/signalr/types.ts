@@ -50,29 +50,7 @@ export interface VirtualKeyManagementHubEvents {
   BudgetReset: (keyId: number, newPeriodStart: string) => void;
 }
 
-/**
- * Admin notification hub methods
- * @deprecated AdminNotificationHub has been removed from the backend
- */
-export interface AdminNotificationHubMethods {
-  Subscribe(): Promise<void>;
-  Unsubscribe(): Promise<void>;
-  SubscribeToSystemEvents(): Promise<void>;
-  UnsubscribeFromSystemEvents(): Promise<void>;
-}
-
-/**
- * Admin notification hub events
- * @deprecated AdminNotificationHub has been removed from the backend
- */
-export interface AdminNotificationHubEvents {
-  ProviderHealthChanged: (provider: string, isHealthy: boolean, message?: string) => void;
-  ModelAvailabilityChanged: (model: string, isAvailable: boolean) => void;
-  SystemAlert: (severity: string, message: string, details?: string) => void;
-  MaintenanceScheduled: (startTime: string, endTime: string, description: string) => void;
-  PerformanceWarning: (metric: string, value: number, threshold: number) => void;
-  ConfigurationChanged: (section: string, key: string, oldValue?: string, newValue?: string) => void;
-}
+// AdminNotificationHub interfaces removed - hub has been deprecated
 
 /**
  * Type-safe hub connection interface

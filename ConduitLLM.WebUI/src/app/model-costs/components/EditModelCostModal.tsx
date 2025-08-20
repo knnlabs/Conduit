@@ -25,16 +25,13 @@ import {
 } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useModelCostsApi } from '../hooks/useModelCostsApi';
-import { ModelCostDto, UpdateModelCostDto, type ModelProviderMappingDto, ModelType } from '@knn_labs/conduit-admin-client';
-import { getModelTypeSelectOptions } from '@/lib/constants/modelTypes';
+import { ModelCostDto, UpdateModelCostDto, ModelType, ModelTypeUtils } from '@knn_labs/conduit-admin-client';
+const getModelTypeSelectOptions = ModelTypeUtils.getSelectOptions;
 import { formatters } from '@/lib/utils/formatters';
 import { ModelMappingSelector } from './ModelMappingSelector';
 import { useModelMappings } from '@/hooks/useModelMappingsApi';
 
-// Extended type to include additional fields from API response
-interface ExtendedModelProviderMappingDto extends ModelProviderMappingDto {
-  modelAlias?: string;
-}
+// ExtendedModelProviderMappingDto type removed - not needed
 
 interface EditModelCostModalProps {
   isOpen: boolean;
@@ -87,7 +84,7 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
       return [];
     }
     // Match aliases to mapping IDs
-    const extendedMappings = mappings as ExtendedModelProviderMappingDto[];
+    const extendedMappings = mappings;
     return extendedMappings
       .filter(m => m?.modelAlias && aliases.includes(m.modelAlias))
       .map(m => m.id);

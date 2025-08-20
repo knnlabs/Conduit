@@ -30,7 +30,6 @@ namespace ConduitLLM.Tests.Core.Services
         private readonly Mock<IMediaStorageService> _mockStorageService;
         private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
         private readonly Mock<ConduitLLM.Configuration.Interfaces.IModelProviderMappingService> _mockModelMappingService;
-        private readonly Mock<IProviderDiscoveryService> _mockDiscoveryService;
         private readonly Mock<IVirtualKeyService> _mockVirtualKeyService;
         private readonly Mock<IHttpClientFactory> _mockHttpClientFactory;
         private readonly Mock<ICancellableTaskRegistry> _mockTaskRegistry;
@@ -48,7 +47,6 @@ namespace ConduitLLM.Tests.Core.Services
             _mockStorageService = new Mock<IMediaStorageService>();
             _mockPublishEndpoint = new Mock<IPublishEndpoint>();
             _mockModelMappingService = new Mock<ConduitLLM.Configuration.Interfaces.IModelProviderMappingService>();
-            _mockDiscoveryService = new Mock<IProviderDiscoveryService>();
             _mockVirtualKeyService = new Mock<IVirtualKeyService>();
             _mockHttpClientFactory = new Mock<IHttpClientFactory>();
             _mockTaskRegistry = new Mock<ICancellableTaskRegistry>();
@@ -80,7 +78,6 @@ namespace ConduitLLM.Tests.Core.Services
                 _mockStorageService.Object,
                 _mockPublishEndpoint.Object,
                 _mockModelMappingService.Object,
-                _mockDiscoveryService.Object,
                 _mockVirtualKeyService.Object,
                 _mockHttpClientFactory.Object,
                 _mockTaskRegistry.Object,

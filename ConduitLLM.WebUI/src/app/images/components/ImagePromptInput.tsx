@@ -46,7 +46,7 @@ export default function ImagePromptInput() {
       <Textarea
         label="Image Prompt"
         value={localPrompt}
-        onChange={(e) => handlePromptChange(e.target.value)}
+        onChange={(e: { target: { value: string } }) => handlePromptChange(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Describe the image you want to generate... (Ctrl+Enter to generate)"
         disabled={isGenerating}

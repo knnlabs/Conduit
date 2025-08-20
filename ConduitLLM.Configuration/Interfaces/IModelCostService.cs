@@ -12,7 +12,6 @@ namespace ConduitLLM.Configuration.Interfaces;
 /// 3. WebUI layer - Provides admin API operations
 /// 
 /// This separation follows Clean Architecture principles and maintains proper layer boundaries.
-/// The layers are connected via adapters (see ConfigurationAdapters.cs).
 /// </remarks>
 public interface IModelCostService
 {

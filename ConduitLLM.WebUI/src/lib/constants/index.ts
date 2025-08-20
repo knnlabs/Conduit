@@ -3,8 +3,7 @@
  * This file re-exports all constants for convenient importing
  */
 
-// Provider constants
-export * from './providers';
+// Provider constants - now imported directly from SDK
 
 // Model capability constants
 export * from './modelCapabilities';

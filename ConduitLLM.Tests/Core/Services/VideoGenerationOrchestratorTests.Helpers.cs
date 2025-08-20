@@ -8,6 +8,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Tests.Helpers;
 using MassTransit;
 using Moq;
 using Xunit;
@@ -59,10 +60,17 @@ namespace ConduitLLM.Tests.Core.Services
             _mockTaskService.Setup(x => x.GetTaskStatusAsync("test-request-id", It.IsAny<CancellationToken>()))
                 .ReturnsAsync(taskStatus);
 
-            // Setup model mapping
+            // Setup model mapping with a complete model that supports video
+            var model = ModelTestHelper.CreateCompleteTestModel(
+                modelName: "test-model",
+                
+                supportsVideoGeneration: true);
+            
             var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = "test-model",
+                ModelId = model.Id,
+                Model = model,
                 ProviderId = 1,
                 ProviderModelId = "test-provider-model",
                 Provider = new Provider { ProviderType = ProviderType.Replicate }
@@ -83,26 +91,7 @@ namespace ConduitLLM.Tests.Core.Services
             _mockVirtualKeyService.Setup(x => x.ValidateVirtualKeyAsync("test-virtual-key", "test-model"))
                 .ReturnsAsync(virtualKey);
 
-            // Setup capability service to indicate model supports video generation
-            _mockCapabilityService.Setup(x => x.SupportsVideoGenerationAsync("test-model"))
-                .ReturnsAsync(true);
-
-            // Setup model capabilities
-            var modelCapabilities = new Dictionary<string, DiscoveredModel>
-            {
-                ["test-model"] = new DiscoveredModel
-                {
-                    ModelId = "test-model",
-                    Provider = "test-provider",
-                    Capabilities = new ConduitLLM.Core.Interfaces.ModelCapabilities
-                    {
-                        VideoGeneration = true
-                    }
-                }
-            };
-
-            _mockDiscoveryService.Setup(x => x.DiscoverModelsAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(modelCapabilities);
+            // Model capabilities are now accessed through ModelProviderMapping
 
             // Setup client factory to return null (will cause NotSupportedException)
             _mockClientFactory.Setup(x => x.GetClient("test-model"))
@@ -112,9 +101,10 @@ namespace ConduitLLM.Tests.Core.Services
             await _orchestrator.Consume(context.Object);
 
             // Assert
-            _mockModelMappingService.Verify(x => x.GetMappingByModelAliasAsync("test-model"), Times.Once);
-            // Should not call discovery service since mapping was found
-            _mockDiscoveryService.Verify(x => x.DiscoverModelsAsync(It.IsAny<CancellationToken>()), Times.Never);
+            // The orchestrator calls GetMappingByModelAliasAsync twice:
+            // 1. To check if the model supports video generation
+            // 2. In GetModelInfoAsync to get the model information
+            _mockModelMappingService.Verify(x => x.GetMappingByModelAliasAsync("test-model"), Times.Exactly(2));
         }
 
         [Fact(Skip = "Video generation uses reflection which cannot be easily mocked in unit tests")]
@@ -203,6 +193,7 @@ namespace ConduitLLM.Tests.Core.Services
             var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = request.Model,
+                    ModelId = 1,
                 ProviderId = 1,
                 ProviderModelId = "test-provider-model",
                 Provider = new Provider { ProviderType = ProviderType.Replicate }
@@ -223,22 +214,7 @@ namespace ConduitLLM.Tests.Core.Services
             _mockVirtualKeyService.Setup(x => x.ValidateVirtualKeyAsync("test-virtual-key", request.Model))
                 .ReturnsAsync(virtualKey);
 
-            // Setup model capabilities
-            var modelCapabilities = new Dictionary<string, DiscoveredModel>
-            {
-                [request.Model] = new DiscoveredModel
-                {
-                    ModelId = request.Model,
-                    Provider = "test-provider",
-                    Capabilities = new ConduitLLM.Core.Interfaces.ModelCapabilities
-                    {
-                        VideoGeneration = true
-                    }
-                }
-            };
-
-            _mockDiscoveryService.Setup(x => x.DiscoverModelsAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(modelCapabilities);
+            // Model capabilities are now accessed through ModelProviderMapping
 
             // Setup mock client with CreateVideoAsync method
             var mockClient = new Mock<ILLMClient>();

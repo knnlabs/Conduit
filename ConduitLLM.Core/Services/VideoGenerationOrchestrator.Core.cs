@@ -31,8 +31,6 @@ namespace ConduitLLM.Core.Services
         private readonly IMediaStorageService _storageService;
         private readonly IPublishEndpoint _publishEndpoint;
         private readonly IModelProviderMappingService _modelMappingService;
-        private readonly IProviderDiscoveryService _discoveryService;
-        private readonly IModelCapabilityService _capabilityService;
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly ICostCalculationService _costService;
         private readonly ICancellableTaskRegistry _taskRegistry;
@@ -47,8 +45,6 @@ namespace ConduitLLM.Core.Services
             IMediaStorageService storageService,
             IPublishEndpoint publishEndpoint,
             IModelProviderMappingService modelMappingService,
-            IProviderDiscoveryService discoveryService,
-            IModelCapabilityService capabilityService,
             IVirtualKeyService virtualKeyService,
             ICostCalculationService costService,
             ICancellableTaskRegistry taskRegistry,
@@ -62,8 +58,6 @@ namespace ConduitLLM.Core.Services
             _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
             _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
             _modelMappingService = modelMappingService ?? throw new ArgumentNullException(nameof(modelMappingService));
-            _discoveryService = discoveryService ?? throw new ArgumentNullException(nameof(discoveryService));
-            _capabilityService = capabilityService ?? throw new ArgumentNullException(nameof(capabilityService));
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
             _costService = costService ?? throw new ArgumentNullException(nameof(costService));
             _taskRegistry = taskRegistry ?? throw new ArgumentNullException(nameof(taskRegistry));
@@ -216,9 +210,9 @@ namespace ConduitLLM.Core.Services
                     throw new UnauthorizedAccessException("Invalid or disabled virtual key");
                 }
                 
-                // Check if model supports video generation using the capability service
-                var supportsVideo = await _capabilityService.SupportsVideoGenerationAsync(request.Model);
-                if (!supportsVideo)
+                // Check if model supports video generation
+                var mapping = await _modelMappingService.GetMappingByModelAliasAsync(request.Model);
+                if (mapping?.SupportsVideoGeneration != true)
                 {
                     throw new NotSupportedException($"Model {request.Model} does not support video generation");
                 }

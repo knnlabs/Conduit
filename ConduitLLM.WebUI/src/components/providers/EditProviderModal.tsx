@@ -21,9 +21,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { validators } from '@/lib/utils/form-validators';
 import { 
   ProviderType, 
-  PROVIDER_CONFIG_REQUIREMENTS 
-} from '@/lib/constants/providers';
-import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+  PROVIDER_CONFIG_REQUIREMENTS,
+  type ProviderDto
+} from '@knn_labs/conduit-admin-client';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 
@@ -31,7 +31,7 @@ import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/prov
 interface EditProviderModalProps {
   opened: boolean;
   onClose: () => void;
-  provider: ProviderCredentialDto | null;
+  provider: ProviderDto | null;
   onSuccess?: () => void;
 }
 
@@ -89,7 +89,7 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
         providerName: typeof apiProvider.providerName === 'string' ? apiProvider.providerName : '',
         apiKey: '', // Don't show existing key for security
         apiEndpoint: apiProvider.baseUrl ?? '',
-        organizationId: typeof provider.organization === 'string' ? provider.organization : '',
+        organizationId: '', // Organization is now managed at the key level
         isEnabled: provider.isEnabled === true,
       };
       
@@ -167,7 +167,7 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
                 <Text size="sm" c="dimmed">Provider Type</Text>
                 <Badge>{providerDisplayName}</Badge>
               </Group>
-              {/* Health status, models, and lastHealthCheck are not available in ProviderCredentialDto */}
+              {/* Health status, models, and lastHealthCheck are not available in ProviderDto */}
             </Stack>
           </Card>
 

@@ -62,7 +62,7 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
       title: 'Delete Model Mapping',
       children: (
         <Text size="sm">
-          Are you sure you want to delete the mapping for model &quot;{mapping.modelId}&quot;?
+          Are you sure you want to delete the mapping for model &quot;{mapping.modelAlias}&quot;?
           This action cannot be undone.
         </Text>
       ),
@@ -73,36 +73,41 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
   };
 
   const getCapabilityBadges = (mapping: ExtendedModelProviderMappingDto) => {
-    const capabilities = [];
-    if (mapping.supportsChat) capabilities.push({ label: '💬 Chat', color: 'blue' });
-    if (mapping.supportsVision) capabilities.push({ label: '👁️ Vision', color: 'cyan' });
-    if (mapping.supportsImageGeneration) capabilities.push({ label: '🎨 Images', color: 'pink' });
-    if (mapping.supportsAudioTranscription) capabilities.push({ label: '🎤 Audio', color: 'teal' });
-    if (mapping.supportsTextToSpeech) capabilities.push({ label: '🔊 TTS', color: 'violet' });
-    if (mapping.supportsRealtimeAudio) capabilities.push({ label: '📡 Realtime', color: 'orange' });
+    // Note: Capabilities have been moved to the Model entity
+    // This mapping now only shows basic mapping information
+    const badges = [];
     
-    if (mapping.supportsVideoGeneration) capabilities.push({ label: '🎬 Video', color: 'grape' });
-    if (mapping.supportsEmbeddings) capabilities.push({ label: '🔢 Embeddings', color: 'indigo' });
-    if (mapping.supportsFunctionCalling) capabilities.push({ label: '🔧 Functions', color: 'green' });
-    if (mapping.supportsStreaming) capabilities.push({ label: '⚡ Streaming', color: 'gray' });
-    
-    // Check capabilities string for additional features (if it exists in response)
-    if ('capabilities' in mapping && mapping.capabilities) {
-      const caps = mapping.capabilities;
-      if (caps.includes('function-calling') && !mapping.supportsFunctionCalling) {
-        capabilities.push({ label: 'Functions', color: 'green' });
-      }
-      if (caps.includes('streaming') && !mapping.supportsStreaming) {
-        capabilities.push({ label: 'Streaming', color: 'cyan' });
-      }
-      if (caps.includes('embeddings') && !mapping.supportsEmbeddings) {
-        capabilities.push({ label: 'Embeddings', color: 'indigo' });
-      }
+    if (mapping.isDefault) {
+      badges.push({ label: '⭐ Default', color: 'yellow' });
     }
     
-    return capabilities.slice(0, 5).map((cap) => (
-      <Badge key={`${cap.label}-${cap.color}`} size="xs" variant="dot" color={cap.color}>
-        {cap.label}
+    if (mapping.providerVariation) {
+      badges.push({ label: mapping.providerVariation, color: 'blue' });
+    }
+    
+    if (mapping.qualityScore !== undefined && mapping.qualityScore !== null) {
+      let qualityLabel: string;
+      let qualityColor: string;
+      if (mapping.qualityScore >= 0.9) {
+        qualityLabel = 'High Quality';
+        qualityColor = 'green';
+      } else if (mapping.qualityScore >= 0.7) {
+        qualityLabel = 'Good Quality';
+        qualityColor = 'yellow';
+      } else {
+        qualityLabel = 'Lower Quality';
+        qualityColor = 'orange';
+      }
+      badges.push({ label: qualityLabel, color: qualityColor });
+    }
+    
+    if (mapping.defaultCapabilityType) {
+      badges.push({ label: `Default: ${mapping.defaultCapabilityType}`, color: 'violet' });
+    }
+    
+    return badges.slice(0, 5).map((badge) => (
+      <Badge key={`${badge.label}-${badge.color}`} size="xs" variant="dot" color={badge.color}>
+        {badge.label}
       </Badge>
     ));
   };
@@ -129,7 +134,7 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
     <Table.Tr key={mapping.id}>
       <Table.Td>
         <Group gap="xs">
-          <Text size="sm" fw={500}>{mapping.modelId}</Text>
+          <Text size="sm" fw={500}>{mapping.modelAlias}</Text>
           <IconArrowRight size={14} style={{ color: 'var(--mantine-color-dimmed)' }} />
           <Text size="sm" c="dimmed">{mapping.providerModelId}</Text>
         </Group>
@@ -144,36 +149,6 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
       <Table.Td>
         <Group gap={4}>
           {getCapabilityBadges(mapping)}
-          {/* Count total capabilities */}
-          {(() => {
-            const booleanCaps = [
-              mapping.supportsVision,
-              mapping.supportsImageGeneration,
-              mapping.supportsAudioTranscription,
-              mapping.supportsTextToSpeech,
-              mapping.supportsRealtimeAudio,
-              mapping.supportsFunctionCalling,
-              mapping.supportsStreaming,
-              'supportsVideoGeneration' in mapping && mapping.supportsVideoGeneration
-            ].filter(Boolean).length;
-            
-            let stringCaps = 0;
-            if ('capabilities' in mapping && mapping.capabilities) {
-              const caps = mapping.capabilities;
-              // Count unique capabilities in string that aren't already counted
-              if (caps.includes('embeddings')) stringCaps++;
-              if (caps.includes('function-calling') && !mapping.supportsFunctionCalling) stringCaps++;
-              if (caps.includes('streaming') && !mapping.supportsStreaming) stringCaps++;
-            }
-            
-            const totalCaps = booleanCaps + stringCaps;
-            
-            return totalCaps > 3 ? (
-              <Badge size="xs" variant="light" color="gray">
-                +{totalCaps - 3}
-              </Badge>
-            ) : null;
-          })()}
         </Group>
       </Table.Td>
 

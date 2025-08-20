@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { withAdminClient } from '@/lib/client/adminClient';
-import type { DiscoveredModel, ModelsDiscoveryResponse } from '../types/models';
+import type { DiscoveredModel } from '../types/models';
 
 
 
@@ -17,19 +17,21 @@ export function useModels() {
         setLoading(true);
         setError(null);
         
-        const discoveredModels = await withAdminClient(client => 
-          client.modelMappings.discoverProviderModels(1)
+        // Fetch models from the catalog instead of discovery
+        const catalogModels = await withAdminClient(client => 
+          client.models.list()
         );
         
-        // Transform to expected format
-        const modelsData: ModelsDiscoveryResponse = {
-          models: discoveredModels as unknown as DiscoveredModel[],
-          totalCount: Array.isArray(discoveredModels) ? discoveredModels.length : 0,
-          providers: []
-        };
-        
-        // Extract models array from response
-        const modelsArray = modelsData.models ?? [];
+        // Transform catalog models to DiscoveredModel format
+        const modelsArray: DiscoveredModel[] = catalogModels.map(model => ({
+          id: model.name ?? model.id?.toString() ?? '',
+          displayName: model.name ?? 'Unnamed Model',
+          providerId: '1', // Provider info is on mappings, not models
+          supportsVision: Boolean(model.capabilities?.supportsVision),
+          supportsFunctionCalling: Boolean(model.capabilities?.supportsFunctionCalling),
+          supportsStreaming: Boolean(model.capabilities?.supportsStreaming ?? true),
+          capabilities: []
+        }));
         setModels(modelsArray);
       } catch (err) {
         console.error('Error fetching models:', err);

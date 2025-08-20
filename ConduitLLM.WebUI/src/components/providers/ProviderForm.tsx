@@ -26,9 +26,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   ProviderType, 
-  PROVIDER_CONFIG_REQUIREMENTS
-} from '@/lib/constants/providers';
-import type { ProviderCredentialDto } from '@knn_labs/conduit-admin-client';
+  PROVIDER_CONFIG_REQUIREMENTS,
+  type ProviderDto
+} from '@knn_labs/conduit-admin-client';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 import { validators } from '@/lib/utils/form-validators';
@@ -59,7 +59,7 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [availableProviders, setAvailableProviders] = useState<ProviderOption[]>([]);
   const [isLoadingProviders, setIsLoadingProviders] = useState(mode === 'add');
-  const [existingProvider, setExistingProvider] = useState<ProviderCredentialDto | null>(null);
+  const [existingProvider, setExistingProvider] = useState<ProviderDto | null>(null);
   const [isLoadingProvider, setIsLoadingProvider] = useState(mode === 'edit');
   const [initialFormValues, setInitialFormValues] = useState<ProviderFormData>(() => ({
     providerType: '',
@@ -150,8 +150,8 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
             providerName: typeof apiProvider.providerName === 'string' ? apiProvider.providerName : '',
             apiKey: '', // Don't show existing key for security
             apiEndpoint: apiProvider.baseUrl ?? '',
-            organizationId: (provider as unknown as { organization?: string; organizationId?: string }).organization ?? 
-                          (provider as unknown as { organization?: string; organizationId?: string }).organizationId ?? '',
+            organizationId: (provider as { organization?: string; organizationId?: string }).organization ?? 
+                          (provider as { organization?: string; organizationId?: string }).organizationId ?? '',
             isEnabled: provider.isEnabled === true,
           };
           
@@ -185,7 +185,7 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
         }
 
         // First create the provider without the API key
-        const createPayload = {
+        const providerPayload = {
           providerType: parseInt(values.providerType, 10),
           providerName: providerName,
           baseUrl: values.apiEndpoint ?? undefined,
@@ -193,7 +193,7 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
         };
 
         const createdProvider = await withAdminClient(client => 
-          client.providers.create(createPayload)
+          client.providers.create(providerPayload)
         );
 
         // Then add the API key to the created provider
@@ -210,7 +210,7 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
             );
           } catch (keyError) {
             // If key creation fails, we should inform the user
-            console.error('Failed to create API key:', keyError);
+            console.warn('Failed to create API key:', keyError);
             notifications.show({
               title: 'Warning',
               message: 'Provider created but failed to save API key. Please add it manually in the provider settings.',
@@ -223,7 +223,7 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
 
         notifications.show({
           title: 'Success',
-          message: 'Provider created successfully',
+          message: 'Provider and API key created successfully',
           color: 'green',
         });
       } else {

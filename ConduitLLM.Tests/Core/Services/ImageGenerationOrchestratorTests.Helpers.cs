@@ -34,10 +34,28 @@ namespace ConduitLLM.Tests.Core.Services
             _mockVirtualKeyService.Setup(x => x.ValidateVirtualKeyAsync(request.VirtualKeyHash, request.Request.Model))
                 .ReturnsAsync(virtualKey);
 
+            // Setup model with image generation capabilities
+            var modelEntity = new Model
+            {
+                Id = 1,
+                Name = model,
+                ModelSeriesId = 1,
+                ModelCapabilitiesId = 1,
+                Capabilities = new ConduitLLM.Configuration.Entities.ModelCapabilities
+                {
+                    Id = 1,
+                    SupportsImageGeneration = true,
+                    MaxTokens = 4000,
+                    TokenizerType = TokenizerType.Cl100KBase
+                }
+            };
+
             // Setup model mapping
             var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = request.Request.Model,
+                ModelId = 1,
+                Model = modelEntity,
                 ProviderId = 1,
                 Provider = new Provider { ProviderType = provider switch
                 {
@@ -46,8 +64,7 @@ namespace ConduitLLM.Tests.Core.Services
                     "replicate" => ProviderType.Replicate,
                     _ => ProviderType.Replicate
                 } },
-                ProviderModelId = model,
-                SupportsImageGeneration = true
+                ProviderModelId = model
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync(request.Request.Model))
@@ -164,10 +181,28 @@ namespace ConduitLLM.Tests.Core.Services
             _mockVirtualKeyService.Setup(x => x.ValidateVirtualKeyAsync(request.VirtualKeyHash, request.Request.Model))
                 .ReturnsAsync(virtualKey);
 
+            // Setup model with image generation capabilities
+            var modelEntity = new Model
+            {
+                Id = 1,
+                Name = model,
+                ModelSeriesId = 1,
+                ModelCapabilitiesId = 1,
+                Capabilities = new ConduitLLM.Configuration.Entities.ModelCapabilities
+                {
+                    Id = 1,
+                    SupportsImageGeneration = true,
+                    MaxTokens = 4000,
+                    TokenizerType = TokenizerType.Cl100KBase
+                }
+            };
+
             // Setup model mapping
             var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = request.Request.Model,
+                ModelId = 1,
+                Model = modelEntity,
                 ProviderId = 1,
                 Provider = new Provider { ProviderType = provider switch
                 {
@@ -176,8 +211,7 @@ namespace ConduitLLM.Tests.Core.Services
                     "replicate" => ProviderType.Replicate,
                     _ => ProviderType.Replicate
                 } },
-                ProviderModelId = model,
-                SupportsImageGeneration = true
+                ProviderModelId = model
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync(request.Request.Model))

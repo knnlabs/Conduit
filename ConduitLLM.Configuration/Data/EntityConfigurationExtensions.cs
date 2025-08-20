@@ -21,6 +21,18 @@ namespace ConduitLLM.Configuration.Data
             {
                 entity.HasKey(e => e.Id);
                 entity.HasIndex(e => new { e.ModelAlias, e.ProviderId }).IsUnique();
+                
+                // Configure relationship with Model
+                entity.HasOne(e => e.Model)
+                    .WithMany(e => e.ProviderMappings)
+                    .HasForeignKey(e => e.ModelId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                    
+                // Configure relationship with Provider
+                entity.HasOne(e => e.Provider)
+                    .WithMany()
+                    .HasForeignKey(e => e.ProviderId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             // Configure Provider entity
@@ -73,6 +85,9 @@ namespace ConduitLLM.Configuration.Data
                 });
             });
 
+
+            // Model entity configuration is now handled by ModelEntityConfiguration
+            // via modelBuilder.ApplyModelConfigurations() in DbContext
 
             // Note: Previously ignored entities are now included in test environments
             // as they are required by the application code during tests

@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.EntityConfigurations;
 using ModelProviderMappingEntity = ConduitLLM.Configuration.Entities.ModelProviderMapping;
 
 using Microsoft.EntityFrameworkCore;
@@ -77,6 +78,31 @@ namespace ConduitLLM.Configuration
         /// Database set for model provider mappings
         /// </summary>
         public virtual DbSet<ModelProviderMappingEntity> ModelProviderMappings { get; set; } = null!;
+        
+        /// <summary>
+        /// Database set for models
+        /// </summary>
+        public virtual DbSet<Model> Models { get; set; } = null!;
+        
+        /// <summary>
+        /// Database set for model series
+        /// </summary>
+        public virtual DbSet<ModelSeries> ModelSeries { get; set; } = null!;
+        
+        /// <summary>
+        /// Database set for model capabilities
+        /// </summary>
+        public virtual DbSet<ModelCapabilities> ModelCapabilities { get; set; } = null!;
+        
+        /// <summary>
+        /// Database set for model authors
+        /// </summary>
+        public virtual DbSet<ModelAuthor> ModelAuthors { get; set; } = null!;
+        
+        /// <summary>
+        /// Database set for model identifiers
+        /// </summary>
+        public virtual DbSet<ModelIdentifier> ModelIdentifiers { get; set; } = null!;
 
         /// <summary>
         /// Database set for media records
@@ -455,7 +481,18 @@ namespace ConduitLLM.Configuration
             modelBuilder.Entity<CacheConfiguration>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.HasIndex(e => e.Region).IsUnique().HasFilter("\"IsActive\" = true");
+                
+                // Apply filtered index only for non-test environments (PostgreSQL)
+                if (!IsTestEnvironment)
+                {
+                    entity.HasIndex(e => e.Region).IsUnique().HasFilter("\"IsActive\" = true");
+                }
+                else
+                {
+                    // For SQLite in tests, use a regular unique index
+                    entity.HasIndex(e => e.Region).IsUnique();
+                }
+                
                 entity.HasIndex(e => new { e.Region, e.IsActive });
                 entity.HasIndex(e => e.UpdatedAt);
                 entity.Property(e => e.Version).IsConcurrencyToken();
@@ -491,6 +528,9 @@ namespace ConduitLLM.Configuration
             });
 
             modelBuilder.ApplyConfigurationEntityConfigurations(IsTestEnvironment);
+            
+            // Apply Model entity configurations with all indexes and relationships
+            modelBuilder.ApplyModelConfigurations();
 
             // Note: ModelProviderMapping and Provider are now included in test environments
             // as they are required by the application code during tests

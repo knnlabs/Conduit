@@ -111,14 +111,31 @@ namespace ConduitLLM.Tests.Core.Services
             _mockVirtualKeyService.Setup(x => x.ValidateVirtualKeyAsync("test-virtual-key-hash", "dall-e-3"))
                 .ReturnsAsync(virtualKey);
 
+            // Setup model with image generation capabilities
+            var modelEntity = new Model
+            {
+                Id = 1,
+                Name = "dall-e-3",
+                ModelSeriesId = 1,
+                ModelCapabilitiesId = 1,
+                Capabilities = new ConduitLLM.Configuration.Entities.ModelCapabilities
+                {
+                    Id = 1,
+                    SupportsImageGeneration = true,
+                    MaxTokens = 4000,
+                    TokenizerType = TokenizerType.Cl100KBase
+                }
+            };
+
             // Setup model mapping
             var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = "dall-e-3",
+                ModelId = 1,
+                Model = modelEntity,
                 ProviderId = 1,
                 ProviderModelId = "dall-e-3",
-                Provider = new Provider { ProviderType = ProviderType.OpenAI },
-                SupportsImageGeneration = true
+                Provider = new Provider { ProviderType = ProviderType.OpenAI }
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("dall-e-3"))
@@ -325,6 +342,7 @@ namespace ConduitLLM.Tests.Core.Services
             var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = "gpt-4",
+                    ModelId = 1,
                 ProviderId = 1,
                 ProviderModelId = "gpt-4"
             };
@@ -381,14 +399,31 @@ namespace ConduitLLM.Tests.Core.Services
             _mockVirtualKeyService.Setup(x => x.ValidateVirtualKeyAsync("test-virtual-key-hash", "dall-e-3"))
                 .ReturnsAsync(virtualKey);
 
+            // Setup model with image generation capabilities
+            var modelEntity = new Model
+            {
+                Id = 1,
+                Name = "dall-e-3",
+                ModelSeriesId = 1,
+                ModelCapabilitiesId = 1,
+                Capabilities = new ConduitLLM.Configuration.Entities.ModelCapabilities
+                {
+                    Id = 1,
+                    SupportsImageGeneration = true,
+                    MaxTokens = 4000,
+                    TokenizerType = TokenizerType.Cl100KBase
+                }
+            };
+
             // Setup model mapping
             var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = "dall-e-3",
+                ModelId = 1,
+                Model = modelEntity,
                 ProviderId = 1,
                 ProviderModelId = "dall-e-3",
-                Provider = new Provider { ProviderType = ProviderType.OpenAI },
-                SupportsImageGeneration = true
+                Provider = new Provider { ProviderType = ProviderType.OpenAI }
             };
 
             _mockModelMappingService.Setup(x => x.GetMappingByModelAliasAsync("dall-e-3"))

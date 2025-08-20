@@ -60,10 +60,11 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
     }
 
     /// <inheritdoc />
-    public async Task<ModelProviderMapping?> GetMappingByModelIdAsync(string modelId)
+    public async Task<ModelProviderMapping?> GetMappingByModelIdAsync(int modelId)
     {
-        _logger.LogInformation("Getting model provider mapping for model ID: {ModelId}", modelId.Replace(Environment.NewLine, ""));
-        return await _mappingRepository.GetByModelNameAsync(modelId);
+        _logger.LogInformation("Getting model provider mapping for model ID: {ModelId}", modelId);
+        var mappings = await _mappingRepository.GetAllAsync();
+        return mappings.FirstOrDefault(m => m.ModelId == modelId);
     }
 
     /// <inheritdoc />
@@ -144,26 +145,13 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
 
             // Update properties that can be modified
             existingMapping.ModelAlias = mapping.ModelAlias;
+            existingMapping.ModelId = mapping.ModelId;
             existingMapping.ProviderModelId = mapping.ProviderModelId;
             existingMapping.ProviderId = mapping.ProviderId;
             existingMapping.IsEnabled = mapping.IsEnabled;
-            existingMapping.MaxContextTokens = mapping.MaxContextTokens;
-            
-            // Update capability fields
-            existingMapping.SupportsVision = mapping.SupportsVision;
-            existingMapping.SupportsAudioTranscription = mapping.SupportsAudioTranscription;
-            existingMapping.SupportsTextToSpeech = mapping.SupportsTextToSpeech;
-            existingMapping.SupportsRealtimeAudio = mapping.SupportsRealtimeAudio;
-            existingMapping.SupportsImageGeneration = mapping.SupportsImageGeneration;
-            existingMapping.SupportsVideoGeneration = mapping.SupportsVideoGeneration;
-            existingMapping.SupportsEmbeddings = mapping.SupportsEmbeddings;
-            existingMapping.SupportsChat = mapping.SupportsChat;
-            existingMapping.SupportsFunctionCalling = mapping.SupportsFunctionCalling;
-            existingMapping.SupportsStreaming = mapping.SupportsStreaming;
-            existingMapping.TokenizerType = mapping.TokenizerType;
-            existingMapping.SupportedVoices = mapping.SupportedVoices;
-            existingMapping.SupportedLanguages = mapping.SupportedLanguages;
-            existingMapping.SupportedFormats = mapping.SupportedFormats;
+            existingMapping.MaxContextTokensOverride = mapping.MaxContextTokensOverride;
+            existingMapping.ProviderVariation = mapping.ProviderVariation;
+            existingMapping.QualityScore = mapping.QualityScore;
             existingMapping.IsDefault = mapping.IsDefault;
             existingMapping.DefaultCapabilityType = mapping.DefaultCapabilityType;
             

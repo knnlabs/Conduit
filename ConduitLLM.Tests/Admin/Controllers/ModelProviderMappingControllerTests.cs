@@ -1,3 +1,4 @@
+// TODO: Update tests for new Model architecture where capabilities come from Model entity
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -29,7 +30,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
     public class ModelProviderMappingControllerTests
     {
         private readonly Mock<IAdminModelProviderMappingService> _mockService;
-        private readonly Mock<IProviderDiscoveryService> _mockDiscoveryService;
         private readonly Mock<IProviderService> _mockCredentialService;
         private readonly Mock<ILogger<ModelProviderMappingController>> _mockLogger;
         private readonly ModelProviderMappingController _controller;
@@ -39,10 +39,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
         {
             _output = output;
             _mockService = new Mock<IAdminModelProviderMappingService>();
-            _mockDiscoveryService = new Mock<IProviderDiscoveryService>();
             _mockCredentialService = new Mock<IProviderService>();
             _mockLogger = new Mock<ILogger<ModelProviderMappingController>>();
-            _controller = new ModelProviderMappingController(_mockService.Object, _mockDiscoveryService.Object, _mockCredentialService.Object, _mockLogger.Object);
+            _controller = new ModelProviderMappingController(_mockService.Object, _mockCredentialService.Object, _mockLogger.Object);
         }
 
         #region Constructor Tests
@@ -52,23 +51,16 @@ namespace ConduitLLM.Tests.Admin.Controllers
         {
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new ModelProviderMappingController(null!, _mockDiscoveryService.Object, _mockCredentialService.Object, _mockLogger.Object));
+                new ModelProviderMappingController(null!, _mockCredentialService.Object, _mockLogger.Object));
         }
 
-        [Fact]
-        public void Constructor_WithNullDiscoveryService_ShouldThrowArgumentNullException()
-        {
-            // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => 
-                new ModelProviderMappingController(_mockService.Object, null!, _mockCredentialService.Object, _mockLogger.Object));
-        }
 
         [Fact]
         public void Constructor_WithNullCredentialService_ShouldThrowArgumentNullException()
         {
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new ModelProviderMappingController(_mockService.Object, _mockDiscoveryService.Object, null!, _mockLogger.Object));
+                new ModelProviderMappingController(_mockService.Object, null!, _mockLogger.Object));
         }
 
         [Fact]
@@ -76,7 +68,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         {
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new ModelProviderMappingController(_mockService.Object, _mockDiscoveryService.Object, _mockCredentialService.Object, null!));
+                new ModelProviderMappingController(_mockService.Object, _mockCredentialService.Object, null!));
         }
 
         #endregion
@@ -93,9 +85,10 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 { 
                     Id = 1,
                     ModelAlias = "gpt-4",
+                    ModelId = 1,
                     ProviderId = 1,
                     ProviderModelId = "gpt-4-turbo",
-                    SupportsVision = true,
+                    // SupportsVision = true,
                     IsEnabled = true
                 },
                 new() 
@@ -104,7 +97,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
                     ModelAlias = "claude-3",
                     ProviderId = 2,
                     ProviderModelId = "claude-3-opus",
-                    SupportsVision = true,
+                    // SupportsVision = true,
                     IsEnabled = true
                 }
             };
@@ -119,7 +112,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var okResult = Assert.IsType<OkObjectResult>(result);
             var returnedMappings = Assert.IsAssignableFrom<IEnumerable<ModelProviderMappingDto>>(okResult.Value);
             returnedMappings.Should().HaveCount(2);
-            returnedMappings.First().ModelId.Should().Be("gpt-4");
+            returnedMappings.First().ModelId.Should().Be(1);
         }
 
         [Fact]
@@ -151,6 +144,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             {
                 Id = 1,
                 ModelAlias = "gpt-4",
+                    ModelId = 1,
                 ProviderId = 1,
                 ProviderModelId = "gpt-4-turbo"
             };
@@ -164,7 +158,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
             var returnedMapping = Assert.IsType<ModelProviderMappingDto>(okResult.Value);
-            returnedMapping.ModelId.Should().Be("gpt-4");
+            returnedMapping.ModelId.Should().Be(1);
         }
 
         [Fact]
@@ -198,29 +192,31 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var mapping = new ModelProviderMapping
             {
                 ModelAlias = "new-model",
+                    ModelId = 1,
                 ProviderId = 1,
                 ProviderModelId = "gpt-4-new",
-                SupportsStreaming = true
+                // SupportsStreaming = true
             };
 
             var createdMapping = new ModelProviderMapping
             {
                 Id = 123,
                 ModelAlias = "new-model",
+                    ModelId = 1,
                 ProviderId = 1,
                 ProviderModelId = "gpt-4-new",
-                SupportsStreaming = true
+                // SupportsStreaming = true
             };
 
             // First call should return null (no existing mapping)
-            _mockService.Setup(x => x.GetMappingByModelIdAsync("new-model"))
+            _mockService.Setup(x => x.GetMappingByModelIdAsync(1))
                 .ReturnsAsync((ModelProviderMapping?)null);
             
             _mockService.Setup(x => x.AddMappingAsync(It.IsAny<ModelProviderMapping>()))
                 .ReturnsAsync(true);
 
             // Second call should return the created mapping
-            _mockService.SetupSequence(x => x.GetMappingByModelIdAsync("new-model"))
+            _mockService.SetupSequence(x => x.GetMappingByModelIdAsync(1))
                 .ReturnsAsync((ModelProviderMapping?)null)  // First call (check existence)
                 .ReturnsAsync(createdMapping);              // Second call (get created)
 
@@ -240,13 +236,14 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var mapping = new ModelProviderMapping
             {
                 ModelAlias = "existing-model",
+                    ModelId = 1,
                 ProviderId = 1,
                 ProviderModelId = "gpt-4"
             };
 
             // Mock that a mapping already exists for this model ID
-            _mockService.Setup(x => x.GetMappingByModelIdAsync("existing-model"))
-                .ReturnsAsync(new ModelProviderMapping { Id = 999, ModelAlias = "existing-model" });
+            _mockService.Setup(x => x.GetMappingByModelIdAsync(1))
+                .ReturnsAsync(new ModelProviderMapping { Id = 999, ModelAlias = "existing-model", ModelId = 1 });
 
             // Act
             var actionResult = await _controller.CreateMapping(mapping.ToDto());
@@ -264,12 +261,13 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var mapping = new ModelProviderMapping
             {
                 ModelAlias = "new-model",
+                    ModelId = 1,
                 ProviderId = 999, // Invalid provider
                 ProviderModelId = "gpt-4"
             };
 
             // No existing mapping
-            _mockService.Setup(x => x.GetMappingByModelIdAsync("new-model"))
+            _mockService.Setup(x => x.GetMappingByModelIdAsync(1))
                 .ReturnsAsync((ModelProviderMapping?)null);
 
             // Add fails (e.g., invalid provider ID)
@@ -297,9 +295,10 @@ namespace ConduitLLM.Tests.Admin.Controllers
             {
                 Id = 1,
                 ModelAlias = "gpt-4",
+                    ModelId = 1,
                 ProviderId = 1,
                 ProviderModelId = "gpt-4-turbo-updated",
-                SupportsVision = true
+                // SupportsVision = true
             };
 
             // Mock that the mapping exists
@@ -324,6 +323,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             {
                 Id = 999,
                 ModelAlias = "gpt-4",
+                    ModelId = 1,
                 ProviderId = 1,
                 ProviderModelId = "gpt-4"
             };
@@ -349,7 +349,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         public async Task DeleteMapping_WithExistingId_ShouldReturnNoContent()
         {
             // Arrange
-            var existingMapping = new ModelProviderMapping { Id = 1, ModelAlias = "test-model" };
+            var existingMapping = new ModelProviderMapping { Id = 1, ModelAlias = "test-model", ModelId = 1 };
             _mockService.Setup(x => x.GetMappingByIdAsync(1))
                 .ReturnsAsync(existingMapping);
             _mockService.Setup(x => x.DeleteMappingAsync(1))
@@ -418,22 +418,24 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 new() 
                 { 
                     ModelAlias = "model1", 
+                    ModelId = 1,
                     ProviderId = 1, 
                     ProviderModelId = "gpt-4"
                 },
                 new() 
                 { 
                     ModelAlias = "model2", 
+                    ModelId = 2,
                     ProviderId = 2, 
-                    ProviderModelId = "claude-3",
-                    SupportsVision = true 
+                    ProviderModelId = "claude-3"
+                    // SupportsVision = true 
                 }
             };
 
             var created = new List<ModelProviderMapping>
             {
-                new() { Id = 1, ModelAlias = "model1", ProviderId = 1, ProviderModelId = "gpt-4" },
-                new() { Id = 2, ModelAlias = "model2", ProviderId = 2, ProviderModelId = "claude-3" }
+                new() { Id = 1, ModelAlias = "model1", ProviderId = 1, ProviderModelId = "gpt-4", ModelId = 1 },
+                new() { Id = 2, ModelAlias = "model2", ProviderId = 2, ProviderModelId = "claude-3", ModelId = 2 }
             };
             var errors = new List<string>();
 
@@ -457,14 +459,14 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Arrange
             var mappings = new List<ModelProviderMapping>
             {
-                new() { ModelAlias = "model1", ProviderId = 1, ProviderModelId = "gpt-4" },
-                new() { ModelAlias = "duplicate", ProviderId = 1, ProviderModelId = "gpt-4" },
-                new() { ModelAlias = "model3", ProviderId = 1, ProviderModelId = "model" }
+                new() { ModelAlias = "model1", ProviderId = 1, ProviderModelId = "gpt-4", ModelId = 1 },
+                new() { ModelAlias = "duplicate", ProviderId = 1, ProviderModelId = "gpt-4", ModelId = 1 },
+                new() { ModelAlias = "model3", ProviderId = 1, ProviderModelId = "model", ModelId = 1 }
             };
 
             var created = new List<ModelProviderMapping>
             {
-                new() { Id = 1, ModelAlias = "model1", ProviderId = 1 }
+                new() { Id = 1, ModelAlias = "model1", ProviderId = 1, ModelId = 1 }
             };
             var errors = new List<string>
             {
@@ -506,7 +508,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Arrange
             var mappings = new List<ModelProviderMapping>
             {
-                new() { ModelAlias = "existing", ProviderId = 1, ProviderModelId = "gpt-4-updated" }
+                new() { ModelAlias = "existing", ProviderId = 1, ProviderModelId = "gpt-4-updated", ModelId = 1 }
             };
 
             var created = new List<ModelProviderMapping>();

@@ -173,21 +173,10 @@ _logger.LogWarning("Mapping not found for model alias {ModelAlias}", mapping.Mod
                 existingEntity.ProviderModelId = mapping.ProviderModelId;
                 existingEntity.ProviderId = credential.Id;
                 existingEntity.IsEnabled = mapping.IsEnabled;
-                existingEntity.MaxContextTokens = mapping.MaxContextTokens;
-                existingEntity.SupportsVision = mapping.SupportsVision;
-                existingEntity.SupportsAudioTranscription = mapping.SupportsAudioTranscription;
-                existingEntity.SupportsTextToSpeech = mapping.SupportsTextToSpeech;
-                existingEntity.SupportsRealtimeAudio = mapping.SupportsRealtimeAudio;
-                existingEntity.SupportsImageGeneration = mapping.SupportsImageGeneration;
-                existingEntity.SupportsVideoGeneration = mapping.SupportsVideoGeneration;
-                existingEntity.SupportsEmbeddings = mapping.SupportsEmbeddings;
-                existingEntity.SupportsChat = mapping.SupportsChat;
-                existingEntity.SupportsFunctionCalling = mapping.SupportsFunctionCalling;
-                existingEntity.SupportsStreaming = mapping.SupportsStreaming;
-                existingEntity.TokenizerType = mapping.TokenizerType;
-                existingEntity.SupportedVoices = mapping.SupportedVoices;
-                existingEntity.SupportedLanguages = mapping.SupportedLanguages;
-                existingEntity.SupportedFormats = mapping.SupportedFormats;
+                existingEntity.ModelId = mapping.ModelId;
+                existingEntity.MaxContextTokensOverride = mapping.MaxContextTokensOverride;
+                existingEntity.ProviderVariation = mapping.ProviderVariation;
+                existingEntity.QualityScore = mapping.QualityScore;
                 existingEntity.IsDefault = mapping.IsDefault;
                 existingEntity.DefaultCapabilityType = mapping.DefaultCapabilityType;
 

@@ -14,7 +14,6 @@ export interface EnrichedModelCost extends ModelCostDto {
 
 // Extended type to include additional fields from API response
 interface ExtendedModelProviderMappingDto extends ModelProviderMappingDto {
-  modelAlias?: string;
   providerName?: string;
   providerTypeName?: string;
 }

@@ -57,40 +57,8 @@ namespace ConduitLLM.Http.EventHandlers
                     _logger.LogDebug("Provider credential cache invalidated for provider {ProviderId}", @event.ProviderId);
                 }
 
-                // Try to get provider discovery service from service provider
-                var providerDiscoveryService = scope.ServiceProvider.GetService<IProviderDiscoveryService>();
-                
-                // If provider discovery service is available, refresh capabilities
-                if (providerDiscoveryService != null && @event.IsEnabled)
-                {
-                    try
-                    {
-                        _logger.LogDebug("Triggering capability rediscovery for provider ID {ProviderId}", 
-                            @event.ProviderId);
-                        
-                        // Note: This will trigger ModelCapabilitiesDiscovered events
-                        // which will be handled by other consumers
-                        // Pass the provider ID for more accurate refresh
-                        await providerDiscoveryService.RefreshProviderCapabilitiesAsync(@event.ProviderId);
-                        
-                        _logger.LogInformation("Capability rediscovery completed for provider ID {ProviderId}", @event.ProviderId);
-                    }
-                    catch (Exception discoveryEx)
-                    {
-                        _logger.LogWarning(discoveryEx, 
-                            "Failed to refresh capabilities for provider ID {ProviderId} - will continue without capability update", 
-                            @event.ProviderId);
-                        // Don't fail the entire event processing if capability discovery fails
-                    }
-                }
-                else if (providerDiscoveryService == null)
-                {
-                    _logger.LogDebug("Provider discovery service not available in Core API - skipping capability rediscovery");
-                }
-                else if (!@event.IsEnabled)
-                {
-                    _logger.LogInformation("Provider ID {ProviderId} was disabled - skipping capability rediscovery", @event.ProviderId);
-                }
+                // Provider discovery service removed - model capabilities are now managed through ModelProviderMapping
+                _logger.LogDebug("Provider credential updated for provider ID {ProviderId}", @event.ProviderId);
             }
             catch (Exception ex)
             {

@@ -16,5 +16,10 @@ namespace ConduitLLM.Configuration.DTOs.Costs
         /// Cost amount
         /// </summary>
         public decimal Cost { get; set; }
+
+        /// <summary>
+        /// Number of requests in this period
+        /// </summary>
+        public int RequestCount { get; set; }
     }
 }
