@@ -182,13 +182,20 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <inheritdoc />
-        public async Task<List<VirtualKeyDto>> ListVirtualKeysAsync()
+        public async Task<List<VirtualKeyDto>> ListVirtualKeysAsync(int? virtualKeyGroupId = null)
         {
-            _logger.LogInformation("Listing all virtual keys");
-
-            var keys = await _virtualKeyRepository.GetAllAsync();
-
-            return keys.ConvertAll(MapToDto);
+            if (virtualKeyGroupId.HasValue)
+            {
+                _logger.LogInformation("Listing virtual keys for group {GroupId}", virtualKeyGroupId.Value);
+                var keysByGroup = await _virtualKeyRepository.GetByVirtualKeyGroupIdAsync(virtualKeyGroupId.Value);
+                return keysByGroup.ConvertAll(MapToDto);
+            }
+            else
+            {
+                _logger.LogInformation("Listing all virtual keys");
+                var keys = await _virtualKeyRepository.GetAllAsync();
+                return keys.ConvertAll(MapToDto);
+            }
         }
 
         /// <inheritdoc />

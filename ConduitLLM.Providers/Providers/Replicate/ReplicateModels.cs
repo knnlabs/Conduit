@@ -17,7 +17,8 @@ namespace ConduitLLM.Providers.Replicate
         /// </summary>
         /// <example>"stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b"</example>
         [JsonPropertyName("version")]
-        public string Version { get; set; } = string.Empty;
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Version { get; set; }
 
         /// <summary>
         /// Gets or sets the input values for the model.

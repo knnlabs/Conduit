@@ -107,11 +107,12 @@ validate_eslint() {
     local error_count=0
     local warning_count=0
     
-    if echo "$LINT_OUTPUT" | grep -q "✖.*error"; then
-        # Extract error count
-        error_count=$(echo "$LINT_OUTPUT" | grep -oE "[0-9]+ error" | grep -oE "[0-9]+" | head -1)
-        error_count=${error_count:-0}
-        TOTAL_ERRORS=$((TOTAL_ERRORS + error_count))
+    # Extract error count first
+    error_count=$(echo "$LINT_OUTPUT" | grep -oE "[0-9]+ error" | grep -oE "[0-9]+" | head -1)
+    error_count=${error_count:-0}
+    TOTAL_ERRORS=$((TOTAL_ERRORS + error_count))
+    
+    if [ $error_count -gt 0 ]; then
         echo -e "${RED}❌ Found $error_count error(s)${NC}"
         
         if [ "$STRICT_MODE" = true ]; then

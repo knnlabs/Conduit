@@ -56,12 +56,16 @@ export class FetchVirtualKeyService {
   async list(
     page: number = 1,
     pageSize: number = 10,
+    virtualKeyGroupId?: number,
     config?: RequestConfig
   ): Promise<VirtualKeyListResponseDto> {
+    // Build query params
+    const params = virtualKeyGroupId ? `?virtualKeyGroupId=${virtualKeyGroupId}` : '';
+    
     // The Admin API returns VirtualKeyDto[] directly, not a paginated response
     // So we need to fetch all items and simulate pagination
     const allItems = await this.client['get']<VirtualKeyDto[]>(
-      ENDPOINTS.VIRTUAL_KEYS.BASE,
+      `${ENDPOINTS.VIRTUAL_KEYS.BASE}${params}`,
       {
         signal: config?.signal,
         timeout: config?.timeout,
@@ -289,5 +293,66 @@ export class FetchVirtualKeyService {
     }
     
     return true;
+  }
+
+  /**
+   * Get all virtual keys that have generated media assets
+   * @param page - Page number (default: 1)
+   * @param pageSize - Items per page (default: 10)
+   * @param virtualKeyGroupId - Optional filter by virtual key group ID
+   * @param config - Optional request configuration
+   * @returns Virtual keys that have media with their media counts
+   */
+  async listWithMedia(
+    page: number = 1,
+    pageSize: number = 10,
+    virtualKeyGroupId?: number,
+    config?: RequestConfig
+  ): Promise<VirtualKeyListResponseDto & { itemsWithMediaCount: Array<VirtualKeyDto & { mediaCount: number }> }> {
+    // Fetch all virtual keys (optionally filtered by group)
+    const allKeysResponse = await this.list(1, 1000, virtualKeyGroupId, config);
+    
+    // Fetch overall media stats to get which keys have media (optionally filtered by group)
+    const params = virtualKeyGroupId ? `?virtualKeyGroupId=${virtualKeyGroupId}` : '';
+    const mediaStatsEndpoint = `/api/admin/Media/stats${params}`;
+    const overallStats = await this.client['get']<{
+      totalSizeBytes: number;
+      totalFiles: number;
+      orphanedFiles: number;
+      byProvider: Record<string, number>;
+      byMediaType: Record<string, { fileCount: number; sizeBytes: number }>;
+      storageByVirtualKey: Record<string, number>;
+    }>(mediaStatsEndpoint, {
+      signal: config?.signal,
+      timeout: config?.timeout,
+      headers: config?.headers,
+    });
+    
+    // Filter keys that have media
+    const keysWithMedia = allKeysResponse.items.filter(key => 
+      key.id && overallStats.storageByVirtualKey[key.id.toString()]
+    );
+    
+    // Add media count to each key
+    const itemsWithMediaCount = keysWithMedia.map(key => ({
+      ...key,
+      mediaCount: overallStats.storageByVirtualKey[key.id!.toString()] || 0
+    }));
+    
+    // Apply pagination
+    const totalCount = itemsWithMediaCount.length;
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, totalCount);
+    const paginatedItems = itemsWithMediaCount.slice(startIndex, endIndex);
+    const totalPages = Math.ceil(totalCount / pageSize);
+    
+    return {
+      items: paginatedItems,
+      itemsWithMediaCount: paginatedItems,
+      totalCount,
+      page,
+      pageSize,
+      totalPages,
+    };
   }
 }

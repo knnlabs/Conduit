@@ -25,8 +25,9 @@ public interface IAdminVirtualKeyService
     /// <summary>
     /// Gets a list of all virtual keys
     /// </summary>
+    /// <param name="virtualKeyGroupId">Optional filter by virtual key group ID</param>
     /// <returns>List of virtual key information</returns>
-    Task<List<VirtualKeyDto>> ListVirtualKeysAsync();
+    Task<List<VirtualKeyDto>> ListVirtualKeysAsync(int? virtualKeyGroupId = null);
 
     /// <summary>
     /// Updates an existing virtual key

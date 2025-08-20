@@ -67,44 +67,6 @@ jobs:
       uses: github/codeql-action/analyze@v3
       with:
         category: "/language:csharp"
-        # Upload to GitHub for main branches, skip for PRs
-        upload: ${{ github.event_name != 'pull_request' }}
-        output: codeql-results
-
-    - name: Check for Security Issues
-      id: check-security
-      run: |
-        if [ -d codeql-results ]; then
-          # Check for high severity issues in SARIF files
-          HIGH_SEVERITY_COUNT=0
-          for sarif in codeql-results/*.sarif; do
-            if [ -f "$sarif" ]; then
-              # Count high severity results
-              COUNT=$(jq '[.runs[].results[] | select(.level == "error" or .level == "critical")] | length' "$sarif" 2>/dev/null || echo "0")
-              HIGH_SEVERITY_COUNT=$((HIGH_SEVERITY_COUNT + COUNT))
-            fi
-          done
-          
-          echo "high_severity_count=$HIGH_SEVERITY_COUNT" >> $GITHUB_OUTPUT
-          
-          if [ $HIGH_SEVERITY_COUNT -gt 0 ]; then
-            echo "❌ Found $HIGH_SEVERITY_COUNT high severity security issues!" >> $GITHUB_STEP_SUMMARY
-            echo "Docker images will not be built until these issues are resolved." >> $GITHUB_STEP_SUMMARY
-            exit 1
-          else
-            echo "✅ No high severity security issues found!" >> $GITHUB_STEP_SUMMARY
-          fi
-        else
-          echo "⚠️ No CodeQL results found to analyze" >> $GITHUB_STEP_SUMMARY
-        fi
-
-    - name: Upload CodeQL Results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: codeql-results
-        path: codeql-results/
-        retention-days: 7
 
   # Build and Test
   build-and-test:
@@ -384,91 +346,15 @@ jobs:
           build-args: |
             BUILDKIT_INLINE_CACHE=1
 
-  # Build Docker Images - ARM64
-  docker-build-arm64:
-    name: Build Docker ARM64
-    runs-on: ubuntu-24.04-arm  # Native ARM64 runner!
-    needs: [codeql-analysis, build-and-test]
-    # Only run on push events to main branches or releases
-    if: github.event_name != 'pull_request'
-    permissions:
-      contents: read
-      packages: write
-    
-    strategy:
-      matrix:
-        include:
-          - service: http
-            image: ghcr.io/knnlabs/conduit-http
-            dockerfile: ./ConduitLLM.Http/Dockerfile
-          - service: admin
-            image: ghcr.io/knnlabs/conduit-admin
-            dockerfile: ./ConduitLLM.Admin/Dockerfile
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Validate Docker build context
-        run: |
-          if [ ! -f ".dockerignore" ]; then
-            echo "⚠️ WARNING: No .dockerignore file found!"
-            echo "This could expose sensitive files to the Docker build context."
-            echo "Consider creating a .dockerignore file to exclude:"
-            echo "  - .git/"
-            echo "  - **/*.db"
-            echo "  - **/bin/"
-            echo "  - **/obj/"
-            echo "  - **/.env"
-            echo "  - **/secrets/"
-          else
-            echo "✅ .dockerignore file found"
-          fi
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ matrix.image }}
-          flavor: |
-            suffix=-arm64
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=sha,format=long
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ${{ matrix.dockerfile }}
-          platforms: linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.service }}-arm64
-          cache-to: type=gha,mode=max,scope=${{ matrix.service }}-arm64
-          build-args: |
-            BUILDKIT_INLINE_CACHE=1
+  # ARM64 builds removed due to lack of native GitHub Actions runners
+  # Previously attempted to use ubuntu-24.04-arm which doesn't exist
+  # GitHub Actions doesn't provide ARM64 runners by default
 
   # Create and push multi-arch manifest
   docker-manifest:
     name: Create Multi-arch Manifest
     runs-on: ubuntu-latest
-    needs: [docker-build-amd64, docker-build-arm64]
+    needs: [docker-build-amd64]
     if: github.event_name != 'pull_request'
     permissions:
       contents: read
@@ -512,28 +398,24 @@ jobs:
           # Get all tags from metadata
           TAGS="${{ steps.meta.outputs.tags }}"
           SERVICE="${{ matrix.service }}"
+          IMAGE="${{ matrix.image }}"
+          
+          # Get the base source tag (branch name or sha)
+          if [ "${{ github.ref_name }}" = "master" ]; then
+            SOURCE_TAG="${IMAGE}:master"
+          else
+            SOURCE_TAG="${IMAGE}:${{ github.ref_name }}"
+          fi
           
           # For each tag, create a manifest that includes appropriate architectures
           echo "$TAGS" | while read -r TAG; do
             if [ -n "$TAG" ]; then
               echo "Creating manifest for $TAG"
               
-              # Extract the base tag without registry
-              BASE_TAG="${TAG#ghcr.io/}"
-              
-              # For WebUI, only use AMD64; for others, use both architectures
-              if [ "$SERVICE" = "webui" ]; then
-                # WebUI only has AMD64 build
-                docker buildx imagetools create \
-                  --tag "$TAG" \
-                  "$TAG-amd64"
-              else
-                # HTTP and Admin have both architectures
-                docker buildx imagetools create \
-                  --tag "$TAG" \
-                  "$TAG-amd64" \
-                  "$TAG-arm64"
-              fi
+              # Create manifest for AMD64 only (ARM64 builds disabled)
+              docker buildx imagetools create \
+                --tag "$TAG" \
+                "${SOURCE_TAG}-amd64"
             fi
           done
 
@@ -541,20 +423,12 @@ jobs:
         run: |
           echo "### Docker Image: ${{ matrix.service }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ matrix.service }}" = "webui" ]; then
-            echo "**Tags pushed (AMD64 only):**" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "**Multi-arch tags pushed:**" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "**Tags pushed (AMD64 only):**" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ matrix.service }}" = "webui" ]; then
-            echo "**Architecture**: linux/amd64" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "**Architectures**: linux/amd64, linux/arm64" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "**Architecture**: linux/amd64" >> $GITHUB_STEP_SUMMARY
 
   # Summary job
   summary:
@@ -576,6 +450,6 @@ jobs:
           echo "Docker images have been successfully built:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Images are available at:" >> $GITHUB_STEP_SUMMARY
-          echo "- 🌐 `ghcr.io/knnlabs/conduit-webui` (linux/amd64 only)" >> $GITHUB_STEP_SUMMARY
-          echo "- 🔌 `ghcr.io/knnlabs/conduit-http` (linux/amd64, linux/arm64)" >> $GITHUB_STEP_SUMMARY
-          echo "- 🛠️ `ghcr.io/knnlabs/conduit-admin` (linux/amd64, linux/arm64)" >> $GITHUB_STEP_SUMMARY
+          echo "- 🌐 `ghcr.io/knnlabs/conduit-webui` (linux/amd64)" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔌 `ghcr.io/knnlabs/conduit-http` (linux/amd64)" >> $GITHUB_STEP_SUMMARY
+          echo "- 🛠️ `ghcr.io/knnlabs/conduit-admin` (linux/amd64)" >> $GITHUB_STEP_SUMMARY

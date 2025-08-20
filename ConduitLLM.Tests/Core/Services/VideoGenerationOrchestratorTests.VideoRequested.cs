@@ -445,7 +445,7 @@ namespace ConduitLLM.Tests.Core.Services
                 TaskState.Pending,
                 null,
                 null,
-                It.Is<string>(error => error.Contains("Retry 1/3")),
+                It.Is<string>(error => error.Contains("Retry 1/3 scheduled: Request timeout")),
                 It.IsAny<CancellationToken>()), Times.Once);
 
             _mockPublishEndpoint.Verify(x => x.Publish(
