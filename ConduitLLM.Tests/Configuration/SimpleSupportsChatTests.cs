@@ -18,7 +18,6 @@ namespace ConduitLLM.Tests.Configuration
             {
                 Id = 1,
                 Name = "test-model",
-                ModelType = ModelType.Text,
                 Capabilities = new ModelCapabilities
                 {
                     SupportsChat = true
@@ -67,7 +66,6 @@ namespace ConduitLLM.Tests.Configuration
             {
                 Id = 1,
                 Name = "test-model",
-                ModelType = ModelType.Text,
                 Capabilities = new ModelCapabilities
                 {
                     SupportsChat = true,
@@ -100,7 +98,6 @@ namespace ConduitLLM.Tests.Configuration
             {
                 Id = 1,
                 Name = "test-model",
-                ModelType = ModelType.Text,
                 Capabilities = new ModelCapabilities
                 {
                     MaxTokens = 4096
@@ -126,7 +123,6 @@ namespace ConduitLLM.Tests.Configuration
             {
                 Id = 1,
                 Name = "test-model",
-                ModelType = ModelType.Text,
                 Capabilities = new ModelCapabilities
                 {
                     MaxTokens = 4096
@@ -152,7 +148,6 @@ namespace ConduitLLM.Tests.Configuration
             {
                 Id = 1,
                 Name = "test-model",
-                ModelType = ModelType.Text,
                 Capabilities = new ModelCapabilities
                 {
                     TokenizerType = TokenizerType.Cl100KBase

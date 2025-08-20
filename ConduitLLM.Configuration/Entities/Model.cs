@@ -36,11 +36,6 @@ namespace ConduitLLM.Configuration.Entities
         public string? ModelCardUrl { get; set; } = string.Empty;
 
         /// <summary>
-        /// The type of the model (e.g., Text, Image, etc.)
-        /// </summary>
-        public ModelType ModelType { get; set; } = ModelType.Text;
-
-        /// <summary>
         /// Foreign key for the model series this model belongs to.
         /// </summary>
         public int ModelSeriesId { get; set; }

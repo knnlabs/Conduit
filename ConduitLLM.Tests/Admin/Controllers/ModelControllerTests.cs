@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using ConduitLLM.Admin.Controllers;
+using ConduitLLM.Admin.Models.Models;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using FluentAssertions;
@@ -74,7 +75,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 {
                     Id = 1,
                     Name = "llama-3.1-8b",
-                    ModelType = ModelType.Text,
                     ModelSeriesId = 1,
                     Series = series,
                     ModelCapabilitiesId = 1,
@@ -96,7 +96,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 {
                     Id = 2,
                     Name = "mixtral-8x7b",
-                    ModelType = ModelType.Text,
                     ModelSeriesId = 1,
                     Series = series,
                     ModelCapabilitiesId = 1,
@@ -234,7 +233,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 {
                     Id = 1,
                     Name = "test-model",
-                    ModelType = ModelType.Text,
                     ModelSeriesId = 1,
                     Series = series,
                     ModelCapabilitiesId = 1,
@@ -286,7 +284,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 {
                     Id = 1,
                     Name = "test-model",
-                    ModelType = ModelType.Text,
                     ModelSeriesId = 1,
                     Series = series,
                     ModelCapabilitiesId = 1,
@@ -366,7 +363,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 {
                     Id = 1,
                     Name = "test-model",
-                    ModelType = ModelType.Text,
                     ModelSeriesId = 1,
                     Series = series,
                     ModelCapabilitiesId = 1,

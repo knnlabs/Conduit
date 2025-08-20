@@ -116,7 +116,6 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 Id = 1,
                 Name = "dall-e-3",
-                ModelType = ModelType.Image,
                 ModelSeriesId = 1,
                 ModelCapabilitiesId = 1,
                 Capabilities = new ConduitLLM.Configuration.Entities.ModelCapabilities
@@ -405,7 +404,6 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 Id = 1,
                 Name = "dall-e-3",
-                ModelType = ModelType.Image,
                 ModelSeriesId = 1,
                 ModelCapabilitiesId = 1,
                 Capabilities = new ConduitLLM.Configuration.Entities.ModelCapabilities

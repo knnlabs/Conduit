@@ -110,7 +110,6 @@ namespace ConduitLLM.Tests.Architecture
                 {
                     Id = 1,
                     Name = "test-model",
-                    ModelType = ModelType.Text,
                     Capabilities = new ModelCapabilities
                     {
                         MaxTokens = 4096
@@ -163,7 +162,6 @@ namespace ConduitLLM.Tests.Architecture
             {
                 Id = 1,
                 Name = "test-model",
-                ModelType = ModelType.Text,
                 Capabilities = new ModelCapabilities
                 {
                     SupportsChat = true,

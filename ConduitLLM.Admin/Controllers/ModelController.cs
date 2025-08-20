@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using ConduitLLM.Admin.Models.Models;
+using ConduitLLM.Admin.Models.ModelCapabilities;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using Microsoft.AspNetCore.Authorization;
@@ -84,34 +86,6 @@ namespace ConduitLLM.Admin.Controllers
             }
         }
 
-        /// <summary>
-        /// Gets models by type
-        /// </summary>
-        /// <param name="type">The model type (Text, Image, Audio, Video, Embedding)</param>
-        /// <returns>List of models of the specified type</returns>
-        [HttpGet("type/{type}")]
-        [ProducesResponseType(typeof(IEnumerable<ModelDto>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetModelsByType(string type)
-        {
-            try
-            {
-                if (!Enum.TryParse<ModelType>(type, true, out var modelType))
-                {
-                    return BadRequest($"Invalid model type: {type}");
-                }
-
-                var models = await _modelRepository.GetByTypeAsync(modelType);
-                var dtos = models.Select(m => MapToDto(m));
-                return Ok(dtos);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting models by type {Type}", type);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving models");
-            }
-        }
 
         /// <summary>
         /// Searches for models by name
@@ -172,7 +146,6 @@ namespace ConduitLLM.Admin.Controllers
                         Id = m.Id,
                         Name = m.Name,
                         ProviderModelId = providerIdentifier,
-                        ModelType = m.ModelType,
                         ModelSeriesId = m.ModelSeriesId,
                         ModelCapabilitiesId = m.ModelCapabilitiesId,
                         Capabilities = m.Capabilities != null ? MapCapabilitiesToDto(m.Capabilities) : null,
@@ -219,7 +192,6 @@ namespace ConduitLLM.Admin.Controllers
                 var model = new Model
                 {
                     Name = dto.Name,
-                    ModelType = dto.ModelType,
                     ModelSeriesId = dto.ModelSeriesId,
                     ModelCapabilitiesId = dto.ModelCapabilitiesId,
                     IsActive = dto.IsActive ?? true,
@@ -291,8 +263,6 @@ namespace ConduitLLM.Admin.Controllers
                     model.Name = dto.Name;
                 }
 
-                if (dto.ModelType.HasValue)
-                    model.ModelType = dto.ModelType.Value;
                 if (dto.ModelSeriesId.HasValue)
                     model.ModelSeriesId = dto.ModelSeriesId.Value;
                 if (dto.ModelCapabilitiesId.HasValue)
@@ -357,7 +327,6 @@ namespace ConduitLLM.Admin.Controllers
             {
                 Id = model.Id,
                 Name = model.Name,
-                ModelType = model.ModelType,
                 ModelSeriesId = model.ModelSeriesId,
                 ModelCapabilitiesId = model.ModelCapabilitiesId,
                 Capabilities = model.Capabilities != null ? MapCapabilitiesToDto(model.Capabilities) : null,
@@ -383,69 +352,11 @@ namespace ConduitLLM.Admin.Controllers
                 SupportsVideoGeneration = capabilities.SupportsVideoGeneration,
                 SupportsEmbeddings = capabilities.SupportsEmbeddings,
                 MaxTokens = capabilities.MaxTokens,
-                TokenizerType = capabilities.TokenizerType.ToString(),
+                TokenizerType = capabilities.TokenizerType,
                 SupportedVoices = capabilities.SupportedVoices,
                 SupportedLanguages = capabilities.SupportedLanguages,
                 SupportedFormats = capabilities.SupportedFormats
             };
         }
-    }
-
-    // DTOs for the Model API
-    public class ModelDto
-    {
-        public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public ModelType ModelType { get; set; }
-        public int ModelSeriesId { get; set; }
-        public int ModelCapabilitiesId { get; set; }
-        public ModelCapabilitiesDto? Capabilities { get; set; }
-        public bool IsActive { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
-    }
-
-    public class CreateModelDto
-    {
-        public string Name { get; set; } = string.Empty;
-        public ModelType ModelType { get; set; }
-        public int ModelSeriesId { get; set; }
-        public int ModelCapabilitiesId { get; set; }
-        public bool? IsActive { get; set; }
-    }
-
-    public class UpdateModelDto
-    {
-        public int Id { get; set; }
-        public string? Name { get; set; }
-        public ModelType? ModelType { get; set; }
-        public int? ModelSeriesId { get; set; }  // Nullable for partial updates
-        public int? ModelCapabilitiesId { get; set; }
-        public bool? IsActive { get; set; }
-    }
-
-    public class ModelCapabilitiesDto
-    {
-        public int Id { get; set; }
-        public bool SupportsChat { get; set; }
-        public bool SupportsVision { get; set; }
-        public bool SupportsFunctionCalling { get; set; }
-        public bool SupportsStreaming { get; set; }
-        public bool SupportsAudioTranscription { get; set; }
-        public bool SupportsTextToSpeech { get; set; }
-        public bool SupportsRealtimeAudio { get; set; }
-        public bool SupportsImageGeneration { get; set; }
-        public bool SupportsVideoGeneration { get; set; }
-        public bool SupportsEmbeddings { get; set; }
-        public int MaxTokens { get; set; }
-        public string? TokenizerType { get; set; }
-        public string? SupportedVoices { get; set; }
-        public string? SupportedLanguages { get; set; }
-        public string? SupportedFormats { get; set; }
-    }
-
-    public class ModelWithProviderIdDto : ModelDto
-    {
-        public string ProviderModelId { get; set; } = string.Empty;
     }
 }

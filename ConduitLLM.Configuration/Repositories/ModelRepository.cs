@@ -76,16 +76,6 @@ namespace ConduitLLM.Configuration.Repositories
                 .FirstOrDefaultAsync(m => m.Name == identifier);
         }
 
-        public async Task<List<Model>> GetByTypeAsync(ModelType modelType)
-        {
-            using var context = await _dbContextFactory.CreateDbContextAsync();
-            return await context.Set<Model>()
-                .Include(m => m.Capabilities)
-                .Where(m => m.ModelType == modelType)
-                .OrderBy(m => m.Name)
-                .ToListAsync();
-        }
-
         public async Task<List<Model>> GetBySeriesAsync(int seriesId)
         {
             using var context = await _dbContextFactory.CreateDbContextAsync();

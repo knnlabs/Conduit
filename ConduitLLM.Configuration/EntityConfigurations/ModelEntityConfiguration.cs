@@ -19,14 +19,6 @@ namespace ConduitLLM.Configuration.EntityConfigurations
             // Index for querying models by capabilities
             builder.HasIndex(e => e.ModelCapabilitiesId)
                 .HasDatabaseName("IX_Model_ModelCapabilitiesId");
-
-            // Index for querying models by type
-            builder.HasIndex(e => e.ModelType)
-                .HasDatabaseName("IX_Model_ModelType");
-
-            // Composite index for series and type
-            builder.HasIndex(e => new { e.ModelSeriesId, e.ModelType })
-                .HasDatabaseName("IX_Model_ModelSeriesId_ModelType");
         }
     }
 

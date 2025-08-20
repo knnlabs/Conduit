@@ -20,7 +20,6 @@ namespace ConduitLLM.Tests.Helpers
             {
                 Id = modelId ?? _nextModelId++,
                 Name = "gpt-4",
-                ModelType = ModelType.Text,
                 ModelSeriesId = 1,
                 ModelCapabilitiesId = _nextCapabilityId,
                 Capabilities = new ModelCapabilities
@@ -45,7 +44,6 @@ namespace ConduitLLM.Tests.Helpers
             {
                 Id = modelId ?? _nextModelId++,
                 Name = "text-embedding-ada-002",
-                ModelType = ModelType.Embedding,
                 ModelSeriesId = 1,
                 ModelCapabilitiesId = _nextCapabilityId,
                 Capabilities = new ModelCapabilities
@@ -67,7 +65,6 @@ namespace ConduitLLM.Tests.Helpers
             {
                 Id = modelId ?? _nextModelId++,
                 Name = "dall-e-3",
-                ModelType = ModelType.Image,
                 ModelSeriesId = 2,
                 ModelCapabilitiesId = _nextCapabilityId,
                 Capabilities = new ModelCapabilities
@@ -89,7 +86,6 @@ namespace ConduitLLM.Tests.Helpers
             {
                 Id = modelId ?? _nextModelId++,
                 Name = "dall-e-2",
-                ModelType = ModelType.Image,
                 ModelSeriesId = 2,
                 ModelCapabilitiesId = _nextCapabilityId,
                 Capabilities = new ModelCapabilities
@@ -111,7 +107,6 @@ namespace ConduitLLM.Tests.Helpers
             {
                 Id = modelId ?? _nextModelId++,
                 Name = "sdxl",
-                ModelType = ModelType.Image,
                 ModelSeriesId = 3,
                 ModelCapabilitiesId = _nextCapabilityId,
                 Capabilities = new ModelCapabilities
@@ -133,7 +128,6 @@ namespace ConduitLLM.Tests.Helpers
             {
                 Id = modelId ?? _nextModelId++,
                 Name = "minimax-image",
-                ModelType = ModelType.Image,
                 ModelSeriesId = 4,
                 ModelCapabilitiesId = _nextCapabilityId,
                 Capabilities = new ModelCapabilities
@@ -155,7 +149,6 @@ namespace ConduitLLM.Tests.Helpers
             {
                 Id = modelId ?? _nextModelId++,
                 Name = name ?? "video-generation-model",
-                ModelType = ModelType.Video,
                 ModelSeriesId = 5,
                 ModelCapabilitiesId = _nextCapabilityId,
                 Capabilities = new ModelCapabilities
@@ -262,7 +255,6 @@ namespace ConduitLLM.Tests.Helpers
         /// </summary>
         public static Model CreateCompleteTestModel(
             string? modelName = null,
-            ModelType modelType = ModelType.Text,
             bool supportsChat = true,
             bool supportsVideoGeneration = false,
             int maxTokens = 4096)
@@ -276,7 +268,6 @@ namespace ConduitLLM.Tests.Helpers
             {
                 Id = modelId,
                 Name = modelName ?? $"test-model-{modelId}",
-                ModelType = modelType,
                 ModelSeriesId = seriesId,
                 ModelCapabilitiesId = capabilityId,
                 Series = new ModelSeries

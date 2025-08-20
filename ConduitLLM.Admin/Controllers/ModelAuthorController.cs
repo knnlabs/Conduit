@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using ConduitLLM.Admin.Models.ModelAuthors;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using Microsoft.AspNetCore.Authorization;
@@ -274,105 +275,5 @@ namespace ConduitLLM.Admin.Controllers
                 WebsiteUrl = author.WebsiteUrl
             };
         }
-    }
-
-    // DTOs
-    /// <summary>
-    /// Model author data transfer object
-    /// </summary>
-    public class ModelAuthorDto
-    {
-        /// <summary>
-        /// Author ID
-        /// </summary>
-        public int Id { get; set; }
-        
-        /// <summary>
-        /// Author name
-        /// </summary>
-        public string Name { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Author description
-        /// </summary>
-        public string? Description { get; set; }
-        
-        /// <summary>
-        /// Author website URL
-        /// </summary>
-        public string? WebsiteUrl { get; set; }
-    }
-
-    /// <summary>
-    /// Create model author DTO
-    /// </summary>
-    public class CreateModelAuthorDto
-    {
-        /// <summary>
-        /// Author name
-        /// </summary>
-        public string Name { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Author description
-        /// </summary>
-        public string? Description { get; set; }
-        
-        /// <summary>
-        /// Author website URL
-        /// </summary>
-        public string? WebsiteUrl { get; set; }
-    }
-
-    /// <summary>
-    /// Update model author DTO
-    /// </summary>
-    public class UpdateModelAuthorDto
-    {
-        /// <summary>
-        /// Author ID
-        /// </summary>
-        public int Id { get; set; }
-        
-        /// <summary>
-        /// Author name
-        /// </summary>
-        public string? Name { get; set; }
-        
-        /// <summary>
-        /// Author description
-        /// </summary>
-        public string? Description { get; set; }
-        
-        /// <summary>
-        /// Author website URL
-        /// </summary>
-        public string? WebsiteUrl { get; set; }
-    }
-
-    /// <summary>
-    /// Simple model series DTO for listing
-    /// </summary>
-    public class SimpleModelSeriesDto
-    {
-        /// <summary>
-        /// Series ID
-        /// </summary>
-        public int Id { get; set; }
-        
-        /// <summary>
-        /// Series name
-        /// </summary>
-        public string Name { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Series description
-        /// </summary>
-        public string? Description { get; set; }
-        
-        /// <summary>
-        /// Tokenizer type
-        /// </summary>
-        public TokenizerType TokenizerType { get; set; }
     }
 }

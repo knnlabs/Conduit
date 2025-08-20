@@ -134,7 +134,6 @@ namespace ConduitLLM.Tests.Configuration.Repositories
                 var modelNoChat = new Model
                 {
                     Name = $"model-no-chat-{testId}",
-                    ModelType = ModelType.Text,
                     ModelSeriesId = series.Id,
                     ModelCapabilitiesId = capabilitiesNoChat.Id
                 };
@@ -143,7 +142,6 @@ namespace ConduitLLM.Tests.Configuration.Repositories
                 var modelWithChat = new Model
                 {
                     Name = $"model-with-chat-{testId}",
-                    ModelType = ModelType.Text,
                     ModelSeriesId = series.Id,
                     ModelCapabilitiesId = capabilitiesWithChat.Id
                 };

@@ -34,11 +34,6 @@ namespace ConduitLLM.Configuration.Repositories
         Task<Model?> GetByIdentifierAsync(string identifier);
 
         /// <summary>
-        /// Gets models by type (Text, Image, Video, etc.).
-        /// </summary>
-        Task<List<Model>> GetByTypeAsync(ModelType modelType);
-
-        /// <summary>
         /// Gets models by series.
         /// </summary>
         Task<List<Model>> GetBySeriesAsync(int seriesId);

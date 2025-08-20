@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using ConduitLLM.Admin.Models.ModelSeries;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using Microsoft.AspNetCore.Authorization;
@@ -108,7 +109,6 @@ namespace ConduitLLM.Admin.Controllers
                     Id = m.Id,
                     Name = m.Name,
                     Version = m.Version,
-                    ModelType = m.ModelType,
                     IsActive = m.IsActive
                 });
 
@@ -160,6 +160,10 @@ namespace ConduitLLM.Admin.Controllers
 
                 // Reload with author
                 series = await _repository.GetByIdWithAuthorAsync(series.Id);
+                if (series == null)
+                {
+                    return StatusCode(StatusCodes.Status500InternalServerError, "Failed to reload created series");
+                }
                 
                 return CreatedAtAction(
                     nameof(GetById),
@@ -285,140 +289,5 @@ namespace ConduitLLM.Admin.Controllers
                 Parameters = series.Parameters
             };
         }
-    }
-
-    // DTOs
-    /// <summary>
-    /// Model series data transfer object
-    /// </summary>
-    public class ModelSeriesDto
-    {
-        /// <summary>
-        /// Series ID
-        /// </summary>
-        public int Id { get; set; }
-        
-        /// <summary>
-        /// Author ID
-        /// </summary>
-        public int AuthorId { get; set; }
-        
-        /// <summary>
-        /// Author name
-        /// </summary>
-        public string? AuthorName { get; set; }
-        
-        /// <summary>
-        /// Series name
-        /// </summary>
-        public string Name { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Series description
-        /// </summary>
-        public string? Description { get; set; }
-        
-        /// <summary>
-        /// Tokenizer type
-        /// </summary>
-        public TokenizerType TokenizerType { get; set; }
-        
-        /// <summary>
-        /// UI parameters JSON
-        /// </summary>
-        public string Parameters { get; set; } = "{}";
-    }
-
-    /// <summary>
-    /// Create model series DTO
-    /// </summary>
-    public class CreateModelSeriesDto
-    {
-        /// <summary>
-        /// Author ID
-        /// </summary>
-        public int AuthorId { get; set; }
-        
-        /// <summary>
-        /// Series name
-        /// </summary>
-        public string Name { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Series description
-        /// </summary>
-        public string? Description { get; set; }
-        
-        /// <summary>
-        /// Tokenizer type
-        /// </summary>
-        public TokenizerType TokenizerType { get; set; }
-        
-        /// <summary>
-        /// UI parameters JSON
-        /// </summary>
-        public string? Parameters { get; set; }
-    }
-
-    /// <summary>
-    /// Update model series DTO
-    /// </summary>
-    public class UpdateModelSeriesDto
-    {
-        /// <summary>
-        /// Series ID
-        /// </summary>
-        public int Id { get; set; }
-        
-        /// <summary>
-        /// Series name
-        /// </summary>
-        public string? Name { get; set; }
-        
-        /// <summary>
-        /// Series description
-        /// </summary>
-        public string? Description { get; set; }
-        
-        /// <summary>
-        /// Tokenizer type
-        /// </summary>
-        public TokenizerType? TokenizerType { get; set; }
-        
-        /// <summary>
-        /// UI parameters JSON
-        /// </summary>
-        public string? Parameters { get; set; }
-    }
-
-    /// <summary>
-    /// Simple model DTO for series listing
-    /// </summary>
-    public class SeriesSimpleModelDto
-    {
-        /// <summary>
-        /// Model ID
-        /// </summary>
-        public int Id { get; set; }
-        
-        /// <summary>
-        /// Model name
-        /// </summary>
-        public string Name { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Model version
-        /// </summary>
-        public string? Version { get; set; }
-        
-        /// <summary>
-        /// Model type
-        /// </summary>
-        public ModelType ModelType { get; set; }
-        
-        /// <summary>
-        /// Is model active
-        /// </summary>
-        public bool IsActive { get; set; }
     }
 }

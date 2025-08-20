@@ -401,7 +401,7 @@ namespace ConduitLLM.Tests.Core.Services
             // Setup model mapping with a complete model that DOES support video (for testing retry logic)
             var model = ModelTestHelper.CreateCompleteTestModel(
                 modelName: "test-model",
-                modelType: ModelType.Video,
+                
                 supportsVideoGeneration: true);
             
             var modelMapping = new ModelProviderMapping
