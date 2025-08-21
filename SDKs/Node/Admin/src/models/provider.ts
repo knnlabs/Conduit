@@ -179,18 +179,20 @@ export interface ProviderUsageStatistics {
 // Provider Key Credential interfaces
 export interface ProviderKeyCredentialDto {
   id: number;
-  providerCredentialId: number;
+  providerId: number;
   apiKey: string;
   organization?: string;
   keyName?: string;
   isPrimary: boolean;
   isEnabled: boolean;
+  providerAccountGroup?: number;
+  baseUrl?: string;
   createdAt: string;
   updatedAt: string;
   lastUsedAt?: string;
-  usageCount: number;
-  errorCount: number;
-  rateLimitExceededCount: number;
+  usageCount?: number;
+  errorCount?: number;
+  rateLimitExceededCount?: number;
 }
 
 export interface CreateProviderKeyCredentialDto {
@@ -199,6 +201,8 @@ export interface CreateProviderKeyCredentialDto {
   keyName?: string;
   isPrimary?: boolean;
   isEnabled?: boolean;
+  providerAccountGroup?: number;
+  baseUrl?: string;
 }
 
 export interface UpdateProviderKeyCredentialDto {
@@ -206,6 +210,9 @@ export interface UpdateProviderKeyCredentialDto {
   organization?: string;
   keyName?: string;
   isEnabled?: boolean;
+  isPrimary?: boolean;
+  providerAccountGroup?: number;
+  baseUrl?: string;
 }
 
 export interface ProviderKeyRotationDto {
