@@ -25,11 +25,16 @@ import {
 import { usePerformanceSettings } from '../hooks/usePerformanceSettings';
 import { useChatStore } from '../hooks/useChatStore';
 import { useModels } from '../hooks/useModels';
+import { useDiscoveryModels } from '../hooks/useDiscoveryModels';
 import { useChatStreamingLogic } from './ChatStreamingLogic';
+import { DynamicParameters } from '@/components/parameters/DynamicParameters';
+import { useParameterState } from '@/components/parameters/hooks/useParameterState';
 import Link from 'next/link';
 
 export function ChatInterface() {
   const { data: modelData, isLoading: modelsLoading } = useModels();
+  const discoveryQuery = useDiscoveryModels('chat');
+  const discoveryData = discoveryQuery.data;
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -37,6 +42,7 @@ export function ChatInterface() {
   const [streamingContent, setStreamingContent] = useState('');
   const [tokensPerSecond, setTokensPerSecond] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showParameters, setShowParameters] = useState(false);
   
   const performanceSettings = usePerformanceSettings();
   const { 
@@ -44,20 +50,6 @@ export function ChatInterface() {
     createSession,
     activeSessionId 
   } = useChatStore();
-
-  // Use streaming logic hook
-  const { sendMessage, abortControllerRef } = useChatStreamingLogic({
-    selectedModel,
-    messages,
-    setMessages,
-    isLoading,
-    setIsLoading,
-    setStreamingContent,
-    setTokensPerSecond,
-    setError,
-    getActiveSession,
-    performanceSettings,
-  });
 
   // Set initial model when data loads
   useEffect(() => {
@@ -73,6 +65,31 @@ export function ChatInterface() {
     }
   }, [selectedModel, activeSessionId, createSession]);
 
+  const currentModel = modelData?.find(m => m.id === selectedModel);
+  const currentDiscoveryModel = discoveryData?.data?.find(m => m.id === selectedModel);
+  
+  // Use parameters from discovery model
+  const modelParameters = currentDiscoveryModel?.parameters ?? '{}';
+  const parameterState = useParameterState({
+    parameters: modelParameters,
+    persistKey: `chat-params-${selectedModel ?? 'default'}`,
+  });
+
+  // Use streaming logic hook
+  const { sendMessage, abortControllerRef } = useChatStreamingLogic({
+    selectedModel,
+    messages,
+    setMessages,
+    isLoading,
+    setIsLoading,
+    setStreamingContent,
+    setTokensPerSecond,
+    setError,
+    getActiveSession,
+    performanceSettings,
+    dynamicParameters: parameterState.getSubmitValues(),
+  });
+
   // Cleanup on unmount - abort any pending requests
   useEffect(() => {
     return () => {
@@ -82,9 +99,6 @@ export function ChatInterface() {
       }
     };
   }, [abortControllerRef]);
-
-
-  const currentModel = modelData?.find(m => m.id === selectedModel);
 
   if (modelsLoading) {
     return (
@@ -161,6 +175,19 @@ export function ChatInterface() {
             <Collapse in={showSettings}>
               <ChatSettings />
             </Collapse>
+            
+            {/* Dynamic Parameters UI */}
+            {currentDiscoveryModel?.parameters && currentDiscoveryModel.parameters !== '{}' && (
+              <DynamicParameters
+                parameters={currentDiscoveryModel.parameters}
+                values={parameterState.values}
+                onChange={parameterState.updateValues}
+                context="chat"
+                title="Model Parameters"
+                collapsible={true}
+                defaultExpanded={showParameters}
+              />
+            )}
           </Stack>
         </Paper>
 

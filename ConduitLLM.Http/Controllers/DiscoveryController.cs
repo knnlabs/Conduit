@@ -68,9 +68,11 @@ namespace ConduitLLM.Http.Controllers
 
                 using var context = await _dbContextFactory.CreateDbContextAsync();
                 
-                // Get all enabled model mappings with their providers
+                // Get all enabled model mappings with their providers and model series
                 var modelMappings = await context.ModelProviderMappings
                     .Include(m => m.Provider)
+                    .Include(m => m.Model)
+                        .ThenInclude(m => m.Series)
                     .Where(m => m.IsEnabled && m.Provider != null && m.Provider.IsEnabled)
                     .ToListAsync();
 
@@ -177,12 +179,16 @@ namespace ConduitLLM.Http.Controllers
                         }
                     }
 
+                    // Get parameters from model series if available
+                    string? parameters = mapping.Model?.Series?.Parameters;
+                    
                     models.Add(new
                     {
                         id = mapping.ModelAlias,
                         provider = mapping.Provider?.ProviderType.ToString().ToLowerInvariant(),
                         display_name = mapping.ModelAlias,
-                        capabilities = capabilities
+                        capabilities = capabilities,
+                        parameters = parameters
                     });
                 }
 

@@ -31,6 +31,7 @@ interface ChatStreamingLogicParams {
     showTokensPerSecond: boolean;
     useServerMetrics: boolean;
   };
+  dynamicParameters?: Record<string, unknown>;
 }
 
 export function useChatStreamingLogic({
@@ -44,6 +45,7 @@ export function useChatStreamingLogic({
   setError,
   getActiveSession,
   performanceSettings,
+  dynamicParameters = {},
 }: ChatStreamingLogicParams) {
   const abortControllerRef = useRef<AbortController | null>(null);
   
@@ -105,7 +107,9 @@ export function useChatStreamingLogic({
         ...(sessionParams.stop && sessionParams.stop.length > 0 && { stop: sessionParams.stop }),
         ...(sessionParams.responseFormat === 'json_object' && { 
           response_format: { type: 'json_object' } 
-        })
+        }),
+        // Include dynamic parameters from UI
+        ...dynamicParameters
       };
       
       // Request logged for debugging
@@ -113,7 +117,9 @@ export function useChatStreamingLogic({
         console.warn('Sending chat request:', {
           model: selectedModel,
           messageCount: requestBody.messages.length,
-          lastMessage: requestBody.messages[requestBody.messages.length - 1]
+          lastMessage: requestBody.messages[requestBody.messages.length - 1],
+          dynamicParameters: dynamicParameters,
+          fullRequest: requestBody
         });
       }
       
@@ -171,7 +177,7 @@ export function useChatStreamingLogic({
         abortControllerRef.current = null;
       }
     }
-  }, [selectedModel, messages, isLoading, getActiveSession, performanceSettings, handleError, setMessages, setIsLoading, setStreamingContent, setTokensPerSecond, setError]);
+  }, [selectedModel, messages, isLoading, getActiveSession, performanceSettings, handleError, setMessages, setIsLoading, setStreamingContent, setTokensPerSecond, setError, dynamicParameters]);
 
   return {
     sendMessage,
