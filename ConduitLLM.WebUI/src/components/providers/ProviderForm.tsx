@@ -19,299 +19,41 @@ import {
   ThemeIcon,
   Switch,
 } from '@mantine/core';
-import { useForm } from '@mantine/form';
-import { notifications } from '@mantine/notifications';
 import { IconAlertCircle, IconInfoCircle, IconCircleCheck, IconArrowLeft, IconServer, IconSparkles, IconEdit } from '@tabler/icons-react';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { 
   ProviderType, 
   PROVIDER_CONFIG_REQUIREMENTS,
-  type ProviderDto
 } from '@knn_labs/conduit-admin-client';
-import { withAdminClient } from '@/lib/client/adminClient';
-import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
-import { validators } from '@/lib/utils/form-validators';
+import { useProviderFormLogic } from './ProviderFormLogic';
+import { useProviderFormHandlers } from './ProviderFormHandlers';
 
 interface ProviderFormProps {
   mode: 'add' | 'edit';
   providerId?: number;
 }
 
-interface ProviderFormData {
-  providerType: string;
-  providerName: string;
-  apiKey: string;
-  apiEndpoint?: string;
-  organizationId?: string;
-  isEnabled: boolean;
-}
-
-interface ProviderOption {
-  value: string;
-  label: string;
-}
-
 export function ProviderForm({ mode, providerId }: ProviderFormProps) {
-  const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isTesting, setIsTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
-  const [availableProviders, setAvailableProviders] = useState<ProviderOption[]>([]);
-  const [isLoadingProviders, setIsLoadingProviders] = useState(mode === 'add');
-  const [existingProvider, setExistingProvider] = useState<ProviderDto | null>(null);
-  const [isLoadingProvider, setIsLoadingProvider] = useState(mode === 'edit');
-  const [initialFormValues, setInitialFormValues] = useState<ProviderFormData>(() => ({
-    providerType: '',
-    providerName: '',
-    apiKey: '',
-    apiEndpoint: '',
-    organizationId: '',
-    isEnabled: true,
-  }));
+  // Use split logic hooks
+  const logic = useProviderFormLogic(mode, providerId);
+  const handlers = useProviderFormHandlers({ mode, providerId, logic });
 
-  const form = useForm<ProviderFormData>({
-    initialValues: initialFormValues,
-    validate: {
-      providerType: (value) => (mode === 'add' && !value ? 'Provider type is required' : null),
-      providerName: (value) => {
-        if (mode === 'edit' && !value) {
-          return 'Provider name is required';
-        }
-        return null;
-      },
-      apiKey: (value) => (mode === 'add' && !value ? 'API key is required' : null),
-      apiEndpoint: (value) => {
-        if (value && !validators.url(value)) {
-          return 'Please enter a valid URL';
-        }
-        return null;
-      },
-    },
-  });
+  const {
+    form,
+    isSubmitting,
+    isTesting,
+    testResult,
+    availableProviders,
+    isLoadingProviders,
+    providerDisplayName,
+    isLoading,
+  } = logic;
 
-  // Fetch available providers for add mode
-  useEffect(() => {
-    if (mode === 'add') {
-      const loadProviders = async () => {
-        setIsLoadingProviders(true);
-        try {
-          const providerTypes = await withAdminClient(client => 
-            client.providers.getAvailableProviderTypes()
-          );
-          
-          const providers: ProviderOption[] = providerTypes.map(type => ({
-            value: type.toString(),
-            label: getProviderDisplayName(type)
-          }));
-          
-          setAvailableProviders(providers);
-          
-          if (providers.length === 0) {
-            notifications.show({
-              title: 'No Providers Available',
-              message: 'All provider types have already been configured.',
-              color: 'orange',
-            });
-            router.push('/llm-providers');
-          }
-        } catch (error) {
-          console.error('Error fetching available providers:', error);
-          notifications.show({
-            title: 'Error',
-            message: 'Failed to load available providers',
-            color: 'red',
-          });
-        } finally {
-          setIsLoadingProviders(false);
-        }
-      };
-      
-      void loadProviders();
-    }
-  }, [mode, router]);
-
-  // Fetch existing provider for edit mode and reinitialize form
-  useEffect(() => {
-    if (mode === 'edit' && providerId) {
-      const loadProvider = async () => {
-        setIsLoadingProvider(true);
-        try {
-          const provider = await withAdminClient(client => 
-            client.providers.getById(providerId)
-          );
-          setExistingProvider(provider);
-          
-          const apiProvider = provider;
-          
-          // Create new form values
-          const newFormValues: ProviderFormData = {
-            providerType: provider.providerType?.toString() ?? '',
-            providerName: typeof apiProvider.providerName === 'string' ? apiProvider.providerName : '',
-            apiKey: '', // Don't show existing key for security
-            apiEndpoint: apiProvider.baseUrl ?? '',
-            organizationId: (provider as { organization?: string; organizationId?: string }).organization ?? 
-                          (provider as { organization?: string; organizationId?: string }).organizationId ?? '',
-            isEnabled: provider.isEnabled === true,
-          };
-          
-          // Update initial values - form will reinitialize via key prop
-          setInitialFormValues(newFormValues);
-        } catch (error) {
-          console.error('Error fetching provider:', error);
-          notifications.show({
-            title: 'Error',
-            message: 'Failed to load provider',
-            color: 'red',
-          });
-          router.push('/llm-providers');
-        } finally {
-          setIsLoadingProvider(false);
-        }
-      };
-      
-      void loadProvider();
-    }
-  }, [mode, providerId, router]);
-
-  const handleSubmit = async (values: ProviderFormData) => {
-    setIsSubmitting(true);
-    try {
-      if (mode === 'add') {
-        let providerName = values.providerName.trim();
-        if (!providerName) {
-          const selectedProvider = availableProviders.find(p => p.value === values.providerType);
-          providerName = selectedProvider?.label ?? 'Unknown Provider';
-        }
-
-        // First create the provider without the API key
-        const providerPayload = {
-          providerType: parseInt(values.providerType, 10),
-          providerName: providerName,
-          baseUrl: values.apiEndpoint ?? undefined,
-          isEnabled: values.isEnabled,
-        };
-
-        const createdProvider = await withAdminClient(client => 
-          client.providers.create(providerPayload)
-        );
-
-        // Then add the API key to the created provider
-        if (values.apiKey) {
-          try {
-            await withAdminClient(client =>
-              client.providers.createKey(createdProvider.id, {
-                apiKey: values.apiKey,
-                keyName: 'Primary Key',
-                organization: values.organizationId ?? undefined,
-                isPrimary: true,
-                isEnabled: true,
-              })
-            );
-          } catch (keyError) {
-            // If key creation fails, we should inform the user
-            console.warn('Failed to create API key:', keyError);
-            notifications.show({
-              title: 'Warning',
-              message: 'Provider created but failed to save API key. Please add it manually in the provider settings.',
-              color: 'orange',
-            });
-            router.push('/llm-providers');
-            return;
-          }
-        }
-
-        notifications.show({
-          title: 'Success',
-          message: 'Provider and API key created successfully',
-          color: 'green',
-        });
-      } else {
-        // Edit mode - Note: API keys cannot be updated here, only through the keys management page
-        const payload = {
-          providerName: values.providerName ?? undefined,
-          baseUrl: values.apiEndpoint ?? undefined,
-          organization: values.organizationId ?? undefined,
-          isEnabled: values.isEnabled,
-        };
-
-        await withAdminClient(client => 
-          client.providers.update(providerId as number, payload)
-        );
-
-        notifications.show({
-          title: 'Success',
-          message: 'Provider updated successfully',
-          color: 'green',
-        });
-      }
-      
-      router.push('/llm-providers');
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : `Failed to ${mode} provider`;
-      
-      if (mode === 'add' && errorMessage.includes('already exists')) {
-        notifications.show({
-          title: 'Provider Already Exists',
-          message: `A provider of type "${values.providerType}" already exists. Please edit the existing provider or delete it first.`,
-          color: 'orange',
-        });
-      } else {
-        notifications.show({
-          title: 'Error',
-          message: errorMessage,
-          color: 'red',
-        });
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleTestConnection = async () => {
-    const validation = form.validate();
-    if (validation.hasErrors) {
-      return;
-    }
-
-    setIsTesting(true);
-    setTestResult(null);
-
-    try {
-      let result;
-      
-      if (mode === 'add') {
-        result = await withAdminClient(client => 
-          client.providers.testConfig({
-            providerType: parseInt(form.values.providerType, 10),
-            apiKey: form.values.apiKey,
-            baseUrl: form.values.apiEndpoint ?? undefined,
-            organizationId: form.values.organizationId ?? undefined,
-          })
-        );
-      } else {
-        result = await withAdminClient(client => 
-          client.providers.testConnectionById(providerId as number)
-        );
-      }
-      
-      // Handle new response format
-      const isSuccess = (result.result as string) === 'success';
-      
-      setTestResult({
-        success: isSuccess,
-        message: result.message ?? (isSuccess ? 'Connection successful' : 'Connection failed'),
-      });
-    } catch (error) {
-      console.error('Connection test error:', error);
-      setTestResult({
-        success: false,
-        message: 'Failed to test connection',
-      });
-    } finally {
-      setIsTesting(false);
-    }
-  };
+  const {
+    handleSubmit,
+    handleTestConnection,
+    handleBack,
+    handleCancel,
+  } = handlers;
 
   const getProviderHelp = (providerType: string) => {
     const providerTypeNum = parseInt(providerType, 10) as ProviderType;
@@ -341,20 +83,6 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
   const providerTypeNum = parseInt(form.values.providerType, 10) as ProviderType;
   const config = PROVIDER_CONFIG_REQUIREMENTS[providerTypeNum];
 
-  let providerDisplayName = 'Unknown Provider';
-  if (mode === 'edit' && existingProvider) {
-    try {
-      const providerType = getProviderTypeFromDto(existingProvider);
-      providerDisplayName = getProviderDisplayName(providerType);
-    } catch {
-      // Fallback to provider name if available
-      const apiProvider = existingProvider;
-      providerDisplayName = typeof apiProvider.providerName === 'string' ? apiProvider.providerName : 'Unknown Provider';
-    }
-  }
-
-  const isLoading = isLoadingProviders || isLoadingProvider;
-
   return (
     <Container size="md" py="xl">
       <Stack gap="xl">
@@ -364,7 +92,7 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
               <Button
                 variant="subtle"
                 leftSection={<IconArrowLeft size={16} />}
-                onClick={() => router.push('/llm-providers')}
+                onClick={handleBack}
               >
                 Back to Providers
               </Button>
@@ -535,7 +263,7 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
                 <Group>
                   <Button 
                     variant="light" 
-                    onClick={() => router.push('/llm-providers')}
+                    onClick={handleCancel}
                     size="md"
                   >
                     Cancel
