@@ -402,7 +402,7 @@ namespace ConduitLLM.Providers.OpenAI
         public long Created { get; init; }
 
         [JsonPropertyName("data")]
-        public required List<ImageData> Data { get; init; }
+        public List<ImageData>? Data { get; init; }
     }
 
     internal record ImageData

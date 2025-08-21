@@ -93,12 +93,12 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 return new CoreModels.ImageGenerationResponse
                 {
                     Created = response.Created,
-                    Data = response.Data.Select(d => new CoreModels.ImageData
+                    Data = response.Data?.Select(d => new CoreModels.ImageData
                     {
                         Url = d.Url,
                         B64Json = d.B64Json
                         // Note: Core.Models.ImageData doesn't have RevisedPrompt property
-                    }).ToList()
+                    }).ToList() ?? new List<CoreModels.ImageData>()
                 };
             }, "CreateImage", cancellationToken);
         }
