@@ -172,7 +172,7 @@ namespace ConduitLLM.Core.Utilities
             if (requestData != null)
             {
                 var requestJson = JsonSerializer.Serialize(requestData, options);
-                logger?.LogInformation("Sending JSON request: {Json}", requestJson);
+                logger?.LogDebug("Sending JSON request: {Json}", requestJson);
                 request.Content = new StringContent(requestJson, Encoding.UTF8, "application/json");
             }
 

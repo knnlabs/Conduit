@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using CoreModels = ConduitLLM.Core.Models;
 using CoreUtils = ConduitLLM.Core.Utilities;
-using OpenAIModels = ConduitLLM.Providers.OpenAI;
+using ConduitLLM.Providers.OpenAI;
 
 namespace ConduitLLM.Providers.OpenAICompatible
 {
@@ -42,7 +42,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
             {
                 using var client = CreateHttpClient(apiKey);
 
-                var openAiRequest = new OpenAIModels.EmbeddingRequest
+                var openAiRequest = new EmbeddingRequest
                 {
                     Model = request.Model ?? ProviderModelId,
                     Input = request.Input,
@@ -55,7 +55,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
 
                 Logger.LogDebug("Creating embeddings using {Provider} at {Endpoint}", ProviderName, endpoint);
 
-                var response = await CoreUtils.HttpClientHelper.SendJsonRequestAsync<OpenAIModels.EmbeddingRequest, OpenAIModels.EmbeddingResponse>(
+                var response = await CoreUtils.HttpClientHelper.SendJsonRequestAsync<EmbeddingRequest, EmbeddingResponse>(
                     client,
                     HttpMethod.Post,
                     endpoint,

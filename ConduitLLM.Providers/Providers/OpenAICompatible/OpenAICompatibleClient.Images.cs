@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using CoreModels = ConduitLLM.Core.Models;
 using CoreUtils = ConduitLLM.Core.Utilities;
-using OpenAIModels = ConduitLLM.Providers.OpenAI;
+using ConduitLLM.Providers.OpenAI;
 
 namespace ConduitLLM.Providers.OpenAICompatible
 {
@@ -46,7 +46,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 // Only include quality and style for DALL-E 3
                 var modelName = request.Model ?? ProviderModelId;
                 var openAiRequest = modelName?.Contains("dall-e-3", StringComparison.OrdinalIgnoreCase) == true
-                    ? new OpenAIModels.ImageGenerationRequest
+                    ? new ImageGenerationRequest
                     {
                         Prompt = request.Prompt,
                         Model = request.Model ?? ProviderModelId,
@@ -57,7 +57,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
                         ResponseFormat = request.ResponseFormat ?? "url",
                         User = request.User
                     }
-                    : new OpenAIModels.ImageGenerationRequest
+                    : new ImageGenerationRequest
                     {
                         Prompt = request.Prompt,
                         Model = request.Model ?? ProviderModelId,
@@ -80,7 +80,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
                     Logger.LogWarning("Note: OpenAI image generation errors with null messages often indicate quota/billing issues");
                 }
 
-                var response = await CoreUtils.HttpClientHelper.SendJsonRequestAsync<OpenAIModels.ImageGenerationRequest, OpenAIModels.ImageGenerationResponse>(
+                var response = await CoreUtils.HttpClientHelper.SendJsonRequestAsync<ImageGenerationRequest, ImageGenerationResponse>(
                     client,
                     HttpMethod.Post,
                     endpoint,

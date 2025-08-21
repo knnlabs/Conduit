@@ -4,7 +4,7 @@ using System.Linq;
 
 using Microsoft.Extensions.Logging;
 using CoreModels = ConduitLLM.Core.Models;
-using OpenAIModels = ConduitLLM.Providers.OpenAI;
+using ConduitLLM.Providers.OpenAI;
 using ProviderHelpers = ConduitLLM.Providers.Helpers;
 using ConduitLLM.Providers.Utilities;
 
@@ -57,7 +57,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 if (ProviderHelpers.ContentHelper.IsTextOnly(m.Content))
                 {
                     // Simple text-only message
-                    return new OpenAIModels.OpenAIMessage
+                    return new OpenAIMessage
                     {
                         Role = m.Role,
                         Content = ProviderHelpers.ContentHelper.GetContentAsString(m.Content),
@@ -78,7 +78,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 else
                 {
                     // Multimodal message with potential images
-                    return new OpenAIModels.OpenAIMessage
+                    return new OpenAIMessage
                     {
                         Role = m.Role,
                         Content = MapMultimodalContent(m.Content),
@@ -99,7 +99,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
             }).ToList();
 
             // Create the OpenAI request
-            return new OpenAIModels.OpenAIChatCompletionRequest
+            return new OpenAIChatCompletionRequest
             {
                 Model = ProviderModelId,  // Always use the provider's model ID, not the alias
                 Messages = messages,
@@ -118,7 +118,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 // Only send ResponseFormat if explicitly requested and not "text" (default)
                 // Some providers like SambaNova don't support response_format with type "text"
                 ResponseFormat = request.ResponseFormat != null && request.ResponseFormat.Type != "text" 
-                    ? new OpenAIModels.ResponseFormat { Type = request.ResponseFormat.Type ?? "text" } 
+                    ? new ResponseFormat { Type = request.ResponseFormat.Type ?? "text" } 
                     : null,
                 Stream = request.Stream ?? false
             };

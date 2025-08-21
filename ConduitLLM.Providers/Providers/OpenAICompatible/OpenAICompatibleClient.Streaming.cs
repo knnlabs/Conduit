@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using CoreModels = ConduitLLM.Core.Models;
 using CoreUtils = ConduitLLM.Core.Utilities;
-using OpenAIModels = ConduitLLM.Providers.OpenAI;
+using ConduitLLM.Providers.OpenAI;
 
 namespace ConduitLLM.Providers.OpenAICompatible
 {
@@ -99,7 +99,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
             if (response != null)
             {
                 // Stream chunks progressively using StreamHelper
-                await foreach (var chunk in CoreUtils.StreamHelper.ProcessSseStreamAsync<OpenAIModels.OpenAIChatCompletionChunk>(
+                await foreach (var chunk in CoreUtils.StreamHelper.ProcessSseStreamAsync<OpenAIChatCompletionChunk>(
                     response, Logger, DefaultJsonOptions, cancellationToken))
                 {
                     if (cancellationToken.IsCancellationRequested)
@@ -171,7 +171,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 dictObj["stream"] = true;
                 return dictObj;
             }
-            else if (openAiRequest is OpenAIModels.OpenAIChatCompletionRequest reqObj)
+            else if (openAiRequest is OpenAIChatCompletionRequest reqObj)
             {
                 reqObj = reqObj with { Stream = true };
                 return reqObj;
@@ -242,7 +242,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
             var chunks = new List<CoreModels.ChatCompletionChunk>();
 
             // Use StreamHelper to process the SSE stream
-            await foreach (var chunk in CoreUtils.StreamHelper.ProcessSseStreamAsync<OpenAIModels.OpenAIChatCompletionChunk>(
+            await foreach (var chunk in CoreUtils.StreamHelper.ProcessSseStreamAsync<OpenAIChatCompletionChunk>(
                 response, Logger, DefaultJsonOptions, cancellationToken))
             {
                 if (cancellationToken.IsCancellationRequested)
