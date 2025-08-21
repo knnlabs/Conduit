@@ -1,1086 +1,702 @@
-# Conduit SDK - Next.js Integration Guide
+# Conduit SDK Next.js Integration Guide
 
-This guide demonstrates how to use the Conduit SDK in Next.js applications with real examples from the WebUI.
+A comprehensive guide for integrating the Conduit SDK into Next.js applications with TypeScript, covering both Pages Router and App Router patterns.
+
+## Overview
+
+This guide provides step-by-step instructions for integrating Conduit's Node.js SDK into Next.js applications, with practical examples for common use cases including chat interfaces, image generation, and admin dashboards.
+
+## Documentation Structure
+
+The Next.js integration guide has been organized into focused implementation guides:
+
+### 🚀 Getting Started
+- **[Next.js Setup & Configuration](./nextjs/setup-configuration.md)** - Initial setup and environment configuration
+- **[Authentication Integration](./nextjs/authentication.md)** - NextAuth and session management
+- **[SDK Client Setup](./nextjs/sdk-clients.md)** - Admin and Core client configuration
+
+### 🎯 Core Features
+- **[Chat Interface Implementation](./nextjs/chat-interface.md)** - Streaming chat with real-time updates
+- **[Image Generation UI](./nextjs/image-generation.md)** - Image generation with gallery interface
+- **[Video Generation Dashboard](./nextjs/video-generation.md)** - Async video generation with progress tracking
+
+### 🛠️ Advanced Integration
+- **[Admin Dashboard](./nextjs/admin-dashboard.md)** - Complete administrative interface
+- **[Real-Time Features](./nextjs/realtime-features.md)** - SignalR integration and live updates
+- **[Error Handling & Testing](./nextjs/error-handling.md)** - Production-ready error handling
 
 ## Quick Start
 
-### Installation
+### Installation & Setup
 
 ```bash
-# For admin functionality (server-side only)
-npm install @conduit/admin-client
+# Create Next.js app with TypeScript
+npx create-next-app@latest conduit-app --typescript --tailwind --eslint --app
 
-# For public API functionality (client/server)
-npm install @conduit/core-client
+# Install required dependencies
+cd conduit-app
+npm install @tanstack/react-query @mantine/core @mantine/hooks
+npm install @conduit/admin-sdk @conduit/core-sdk  # When available
+npm install next-auth
+
+# Install development dependencies
+npm install --save-dev @types/node
 ```
 
-### Basic Setup
+### Environment Configuration
 
-1. **Configure environment variables:**
+```bash
+# .env.local
+NEXTAUTH_SECRET=your-nextauth-secret
+NEXTAUTH_URL=http://localhost:3000
 
-```env
-# For admin routes (server-side only)
-CONDUIT_WEBUI_AUTH_KEY=your-admin-key
+# Conduit API Configuration
+CONDUIT_CORE_API_URL=http://localhost:5000
+CONDUIT_ADMIN_API_URL=http://localhost:5002
+CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your-master-key
 
-# For public API (can be exposed to client)
-NEXT_PUBLIC_CONDUIT_API_URL=http://localhost:5074
+# Optional: WebUI Virtual Key for core operations
+CONDUIT_WEBUI_VIRTUAL_KEY=your-webui-virtual-key
 ```
 
-2. **Create SDK instances:**
+### Basic App Structure
+
+```
+src/
+├── app/                          # App Router (Next.js 13+)
+│   ├── api/                      # API routes
+│   │   ├── auth/                 # NextAuth configuration
+│   │   ├── admin/                # Admin API endpoints
+│   │   └── core/                 # Core API endpoints
+│   ├── chat/                     # Chat interface pages
+│   ├── images/                   # Image generation pages
+│   └── admin/                    # Admin dashboard pages
+├── components/                   # Reusable components
+│   ├── chat/                     # Chat-specific components
+│   ├── image/                    # Image generation components
+│   └── ui/                       # Generic UI components
+├── lib/                          # Utility libraries
+│   ├── sdk/                      # SDK client configurations
+│   ├── auth.ts                   # NextAuth configuration
+│   └── utils.ts                  # Utility functions
+└── types/                        # TypeScript type definitions
+```
+
+## Core Integration Examples
+
+### Chat Interface with Streaming
 
 ```typescript
-// app/lib/conduit.ts
-import { createAdminClient } from '@conduit/admin-client';
-import { createCoreClient } from '@conduit/core-client';
-
-// Admin client - server-side only
-export const adminClient = createAdminClient({
-  baseUrl: process.env.CONDUIT_API_URL || 'http://localhost:5074',
-  apiKey: process.env.CONDUIT_WEBUI_AUTH_KEY!
-});
-
-// Core client - can be used client-side
-export const coreClient = createCoreClient({
-  baseUrl: process.env.NEXT_PUBLIC_CONDUIT_API_URL || 'http://localhost:5074'
-});
-```
-
-## Route Handlers (Admin SDK)
-
-### Creating Routes
-
-```typescript
-// app/api/admin/providers/route.ts
-import { adminClient } from '@/lib/conduit';
-import { NextResponse } from 'next/server';
-
-export async function GET() {
-  try {
-    const providers = await adminClient.providers.list();
-    return NextResponse.json(providers);
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to fetch providers' },
-      { status: 500 }
-    );
-  }
-}
-```
-
-### Handling Parameters
-
-```typescript
-// app/api/admin/virtual-keys/[id]/route.ts
-import { adminClient } from '@/lib/conduit';
-import { NextResponse } from 'next/server';
-
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const key = await adminClient.virtualKeys.get(params.id);
-    return NextResponse.json(key);
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Virtual key not found' },
-      { status: 404 }
-    );
-  }
-}
-
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  try {
-    await adminClient.virtualKeys.delete(params.id);
-    return new NextResponse(null, { status: 204 });
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to delete virtual key' },
-      { status: 500 }
-    );
-  }
-}
-```
-
-### Error Responses
-
-```typescript
-// app/api/admin/virtual-keys/route.ts
-import { adminClient } from '@/lib/conduit';
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
-
-const createKeySchema = z.object({
-  name: z.string().min(1),
-  providers: z.array(z.string()),
-  maxRequestsPerMinute: z.number().optional()
-});
-
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const data = createKeySchema.parse(body);
-    
-    const key = await adminClient.virtualKeys.create(data);
-    return NextResponse.json(key, { status: 201 });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Invalid request', details: error.errors },
-        { status: 400 }
-      );
-    }
-    
-    return NextResponse.json(
-      { error: 'Failed to create virtual key' },
-      { status: 500 }
-    );
-  }
-}
-```
-
-### File Uploads
-
-```typescript
-// app/api/admin/images/upload/route.ts
-import { adminClient } from '@/lib/conduit';
-import { NextResponse } from 'next/server';
-
-export async function POST(request: Request) {
-  try {
-    const formData = await request.formData();
-    const file = formData.get('file') as File;
-    
-    if (!file) {
-      return NextResponse.json(
-        { error: 'No file provided' },
-        { status: 400 }
-      );
-    }
-    
-    // Convert File to Buffer
-    const buffer = Buffer.from(await file.arrayBuffer());
-    
-    const result = await adminClient.media.upload({
-      file: buffer,
-      filename: file.name,
-      contentType: file.type
-    });
-    
-    return NextResponse.json(result);
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to upload file' },
-      { status: 500 }
-    );
-  }
-}
-```
-
-## React Components (Core SDK)
-
-### Using Hooks
-
-```typescript
-// app/components/providers/provider-list.tsx
+// components/chat/ChatInterface.tsx
 'use client';
 
-import { useProviders } from '@conduit/admin-client/react';
-
-export function ProviderList() {
-  const { data: providers, isLoading, error } = useProviders();
-  
-  if (isLoading) return <div>Loading providers...</div>;
-  if (error) return <div>Error: {error.message}</div>;
-  
-  return (
-    <ul>
-      {providers?.map(provider => (
-        <li key={provider.id}>{provider.name}</li>
-      ))}
-    </ul>
-  );
-}
-```
-
-### Error Handling
-
-```typescript
-// app/components/virtual-keys/key-form.tsx
-'use client';
-
-import { useCreateVirtualKey } from '@conduit/admin-client/react';
 import { useState } from 'react';
-
-export function KeyForm() {
-  const createKey = useCreateVirtualKey();
-  const [error, setError] = useState<string | null>(null);
-  
-  const handleSubmit = async (data: any) => {
-    try {
-      setError(null);
-      await createKey.mutateAsync(data);
-      // Success - redirect or show message
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create key');
-    }
-  };
-  
-  return (
-    <form onSubmit={handleSubmit}>
-      {error && <div className="error">{error}</div>}
-      {/* Form fields */}
-    </form>
-  );
-}
-```
-
-### Loading States
-
-```typescript
-// app/components/model-mappings/mapping-list.tsx
-'use client';
-
-import { useModelMappings } from '@conduit/admin-client/react';
-import { Skeleton } from '@/components/ui/skeleton';
-
-export function MappingList({ providerId }: { providerId: string }) {
-  const { data, isLoading } = useModelMappings(providerId);
-  
-  if (isLoading) {
-    return (
-      <div className="space-y-2">
-        {[...Array(3)].map((_, i) => (
-          <Skeleton key={i} className="h-12 w-full" />
-        ))}
-      </div>
-    );
-  }
-  
-  return (
-    <div>
-      {data?.map(mapping => (
-        <div key={mapping.id}>{mapping.requestModel} → {mapping.actualModel}</div>
-      ))}
-    </div>
-  );
-}
-```
-
-### Optimistic Updates
-
-```typescript
-// app/components/virtual-keys/key-actions.tsx
-'use client';
-
-import { useDeleteVirtualKey, useVirtualKeys } from '@conduit/admin-client/react';
-import { useQueryClient } from '@tanstack/react-query';
-
-export function KeyActions({ keyId }: { keyId: string }) {
-  const queryClient = useQueryClient();
-  const deleteKey = useDeleteVirtualKey();
-  
-  const handleDelete = () => {
-    deleteKey.mutate(keyId, {
-      onMutate: async () => {
-        // Cancel in-flight queries
-        await queryClient.cancelQueries({ queryKey: ['virtualKeys'] });
-        
-        // Optimistically update cache
-        const previous = queryClient.getQueryData(['virtualKeys']);
-        queryClient.setQueryData(['virtualKeys'], (old: any) =>
-          old?.filter((key: any) => key.id !== keyId)
-        );
-        
-        return { previous };
-      },
-      onError: (err, variables, context) => {
-        // Rollback on error
-        if (context?.previous) {
-          queryClient.setQueryData(['virtualKeys'], context.previous);
-        }
-      },
-      onSettled: () => {
-        // Refetch after mutation
-        queryClient.invalidateQueries({ queryKey: ['virtualKeys'] });
-      }
-    });
-  };
-  
-  return <button onClick={handleDelete}>Delete</button>;
-}
-```
-
-## Real-time Features
-
-### SignalR Setup
-
-```typescript
-// app/lib/signalr.ts
-import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
-
-export function createConnection(hub: string) {
-  return new HubConnectionBuilder()
-    .withUrl(`${process.env.NEXT_PUBLIC_CONDUIT_API_URL}/hubs/${hub}`)
-    .withAutomaticReconnect()
-    .configureLogging(LogLevel.Information)
-    .build();
-}
-```
-
-### Connection Management
-
-```typescript
-// app/hooks/use-signalr.ts
-import { useEffect, useState } from 'react';
-import { HubConnection } from '@microsoft/signalr';
-import { createConnection } from '@/lib/signalr';
-
-export function useSignalR(hub: string) {
-  const [connection, setConnection] = useState<HubConnection | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  
-  useEffect(() => {
-    const conn = createConnection(hub);
-    
-    conn.onclose(() => setIsConnected(false));
-    conn.onreconnected(() => setIsConnected(true));
-    
-    conn.start()
-      .then(() => {
-        setConnection(conn);
-        setIsConnected(true);
-      })
-      .catch(console.error);
-    
-    return () => {
-      conn.stop();
-    };
-  }, [hub]);
-  
-  return { connection, isConnected };
-}
-```
-
-### Event Handling
-
-```typescript
-// app/components/chat/real-time-chat.tsx
-'use client';
-
-import { useSignalR } from '@/hooks/use-signalr';
-import { useEffect, useState } from 'react';
+import { Button, TextInput, Paper, Stack, Text } from '@mantine/core';
+import { useMutation } from '@tanstack/react-query';
 
 interface Message {
   id: string;
+  role: 'user' | 'assistant';
   content: string;
+}
+
+export function ChatInterface() {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+
+  const sendMessage = useMutation({
+    mutationFn: async (content: string) => {
+      const response = await fetch('/api/core/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'gpt-4',
+          messages: [...messages, { role: 'user', content }],
+          stream: true,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to send message');
+      return response.body;
+    },
+    onSuccess: (stream) => {
+      processStreamingResponse(stream);
+    },
+  });
+
+  const processStreamingResponse = async (stream: ReadableStream | null) => {
+    if (!stream) return;
+    
+    const reader = stream.getReader();
+    const decoder = new TextDecoder();
+    let assistantMessage = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') return;
+
+            try {
+              const parsed = JSON.parse(data);
+              const content = parsed.choices?.[0]?.delta?.content;
+              if (content) {
+                assistantMessage += content;
+                // Update messages with streaming content
+                setMessages(prev => {
+                  const newMessages = [...prev];
+                  const lastMessage = newMessages[newMessages.length - 1];
+                  
+                  if (lastMessage?.role === 'assistant') {
+                    newMessages[newMessages.length - 1] = {
+                      ...lastMessage,
+                      content: assistantMessage,
+                    };
+                  } else {
+                    newMessages.push({
+                      id: `assistant-${Date.now()}`,
+                      role: 'assistant',
+                      content: assistantMessage,
+                    });
+                  }
+                  
+                  return newMessages;
+                });
+              }
+            } catch (e) {
+              // Skip invalid JSON chunks
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  };
+
+  const handleSend = () => {
+    if (!input.trim()) return;
+    
+    // Add user message
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: input,
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
+    sendMessage.mutate(input);
+    setInput('');
+  };
+
+  return (
+    <Stack>
+      <Paper p="md" style={{ height: 400, overflowY: 'auto' }}>
+        {messages.map((message) => (
+          <div key={message.id} style={{ marginBottom: 16 }}>
+            <Text size="sm" c="dimmed">{message.role}</Text>
+            <Text>{message.content}</Text>
+          </div>
+        ))}
+      </Paper>
+      
+      <div style={{ display: 'flex', gap: 8 }}>
+        <TextInput
+          flex={1}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Type your message..."
+          onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+        />
+        <Button 
+          onClick={handleSend}
+          loading={sendMessage.isPending}
+          disabled={!input.trim()}
+        >
+          Send
+        </Button>
+      </div>
+    </Stack>
+  );
+}
+```
+
+### API Route Setup
+
+```typescript
+// app/api/core/chat/completions/route.ts
+import { NextRequest } from 'next/server';
+import { getServerCoreClient } from '@/lib/sdk/server-core-client';
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const coreClient = getServerCoreClient();
+    
+    const response = await coreClient.chat.completions.create({
+      model: body.model,
+      messages: body.messages,
+      stream: body.stream,
+      temperature: body.temperature,
+      max_tokens: body.max_tokens,
+    });
+
+    if (body.stream) {
+      // Return streaming response
+      return new Response(response.body, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      });
+    }
+
+    return Response.json(response);
+  } catch (error) {
+    console.error('Chat completion error:', error);
+    return Response.json(
+      { error: 'Failed to process chat completion' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+### SDK Client Configuration
+
+```typescript
+// lib/sdk/server-core-client.ts
+import { ConduitCoreClient } from '@conduit/core-sdk';
+
+let coreClient: ConduitCoreClient | null = null;
+
+export function getServerCoreClient(): ConduitCoreClient {
+  if (!coreClient) {
+    coreClient = new ConduitCoreClient({
+      baseURL: process.env.CONDUIT_CORE_API_URL!,
+      virtualKey: process.env.CONDUIT_WEBUI_VIRTUAL_KEY!,
+    });
+  }
+  return coreClient;
+}
+
+// lib/sdk/server-admin-client.ts
+import { ConduitAdminClient } from '@conduit/admin-sdk';
+
+let adminClient: ConduitAdminClient | null = null;
+
+export function getServerAdminClient(): ConduitAdminClient {
+  if (!adminClient) {
+    adminClient = new ConduitAdminClient({
+      baseURL: process.env.CONDUIT_ADMIN_API_URL!,
+      masterKey: process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY!,
+    });
+  }
+  return adminClient;
+}
+```
+
+### Image Generation Component
+
+```typescript
+// components/image/ImageGenerator.tsx
+'use client';
+
+import { useState } from 'react';
+import { Button, TextInput, Grid, Card, Image, Text } from '@mantine/core';
+import { useMutation } from '@tanstack/react-query';
+
+interface GeneratedImage {
+  id: string;
+  url: string;
+  prompt: string;
   timestamp: Date;
 }
 
-export function RealTimeChat({ virtualKey }: { virtualKey: string }) {
-  const { connection, isConnected } = useSignalR('navigation-state');
-  const [messages, setMessages] = useState<Message[]>([]);
-  
-  useEffect(() => {
-    if (!connection) return;
-    
-    // Join virtual key group
-    connection.invoke('JoinGroup', virtualKey);
-    
-    // Listen for messages
-    connection.on('ReceiveMessage', (message: Message) => {
-      setMessages(prev => [...prev, message]);
-    });
-    
-    return () => {
-      connection.off('ReceiveMessage');
-      connection.invoke('LeaveGroup', virtualKey);
-    };
-  }, [connection, virtualKey]);
-  
-  return (
-    <div>
-      {!isConnected && <div>Connecting...</div>}
-      {messages.map(msg => (
-        <div key={msg.id}>{msg.content}</div>
-      ))}
-    </div>
-  );
-}
-```
+export function ImageGenerator() {
+  const [prompt, setPrompt] = useState('');
+  const [images, setImages] = useState<GeneratedImage[]>([]);
 
-## Security
-
-### Admin vs Core SDK
-
-```typescript
-// ❌ NEVER expose admin SDK in client components
-'use client';
-import { adminClient } from '@/lib/conduit'; // ❌ This exposes your admin key!
-
-// ✅ Use route handlers for admin operations
-'use client';
-export function DeleteButton({ id }: { id: string }) {
-  const handleDelete = async () => {
-    await fetch(`/api/admin/virtual-keys/${id}`, { method: 'DELETE' });
-  };
-  return <button onClick={handleDelete}>Delete</button>;
-}
-```
-
-### Key Management
-
-```typescript
-// ✅ Correct: Keys in environment variables
-const adminClient = createAdminClient({
-  apiKey: process.env.CONDUIT_WEBUI_AUTH_KEY!
-});
-
-// ❌ Wrong: Hardcoded keys
-const adminClient = createAdminClient({
-  apiKey: 'sk-abc123' // NEVER DO THIS
-});
-
-// ✅ Correct: Virtual key from user input
-const coreClient = createCoreClient({
-  apiKey: userProvidedVirtualKey // From form input or cookie
-});
-```
-
-### CORS Configuration
-
-```typescript
-// app/api/public/[...path]/route.ts
-import { NextResponse } from 'next/server';
-
-// Handle CORS for public API routes
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    }
-  });
-}
-```
-
-## Migration Guide
-
-### From Raw Fetch
-
-#### List Views
-
-```typescript
-// ❌ Old Way (50+ lines)
-export function useProviders() {
-  const [providers, setProviders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  
-  useEffect(() => {
-    async function fetchProviders() {
-      try {
-        const response = await fetch('/api/admin/providers', {
-          headers: {
-            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ADMIN_KEY}`
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        setProviders(data.items || data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-    
-    fetchProviders();
-  }, []);
-  
-  return { providers, loading, error };
-}
-
-// ✅ New Way (1 line)
-import { useProviders } from '@conduit/admin-client/react';
-```
-
-#### Create Operations
-
-```typescript
-// ❌ Old Way (30+ lines)
-async function createVirtualKey(data) {
-  try {
-    const response = await fetch('/api/admin/virtual-keys', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ADMIN_KEY}`
-      },
-      body: JSON.stringify(data)
-    });
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to create key');
-    }
-    
-    return await response.json();
-  } catch (err) {
-    console.error('Error creating virtual key:', err);
-    throw err;
-  }
-}
-
-// ✅ New Way (3 lines)
-import { useCreateVirtualKey } from '@conduit/admin-client/react';
-const createKey = useCreateVirtualKey();
-await createKey.mutateAsync(data);
-```
-
-#### Update Operations
-
-```typescript
-// ❌ Old Way (35+ lines)
-async function updateModelMapping(providerId, mappingId, data) {
-  try {
-    const response = await fetch(
-      `/api/admin/providers/${providerId}/model-mappings/${mappingId}`,
-      {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ADMIN_KEY}`
-        },
-        body: JSON.stringify(data)
-      }
-    );
-    
-    if (!response.ok) {
-      throw new Error('Failed to update mapping');
-    }
-    
-    return await response.json();
-  } catch (err) {
-    console.error('Error updating mapping:', err);
-    throw err;
-  }
-}
-
-// ✅ New Way (3 lines)
-import { useUpdateModelMapping } from '@conduit/admin-client/react';
-const updateMapping = useUpdateModelMapping();
-await updateMapping.mutateAsync({ providerId, mappingId, data });
-```
-
-### From Old SDK Version
-
-```typescript
-// Old SDK (v1.x)
-import { ConduitClient } from '@conduit/client';
-const client = new ConduitClient({ apiKey: 'sk-xxx' });
-const providers = await client.getProviders();
-
-// New SDK (v2.x)
-import { createAdminClient } from '@conduit/admin-client';
-const client = createAdminClient({ apiKey: 'sk-xxx' });
-const providers = await client.providers.list();
-```
-
-### Common Patterns
-
-#### Pagination
-
-```typescript
-// ❌ Old Way - Manual pagination handling
-const [page, setPage] = useState(1);
-const [hasMore, setHasMore] = useState(true);
-
-useEffect(() => {
-  fetch(`/api/items?page=${page}&limit=20`)
-    .then(res => res.json())
-    .then(data => {
-      setItems(data.items);
-      setHasMore(data.hasMore);
-    });
-}, [page]);
-
-// ✅ New Way - Built-in pagination
-const { data, fetchNextPage, hasNextPage } = useVirtualKeys({
-  limit: 20
-});
-```
-
-#### Error Boundaries
-
-```typescript
-// app/components/error-boundary.tsx
-'use client';
-
-import { useQueryErrorResetBoundary } from '@tanstack/react-query';
-import { ErrorBoundary } from 'react-error-boundary';
-
-export function QueryErrorBoundary({ children }: { children: React.ReactNode }) {
-  const { reset } = useQueryErrorResetBoundary();
-  
-  return (
-    <ErrorBoundary
-      onReset={reset}
-      fallbackRender={({ error, resetErrorBoundary }) => (
-        <div>
-          <p>Something went wrong: {error.message}</p>
-          <button onClick={resetErrorBoundary}>Try again</button>
-        </div>
-      )}
-    >
-      {children}
-    </ErrorBoundary>
-  );
-}
-```
-
-## Examples
-
-### Virtual Keys Management
-
-```typescript
-// app/components/virtual-keys/virtual-keys-page.tsx
-'use client';
-
-import { useVirtualKeys, useCreateVirtualKey, useDeleteVirtualKey } from '@conduit/admin-client/react';
-import { useState } from 'react';
-
-export function VirtualKeysPage() {
-  const { data: keys, isLoading } = useVirtualKeys();
-  const createKey = useCreateVirtualKey();
-  const deleteKey = useDeleteVirtualKey();
-  const [isCreating, setIsCreating] = useState(false);
-  
-  const handleCreate = async (formData: FormData) => {
-    const data = {
-      name: formData.get('name') as string,
-      providers: formData.getAll('providers') as string[],
-      maxRequestsPerMinute: parseInt(formData.get('rateLimit') as string)
-    };
-    
-    await createKey.mutateAsync(data);
-    setIsCreating(false);
-  };
-  
-  const handleDelete = async (id: string) => {
-    if (confirm('Are you sure?')) {
-      await deleteKey.mutateAsync(id);
-    }
-  };
-  
-  if (isLoading) return <div>Loading...</div>;
-  
-  return (
-    <div>
-      <button onClick={() => setIsCreating(true)}>Create Key</button>
-      
-      {isCreating && (
-        <form onSubmit={(e) => {
-          e.preventDefault();
-          handleCreate(new FormData(e.currentTarget));
-        }}>
-          <input name="name" placeholder="Key name" required />
-          <select name="providers" multiple>
-            <option value="openai">OpenAI</option>
-            <option value="anthropic">Anthropic</option>
-          </select>
-          <input name="rateLimit" type="number" placeholder="Rate limit" />
-          <button type="submit">Create</button>
-        </form>
-      )}
-      
-      <ul>
-        {keys?.map(key => (
-          <li key={key.id}>
-            {key.name}
-            <button onClick={() => handleDelete(key.id)}>Delete</button>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-```
-
-### Model Mappings CRUD
-
-```typescript
-// app/components/model-mappings/mappings-manager.tsx
-'use client';
-
-import {
-  useModelMappings,
-  useCreateModelMapping,
-  useUpdateModelMapping,
-  useDeleteModelMapping
-} from '@conduit/admin-client/react';
-
-export function MappingsManager({ providerId }: { providerId: string }) {
-  const { data: mappings } = useModelMappings(providerId);
-  const createMapping = useCreateModelMapping();
-  const updateMapping = useUpdateModelMapping();
-  const deleteMapping = useDeleteModelMapping();
-  
-  const handleCreate = async (data: any) => {
-    await createMapping.mutateAsync({ providerId, ...data });
-  };
-  
-  const handleUpdate = async (mappingId: string, data: any) => {
-    await updateMapping.mutateAsync({ providerId, mappingId, data });
-  };
-  
-  const handleDelete = async (mappingId: string) => {
-    await deleteMapping.mutateAsync({ providerId, mappingId });
-  };
-  
-  return (
-    <div>
-      {mappings?.map(mapping => (
-        <MappingRow
-          key={mapping.id}
-          mapping={mapping}
-          onUpdate={(data) => handleUpdate(mapping.id, data)}
-          onDelete={() => handleDelete(mapping.id)}
-        />
-      ))}
-      <CreateMappingForm onSubmit={handleCreate} />
-    </div>
-  );
-}
-```
-
-### Chat Interface
-
-```typescript
-// app/components/chat/chat-interface.tsx
-'use client';
-
-import { useChat } from '@conduit/core-client/react';
-import { useState } from 'react';
-
-export function ChatInterface({ virtualKey }: { virtualKey: string }) {
-  const [messages, setMessages] = useState<Array<{ role: string; content: string }>>([]);
-  const chat = useChat({ apiKey: virtualKey });
-  
-  const sendMessage = async (content: string) => {
-    const userMessage = { role: 'user', content };
-    setMessages(prev => [...prev, userMessage]);
-    
-    try {
-      const response = await chat.mutateAsync({
-        messages: [...messages, userMessage],
-        stream: true
+  const generateImage = useMutation({
+    mutationFn: async (prompt: string) => {
+      const response = await fetch('/api/core/images/generations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt,
+          model: 'dall-e-3',
+          size: '1024x1024',
+          quality: 'hd',
+        }),
       });
-      
-      // Handle streaming response
-      let assistantMessage = { role: 'assistant', content: '' };
-      setMessages(prev => [...prev, assistantMessage]);
-      
-      for await (const chunk of response) {
-        assistantMessage.content += chunk.content;
-        setMessages(prev => [
-          ...prev.slice(0, -1),
-          { ...assistantMessage }
-        ]);
-      }
-    } catch (error) {
-      console.error('Chat error:', error);
-    }
-  };
-  
-  return (
-    <div>
-      {messages.map((msg, i) => (
-        <div key={i} className={msg.role}>
-          {msg.content}
-        </div>
-      ))}
-      <ChatInput onSend={sendMessage} />
-    </div>
-  );
-}
-```
 
-### Image Generation UI
-
-```typescript
-// app/components/images/image-generator.tsx
-'use client';
-
-import { useGenerateImage } from '@conduit/core-client/react';
-import { useState } from 'react';
-
-export function ImageGenerator({ virtualKey }: { virtualKey: string }) {
-  const generateImage = useGenerateImage({ apiKey: virtualKey });
-  const [images, setImages] = useState<string[]>([]);
-  
-  const handleGenerate = async (prompt: string) => {
-    try {
-      const result = await generateImage.mutateAsync({
+      if (!response.ok) throw new Error('Image generation failed');
+      return response.json();
+    },
+    onSuccess: (data) => {
+      const newImage: GeneratedImage = {
+        id: Date.now().toString(),
+        url: data.data.data[0].url,
         prompt,
-        size: '1024x1024',
-        n: 1
-      });
-      
-      setImages(prev => [...prev, ...result.data.map(d => d.url)]);
-    } catch (error) {
-      console.error('Generation error:', error);
-    }
-  };
-  
+        timestamp: new Date(),
+      };
+      setImages(prev => [newImage, ...prev]);
+      setPrompt('');
+    },
+  });
+
   return (
     <div>
-      <form onSubmit={(e) => {
-        e.preventDefault();
-        const prompt = new FormData(e.currentTarget).get('prompt') as string;
-        handleGenerate(prompt);
-      }}>
-        <input name="prompt" placeholder="Describe your image..." />
-        <button type="submit" disabled={generateImage.isPending}>
-          {generateImage.isPending ? 'Generating...' : 'Generate'}
-        </button>
-      </form>
-      
-      <div className="grid grid-cols-2 gap-4">
-        {images.map((url, i) => (
-          <img key={i} src={url} alt={`Generated ${i}`} />
+      <Card mb="xl">
+        <TextInput
+          placeholder="Describe the image you want to generate..."
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && generateImage.mutate(prompt)}
+        />
+        <Button
+          mt="sm"
+          onClick={() => generateImage.mutate(prompt)}
+          loading={generateImage.isPending}
+          disabled={!prompt.trim()}
+        >
+          Generate Image
+        </Button>
+      </Card>
+
+      <Grid>
+        {images.map((image) => (
+          <Grid.Col key={image.id} span={{ base: 12, md: 6, lg: 4 }}>
+            <Card>
+              <Card.Section>
+                <Image src={image.url} alt={image.prompt} height={200} />
+              </Card.Section>
+              <Text size="sm" mt="sm" lineClamp={2}>
+                {image.prompt}
+              </Text>
+              <Text size="xs" c="dimmed" mt="xs">
+                {image.timestamp.toLocaleString()}
+              </Text>
+            </Card>
+          </Grid.Col>
         ))}
-      </div>
+      </Grid>
     </div>
   );
 }
 ```
 
-## Performance Tips
+## App Router vs Pages Router
 
-### Query Optimization
-
+### App Router (Recommended)
 ```typescript
-// Prefetch data on hover
-import { useQueryClient } from '@tanstack/react-query';
+// app/chat/page.tsx
+import { ChatInterface } from '@/components/chat/ChatInterface';
 
-export function KeyLink({ keyId }: { keyId: string }) {
-  const queryClient = useQueryClient();
-  
+export default function ChatPage() {
   return (
-    <Link
-      href={`/keys/${keyId}`}
-      onMouseEnter={() => {
-        queryClient.prefetchQuery({
-          queryKey: ['virtualKey', keyId],
-          queryFn: () => fetch(`/api/admin/virtual-keys/${keyId}`).then(r => r.json())
-        });
-      }}
-    >
-      View Key
-    </Link>
+    <div>
+      <h1>Chat with AI</h1>
+      <ChatInterface />
+    </div>
   );
 }
 ```
 
-### Batch Operations
-
+### Pages Router (Legacy)
 ```typescript
-// Process multiple items efficiently
-const deleteMultiple = async (ids: string[]) => {
-  await Promise.all(
-    ids.map(id => deleteKey.mutateAsync(id))
+// pages/chat.tsx
+import { ChatInterface } from '@/components/chat/ChatInterface';
+import { GetServerSideProps } from 'next';
+
+export default function ChatPage() {
+  return (
+    <div>
+      <h1>Chat with AI</h1>
+      <ChatInterface />
+    </div>
   );
-  
-  // Invalidate once after all deletions
-  queryClient.invalidateQueries({ queryKey: ['virtualKeys'] });
+}
+
+export const getServerSideProps: GetServerSideProps = async () => {
+  return { props: {} };
 };
 ```
 
-### Suspense Integration
+## Authentication Integration
+
+### NextAuth Configuration
 
 ```typescript
-// app/components/providers/providers-list.tsx
-import { Suspense } from 'react';
-import { useProviders } from '@conduit/admin-client/react';
+// app/api/auth/[...nextauth]/route.ts
+import NextAuth from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
-function ProvidersList() {
-  const { data: providers } = useProviders({ suspense: true });
-  
-  return (
-    <ul>
-      {providers.map(p => <li key={p.id}>{p.name}</li>)}
-    </ul>
-  );
-}
+const handler = NextAuth(authOptions);
+export { handler as GET, handler as POST };
 
-export function ProvidersPage() {
-  return (
-    <Suspense fallback={<div>Loading providers...</div>}>
-      <ProvidersList />
-    </Suspense>
-  );
-}
+// lib/auth.ts
+import { NextAuthOptions } from 'next-auth';
+import CredentialsProvider from 'next-auth/providers/credentials';
+
+export const authOptions: NextAuthOptions = {
+  providers: [
+    CredentialsProvider({
+      name: 'credentials',
+      credentials: {
+        username: { label: 'Username', type: 'text' },
+        password: { label: 'Password', type: 'password' },
+      },
+      async authorize(credentials) {
+        // Implement your authentication logic
+        if (credentials?.username === 'admin' && credentials?.password === 'admin') {
+          return { id: '1', name: 'Admin', email: 'admin@example.com' };
+        }
+        return null;
+      },
+    }),
+  ],
+  session: { strategy: 'jwt' },
+  pages: {
+    signIn: '/auth/signin',
+  },
+};
 ```
 
-## Anti-Patterns to Avoid
-
-### ❌ Don't Use Admin SDK in Client Components
+## State Management with React Query
 
 ```typescript
-// ❌ WRONG - Exposes admin key to browser
-'use client';
-import { adminClient } from '@/lib/conduit';
-
-export function BadComponent() {
-  const handleClick = async () => {
-    await adminClient.virtualKeys.create({ name: 'test' }); // ❌
-  };
-}
-
-// ✅ CORRECT - Use route handler
-'use client';
-export function GoodComponent() {
-  const handleClick = async () => {
-    await fetch('/api/admin/virtual-keys', {
-      method: 'POST',
-      body: JSON.stringify({ name: 'test' })
-    });
-  };
-}
-```
-
-### ❌ Don't Expose Virtual Keys in Code
-
-```typescript
-// ❌ WRONG - Hardcoded virtual key
-const client = createCoreClient({
-  apiKey: 'vk_abc123' // ❌ Never hardcode keys
-});
-
-// ✅ CORRECT - Get from user input or secure storage
-const client = createCoreClient({
-  apiKey: getCookieValue('userVirtualKey') // ✅
-});
-```
-
-### ❌ Don't Wrap SDK Methods Unnecessarily
-
-```typescript
-// ❌ WRONG - Unnecessary wrapper
-export async function getProviders() {
-  return await adminClient.providers.list();
-}
-
-// ✅ CORRECT - Use SDK directly
-import { useProviders } from '@conduit/admin-client/react';
-```
-
-### ❌ Don't Ignore Error States
-
-```typescript
-// ❌ WRONG - No error handling
-export function BadList() {
-  const { data } = useVirtualKeys();
-  return <div>{data.map(...)}</div>; // Will crash if data is undefined
-}
-
-// ✅ CORRECT - Handle all states
-export function GoodList() {
-  const { data, isLoading, error } = useVirtualKeys();
-  
-  if (isLoading) return <Loading />;
-  if (error) return <Error error={error} />;
-  if (!data?.length) return <Empty />;
-  
-  return <div>{data.map(...)}</div>;
-}
-```
-
-### ❌ Don't Mix Admin and Core Operations
-
-```typescript
-// ❌ WRONG - Mixing concerns
-export function BadChat() {
-  const { data: keys } = useVirtualKeys(); // Admin operation
-  const chat = useChat({ apiKey: keys[0].key }); // Core operation
-}
-
-// ✅ CORRECT - Separate concerns
-// Admin component
-export function KeySelector({ onSelect }) {
-  const { data: keys } = useVirtualKeys();
-  return <select onChange={e => onSelect(e.target.value)}>...</select>;
-}
-
-// Core component
-export function Chat({ virtualKey }) {
-  const chat = useChat({ apiKey: virtualKey });
-  // ...
-}
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **"Failed to fetch" errors**
-   - Check CORS configuration
-   - Verify API URL in environment variables
-   - Ensure server is running
-
-2. **"Unauthorized" errors**
-   - Verify admin key is set correctly
-   - Check key hasn't expired
-   - Ensure using correct SDK (admin vs core)
-
-3. **TypeScript errors**
-   - Update to latest SDK version
-   - Run `npm install` to sync types
-   - Check tsconfig includes node_modules
-
-4. **Real-time updates not working**
-   - Verify SignalR hub URLs
-   - Check WebSocket support
-   - Look for connection errors in console
-
-### Debug Mode
-
-Enable detailed logging:
-
-```typescript
-// Enable query debugging
+// lib/query-client.ts
 import { QueryClient } from '@tanstack/react-query';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: process.env.NODE_ENV === 'production' ? 3 : 0,
-      logger: {
-        log: console.log,
-        warn: console.warn,
-        error: console.error
-      }
-    }
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+// app/layout.tsx
+'use client';
+
+import { QueryClientProvider } from '@tanstack/react-query';
+import { MantineProvider } from '@mantine/core';
+import { queryClient } from '@/lib/query-client';
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body>
+        <QueryClientProvider client={queryClient}>
+          <MantineProvider>
+            {children}
+          </MantineProvider>
+        </QueryClientProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+## Error Handling
+
+```typescript
+// lib/error-handling.ts
+export class ConduitAPIError extends Error {
+  constructor(
+    message: string,
+    public statusCode: number,
+    public details?: any
+  ) {
+    super(message);
+    this.name = 'ConduitAPIError';
   }
+}
+
+export function handleAPIError(error: any): never {
+  if (error.response) {
+    throw new ConduitAPIError(
+      error.response.data?.error?.message || 'API Error',
+      error.response.status,
+      error.response.data
+    );
+  }
+  
+  throw new ConduitAPIError(error.message || 'Unknown error', 500);
+}
+
+// components/ErrorBoundary.tsx
+'use client';
+
+import { Component, ReactNode } from 'react';
+import { Alert } from '@mantine/core';
+
+interface Props {
+  children: ReactNode;
+  fallback?: ReactNode;
+}
+
+interface State {
+  hasError: boolean;
+  error?: Error;
+}
+
+export class ErrorBoundary extends Component<Props, State> {
+  constructor(props: Props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || (
+        <Alert color="red" title="Something went wrong">
+          {this.state.error?.message || 'An unexpected error occurred'}
+        </Alert>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+```
+
+## Testing
+
+```typescript
+// __tests__/components/ChatInterface.test.tsx
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ChatInterface } from '@/components/chat/ChatInterface';
+
+// Mock fetch
+global.fetch = jest.fn();
+
+const createTestQueryClient = () => new QueryClient({
+  defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+});
+
+describe('ChatInterface', () => {
+  beforeEach(() => {
+    (fetch as jest.Mock).mockClear();
+  });
+
+  it('sends a message when form is submitted', async () => {
+    const queryClient = createTestQueryClient();
+    
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      body: new ReadableStream(),
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ChatInterface />
+      </QueryClientProvider>
+    );
+
+    const input = screen.getByPlaceholderText('Type your message...');
+    const button = screen.getByText('Send');
+
+    fireEvent.change(input, { target: { value: 'Hello' } });
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith('/api/core/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'gpt-4',
+          messages: [{ role: 'user', content: 'Hello' }],
+          stream: true,
+        }),
+      });
+    });
+  });
 });
 ```
 
-## Next Steps
+## Deployment
 
-- Review the [API Reference](/docs/api-reference.md) for detailed method documentation
-- Check out the [WebUI source code](https://github.com/knnlabs/Conduit/tree/main/ConduitLLM.WebUI) for more examples
-- Join our [Discord community](https://discord.gg/conduit) for support
+### Production Environment Variables
 
----
+```bash
+# .env.production
+NEXTAUTH_SECRET=production-secret
+NEXTAUTH_URL=https://yourdomain.com
 
-Last updated: 2025-01-08
+CONDUIT_CORE_API_URL=https://core-api.yourdomain.com
+CONDUIT_ADMIN_API_URL=https://admin-api.yourdomain.com
+CONDUIT_API_TO_API_BACKEND_AUTH_KEY=production-master-key
+CONDUIT_WEBUI_VIRTUAL_KEY=production-webui-key
+```
+
+### Docker Configuration
+
+```dockerfile
+# Dockerfile
+FROM node:18-alpine AS dependencies
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --only=production
+
+FROM node:18-alpine AS build
+WORKDIR /app
+COPY . .
+COPY --from=dependencies /app/node_modules ./node_modules
+RUN npm run build
+
+FROM node:18-alpine AS runtime
+WORKDIR /app
+COPY --from=build /app/.next ./.next
+COPY --from=build /app/public ./public
+COPY --from=build /app/package.json ./package.json
+COPY --from=dependencies /app/node_modules ./node_modules
+
+EXPOSE 3000
+CMD ["npm", "start"]
+```
+
+## Best Practices
+
+### Performance
+- Use React Query for efficient data fetching and caching
+- Implement proper error boundaries for robust error handling
+- Use Next.js Image component for optimized image loading
+- Implement proper SEO with metadata API
+
+### Security
+- Never expose master keys in client-side code
+- Use environment variables for all sensitive configuration
+- Implement proper CORS and CSP headers
+- Validate all user inputs on both client and server
+
+### User Experience
+- Provide loading states for all async operations
+- Implement optimistic updates where appropriate
+- Use proper error messaging and recovery options
+- Ensure accessibility compliance with proper ARIA labels
+
+## Related Documentation
+
+- [Admin API Examples](./admin-api/examples.md) - Administrative API usage examples
+- [Real-Time API Guide](./real-time-api-guide.md) - Real-time features and SignalR integration
+- [Integration Examples](./examples/INTEGRATION-EXAMPLES.md) - Broader integration patterns
