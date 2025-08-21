@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Core.Models;
@@ -164,4 +165,16 @@ public class ChatCompletionRequest
     [JsonPropertyName("system_fingerprint")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? SystemFingerprint { get; set; }
+    
+    /// <summary>
+    /// Additional model-specific parameters that are passed through to the provider API.
+    /// These parameters are populated based on the model's ApiParameters configuration.
+    /// Examples include reasoning_effort, min_p, language, timestamp_granularities, etc.
+    /// </summary>
+    /// <remarks>
+    /// This property captures any JSON properties not explicitly mapped to other properties.
+    /// The router validates these against the model's supported parameters before forwarding.
+    /// </remarks>
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 }

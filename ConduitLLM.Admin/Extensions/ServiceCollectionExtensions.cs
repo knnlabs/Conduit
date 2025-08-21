@@ -92,10 +92,11 @@ public static class ServiceCollectionExtensions
         {
             var mappingRepository = serviceProvider.GetRequiredService<IModelProviderMappingRepository>();
             var credentialRepository = serviceProvider.GetRequiredService<IProviderRepository>();
+            var modelRepository = serviceProvider.GetRequiredService<IModelRepository>();
             var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
             var logger = serviceProvider.GetRequiredService<ILogger<AdminModelProviderMappingService>>();
             
-            return new AdminModelProviderMappingService(mappingRepository, credentialRepository, publishEndpoint, logger);
+            return new AdminModelProviderMappingService(mappingRepository, credentialRepository, modelRepository, publishEndpoint, logger);
         });
         services.AddScoped<IAdminRouterService, AdminRouterService>();
         

@@ -161,7 +161,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 Choices = MapDynamicStreamingChoices(chunk.Choices),
                 OriginalModelAlias = originalModelAlias,
                 // Map usage data if present (typically in the final chunk)
-                Usage = HasProperty(chunk, "usage") && chunk.usage != null ? MapUsage(chunk.usage) : null
+                Usage = null // TODO: Implement usage mapping for streaming
             };
         }
 

@@ -74,6 +74,13 @@ namespace ConduitLLM.Configuration.Entities
         public bool IsActive { get; set; } = true;
 
         /// <summary>
+        /// JSON array of API parameters supported by this specific model.
+        /// These are merged with ModelSeries.ApiParameters during bulk mapping.
+        /// Example: ["seed", "user"] for model-specific additions.
+        /// </summary>
+        public string? ApiParameters { get; set; }
+
+        /// <summary>
         /// Date the model was created.
         /// </summary>
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
