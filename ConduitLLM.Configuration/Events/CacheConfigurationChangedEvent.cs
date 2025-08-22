@@ -1,4 +1,3 @@
-using System;
 using ConduitLLM.Configuration.Models;
 
 namespace ConduitLLM.Configuration.Events

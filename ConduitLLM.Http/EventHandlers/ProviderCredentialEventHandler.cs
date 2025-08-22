@@ -1,5 +1,4 @@
 using MassTransit;
-using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 

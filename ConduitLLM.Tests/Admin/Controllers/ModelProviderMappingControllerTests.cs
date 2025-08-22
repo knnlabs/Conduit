@@ -1,22 +1,8 @@
 // TODO: Update tests for new Model architecture where capabilities come from Model entity
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using ConduitLLM.Admin.Controllers;
 using ConduitLLM.Admin.Interfaces;
-using ConduitLLM.Tests.Admin.TestHelpers;
-using ConduitLLM.Configuration;
-using ConduitLLM.Configuration.DTOs;
-using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Configuration.Extensions;
-using ConduitLLM.Core.Interfaces;
-using FluentAssertions;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Xunit;
 using Xunit.Abstractions;
 using ConduitLLM.Configuration.Interfaces;
 

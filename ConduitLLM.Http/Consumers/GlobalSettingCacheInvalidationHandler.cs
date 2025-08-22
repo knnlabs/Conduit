@@ -1,8 +1,7 @@
-using System;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+
 using MassTransit;
-using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Http.Consumers
 {

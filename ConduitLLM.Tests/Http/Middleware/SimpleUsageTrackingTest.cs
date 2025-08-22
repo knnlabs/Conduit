@@ -1,17 +1,12 @@
-using System;
-using System.IO;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Xunit;
 using ConduitLLM.Http.Middleware;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration.Interfaces;
-using ConduitLLM.Configuration.Services;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 
 namespace ConduitLLM.Tests.Http.Middleware

@@ -1,15 +1,8 @@
-using System.Collections.Generic;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
-
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 
 using Microsoft.Extensions.Logging;
 // Use aliases to avoid ambiguities
-using CoreModels = ConduitLLM.Core.Models;
-using InternalModels = ConduitLLM.Providers.Common.Models;
 
 namespace ConduitLLM.Providers.OpenAICompatible
 {

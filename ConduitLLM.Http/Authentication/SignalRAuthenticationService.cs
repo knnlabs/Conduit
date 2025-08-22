@@ -1,11 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Security.Claims;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Http.Authentication

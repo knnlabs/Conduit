@@ -1,12 +1,9 @@
-using System;
 using System.Diagnostics;
-using System.Threading;
-using System.Threading.Tasks;
+
 using MassTransit;
-using Microsoft.Extensions.Logging;
+
 using Polly;
 using Polly.CircuitBreaker;
-using Polly.Extensions.Http;
 
 namespace ConduitLLM.Http.EventHandlers
 {

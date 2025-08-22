@@ -1,13 +1,9 @@
-using System;
-using System.Collections.Generic;
 using System.Net.WebSockets;
-using System.Threading;
-using System.Threading.Tasks;
+
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
-using ConduitLLM.Core.Models.Realtime;
+
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers.Ultravox

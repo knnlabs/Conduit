@@ -14,7 +14,6 @@ using Microsoft.EntityFrameworkCore; // For IDbContextFactory
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
-using StackExchange.Redis;
 
 namespace ConduitLLM.Admin.Extensions;
 

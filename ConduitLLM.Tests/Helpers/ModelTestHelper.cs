@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Tests.Helpers

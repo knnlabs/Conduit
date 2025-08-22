@@ -1,10 +1,7 @@
-using System;
-using System.Threading.Tasks;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Http.Middleware;
 using Moq;
-using Xunit;
 
 namespace ConduitLLM.Tests.Http.Middleware
 {

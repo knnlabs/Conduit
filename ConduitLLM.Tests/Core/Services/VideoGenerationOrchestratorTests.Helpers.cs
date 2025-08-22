@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -11,7 +6,6 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Tests.Helpers;
 using MassTransit;
 using Moq;
-using Xunit;
 
 namespace ConduitLLM.Tests.Core.Services
 {

@@ -1,21 +1,9 @@
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.SignalR;
-using Prometheus;
 using StackExchange.Redis;
-using Microsoft.EntityFrameworkCore;
 using ConduitLLM.Configuration.DTOs.Metrics;
 using ConduitLLM.Http.Hubs;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Interfaces;
-using ConduitLLM.Configuration.Repositories;
 
 namespace ConduitLLM.Http.Services
 {

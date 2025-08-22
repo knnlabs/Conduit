@@ -1,10 +1,6 @@
-using System;
-using System.Threading.Tasks;
 using MassTransit;
-using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Http.Interfaces;
-using ConduitLLM.Http.Services;
 
 namespace ConduitLLM.Http.EventHandlers
 {

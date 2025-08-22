@@ -4,7 +4,6 @@ using ConduitLLM.Core.Data.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace ConduitLLM.Core.Data.Extensions
 {

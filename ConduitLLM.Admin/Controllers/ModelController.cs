@@ -1,17 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using ConduitLLM.Admin.Models.Models;
 using ConduitLLM.Admin.Models.ModelCapabilities;
 using ConduitLLM.Admin.Models.ModelSeries;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Admin.Controllers
 {

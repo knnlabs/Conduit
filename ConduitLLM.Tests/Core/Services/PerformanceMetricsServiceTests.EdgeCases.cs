@@ -1,6 +1,4 @@
-using System;
 using ConduitLLM.Core.Models;
-using Xunit;
 
 namespace ConduitLLM.Tests.Core.Services
 {

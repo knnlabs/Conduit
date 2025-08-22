@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using Microsoft.Extensions.Logging;
+
 using Prometheus;
 
 namespace ConduitLLM.Http.Handlers

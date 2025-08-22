@@ -1,23 +1,19 @@
 using System.Reflection;
 
 using ConduitLLM.Admin.Extensions;
-using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Extensions;
-using ConduitLLM.Core.Caching;
 using ConduitLLM.Providers.Extensions;
 
 using MassTransit; // Added for event bus infrastructure
 
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
 
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
-using Prometheus;
 
-using ConduitLLM.Admin.Interfaces;
+using Prometheus;
 namespace ConduitLLM.Admin;
 
 /// <summary>

@@ -1,18 +1,9 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Linq;
-using Microsoft.Extensions.Logging;
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Interfaces;
-using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Services;
 using MassTransit;
-using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 namespace ConduitLLM.Http.Services

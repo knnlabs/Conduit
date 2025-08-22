@@ -1,11 +1,8 @@
-using System;
-using System.Net.Http;
 using System.Net.Http.Headers;
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
-using ConduitLLM.Providers.Common.Models;
 
 using Microsoft.Extensions.Logging;
 

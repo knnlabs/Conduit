@@ -1,5 +1,3 @@
-using System;
-
 namespace ConduitLLM.Providers.Groq
 {
     /// <summary>

@@ -1,14 +1,11 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Http.Hubs;
+
 using MassTransit;
+
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Http.EventHandlers
 {

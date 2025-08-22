@@ -1,8 +1,4 @@
-using System;
 using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 using MassTransit;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;

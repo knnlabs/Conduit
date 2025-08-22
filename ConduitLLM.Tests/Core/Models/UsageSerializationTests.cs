@@ -1,8 +1,8 @@
-using System.Collections.Generic;
 using System.Text.Json;
+
 using ConduitLLM.Core.Models;
+
 using FluentAssertions;
-using Xunit;
 
 namespace ConduitLLM.Tests.Core.Models;
 

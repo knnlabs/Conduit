@@ -1,4 +1,3 @@
-using System;
 using System.Net;
 
 namespace ConduitLLM.Core.Exceptions;

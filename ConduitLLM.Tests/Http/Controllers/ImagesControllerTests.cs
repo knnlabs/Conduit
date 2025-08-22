@@ -1,21 +1,15 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Http.Controllers;
+
 using MassTransit;
-using Microsoft.AspNetCore.Http;
+
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.Extensions.Logging;
+
 using Moq;
-using Xunit;
+
 using Xunit.Abstractions;
 
 namespace ConduitLLM.Tests.Http.Controllers

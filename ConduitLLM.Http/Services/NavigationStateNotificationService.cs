@@ -1,12 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.Logging;
 using ConduitLLM.Http.Hubs;
 using ConduitLLM.Configuration.DTOs.SignalR;
-using ConduitLLM.Configuration;
-using System;
-using System.Threading.Tasks;
-
-using ConduitLLM.Http.Interfaces;
 namespace ConduitLLM.Http.Services
 {
     /// <summary>

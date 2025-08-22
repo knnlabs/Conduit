@@ -1,5 +1,5 @@
-using System;
 using System.Text;
+
 using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Tests.Core.Builders

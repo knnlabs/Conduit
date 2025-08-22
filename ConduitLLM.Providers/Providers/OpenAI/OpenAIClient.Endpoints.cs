@@ -1,4 +1,3 @@
-using System;
 using ConduitLLM.Providers.Helpers;
 
 namespace ConduitLLM.Providers.OpenAI

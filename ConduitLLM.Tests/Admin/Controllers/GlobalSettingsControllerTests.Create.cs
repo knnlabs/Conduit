@@ -1,5 +1,3 @@
-using System;
-using System.Threading.Tasks;
 using ConduitLLM.Admin.Controllers;
 using ConduitLLM.Tests.Admin.TestHelpers;
 using ConduitLLM.Configuration.DTOs;
@@ -7,7 +5,6 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Xunit;
 
 namespace ConduitLLM.Tests.Admin.Controllers
 {

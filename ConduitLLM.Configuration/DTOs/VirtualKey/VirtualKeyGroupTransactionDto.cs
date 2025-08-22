@@ -1,4 +1,3 @@
-using System;
 using ConduitLLM.Configuration.Enums;
 
 namespace ConduitLLM.Configuration.DTOs.VirtualKey

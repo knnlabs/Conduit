@@ -1,10 +1,6 @@
-using System;
 using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Xunit;
 using StackExchange.Redis;
 using MassTransit;
 using ConduitLLM.Core.Events;

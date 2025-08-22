@@ -1,11 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Security.Claims;
-using System.Threading;
-using System.Threading.Tasks;
 using ConduitLLM.Configuration;
-using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Http.Controllers;
@@ -14,7 +8,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Xunit;
 using Xunit.Abstractions;
 using ConduitLLM.Configuration.DTOs;
 

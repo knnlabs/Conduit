@@ -1,28 +1,18 @@
-using System;
-using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Security.Claims;
-using System.Text;
 using System.Text.Encodings.Web;
-using System.Text.Json;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Xunit;
 using ConduitLLM.Admin.Security;
 using ConduitLLM.Admin.Services;
-using ConduitLLM.Admin.Interfaces;
-using ConduitLLM.Admin.Models;
 
 namespace ConduitLLM.Tests.Admin.Integration
 {

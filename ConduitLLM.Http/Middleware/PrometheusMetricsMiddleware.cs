@@ -1,12 +1,3 @@
-using System;
-using System.Threading.Tasks;
-
-using ConduitLLM.Core.Services;
-
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-
 namespace ConduitLLM.Http.Middleware
 {
     /// <summary>

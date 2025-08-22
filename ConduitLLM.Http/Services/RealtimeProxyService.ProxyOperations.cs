@@ -1,15 +1,9 @@
-using System;
-using System.Linq;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
+
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
-using ConduitLLM.Core.Models.Realtime;
-using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Http.Services
 {

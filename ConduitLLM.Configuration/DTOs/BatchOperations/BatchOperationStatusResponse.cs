@@ -1,5 +1,3 @@
-using System;
-
 namespace ConduitLLM.Configuration.DTOs.BatchOperations
 {
     /// <summary>

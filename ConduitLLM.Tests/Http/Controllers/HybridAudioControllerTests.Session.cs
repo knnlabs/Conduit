@@ -1,13 +1,8 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Http.Controllers;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
-using Xunit;
 using ConduitLLM.Configuration.DTOs;
 
 namespace ConduitLLM.Tests.Http.Controllers

@@ -1,4 +1,3 @@
-using System;
 using ConduitLLM.Admin.Models.ModelCapabilities;
 using ConduitLLM.Admin.Models.ModelSeries;
 

@@ -1,13 +1,10 @@
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
-using ConduitLLM.Core.Extensions;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-
-using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
 namespace ConduitLLM.Admin.Controllers;
 

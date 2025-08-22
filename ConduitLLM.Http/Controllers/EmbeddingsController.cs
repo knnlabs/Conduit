@@ -1,18 +1,11 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-
 using ConduitLLM.Core.Controllers;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
-using ConduitLLM.Http.Models;
 
 using MassTransit;
 
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using ConduitLLM.Http.Authorization;
 
 namespace ConduitLLM.Http.Controllers

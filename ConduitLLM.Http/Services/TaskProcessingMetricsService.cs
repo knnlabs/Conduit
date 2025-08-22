@@ -1,14 +1,6 @@
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Prometheus;
 using ConduitLLM.Configuration.Interfaces;
-using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Interfaces;
 
 namespace ConduitLLM.Http.Services

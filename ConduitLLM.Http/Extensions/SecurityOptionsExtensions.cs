@@ -1,7 +1,3 @@
-using System;
-using System.Linq;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using ConduitLLM.Http.Options;
 
 namespace ConduitLLM.Http.Extensions

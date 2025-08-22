@@ -1,4 +1,3 @@
-using System;
 using ConduitLLM.Configuration.DTOs.Security;
 
 namespace ConduitLLM.Security.Models

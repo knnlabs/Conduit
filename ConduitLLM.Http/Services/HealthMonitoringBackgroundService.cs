@@ -1,15 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ConduitLLM.Configuration.DTOs.HealthMonitoring;
-using ConduitLLM.Http.Hubs;
 using ConduitLLM.Http.Interfaces;
 
 namespace ConduitLLM.Http.Services

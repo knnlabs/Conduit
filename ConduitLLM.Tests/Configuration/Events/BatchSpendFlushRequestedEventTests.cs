@@ -1,5 +1,3 @@
-using System;
-using Xunit;
 using ConduitLLM.Configuration.Events;
 
 namespace ConduitLLM.Tests.Configuration.Events

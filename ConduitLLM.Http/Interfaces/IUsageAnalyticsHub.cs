@@ -1,4 +1,3 @@
-using System.Threading.Tasks;
 using ConduitLLM.Configuration.DTOs.SignalR;
 
 namespace ConduitLLM.Http.Interfaces

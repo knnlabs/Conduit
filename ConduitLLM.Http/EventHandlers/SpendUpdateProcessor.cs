@@ -1,8 +1,5 @@
 using MassTransit;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Events;
-using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Configuration.Interfaces;
 
 namespace ConduitLLM.Http.EventHandlers

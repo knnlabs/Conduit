@@ -1,24 +1,18 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using ConduitLLM.Configuration;
-using ConduitLLM.Configuration.Data;
-using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Tests.Helpers;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+
 using Moq;
+
 using StackExchange.Redis;
-using Xunit;
 
 namespace ConduitLLM.Tests.Configuration.Services
 {

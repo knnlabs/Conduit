@@ -1,17 +1,8 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.WebSockets;
-using System.Threading;
-using System.Threading.Tasks;
 
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Realtime;
-
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Http.Services
 {

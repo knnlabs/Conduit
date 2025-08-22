@@ -1,6 +1,5 @@
 using System.Text;
 using System.Text.Json;
-using Microsoft.AspNetCore.Http;
 
 namespace ConduitLLM.Http.Services
 {

@@ -1,11 +1,8 @@
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs.IpFilter;
-using ConduitLLM.Core.Extensions;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-
-using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
 namespace ConduitLLM.Admin.Controllers;
 

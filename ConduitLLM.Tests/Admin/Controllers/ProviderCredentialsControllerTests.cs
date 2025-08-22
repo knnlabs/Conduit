@@ -1,21 +1,13 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using ConduitLLM.Admin.Controllers;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using MassTransit;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Xunit;
 using Xunit.Abstractions;
-using static ConduitLLM.Admin.Controllers.ProviderCredentialsController;
 using ConduitLLM.Configuration.Interfaces;
 
 namespace ConduitLLM.Tests.Admin.Controllers

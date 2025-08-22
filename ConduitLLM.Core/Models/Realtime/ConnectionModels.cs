@@ -1,5 +1,3 @@
-using System;
-
 namespace ConduitLLM.Core.Models.Realtime
 {
     /// <summary>

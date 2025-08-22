@@ -1,5 +1,3 @@
-using System;
-
 namespace ConduitLLM.Tests.Core.Services
 {
     /// <summary>
