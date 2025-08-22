@@ -37,7 +37,7 @@ namespace ConduitLLM.Http.Controllers
         }
 
         /// <summary>
-        /// Gets all discovered models and their capabilities, filtered by virtual key permissions.
+        /// Gets all discovered models and their capabilities for authenticated virtual keys.
         /// </summary>
         /// <param name="capability">Optional capability filter (e.g., "video_generation", "vision")</param>
         /// <returns>List of models with their capabilities.</returns>
@@ -53,7 +53,7 @@ namespace ConduitLLM.Http.Controllers
                     return Unauthorized(new ErrorResponseDto("Virtual key not found"));
                 }
 
-                // Get virtual key details to check allowed models
+                // Validate virtual key is active
                 var virtualKey = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKeyValue);
                 if (virtualKey == null)
                 {
@@ -62,11 +62,13 @@ namespace ConduitLLM.Http.Controllers
 
                 using var context = await _dbContextFactory.CreateDbContextAsync();
                 
-                // Get all enabled model mappings with their providers and model series
+                // Get all enabled model mappings with their related data
                 var modelMappings = await context.ModelProviderMappings
                     .Include(m => m.Provider)
                     .Include(m => m.Model)
                         .ThenInclude(m => m.Series)
+                    .Include(m => m.Model)
+                        .ThenInclude(m => m.Capabilities)
                     .Where(m => m.IsEnabled && m.Provider != null && m.Provider.IsEnabled)
                     .ToListAsync();
 
@@ -74,115 +76,92 @@ namespace ConduitLLM.Http.Controllers
 
                 foreach (var mapping in modelMappings)
                 {
-                    // Check if model is allowed for this virtual key
-                    if (!IsModelAllowed(mapping.ModelAlias, virtualKey.AllowedModels))
+                    // Skip if model or capabilities are missing
+                    if (mapping.Model?.Capabilities == null)
                     {
+                        _logger.LogWarning("Model mapping {ModelAlias} has no model or capabilities data", mapping.ModelAlias);
                         continue;
                     }
 
-                    // Build capabilities object with detailed metadata
-                    var capabilities = new Dictionary<string, object>();
-
-                    // Chat capabilities (assume all models support basic chat)
-                    capabilities["chat"] = new { supported = true };
-                    capabilities["chat_stream"] = new { supported = true };
-
-                    // Vision capability
-                    if (await _modelCapabilityService.SupportsVisionAsync(mapping.ModelAlias))
-                    {
-                        capabilities["vision"] = new { supported = true };
-                    }
-
-                    // Audio capabilities
-                    if (await _modelCapabilityService.SupportsAudioTranscriptionAsync(mapping.ModelAlias))
-                    {
-                        var supportedLanguages = await _modelCapabilityService.GetSupportedLanguagesAsync(mapping.ModelAlias);
-                        var supportedFormats = await _modelCapabilityService.GetSupportedFormatsAsync(mapping.ModelAlias);
-                        
-                        capabilities["audio_transcription"] = new
-                        {
-                            supported = true,
-                            supported_languages = supportedLanguages,
-                            supported_formats = supportedFormats
-                        };
-                    }
-
-                    // Text-to-speech capability
-                    if (await _modelCapabilityService.SupportsTextToSpeechAsync(mapping.ModelAlias))
-                    {
-                        var supportedVoices = await _modelCapabilityService.GetSupportedVoicesAsync(mapping.ModelAlias);
-                        var supportedLanguages = await _modelCapabilityService.GetSupportedLanguagesAsync(mapping.ModelAlias);
-                        
-                        capabilities["text_to_speech"] = new
-                        {
-                            supported = true,
-                            supported_voices = supportedVoices,
-                            supported_languages = supportedLanguages
-                        };
-                    }
-
-                    // Real-time audio capability
-                    if (await _modelCapabilityService.SupportsRealtimeAudioAsync(mapping.ModelAlias))
-                    {
-                        capabilities["realtime_audio"] = new { supported = true };
-                    }
-
-                    // Video generation capability
-                    if (await _modelCapabilityService.SupportsVideoGenerationAsync(mapping.ModelAlias))
-                    {
-                        var videoCapability = new Dictionary<string, object>
-                        {
-                            ["supported"] = true
-                        };
-
-                        // TODO: Extract video-specific metadata from model configuration when available
-                        // For now, use default values for MiniMax video model
-                        if (mapping.ModelAlias.Contains("video", StringComparison.OrdinalIgnoreCase))
-                        {
-                            videoCapability["max_duration_seconds"] = 6;
-                            videoCapability["supported_resolutions"] = new[] { "720x480", "1280x720", "1920x1080", "720x1280", "1080x1920" };
-                            videoCapability["supported_fps"] = new[] { 24, 30 };
-                            videoCapability["supports_custom_styles"] = true;
-                        }
-
-                        capabilities["video_generation"] = videoCapability;
-                    }
-
-                    // Image generation capability
-                    if (mapping.SupportsImageGeneration)
-                    {
-                        var imageCapability = new Dictionary<string, object>
-                        {
-                            ["supported"] = true
-                        };
-
-                        // TODO: Extract image-specific metadata from model configuration when available
-                        // For now, use common image sizes
-                        imageCapability["supported_sizes"] = new[] { "256x256", "512x512", "1024x1024", "1792x1024", "1024x1792" };
-
-                        capabilities["image_generation"] = imageCapability;
-                    }
+                    var caps = mapping.Model.Capabilities;
 
                     // Apply capability filter if specified
                     if (!string.IsNullOrEmpty(capability))
                     {
                         var capabilityKey = capability.Replace("-", "_").ToLowerInvariant();
-                        if (!capabilities.ContainsKey(capabilityKey))
+                        bool hasCapability = capabilityKey switch
+                        {
+                            "chat" => caps.SupportsChat,
+                            "streaming" or "chat_stream" => caps.SupportsStreaming,
+                            "vision" => caps.SupportsVision,
+                            "audio_transcription" => caps.SupportsAudioTranscription,
+                            "text_to_speech" => caps.SupportsTextToSpeech,
+                            "realtime_audio" => caps.SupportsRealtimeAudio,
+                            "video_generation" => caps.SupportsVideoGeneration,
+                            "image_generation" => caps.SupportsImageGeneration,
+                            "embeddings" => caps.SupportsEmbeddings,
+                            "function_calling" => caps.SupportsFunctionCalling,
+                            _ => false
+                        };
+
+                        if (!hasCapability)
                         {
                             continue;
                         }
                     }
 
-                    // Get parameters from model series if available
-                    string? parameters = mapping.Model?.Series?.Parameters;
-                    
+                    // Parse parameters from mapping (priority) or series (fallback)
+                    string[]? supportedParameters = null;
+                    var parametersJson = mapping.ApiParameters ?? mapping.Model?.Series?.Parameters;
+                    if (!string.IsNullOrEmpty(parametersJson))
+                    {
+                        try
+                        {
+                            supportedParameters = System.Text.Json.JsonSerializer.Deserialize<string[]>(parametersJson);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to parse parameters for model {ModelAlias}", mapping.ModelAlias);
+                        }
+                    }
+
                     models.Add(new
                     {
+                        // Identity
                         id = mapping.ModelAlias,
                         provider = mapping.Provider?.ProviderType.ToString().ToLowerInvariant(),
                         display_name = mapping.ModelAlias,
-                        capabilities = capabilities,
-                        parameters = parameters
+                        
+                        // Metadata
+                        description = mapping.Model.Description ?? string.Empty,
+                        model_card_url = mapping.Model.ModelCardUrl ?? string.Empty,
+                        max_tokens = caps.MaxTokens,
+                        tokenizer_type = caps.TokenizerType.ToString().ToLowerInvariant(),
+                        
+                        // Configuration
+                        supported_parameters = supportedParameters ?? Array.Empty<string>(),
+                        
+                        // Capabilities (flat boolean flags)
+                        supports_chat = caps.SupportsChat,
+                        supports_streaming = caps.SupportsStreaming,
+                        supports_vision = caps.SupportsVision,
+                        supports_function_calling = caps.SupportsFunctionCalling,
+                        supports_audio_transcription = caps.SupportsAudioTranscription,
+                        supports_text_to_speech = caps.SupportsTextToSpeech,
+                        supports_realtime_audio = caps.SupportsRealtimeAudio,
+                        supports_video_generation = caps.SupportsVideoGeneration,
+                        supports_image_generation = caps.SupportsImageGeneration,
+                        supports_embeddings = caps.SupportsEmbeddings
+                        
+                        // TODO: Future additions to consider:
+                        // - context_window (from capabilities or series metadata)
+                        // - training_cutoff date
+                        // - pricing_tier or cost information
+                        // - supported_languages (parsed from JSON)
+                        // - supported_voices (for TTS models)
+                        // - supported_formats (for audio models)
+                        // - rate_limits
+                        // - model_version
                     });
                 }
 
@@ -239,34 +218,6 @@ namespace ConduitLLM.Http.Controllers
             }
         }
 
-        /// <summary>
-        /// Checks if a model is allowed for a virtual key based on the allowed models list.
-        /// </summary>
-        private bool IsModelAllowed(string requestedModel, string? allowedModels)
-        {
-            if (string.IsNullOrEmpty(allowedModels))
-                return true; // No restrictions
-
-            var allowedModelsList = allowedModels.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-            // First check for exact match
-            if (allowedModelsList.Any(m => string.Equals(m, requestedModel, StringComparison.OrdinalIgnoreCase)))
-                return true;
-
-            // Then check for wildcard/prefix matches
-            foreach (var allowedModel in allowedModelsList)
-            {
-                // Handle wildcards like "gpt-4*" to match any GPT-4 model
-                if (allowedModel.EndsWith("*", StringComparison.OrdinalIgnoreCase) && allowedModel.Length > 1)
-                {
-                    string prefix = allowedModel.Substring(0, allowedModel.Length - 1);
-                    if (requestedModel.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                        return true;
-                }
-            }
-
-            return false;
-        }
     }
 
     // TODO: Add audit logging for discovery requests to track which virtual keys are querying model information

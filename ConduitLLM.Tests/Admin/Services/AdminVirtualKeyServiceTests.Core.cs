@@ -1,9 +1,11 @@
 using ConduitLLM.Admin.Services;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
 
 using MassTransit;
 
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using Moq;
@@ -21,6 +23,7 @@ namespace ConduitLLM.Tests.Admin.Services
         private readonly Mock<IMediaLifecycleService> _mockMediaLifecycleService;
         private readonly Mock<IModelProviderMappingRepository> _mockModelProviderMappingRepository;
         private readonly Mock<IModelCapabilityService> _mockModelCapabilityService;
+        private readonly Mock<IDbContextFactory<ConduitDbContext>> _mockDbContextFactory;
         private readonly AdminVirtualKeyService _service;
 
         public AdminVirtualKeyServiceTests()
@@ -34,6 +37,7 @@ namespace ConduitLLM.Tests.Admin.Services
             _mockMediaLifecycleService = new Mock<IMediaLifecycleService>();
             _mockModelProviderMappingRepository = new Mock<IModelProviderMappingRepository>();
             _mockModelCapabilityService = new Mock<IModelCapabilityService>();
+            _mockDbContextFactory = new Mock<IDbContextFactory<ConduitDbContext>>();
 
             _service = new AdminVirtualKeyService(
                 _mockVirtualKeyRepository.Object,
@@ -44,6 +48,7 @@ namespace ConduitLLM.Tests.Admin.Services
                 _mockLogger.Object,
                 _mockModelProviderMappingRepository.Object,
                 _mockModelCapabilityService.Object,
+                _mockDbContextFactory.Object,
                 _mockMediaLifecycleService.Object);
         }
     }

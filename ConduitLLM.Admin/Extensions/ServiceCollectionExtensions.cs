@@ -2,6 +2,7 @@ using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Options;
 using ConduitLLM.Admin.Security;
 using ConduitLLM.Admin.Services;
+using ConduitLLM.Configuration; // For ConduitDbContext
 using ConduitLLM.Core.Extensions; // For AddMediaServices extension method
 using ConduitLLM.Core.Interfaces; // For IVirtualKeyCache and ILLMClientFactory
 using ConduitLLM.Configuration.Interfaces; // For repository interfaces  
@@ -82,9 +83,10 @@ public static class ServiceCollectionExtensions
             var logger = serviceProvider.GetRequiredService<ILogger<AdminVirtualKeyService>>();
             var modelProviderMappingRepository = serviceProvider.GetRequiredService<IModelProviderMappingRepository>();
             var modelCapabilityService = serviceProvider.GetRequiredService<IModelCapabilityService>();
+            var dbContextFactory = serviceProvider.GetRequiredService<IDbContextFactory<ConduitDbContext>>();
             var mediaLifecycleService = serviceProvider.GetService<IMediaLifecycleService>(); // Optional - null if not configured
             
-            return new AdminVirtualKeyService(virtualKeyRepository, spendHistoryRepository, groupRepository, cache, publishEndpoint, logger, modelProviderMappingRepository, modelCapabilityService, mediaLifecycleService);
+            return new AdminVirtualKeyService(virtualKeyRepository, spendHistoryRepository, groupRepository, cache, publishEndpoint, logger, modelProviderMappingRepository, modelCapabilityService, dbContextFactory, mediaLifecycleService);
         });
         // Register AdminModelProviderMappingService with optional event publishing dependency
         services.AddScoped<IAdminModelProviderMappingService>(serviceProvider =>

@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
@@ -10,6 +11,7 @@ using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Services;
 
 using MassTransit;
+using Microsoft.EntityFrameworkCore;
 
 namespace ConduitLLM.Admin.Services
 {
@@ -25,6 +27,7 @@ namespace ConduitLLM.Admin.Services
         private readonly IMediaLifecycleService? _mediaLifecycleService; // Optional media lifecycle service
         private readonly IModelProviderMappingRepository _modelProviderMappingRepository;
         private readonly IModelCapabilityService _modelCapabilityService;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly ILogger<AdminVirtualKeyService> _logger;
         private const int KeyLengthBytes = 32; // Generate a 256-bit key
 
@@ -38,6 +41,7 @@ namespace ConduitLLM.Admin.Services
         /// <param name="logger">The logger</param>
         /// <param name="modelProviderMappingRepository">The model provider mapping repository</param>
         /// <param name="modelCapabilityService">The model capability service</param>
+        /// <param name="dbContextFactory">The database context factory</param>
         /// <param name="mediaLifecycleService">Optional media lifecycle service for cleaning up associated media files (null if not configured)</param>
         /// <param name="groupRepository">The virtual key group repository</param>
         public AdminVirtualKeyService(
@@ -49,6 +53,7 @@ namespace ConduitLLM.Admin.Services
             ILogger<AdminVirtualKeyService> logger,
             IModelProviderMappingRepository modelProviderMappingRepository,
             IModelCapabilityService modelCapabilityService,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             IMediaLifecycleService? mediaLifecycleService = null)
             : base(publishEndpoint, logger)
         {
@@ -59,6 +64,7 @@ namespace ConduitLLM.Admin.Services
             _mediaLifecycleService = mediaLifecycleService; // Optional - can be null if media lifecycle management not configured
             _modelProviderMappingRepository = modelProviderMappingRepository ?? throw new ArgumentNullException(nameof(modelProviderMappingRepository));
             _modelCapabilityService = modelCapabilityService ?? throw new ArgumentNullException(nameof(modelCapabilityService));
+            _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             
             // Log event publishing configuration status
