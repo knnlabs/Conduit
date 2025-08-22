@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Modal, Stack, Group, Text, Badge, Title, Divider, Loader } from '@mantine/core';
+import { Modal, Stack, Group, Text, Badge, Divider, Loader } from '@mantine/core';
 import type { ModelDto } from '@knn_labs/conduit-admin-client';
 import { useAdminClient } from '@/lib/client/adminClient';
-import { notifications } from '@mantine/notifications';
 
 interface ViewModelModalProps {
   isOpen: boolean;
@@ -70,98 +69,56 @@ export function ViewModelModal({ isOpen, model, onClose }: ViewModelModalProps) 
     }
   };
 
-  const getAvailableProviders = (modelName: string): string[] => {
-    const name = modelName.toLowerCase();
-    const providers: string[] = [];
 
-    // OpenAI models
-    if (name.includes('gpt') || name.includes('o1') || name.includes('dall-e') || name.includes('whisper') || name.includes('tts')) {
-      providers.push('OpenAI');
-    }
-
-    // Claude models
-    if (name.includes('claude')) {
-      providers.push('Anthropic'); // Note: Not in enum but commonly referenced
-    }
-
-    // Llama models - available on multiple providers
-    if (name.includes('llama') || name.includes('llama-3')) {
-      providers.push('Groq', 'Replicate', 'Fireworks', 'OpenAI Compatible', 'DeepInfra');
-    }
-
-    // Groq-specific optimized models
-    if (name.includes('gemma') || name.includes('mixtral') || name.includes('whisper')) {
-      providers.push('Groq');
-    }
-
-    // Video generation models - primarily Replicate
-    if (name.includes('veo') || name.includes('runway') || name.includes('pika') || name.includes('video')) {
-      providers.push('Replicate');
-    }
-
-    // Image generation models
-    if (name.includes('flux') || name.includes('sd-') || name.includes('stable-diffusion') || name.includes('midjourney')) {
-      providers.push('Replicate');
-    }
-
-    // Audio models
-    if (name.includes('whisper') || name.includes('tts') || name.includes('speech')) {
-      providers.push('OpenAI', 'ElevenLabs');
-    }
-
-    // Cerebras optimized models
-    if (name.includes('llama-3.1') || name.includes('llama-3-70b')) {
-      providers.push('Cerebras');
-    }
-
-    // SambaNova optimized models  
-    if (name.includes('llama-3.1') || name.includes('llama-3.2')) {
-      providers.push('SambaNova');
-    }
-
-    // OpenAI Compatible - most open source models
-    if (name.includes('qwen') || name.includes('hermes') || name.includes('mistral') || name.includes('wizard')) {
-      providers.push('OpenAI Compatible');
-    }
-
-    // Remove duplicates and return
-    return [...new Set(providers)];
-  };
 
   useEffect(() => {
-    if (isOpen && model.name) {
-      setLoadingProviders(true);
-      
-      // Get available providers based on model name
-      const availableProviders = getAvailableProviders(model.name);
-      
-      // Convert to provider mapping format for display
-      const providerMappings = availableProviders.map((providerName, index) => ({
-        id: index,
-        modelAlias: model.name ?? '',
-        providerModelId: model.name ?? '',
-        providerId: index,
-        modelId: model.id ?? 0,
-        isEnabled: true,
-        provider: {
+    const loadModelProviders = async () => {
+      if (!isOpen || !model.id) {
+        setProviderMappings([]);
+        return;
+      }
+
+      try {
+        setLoadingProviders(true);
+        
+        // Get model identifiers from the database
+        const identifiers = await executeWithAdmin(client => 
+          client.models.getIdentifiers(model.id as number)
+        );
+        
+        // Convert identifiers to provider mappings for display
+        const providerMappings = identifiers.map((identifier, index) => ({
           id: index,
-          providerType: 0,
-          providerName: providerName
-        }
-      }));
-      
-      setProviderMappings(providerMappings as ProviderMapping[]);
-      setLoadingProviders(false);
-    } else {
-      setProviderMappings([]);
-    }
-  }, [isOpen, model.name]);
+          modelAlias: identifier.identifier,
+          providerModelId: identifier.identifier,
+          providerId: index,
+          modelId: model.id ?? 0,
+          isEnabled: true,
+          provider: {
+            id: index,
+            providerType: 0,
+            providerName: identifier.provider.charAt(0).toUpperCase() + identifier.provider.slice(1)
+          }
+        }));
+        
+        setProviderMappings(providerMappings as ProviderMapping[]);
+        
+      } catch (error) {
+        console.error('Failed to load model providers:', error);
+        setProviderMappings([]);
+      } finally {
+        setLoadingProviders(false);
+      }
+    };
+
+    void loadModelProviders();
+  }, [isOpen, model.id, executeWithAdmin]);
 
   return (
     <Modal
       opened={isOpen}
       onClose={onClose}
-      title={<Title order={3}>{model.name ?? 'Unnamed Model'}</Title>}
+      title={model.name ?? 'Unnamed Model'}
       size="lg"
     >
       <Stack>

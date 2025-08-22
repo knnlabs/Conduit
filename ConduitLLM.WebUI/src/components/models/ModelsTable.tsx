@@ -20,7 +20,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
   const [filteredModels, setFilteredModels] = useState<ModelDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const [capabilityFilter, setCapabilityFilter] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<ModelDto | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
@@ -98,12 +98,28 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
       );
     }
 
-    if (typeFilter) {
-      filtered = filtered.filter(model => model.modelType?.toString() === typeFilter);
+    if (capabilityFilter) {
+      filtered = filtered.filter(model => {
+        const capabilities = model.capabilities as unknown;
+        if (!isCapabilitiesObject(capabilities)) return false;
+        
+        switch (capabilityFilter) {
+          case 'chat':
+            return capabilities.supportsChat === true;
+          case 'vision':
+            return capabilities.supportsVision === true;
+          case 'image':
+            return capabilities.supportsImageGeneration === true;
+          case 'video':
+            return capabilities.supportsVideoGeneration === true;
+          default:
+            return true;
+        }
+      });
     }
 
     setFilteredModels(filtered);
-  }, [search, typeFilter, models]);
+  }, [search, capabilityFilter, models]);
 
   const handleEdit = (model: ModelDto) => {
     setSelectedModel(model);
@@ -128,16 +144,6 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
   };
 
 
-  const getTypeName = (type: number | undefined) => {
-    switch (type) {
-      case 0: return 'Text';
-      case 1: return 'Image';
-      case 2: return 'Audio';
-      case 3: return 'Video';
-      case 4: return 'Embedding';
-      default: return 'Unknown';
-    }
-  };
 
   const isCapabilitiesObject = (capabilities: unknown): capabilities is Record<string, unknown> => {
     return capabilities !== null && typeof capabilities === 'object';
@@ -195,11 +201,12 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
     );
   };
 
-  const modelTypes = Array.from(new Set(models.map(m => m.modelType).filter(t => t !== undefined)))
-    .map(type => ({
-      value: type?.toString() ?? '',
-      label: getTypeName(type)
-    }));
+  const capabilityOptions = [
+    { value: 'chat', label: 'Text Chat' },
+    { value: 'vision', label: 'Text + Vision' },
+    { value: 'image', label: 'Image Generation' },
+    { value: 'video', label: 'Video Generation' }
+  ];
 
   return (
     <Stack gap="md">
@@ -212,10 +219,10 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
           style={{ flex: 1 }}
         />
         <Select
-          placeholder="Filter by type"
-          data={modelTypes}
-          value={typeFilter}
-          onChange={setTypeFilter}
+          placeholder="Filter by capability"
+          data={capabilityOptions}
+          value={capabilityFilter}
+          onChange={setCapabilityFilter}
           clearable
           w={200}
         />

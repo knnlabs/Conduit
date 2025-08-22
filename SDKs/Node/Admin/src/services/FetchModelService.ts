@@ -43,6 +43,30 @@ export class FetchModelService {
   }
 
   /**
+   * Get model identifiers for a specific model
+   */
+  async getIdentifiers(id: number, config?: RequestConfig): Promise<Array<{
+    id: number;
+    identifier: string;
+    provider: string;
+    isPrimary: boolean;
+  }>> {
+    return this.client['get']<Array<{
+      id: number;
+      identifier: string;
+      provider: string;
+      isPrimary: boolean;
+    }>>(
+      `${ENDPOINTS.MODELS.BY_ID(id)}/identifiers`,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
    * Get models by type
    */
   async getByType(type: string, config?: RequestConfig): Promise<ModelDto[]> {
