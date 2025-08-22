@@ -1,19 +1,11 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using ConduitLLM.Configuration;
 using Microsoft.AspNetCore.Authorization;
 using ConduitLLM.Configuration.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Configuration;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.DTOs.Cache;
-using ConduitLLM.Configuration.DTOs.Routing;
 
 namespace ConduitLLM.Admin.Controllers
 {
@@ -98,20 +90,6 @@ namespace ConduitLLM.Admin.Controllers
                     }
                 };
 
-                // Get retry policies
-                var retryPolicies = new List<object>
-                {
-                    new
-                    {
-                        Id = "default",
-                        Name = "Default Retry Policy",
-                        MaxRetries = _configuration.GetValue<int>("Retry:MaxRetries", 3),
-                        InitialDelay = _configuration.GetValue<int>("Retry:InitialDelayMs", 1000),
-                        MaxDelay = _configuration.GetValue<int>("Retry:MaxDelayMs", 30000),
-                        BackoffMultiplier = _configuration.GetValue<double>("Retry:BackoffMultiplier", 2.0),
-                        RetryableStatusCodes = new[] { 429, 500, 502, 503, 504 }
-                    }
-                };
 
                 // Get routing statistics
                 var routingStats = await GetRoutingStatistics(dbContext, cancellationToken);
@@ -121,7 +99,6 @@ namespace ConduitLLM.Admin.Controllers
                     Timestamp = DateTime.UtcNow,
                     RoutingRules = modelMappings,
                     LoadBalancers = loadBalancers,
-                    RetryPolicies = retryPolicies,
                     Statistics = routingStats,
                     Configuration = new
                     {
@@ -159,35 +136,6 @@ namespace ConduitLLM.Admin.Controllers
             }
         }
 
-        /// <summary>
-        /// Updates routing configuration.
-        /// </summary>
-        /// <param name="config">Updated routing configuration.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>Success response.</returns>
-        [HttpPut("routing")]
-        public async Task<IActionResult> UpdateRoutingConfig([FromBody] UpdateRoutingConfigDto config, CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                // In a real implementation, this would update configuration in database or config service
-                _logger.LogInformation("Updating routing configuration");
-
-                // Added to ensure the method remains asynchronous and to avoid CS1998 warning
-                await Task.CompletedTask;
-
-                // Clear related caches
-                _cache.Remove("routing:config");
-                _cache.Remove("routing:stats");
-
-                return Ok(new { message = "Routing configuration updated successfully" });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to update routing configuration");
-                return StatusCode(500, new { error = "Failed to update routing configuration", message = ex.Message });
-            }
-        }
 
         /// <summary>
         /// Updates caching configuration.
@@ -394,9 +342,7 @@ namespace ConduitLLM.Admin.Controllers
                 Name = p.ProviderName,
                 Type = p.ProviderType.ToString(),
                 Url = p.BaseUrl ?? $"https://api.{p.ProviderType.ToString().ToLower()}.com",
-                Weight = 1,
-                HealthStatus = "healthy", // Provider health tracking removed
-                ResponseTime = 0 // Provider health tracking removed
+                Weight = 1
             }).ToList();
         }
 
@@ -419,41 +365,10 @@ namespace ConduitLLM.Admin.Controllers
             return new
             {
                 TotalRequests = stats.Sum(s => s.RequestCount),
-                ProviderDistribution = stats,
-                FailoverEvents = 0, // Would need actual failover tracking
-                LoadBalancerHealth = 100.0
+                ProviderDistribution = stats
             };
         }
 
-        private async Task<object> GetCacheStatistics(ConduitDbContext dbContext, CancellationToken cancellationToken)
-        {
-            // In a real implementation, these would come from actual cache metrics
-        // Added to ensure the method remains asynchronous and to avoid CS1998 warning
-        await Task.CompletedTask;
-            return new
-            {
-                TotalHits = 125432,
-                TotalMisses = 18765,
-                HitRate = 87.0,
-                AvgResponseTime = new
-                {
-                    WithCache = 45,
-                    WithoutCache = 850
-                },
-                MemoryUsage = new
-                {
-                    Current = "45.2 MB",
-                    Peak = "128 MB",
-                    Limit = "1 GB"
-                },
-                TopCachedItems = new[]
-                {
-                    new { Key = "models:openai", Hits = 8945, Size = "2.1 KB" },
-                    new { Key = "models:anthropic", Hits = 7632, Size = "1.8 KB" },
-                    new { Key = "vkey:abc123", Hits = 5421, Size = "512 B" }
-                }
-            };
-        }
     }
 
 }

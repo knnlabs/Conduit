@@ -32,7 +32,6 @@ export function ProvidersTab({ onLoadingChange }: ProvidersTabProps) {
   
   const {
     getRoutingConfiguration,
-    getLoadBalancerHealth,
     isLoading,
     error,
   } = useProviderPriorities();
@@ -43,15 +42,12 @@ export function ProvidersTab({ onLoadingChange }: ProvidersTabProps) {
 
   const loadData = useCallback(async () => {
     try {
-      const [configData] = await Promise.all([
-        getRoutingConfiguration(),
-        getLoadBalancerHealth().catch(() => null), // Health endpoint might not be available
-      ]);
+      const configData = await getRoutingConfiguration();
       setConfig(configData);
     } catch {
       // Error is handled by the hook
     }
-  }, [getRoutingConfiguration, getLoadBalancerHealth]);
+  }, [getRoutingConfiguration]);
 
   useEffect(() => {
     void loadData();
