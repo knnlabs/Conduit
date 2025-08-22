@@ -162,7 +162,6 @@ export { FetchSecurityService } from './services/FetchSecurityService';
 export { FetchConfigurationService } from './services/FetchConfigurationService';
 export { FetchMonitoringService } from './services/FetchMonitoringService';
 export { FetchIpFilterService } from './services/FetchIpFilterService';
-export { FetchErrorQueueService } from './services/FetchErrorQueueService';
 export { FetchMediaService } from './services/FetchMediaService';
 export { FetchModelCostService } from './services/FetchModelCostService';
 // Cost types now exported from FetchAnalyticsService
@@ -171,25 +170,6 @@ export type {
   CostTrendDto,
   DetailedCostDataDto,
 } from './services/FetchAnalyticsService';
-export type {
-  ErrorQueueInfo,
-  ErrorQueueSummary,
-  ErrorQueueListResponse,
-  ErrorMessage,
-  ErrorMessageDetail,
-  ErrorDetails,
-  ErrorMessageListResponse,
-  ErrorRateTrend,
-  FailingMessageType,
-  QueueGrowthPattern,
-  ErrorQueueStatistics,
-  HealthStatusCounts,
-  HealthIssue,
-  ErrorQueueHealth,
-  QueueClearResponse,
-  MessageReplayResponse,
-  MessageDeleteResponse
-} from './services/FetchErrorQueueService';
 // ProviderService removed - use FetchProvidersService instead which is exported via the client
 export { ProviderModelsService } from './services/ProviderModelsService';
 export { ModelMappingService } from './services/ModelMappingService';

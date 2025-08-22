@@ -49,12 +49,6 @@ public partial class Program
 
         // Add HttpClient factory for provider connection testing
         builder.Services.AddHttpClient();
-        
-        // Add HttpClient for RabbitMQ Management API
-        builder.Services.AddHttpClient<IRabbitMQManagementClient, RabbitMQManagementClient>(client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(30);
-        });
 
         // Configure Swagger with XML comments
         builder.Services.AddSwaggerGen(c =>
@@ -279,9 +273,6 @@ public partial class Program
 
         // Add monitoring services
         builder.Services.AddHostedService<ConduitLLM.Admin.Services.AdminOperationsMetricsService>();
-        
-        // Add error queue metrics collection service
-        builder.Services.AddHostedService<ConduitLLM.Admin.Services.ErrorQueueMetricsService>();
         
         // Add cache infrastructure
         builder.Services.AddCacheInfrastructure(builder.Configuration);
