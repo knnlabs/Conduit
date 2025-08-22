@@ -6,6 +6,8 @@ import { useVideoStore } from '../hooks/useVideoStore';
 import { useVideoModels } from '../hooks/useVideoModels';
 import { ErrorDisplay } from '@/components/common/ErrorDisplay';
 import { createEnhancedError } from '@/lib/utils/error-enhancement';
+import { DynamicParameters } from '@/components/parameters/DynamicParameters';
+import { useParameterState } from '@/components/parameters/hooks/useParameterState';
 import VideoSettings from './VideoSettings';
 import EnhancedVideoPromptInput from './EnhancedVideoPromptInput';
 import VideoGallery from './VideoGallery';
@@ -23,6 +25,15 @@ export default function VideoInterface() {
   } = useVideoStore();
 
   const { data: models, isLoading: modelsLoading, error: modelsError } = useVideoModels();
+
+  // Find the currently selected model to get its parameters
+  const selectedModel = models?.find(m => m.id === settings.model);
+  
+  // Initialize parameter state with the model's parameters
+  const parameterState = useParameterState({
+    parameters: selectedModel?.parameters ?? '{}',
+    persistKey: `video-params-${settings.model}`,
+  });
 
   // Auto-select first available model
   useEffect(() => {
@@ -130,9 +141,48 @@ export default function VideoInterface() {
         />
       )}
 
+      {/* Model Selector - Always Visible */}
+      <Paper p="md" withBorder>
+        <Stack gap="md">
+          <Text fw={600}>Model Selection</Text>
+          <select
+            value={settings.model}
+            onChange={(e) => updateSettings({ model: e.target.value })}
+            className="form-select"
+            style={{ 
+              padding: '8px 12px',
+              borderRadius: '4px',
+              border: '1px solid #ced4da',
+              fontSize: '14px',
+              width: '100%'
+            }}
+          >
+            <option value="">Select a model...</option>
+            {models?.map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.displayName} ({model.provider})
+              </option>
+            ))}
+          </select>
+        </Stack>
+      </Paper>
+
       {/* Settings Panel */}
       {settingsVisible && (
         <VideoSettings models={models || []} />
+      )}
+
+      {/* Dynamic Parameters from Model */}
+      {selectedModel?.parameters && selectedModel.parameters !== '{}' && (
+        <DynamicParameters
+          parameters={selectedModel.parameters}
+          values={parameterState.values}
+          onChange={parameterState.updateValues}
+          context="video"
+          title="Video Generation Parameters"
+          collapsible={true}
+          defaultExpanded={true}
+        />
       )}
 
       {/* Generation Queue */}
@@ -141,7 +191,10 @@ export default function VideoInterface() {
       )}
 
       {/* Prompt Input */}
-      <EnhancedVideoPromptInput models={models || []} />
+      <EnhancedVideoPromptInput 
+        models={models || []} 
+        dynamicParameters={parameterState.getSubmitValues()}
+      />
 
       {/* Video Gallery */}
       <VideoGallery />

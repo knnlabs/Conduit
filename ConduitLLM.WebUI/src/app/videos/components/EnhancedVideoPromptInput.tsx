@@ -7,10 +7,11 @@ import type { VideoModel } from '../types';
 
 interface VideoPromptInputProps {
   models: VideoModel[];
+  dynamicParameters?: Record<string, unknown>;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export default function EnhancedVideoPromptInput({ models }: VideoPromptInputProps) {
+export default function EnhancedVideoPromptInput({ models, dynamicParameters }: VideoPromptInputProps) {
   const [prompt, setPrompt] = useState('');
   const { settings, currentTask, setError } = useVideoStore();
   
@@ -38,6 +39,7 @@ export default function EnhancedVideoPromptInput({ models }: VideoPromptInputPro
       await generateVideo({
         prompt: prompt.trim(),
         settings,
+        dynamicParameters,
       });
       // Clear prompt after successful submission
       setPrompt('');
@@ -45,7 +47,7 @@ export default function EnhancedVideoPromptInput({ models }: VideoPromptInputPro
       // Error is handled in the hook
       console.error('Error in VideoPromptInput:', error);
     }
-  }, [prompt, settings, generateVideo, setError]);
+  }, [prompt, settings, generateVideo, setError, dynamicParameters]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {

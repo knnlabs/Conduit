@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using ConduitLLM.Admin.Models.Models;
 using ConduitLLM.Admin.Models.ModelCapabilities;
+using ConduitLLM.Admin.Models.ModelSeries;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using Microsoft.AspNetCore.Authorization;
@@ -378,7 +379,22 @@ namespace ConduitLLM.Admin.Controllers
                 Capabilities = model.Capabilities != null ? MapCapabilitiesToDto(model.Capabilities) : null,
                 IsActive = model.IsActive,
                 CreatedAt = model.CreatedAt,
-                UpdatedAt = model.UpdatedAt
+                UpdatedAt = model.UpdatedAt,
+                Series = model.Series != null ? MapSeriesToDto(model.Series) : null
+            };
+        }
+
+        private static ModelSeriesDto MapSeriesToDto(ModelSeries series)
+        {
+            return new ModelSeriesDto
+            {
+                Id = series.Id,
+                AuthorId = series.AuthorId,
+                AuthorName = series.Author?.Name,
+                Name = series.Name,
+                Description = series.Description,
+                TokenizerType = series.TokenizerType,
+                Parameters = series.Parameters
             };
         }
 

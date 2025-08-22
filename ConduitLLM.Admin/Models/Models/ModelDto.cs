@@ -1,5 +1,6 @@
 using System;
 using ConduitLLM.Admin.Models.ModelCapabilities;
+using ConduitLLM.Admin.Models.ModelSeries;
 
 namespace ConduitLLM.Admin.Models.Models
 {
@@ -97,5 +98,16 @@ namespace ConduitLLM.Admin.Models.Models
         /// </remarks>
         /// <value>The UTC timestamp of the last update.</value>
         public DateTime UpdatedAt { get; set; }
+
+        /// <summary>
+        /// Gets or sets the model series information.
+        /// </summary>
+        /// <remarks>
+        /// This includes the series metadata like name, author, tokenizer type,
+        /// and importantly the UI parameters configuration. This is populated
+        /// when the model is fetched with details.
+        /// </remarks>
+        /// <value>The series object, or null if not loaded.</value>
+        public ModelSeriesDto? Series { get; set; }
     }
 }

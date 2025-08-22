@@ -15,25 +15,8 @@ export default function VideoSettings({ models }: VideoSettingsProps) {
 
   return (
     <div className="video-settings-panel">
-      <h3>Video Generation Settings</h3>
+      <h3>Additional Video Settings</h3>
       <div className="video-settings-grid">
-        {/* Model Selection */}
-        <div className="setting-group">
-          <label htmlFor="video-model">Model</label>
-          <select
-            id="video-model"
-            value={settings.model}
-            onChange={(e) => updateSettings({ model: e.target.value })}
-            className="form-select"
-          >
-            {models.map((model) => (
-              <option key={model.id} value={model.id}>
-                {model.displayName}
-              </option>
-            ))}
-          </select>
-        </div>
-
         {/* Duration */}
         <div className="setting-group">
           <label htmlFor="video-duration">
@@ -89,13 +72,13 @@ export default function VideoSettings({ models }: VideoSettingsProps) {
           >
             {capabilities?.supportedFps ? (
               capabilities.supportedFps.map((fps) => (
-                <option key={fps} value={fps}>
+                <option key={fps} value={String(fps)}>
                   {fps} FPS
                 </option>
               ))
             ) : (
               [24, 30, 60].map((fps) => (
-                <option key={fps} value={fps}>
+                <option key={fps} value={String(fps)}>
                   {fps} FPS
                 </option>
               ))

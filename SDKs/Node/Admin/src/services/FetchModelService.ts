@@ -4,9 +4,9 @@ import type { RequestConfig } from '../client/types';
 import { ENDPOINTS } from '../constants';
 
 // Type aliases for better readability
-type ModelDto = components['schemas']['ConduitLLM.Admin.Controllers.ModelDto'];
-type CreateModelDto = components['schemas']['ConduitLLM.Admin.Controllers.CreateModelDto'];
-type UpdateModelDto = components['schemas']['ConduitLLM.Admin.Controllers.UpdateModelDto'];
+type ModelDto = components['schemas']['ConduitLLM.Admin.Models.Models.ModelDto'];
+type CreateModelDto = components['schemas']['ConduitLLM.Admin.Models.Models.CreateModelDto'];
+type UpdateModelDto = components['schemas']['ConduitLLM.Admin.Models.Models.UpdateModelDto'];
 
 /**
  * Type-safe Model service using native fetch

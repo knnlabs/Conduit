@@ -13,13 +13,6 @@ interface CreateModelModalProps {
   onSuccess: () => void;
 }
 
-const MODEL_TYPES = [
-  { value: '0', label: 'Text/Chat' },
-  { value: '1', label: 'Image Generation' },
-  { value: '2', label: 'Audio (TTS/STT)' },
-  { value: '3', label: 'Video Generation' },
-  { value: '4', label: 'Embedding' }
-];
 
 export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModalProps) {
   const [loading, setLoading] = useState(false);
@@ -30,14 +23,12 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
   const form = useForm({
     initialValues: {
       name: '',
-      modelType: '0',
       modelSeriesId: '',
       modelCapabilitiesId: '',
       isActive: true
     },
     validate: {
-      name: (value) => !value ? 'Name is required' : null,
-      modelType: (value) => value === undefined ? 'Type is required' : null
+      name: (value) => !value ? 'Name is required' : null
     }
   });
 
@@ -71,7 +62,6 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
       setLoading(true);
       const dto: CreateModelDto = {
         name: values.name,
-        modelType: parseInt(values.modelType) as 0 | 1 | 2 | 3 | 4,
         modelSeriesId: values.modelSeriesId ? parseInt(values.modelSeriesId) : undefined,
         modelCapabilitiesId: values.modelCapabilitiesId ? parseInt(values.modelCapabilitiesId) : undefined,
         isActive: values.isActive
@@ -123,13 +113,6 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
             placeholder="e.g., gpt-4-turbo"
             required
             {...form.getInputProps('name')}
-          />
-
-          <Select
-            label="Model Type"
-            required
-            data={MODEL_TYPES}
-            {...form.getInputProps('modelType')}
           />
 
           <Select

@@ -42,9 +42,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.LogRequestDto, ConduitLLM.Configuration, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.LogRequestDto, ConduitLLM.Configuration, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.LogRequestDto, ConduitLLM.Configuration, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]"];
+            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.LogRequestDto, ConduitLLM.Configuration, Version=0.1.3.0, Culture=neutral, PublicKeyToken=null]]"];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.LogRequestDto, ConduitLLM.Configuration, Version=0.1.3.0, Culture=neutral, PublicKeyToken=null]]"];
+            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.LogRequestDto, ConduitLLM.Configuration, Version=0.1.3.0, Culture=neutral, PublicKeyToken=null]]"];
           };
         };
         /** @description Bad Request */
@@ -1422,9 +1422,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.Audio.AudioUsageDto, ConduitLLM.Configuration, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.Audio.AudioUsageDto, ConduitLLM.Configuration, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.Audio.AudioUsageDto, ConduitLLM.Configuration, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]"];
+            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.Audio.AudioUsageDto, ConduitLLM.Configuration, Version=0.1.3.0, Culture=neutral, PublicKeyToken=null]]"];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.Audio.AudioUsageDto, ConduitLLM.Configuration, Version=0.1.3.0, Culture=neutral, PublicKeyToken=null]]"];
+            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.Audio.AudioUsageDto, ConduitLLM.Configuration, Version=0.1.3.0, Culture=neutral, PublicKeyToken=null]]"];
           };
         };
       };
@@ -3886,7 +3886,10 @@ export interface paths {
     /** Gets overall storage statistics across all virtual keys. */
     get: {
       parameters: {
-        query?: never;
+        query?: {
+          /** @description Optional filter by virtual key group ID */
+          virtualKeyGroupId?: number;
+        };
         header?: never;
         path?: never;
         cookie?: never;
@@ -4326,9 +4329,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.ModelDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.ModelDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.ModelDto"][];
+            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"][];
+            "application/json": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"][];
+            "text/json": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"][];
           };
         };
         /** @description Internal Server Error */
@@ -4352,9 +4355,9 @@ export interface paths {
       /** @description The model to create */
       requestBody?: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateModelDto"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateModelDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateModelDto"];
+          "application/json": components["schemas"]["ConduitLLM.Admin.Models.Models.CreateModelDto"];
+          "text/json": components["schemas"]["ConduitLLM.Admin.Models.Models.CreateModelDto"];
+          "application/*+json": components["schemas"]["ConduitLLM.Admin.Models.Models.CreateModelDto"];
         };
       };
       responses: {
@@ -4364,9 +4367,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.ModelDto"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.ModelDto"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.ModelDto"];
+            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"];
+            "application/json": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"];
+            "text/json": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"];
           };
         };
         /** @description Bad Request */
@@ -4432,9 +4435,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.ModelDto"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.ModelDto"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.ModelDto"];
+            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"];
+            "application/json": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"];
+            "text/json": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"];
           };
         };
         /** @description Not Found */
@@ -4471,18 +4474,22 @@ export interface paths {
       /** @description The updated model data */
       requestBody?: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateModelDto"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateModelDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateModelDto"];
+          "application/json": components["schemas"]["ConduitLLM.Admin.Models.Models.UpdateModelDto"];
+          "text/json": components["schemas"]["ConduitLLM.Admin.Models.Models.UpdateModelDto"];
+          "application/*+json": components["schemas"]["ConduitLLM.Admin.Models.Models.UpdateModelDto"];
         };
       };
       responses: {
-        /** @description No Content */
-        204: {
+        /** @description OK */
+        200: {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"];
+            "application/json": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"];
+            "text/json": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"];
+          };
         };
         /** @description Bad Request */
         400: {
@@ -4583,21 +4590,69 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Model/type/{type}": {
+  "/api/Model/search": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Gets models by type */
+    /** Searches for models by name */
+    get: {
+      parameters: {
+        query?: {
+          /** @description The search query */
+          query?: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"][];
+            "application/json": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"][];
+            "text/json": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelDto"][];
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/Model/provider/{provider}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gets models available from a specific provider */
     get: {
       parameters: {
         query?: never;
         header?: never;
         path: {
-          /** @description The model type (Text, Image, Audio, Video, Embedding) */
-          type: string;
+          /** @description The provider name (e.g., "groq", "openai", "anthropic") */
+          provider: string;
         };
         cookie?: never;
       };
@@ -4609,9 +4664,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.ModelDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.ModelDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.ModelDto"][];
+            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelWithProviderIdDto"][];
+            "application/json": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelWithProviderIdDto"][];
+            "text/json": components["schemas"]["ConduitLLM.Admin.Models.Models.ModelWithProviderIdDto"][];
           };
         };
         /** @description Bad Request */
@@ -4642,22 +4697,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Model/search": {
+  "/api/Model/{id}/identifiers": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Searches for models by name */
+    /** Gets model identifiers for a specific model */
     get: {
       parameters: {
-        query?: {
-          /** @description The search query */
-          query?: string;
-        };
+        query?: never;
         header?: never;
-        path?: never;
+        path: {
+          /** @description The model ID */
+          id: number;
+        };
         cookie?: never;
       };
       requestBody?: never;
@@ -4668,9 +4723,20 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.ModelDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.ModelDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.ModelDto"][];
+            "text/plain": unknown[];
+            "application/json": unknown[];
+            "text/json": unknown[];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
           };
         };
         /** @description Internal Server Error */
@@ -4713,9 +4779,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.ModelAuthorDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.ModelAuthorDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.ModelAuthorDto"][];
+            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.ModelAuthorDto"][];
+            "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.ModelAuthorDto"][];
+            "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.ModelAuthorDto"][];
           };
         };
         /** @description Internal Server Error */
@@ -4739,9 +4805,9 @@ export interface paths {
       /** @description The model author to create */
       requestBody?: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateModelAuthorDto"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateModelAuthorDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateModelAuthorDto"];
+          "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.CreateModelAuthorDto"];
+          "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.CreateModelAuthorDto"];
+          "application/*+json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.CreateModelAuthorDto"];
         };
       };
       responses: {
@@ -4751,9 +4817,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.ModelAuthorDto"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.ModelAuthorDto"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.ModelAuthorDto"];
+            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.ModelAuthorDto"];
+            "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.ModelAuthorDto"];
+            "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.ModelAuthorDto"];
           };
         };
         /** @description Bad Request */
@@ -4819,9 +4885,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.ModelAuthorDto"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.ModelAuthorDto"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.ModelAuthorDto"];
+            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.ModelAuthorDto"];
+            "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.ModelAuthorDto"];
+            "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.ModelAuthorDto"];
           };
         };
         /** @description Not Found */
@@ -4858,9 +4924,9 @@ export interface paths {
       /** @description The updated model author data */
       requestBody?: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateModelAuthorDto"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateModelAuthorDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateModelAuthorDto"];
+          "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.UpdateModelAuthorDto"];
+          "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.UpdateModelAuthorDto"];
+          "application/*+json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.UpdateModelAuthorDto"];
         };
       };
       responses: {
@@ -4996,9 +5062,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.SimpleModelSeriesDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.SimpleModelSeriesDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.SimpleModelSeriesDto"][];
+            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.SimpleModelSeriesDto"][];
+            "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.SimpleModelSeriesDto"][];
+            "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.SimpleModelSeriesDto"][];
           };
         };
         /** @description Not Found */
@@ -5052,9 +5118,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.CapabilitiesDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.CapabilitiesDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.CapabilitiesDto"][];
+            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesDto"][];
+            "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesDto"][];
+            "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesDto"][];
           };
         };
         /** @description Internal Server Error */
@@ -5078,9 +5144,9 @@ export interface paths {
       /** @description The model capabilities to create */
       requestBody?: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateCapabilitiesDto"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateCapabilitiesDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateCapabilitiesDto"];
+          "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CreateCapabilitiesDto"];
+          "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CreateCapabilitiesDto"];
+          "application/*+json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CreateCapabilitiesDto"];
         };
       };
       responses: {
@@ -5090,9 +5156,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.CapabilitiesDto"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.CapabilitiesDto"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.CapabilitiesDto"];
+            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesDto"];
+            "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesDto"];
+            "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesDto"];
           };
         };
         /** @description Bad Request */
@@ -5147,9 +5213,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.CapabilitiesDto"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.CapabilitiesDto"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.CapabilitiesDto"];
+            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesDto"];
+            "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesDto"];
+            "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesDto"];
           };
         };
         /** @description Not Found */
@@ -5186,9 +5252,9 @@ export interface paths {
       /** @description The updated model capabilities data */
       requestBody?: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateCapabilitiesDto"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateCapabilitiesDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateCapabilitiesDto"];
+          "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.UpdateCapabilitiesDto"];
+          "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.UpdateCapabilitiesDto"];
+          "application/*+json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.UpdateCapabilitiesDto"];
         };
       };
       responses: {
@@ -5313,9 +5379,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.CapabilitiesSimpleModelDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.CapabilitiesSimpleModelDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.CapabilitiesSimpleModelDto"][];
+            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesSimpleModelDto"][];
+            "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesSimpleModelDto"][];
+            "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesSimpleModelDto"][];
           };
         };
         /** @description Not Found */
@@ -6423,65 +6489,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelProviderMapping/discover/{providerId}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Discovers available models from a specific provider */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The provider ID to discover models from */
-          providerId: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Core.Interfaces.DiscoveredModel"][];
-            "application/json": components["schemas"]["ConduitLLM.Core.Interfaces.DiscoveredModel"][];
-            "text/json": components["schemas"]["ConduitLLM.Core.Interfaces.DiscoveredModel"][];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/api/ModelSeries": {
     parameters: {
       query?: never;
@@ -6505,9 +6512,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.ModelSeriesDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.ModelSeriesDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.ModelSeriesDto"][];
+            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto"][];
+            "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto"][];
+            "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto"][];
           };
         };
         /** @description Internal Server Error */
@@ -6531,9 +6538,9 @@ export interface paths {
       /** @description The model series to create */
       requestBody?: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateModelSeriesDto"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateModelSeriesDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Controllers.CreateModelSeriesDto"];
+          "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.CreateModelSeriesDto"];
+          "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.CreateModelSeriesDto"];
+          "application/*+json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.CreateModelSeriesDto"];
         };
       };
       responses: {
@@ -6543,9 +6550,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.ModelSeriesDto"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.ModelSeriesDto"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.ModelSeriesDto"];
+            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto"];
+            "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto"];
+            "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto"];
           };
         };
         /** @description Bad Request */
@@ -6611,9 +6618,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.ModelSeriesDto"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.ModelSeriesDto"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.ModelSeriesDto"];
+            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto"];
+            "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto"];
+            "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto"];
           };
         };
         /** @description Not Found */
@@ -6650,9 +6657,9 @@ export interface paths {
       /** @description The updated model series data */
       requestBody?: {
         content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateModelSeriesDto"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateModelSeriesDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Controllers.UpdateModelSeriesDto"];
+          "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.UpdateModelSeriesDto"];
+          "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.UpdateModelSeriesDto"];
+          "application/*+json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.UpdateModelSeriesDto"];
         };
       };
       responses: {
@@ -6788,9 +6795,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Controllers.SeriesSimpleModelDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Controllers.SeriesSimpleModelDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Controllers.SeriesSimpleModelDto"][];
+            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.SeriesSimpleModelDto"][];
+            "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.SeriesSimpleModelDto"][];
+            "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.SeriesSimpleModelDto"][];
           };
         };
         /** @description Not Found */
@@ -8989,9 +8996,9 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]"];
-            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]"];
-            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]"];
+            "text/plain": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.3.0, Culture=neutral, PublicKeyToken=null]]"];
+            "application/json": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.3.0, Culture=neutral, PublicKeyToken=null]]"];
+            "text/json": components["schemas"]["ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.3.0, Culture=neutral, PublicKeyToken=null]]"];
           };
         };
         /** @description Not Found */
@@ -9072,7 +9079,10 @@ export interface paths {
     /** Retrieves a list of all virtual keys */
     get: {
       parameters: {
-        query?: never;
+        query?: {
+          /** @description Optional filter by virtual key group ID */
+          virtualKeyGroupId?: number;
+        };
         header?: never;
         path?: never;
         cookie?: never;
@@ -9770,106 +9780,6 @@ export interface components {
        */
       failureCount?: number;
     };
-    /** @description Model capabilities data transfer object */
-    "ConduitLLM.Admin.Controllers.CapabilitiesDto": {
-      /**
-       * Format: int32
-       * @description Capabilities ID
-       */
-      id?: number;
-      /**
-       * Format: int32
-       * @description Maximum tokens
-       */
-      maxTokens?: number;
-      /**
-       * Format: int32
-       * @description Minimum tokens
-       */
-      minTokens?: number;
-      /** @description Supports vision */
-      supportsVision?: boolean;
-      /** @description Supports audio transcription */
-      supportsAudioTranscription?: boolean;
-      /** @description Supports text to speech */
-      supportsTextToSpeech?: boolean;
-      /** @description Supports realtime audio */
-      supportsRealtimeAudio?: boolean;
-      /** @description Supports image generation */
-      supportsImageGeneration?: boolean;
-      /** @description Supports video generation */
-      supportsVideoGeneration?: boolean;
-      /** @description Supports embeddings */
-      supportsEmbeddings?: boolean;
-      /** @description Supports chat */
-      supportsChat?: boolean;
-      /** @description Supports function calling */
-      supportsFunctionCalling?: boolean;
-      /** @description Supports streaming */
-      supportsStreaming?: boolean;
-      tokenizerType?: components["schemas"]["TokenizerType"];
-      /** @description Supported voices (JSON) */
-      supportedVoices?: string | null;
-      /** @description Supported languages (JSON) */
-      supportedLanguages?: string | null;
-      /** @description Supported formats (JSON) */
-      supportedFormats?: string | null;
-    };
-    /** @description Simple model DTO for listing capabilities */
-    "ConduitLLM.Admin.Controllers.CapabilitiesSimpleModelDto": {
-      /**
-       * Format: int32
-       * @description Model ID
-       */
-      id?: number;
-      /** @description Model name */
-      name?: string | null;
-      /** @description Model version */
-      version?: string | null;
-      modelType?: components["schemas"]["ModelType"];
-      /** @description Is model active */
-      isActive?: boolean;
-    };
-    /** @description Create model capabilities DTO */
-    "ConduitLLM.Admin.Controllers.CreateCapabilitiesDto": {
-      /**
-       * Format: int32
-       * @description Maximum tokens
-       */
-      maxTokens?: number;
-      /**
-       * Format: int32
-       * @description Minimum tokens
-       */
-      minTokens?: number;
-      /** @description Supports vision */
-      supportsVision?: boolean;
-      /** @description Supports audio transcription */
-      supportsAudioTranscription?: boolean;
-      /** @description Supports text to speech */
-      supportsTextToSpeech?: boolean;
-      /** @description Supports realtime audio */
-      supportsRealtimeAudio?: boolean;
-      /** @description Supports image generation */
-      supportsImageGeneration?: boolean;
-      /** @description Supports video generation */
-      supportsVideoGeneration?: boolean;
-      /** @description Supports embeddings */
-      supportsEmbeddings?: boolean;
-      /** @description Supports chat */
-      supportsChat?: boolean;
-      /** @description Supports function calling */
-      supportsFunctionCalling?: boolean;
-      /** @description Supports streaming */
-      supportsStreaming?: boolean;
-      tokenizerType?: components["schemas"]["TokenizerType"];
-      /** @description Supported voices (JSON) */
-      supportedVoices?: string | null;
-      /** @description Supported languages (JSON) */
-      supportedLanguages?: string | null;
-      /** @description Supported formats (JSON) */
-      supportedFormats?: string | null;
-    };
     /** @description Request model for creating a key credential */
     "ConduitLLM.Admin.Controllers.CreateKeyRequest": {
       /** @description The API key to create */
@@ -9890,39 +9800,6 @@ export interface components {
        */
       providerAccountGroup?: number | null;
     };
-    /** @description Create model author DTO */
-    "ConduitLLM.Admin.Controllers.CreateModelAuthorDto": {
-      /** @description Author name */
-      name?: string | null;
-      /** @description Author description */
-      description?: string | null;
-      /** @description Author website URL */
-      websiteUrl?: string | null;
-    };
-    "ConduitLLM.Admin.Controllers.CreateModelDto": {
-      name?: string | null;
-      modelType?: components["schemas"]["ModelType"];
-      /** Format: int32 */
-      modelSeriesId?: number;
-      /** Format: int32 */
-      modelCapabilitiesId?: number;
-      isActive?: boolean | null;
-    };
-    /** @description Create model series DTO */
-    "ConduitLLM.Admin.Controllers.CreateModelSeriesDto": {
-      /**
-       * Format: int32
-       * @description Author ID
-       */
-      authorId?: number;
-      /** @description Series name */
-      name?: string | null;
-      /** @description Series description */
-      description?: string | null;
-      tokenizerType?: components["schemas"]["TokenizerType"];
-      /** @description UI parameters JSON */
-      parameters?: string | null;
-    };
     /** @description Request model for creating a provider */
     "ConduitLLM.Admin.Controllers.CreateProviderRequest": {
       providerType?: components["schemas"]["ConduitLLM.Configuration.ProviderType"];
@@ -9939,78 +9816,6 @@ export interface components {
        *     If null or empty, all messages are replayed. */
       messageIds?: string[] | null;
     };
-    /** @description Model author data transfer object */
-    "ConduitLLM.Admin.Controllers.ModelAuthorDto": {
-      /**
-       * Format: int32
-       * @description Author ID
-       */
-      id?: number;
-      /** @description Author name */
-      name?: string | null;
-      /** @description Author description */
-      description?: string | null;
-      /** @description Author website URL */
-      websiteUrl?: string | null;
-    };
-    "ConduitLLM.Admin.Controllers.ModelCapabilitiesDto": {
-      /** Format: int32 */
-      id?: number;
-      supportsChat?: boolean;
-      supportsVision?: boolean;
-      supportsFunctionCalling?: boolean;
-      supportsStreaming?: boolean;
-      supportsAudioTranscription?: boolean;
-      supportsTextToSpeech?: boolean;
-      supportsRealtimeAudio?: boolean;
-      supportsImageGeneration?: boolean;
-      supportsVideoGeneration?: boolean;
-      supportsEmbeddings?: boolean;
-      /** Format: int32 */
-      maxTokens?: number;
-      tokenizerType?: string | null;
-      supportedVoices?: string | null;
-      supportedLanguages?: string | null;
-      supportedFormats?: string | null;
-    };
-    "ConduitLLM.Admin.Controllers.ModelDto": {
-      /** Format: int32 */
-      id?: number;
-      name?: string | null;
-      modelType?: components["schemas"]["ModelType"];
-      /** Format: int32 */
-      modelSeriesId?: number;
-      /** Format: int32 */
-      modelCapabilitiesId?: number;
-      capabilities?: components["schemas"]["ConduitLLM.Admin.Controllers.ModelCapabilitiesDto"];
-      isActive?: boolean;
-      /** Format: date-time */
-      createdAt?: string;
-      /** Format: date-time */
-      updatedAt?: string;
-    };
-    /** @description Model series data transfer object */
-    "ConduitLLM.Admin.Controllers.ModelSeriesDto": {
-      /**
-       * Format: int32
-       * @description Series ID
-       */
-      id?: number;
-      /**
-       * Format: int32
-       * @description Author ID
-       */
-      authorId?: number;
-      /** @description Author name */
-      authorName?: string | null;
-      /** @description Series name */
-      name?: string | null;
-      /** @description Series description */
-      description?: string | null;
-      tokenizerType?: components["schemas"]["TokenizerType"];
-      /** @description UI parameters JSON */
-      parameters?: string | null;
-    };
     /** @description Request model for pruning old media. */
     "ConduitLLM.Admin.Controllers.PruneMediaRequest": {
       /**
@@ -10018,34 +9823,6 @@ export interface components {
        * @description Gets or sets the number of days to keep media files.
        */
       daysToKeep?: number | null;
-    };
-    /** @description Simple model DTO for series listing */
-    "ConduitLLM.Admin.Controllers.SeriesSimpleModelDto": {
-      /**
-       * Format: int32
-       * @description Model ID
-       */
-      id?: number;
-      /** @description Model name */
-      name?: string | null;
-      /** @description Model version */
-      version?: string | null;
-      modelType?: components["schemas"]["ModelType"];
-      /** @description Is model active */
-      isActive?: boolean;
-    };
-    /** @description Simple model series DTO for listing */
-    "ConduitLLM.Admin.Controllers.SimpleModelSeriesDto": {
-      /**
-       * Format: int32
-       * @description Series ID
-       */
-      id?: number;
-      /** @description Series name */
-      name?: string | null;
-      /** @description Series description */
-      description?: string | null;
-      tokenizerType?: components["schemas"]["TokenizerType"];
     };
     /** @description Request model for testing a provider connection */
     "ConduitLLM.Admin.Controllers.TestProviderRequest": {
@@ -10056,51 +9833,6 @@ export interface components {
       baseUrl?: string | null;
       /** @description The organization to test (optional) */
       organization?: string | null;
-    };
-    /** @description Update model capabilities DTO */
-    "ConduitLLM.Admin.Controllers.UpdateCapabilitiesDto": {
-      /**
-       * Format: int32
-       * @description Capabilities ID
-       */
-      id?: number;
-      /**
-       * Format: int32
-       * @description Maximum tokens
-       */
-      maxTokens?: number | null;
-      /**
-       * Format: int32
-       * @description Minimum tokens
-       */
-      minTokens?: number | null;
-      /** @description Supports vision */
-      supportsVision?: boolean | null;
-      /** @description Supports audio transcription */
-      supportsAudioTranscription?: boolean | null;
-      /** @description Supports text to speech */
-      supportsTextToSpeech?: boolean | null;
-      /** @description Supports realtime audio */
-      supportsRealtimeAudio?: boolean | null;
-      /** @description Supports image generation */
-      supportsImageGeneration?: boolean | null;
-      /** @description Supports video generation */
-      supportsVideoGeneration?: boolean | null;
-      /** @description Supports embeddings */
-      supportsEmbeddings?: boolean | null;
-      /** @description Supports chat */
-      supportsChat?: boolean | null;
-      /** @description Supports function calling */
-      supportsFunctionCalling?: boolean | null;
-      /** @description Supports streaming */
-      supportsStreaming?: boolean | null;
-      tokenizerType?: components["schemas"]["TokenizerType"];
-      /** @description Supported voices (JSON) */
-      supportedVoices?: string | null;
-      /** @description Supported languages (JSON) */
-      supportedLanguages?: string | null;
-      /** @description Supported formats (JSON) */
-      supportedFormats?: string | null;
     };
     /** @description Request model for updating a key credential */
     "ConduitLLM.Admin.Controllers.UpdateKeyRequest": {
@@ -10121,46 +9853,6 @@ export interface components {
        * @description The provider account group (optional)
        */
       providerAccountGroup?: number | null;
-    };
-    /** @description Update model author DTO */
-    "ConduitLLM.Admin.Controllers.UpdateModelAuthorDto": {
-      /**
-       * Format: int32
-       * @description Author ID
-       */
-      id?: number;
-      /** @description Author name */
-      name?: string | null;
-      /** @description Author description */
-      description?: string | null;
-      /** @description Author website URL */
-      websiteUrl?: string | null;
-    };
-    "ConduitLLM.Admin.Controllers.UpdateModelDto": {
-      /** Format: int32 */
-      id?: number;
-      name?: string | null;
-      modelType?: components["schemas"]["ModelType"];
-      /** Format: int32 */
-      modelSeriesId?: number | null;
-      /** Format: int32 */
-      modelCapabilitiesId?: number | null;
-      isActive?: boolean | null;
-    };
-    /** @description Update model series DTO */
-    "ConduitLLM.Admin.Controllers.UpdateModelSeriesDto": {
-      /**
-       * Format: int32
-       * @description Series ID
-       */
-      id?: number;
-      /** @description Series name */
-      name?: string | null;
-      /** @description Series description */
-      description?: string | null;
-      tokenizerType?: components["schemas"]["TokenizerType"];
-      /** @description UI parameters JSON */
-      parameters?: string | null;
     };
     /** @description Request model for updating a provider */
     "ConduitLLM.Admin.Controllers.UpdateProviderRequest": {
@@ -10737,6 +10429,441 @@ export interface components {
        * @description Current message count.
        */
       currentCount?: number;
+    };
+    /** @description Data transfer object for creating a new model author/organization. */
+    "ConduitLLM.Admin.Models.ModelAuthors.CreateModelAuthorDto": {
+      /** @description Gets or sets the name of the author/organization. */
+      name?: string | null;
+      /** @description Gets or sets the optional website URL. */
+      websiteUrl?: string | null;
+      /** @description Gets or sets an optional description of the organization. */
+      description?: string | null;
+    };
+    /** @description Data transfer object representing an AI model author or organization. */
+    "ConduitLLM.Admin.Models.ModelAuthors.ModelAuthorDto": {
+      /**
+       * Format: int32
+       * @description Gets or sets the unique identifier for the author.
+       */
+      id?: number;
+      /** @description Gets or sets the name of the author/organization. */
+      name?: string | null;
+      /** @description Gets or sets the website URL for the author/organization. */
+      websiteUrl?: string | null;
+      /** @description Gets or sets a description of the author/organization. */
+      description?: string | null;
+      /**
+       * Format: date-time
+       * @description Gets or sets when the author record was created.
+       */
+      createdAt?: string;
+      /**
+       * Format: date-time
+       * @description Gets or sets when the author record was last updated.
+       */
+      updatedAt?: string;
+    };
+    /** @description Simplified model series information for display within an author context. */
+    "ConduitLLM.Admin.Models.ModelAuthors.SimpleModelSeriesDto": {
+      /**
+       * Format: int32
+       * @description Gets or sets the unique identifier of the series.
+       */
+      id?: number;
+      /** @description Gets or sets the name of the model series. */
+      name?: string | null;
+      /** @description Gets or sets the description of the series. */
+      description?: string | null;
+      tokenizerType?: components["schemas"]["TokenizerType"];
+      /**
+       * Format: int32
+       * @description Gets or sets the number of models in this series.
+       */
+      modelCount?: number;
+    };
+    /** @description Data transfer object for updating an existing model author/organization. */
+    "ConduitLLM.Admin.Models.ModelAuthors.UpdateModelAuthorDto": {
+      /**
+       * Format: int32
+       * @description Gets or sets the ID of the author to update.
+       */
+      id?: number;
+      /** @description Gets or sets the new name for the author. */
+      name?: string | null;
+      /** @description Gets or sets the new website URL. */
+      websiteUrl?: string | null;
+      /** @description Gets or sets the new description. */
+      description?: string | null;
+    };
+    /** @description Data transfer object representing the capabilities and characteristics of AI models. */
+    "ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesDto": {
+      /**
+       * Format: int32
+       * @description Gets or sets the unique identifier for this capabilities configuration.
+       */
+      id?: number;
+      /** @description Gets or sets whether the model supports chat/conversation interactions. */
+      supportsChat?: boolean;
+      /** @description Gets or sets whether the model supports vision/image understanding. */
+      supportsVision?: boolean;
+      /** @description Gets or sets whether the model supports function/tool calling. */
+      supportsFunctionCalling?: boolean;
+      /** @description Gets or sets whether the model supports streaming responses. */
+      supportsStreaming?: boolean;
+      /** @description Gets or sets whether the model supports audio transcription (speech-to-text). */
+      supportsAudioTranscription?: boolean;
+      /** @description Gets or sets whether the model supports text-to-speech synthesis. */
+      supportsTextToSpeech?: boolean;
+      /** @description Gets or sets whether the model supports real-time audio interactions. */
+      supportsRealtimeAudio?: boolean;
+      /** @description Gets or sets whether the model supports image generation. */
+      supportsImageGeneration?: boolean;
+      /** @description Gets or sets whether the model supports video generation. */
+      supportsVideoGeneration?: boolean;
+      /** @description Gets or sets whether the model supports text embeddings generation. */
+      supportsEmbeddings?: boolean;
+      /**
+       * Format: int32
+       * @description Gets or sets the maximum number of tokens the model can process.
+       */
+      maxTokens?: number;
+      /**
+       * Format: int32
+       * @description Gets or sets the minimum number of tokens for the model.
+       */
+      minTokens?: number;
+      tokenizerType?: components["schemas"]["TokenizerType"];
+      /** @description Gets or sets the comma-separated list of supported voice IDs for TTS models. */
+      supportedVoices?: string | null;
+      /** @description Gets or sets the comma-separated list of supported languages. */
+      supportedLanguages?: string | null;
+      /** @description Gets or sets the comma-separated list of supported input/output formats. */
+      supportedFormats?: string | null;
+    };
+    /** @description Simplified model information for display within a capabilities context. */
+    "ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesSimpleModelDto": {
+      /**
+       * Format: int32
+       * @description Gets or sets the unique identifier of the model.
+       */
+      id?: number;
+      /** @description Gets or sets the canonical name of the model. */
+      name?: string | null;
+      /** @description Gets or sets the version identifier of the model. */
+      version?: string | null;
+      /** @description Gets or sets whether the model is currently active. */
+      isActive?: boolean;
+    };
+    /** @description Data transfer object for creating a new model capabilities configuration. */
+    "ConduitLLM.Admin.Models.ModelCapabilities.CreateCapabilitiesDto": {
+      /** @description Gets or sets whether models with these capabilities support chat/conversation. */
+      supportsChat?: boolean;
+      /** @description Gets or sets whether models support vision/image understanding. */
+      supportsVision?: boolean;
+      /** @description Gets or sets whether models support function/tool calling. */
+      supportsFunctionCalling?: boolean;
+      /** @description Gets or sets whether models support streaming responses. */
+      supportsStreaming?: boolean;
+      /** @description Gets or sets whether models support audio transcription. */
+      supportsAudioTranscription?: boolean;
+      /** @description Gets or sets whether models support text-to-speech synthesis. */
+      supportsTextToSpeech?: boolean;
+      /** @description Gets or sets whether models support real-time audio interactions. */
+      supportsRealtimeAudio?: boolean;
+      /** @description Gets or sets whether models support image generation. */
+      supportsImageGeneration?: boolean;
+      /** @description Gets or sets whether models support video generation. */
+      supportsVideoGeneration?: boolean;
+      /** @description Gets or sets whether models support text embeddings. */
+      supportsEmbeddings?: boolean;
+      /**
+       * Format: int32
+       * @description Gets or sets the maximum token context window.
+       */
+      maxTokens?: number;
+      /**
+       * Format: int32
+       * @description Gets or sets the minimum token requirement.
+       */
+      minTokens?: number;
+      tokenizerType?: components["schemas"]["TokenizerType"];
+      /** @description Gets or sets the comma-separated list of supported voices for TTS. */
+      supportedVoices?: string | null;
+      /** @description Gets or sets the comma-separated list of supported languages. */
+      supportedLanguages?: string | null;
+      /** @description Gets or sets the comma-separated list of supported formats. */
+      supportedFormats?: string | null;
+    };
+    /** @description Alias for CapabilitiesDto to maintain backward compatibility with ModelController. */
+    "ConduitLLM.Admin.Models.ModelCapabilities.ModelCapabilitiesDto": {
+      /**
+       * Format: int32
+       * @description Gets or sets the unique identifier for this capabilities configuration.
+       */
+      id?: number;
+      /** @description Gets or sets whether the model supports chat/conversation interactions. */
+      supportsChat?: boolean;
+      /** @description Gets or sets whether the model supports vision/image understanding. */
+      supportsVision?: boolean;
+      /** @description Gets or sets whether the model supports function/tool calling. */
+      supportsFunctionCalling?: boolean;
+      /** @description Gets or sets whether the model supports streaming responses. */
+      supportsStreaming?: boolean;
+      /** @description Gets or sets whether the model supports audio transcription (speech-to-text). */
+      supportsAudioTranscription?: boolean;
+      /** @description Gets or sets whether the model supports text-to-speech synthesis. */
+      supportsTextToSpeech?: boolean;
+      /** @description Gets or sets whether the model supports real-time audio interactions. */
+      supportsRealtimeAudio?: boolean;
+      /** @description Gets or sets whether the model supports image generation. */
+      supportsImageGeneration?: boolean;
+      /** @description Gets or sets whether the model supports video generation. */
+      supportsVideoGeneration?: boolean;
+      /** @description Gets or sets whether the model supports text embeddings generation. */
+      supportsEmbeddings?: boolean;
+      /**
+       * Format: int32
+       * @description Gets or sets the maximum number of tokens the model can process.
+       */
+      maxTokens?: number;
+      /**
+       * Format: int32
+       * @description Gets or sets the minimum number of tokens for the model.
+       */
+      minTokens?: number;
+      tokenizerType?: components["schemas"]["TokenizerType"];
+      /** @description Gets or sets the comma-separated list of supported voice IDs for TTS models. */
+      supportedVoices?: string | null;
+      /** @description Gets or sets the comma-separated list of supported languages. */
+      supportedLanguages?: string | null;
+      /** @description Gets or sets the comma-separated list of supported input/output formats. */
+      supportedFormats?: string | null;
+    };
+    /** @description Data transfer object for updating an existing model capabilities configuration. */
+    "ConduitLLM.Admin.Models.ModelCapabilities.UpdateCapabilitiesDto": {
+      /**
+       * Format: int32
+       * @description Gets or sets the ID of the capabilities configuration to update.
+       */
+      id?: number;
+      /** @description Gets or sets the new chat support status, or null to keep existing. */
+      supportsChat?: boolean | null;
+      /** @description Gets or sets the new vision support status, or null to keep existing. */
+      supportsVision?: boolean | null;
+      /** @description Gets or sets the new function calling support, or null to keep existing. */
+      supportsFunctionCalling?: boolean | null;
+      /** @description Gets or sets the new streaming support, or null to keep existing. */
+      supportsStreaming?: boolean | null;
+      /** @description Gets or sets the new audio transcription support, or null to keep existing. */
+      supportsAudioTranscription?: boolean | null;
+      /** @description Gets or sets the new TTS support, or null to keep existing. */
+      supportsTextToSpeech?: boolean | null;
+      /** @description Gets or sets the new real-time audio support, or null to keep existing. */
+      supportsRealtimeAudio?: boolean | null;
+      /** @description Gets or sets the new image generation support, or null to keep existing. */
+      supportsImageGeneration?: boolean | null;
+      /** @description Gets or sets the new video generation support, or null to keep existing. */
+      supportsVideoGeneration?: boolean | null;
+      /** @description Gets or sets the new embeddings support, or null to keep existing. */
+      supportsEmbeddings?: boolean | null;
+      /**
+       * Format: int32
+       * @description Gets or sets the new max token limit, or null to keep existing.
+       */
+      maxTokens?: number | null;
+      /**
+       * Format: int32
+       * @description Gets or sets the new min token requirement, or null to keep existing.
+       */
+      minTokens?: number | null;
+      tokenizerType?: components["schemas"]["TokenizerType"];
+      /** @description Gets or sets the new supported voices list, or null to keep existing. */
+      supportedVoices?: string | null;
+      /** @description Gets or sets the new supported languages list, or null to keep existing. */
+      supportedLanguages?: string | null;
+      /** @description Gets or sets the new supported formats list, or null to keep existing. */
+      supportedFormats?: string | null;
+    };
+    /** @description Data transfer object for creating a new model series in the system. */
+    "ConduitLLM.Admin.Models.ModelSeries.CreateModelSeriesDto": {
+      /**
+       * Format: int32
+       * @description Gets or sets the ID of the author/organization for this series.
+       */
+      authorId?: number;
+      /** @description Gets or sets the name of the model series. */
+      name?: string | null;
+      /** @description Gets or sets an optional description of the model series. */
+      description?: string | null;
+      tokenizerType?: components["schemas"]["TokenizerType"];
+      /** @description Gets or sets optional UI parameter configuration for the series. */
+      parameters?: string | null;
+    };
+    /** @description Data transfer object representing a series or family of related AI models. */
+    "ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto": {
+      /**
+       * Format: int32
+       * @description Gets or sets the unique identifier for this model series.
+       */
+      id?: number;
+      /**
+       * Format: int32
+       * @description Gets or sets the ID of the author/organization that created this model series.
+       */
+      authorId?: number;
+      /** @description Gets or sets the name of the author/organization. */
+      authorName?: string | null;
+      /** @description Gets or sets the name of this model series. */
+      name?: string | null;
+      /** @description Gets or sets a description of this model series. */
+      description?: string | null;
+      tokenizerType?: components["schemas"]["TokenizerType"];
+      /** @description Gets or sets the UI parameters configuration for this series. */
+      parameters?: string | null;
+    };
+    /** @description Simplified model information for display within a series context. */
+    "ConduitLLM.Admin.Models.ModelSeries.SeriesSimpleModelDto": {
+      /**
+       * Format: int32
+       * @description Gets or sets the unique identifier of the model.
+       */
+      id?: number;
+      /** @description Gets or sets the canonical name of the model. */
+      name?: string | null;
+      /** @description Gets or sets the version identifier of the model. */
+      version?: string | null;
+      /** @description Gets or sets whether the model is currently active. */
+      isActive?: boolean;
+    };
+    /** @description Data transfer object for updating an existing model series. */
+    "ConduitLLM.Admin.Models.ModelSeries.UpdateModelSeriesDto": {
+      /**
+       * Format: int32
+       * @description Gets or sets the ID of the series to update.
+       */
+      id?: number;
+      /** @description Gets or sets the new name for the series. */
+      name?: string | null;
+      /** @description Gets or sets the new description for the series. */
+      description?: string | null;
+      tokenizerType?: components["schemas"]["TokenizerType"];
+      /** @description Gets or sets the new UI parameters configuration. */
+      parameters?: string | null;
+    };
+    /** @description Data transfer object for creating a new AI model in the system. */
+    "ConduitLLM.Admin.Models.Models.CreateModelDto": {
+      /**
+       * @description Gets or sets the canonical name of the model to create.
+       * @example gpt-4-turbo
+       */
+      name?: string | null;
+      /**
+       * Format: int32
+       * @description Gets or sets the ID of the model series this model will belong to.
+       */
+      modelSeriesId?: number;
+      /**
+       * Format: int32
+       * @description Gets or sets the ID of the capabilities configuration for this model.
+       */
+      modelCapabilitiesId?: number;
+      /** @description Gets or sets whether the model should be active upon creation. */
+      isActive?: boolean | null;
+    };
+    /** @description Data transfer object representing a canonical AI model in the system. */
+    "ConduitLLM.Admin.Models.Models.ModelDto": {
+      /**
+       * Format: int32
+       * @description Gets or sets the unique identifier for the model.
+       */
+      id?: number;
+      /** @description Gets or sets the canonical name of the model. */
+      name?: string | null;
+      /**
+       * Format: int32
+       * @description Gets or sets the ID of the model series this model belongs to.
+       */
+      modelSeriesId?: number;
+      /**
+       * Format: int32
+       * @description Gets or sets the ID of the capabilities configuration for this model.
+       */
+      modelCapabilitiesId?: number;
+      capabilities?: components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.ModelCapabilitiesDto"];
+      /** @description Gets or sets whether this model is currently active and available for use. */
+      isActive?: boolean;
+      /**
+       * Format: date-time
+       * @description Gets or sets the timestamp when this model was first created in the system.
+       */
+      createdAt?: string;
+      /**
+       * Format: date-time
+       * @description Gets or sets the timestamp when this model was last updated.
+       */
+      updatedAt?: string;
+      series?: components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto"];
+    };
+    /** @description Extended model DTO that includes the provider-specific identifier for the model. */
+    "ConduitLLM.Admin.Models.Models.ModelWithProviderIdDto": {
+      /**
+       * Format: int32
+       * @description Gets or sets the unique identifier for the model.
+       */
+      id?: number;
+      /** @description Gets or sets the canonical name of the model. */
+      name?: string | null;
+      /**
+       * Format: int32
+       * @description Gets or sets the ID of the model series this model belongs to.
+       */
+      modelSeriesId?: number;
+      /**
+       * Format: int32
+       * @description Gets or sets the ID of the capabilities configuration for this model.
+       */
+      modelCapabilitiesId?: number;
+      capabilities?: components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.ModelCapabilitiesDto"];
+      /** @description Gets or sets whether this model is currently active and available for use. */
+      isActive?: boolean;
+      /**
+       * Format: date-time
+       * @description Gets or sets the timestamp when this model was first created in the system.
+       */
+      createdAt?: string;
+      /**
+       * Format: date-time
+       * @description Gets or sets the timestamp when this model was last updated.
+       */
+      updatedAt?: string;
+      series?: components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto"];
+      /**
+       * @description Gets or sets the provider-specific identifier for this model.
+       * @example gpt-4-0613
+       */
+      providerModelId?: string | null;
+    };
+    /** @description Data transfer object for updating an existing AI model in the system. */
+    "ConduitLLM.Admin.Models.Models.UpdateModelDto": {
+      /**
+       * Format: int32
+       * @description Gets or sets the ID of the model to update.
+       */
+      id?: number;
+      /** @description Gets or sets the new canonical name for the model. */
+      name?: string | null;
+      /**
+       * Format: int32
+       * @description Gets or sets the new model series ID.
+       */
+      modelSeriesId?: number | null;
+      /**
+       * Format: int32
+       * @description Gets or sets the new capabilities configuration ID.
+       */
+      modelCapabilitiesId?: number | null;
+      /** @description Gets or sets the new activation status for the model. */
+      isActive?: boolean | null;
     };
     "ConduitLLM.Configuration.DTOs.Audio.AudioCostDto": {
       /** Format: int32 */
@@ -11472,7 +11599,7 @@ export interface components {
       /** Format: date-time */
       createdAt?: string;
     };
-    "ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.Audio.AudioUsageDto, ConduitLLM.Configuration, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]": {
+    "ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.Audio.AudioUsageDto, ConduitLLM.Configuration, Version=0.1.3.0, Culture=neutral, PublicKeyToken=null]]": {
       items?:
         | components["schemas"]["ConduitLLM.Configuration.DTOs.Audio.AudioUsageDto"][]
         | null;
@@ -11491,7 +11618,7 @@ export interface components {
       /** Format: int32 */
       totalItems?: number;
     };
-    "ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.LogRequestDto, ConduitLLM.Configuration, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]": {
+    "ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.LogRequestDto, ConduitLLM.Configuration, Version=0.1.3.0, Culture=neutral, PublicKeyToken=null]]": {
       items?:
         | components["schemas"]["ConduitLLM.Configuration.DTOs.LogRequestDto"][]
         | null;
@@ -11510,7 +11637,7 @@ export interface components {
       /** Format: int32 */
       totalItems?: number;
     };
-    "ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.1.0, Culture=neutral, PublicKeyToken=null]]": {
+    "ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto, ConduitLLM.Configuration, Version=0.1.3.0, Culture=neutral, PublicKeyToken=null]]": {
       items?:
         | components["schemas"]["ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyGroupTransactionDto"][]
         | null;
@@ -11875,37 +12002,6 @@ export interface components {
       | 9
       | 10
       | 11;
-    "ConduitLLM.Core.Interfaces.DiscoveredModel": {
-      modelId: string | null;
-      provider: string | null;
-      displayName?: string | null;
-      capabilities: components["schemas"]["ConduitLLM.Core.Interfaces.ModelCapabilities"];
-      metadata?: {
-        [key: string]: unknown;
-      } | null;
-      /** Format: date-time */
-      lastVerified?: string;
-    };
-    "ConduitLLM.Core.Interfaces.ModelCapabilities": {
-      chat?: boolean;
-      chatStream?: boolean;
-      embeddings?: boolean;
-      imageGeneration?: boolean;
-      vision?: boolean;
-      videoGeneration?: boolean;
-      videoUnderstanding?: boolean;
-      functionCalling?: boolean;
-      toolUse?: boolean;
-      jsonMode?: boolean;
-      /** Format: int32 */
-      maxTokens?: number | null;
-      /** Format: int32 */
-      maxOutputTokens?: number | null;
-      supportedImageSizes?: string[] | null;
-      supportedVideoResolutions?: string[] | null;
-      /** Format: int32 */
-      maxVideoDurationSeconds?: number | null;
-    };
     "ConduitLLM.Core.Models.Routing.FallbackConfiguration": {
       /** Format: uuid */
       id?: string;
@@ -11971,11 +12067,6 @@ export interface components {
     } & {
       [key: string]: unknown;
     };
-    /**
-     * Format: int32
-     * @enum {integer}
-     */
-    ModelType: 0 | 1 | 2 | 3 | 4;
     /**
      * Format: int32
      * @enum {integer}

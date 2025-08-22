@@ -35,8 +35,8 @@ export function useModels() {
     return models.find(m => m.id === id);
   };
 
-  const getModelsByType = (type: number): ModelDto[] => {
-    return models.filter(m => m.modelType === type);
+  const getModelsByCapability = (capability: keyof NonNullable<ModelDto['capabilities']>): ModelDto[] => {
+    return models.filter(m => m.capabilities?.[capability]);
   };
 
   return {
@@ -45,6 +45,6 @@ export function useModels() {
     error,
     refetch: fetchModels,
     getModelById,
-    getModelsByType
+    getModelsByCapability
   };
 }

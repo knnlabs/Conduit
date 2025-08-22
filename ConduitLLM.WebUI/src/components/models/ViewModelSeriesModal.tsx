@@ -118,9 +118,6 @@ export function ViewModelSeriesModal({ isOpen, series, onClose }: ViewModelSerie
                       {/* displayName field doesn't exist in ModelDto */}
                     </div>
                     <Group gap="xs">
-                      <Badge size="xs" variant="light">
-                        {model.modelType ?? 'Unknown'}
-                      </Badge>
                       {model.isActive !== undefined && (
                         <Badge size="xs" color={model.isActive ? 'green' : 'gray'} variant="light">
                           {model.isActive ? 'Active' : 'Inactive'}

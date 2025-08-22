@@ -4,10 +4,10 @@ import type { RequestConfig } from '../client/types';
 import { ENDPOINTS } from '../constants';
 
 // Type aliases for better readability
-type ModelAuthorDto = components['schemas']['ConduitLLM.Admin.Controllers.ModelAuthorDto'];
-type CreateModelAuthorDto = components['schemas']['ConduitLLM.Admin.Controllers.CreateModelAuthorDto'];
-type UpdateModelAuthorDto = components['schemas']['ConduitLLM.Admin.Controllers.UpdateModelAuthorDto'];
-type SimpleModelSeriesDto = components['schemas']['ConduitLLM.Admin.Controllers.SimpleModelSeriesDto'];
+type ModelAuthorDto = components['schemas']['ConduitLLM.Admin.Models.ModelAuthors.ModelAuthorDto'];
+type CreateModelAuthorDto = components['schemas']['ConduitLLM.Admin.Models.ModelAuthors.CreateModelAuthorDto'];
+type UpdateModelAuthorDto = components['schemas']['ConduitLLM.Admin.Models.ModelAuthors.UpdateModelAuthorDto'];
+type SimpleModelSeriesDto = components['schemas']['ConduitLLM.Admin.Models.ModelAuthors.SimpleModelSeriesDto'];
 
 /**
  * Type-safe Model Author service using native fetch

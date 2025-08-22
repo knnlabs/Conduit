@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Modal, Stack, Group, Text, Badge, Divider, Loader } from '@mantine/core';
 import type { ModelDto } from '@knn_labs/conduit-admin-client';
 import { useAdminClient } from '@/lib/client/adminClient';
+import { getModelPrimaryType, getModelTypeBadgeColor } from '@/utils/modelHelpers';
 
 interface ViewModelModalProps {
   isOpen: boolean;
@@ -30,27 +31,6 @@ export function ViewModelModal({ isOpen, model, onClose }: ViewModelModalProps) 
   const [loadingProviders, setLoadingProviders] = useState(false);
   const { executeWithAdmin } = useAdminClient();
 
-  const getTypeBadgeColor = (type: number | undefined) => {
-    switch (type) {
-      case 0: return 'blue'; // Text/Chat
-      case 1: return 'purple'; // Image
-      case 2: return 'orange'; // Audio
-      case 3: return 'pink'; // Video
-      case 4: return 'green'; // Embedding
-      default: return 'gray';
-    }
-  };
-  
-  const getTypeName = (type: number | undefined) => {
-    switch (type) {
-      case 0: return 'Text';
-      case 1: return 'Image';
-      case 2: return 'Audio';
-      case 3: return 'Video';
-      case 4: return 'Embedding';
-      default: return 'Unknown';
-    }
-  };
 
   const getProviderTypeName = (providerType: number) => {
     switch (providerType) {
@@ -129,8 +109,8 @@ export function ViewModelModal({ isOpen, model, onClose }: ViewModelModalProps) 
 
         <Group justify="space-between">
           <Text fw={500}>Type:</Text>
-          <Badge color={getTypeBadgeColor(model.modelType)} variant="light">
-            {getTypeName(model.modelType)}
+          <Badge color={getModelTypeBadgeColor(getModelPrimaryType(model.capabilities))} variant="light">
+            {getModelPrimaryType(model.capabilities)}
           </Badge>
         </Group>
 
