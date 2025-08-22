@@ -52,11 +52,27 @@ export function ProviderModelSelect({
 
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/provider-models/${providerId}`);
+      // Use ephemeral key to call Core API directly
+      const { ephemeralKeyClient } = await import('@/lib/client/ephemeralKeyClient');
+      const response = await ephemeralKeyClient.makeDirectRequest(
+        `/api/provider-models/${providerId}`,
+        { method: 'GET' }
+      );
+      
       if (!response.ok) {
         throw new Error('Failed to fetch models');
       }
-      const data = await response.json() as ProviderModel[];
+      
+      // The API returns an array of strings
+      const modelIds = await response.json() as string[];
+      
+      // Transform to ProviderModel format
+      const data: ProviderModel[] = modelIds.map(id => ({
+        id,
+        name: id,
+        capabilities: [],
+      }));
+      
       setModels(data);
       
       // If current value is not in the fetched models, switch to custom input

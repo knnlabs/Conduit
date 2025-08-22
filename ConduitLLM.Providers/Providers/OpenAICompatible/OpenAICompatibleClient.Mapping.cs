@@ -242,11 +242,11 @@ namespace ConduitLLM.Providers.OpenAICompatible
                     Id = response.Id ?? Guid.NewGuid().ToString(),
                     Object = response.Object ?? "chat.completion",
                     Created = response.Created ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                    Model = originalModelAlias ?? response.Model,
+                    Model = originalModelAlias ?? response.Model ?? "unknown",
                     Choices = response.Choices?.Select(c => new CoreModels.Choice
                     {
                         Index = c.Index,
-                        FinishReason = c.FinishReason,
+                        FinishReason = c.FinishReason ?? "stop",
                         Message = c.Message != null ? new CoreModels.Message
                         {
                             Role = c.Message.Role ?? "assistant",

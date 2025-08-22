@@ -363,7 +363,9 @@ public partial class Program
         });
 
         // Register provider model list service
-        builder.Services.AddScoped<IModelListService, ModelListService>();
+        // OBSOLETE: External model discovery is no longer used. 
+        // The ProviderModelsController now returns models from the local database.
+        // builder.Services.AddScoped<IModelListService, ModelListService>();
 
         // Model discovery providers have been migrated to sister classes
 
