@@ -114,7 +114,6 @@ public static class ServiceCollectionExtensions
             
             return new AdminIpFilterService(ipFilterRepository, ipFilterOptions, publishEndpoint, logger);
         });
-        services.AddScoped<IAdminDatabaseBackupService, AdminDatabaseBackupService>();
         services.AddScoped<IAdminSystemInfoService, AdminSystemInfoService>();
         services.AddScoped<IAdminNotificationService, AdminNotificationService>();
         // Register AdminGlobalSettingService with optional event publishing dependency
