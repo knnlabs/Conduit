@@ -38,12 +38,12 @@ export function useParameterState({
   }, [parsedParameters]);
 
   // Load persisted values if available
-  const loadPersistedValues = useCallback(() => {
+  const loadPersistedValues = useCallback((): ParameterValues => {
     if (!persistKey) return {};
     
     try {
       const stored = localStorage.getItem(`parameters_${persistKey}`);
-      return stored ? JSON.parse(stored) : {};
+      return stored ? JSON.parse(stored) as ParameterValues : {};
     } catch {
       return {};
     }
@@ -72,7 +72,7 @@ export function useParameterState({
   }, [onChange, persistKey]);
 
   // Update single value
-  const updateValue = useCallback((key: string, value: any) => {
+  const updateValue = useCallback((key: string, value: unknown) => {
     updateValues({
       ...values,
       [key]: value,

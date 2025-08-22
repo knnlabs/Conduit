@@ -16,12 +16,12 @@ export interface BaseParameter {
   type: ParameterType;
   label: string;
   description?: string;
-  default?: any;
+  default?: unknown;
   required?: boolean;
   visible?: boolean;
   dependsOn?: {
     parameter: string;
-    value: any;
+    value: unknown;
   };
 }
 
@@ -108,7 +108,7 @@ export type DynamicParameter =
   | ColorParameter
   | ResolutionParameter;
 
-export type ParameterValues = Record<string, any>;
+export type ParameterValues = Record<string, unknown>;
 
 export type ParameterContext = 'chat' | 'image' | 'video' | 'audio';
 

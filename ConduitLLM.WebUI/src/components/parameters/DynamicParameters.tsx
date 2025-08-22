@@ -51,7 +51,7 @@ export function DynamicParameters({
 
   // Get visible parameters based on dependencies
   const visibleParameters = useMemo(() => {
-    return Object.entries(parsedParameters).filter(([key, param]) => {
+    return Object.entries(parsedParameters).filter(([, param]) => {
       if (param.visible === false) return false;
       
       if (param.dependsOn) {
@@ -64,11 +64,12 @@ export function DynamicParameters({
   }, [parsedParameters, values]);
 
   // Handle parameter value change
-  const handleParameterChange = useCallback((key: string, value: any) => {
-    onChange({
+  const handleParameterChange = useCallback((key: string, value: unknown) => {
+    const newValues = {
       ...values,
       [key]: value,
-    });
+    };
+    onChange(newValues);
   }, [values, onChange]);
 
   // Handle reset to defaults
@@ -76,7 +77,7 @@ export function DynamicParameters({
     const defaultValues: ParameterValues = {};
     Object.entries(parsedParameters).forEach(([key, param]) => {
       if (param.default !== undefined) {
-        defaultValues[key] = param.default;
+        defaultValues[key] = param.default as unknown;
       }
     });
     onChange(defaultValues);
@@ -109,7 +110,7 @@ export function DynamicParameters({
         )}
         <Group gap="xs">
           <IconSettings size={18} />
-          <Title order={5}>{title || `${context.charAt(0).toUpperCase() + context.slice(1)} Parameters`}</Title>
+          <Title order={5}>{title ?? `${context.charAt(0).toUpperCase() + context.slice(1)} Parameters`}</Title>
           {showCount && activeCount > 0 && (
             <Badge size="sm" variant="filled">
               {activeCount} active

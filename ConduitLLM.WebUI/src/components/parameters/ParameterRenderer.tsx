@@ -13,25 +13,25 @@ import type { DynamicParameter, ParameterContext } from './types/parameters';
 
 interface ParameterRendererProps {
   parameter: DynamicParameter;
-  value: any;
-  onChange: (value: any) => void;
+  value: unknown;
+  onChange: (value: unknown) => void;
   context: ParameterContext;
   disabled?: boolean;
 }
 
-export const ParameterRenderer = memo(function ParameterRenderer({
+const ParameterRendererComponent = ({
   parameter,
   value,
   onChange,
   context,
   disabled = false,
-}: ParameterRendererProps) {
+}: ParameterRendererProps) => {
   switch (parameter.type) {
     case 'slider':
       return (
         <SliderControl
           parameter={parameter}
-          value={value}
+          value={value as number}
           onChange={onChange}
           disabled={disabled}
         />
@@ -41,7 +41,7 @@ export const ParameterRenderer = memo(function ParameterRenderer({
       return (
         <SelectControl
           parameter={parameter}
-          value={value}
+          value={value as string | string[]}
           onChange={onChange}
           disabled={disabled}
         />
@@ -51,7 +51,7 @@ export const ParameterRenderer = memo(function ParameterRenderer({
       return (
         <TextControl
           parameter={parameter}
-          value={value}
+          value={value as string}
           onChange={onChange}
           disabled={disabled}
         />
@@ -61,7 +61,7 @@ export const ParameterRenderer = memo(function ParameterRenderer({
       return (
         <TextareaControl
           parameter={parameter}
-          value={value}
+          value={value as string}
           onChange={onChange}
           disabled={disabled}
         />
@@ -71,7 +71,7 @@ export const ParameterRenderer = memo(function ParameterRenderer({
       return (
         <NumberControl
           parameter={parameter}
-          value={value}
+          value={value as number}
           onChange={onChange}
           disabled={disabled}
         />
@@ -81,7 +81,7 @@ export const ParameterRenderer = memo(function ParameterRenderer({
       return (
         <ToggleControl
           parameter={parameter}
-          value={value}
+          value={value as boolean}
           onChange={onChange}
           disabled={disabled}
         />
@@ -91,7 +91,7 @@ export const ParameterRenderer = memo(function ParameterRenderer({
       return (
         <ColorControl
           parameter={parameter}
-          value={value}
+          value={value as string}
           onChange={onChange}
           disabled={disabled}
         />
@@ -101,7 +101,7 @@ export const ParameterRenderer = memo(function ParameterRenderer({
       return (
         <ResolutionControl
           parameter={parameter}
-          value={value}
+          value={value as string}
           onChange={onChange}
           disabled={disabled}
           context={context}
@@ -109,7 +109,11 @@ export const ParameterRenderer = memo(function ParameterRenderer({
       );
     
     default:
-      console.warn(`Unknown parameter type: ${(parameter as any).type}`);
+      console.warn(`Unknown parameter type: ${(parameter as { type: string }).type}`);
       return null;
   }
-});
+};
+
+ParameterRendererComponent.displayName = 'ParameterRenderer';
+
+export const ParameterRenderer = memo(ParameterRendererComponent);

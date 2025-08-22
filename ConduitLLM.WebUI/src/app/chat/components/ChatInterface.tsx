@@ -42,7 +42,7 @@ export function ChatInterface() {
   const [streamingContent, setStreamingContent] = useState('');
   const [tokensPerSecond, setTokensPerSecond] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
-  const [showParameters, setShowParameters] = useState(false);
+  const [showParameters] = useState(false);
   
   const performanceSettings = usePerformanceSettings();
   const { 

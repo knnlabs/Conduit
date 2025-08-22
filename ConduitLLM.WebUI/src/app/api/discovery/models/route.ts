@@ -17,7 +17,12 @@ export async function GET(request: NextRequest) {
     if (capability) {
       models = models.filter(model => {
         const capabilityKey = capability.replace('-', '_').toLowerCase();
-        return model.capabilities && model.capabilities[capabilityKey];
+        const capabilities = model.capabilities;
+        if (!capabilities) return false;
+        
+        // Type-safe capability checking
+        return capabilityKey in capabilities && 
+               capabilities[capabilityKey as keyof typeof capabilities] === true;
       });
     }
     
