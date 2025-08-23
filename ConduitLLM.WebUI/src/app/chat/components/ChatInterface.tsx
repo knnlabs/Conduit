@@ -18,6 +18,7 @@ import { ModelSelector } from './ModelSelector';
 import { ChatInput } from './ChatInput';
 import { ChatMessages } from './ChatMessages';
 import { ChatSettings } from './ChatSettings';
+import { TokenCounter } from './TokenCounter';
 import { ErrorDisplay } from '@/components/common/ErrorDisplay';
 import { 
   ChatMessage,
@@ -161,6 +162,15 @@ export function ChatInterface() {
                     Vision Enabled
                   </Badge>
                 )}
+                {currentModel && messages.length > 0 && (
+                  <TokenCounter
+                    messages={messages}
+                    maxTokens={currentModel.maxContextTokens}
+                    modelName={currentModel.displayName}
+                    compact={true}
+                    showCost={false}
+                  />
+                )}
               </Group>
               <ActionIcon
                 size="lg"
@@ -173,7 +183,20 @@ export function ChatInterface() {
             </Group>
             
             <Collapse in={showSettings}>
-              <ChatSettings />
+              <Stack gap="md">
+                <ChatSettings />
+                
+                {/* Token Counter */}
+                {currentModel && (
+                  <TokenCounter
+                    messages={messages}
+                    maxTokens={currentModel.maxContextTokens}
+                    modelName={currentModel.displayName}
+                    compact={false}
+                    showCost={false}
+                  />
+                )}
+              </Stack>
             </Collapse>
             
             {/* Dynamic Parameters UI */}
