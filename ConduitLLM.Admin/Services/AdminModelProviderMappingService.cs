@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using System.Text.Json;
 
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.Entities;
@@ -10,7 +7,6 @@ using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Services;
 
 using MassTransit;
-using Microsoft.Extensions.Logging;
 
 using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Admin.Services;
@@ -22,6 +18,7 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
 {
     private readonly IModelProviderMappingRepository _mappingRepository;
     private readonly IProviderRepository _providerRepository;
+    private readonly IModelRepository _modelRepository;
     private readonly ILogger<AdminModelProviderMappingService> _logger;
 
     /// <summary>
@@ -29,17 +26,20 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
     /// </summary>
     /// <param name="mappingRepository">The model provider mapping repository</param>
     /// <param name="providerRepository">The provider repository</param>
+    /// <param name="modelRepository">The model repository</param>
     /// <param name="publishEndpoint">Optional event publishing endpoint (null if MassTransit not configured)</param>
     /// <param name="logger">The logger</param>
     public AdminModelProviderMappingService(
         IModelProviderMappingRepository mappingRepository,
         IProviderRepository providerRepository,
+        IModelRepository modelRepository,
         IPublishEndpoint? publishEndpoint,
         ILogger<AdminModelProviderMappingService> logger)
         : base(publishEndpoint, logger)
     {
         _mappingRepository = mappingRepository ?? throw new ArgumentNullException(nameof(mappingRepository));
         _providerRepository = providerRepository ?? throw new ArgumentNullException(nameof(providerRepository));
+        _modelRepository = modelRepository ?? throw new ArgumentNullException(nameof(modelRepository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         
         LogEventPublishingConfiguration(nameof(AdminModelProviderMappingService));
@@ -259,6 +259,10 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
         var providerLookup = allProviders.ToDictionary(p => p.Id, p => p);
         var allMappings = await _mappingRepository.GetAllAsync();
         var existingMappingsLookup = allMappings.ToDictionary(m => m.ModelAlias.ToLowerInvariant(), m => m);
+        
+        // Pre-load all models with details for API parameter merging
+        var allModels = await _modelRepository.GetAllWithDetailsAsync();
+        var modelLookup = allModels.ToDictionary(m => m.Id, m => m);
 
         for (int i = 0; i < mappingsList.Count; i++)
         {
@@ -279,6 +283,18 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
                 {
                     errors.Add($"Index {i}: Model ID already exists: {mapping.ModelAlias}");
                     continue;
+                }
+                
+                // Merge API parameters from ModelSeries and Model if ModelId is set
+                if (mapping.ModelId > 0 && modelLookup.TryGetValue(mapping.ModelId, out var model))
+                {
+                    var mergedParams = MergeApiParameters(model.Series?.ApiParameters, model.ApiParameters);
+                    if (!string.IsNullOrEmpty(mergedParams))
+                    {
+                        mapping.ApiParameters = mergedParams;
+                        _logger.LogDebug("Merged API parameters for {ModelAlias}: {Parameters}", 
+                            mapping.ModelAlias, mergedParams);
+                    }
                 }
 
                 // Set timestamps
@@ -318,5 +334,58 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
             created.Count, errors.Count);
 
         return (created, errors);
+    }
+    
+    /// <summary>
+    /// Merges API parameters from ModelSeries and Model levels.
+    /// </summary>
+    /// <param name="seriesParams">JSON array of series-level parameters</param>
+    /// <param name="modelParams">JSON array of model-level parameters</param>
+    /// <returns>Merged JSON array of unique parameters</returns>
+    private string? MergeApiParameters(string? seriesParams, string? modelParams)
+    {
+        try
+        {
+            var mergedSet = new HashSet<string>();
+            
+            // Parse and add series parameters
+            if (!string.IsNullOrEmpty(seriesParams))
+            {
+                var seriesArray = JsonSerializer.Deserialize<string[]>(seriesParams);
+                if (seriesArray != null)
+                {
+                    foreach (var param in seriesArray)
+                    {
+                        mergedSet.Add(param);
+                    }
+                }
+            }
+            
+            // Parse and add model parameters
+            if (!string.IsNullOrEmpty(modelParams))
+            {
+                var modelArray = JsonSerializer.Deserialize<string[]>(modelParams);
+                if (modelArray != null)
+                {
+                    foreach (var param in modelArray)
+                    {
+                        mergedSet.Add(param);
+                    }
+                }
+            }
+            
+            // Return merged parameters as JSON array
+            if (mergedSet.Count > 0)
+            {
+                return JsonSerializer.Serialize(mergedSet.OrderBy(p => p).ToArray());
+            }
+            
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to merge API parameters");
+            return null;
+        }
     }
 }

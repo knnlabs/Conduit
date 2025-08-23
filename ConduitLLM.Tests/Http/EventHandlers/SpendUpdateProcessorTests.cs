@@ -1,16 +1,16 @@
-using System;
-using System.Threading.Tasks;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
-using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Http.EventHandlers;
+
 using FluentAssertions;
+
 using MassTransit;
+
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+
 using Moq;
-using Xunit;
+
 using Xunit.Abstractions;
 
 namespace ConduitLLM.Tests.Http.EventHandlers

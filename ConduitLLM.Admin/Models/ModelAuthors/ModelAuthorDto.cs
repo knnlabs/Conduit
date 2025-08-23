@@ -1,5 +1,3 @@
-using System;
-
 namespace ConduitLLM.Admin.Models.ModelAuthors
 {
     /// <summary>

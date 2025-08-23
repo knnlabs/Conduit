@@ -13,7 +13,6 @@ import {
   IconNetwork,
   IconFilter,
   IconDeviceDesktop,
-  IconAlertTriangle,
   IconEye,
   IconBrain,
 } from '@tabler/icons-react';
@@ -176,14 +175,6 @@ export const navigationSections: NavigationSection[] = [
         icon: IconDeviceDesktop,
         href: '/system-info',
         description: 'System status and information',
-      },
-      {
-        id: 'error-queues',
-        label: 'Error Queues',
-        icon: IconAlertTriangle,
-        href: '/error-queues',
-        description: 'Monitor and manage error queues',
-        color: 'red',
       },
       {
         id: 'provider-health',

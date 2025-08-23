@@ -1,4 +1,3 @@
-using System;
 using MassTransit;
 
 namespace ConduitLLM.Configuration.Events

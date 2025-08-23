@@ -1,23 +1,19 @@
 using System.Reflection;
 
 using ConduitLLM.Admin.Extensions;
-using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Extensions;
-using ConduitLLM.Core.Caching;
 using ConduitLLM.Providers.Extensions;
 
 using MassTransit; // Added for event bus infrastructure
 
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
 
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
-using Prometheus;
 
-using ConduitLLM.Admin.Interfaces;
+using Prometheus;
 namespace ConduitLLM.Admin;
 
 /// <summary>
@@ -49,12 +45,6 @@ public partial class Program
 
         // Add HttpClient factory for provider connection testing
         builder.Services.AddHttpClient();
-        
-        // Add HttpClient for RabbitMQ Management API
-        builder.Services.AddHttpClient<IRabbitMQManagementClient, RabbitMQManagementClient>(client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(30);
-        });
 
         // Configure Swagger with XML comments
         builder.Services.AddSwaggerGen(c =>
@@ -279,9 +269,6 @@ public partial class Program
 
         // Add monitoring services
         builder.Services.AddHostedService<ConduitLLM.Admin.Services.AdminOperationsMetricsService>();
-        
-        // Add error queue metrics collection service
-        builder.Services.AddHostedService<ConduitLLM.Admin.Services.ErrorQueueMetricsService>();
         
         // Add cache infrastructure
         builder.Services.AddCacheInfrastructure(builder.Configuration);

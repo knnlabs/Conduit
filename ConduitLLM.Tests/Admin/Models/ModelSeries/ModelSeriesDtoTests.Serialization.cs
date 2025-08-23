@@ -1,9 +1,8 @@
-using System;
 using System.Text.Json;
+
 using ConduitLLM.Admin.Models.ModelSeries;
-using ConduitLLM.Configuration.Entities;
+
 using FluentAssertions;
-using Xunit;
 
 namespace ConduitLLM.Tests.Admin.Models.ModelSeries
 {

@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace ConduitLLM.Core.Models.Audio
 {
     /// <summary>

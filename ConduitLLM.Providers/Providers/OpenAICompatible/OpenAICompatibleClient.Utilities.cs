@@ -1,10 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.Net.Http;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 using Microsoft.Extensions.Logging;
+
 using CoreModels = ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Providers.OpenAICompatible
@@ -161,7 +158,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 Choices = MapDynamicStreamingChoices(chunk.Choices),
                 OriginalModelAlias = originalModelAlias,
                 // Map usage data if present (typically in the final chunk)
-                Usage = HasProperty(chunk, "usage") && chunk.usage != null ? MapUsage(chunk.usage) : null
+                Usage = null // TODO: Implement usage mapping for streaming
             };
         }
 

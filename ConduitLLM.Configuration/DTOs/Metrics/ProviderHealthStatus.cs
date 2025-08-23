@@ -1,6 +1,3 @@
-using System;
-using ConduitLLM.Configuration;
-
 namespace ConduitLLM.Configuration.DTOs.Metrics
 {
     /// <summary>

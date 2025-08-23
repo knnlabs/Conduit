@@ -1,10 +1,9 @@
-using System.Threading;
-using System.Threading.Tasks;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+
 using MassTransit;
+
 using Moq;
-using Xunit;
 
 namespace ConduitLLM.Tests.Core.Services
 {

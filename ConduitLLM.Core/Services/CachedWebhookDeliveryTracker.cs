@@ -1,9 +1,6 @@
-using System;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Core.Services
 {

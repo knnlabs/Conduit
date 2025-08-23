@@ -1,5 +1,3 @@
-using System;
-
 namespace ConduitLLM.Http.Models
 {
     // This file has been moved to ConduitLLM.Configuration.DTOs.SignalR.SystemNotifications

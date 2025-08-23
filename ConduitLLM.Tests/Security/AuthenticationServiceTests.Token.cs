@@ -1,7 +1,6 @@
 using System.Security.Claims;
-using System.Threading.Tasks;
+
 using FluentAssertions;
-using Xunit;
 
 namespace ConduitLLM.Tests.Security
 {

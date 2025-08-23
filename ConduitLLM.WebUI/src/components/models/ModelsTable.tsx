@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Table, TextInput, Select, Group, ActionIcon, Badge, Text, Tooltip, Stack } from '@mantine/core';
-import { IconEdit, IconTrash, IconSearch, IconEye } from '@tabler/icons-react';
+import { IconEdit, IconTrash, IconSearch, IconEye, IconMessageCircle, IconPhoto, IconVideo, IconEye as IconVision } from '@tabler/icons-react';
 import { useAdminClient } from '@/lib/client/adminClient';
 import { notifications } from '@mantine/notifications';
 import { EditModelModal } from './EditModelModal';
@@ -20,7 +20,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
   const [filteredModels, setFilteredModels] = useState<ModelDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const [capabilityFilter, setCapabilityFilter] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<ModelDto | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
@@ -98,12 +98,28 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
       );
     }
 
-    if (typeFilter) {
-      filtered = filtered.filter(model => model.modelType?.toString() === typeFilter);
+    if (capabilityFilter) {
+      filtered = filtered.filter(model => {
+        const capabilities = model.capabilities as unknown;
+        if (!isCapabilitiesObject(capabilities)) return false;
+        
+        switch (capabilityFilter) {
+          case 'chat':
+            return capabilities.supportsChat === true;
+          case 'vision':
+            return capabilities.supportsVision === true;
+          case 'image':
+            return capabilities.supportsImageGeneration === true;
+          case 'video':
+            return capabilities.supportsVideoGeneration === true;
+          default:
+            return true;
+        }
+      });
     }
 
     setFilteredModels(filtered);
-  }, [search, typeFilter, models]);
+  }, [search, capabilityFilter, models]);
 
   const handleEdit = (model: ModelDto) => {
     setSelectedModel(model);
@@ -127,33 +143,70 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
     onRefresh?.();
   };
 
-  const getTypeBadgeColor = (type: number | undefined) => {
-    switch (type) {
-      case 0: return 'blue'; // Text/Chat
-      case 1: return 'purple'; // Image
-      case 2: return 'orange'; // Audio
-      case 3: return 'pink'; // Video
-      case 4: return 'green'; // Embedding
-      default: return 'gray';
-    }
+
+
+  const isCapabilitiesObject = (capabilities: unknown): capabilities is Record<string, unknown> => {
+    return capabilities !== null && typeof capabilities === 'object';
   };
 
-  const getTypeName = (type: number | undefined) => {
-    switch (type) {
-      case 0: return 'Text';
-      case 1: return 'Image';
-      case 2: return 'Audio';
-      case 3: return 'Video';
-      case 4: return 'Embedding';
-      default: return 'Unknown';
+  const renderCapabilityIcons = (model: ModelDto) => {
+    const capabilities = model.capabilities as unknown;
+    
+    if (!isCapabilitiesObject(capabilities)) {
+      return <Text c="dimmed" size="sm">-</Text>;
     }
+
+    const icons = [];
+    
+    // Text/Chat capability
+    if (capabilities.supportsChat === true) {
+      icons.push(
+        <Tooltip key="chat" label="Text Chat">
+          <IconMessageCircle size={16} color="blue" />
+        </Tooltip>
+      );
+    }
+
+    // Vision capability (Text + Vision)
+    if (capabilities.supportsVision === true) {
+      icons.push(
+        <Tooltip key="vision" label="Text + Vision">
+          <IconVision size={16} color="green" />
+        </Tooltip>
+      );
+    }
+
+    // Image generation capability
+    if (capabilities.supportsImageGeneration === true) {
+      icons.push(
+        <Tooltip key="image" label="Image Generation">
+          <IconPhoto size={16} color="purple" />
+        </Tooltip>
+      );
+    }
+
+    // Video generation capability
+    if (capabilities.supportsVideoGeneration === true) {
+      icons.push(
+        <Tooltip key="video" label="Video Generation">
+          <IconVideo size={16} color="red" />
+        </Tooltip>
+      );
+    }
+
+    return icons.length > 0 ? (
+      <Group gap="xs">{icons}</Group>
+    ) : (
+      <Text c="dimmed" size="sm">-</Text>
+    );
   };
 
-  const modelTypes = Array.from(new Set(models.map(m => m.modelType).filter(t => t !== undefined)))
-    .map(type => ({
-      value: type?.toString() ?? '',
-      label: getTypeName(type)
-    }));
+  const capabilityOptions = [
+    { value: 'chat', label: 'Text Chat' },
+    { value: 'vision', label: 'Text + Vision' },
+    { value: 'image', label: 'Image Generation' },
+    { value: 'video', label: 'Video Generation' }
+  ];
 
   return (
     <Stack gap="md">
@@ -166,10 +219,10 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
           style={{ flex: 1 }}
         />
         <Select
-          placeholder="Filter by type"
-          data={modelTypes}
-          value={typeFilter}
-          onChange={setTypeFilter}
+          placeholder="Filter by capability"
+          data={capabilityOptions}
+          value={capabilityFilter}
+          onChange={setCapabilityFilter}
           clearable
           w={200}
         />
@@ -179,8 +232,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
         <Table.Thead>
           <Table.Tr>
             <Table.Th>Name</Table.Th>
-            <Table.Th>Display Name</Table.Th>
-            <Table.Th>Type</Table.Th>
+            <Table.Th>Capabilities</Table.Th>
             <Table.Th>Series</Table.Th>
             <Table.Th>Status</Table.Th>
             <Table.Th>Actions</Table.Th>
@@ -191,7 +243,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
             if (loading) {
               return (
                 <Table.Tr>
-                  <Table.Td colSpan={6}>
+                  <Table.Td colSpan={5}>
                     <Text ta="center" c="dimmed">Loading...</Text>
                   </Table.Td>
                 </Table.Tr>
@@ -200,7 +252,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
             if (filteredModels.length === 0) {
               return (
                 <Table.Tr>
-                  <Table.Td colSpan={6}>
+                  <Table.Td colSpan={5}>
                     <Text ta="center" c="dimmed">No models found</Text>
                   </Table.Td>
                 </Table.Tr>
@@ -212,12 +264,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
                   <Text fw={500}>{model.name ?? 'Unnamed'}</Text>
                 </Table.Td>
                 <Table.Td>
-                  <Text c="dimmed">-</Text>
-                </Table.Td>
-                <Table.Td>
-                  <Badge color={getTypeBadgeColor(model.modelType)} variant="light">
-                    {getTypeName(model.modelType)}
-                  </Badge>
+                  {renderCapabilityIcons(model)}
                 </Table.Td>
                 <Table.Td>
                   {model.modelSeriesId ? (

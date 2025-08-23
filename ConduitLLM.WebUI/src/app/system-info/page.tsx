@@ -7,17 +7,11 @@ import {
   Card,
   Group,
   Button,
-  Table,
-  Badge,
   ThemeIcon,
-  Paper,
   SimpleGrid,
-  Progress,
-  Code,
   LoadingOverlay,
   Alert,
   Tabs,
-  ScrollArea,
 } from '@mantine/core';
 import {
   IconServer,
@@ -25,7 +19,6 @@ import {
   IconBrandDocker,
   IconRefresh,
   IconDownload,
-  IconCircleCheck,
   IconAlertTriangle,
   IconClock,
   IconLock,
@@ -36,24 +29,11 @@ import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
 import { SystemInfoDto } from '@knn_labs/conduit-admin-client';
 import { withAdminClient } from '@/lib/client/adminClient';
-
-interface SystemMetric {
-  name: string;
-  value: string | number;
-  unit?: string;
-  status: 'healthy' | 'warning' | 'critical';
-  description?: string;
-}
-
-interface ServiceInfo {
-  name: string;
-  version: string;
-  status: 'running' | 'stopped' | 'degraded';
-  uptime?: string;
-  port?: number;
-  memory?: string;
-  cpu?: string;
-}
+import { formatUptime } from './helpers';
+import { SystemOverviewTab } from './SystemOverviewTab';
+import { SystemServicesTab } from './SystemServicesTab';
+import { SystemEnvironmentTab } from './SystemEnvironmentTab';
+import { SystemDependenciesTab } from './SystemDependenciesTab';
 
 
 
@@ -122,92 +102,6 @@ export default function SystemInfoPage() {
       message: 'System information exported successfully',
       color: 'green',
     });
-  };
-
-  // Helper function to format uptime from seconds
-  const formatUptime = (uptimeSeconds: number): string => {
-    if (!uptimeSeconds) return 'Unknown';
-    
-    const days = Math.floor(uptimeSeconds / 86400);
-    const hours = Math.floor((uptimeSeconds % 86400) / 3600);
-    const minutes = Math.floor((uptimeSeconds % 3600) / 60);
-    
-    if (days > 0) {
-      return `${days}d ${hours}h ${minutes}m`;
-    } else if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    } else {
-      return `${minutes}m`;
-    }
-  };
-
-  // Generate system metrics from real data
-  const systemMetrics: SystemMetric[] = [];
-  
-  // Note: Memory and CPU usage are not provided by the backend API
-  // Only show metrics that are actually available
-
-  if (systemInfo?.database?.isConnected !== undefined) {
-    systemMetrics.push({
-      name: 'Database Status',
-      value: systemInfo.database.isConnected ? 'Connected' : 'Disconnected',
-      status: systemInfo.database.isConnected ? 'healthy' : 'critical',
-      description: `Provider: ${systemInfo.database.provider ?? 'Unknown'}`
-    });
-  }
-
-  // Service information from real data
-  const services: ServiceInfo[] = [];
-  if (systemInfo) {
-    services.push({
-      name: 'Conduit Core API',
-      version: systemInfo.version ?? 'Unknown',
-      status: 'running',
-      uptime: formatUptime(systemInfo.uptime ?? 0)
-    });
-    
-    if (systemInfo.database?.isConnected) {
-      services.push({
-        name: systemInfo.database.provider ?? 'Database',
-        version: 'Unknown',
-        status: systemInfo.database.isConnected ? 'running' : 'stopped'
-      });
-    }
-  }
-
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'running':
-      case 'healthy':
-      case 'latest':
-        return <IconCircleCheck size={16} />;
-      case 'degraded':
-      case 'warning':
-      case 'outdated':
-        return <IconAlertTriangle size={16} />;
-      default:
-        return <IconAlertTriangle size={16} />;
-    }
-  };
-
-  const getStatusColor = (status: string): string => {
-    switch (status) {
-      case 'running':
-      case 'healthy':
-      case 'latest':
-        return 'green';
-      case 'degraded':
-      case 'warning':
-      case 'outdated':
-        return 'orange';
-      case 'stopped':
-      case 'unhealthy':
-      case 'error':
-        return 'red';
-      default:
-        return 'gray';
-    }
   };
 
   if (isLoading) {
@@ -366,294 +260,19 @@ export default function SystemInfoPage() {
         </Tabs.List>
 
         <Tabs.Panel value="overview" pt="md">
-          <Card shadow="sm" p="md" radius="md" withBorder>
-            <Title order={4} mb="md">System Resources</Title>
-            <Stack gap="md">
-              {systemMetrics.map((metric) => (
-                <Paper key={metric.name} p="md" withBorder>
-                  <Group justify="space-between" mb="xs">
-                    <div>
-                      <Text fw={500}>{metric.name}</Text>
-                      {metric.description && (
-                        <Text size="xs" c="dimmed">{metric.description}</Text>
-                      )}
-                    </div>
-                    <Group gap="xs">
-                      <Badge
-                        leftSection={getStatusIcon(metric.status)}
-                        color={getStatusColor(metric.status)}
-                        variant="light"
-                      >
-                        {metric.status}
-                      </Badge>
-                      <Text fw={600}>
-                        {String(metric.value)}{metric.unit ?? ''}
-                      </Text>
-                    </Group>
-                  </Group>
-                  {typeof metric.value === 'number' && metric.unit === '%' && (
-                    <Progress
-                      value={metric.value}
-                      color={getStatusColor(metric.status)}
-                      size="sm"
-                      radius="md"
-                    />
-                  )}
-                </Paper>
-              ))}
-            </Stack>
-          </Card>
+          <SystemOverviewTab systemInfo={systemInfo} />
         </Tabs.Panel>
 
         <Tabs.Panel value="services" pt="md">
-          <Card shadow="sm" p="md" radius="md" withBorder>
-            <Title order={4} mb="md">Running Services</Title>
-            <ScrollArea>
-              <Table>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>Service</Table.Th>
-                    <Table.Th>Version</Table.Th>
-                    <Table.Th>Status</Table.Th>
-                    <Table.Th>Uptime</Table.Th>
-                    <Table.Th>Port</Table.Th>
-                    <Table.Th>Resources</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {services.map((service) => (
-                    <Table.Tr key={service.name}>
-                      <Table.Td>
-                        <Text fw={500}>{service.name}</Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Code>{service.version}</Code>
-                      </Table.Td>
-                      <Table.Td>
-                        <Badge
-                          leftSection={getStatusIcon(service.status)}
-                          color={getStatusColor(service.status)}
-                          variant="light"
-                        >
-                          {service.status}
-                        </Badge>
-                      </Table.Td>
-                      <Table.Td>{service.uptime ?? '-'}</Table.Td>
-                      <Table.Td>{service.port ?? '-'}</Table.Td>
-                      <Table.Td>
-                        <Text size="sm">
-                          CPU: {service.cpu ?? '-'}, Mem: {service.memory ?? '-'}
-                        </Text>
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
-            </ScrollArea>
-          </Card>
+          <SystemServicesTab systemInfo={systemInfo} />
         </Tabs.Panel>
 
         <Tabs.Panel value="environment" pt="md">
-          <Card shadow="sm" p="md" radius="md" withBorder>
-            <Title order={4} mb="md">System Configuration</Title>
-            <Alert
-              icon={<IconLock size={16} />}
-              title="Security Notice"
-              color="blue"
-              mb="md"
-            >
-              Environment variables are not exposed via the API for security reasons. Configuration values are shown below where available.
-            </Alert>
-            <ScrollArea>
-              <Table>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>Setting</Table.Th>
-                    <Table.Th>Value</Table.Th>
-                    <Table.Th>Status</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  <Table.Tr>
-                    <Table.Td>
-                      <Code>Environment</Code>
-                    </Table.Td>
-                    <Table.Td>
-                      <Code>{systemInfo?.environment ?? 'Unknown'}</Code>
-                    </Table.Td>
-                    <Table.Td>
-                      <Badge variant="light" size="sm" color="blue">
-                        System
-                      </Badge>
-                    </Table.Td>
-                  </Table.Tr>
-                  <Table.Tr>
-                    <Table.Td>
-                      <Code>Build Date</Code>
-                    </Table.Td>
-                    <Table.Td>
-                      <Code>{systemInfo?.buildDate ? new Date(systemInfo.buildDate).toLocaleDateString() : 'Unknown'}</Code>
-                    </Table.Td>
-                    <Table.Td>
-                      <Badge variant="light" size="sm" color="blue">
-                        System
-                      </Badge>
-                    </Table.Td>
-                  </Table.Tr>
-                  <Table.Tr>
-                    <Table.Td>
-                      <Code>IP Filtering</Code>
-                    </Table.Td>
-                    <Table.Td>
-                      <Code>{systemInfo?.features?.ipFiltering ? 'Enabled' : 'Disabled'}</Code>
-                    </Table.Td>
-                    <Table.Td>
-                      <Badge 
-                        variant="light" 
-                        size="sm" 
-                        color={systemInfo?.features?.ipFiltering ? 'green' : 'gray'}
-                      >
-                        Feature
-                      </Badge>
-                    </Table.Td>
-                  </Table.Tr>
-                  <Table.Tr>
-                    <Table.Td>
-                      <Code>Provider Health</Code>
-                    </Table.Td>
-                    <Table.Td>
-                      <Code>{systemInfo?.features?.providerHealth ? 'Enabled' : 'Disabled'}</Code>
-                    </Table.Td>
-                    <Table.Td>
-                      <Badge 
-                        variant="light" 
-                        size="sm" 
-                        color={systemInfo?.features?.providerHealth ? 'green' : 'gray'}
-                      >
-                        Feature
-                      </Badge>
-                    </Table.Td>
-                  </Table.Tr>
-                  <Table.Tr>
-                    <Table.Td>
-                      <Code>Cost Tracking</Code>
-                    </Table.Td>
-                    <Table.Td>
-                      <Code>{systemInfo?.features?.costTracking ? 'Enabled' : 'Disabled'}</Code>
-                    </Table.Td>
-                    <Table.Td>
-                      <Badge 
-                        variant="light" 
-                        size="sm" 
-                        color={systemInfo?.features?.costTracking ? 'green' : 'gray'}
-                      >
-                        Feature
-                      </Badge>
-                    </Table.Td>
-                  </Table.Tr>
-                  <Table.Tr>
-                    <Table.Td>
-                      <Code>Audio Support</Code>
-                    </Table.Td>
-                    <Table.Td>
-                      <Code>{systemInfo?.features?.audioSupport ? 'Enabled' : 'Disabled'}</Code>
-                    </Table.Td>
-                    <Table.Td>
-                      <Badge 
-                        variant="light" 
-                        size="sm" 
-                        color={systemInfo?.features?.audioSupport ? 'green' : 'gray'}
-                      >
-                        Feature
-                      </Badge>
-                    </Table.Td>
-                  </Table.Tr>
-                  {systemInfo?.database?.pendingMigrations && Array.isArray(systemInfo.database.pendingMigrations) && systemInfo.database.pendingMigrations.length > 0 && (
-                    <Table.Tr>
-                      <Table.Td>
-                        <Code>Pending Migrations</Code>
-                      </Table.Td>
-                      <Table.Td>
-                        <Stack gap="xs">
-                          {systemInfo.database.pendingMigrations.map((migration) => (
-                            <Code key={migration}>{String(migration)}</Code>
-                          ))}
-                        </Stack>
-                      </Table.Td>
-                      <Table.Td>
-                        <Badge variant="light" size="sm" color="orange">
-                          Database
-                        </Badge>
-                      </Table.Td>
-                    </Table.Tr>
-                  )}
-                </Table.Tbody>
-              </Table>
-            </ScrollArea>
-          </Card>
+          <SystemEnvironmentTab systemInfo={systemInfo} />
         </Tabs.Panel>
 
         <Tabs.Panel value="dependencies" pt="md">
-          <Card shadow="sm" p="md" radius="md" withBorder>
-            <Title order={4} mb="md">System Dependencies</Title>
-            <Alert
-              icon={<IconPackage size={16} />}
-              title="Information"
-              color="blue"
-              mb="md"
-            >
-              Package dependency information is not available via the system API. Check package.json files directly for detailed dependency information.
-            </Alert>
-            <ScrollArea>
-              <Table>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>Component</Table.Th>
-                    <Table.Th>Version</Table.Th>
-                    <Table.Th>Status</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  <Table.Tr>
-                    <Table.Td>
-                      <Code>Conduit Core</Code>
-                    </Table.Td>
-                    <Table.Td>{systemInfo?.version ?? 'Unknown'}</Table.Td>
-                    <Table.Td>
-                      <Badge variant="light" color="green">
-                        Current
-                      </Badge>
-                    </Table.Td>
-                  </Table.Tr>
-                  <Table.Tr>
-                    <Table.Td>
-                      <Code>.NET Runtime</Code>
-                    </Table.Td>
-                    <Table.Td>{systemInfo?.runtime?.dotnetVersion ?? 'Unknown'}</Table.Td>
-                    <Table.Td>
-                      <Badge variant="light" color="green">
-                        Runtime
-                      </Badge>
-                    </Table.Td>
-                  </Table.Tr>
-                  <Table.Tr>
-                    <Table.Td>
-                      <Code>Database Provider</Code>
-                    </Table.Td>
-                    <Table.Td>{systemInfo?.database?.provider ?? 'Unknown'}</Table.Td>
-                    <Table.Td>
-                      <Badge 
-                        variant="light" 
-                        color={systemInfo?.database?.isConnected ? 'green' : 'red'}
-                      >
-                        {systemInfo?.database?.isConnected ? 'Connected' : 'Disconnected'}
-                      </Badge>
-                    </Table.Td>
-                  </Table.Tr>
-                </Table.Tbody>
-              </Table>
-            </ScrollArea>
-          </Card>
+          <SystemDependenciesTab systemInfo={systemInfo} />
         </Tabs.Panel>
       </Tabs>
 

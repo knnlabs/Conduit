@@ -1,6 +1,5 @@
-using System;
 using Microsoft.AspNetCore.Authorization;
-using Xunit;
+
 using Xunit.Abstractions;
 
 namespace ConduitLLM.Tests.Http.Controllers

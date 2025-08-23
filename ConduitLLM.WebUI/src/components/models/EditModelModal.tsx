@@ -15,13 +15,6 @@ interface EditModelModalProps {
   onSuccess: () => void;
 }
 
-const MODEL_TYPES = [
-  { value: '0', label: 'Text/Chat' },
-  { value: '1', label: 'Image Generation' },
-  { value: '2', label: 'Audio (TTS/STT)' },
-  { value: '3', label: 'Video Generation' },
-  { value: '4', label: 'Embedding' }
-];
 
 export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelModalProps) {
   const [loading, setLoading] = useState(false);
@@ -32,14 +25,12 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
   const form = useForm<UpdateModelDto>({
     initialValues: {
       name: model?.name ?? '',
-      modelType: model?.modelType ?? 0,
       modelSeriesId: model?.modelSeriesId ?? null,
       modelCapabilitiesId: model?.modelCapabilitiesId ?? null,
       isActive: model?.isActive ?? true
     },
     validate: {
-      name: (value) => !value ? 'Name is required' : null,
-      modelType: (value) => value === undefined ? 'Type is required' : null
+      name: (value) => !value ? 'Name is required' : null
     }
   });
 
@@ -47,7 +38,6 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
     if (model) {
       form.setValues({
         name: model.name ?? '',
-        modelType: model.modelType ?? 0,
         modelSeriesId: model.modelSeriesId ?? null,
         modelCapabilitiesId: model.modelCapabilitiesId ?? null,
         isActive: model.isActive ?? true
@@ -139,17 +129,6 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
             {...form.getInputProps('name')}
           />
 
-
-          <Select
-            label="Model Type"
-            required
-            data={MODEL_TYPES}
-            value={form.values.modelType?.toString() ?? '0'}
-            onChange={(value) => {
-              const numValue = value ? parseInt(value) : 0;
-              form.setFieldValue('modelType', numValue as 0 | 1 | 2 | 3 | 4);
-            }}
-          />
 
           <Select
             label="Model Series"

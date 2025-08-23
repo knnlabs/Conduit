@@ -1,25 +1,13 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using ConduitLLM.Core.Configuration;
-using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
-using ConduitLLM.Configuration;
-using ConduitLLM.Configuration.Entities;
+
 using MassTransit;
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
 using Moq;
-using Moq.Protected;
-using Xunit;
 
 namespace ConduitLLM.Tests.Core.Services
 {

@@ -1,8 +1,8 @@
-using System;
 using System.Text.Json;
+
 using ConduitLLM.Admin.Models.ModelAuthors;
+
 using FluentAssertions;
-using Xunit;
 
 namespace ConduitLLM.Tests.Admin.Models.ModelAuthors
 {

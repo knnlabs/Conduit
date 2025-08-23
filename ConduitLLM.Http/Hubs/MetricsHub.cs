@@ -1,13 +1,7 @@
-using System;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.Logging;
 using ConduitLLM.Configuration.DTOs.Metrics;
 using Microsoft.AspNetCore.Authorization;
-using System.Threading.Channels;
-using System.Threading;
 using System.Runtime.CompilerServices;
-using System.Collections.Generic;
 using ConduitLLM.Configuration;
 
 namespace ConduitLLM.Http.Hubs

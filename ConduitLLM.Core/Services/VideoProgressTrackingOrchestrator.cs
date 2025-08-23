@@ -1,10 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+
 using MassTransit;
+
 using Microsoft.Extensions.Logging;
+
 using System.Text.Json;
 
 namespace ConduitLLM.Core.Services

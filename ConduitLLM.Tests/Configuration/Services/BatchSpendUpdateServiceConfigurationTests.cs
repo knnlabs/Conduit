@@ -1,14 +1,13 @@
-using System;
-using System.Threading.Tasks;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Tests.Helpers;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+
 using Moq;
+
 using StackExchange.Redis;
-using Xunit;
 
 namespace ConduitLLM.Tests.Configuration.Services
 {

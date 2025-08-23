@@ -1,8 +1,7 @@
-using System.Threading.Tasks;
 using ConduitLLM.Http.Services;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Http.Controllers
 {

@@ -1,13 +1,5 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Http.Metrics;
 using ConduitLLM.Http.Authentication;
 using ConduitLLM.Configuration.Entities;
 

@@ -1,5 +1,4 @@
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Configuration.Events;
 using ConduitLLM.Configuration.DTOs;

@@ -1,16 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using ConduitLLM.Admin.Models.Models;
 using ConduitLLM.Admin.Models.ModelCapabilities;
+using ConduitLLM.Admin.Models.ModelSeries;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Admin.Controllers
 {
@@ -164,6 +158,42 @@ namespace ConduitLLM.Admin.Controllers
         }
 
         /// <summary>
+        /// Gets model identifiers for a specific model
+        /// </summary>
+        /// <param name="id">The model ID</param>
+        /// <returns>List of model identifiers showing which providers offer this model</returns>
+        [HttpGet("{id}/identifiers")]
+        [ProducesResponseType(typeof(IEnumerable<object>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetModelIdentifiers(int id)
+        {
+            try
+            {
+                var model = await _modelRepository.GetByIdWithDetailsAsync(id);
+                if (model == null)
+                {
+                    return NotFound($"Model with ID {id} not found");
+                }
+
+                var identifiers = model.Identifiers.Select(i => new
+                {
+                    id = i.Id,
+                    identifier = i.Identifier,
+                    provider = i.Provider,
+                    isPrimary = i.IsPrimary
+                });
+
+                return Ok(identifiers);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting identifiers for model with ID {Id}", id);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving model identifiers");
+            }
+        }
+
+        /// <summary>
         /// Creates a new model
         /// </summary>
         /// <param name="dto">The model to create</param>
@@ -177,6 +207,16 @@ namespace ConduitLLM.Admin.Controllers
         {
             try
             {
+                if (dto == null)
+                {
+                    return BadRequest("Model data is required");
+                }
+
+                if (string.IsNullOrWhiteSpace(dto.Name))
+                {
+                    return BadRequest("Model name is required");
+                }
+
                 if (!ModelState.IsValid)
                 {
                     return BadRequest(ModelState);
@@ -227,7 +267,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="dto">The updated model data</param>
         /// <returns>No content on success</returns>
         [HttpPut("{id}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(typeof(ModelDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -236,17 +276,17 @@ namespace ConduitLLM.Admin.Controllers
         {
             try
             {
+                if (dto == null)
+                {
+                    return BadRequest("Update data is required");
+                }
+
                 if (!ModelState.IsValid)
                 {
                     return BadRequest(ModelState);
                 }
 
-                if (id != dto.Id)
-                {
-                    return BadRequest("ID mismatch");
-                }
-
-                var model = await _modelRepository.GetByIdAsync(id);
+                var model = await _modelRepository.GetByIdWithDetailsAsync(id);
                 if (model == null)
                 {
                     return NotFound($"Model with ID {id} not found");
@@ -272,9 +312,9 @@ namespace ConduitLLM.Admin.Controllers
 
                 model.UpdatedAt = DateTime.UtcNow;
 
-                await _modelRepository.UpdateAsync(model);
+                var updatedModel = await _modelRepository.UpdateAsync(model);
 
-                return NoContent();
+                return Ok(MapToDto(updatedModel));
             }
             catch (Exception ex)
             {
@@ -332,7 +372,22 @@ namespace ConduitLLM.Admin.Controllers
                 Capabilities = model.Capabilities != null ? MapCapabilitiesToDto(model.Capabilities) : null,
                 IsActive = model.IsActive,
                 CreatedAt = model.CreatedAt,
-                UpdatedAt = model.UpdatedAt
+                UpdatedAt = model.UpdatedAt,
+                Series = model.Series != null ? MapSeriesToDto(model.Series) : null
+            };
+        }
+
+        private static ModelSeriesDto MapSeriesToDto(ModelSeries series)
+        {
+            return new ModelSeriesDto
+            {
+                Id = series.Id,
+                AuthorId = series.AuthorId,
+                AuthorName = series.Author?.Name,
+                Name = series.Name,
+                Description = series.Description,
+                TokenizerType = series.TokenizerType,
+                Parameters = series.Parameters
             };
         }
 

@@ -1,5 +1,3 @@
-using ConduitLLM.Configuration.Entities;
-
 namespace ConduitLLM.Configuration.Interfaces
 {
     /// <summary>

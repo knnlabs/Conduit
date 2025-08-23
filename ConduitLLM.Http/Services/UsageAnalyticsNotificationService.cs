@@ -1,7 +1,4 @@
-using System;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.Logging;
 using ConduitLLM.Http.Hubs;
 using ConduitLLM.Configuration.DTOs.SignalR;
 

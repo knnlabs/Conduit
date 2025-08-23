@@ -1,717 +1,626 @@
 # CSS Development Guidelines
 
+Comprehensive guidelines for writing maintainable, scalable, and performant CSS in the Conduit ecosystem using modern CSS features, design tokens, and best practices.
+
 ## Overview
 
-These guidelines establish best practices for CSS development within the Conduit project, ensuring consistency, maintainability, and performance across the codebase.
+These guidelines establish consistent CSS development practices across all Conduit applications, ensuring maintainable codebases, optimal performance, and excellent user experiences.
 
-## Table of Contents
+## Documentation Structure
 
-1. [General Principles](#general-principles)
-2. [Code Organization](#code-organization)
-3. [Naming Conventions](#naming-conventions)
-4. [Design Token Usage](#design-token-usage)
-5. [CSS Writing Standards](#css-writing-standards)
-6. [BEM Methodology](#bem-methodology)
-7. [Responsive Design](#responsive-design)
-8. [Performance Guidelines](#performance-guidelines)
-9. [Accessibility Requirements](#accessibility-requirements)
-10. [Quality Assurance](#quality-assurance)
-11. [Documentation Standards](#documentation-standards)
-12. [Code Review Process](#code-review-process)
+The CSS development guidelines have been organized by topics and implementation patterns:
 
-## General Principles
+### 🎨 Core Standards
+- **[CSS Architecture](./css/architecture.md)** - File organization, naming conventions, and structure
+- **[Design Tokens](./css/design-tokens.md)** - CSS custom properties and token management
+- **[Component Patterns](./css/component-patterns.md)** - BEM methodology and component styling
 
-### 1. Consistency First
-- **Use design tokens exclusively** - Never hard-code values
-- **Follow established patterns** - Refer to existing components before creating new ones
-- **Maintain naming conventions** - Stick to BEM methodology throughout
-- **Document everything** - Every component should have usage examples
+### 📱 Responsive Design
+- **[Mobile-First CSS](./css/mobile-first.md)** - Mobile-first responsive design implementation
+- **[Grid Systems](./css/grid-systems.md)** - CSS Grid and Flexbox layouts
+- **[Breakpoint Management](./css/breakpoints.md)** - Media query organization and responsive utilities
 
-### 2. Progressive Enhancement
-- **Mobile-first approach** - Start with mobile styles, enhance for larger screens
-- **Graceful degradation** - Ensure basic functionality works everywhere
-- **Feature detection** - Use `@supports` for advanced CSS features
-- **Accessibility baseline** - Meet WCAG 2.1 AA standards minimum
+### ⚡ Performance & Optimization
+- **[CSS Performance](./css/performance.md)** - Optimization techniques and best practices
+- **[Critical CSS](./css/critical-css.md)** - Above-the-fold optimization strategies
+- **[Modern CSS Features](./css/modern-features.md)** - Container queries, cascade layers, and new CSS
 
-### 3. Performance Awareness
-- **Minimize specificity** - Keep selectors simple and efficient
-- **Reduce redundancy** - Use design tokens to avoid duplicate values
-- **Optimize loading** - Critical CSS first, progressive enhancement
-- **Monitor bundle size** - Track CSS file size growth
+## Core Principles
 
-### 4. Maintainability
-- **Modular architecture** - Component-based organization
-- **Clear dependencies** - Explicit relationships between components
-- **Version documentation** - Track changes and breaking updates
-- **Deprecation process** - Graceful removal of outdated styles
-
-## Code Organization
-
-### File Structure
-
-```
-css/
-├── design-system.css         # Design tokens (275+ CSS custom properties)
-├── base/                     # Global styles
-│   ├── reset.css            # CSS reset/normalize
-│   ├── typography.css       # Base typography
-│   └── utilities.css        # Utility classes
-├── components/              # UI components
-│   ├── buttons.css          # Button variants and states
-│   ├── cards.css            # Card components
-│   ├── forms.css            # Form controls and validation
-│   └── navigation.css       # Navigation components
-├── layout/                  # Layout systems
-│   ├── grid.css            # Grid systems and utilities
-│   ├── header.css          # Header layout
-│   ├── sidebar.css         # Sidebar navigation
-│   └── main.css            # Main content layouts
-└── pages/                  # Page-specific styles (when needed)
-    ├── dashboard.css       # Dashboard-specific styles
-    └── auth.css            # Authentication pages
-```
-
-### Import Order
-
+### 1. Design Token-First Approach
 ```css
-/* 1. Design system foundation */
-@import 'design-system.css';
+/* ✅ Good: Use design tokens */
+.button {
+  background-color: var(--color-primary-500);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+}
 
-/* 2. Base styles */
-@import 'base/reset.css';
-@import 'base/typography.css';
-@import 'base/utilities.css';
-
-/* 3. Layout systems */
-@import 'layout/grid.css';
-@import 'layout/header.css';
-@import 'layout/sidebar.css';
-@import 'layout/main.css';
-
-/* 4. Components (alphabetical order) */
-@import 'components/buttons.css';
-@import 'components/cards.css';
-@import 'components/forms.css';
-@import 'components/navigation.css';
-
-/* 5. Page-specific styles (only when necessary) */
-@import 'pages/dashboard.css';
+/* ❌ Bad: Hard-coded values */
+.button {
+  background-color: #3b82f6;
+  border-radius: 6px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 500;
+}
 ```
 
-### File Size Guidelines
-
-- **Individual component files**: Maximum 1000 lines
-- **Design system file**: No specific limit (currently 400+ lines)
-- **Layout files**: Maximum 800 lines each
-- **Page-specific files**: Maximum 500 lines
-- **Total CSS bundle**: Monitor and optimize regularly
-
-## Naming Conventions
-
-### BEM (Block Element Modifier) Methodology
-
+### 2. BEM Methodology
 ```css
 /* Block */
-.card { }
-
-/* Elements */
-.card__header { }
-.card__body { }
-.card__footer { }
-.card__title { }
-.card__actions { }
-
-/* Modifiers */
-.card--large { }
-.card--highlighted { }
-.card--interactive { }
-
-/* Element Modifiers */
-.card__header--sticky { }
-.card__title--truncated { }
-```
-
-### Naming Rules
-
-1. **Use semantic names** - Describe purpose, not appearance
-   ```css
-   /* Good */
-   .btn--primary { }
-   .text--muted { }
-   .status--success { }
-   
-   /* Bad */
-   .btn--blue { }
-   .text--gray { }
-   .box--green { }
-   ```
-
-2. **Maximum 3 BEM levels** - Avoid deep nesting
-   ```css
-   /* Good */
-   .navigation { }
-   .navigation__list { }
-   .navigation__item { }
-   .navigation__link { }
-   
-   /* Bad */
-   .navigation__list__item__link__text { }
-   ```
-
-3. **Use consistent terminology**
-   - **Actions**: `btn`, `link`, `action`
-   - **Content**: `title`, `text`, `description`, `content`
-   - **Layout**: `header`, `body`, `footer`, `sidebar`, `main`
-   - **State**: `active`, `disabled`, `loading`, `error`, `success`
-
-### CSS Custom Property Naming
-
-```css
-/* Category-based naming */
---color-primary-500          /* Color tokens */
---space-4                    /* Spacing tokens */
---text-lg                    /* Typography tokens */
---radius-md                  /* Border radius tokens */
---shadow-sm                  /* Shadow tokens */
---transition-all             /* Animation tokens */
-
-/* Semantic naming */
---color-text-primary         /* Text colors */
---color-bg-secondary         /* Background colors */
---color-border-light         /* Border colors */
-```
-
-## Design Token Usage
-
-### Mandatory Token Usage
-
-**Always use design tokens for:**
-- Colors (text, background, border)
-- Spacing (margin, padding, gap)
-- Typography (font-size, line-height, font-weight)
-- Border radius
-- Box shadows
-- Transitions and animations
-
-```css
-/* Required: Use design tokens */
-.component {
-  background-color: var(--color-bg-primary);
-  color: var(--color-text-secondary);
-  padding: var(--space-4) var(--space-6);
+.card {
+  background: var(--color-white);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  transition: var(--transition-all);
+  box-shadow: var(--shadow-md);
 }
 
-/* Forbidden: Hard-coded values */
-.component {
-  background-color: #ffffff;
-  color: #374151;
-  padding: 16px 24px;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transition: all 0.15s ease-in-out;
+/* Element */
+.card__header {
+  padding: var(--space-6);
+  border-bottom: 1px solid var(--color-gray-200);
 }
-```
 
-### Token Categories
+.card__title {
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  margin: 0;
+}
 
-1. **Color Tokens** (48 total)
-   - Primary scale: `--color-primary-50` to `--color-primary-950`
-   - Semantic colors: `--color-success`, `--color-warning`, `--color-danger`
-   - Text colors: `--color-text-primary`, `--color-text-secondary`
-   - Background colors: `--color-bg-primary`, `--color-bg-secondary`
+.card__content {
+  padding: var(--space-6);
+}
 
-2. **Spacing Tokens** (20 total)
-   - Scale: `--space-0` (0) to `--space-80` (20rem)
-   - Layout: `--nav-height`, `--sidebar-width`
+/* Modifier */
+.card--highlighted {
+  border: 2px solid var(--color-primary-500);
+}
 
-3. **Typography Tokens** (35 total)
-   - Font sizes: `--text-xs` to `--text-9xl`
-   - Font weights: `--font-thin` to `--font-black`
-   - Line heights: `--leading-none` to `--leading-loose`
-
-### Creating New Tokens
-
-```css
-/* Follow existing patterns */
-:root {
-  /* Add to existing category */
-  --color-accent: #8b5cf6;
-  --color-accent-light: #ede9fe;
-  --color-accent-dark: #7c3aed;
-  
-  /* Create semantic reference */
-  --color-highlight: var(--color-accent);
-  --color-highlight-bg: var(--color-accent-light);
+.card--large {
+  max-width: var(--max-width-4xl);
 }
 ```
 
-## CSS Writing Standards
-
-### Property Order
-
-Use the following property order (enforced by Stylelint):
-
+### 3. Mobile-First Responsive Design
 ```css
-.component {
-  /* Positioning */
-  position: relative;
-  top: 0;
-  z-index: var(--z-index-dropdown);
-  
-  /* Display & Layout */
+/* Default: Mobile styles */
+.navigation {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  
-  /* Box Model */
-  width: 100%;
-  height: auto;
-  margin: var(--space-4);
-  padding: var(--space-6);
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-md);
-  
-  /* Typography */
-  font-size: var(--text-base);
-  font-weight: var(--font-medium);
-  line-height: var(--leading-normal);
-  color: var(--color-text-primary);
-  
-  /* Visual */
-  background-color: var(--color-bg-primary);
-  box-shadow: var(--shadow-sm);
-  opacity: 1;
-  
-  /* Animation */
-  transition: var(--transition-all);
-  transform: translateY(0);
-}
-```
-
-### Code Formatting
-
-```css
-/* Use consistent formatting */
-.selector {
-  property: value;
-}
-
-/* Multiple selectors on separate lines */
-.selector-one,
-.selector-two,
-.selector-three {
-  property: value;
-}
-
-/* Group related properties */
-.component {
-  /* Layout */
-  display: flex;
-  justify-content: space-between;
-  
-  /* Appearance */
-  background-color: var(--color-bg-primary);
-  border-radius: var(--radius-md);
-  
-  /* Animation */
-  transition: var(--transition-all);
-}
-
-/* Comment complex calculations */
-.layout {
-  /* Calculate main content height: 100vh - header - footer */
-  height: calc(100vh - var(--nav-height) - var(--footer-height));
-}
-```
-
-### Selector Guidelines
-
-```css
-/* Good: Low specificity, semantic */
-.card { }
-.card__header { }
-.card--highlighted { }
-
-/* Bad: High specificity, brittle */
-div.container > div.card > div.header.large { }
-
-/* Good: Reusable, predictable */
-.btn--primary:hover { }
-.form__input:focus { }
-
-/* Bad: Overly specific */
-.page .form .fieldset .input[type="text"]:not(.disabled):focus { }
-```
-
-### Responsive Design Patterns
-
-```css
-/* Mobile-first approach */
-.component {
-  /* Mobile styles (default) */
-  font-size: var(--text-base);
   padding: var(--space-4);
 }
 
+.navigation__menu {
+  display: none; /* Hidden on mobile */
+}
+
+.navigation__toggle {
+  display: block;
+  background: none;
+  border: none;
+  padding: var(--space-2);
+}
+
+/* Progressive enhancement for larger screens */
 @media (min-width: 768px) {
-  .component {
-    /* Tablet styles */
-    font-size: var(--text-lg);
-    padding: var(--space-6);
+  .navigation {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .navigation__menu {
+    display: flex;
+    gap: var(--space-6);
+  }
+  
+  .navigation__toggle {
+    display: none;
+  }
+}
+```
+
+## Design Token System
+
+### Color Tokens
+```css
+:root {
+  /* Primary colors */
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-300: #93c5fd;
+  --color-primary-400: #60a5fa;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-800: #1e40af;
+  --color-primary-900: #1e3a8a;
+  
+  /* Semantic colors */
+  --color-success: var(--color-green-500);
+  --color-warning: var(--color-yellow-500);
+  --color-error: var(--color-red-500);
+  --color-info: var(--color-blue-500);
+  
+  /* Gray scale */
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-500: #6b7280;
+  --color-gray-900: #111827;
+  
+  /* Surface colors */
+  --color-background: var(--color-white);
+  --color-surface: var(--color-gray-50);
+  --color-border: var(--color-gray-200);
+}
+
+/* Dark theme */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: var(--color-gray-900);
+    --color-surface: var(--color-gray-800);
+    --color-border: var(--color-gray-700);
+  }
+}
+```
+
+### Typography Tokens
+```css
+:root {
+  /* Font families */
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', Consolas, monospace;
+  
+  /* Font sizes */
+  --text-xs: 0.75rem;      /* 12px */
+  --text-sm: 0.875rem;     /* 14px */
+  --text-base: 1rem;       /* 16px */
+  --text-lg: 1.125rem;     /* 18px */
+  --text-xl: 1.25rem;      /* 20px */
+  --text-2xl: 1.5rem;      /* 24px */
+  --text-3xl: 1.875rem;    /* 30px */
+  --text-4xl: 2.25rem;     /* 36px */
+  
+  /* Line heights */
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+  
+  /* Font weights */
+  --font-light: 300;
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+}
+```
+
+### Spacing Tokens
+```css
+:root {
+  /* Spacing scale */
+  --space-0: 0;
+  --space-px: 1px;
+  --space-0-5: 0.125rem;   /* 2px */
+  --space-1: 0.25rem;      /* 4px */
+  --space-2: 0.5rem;       /* 8px */
+  --space-3: 0.75rem;      /* 12px */
+  --space-4: 1rem;         /* 16px */
+  --space-5: 1.25rem;      /* 20px */
+  --space-6: 1.5rem;       /* 24px */
+  --space-8: 2rem;         /* 32px */
+  --space-10: 2.5rem;      /* 40px */
+  --space-12: 3rem;        /* 48px */
+  --space-16: 4rem;        /* 64px */
+  --space-20: 5rem;        /* 80px */
+  --space-24: 6rem;        /* 96px */
+  
+  /* Container sizes */
+  --max-width-xs: 20rem;
+  --max-width-sm: 24rem;
+  --max-width-md: 28rem;
+  --max-width-lg: 32rem;
+  --max-width-xl: 36rem;
+  --max-width-2xl: 42rem;
+  --max-width-4xl: 56rem;
+  --max-width-6xl: 72rem;
+  --max-width-full: 100%;
+}
+```
+
+## Component Architecture
+
+### Base Component Pattern
+```css
+/* Component base styles */
+.button {
+  /* Reset and base styles */
+  appearance: none;
+  border: none;
+  background: none;
+  margin: 0;
+  padding: 0;
+  
+  /* Component styles */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  
+  /* Typography */
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  line-height: var(--leading-normal);
+  text-decoration: none;
+  
+  /* Layout */
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-md);
+  
+  /* Interaction */
+  cursor: pointer;
+  transition: all 150ms ease;
+  
+  /* Accessibility */
+  &:focus-visible {
+    outline: 2px solid var(--color-primary-500);
+    outline-offset: 2px;
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+/* Size variants */
+.button--sm {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-xs);
+}
+
+.button--lg {
+  padding: var(--space-4) var(--space-8);
+  font-size: var(--text-base);
+}
+
+/* Visual variants */
+.button--primary {
+  background-color: var(--color-primary-500);
+  color: var(--color-white);
+  
+  &:hover:not(:disabled) {
+    background-color: var(--color-primary-600);
+  }
+  
+  &:active {
+    background-color: var(--color-primary-700);
+  }
+}
+
+.button--secondary {
+  background-color: var(--color-surface);
+  color: var(--color-gray-900);
+  border: 1px solid var(--color-border);
+  
+  &:hover:not(:disabled) {
+    background-color: var(--color-gray-100);
+  }
+}
+
+.button--outline {
+  background-color: transparent;
+  color: var(--color-primary-500);
+  border: 1px solid var(--color-primary-500);
+  
+  &:hover:not(:disabled) {
+    background-color: var(--color-primary-50);
+  }
+}
+```
+
+### Layout Components
+```css
+/* Container */
+.container {
+  width: 100%;
+  max-width: var(--max-width-6xl);
+  margin-inline: auto;
+  padding-inline: var(--space-4);
+}
+
+@media (min-width: 768px) {
+  .container {
+    padding-inline: var(--space-6);
   }
 }
 
 @media (min-width: 1024px) {
-  .component {
-    /* Desktop styles */
-    font-size: var(--text-xl);
-    padding: var(--space-8);
+  .container {
+    padding-inline: var(--space-8);
   }
 }
 
-/* Container queries (when supported) */
+/* Grid system */
+.grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.grid--cols-1 { grid-template-columns: 1fr; }
+.grid--cols-2 { grid-template-columns: repeat(2, 1fr); }
+.grid--cols-3 { grid-template-columns: repeat(3, 1fr); }
+.grid--cols-4 { grid-template-columns: repeat(4, 1fr); }
+
+/* Responsive grid utilities */
+@media (min-width: 768px) {
+  .grid--md-cols-2 { grid-template-columns: repeat(2, 1fr); }
+  .grid--md-cols-3 { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (min-width: 1024px) {
+  .grid--lg-cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid--lg-cols-4 { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* Flexbox utilities */
+.flex {
+  display: flex;
+}
+
+.flex--column {
+  flex-direction: column;
+}
+
+.flex--wrap {
+  flex-wrap: wrap;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.gap-4 {
+  gap: var(--space-4);
+}
+```
+
+## Modern CSS Features
+
+### Container Queries
+```css
+/* Container query support */
 @supports (container-type: inline-size) {
   .card-container {
     container-type: inline-size;
+    container-name: card;
   }
   
-  @container (min-width: 400px) {
+  .card {
+    /* Default mobile layout */
+    display: block;
+  }
+  
+  /* Container-based responsive design */
+  @container card (min-width: 400px) {
     .card {
-      padding: var(--space-8);
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: var(--space-4);
+    }
+    
+    .card__image {
+      grid-row: 1 / -1;
     }
   }
 }
 ```
 
-## BEM Methodology
+### CSS Cascade Layers
+```css
+/* Define layer order */
+@layer reset, tokens, base, components, utilities;
 
-### Component Structure
-
-```html
-<!-- Block -->
-<div class="modal">
-  <!-- Elements -->
-  <div class="modal__header">
-    <h2 class="modal__title">Title</h2>
-    <button class="modal__close">×</button>
-  </div>
+/* Reset layer */
+@layer reset {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
   
-  <div class="modal__body">
-    <p class="modal__text">Content</p>
-  </div>
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+  }
+}
+
+/* Base layer */
+@layer base {
+  h1, h2, h3, h4, h5, h6 {
+    margin: 0;
+    font-weight: var(--font-semibold);
+  }
   
-  <div class="modal__footer">
-    <button class="modal__action modal__action--primary">Save</button>
-    <button class="modal__action modal__action--secondary">Cancel</button>
-  </div>
-</div>
+  p {
+    margin: 0 0 var(--space-4) 0;
+  }
+}
 
-<!-- Modifiers -->
-<div class="modal modal--large modal--centered">
-  <!-- Modified block content -->
-</div>
+/* Component layer */
+@layer components {
+  .button {
+    /* Button styles */
+  }
+  
+  .card {
+    /* Card styles */
+  }
+}
+
+/* Utility layer */
+@layer utilities {
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}
 ```
 
-### CSS Implementation
-
+### CSS Logical Properties
 ```css
-/* Block */
-.modal {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background-color: var(--color-bg-primary);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xl);
-  max-width: 32rem;
-  width: 90%;
+/* Use logical properties for internationalization */
+.card {
+  padding-block: var(--space-6);
+  padding-inline: var(--space-6);
+  margin-block-end: var(--space-4);
+  border-inline-start: 4px solid var(--color-primary-500);
 }
 
-/* Elements */
-.modal__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-6);
-  border-bottom: 1px solid var(--color-border-light);
+.navigation {
+  padding-inline-start: var(--space-4);
+  padding-inline-end: var(--space-4);
 }
 
-.modal__title {
-  margin: 0;
-  font-size: var(--text-xl);
-  font-weight: var(--font-semibold);
-  color: var(--color-text-primary);
-}
-
-.modal__close {
-  background: none;
-  border: none;
-  font-size: var(--text-2xl);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition: var(--transition-colors);
-}
-
-.modal__close:hover {
-  color: var(--color-text-primary);
-}
-
-.modal__body {
-  padding: var(--space-6);
-}
-
-.modal__text {
-  margin: 0;
-  color: var(--color-text-secondary);
-  line-height: var(--leading-relaxed);
-}
-
-.modal__footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  padding: var(--space-6);
-  border-top: 1px solid var(--color-border-light);
-}
-
-.modal__action {
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  font-weight: var(--font-medium);
-  cursor: pointer;
-  transition: var(--transition-all);
-}
-
-/* Element Modifiers */
-.modal__action--primary {
-  background-color: var(--color-primary);
-  color: var(--color-text-on-primary);
-  border-color: var(--color-primary);
-}
-
-.modal__action--primary:hover {
-  background-color: var(--color-primary-600);
-  border-color: var(--color-primary-600);
-}
-
-.modal__action--secondary {
-  background-color: transparent;
-  color: var(--color-text-secondary);
-  border-color: var(--color-border-medium);
-}
-
-.modal__action--secondary:hover {
-  background-color: var(--color-bg-tertiary);
-  color: var(--color-text-primary);
-}
-
-/* Block Modifiers */
-.modal--large {
-  max-width: 48rem;
-}
-
-.modal--centered {
-  text-align: center;
-}
-
-.modal--centered .modal__footer {
-  justify-content: center;
-}
+/* Text alignment */
+.text-start { text-align: start; }
+.text-end { text-align: end; }
 ```
 
-### BEM Best Practices
-
-1. **Single responsibility** - Each block serves one purpose
-2. **No cascade dependencies** - Blocks work independently
-3. **Predictable naming** - Clear hierarchy and relationships
-4. **Modifier restraint** - Only for genuine variations
-5. **Element independence** - Elements can be moved within their block
-
-## Responsive Design
-
-### Breakpoint Strategy
-
-```css
-/* Mobile First Breakpoints */
-/* Default: 0px and up (mobile) */
-
-@media (min-width: 576px) {
-  /* Small tablets and large phones */
-}
-
-@media (min-width: 768px) {
-  /* Tablets */
-}
-
-@media (min-width: 992px) {
-  /* Small laptops */
-}
-
-@media (min-width: 1200px) {
-  /* Laptops and desktops */
-}
-
-@media (min-width: 1400px) {
-  /* Large screens */
-}
-```
-
-### Responsive Component Patterns
-
-```css
-/* Responsive Grid */
-.grid {
-  display: grid;
-  gap: var(--space-4);
-  grid-template-columns: 1fr;
-}
-
-@media (min-width: 768px) {
-  .grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (min-width: 1024px) {
-  .grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-/* Responsive Typography */
-.heading {
-  font-size: var(--text-2xl);
-  line-height: var(--leading-tight);
-}
-
-@media (min-width: 768px) {
-  .heading {
-    font-size: var(--text-3xl);
-  }
-}
-
-@media (min-width: 1024px) {
-  .heading {
-    font-size: var(--text-4xl);
-  }
-}
-
-/* Responsive Spacing */
-.section {
-  padding: var(--space-6) var(--space-4);
-}
-
-@media (min-width: 768px) {
-  .section {
-    padding: var(--space-8) var(--space-6);
-  }
-}
-
-@media (min-width: 1024px) {
-  .section {
-    padding: var(--space-12) var(--space-8);
-  }
-}
-```
-
-## Performance Guidelines
+## Performance Best Practices
 
 ### CSS Optimization
-
-1. **Minimize HTTP requests** - Combine related CSS files
-2. **Use efficient selectors** - Avoid complex descendant selectors
-3. **Eliminate unused CSS** - Regular audits and cleanup
-4. **Optimize for critical path** - Inline critical CSS
-5. **Leverage browser caching** - Proper cache headers
-
-### Selector Performance
-
 ```css
-/* Fast: Class selectors */
-.component { }
-.component__element { }
+/* Minimize repaints and reflows */
+.smooth-animation {
+  /* Use transform and opacity for animations */
+  transform: translateX(0);
+  opacity: 1;
+  transition: transform 200ms ease, opacity 200ms ease;
+}
 
-/* Slower: Descendant selectors */
-.component .element .nested { }
+.smooth-animation--hidden {
+  transform: translateX(-100%);
+  opacity: 0;
+}
 
-/* Slowest: Universal and complex selectors */
-* { }
-.component > div + div:nth-child(odd) { }
+/* Avoid expensive properties in animations */
+.expensive-animation {
+  /* ❌ Avoid animating these properties */
+  /* width, height, top, left, border-width */
+  
+  /* ✅ Prefer these for animations */
+  transform: scale(1);
+  opacity: 1;
+}
 
-/* Efficient: Direct child combinators */
-.component > .element { }
+/* Use will-change sparingly */
+.about-to-animate {
+  will-change: transform;
+}
 
-/* Inefficient: Deep nesting */
-.page .sidebar .nav .list .item .link { }
+.finished-animating {
+  will-change: auto; /* Reset after animation */
+}
 ```
 
 ### Critical CSS Strategy
-
 ```css
-/* Critical CSS (inline in <head>) */
-:root {
-  /* Essential design tokens */
-  --color-primary: #3b82f6;
-  --color-text-primary: #111827;
-  --color-bg-primary: #ffffff;
-  --space-4: 1rem;
-}
-
-body {
-  font-family: var(--font-sans);
-  color: var(--color-text-primary);
-  background-color: var(--color-bg-primary);
-}
-
-.header {
-  /* Critical header styles */
-}
-
-/* Non-critical CSS (external file) */
-.complex-component {
-  /* Detailed component styles */
+/* Above-the-fold critical styles */
+.critical {
+  /* Header */
+  .header {
+    background: var(--color-white);
+    border-bottom: 1px solid var(--color-border);
+  }
+  
+  /* Hero section */
+  .hero {
+    padding: var(--space-16) var(--space-4);
+    text-align: center;
+  }
+  
+  /* Essential typography */
+  h1 {
+    font-size: var(--text-4xl);
+    font-weight: var(--font-bold);
+    margin-bottom: var(--space-6);
+  }
 }
 ```
 
-## Accessibility Requirements
+### CSS Loading Strategy
+```html
+<!-- Critical CSS inline -->
+<style>
+  /* Critical above-the-fold styles */
+</style>
 
-### Minimum Standards
+<!-- Non-critical CSS with media attribute -->
+<link rel="preload" href="/css/main.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="/css/main.css"></noscript>
 
-All CSS must meet **WCAG 2.1 AA** requirements:
+<!-- Component-specific CSS -->
+<link rel="stylesheet" href="/css/components/modal.css" media="print" onload="this.media='all'">
+```
 
-- **Color contrast**: Minimum 4.5:1 for normal text, 3:1 for large text
-- **Focus indicators**: Visible focus states for all interactive elements
-- **Text scaling**: Support up to 200% zoom without horizontal scrolling
-- **Motion preferences**: Respect `prefers-reduced-motion`
+## Accessibility Guidelines
 
-### Implementation Examples
-
+### Focus Management
 ```css
-/* Focus Management */
-.btn:focus,
-.form__input:focus,
-.nav__link:focus {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
-/* High Contrast Support */
-@media (prefers-contrast: high) {
-  .card,
-  .btn,
-  .form__input {
-    border-width: 2px;
+/* Consistent focus styles */
+.focusable {
+  &:focus-visible {
+    outline: 2px solid var(--color-primary-500);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
   }
 }
 
-/* Reduced Motion Support */
+/* Skip links */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: var(--color-primary-500);
+  color: var(--color-white);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  z-index: 1000;
+  
+  &:focus {
+    top: 6px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .button {
+    border: 2px solid;
+  }
+  
+  .card {
+    border: 1px solid;
+  }
+}
+
+/* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -721,258 +630,197 @@ All CSS must meet **WCAG 2.1 AA** requirements:
     transition-duration: 0.01ms !important;
   }
 }
+```
 
-/* Color Contrast Compliance */
-.text--muted {
-  color: var(--color-text-muted); /* Must meet 4.5:1 contrast ratio */
+### Color Accessibility
+```css
+/* Ensure sufficient color contrast */
+.text-on-primary {
+  background-color: var(--color-primary-500);
+  color: var(--color-white); /* 4.5:1 contrast ratio */
 }
 
-.btn--secondary {
-  border: 2px solid var(--color-primary); /* Ensure 3:1 contrast for non-text */
+.text-muted {
+  color: var(--color-gray-600); /* Ensure 4.5:1 contrast on white */
 }
 
-/* Screen Reader Support */
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+/* Don't rely solely on color for information */
+.status--success {
+  color: var(--color-success);
+}
+
+.status--success::before {
+  content: "✓ "; /* Visual indicator in addition to color */
+}
+
+.status--error {
+  color: var(--color-error);
+}
+
+.status--error::before {
+  content: "⚠ ";
 }
 ```
 
-## Quality Assurance
+## File Organization
 
-### CSS Linting
+### Directory Structure
+```
+styles/
+├── tokens/              # Design tokens
+│   ├── colors.css
+│   ├── typography.css
+│   ├── spacing.css
+│   └── shadows.css
+├── base/                # Base styles and resets
+│   ├── reset.css
+│   ├── typography.css
+│   └── utilities.css
+├── components/          # Component styles
+│   ├── button.css
+│   ├── card.css
+│   ├── modal.css
+│   └── navigation.css
+├── layouts/            # Layout-specific styles
+│   ├── grid.css
+│   ├── container.css
+│   └── sidebar.css
+└── pages/              # Page-specific styles
+    ├── home.css
+    ├── dashboard.css
+    └── profile.css
+```
 
-We use **Stylelint** with custom rules to enforce standards:
+### CSS Import Strategy
+```css
+/* main.css - Import order matters */
 
+/* 1. Cascade layers definition */
+@layer reset, tokens, base, components, utilities;
+
+/* 2. Design tokens */
+@import './tokens/colors.css' layer(tokens);
+@import './tokens/typography.css' layer(tokens);
+@import './tokens/spacing.css' layer(tokens);
+
+/* 3. Reset and base styles */
+@import './base/reset.css' layer(reset);
+@import './base/typography.css' layer(base);
+
+/* 4. Layout styles */
+@import './layouts/grid.css' layer(base);
+@import './layouts/container.css' layer(base);
+
+/* 5. Component styles */
+@import './components/button.css' layer(components);
+@import './components/card.css' layer(components);
+@import './components/modal.css' layer(components);
+
+/* 6. Utility classes */
+@import './base/utilities.css' layer(utilities);
+```
+
+## Testing CSS
+
+### Visual Regression Testing
+```javascript
+// Using Playwright for visual testing
+test('button appears correctly', async ({ page }) => {
+  await page.goto('/components/button');
+  await expect(page.locator('.button--primary')).toHaveScreenshot('button-primary.png');
+});
+
+// Test different states
+test('button states', async ({ page }) => {
+  await page.goto('/components/button');
+  
+  // Default state
+  await expect(page.locator('.button')).toHaveScreenshot('button-default.png');
+  
+  // Hover state
+  await page.locator('.button').hover();
+  await expect(page.locator('.button')).toHaveScreenshot('button-hover.png');
+  
+  // Focus state
+  await page.locator('.button').focus();
+  await expect(page.locator('.button')).toHaveScreenshot('button-focus.png');
+});
+```
+
+### CSS Linting Configuration
 ```json
+// .stylelintrc.json
 {
+  "extends": [
+    "stylelint-config-standard",
+    "stylelint-config-recess-order"
+  ],
   "rules": {
-    "color-no-hex": true,
-    "declaration-property-value-disallowed-list": {
-      "color": ["/^#/", "/^rgb/", "/^hsl/"],
-      "background-color": ["/^#/", "/^rgb/", "/^hsl/"]
-    },
-    "selector-class-pattern": "^([a-z][a-z0-9]*)(-[a-z0-9]+)*(__[a-z0-9]+(-[a-z0-9]+)*)?(--[a-z0-9]+(-[a-z0-9]+)*)?$",
-    "max-nesting-depth": 3,
-    "selector-max-specificity": "0,3,2"
+    "custom-property-pattern": "^[a-z]([a-z0-9-]+)?$",
+    "selector-class-pattern": "^[a-z]([a-z0-9-]+)?(__[a-z0-9-]+)?(--[a-z0-9-]+)?$",
+    "property-no-vendor-prefix": true,
+    "value-no-vendor-prefix": true,
+    "declaration-no-important": true,
+    "selector-max-id": 0,
+    "selector-max-compound-selectors": 3,
+    "color-function-notation": "modern",
+    "alpha-value-notation": "percentage"
   }
 }
 ```
 
-### Pre-commit Hooks
+## Migration Guidelines
 
-```bash
-# Run Stylelint before commits
-npx stylelint "**/*.css" --fix
-
-# Check for design token usage
-grep -r "#[0-9a-fA-F]" css/ && echo "Hard-coded colors found!"
-
-# Validate CSS syntax
-npx postcss css/**/*.css --use autoprefixer --no-map --dir build/
-```
-
-### Testing Checklist
-
-- [ ] **Stylelint passes** - No linting errors
-- [ ] **Design tokens used** - No hard-coded values
-- [ ] **BEM naming** - Follows methodology correctly
-- [ ] **Responsive design** - Works on all breakpoints
-- [ ] **Accessibility** - WCAG 2.1 AA compliance
-- [ ] **Browser testing** - Cross-browser compatibility
-- [ ] **Performance** - No significant bundle size increase
-
-## Documentation Standards
-
-### Component Documentation
-
-Every component must include:
-
+### Legacy CSS Modernization
 ```css
-/**
- * Card Component
- * 
- * A flexible content container with optional header, body, and footer.
- * 
- * @example
- * <div class="card">
- *   <div class="card__header">
- *     <h3 class="card__title">Title</h3>
- *   </div>
- *   <div class="card__body">
- *     <p>Content goes here.</p>
- *   </div>
- * </div>
- * 
- * @modifier --elevated - Adds higher box shadow
- * @modifier --interactive - Adds hover effects
- * 
- * @accessibility
- * - Use semantic HTML within card structure
- * - Ensure proper heading hierarchy
- * - Provide focus management for interactive cards
- */
-.card {
-  background-color: var(--color-bg-primary);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
-  transition: var(--transition-shadow);
+/* Before: Legacy approach */
+.old-component {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  
+  -webkit-box-pack: justify;
+  -ms-flex-pack: justify;
+  justify-content: space-between;
+  
+  background: #3b82f6;
+  border-radius: 6px;
+  padding: 12px 24px;
+}
+
+/* After: Modern approach */
+.new-component {
+  display: flex;
+  justify-content: space-between;
+  
+  background: var(--color-primary-500);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-6);
 }
 ```
 
-### Change Documentation
-
+### Design Token Migration
 ```css
-/**
- * CHANGELOG
- * 
- * v2.1.0 - 2024-01-15
- * - Added --interactive modifier
- * - Improved accessibility with focus states
- * - Updated to use new design tokens
- * 
- * v2.0.0 - 2023-12-01
- * - BREAKING: Renamed .card-header to .card__header
- * - BREAKING: Removed .card-large (use .card--large)
- * - Added BEM naming convention
- * 
- * v1.2.0 - 2023-11-15
- * - Added elevation variants
- * - Improved responsive design
- */
-```
-
-## Code Review Process
-
-### Review Checklist
-
-#### Design Token Compliance
-- [ ] No hard-coded colors, spacing, or typography values
-- [ ] All values reference CSS custom properties
-- [ ] New tokens follow established naming conventions
-- [ ] Semantic tokens used appropriately
-
-#### BEM Methodology
-- [ ] Class names follow BEM structure
-- [ ] Maximum 3 levels of nesting
-- [ ] Semantic, not presentational naming
-- [ ] Consistent terminology usage
-
-#### Responsive Design
-- [ ] Mobile-first approach implemented
-- [ ] All breakpoints tested
-- [ ] Progressive enhancement applied
-- [ ] Container queries used where appropriate
-
-#### Accessibility
-- [ ] Focus states defined for interactive elements
-- [ ] Color contrast meets WCAG 2.1 AA
-- [ ] Reduced motion preferences respected
-- [ ] Screen reader considerations addressed
-
-#### Performance
-- [ ] Selector specificity kept low
-- [ ] No redundant or duplicate styles
-- [ ] Efficient property order followed
-- [ ] Bundle size impact assessed
-
-#### Documentation
-- [ ] Component usage examples provided
-- [ ] Modifiers and variants documented
-- [ ] Accessibility requirements noted
-- [ ] Breaking changes highlighted
-
-### Review Process
-
-1. **Automated Checks**
-   - Stylelint validation
-   - Design token usage verification
-   - Accessibility scanning
-   - Performance impact analysis
-
-2. **Manual Review**
-   - Code quality assessment
-   - Design consistency check
-   - Documentation completeness
-   - Browser compatibility verification
-
-3. **Testing Requirements**
-   - Cross-browser testing
-   - Responsive design validation
-   - Accessibility testing with screen readers
-   - Performance benchmarking
-
-### Common Issues and Solutions
-
-#### Hard-coded Values
-```css
-/* Problem */
-.component {
-  color: #374151;
-  padding: 16px;
+/* Migration helper: Create mapping variables */
+:root {
+  /* Legacy mappings */
+  --legacy-blue: var(--color-primary-500);
+  --legacy-padding: var(--space-4);
+  --legacy-border-radius: var(--radius-md);
 }
 
-/* Solution */
-.component {
-  color: var(--color-text-secondary);
-  padding: var(--space-4);
+/* Gradually replace legacy variables */
+.migrating-component {
+  /* Step 1: Use mapping variables */
+  background: var(--legacy-blue);
+  
+  /* Step 2: Replace with proper tokens */
+  background: var(--color-primary-500);
 }
 ```
 
-#### High Specificity
-```css
-/* Problem */
-.page .sidebar .nav ul li a.active {
-  color: var(--color-primary);
-}
+## Related Documentation
 
-/* Solution */
-.nav__link--active {
-  color: var(--color-primary);
-}
-```
-
-#### Missing Responsive Design
-```css
-/* Problem */
-.component {
-  font-size: var(--text-2xl);
-}
-
-/* Solution */
-.component {
-  font-size: var(--text-lg);
-}
-
-@media (min-width: 768px) {
-  .component {
-    font-size: var(--text-2xl);
-  }
-}
-```
-
-#### Poor Accessibility
-```css
-/* Problem */
-.btn:focus {
-  outline: none;
-}
-
-/* Solution */
-.btn:focus {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-```
-
----
-
-These guidelines ensure consistent, maintainable, and high-quality CSS across the Conduit project. All team members should familiarize themselves with these standards and refer to them during development and code review processes.
+- [Responsive Design Patterns](./responsive-design-patterns.md) - Mobile-first responsive design implementation
+- [Component Library](./component-library.md) - UI component design system and patterns
+- [Integration Examples](./examples/INTEGRATION-EXAMPLES.md) - CSS integration in real applications

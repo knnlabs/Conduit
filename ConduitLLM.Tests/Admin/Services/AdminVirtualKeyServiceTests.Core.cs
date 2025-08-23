@@ -1,21 +1,14 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Services;
-using ConduitLLM.Configuration.Constants;
-using ConduitLLM.Configuration.DTOs.VirtualKey;
-using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Interfaces;
-using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Events;
-using ConduitLLM.Core.Services;
+
 using MassTransit;
+
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using Moq;
-using Xunit;
 
 namespace ConduitLLM.Tests.Admin.Services
 {
@@ -30,6 +23,7 @@ namespace ConduitLLM.Tests.Admin.Services
         private readonly Mock<IMediaLifecycleService> _mockMediaLifecycleService;
         private readonly Mock<IModelProviderMappingRepository> _mockModelProviderMappingRepository;
         private readonly Mock<IModelCapabilityService> _mockModelCapabilityService;
+        private readonly Mock<IDbContextFactory<ConduitDbContext>> _mockDbContextFactory;
         private readonly AdminVirtualKeyService _service;
 
         public AdminVirtualKeyServiceTests()
@@ -43,6 +37,7 @@ namespace ConduitLLM.Tests.Admin.Services
             _mockMediaLifecycleService = new Mock<IMediaLifecycleService>();
             _mockModelProviderMappingRepository = new Mock<IModelProviderMappingRepository>();
             _mockModelCapabilityService = new Mock<IModelCapabilityService>();
+            _mockDbContextFactory = new Mock<IDbContextFactory<ConduitDbContext>>();
 
             _service = new AdminVirtualKeyService(
                 _mockVirtualKeyRepository.Object,
@@ -53,6 +48,7 @@ namespace ConduitLLM.Tests.Admin.Services
                 _mockLogger.Object,
                 _mockModelProviderMappingRepository.Object,
                 _mockModelCapabilityService.Object,
+                _mockDbContextFactory.Object,
                 _mockMediaLifecycleService.Object);
         }
     }

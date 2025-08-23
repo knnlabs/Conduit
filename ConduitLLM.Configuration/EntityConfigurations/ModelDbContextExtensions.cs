@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using ConduitLLM.Configuration.EntityConfigurations;
 
 namespace ConduitLLM.Configuration.EntityConfigurations
 {

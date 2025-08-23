@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace ConduitLLM.Http.Models
 {
     /// <summary>

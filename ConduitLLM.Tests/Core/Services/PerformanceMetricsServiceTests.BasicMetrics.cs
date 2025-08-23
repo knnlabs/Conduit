@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
 using ConduitLLM.Core.Models;
-using Xunit;
 
 namespace ConduitLLM.Tests.Core.Services
 {

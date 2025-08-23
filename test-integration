@@ -1,3 +1,0 @@
-#!/bin/bash
-# Short alias for running integration tests
-exec ./run-integration-tests.sh "$@"

@@ -1,23 +1,11 @@
-using System;
 using System.ComponentModel.DataAnnotations;
-using System.IO;
-using System.Linq;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
-
-using ConduitLLM.Configuration.Services;
 using ConduitLLM.Configuration.DTOs.Audio;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
-using ConduitLLM.Http.Security;
 
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using ConduitLLM.Http.Authorization;
-
-using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
 namespace ConduitLLM.Http.Controllers
 {

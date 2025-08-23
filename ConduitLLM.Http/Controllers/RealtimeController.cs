@@ -1,19 +1,8 @@
-using System;
-using System.Net.WebSockets;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Models.Realtime;
 
 using Microsoft.AspNetCore.Authorization;
 using ConduitLLM.Configuration.DTOs;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-
-using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
 namespace ConduitLLM.Http.Controllers
 {

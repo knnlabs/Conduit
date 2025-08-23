@@ -1,5 +1,3 @@
-using ConduitLLM.Configuration.Entities;
-
 namespace ConduitLLM.Admin.Models.ModelAuthors
 {
     /// <summary>

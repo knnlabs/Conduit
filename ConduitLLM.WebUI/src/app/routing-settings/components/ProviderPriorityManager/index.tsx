@@ -49,9 +49,6 @@ export function ProviderPriorityManager({ onLoadingChange }: ProviderPriorityMan
   const [refreshKey, setRefreshKey] = useState(0);
 
   const {
-    getProviderPriorities,
-    updateProviderPriorities,
-    getLoadBalancerHealth,
     isLoading,
     error,
   } = useProviderPriorities();
@@ -62,41 +59,33 @@ export function ProviderPriorityManager({ onLoadingChange }: ProviderPriorityMan
 
   const loadData = useCallback(async () => {
     try {
-      const [providersData, healthData, providerHealthData] = await Promise.all([
-        getProviderPriorities(),
-        getLoadBalancerHealth().catch(() => null),
-        fetch('/api/health/providers')
-          .then(res => res.json() as Promise<Array<{
-            id: string;
-            name: string;
-            status: string;
-            lastChecked: string;
-            responseTime: number;
-            uptime: number;
-            errorRate: number;
-            successRate: number;
-            details: unknown;
-          }>>)
-          .catch(() => []),
-      ]);
-
-      // Create a map of provider health data
-      const healthMap = new Map(
-        providerHealthData.map(h => [h.id, h])
-      );
+      const providerHealthData = await fetch('/api/health/providers')
+        .then(res => res.json() as Promise<Array<{
+          id: string;
+          name: string;
+          status: string;
+          lastChecked: string;
+          responseTime: number;
+          uptime: number;
+          errorRate: number;
+          successRate: number;
+          details: unknown;
+        }>>)
+        .catch(() => []);
 
       // Transform provider data to include statistics and type
-      const providersWithStats: ProviderDisplay[] = providersData.map(provider => {
-        const health = healthMap.get(provider.providerId);
-        
+      const providersWithStats: ProviderDisplay[] = providerHealthData.map(provider => {
         return {
-          ...provider,
+          providerId: provider.id,
+          providerName: provider.name,
+          priority: 1,
+          isEnabled: provider.status === 'healthy',
           statistics: {
-            usagePercentage: healthData?.distribution[provider.providerId] ?? 0,
-            successRate: typeof health?.uptime === 'number' ? health.uptime : 0,
-            avgResponseTime: typeof health?.responseTime === 'number' ? health.responseTime : 0,
+            usagePercentage: 0,
+            successRate: typeof provider.uptime === 'number' ? provider.uptime : 0,
+            avgResponseTime: typeof provider.responseTime === 'number' ? provider.responseTime : 0,
           },
-          type: determineProviderType(provider.providerName),
+          type: determineProviderType(provider.name),
         };
       });
 
@@ -106,7 +95,7 @@ export function ProviderPriorityManager({ onLoadingChange }: ProviderPriorityMan
     } catch {
       // Error is handled by the hook
     }
-  }, [getProviderPriorities, getLoadBalancerHealth]);
+  }, []);
 
   useEffect(() => {
     void loadData();
@@ -199,21 +188,11 @@ export function ProviderPriorityManager({ onLoadingChange }: ProviderPriorityMan
         return;
       }
 
-      const providersData: ProviderPriority[] = providers.map(({ statistics, type, ...provider }) => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const unusedStatistics = statistics;
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const unusedType = type;
-        return provider;
-      });
-      await updateProviderPriorities(providersData);
-      setOriginalProviders(JSON.parse(JSON.stringify(providers)) as ProviderDisplay[]);
-      setHasChanges(false);
-      
+      // Save functionality removed - no backend implementation
       notifications.show({
-        title: 'Success',
-        message: 'Provider priorities saved successfully',
-        color: 'green',
+        title: 'Info',
+        message: 'Provider priority management is not currently implemented',
+        color: 'blue',
       });
     } catch {
       // Error is handled by the hook

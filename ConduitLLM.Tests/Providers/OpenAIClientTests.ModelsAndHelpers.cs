@@ -1,18 +1,14 @@
-using System;
-using System.Collections.Generic;
 using System.Net;
-using System.Net.Http;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
+
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Providers.OpenAI;
+
 using Moq;
 using Moq.Protected;
-using Xunit;
 
 namespace ConduitLLM.Tests.Providers
 {

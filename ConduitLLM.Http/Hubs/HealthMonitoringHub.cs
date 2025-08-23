@@ -1,12 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.Extensions.Logging;
 using ConduitLLM.Configuration.DTOs.HealthMonitoring;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Linq;
-using System;
-using System.Threading;
 using System.Threading.Channels;
 using System.Runtime.CompilerServices;
 using ConduitLLM.Http.Interfaces;

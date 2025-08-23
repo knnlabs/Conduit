@@ -1,14 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
-
 using Microsoft.Extensions.Logging;
-using CoreModels = ConduitLLM.Core.Models;
 using CoreUtils = ConduitLLM.Core.Utilities;
-using OpenAIModels = ConduitLLM.Providers.OpenAI;
+using ConduitLLM.Providers.OpenAI;
 using InternalModels = ConduitLLM.Providers.Common.Models;
 
 namespace ConduitLLM.Providers.OpenAICompatible
@@ -43,7 +35,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
 
                     Logger.LogDebug("Getting available models from {Provider} at {Endpoint}", ProviderName, endpoint);
 
-                    var response = await CoreUtils.HttpClientHelper.GetJsonAsync<OpenAIModels.ListModelsResponse>(
+                    var response = await CoreUtils.HttpClientHelper.GetJsonAsync<ListModelsResponse>(
                         client,
                         endpoint,
                         CreateStandardHeaders(apiKey),

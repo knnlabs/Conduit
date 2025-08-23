@@ -1,13 +1,6 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Logging;
 using ConduitLLM.Configuration.DTOs.HealthMonitoring;
-using ConduitLLM.Http.Hubs;
-using ConduitLLM.Http.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace ConduitLLM.Http.Services

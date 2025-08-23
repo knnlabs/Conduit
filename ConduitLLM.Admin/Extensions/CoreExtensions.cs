@@ -5,8 +5,6 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace ConduitLLM.Admin.Extensions
 {

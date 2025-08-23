@@ -45,7 +45,6 @@
     <Compile Remove="Services\VirtualKeyAdapterTests.cs" />
     <Compile Remove="Controllers\LogsControllerNewTests.cs" />
     <Compile Remove="Controllers\ModelProviderMappingControllerTests.cs" />
-    <Compile Remove="Controllers\DatabaseBackupControllerTests.cs" />
     <Compile Remove="WebUI\Providers\VirtualKeyServiceProviderTests.cs" />
     <Compile Remove="WebUI\Providers\IpFilterServiceProviderTests.cs" />
     <Compile Remove="WebUI\Providers\ProviderCredentialServiceProviderTests.cs" />

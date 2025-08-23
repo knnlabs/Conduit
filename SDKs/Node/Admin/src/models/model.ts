@@ -8,27 +8,27 @@ import type { components } from '../generated/admin-api';
 export { ModelType } from './modelType';
 
 // Model DTOs
-export type ModelDto = components['schemas']['ConduitLLM.Admin.Controllers.ModelDto'];
-export type CreateModelDto = components['schemas']['ConduitLLM.Admin.Controllers.CreateModelDto'];
-export type UpdateModelDto = components['schemas']['ConduitLLM.Admin.Controllers.UpdateModelDto'];
+export type ModelDto = components['schemas']['ConduitLLM.Admin.Models.Models.ModelDto'];
+export type CreateModelDto = components['schemas']['ConduitLLM.Admin.Models.Models.CreateModelDto'];
+export type UpdateModelDto = components['schemas']['ConduitLLM.Admin.Models.Models.UpdateModelDto'];
 
 // Model Series DTOs  
-export type ModelSeriesDto = components['schemas']['ConduitLLM.Admin.Controllers.ModelSeriesDto'];
-export type CreateModelSeriesDto = components['schemas']['ConduitLLM.Admin.Controllers.CreateModelSeriesDto'];
-export type UpdateModelSeriesDto = components['schemas']['ConduitLLM.Admin.Controllers.UpdateModelSeriesDto'];
-export type SimpleModelSeriesDto = components['schemas']['ConduitLLM.Admin.Controllers.SimpleModelSeriesDto'];
-export type SeriesSimpleModelDto = components['schemas']['ConduitLLM.Admin.Controllers.SeriesSimpleModelDto'];
+export type ModelSeriesDto = components['schemas']['ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto'];
+export type CreateModelSeriesDto = components['schemas']['ConduitLLM.Admin.Models.ModelSeries.CreateModelSeriesDto'];
+export type UpdateModelSeriesDto = components['schemas']['ConduitLLM.Admin.Models.ModelSeries.UpdateModelSeriesDto'];
+export type SimpleModelSeriesDto = components['schemas']['ConduitLLM.Admin.Models.ModelAuthors.SimpleModelSeriesDto'];
+export type SeriesSimpleModelDto = components['schemas']['ConduitLLM.Admin.Models.ModelSeries.SeriesSimpleModelDto'];
 
 // Model Author DTOs
-export type ModelAuthorDto = components['schemas']['ConduitLLM.Admin.Controllers.ModelAuthorDto'];
-export type CreateModelAuthorDto = components['schemas']['ConduitLLM.Admin.Controllers.CreateModelAuthorDto'];
-export type UpdateModelAuthorDto = components['schemas']['ConduitLLM.Admin.Controllers.UpdateModelAuthorDto'];
+export type ModelAuthorDto = components['schemas']['ConduitLLM.Admin.Models.ModelAuthors.ModelAuthorDto'];
+export type CreateModelAuthorDto = components['schemas']['ConduitLLM.Admin.Models.ModelAuthors.CreateModelAuthorDto'];
+export type UpdateModelAuthorDto = components['schemas']['ConduitLLM.Admin.Models.ModelAuthors.UpdateModelAuthorDto'];
 
 // Model Capabilities DTOs
-export type ModelCapabilitiesDto = components['schemas']['ConduitLLM.Admin.Controllers.ModelCapabilitiesDto'];
-export type CreateCapabilitiesDto = components['schemas']['ConduitLLM.Admin.Controllers.CreateCapabilitiesDto'];
-export type UpdateCapabilitiesDto = components['schemas']['ConduitLLM.Admin.Controllers.UpdateCapabilitiesDto'];
-export type CapabilitiesSimpleModelDto = components['schemas']['ConduitLLM.Admin.Controllers.CapabilitiesSimpleModelDto'];
+export type ModelCapabilitiesDto = components['schemas']['ConduitLLM.Admin.Models.ModelCapabilities.ModelCapabilitiesDto'];
+export type CreateCapabilitiesDto = components['schemas']['ConduitLLM.Admin.Models.ModelCapabilities.CreateCapabilitiesDto'];
+export type UpdateCapabilitiesDto = components['schemas']['ConduitLLM.Admin.Models.ModelCapabilities.UpdateCapabilitiesDto'];
+export type CapabilitiesSimpleModelDto = components['schemas']['ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesSimpleModelDto'];
 
 // Simplified type aliases for convenience
 export type Model = ModelDto;

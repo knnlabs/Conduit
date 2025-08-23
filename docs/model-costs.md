@@ -87,21 +87,20 @@ You can manage model costs in the Conduit Admin UI at `/model-costs`:
 - Edit existing model costs
 - Delete model costs
 
-## Reloading Default Costs
+## Setting Up Default Costs
 
-**Note**: The shell script referenced in older documentation does not exist. Use the SQL script directly.
+To set up model costs for your providers:
 
-To reload default model costs for Anthropic and OpenAI:
+1. **Via Admin API** (Recommended):
+   - Create ModelCost entities through the Admin API
+   - Link them to ModelProviderMapping entities via ModelCostMappings
+   - Use the CSV import functionality for bulk operations
 
-```bash
-# Execute the SQL script directly
-docker compose exec postgres psql -U conduit -d conduitdb -f add-frontier-model-costs.sql
-```
+2. **Via CSV Import**:
+   - Create a CSV file following the format in `docs/CSV-Import-Export-Format.md`
+   - Import through the Admin API endpoints
 
-**Important**: The current SQL script uses the deprecated `ModelIdPattern` approach. For production use, you should:
-
-1. Create ModelCost entities through the Admin API
-2. Link them to ModelProviderMapping entities via ModelCostMappings
+**Note**: Direct SQL scripts for default costs have been removed. Use the Admin API for all cost configuration.
 3. Use the Admin UI at `/model-costs` for management
 
 ## Adding Model Costs via Admin API

@@ -1,1031 +1,712 @@
-# Component Library Documentation
+# Conduit Component Library
+
+A comprehensive design system and component library for building consistent, accessible, and maintainable user interfaces in the Conduit ecosystem.
 
 ## Overview
 
-Conduit's component library provides a comprehensive set of reusable UI components built with **BEM methodology**, **design tokens**, and **accessibility best practices**. All components are documented with usage examples, variants, and implementation guidelines.
+The Conduit Component Library provides a complete set of reusable UI components built with modern web standards, accessibility best practices, and design tokens for consistent theming across all applications.
 
-## Component Categories
+## Documentation Structure
 
-- [Buttons](#buttons)
-- [Forms](#forms)
-- [Cards](#cards)
-- [Navigation](#navigation)
-- [Layout](#layout)
-- [Typography](#typography)
-- [Utilities](#utilities)
+The component library documentation has been organized by component categories and usage patterns:
 
----
+### 🧩 Core Components
+- **[Form Components](./components/forms.md)** - Inputs, buttons, validation, and form patterns
+- **[Layout Components](./components/layout.md)** - Grids, containers, spacing, and responsive layouts
+- **[Navigation Components](./components/navigation.md)** - Menus, breadcrumbs, tabs, and navigation patterns
 
-## Buttons
+### 🎨 UI Elements
+- **[Data Display](./components/data-display.md)** - Tables, cards, lists, and data visualization
+- **[Feedback Components](./components/feedback.md)** - Alerts, notifications, loading states, and progress indicators
+- **[Media Components](./components/media.md)** - Images, videos, galleries, and media handling
 
-### Base Button
+### 🔧 Advanced Components
+- **[Chart Components](./components/charts.md)** - Analytics dashboards and data visualization
+- **[Chat Components](./components/chat.md)** - Real-time messaging and conversation interfaces
+- **[Admin Components](./components/admin.md)** - Administrative interfaces and management tools
 
-```css
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  font-size: var(--text-base);
-  font-weight: var(--font-medium);
-  line-height: var(--leading-tight);
-  text-decoration: none;
-  cursor: pointer;
-  transition: var(--transition-all);
-  user-select: none;
-}
-```
+## Design System Foundation
 
-### Button Variants
-
-#### Primary Button
-```html
-<button class="btn btn--primary">Primary Action</button>
-```
+### Design Tokens
 
 ```css
-.btn--primary {
-  background-color: var(--color-primary);
-  color: var(--color-text-on-primary);
-  border-color: var(--color-primary);
-}
-
-.btn--primary:hover {
-  background-color: var(--color-primary-600);
-  border-color: var(--color-primary-600);
-}
-
-.btn--primary:active {
-  background-color: var(--color-primary-700);
-  border-color: var(--color-primary-700);
-}
-```
-
-#### Secondary Button
-```html
-<button class="btn btn--secondary">Secondary Action</button>
-```
-
-```css
-.btn--secondary {
-  background-color: transparent;
-  color: var(--color-primary);
-  border-color: var(--color-primary);
-}
-
-.btn--secondary:hover {
-  background-color: var(--color-primary-50);
-  color: var(--color-primary-700);
-}
-```
-
-#### Danger Button
-```html
-<button class="btn btn--danger">Delete</button>
-```
-
-```css
-.btn--danger {
-  background-color: var(--color-danger);
-  color: var(--color-text-inverse);
-  border-color: var(--color-danger);
+:root {
+  /* Colors */
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-500: #3b82f6;
+  --color-primary-900: #1e3a8a;
+  
+  /* Typography */
+  --font-family-sans: 'Inter', sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  
+  /* Border Radius */
+  --radius-sm: 0.125rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
 }
 ```
 
-#### Ghost Button
-```html
-<button class="btn btn--ghost">Ghost Button</button>
-```
+### Component Architecture
 
-```css
-.btn--ghost {
-  background-color: transparent;
-  color: var(--color-text-secondary);
-  border-color: transparent;
+```typescript
+// Base component interface
+interface BaseComponentProps {
+  className?: string;
+  children?: React.ReactNode;
+  'data-testid'?: string;
+  size?: 'sm' | 'md' | 'lg';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
+  disabled?: boolean;
 }
 
-.btn--ghost:hover {
-  background-color: var(--color-bg-tertiary);
-  color: var(--color-text-primary);
-}
-```
-
-### Button Sizes
-
-#### Small Button
-```html
-<button class="btn btn--primary btn--sm">Small Button</button>
-```
-
-```css
-.btn--sm {
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--text-sm);
-}
-```
-
-#### Large Button
-```html
-<button class="btn btn--primary btn--lg">Large Button</button>
-```
-
-```css
-.btn--lg {
-  padding: var(--space-4) var(--space-6);
-  font-size: var(--text-lg);
-}
-```
-
-### Button States
-
-#### Loading State
-```html
-<button class="btn btn--primary btn--loading">
-  <span class="btn__spinner"></span>
-  Loading...
-</button>
-```
-
-```css
-.btn--loading {
-  pointer-events: none;
-  opacity: 0.7;
+// Example: Button component
+interface ButtonProps extends BaseComponentProps {
+  type?: 'button' | 'submit' | 'reset';
+  loading?: boolean;
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
+  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
-.btn__spinner {
-  width: 1rem;
-  height: 1rem;
-  border: 2px solid transparent;
-  border-top-color: currentColor;
-  border-radius: 50%;
-  animation: btn-spin 0.8s linear infinite;
-  margin-right: var(--space-2);
-}
+export const Button: React.FC<ButtonProps> = ({
+  children,
+  size = 'md',
+  variant = 'primary',
+  loading = false,
+  disabled = false,
+  className,
+  leftIcon,
+  rightIcon,
+  ...props
+}) => {
+  const baseClasses = 'button';
+  const sizeClasses = `button--${size}`;
+  const variantClasses = `button--${variant}`;
+  const stateClasses = loading ? 'button--loading' : '';
+  
+  return (
+    <button
+      className={cn(baseClasses, sizeClasses, variantClasses, stateClasses, className)}
+      disabled={disabled || loading}
+      {...props}
+    >
+      {loading ? <Spinner size="sm" /> : leftIcon}
+      {children}
+      {rightIcon}
+    </button>
+  );
+};
 ```
 
-#### Disabled State
-```html
-<button class="btn btn--primary" disabled>Disabled Button</button>
-```
+## Component Examples
 
-```css
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  pointer-events: none;
-}
-```
+### Form Components
 
-### Button Groups
-
-```html
-<div class="btn-group">
-  <button class="btn btn--secondary">Left</button>
-  <button class="btn btn--secondary">Center</button>
-  <button class="btn btn--secondary">Right</button>
-</div>
-```
-
-```css
-.btn-group {
-  display: inline-flex;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.btn-group .btn {
-  border-radius: 0;
-  border-right-width: 0;
-}
-
-.btn-group .btn:first-child {
-  border-radius: var(--radius-md) 0 0 var(--radius-md);
-}
-
-.btn-group .btn:last-child {
-  border-radius: 0 var(--radius-md) var(--radius-md) 0;
-  border-right-width: 1px;
-}
-```
-
----
-
-## Forms
-
-### Form Structure
-
-```html
-<form class="form">
-  <div class="form__group">
-    <label class="form__label" for="email">Email Address</label>
-    <input class="form__input" type="email" id="email" required>
-    <div class="form__help">Enter your email address</div>
+```typescript
+// Input Component
+export const Input: React.FC<InputProps> = ({
+  label,
+  error,
+  helperText,
+  required,
+  ...props
+}) => (
+  <div className="input-group">
+    {label && (
+      <label className="input-label">
+        {label}
+        {required && <span className="input-required">*</span>}
+      </label>
+    )}
+    <input
+      className={cn('input', error && 'input--error')}
+      aria-invalid={!!error}
+      aria-describedby={error ? `${props.id}-error` : undefined}
+      {...props}
+    />
+    {error && (
+      <div id={`${props.id}-error`} className="input-error">
+        {error}
+      </div>
+    )}
+    {helperText && !error && (
+      <div className="input-helper">{helperText}</div>
+    )}
   </div>
-</form>
+);
+
+// Usage Example
+<Input
+  id="email"
+  label="Email Address"
+  type="email"
+  required
+  placeholder="you@example.com"
+  error={errors.email}
+  helperText="We'll never share your email"
+/>
 ```
 
-### Form Controls
+### Data Display Components
 
-#### Text Input
-```css
-.form__input {
-  width: 100%;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--color-border-medium);
-  border-radius: var(--radius-md);
-  font-size: var(--text-base);
-  line-height: var(--leading-normal);
-  transition: var(--transition-colors);
-  background-color: var(--color-bg-primary);
-}
-
-.form__input:focus {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-  border-color: var(--color-primary);
-}
-```
-
-#### Select Dropdown
-```html
-<select class="form__select">
-  <option>Choose an option</option>
-  <option value="1">Option 1</option>
-  <option value="2">Option 2</option>
-</select>
-```
-
-```css
-.form__select {
-  appearance: none;
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
-  background-position: right var(--space-3) center;
-  background-repeat: no-repeat;
-  background-size: 1.5rem;
-  padding-right: var(--space-10);
-}
-```
-
-#### Checkbox and Radio
-
-```html
-<div class="form__check">
-  <input class="form__check-input" type="checkbox" id="check1">
-  <label class="form__check-label" for="check1">
-    Remember me
-  </label>
-</div>
-```
-
-```css
-.form__check {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.form__check-input {
-  width: 1.25rem;
-  height: 1.25rem;
-  border: 1px solid var(--color-border-medium);
-  border-radius: var(--radius-sm);
-  transition: var(--transition-colors);
-}
-
-.form__check-input:checked {
-  background-color: var(--color-primary);
-  border-color: var(--color-primary);
-}
-```
-
-#### Toggle Switch
-```html
-<div class="form__switch">
-  <input class="form__switch-input" type="checkbox" id="switch1">
-  <label class="form__switch-label" for="switch1">
-    Enable notifications
-  </label>
-</div>
-```
-
-```css
-.form__switch-input {
-  width: 2rem !important;
-  min-width: 2rem !important;
-  max-width: 2rem !important;
-  height: 1.25rem;
-  border-radius: var(--radius-full);
-  background-color: var(--color-border-medium);
-  transition: var(--transition-colors);
-}
-
-.form__switch-input:checked {
-  background-color: var(--color-primary);
-}
-```
-
-### Form Validation States
-
-#### Valid State
-```html
-<input class="form__input form__input--valid" type="email" value="user@example.com">
-<div class="form__feedback form__feedback--valid">
-  Email address is valid
-</div>
-```
-
-```css
-.form__input--valid {
-  border-color: var(--color-success);
-}
-
-.form__feedback--valid {
-  color: var(--color-success-dark);
-  font-size: var(--text-sm);
-  margin-top: var(--space-1);
-}
-```
-
-#### Invalid State
-```html
-<input class="form__input form__input--invalid" type="email" value="invalid-email">
-<div class="form__feedback form__feedback--invalid">
-  Please enter a valid email address
-</div>
-```
-
-```css
-.form__input--invalid {
-  border-color: var(--color-danger);
-}
-
-.form__feedback--invalid {
-  color: var(--color-danger-dark);
-  font-size: var(--text-sm);
-  margin-top: var(--space-1);
-}
-```
-
-### Form Layouts
-
-#### Horizontal Form
-```html
-<div class="form__row">
-  <div class="form__col form__col--label">
-    <label class="form__label">Email</label>
+```typescript
+// Card Component
+export const Card: React.FC<CardProps> = ({
+  children,
+  header,
+  footer,
+  padding = 'md',
+  shadow = 'md',
+  className,
+  ...props
+}) => (
+  <div
+    className={cn(
+      'card',
+      `card--padding-${padding}`,
+      `card--shadow-${shadow}`,
+      className
+    )}
+    {...props}
+  >
+    {header && <div className="card-header">{header}</div>}
+    <div className="card-content">{children}</div>
+    {footer && <div className="card-footer">{footer}</div>}
   </div>
-  <div class="form__col form__col--input">
-    <input class="form__input" type="email">
+);
+
+// Table Component
+export const Table: React.FC<TableProps> = ({
+  columns,
+  data,
+  loading,
+  emptyMessage = 'No data available',
+  className,
+}) => (
+  <div className={cn('table-container', className)}>
+    {loading ? (
+      <div className="table-loading">
+        <Spinner size="lg" />
+        <span>Loading data...</span>
+      </div>
+    ) : data.length === 0 ? (
+      <div className="table-empty">{emptyMessage}</div>
+    ) : (
+      <table className="table">
+        <thead className="table-header">
+          <tr>
+            {columns.map((column) => (
+              <th
+                key={column.key}
+                className={cn('table-header-cell', column.align && `text-${column.align}`)}
+              >
+                {column.title}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="table-body">
+          {data.map((row, index) => (
+            <tr key={index} className="table-row">
+              {columns.map((column) => (
+                <td
+                  key={column.key}
+                  className={cn('table-cell', column.align && `text-${column.align}`)}
+                >
+                  {column.render ? column.render(row[column.key], row) : row[column.key]}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )}
   </div>
-</div>
+);
 ```
 
-```css
-.form__row {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-4);
-  margin-bottom: var(--space-4);
-}
+### Feedback Components
 
-.form__col--label {
-  flex: 0 0 8rem;
-  padding-top: var(--space-3);
-}
+```typescript
+// Alert Component
+export const Alert: React.FC<AlertProps> = ({
+  children,
+  type = 'info',
+  title,
+  closable = false,
+  onClose,
+  className,
+  ...props
+}) => {
+  const [visible, setVisible] = useState(true);
 
-.form__col--input {
-  flex: 1;
-}
-```
+  const handleClose = () => {
+    setVisible(false);
+    onClose?.();
+  };
 
----
+  if (!visible) return null;
 
-## Cards
-
-### Base Card
-
-```html
-<div class="card">
-  <div class="card__header">
-    <h3 class="card__title">Card Title</h3>
-  </div>
-  <div class="card__body">
-    <p>Card content goes here.</p>
-  </div>
-  <div class="card__footer">
-    <button class="btn btn--primary">Action</button>
-  </div>
-</div>
-```
-
-```css
-.card {
-  background-color: var(--color-bg-primary);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
-  transition: var(--transition-shadow);
-}
-
-.card:hover {
-  box-shadow: var(--shadow-md);
-}
-```
-
-### Card Elements
-
-```css
-.card__header {
-  padding: var(--space-5) var(--space-6);
-  border-bottom: 1px solid var(--color-border-light);
-}
-
-.card__title {
-  margin: 0;
-  font-size: var(--text-lg);
-  font-weight: var(--font-semibold);
-  color: var(--color-text-primary);
-}
-
-.card__body {
-  padding: var(--space-6);
-}
-
-.card__footer {
-  padding: var(--space-4) var(--space-6);
-  background-color: var(--color-bg-secondary);
-  border-top: 1px solid var(--color-border-light);
-}
-```
-
-### Card Variants
-
-#### Elevated Card
-```html
-<div class="card card--elevated">
-  <!-- Card content -->
-</div>
-```
-
-```css
-.card--elevated {
-  box-shadow: var(--shadow-lg);
-}
-```
-
-#### Interactive Card
-```html
-<div class="card card--interactive">
-  <!-- Card content -->
-</div>
-```
-
-```css
-.card--interactive {
-  cursor: pointer;
-  transition: var(--transition-all);
-}
-
-.card--interactive:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-xl);
-}
-```
-
-#### Media Card
-```html
-<div class="card card--media">
-  <div class="card__media">
-    <img src="image.jpg" alt="Description">
-  </div>
-  <div class="card__body">
-    <h3 class="card__title">Media Card</h3>
-    <p>Card with media content.</p>
-  </div>
-</div>
-```
-
-```css
-.card__media {
-  width: 100%;
-  height: 12rem;
-  overflow: hidden;
-}
-
-.card__media img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-```
-
----
-
-## Navigation
-
-### Primary Navigation
-
-```html
-<nav class="nav nav--primary">
-  <ul class="nav__list">
-    <li class="nav__item">
-      <a class="nav__link nav__link--active" href="/dashboard">Dashboard</a>
-    </li>
-    <li class="nav__item">
-      <a class="nav__link" href="/settings">Settings</a>
-    </li>
-  </ul>
-</nav>
-```
-
-```css
-.nav {
-  display: flex;
-  align-items: center;
-}
-
-.nav__list {
-  display: flex;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  gap: var(--space-1);
-}
-
-.nav__link {
-  display: flex;
-  align-items: center;
-  padding: var(--space-3) var(--space-4);
-  color: var(--color-text-secondary);
-  text-decoration: none;
-  border-radius: var(--radius-md);
-  transition: var(--transition-colors);
-}
-
-.nav__link:hover {
-  background-color: var(--color-bg-tertiary);
-  color: var(--color-text-primary);
-}
-
-.nav__link--active {
-  background-color: var(--color-primary);
-  color: var(--color-text-on-primary);
-}
-```
-
-### Sidebar Navigation
-
-```html
-<nav class="sidebar-nav">
-  <div class="sidebar-nav__section">
-    <h4 class="sidebar-nav__heading">Main</h4>
-    <ul class="sidebar-nav__list">
-      <li class="sidebar-nav__item">
-        <a class="sidebar-nav__link sidebar-nav__link--active" href="/dashboard">
-          <span class="sidebar-nav__icon">📊</span>
-          Dashboard
-        </a>
-      </li>
-    </ul>
-  </div>
-</nav>
-```
-
-```css
-.sidebar-nav {
-  padding: var(--space-4) 0;
-}
-
-.sidebar-nav__section {
-  margin-bottom: var(--space-6);
-}
-
-.sidebar-nav__heading {
-  font-size: var(--text-xs);
-  font-weight: var(--font-semibold);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
-  color: var(--color-text-muted);
-  margin: 0 0 var(--space-3) 0;
-  padding: 0 var(--space-4);
-}
-
-.sidebar-nav__link {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  color: var(--color-text-inverse);
-  text-decoration: none;
-  border-radius: var(--radius-md);
-  margin: 0 var(--space-2);
-  transition: var(--transition-colors);
-}
-
-.sidebar-nav__link:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.sidebar-nav__link--active {
-  background-color: rgba(255, 255, 255, 0.2);
-  font-weight: var(--font-medium);
-}
-```
-
-### Breadcrumb Navigation
-
-```html
-<nav class="breadcrumb">
-  <ol class="breadcrumb__list">
-    <li class="breadcrumb__item">
-      <a class="breadcrumb__link" href="/">Home</a>
-    </li>
-    <li class="breadcrumb__item">
-      <span class="breadcrumb__separator">/</span>
-      <a class="breadcrumb__link" href="/settings">Settings</a>
-    </li>
-    <li class="breadcrumb__item">
-      <span class="breadcrumb__separator">/</span>
-      <span class="breadcrumb__current">Profile</span>
-    </li>
-  </ol>
-</nav>
-```
-
-```css
-.breadcrumb__list {
-  display: flex;
-  align-items: center;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  font-size: var(--text-sm);
-}
-
-.breadcrumb__item {
-  display: flex;
-  align-items: center;
-}
-
-.breadcrumb__link {
-  color: var(--color-text-secondary);
-  text-decoration: none;
-  transition: var(--transition-colors);
-}
-
-.breadcrumb__link:hover {
-  color: var(--color-primary);
-}
-
-.breadcrumb__separator {
-  margin: 0 var(--space-2);
-  color: var(--color-text-muted);
-}
-
-.breadcrumb__current {
-  color: var(--color-text-primary);
-  font-weight: var(--font-medium);
-}
-```
-
----
-
-## Layout
-
-### Container System
-
-```html
-<div class="container">
-  <div class="row">
-    <div class="col col-md-6">
-      <p>Column content</p>
+  return (
+    <div
+      className={cn('alert', `alert--${type}`, className)}
+      role="alert"
+      {...props}
+    >
+      <div className="alert-icon">
+        {type === 'success' && <CheckIcon />}
+        {type === 'error' && <XCircleIcon />}
+        {type === 'warning' && <ExclamationTriangleIcon />}
+        {type === 'info' && <InformationCircleIcon />}
+      </div>
+      <div className="alert-content">
+        {title && <div className="alert-title">{title}</div>}
+        <div className="alert-message">{children}</div>
+      </div>
+      {closable && (
+        <button
+          className="alert-close"
+          onClick={handleClose}
+          aria-label="Close alert"
+        >
+          <XMarkIcon />
+        </button>
+      )}
     </div>
-    <div class="col col-md-6">
-      <p>Column content</p>
+  );
+};
+
+// Progress Component
+export const Progress: React.FC<ProgressProps> = ({
+  value,
+  max = 100,
+  size = 'md',
+  color = 'primary',
+  showLabel = false,
+  className,
+}) => {
+  const percentage = Math.min(100, Math.max(0, (value / max) * 100));
+
+  return (
+    <div className={cn('progress', `progress--${size}`, className)}>
+      <div
+        className={cn('progress-bar', `progress-bar--${color}`)}
+        style={{ width: `${percentage}%` }}
+        role="progressbar"
+        aria-valuenow={value}
+        aria-valuemin={0}
+        aria-valuemax={max}
+      />
+      {showLabel && (
+        <span className="progress-label">{Math.round(percentage)}%</span>
+      )}
     </div>
-  </div>
-</div>
+  );
+};
 ```
 
-### CSS Grid Layout
+## Responsive Design Integration
 
-```html
-<div class="grid grid--3">
-  <div class="grid__item">Item 1</div>
-  <div class="grid__item">Item 2</div>
-  <div class="grid__item">Item 3</div>
-</div>
-```
+### Responsive Utilities
 
 ```css
+/* Responsive visibility utilities */
+.hidden-sm { @media (max-width: 576px) { display: none !important; } }
+.hidden-md { @media (max-width: 768px) { display: none !important; } }
+.visible-lg { @media (min-width: 992px) { display: block !important; } }
+
+/* Responsive spacing */
+.p-responsive { padding: var(--space-4); }
+@media (min-width: 768px) {
+  .p-responsive { padding: var(--space-6); }
+}
+@media (min-width: 1024px) {
+  .p-responsive { padding: var(--space-8); }
+}
+
+/* Responsive grid */
 .grid {
   display: grid;
   gap: var(--space-4);
-}
-
-.grid--3 {
-  grid-template-columns: repeat(3, 1fr);
-}
-
-.grid--auto-fit {
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-}
-```
-
-### Flexbox Utilities
-
-```html
-<div class="flex flex--center">
-  <div>Centered content</div>
-</div>
-```
-
-```css
-.flex {
-  display: flex;
-}
-
-.flex--center {
-  justify-content: center;
-  align-items: center;
-}
-
-.flex--between {
-  justify-content: space-between;
-}
-
-.flex--column {
-  flex-direction: column;
-}
-```
-
----
-
-## Typography
-
-### Heading Styles
-
-```html
-<h1 class="heading heading--1">Main Heading</h1>
-<h2 class="heading heading--2">Section Heading</h2>
-<h3 class="heading heading--3">Subsection Heading</h3>
-```
-
-```css
-.heading {
-  margin: 0 0 var(--space-4) 0;
-  font-weight: var(--font-bold);
-  line-height: var(--leading-tight);
-  color: var(--color-text-primary);
-}
-
-.heading--1 {
-  font-size: var(--text-4xl);
-}
-
-.heading--2 {
-  font-size: var(--text-3xl);
-}
-
-.heading--3 {
-  font-size: var(--text-2xl);
-}
-```
-
-### Text Utilities
-
-```html
-<p class="text text--large">Large body text</p>
-<p class="text text--muted">Muted text</p>
-<p class="text text--center">Centered text</p>
-```
-
-```css
-.text--large {
-  font-size: var(--text-lg);
-}
-
-.text--small {
-  font-size: var(--text-sm);
-}
-
-.text--muted {
-  color: var(--color-text-muted);
-}
-
-.text--center {
-  text-align: center;
-}
-
-.text--bold {
-  font-weight: var(--font-bold);
-}
-```
-
----
-
-## Utilities
-
-### Spacing Utilities
-
-```html
-<div class="m-4">Margin on all sides</div>
-<div class="p-6">Padding on all sides</div>
-<div class="mt-8">Top margin only</div>
-```
-
-```css
-/* Margin utilities */
-.m-0 { margin: var(--space-0); }
-.m-1 { margin: var(--space-1); }
-.m-2 { margin: var(--space-2); }
-.m-3 { margin: var(--space-3); }
-.m-4 { margin: var(--space-4); }
-.m-5 { margin: var(--space-5); }
-.m-6 { margin: var(--space-6); }
-.m-8 { margin: var(--space-8); }
-
-/* Margin directional */
-.mt-4 { margin-top: var(--space-4); }
-.mr-4 { margin-right: var(--space-4); }
-.mb-4 { margin-bottom: var(--space-4); }
-.ml-4 { margin-left: var(--space-4); }
-
-/* Padding utilities */
-.p-0 { padding: var(--space-0); }
-.p-1 { padding: var(--space-1); }
-.p-2 { padding: var(--space-2); }
-.p-3 { padding: var(--space-3); }
-.p-4 { padding: var(--space-4); }
-.p-5 { padding: var(--space-5); }
-.p-6 { padding: var(--space-6); }
-.p-8 { padding: var(--space-8); }
-```
-
-### Display Utilities
-
-```html
-<div class="d-none">Hidden element</div>
-<div class="d-block">Block element</div>
-<div class="d-flex">Flex container</div>
-```
-
-```css
-.d-none { display: none; }
-.d-block { display: block; }
-.d-inline { display: inline; }
-.d-inline-block { display: inline-block; }
-.d-flex { display: flex; }
-.d-grid { display: grid; }
-```
-
-### Color Utilities
-
-```html
-<div class="bg-primary">Primary background</div>
-<div class="text-success">Success text</div>
-<div class="border-danger">Danger border</div>
-```
-
-```css
-/* Background colors */
-.bg-primary { background-color: var(--color-primary); }
-.bg-success { background-color: var(--color-success); }
-.bg-warning { background-color: var(--color-warning); }
-.bg-danger { background-color: var(--color-danger); }
-
-/* Text colors */
-.text-primary { color: var(--color-primary); }
-.text-success { color: var(--color-success); }
-.text-warning { color: var(--color-warning); }
-.text-danger { color: var(--color-danger); }
-.text-muted { color: var(--color-text-muted); }
-
-/* Border colors */
-.border-primary { border-color: var(--color-primary); }
-.border-success { border-color: var(--color-success); }
-.border-warning { border-color: var(--color-warning); }
-.border-danger { border-color: var(--color-danger); }
-```
-
-## Component Implementation Guidelines
-
-### 1. Use Design Tokens
-
-Always reference design tokens instead of hard-coded values:
-
-```css
-/* Good */
-.component {
-  padding: var(--space-4);
-  color: var(--color-text-primary);
-  border-radius: var(--radius-md);
-}
-
-/* Bad */
-.component {
-  padding: 16px;
-  color: #111827;
-  border-radius: 6px;
-}
-```
-
-### 2. Follow BEM Naming
-
-Structure component classes using BEM methodology:
-
-```css
-/* Block */
-.component { }
-
-/* Elements */
-.component__header { }
-.component__body { }
-.component__footer { }
-
-/* Modifiers */
-.component--large { }
-.component--highlighted { }
-```
-
-### 3. Include All States
-
-Define hover, focus, active, and disabled states:
-
-```css
-.button {
-  /* Base styles */
-}
-
-.button:hover {
-  /* Hover styles */
-}
-
-.button:focus {
-  /* Focus styles for accessibility */
-}
-
-.button:active {
-  /* Active/pressed styles */
-}
-
-.button:disabled {
-  /* Disabled styles */
-}
-```
-
-### 4. Provide Responsive Behavior
-
-Use mobile-first responsive design:
-
-```css
-.component {
-  /* Mobile styles first */
-  font-size: var(--text-base);
+  grid-template-columns: 1fr;
 }
 
 @media (min-width: 768px) {
-  .component {
-    font-size: var(--text-lg);
-  }
+  .grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 1024px) {
+  .grid { grid-template-columns: repeat(3, 1fr); }
 }
 ```
 
-### 5. Support Accessibility
+### Responsive Components
 
-Include ARIA attributes and focus management:
+```typescript
+// Responsive navigation component
+export const Navigation: React.FC<NavigationProps> = ({
+  items,
+  logo,
+  className,
+}) => {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
-```html
-<button class="btn btn--primary" aria-describedby="btn-help">
-  Submit Form
-</button>
-<div id="btn-help" class="sr-only">
-  This will submit the form and redirect you
+  return (
+    <nav className={cn('navigation', className)}>
+      <div className="navigation-container">
+        <div className="navigation-brand">
+          {logo}
+        </div>
+
+        {/* Desktop Navigation */}
+        {!isMobile && (
+          <div className="navigation-menu">
+            {items.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                className="navigation-link"
+              >
+                {item.label}
+              </a>
+            ))}
+          </div>
+        )}
+
+        {/* Mobile Menu Toggle */}
+        {isMobile && (
+          <button
+            className="navigation-toggle"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle mobile menu"
+          >
+            <MenuIcon />
+          </button>
+        )}
+      </div>
+
+      {/* Mobile Navigation */}
+      {isMobile && mobileMenuOpen && (
+        <div className="navigation-mobile">
+          {items.map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className="navigation-mobile-link"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              {item.label}
+            </a>
+          ))}
+        </div>
+      )}
+    </nav>
+  );
+};
+```
+
+## Accessibility Features
+
+### ARIA Implementation
+
+```typescript
+// Accessible dropdown component
+export const Dropdown: React.FC<DropdownProps> = ({
+  trigger,
+  children,
+  placement = 'bottom-start',
+  className,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const triggerId = useId();
+  const menuId = useId();
+
+  return (
+    <div className={cn('dropdown', className)}>
+      <button
+        id={triggerId}
+        className="dropdown-trigger"
+        aria-expanded={isOpen}
+        aria-haspopup="true"
+        aria-controls={menuId}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        {trigger}
+      </button>
+
+      {isOpen && (
+        <div
+          id={menuId}
+          className="dropdown-menu"
+          role="menu"
+          aria-labelledby={triggerId}
+        >
+          {children}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Accessible form validation
+export const FormField: React.FC<FormFieldProps> = ({
+  label,
+  children,
+  error,
+  required,
+  helperText,
+}) => {
+  const fieldId = useId();
+  const errorId = useId();
+  const helperId = useId();
+
+  return (
+    <div className="form-field">
+      <label
+        htmlFor={fieldId}
+        className="form-label"
+      >
+        {label}
+        {required && (
+          <span className="form-required" aria-label="required">
+            *
+          </span>
+        )}
+      </label>
+
+      {React.cloneElement(children as React.ReactElement, {
+        id: fieldId,
+        'aria-invalid': !!error,
+        'aria-describedby': cn(
+          error && errorId,
+          helperText && helperId
+        ),
+      })}
+
+      {error && (
+        <div
+          id={errorId}
+          className="form-error"
+          role="alert"
+          aria-live="polite"
+        >
+          {error}
+        </div>
+      )}
+
+      {helperText && !error && (
+        <div id={helperId} className="form-helper">
+          {helperText}
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
+## Testing & Quality Assurance
+
+### Component Testing
+
+```typescript
+// Example component tests
+import { render, screen, fireEvent } from '@testing-library/react';
+import { Button } from './Button';
+
+describe('Button Component', () => {
+  it('renders with correct text', () => {
+    render(<Button>Click me</Button>);
+    expect(screen.getByRole('button', { name: 'Click me' })).toBeInTheDocument();
+  });
+
+  it('handles click events', () => {
+    const handleClick = jest.fn();
+    render(<Button onClick={handleClick}>Click me</Button>);
+    
+    fireEvent.click(screen.getByRole('button'));
+    expect(handleClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows loading state', () => {
+    render(<Button loading>Click me</Button>);
+    expect(screen.getByRole('button')).toBeDisabled();
+    expect(screen.getByTestId('spinner')).toBeInTheDocument();
+  });
+
+  it('applies correct variant classes', () => {
+    render(<Button variant="secondary">Click me</Button>);
+    expect(screen.getByRole('button')).toHaveClass('button--secondary');
+  });
+});
+```
+
+### Visual Regression Testing
+
+```typescript
+// Storybook configuration for visual testing
+import type { Meta, StoryObj } from '@storybook/react';
+import { Button } from './Button';
+
+const meta: Meta<typeof Button> = {
+  title: 'Components/Button',
+  component: Button,
+  parameters: {
+    layout: 'centered',
+  },
+  tags: ['autodocs'],
+  argTypes: {
+    variant: {
+      control: { type: 'select' },
+      options: ['primary', 'secondary', 'outline', 'ghost'],
+    },
+    size: {
+      control: { type: 'select' },
+      options: ['sm', 'md', 'lg'],
+    },
+  },
+};
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const Primary: Story = {
+  args: {
+    children: 'Button',
+    variant: 'primary',
+  },
+};
+
+export const AllVariants: Story = {
+  render: () => (
+    <div className="flex gap-4">
+      <Button variant="primary">Primary</Button>
+      <Button variant="secondary">Secondary</Button>
+      <Button variant="outline">Outline</Button>
+      <Button variant="ghost">Ghost</Button>
+    </div>
+  ),
+};
+```
+
+## Usage Guidelines
+
+### Component Best Practices
+
+1. **Consistency**: Always use design tokens for colors, spacing, and typography
+2. **Accessibility**: Include proper ARIA attributes and keyboard navigation
+3. **Responsiveness**: Ensure components work across all screen sizes
+4. **Performance**: Optimize for minimal re-renders and efficient DOM updates
+5. **Testing**: Write comprehensive tests for all component variations
+
+### Implementation Examples
+
+```typescript
+// Good: Using design tokens and proper props
+<Button
+  variant="primary"
+  size="lg"
+  leftIcon={<PlusIcon />}
+  onClick={handleSubmit}
+>
+  Create Project
+</Button>
+
+// Good: Accessible form implementation
+<form onSubmit={handleSubmit}>
+  <FormField
+    label="Project Name"
+    required
+    error={errors.name}
+  >
+    <Input
+      value={formData.name}
+      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+      placeholder="Enter project name"
+    />
+  </FormField>
+  
+  <Button type="submit" loading={isSubmitting}>
+    Create Project
+  </Button>
+</form>
+
+// Good: Responsive layout with proper spacing
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  {projects.map((project) => (
+    <Card key={project.id}>
+      <h3>{project.name}</h3>
+      <p>{project.description}</p>
+    </Card>
+  ))}
 </div>
 ```
 
-### 6. Document Usage
+## Performance Considerations
 
-Provide clear documentation for each component:
+### Optimization Strategies
 
-- **Purpose**: What the component is for
-- **Usage**: How to implement it
-- **Variants**: Available modifications
-- **Accessibility**: ARIA requirements
-- **Examples**: Code examples and demos
+```typescript
+// Memoization for expensive computations
+const ExpensiveComponent = memo(({ data }: { data: LargeDataSet }) => {
+  const processedData = useMemo(() => {
+    return data.map(item => complexProcessing(item));
+  }, [data]);
 
-### 7. Test Thoroughly
+  return <div>{/* Render processed data */}</div>;
+});
 
-Verify components work correctly:
+// Virtual scrolling for large lists
+import { FixedSizeList as List } from 'react-window';
 
-- **Visual testing**: Ensure consistent appearance
-- **Functional testing**: Verify interactions work
-- **Accessibility testing**: Screen reader compatibility
-- **Browser testing**: Cross-browser support
-- **Responsive testing**: Mobile and desktop layouts
+const VirtualizedList: React.FC<{ items: any[] }> = ({ items }) => (
+  <List
+    height={600}
+    itemCount={items.length}
+    itemSize={50}
+    itemData={items}
+  >
+    {({ index, style, data }) => (
+      <div style={style}>
+        <ListItem item={data[index]} />
+      </div>
+    )}
+  </List>
+);
 
----
+// Lazy loading for images
+const LazyImage: React.FC<{ src: string; alt: string }> = ({ src, alt }) => (
+  <img
+    src={src}
+    alt={alt}
+    loading="lazy"
+    className="lazy-image"
+    onLoad={(e) => e.currentTarget.classList.add('loaded')}
+  />
+);
+```
 
-This component library serves as the foundation for Conduit's user interface. All components should be implemented according to these guidelines to ensure consistency, accessibility, and maintainability across the application.
+## Related Documentation
+
+- [Responsive Design Patterns](./responsive-design-patterns.md) - Mobile-first design methodology
+- [CSS Development Guidelines](./css-development-guidelines.md) - CSS standards and best practices
+- [Integration Examples](./examples/INTEGRATION-EXAMPLES.md) - Real-world component usage examples

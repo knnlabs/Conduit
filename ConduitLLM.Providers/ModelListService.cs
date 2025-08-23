@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 
@@ -14,6 +9,7 @@ namespace ConduitLLM.Providers
     /// <summary>
     /// Service for retrieving available models from LLM providers.
     /// </summary>
+    [Obsolete("External model discovery is no longer used. The ProviderModelsController now returns models from the local database based on provider type compatibility. This service will be removed in a future version.")]
     public class ModelListService : IModelListService
     {
         private readonly ILLMClientFactory _clientFactory;

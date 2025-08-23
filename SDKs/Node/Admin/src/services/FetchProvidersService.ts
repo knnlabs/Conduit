@@ -1,27 +1,17 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { RequestConfig } from '../client/types';
-import type { ProviderSettings, HealthCheckDetails } from '../models/common-types';
-import type { 
-  ProviderHealthStatusResponse,
-  ProviderWithHealthDto,
-  ProviderHealthMetricsDto
-} from '../models/providerHealth';
-import type {
-  ProviderData,
-  HealthDataResponse
-} from '../models/providerResponses';
+import type { ProviderSettings } from '../models/common-types';
 import type {
   ProviderDto,
   CreateProviderDto,
   UpdateProviderDto,
-  ProviderKeyCredentialDto,
-  CreateProviderKeyCredentialDto,
-  UpdateProviderKeyCredentialDto,
   StandardApiKeyTestResponse
 } from '../models/provider';
 import { ENDPOINTS } from '../constants';
 import { ProviderType } from '../models/providerType';
 import { classifyApiKeyTestError, createSuccessResponse } from '../utils/error-classification';
+import { FetchProvidersServiceHealth } from './FetchProvidersServiceHealth';
+import { FetchProvidersServiceKeys } from './FetchProvidersServiceKeys';
 
 // Type aliases for API compatibility - using existing DTO types since generated schemas are missing
 type ApiProviderDto = ProviderDto;
@@ -50,39 +40,17 @@ interface ProviderConfig {
   additionalConfig?: ProviderSettings;
 }
 
-interface HealthStatusParams {
-  includeHistory?: boolean;
-  historyDays?: number;
-}
-
-interface ExportParams {
-  format: 'json' | 'csv' | 'excel';
-  startDate?: string;
-  endDate?: string;
-  providers?: string[];
-}
-
-interface ExportResult {
-  fileUrl: string;
-  fileName: string;
-  expiresAt: string;
-  size: number;
-}
-
-interface ProviderHealthStatus {
-  providerId: string;
-  providerType: ProviderType;
-  status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
-  lastCheck?: string;
-  responseTime?: number;
-  details?: HealthCheckDetails;
-}
-
 /**
  * Type-safe Providers service using native fetch
  */
 export class FetchProvidersService {
-  constructor(private readonly client: FetchBaseApiClient) {}
+  private readonly healthService: FetchProvidersServiceHealth;
+  private readonly keysService: FetchProvidersServiceKeys;
+
+  constructor(private readonly client: FetchBaseApiClient) {
+    this.healthService = new FetchProvidersServiceHealth(client);
+    this.keysService = new FetchProvidersServiceKeys(client);
+  }
 
   /**
    * Get all providers with optional pagination
@@ -267,47 +235,25 @@ export class FetchProvidersService {
     }
   }
 
-  /**
-   * Get health status for all providers
-   */
-  async getHealthStatus(
-    params?: HealthStatusParams,
-    config?: RequestConfig
-  ): Promise<ProviderHealthStatus[]> {
-    const searchParams = new URLSearchParams();
-    if (params?.includeHistory) {
-      searchParams.set('includeHistory', 'true');
-    }
-    if (params?.historyDays) {
-      searchParams.set('historyDays', params.historyDays.toString());
-    }
-
-    return this.client['get']<ProviderHealthStatus[]>(
-      `${ENDPOINTS.PROVIDERS.BASE}/health${searchParams.toString() ? `?${searchParams}` : ''}`,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+  // Health-related methods are delegated to the health service
+  async getHealthStatus(...args: Parameters<FetchProvidersServiceHealth['getHealthStatus']>) {
+    return this.healthService.getHealthStatus(...args);
   }
 
-  /**
-   * Export provider health data
-   */
-  async exportHealthData(
-    params: ExportParams,
-    config?: RequestConfig
-  ): Promise<ExportResult> {
-    return this.client['post']<ExportResult, ExportParams>(
-      `${ENDPOINTS.PROVIDERS.BASE}/health/export`,
-      params,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+  async exportHealthData(...args: Parameters<FetchProvidersServiceHealth['exportHealthData']>) {
+    return this.healthService.exportHealthData(...args);
+  }
+
+  async getHealth(...args: Parameters<FetchProvidersServiceHealth['getHealth']>) {
+    return this.healthService.getHealth(...args);
+  }
+
+  async listWithHealth(...args: Parameters<FetchProvidersServiceHealth['listWithHealth']>) {
+    return this.healthService.listWithHealth(...args);
+  }
+
+  async getHealthMetrics(...args: Parameters<FetchProvidersServiceHealth['getHealthMetrics']>) {
+    return this.healthService.getHealthMetrics(...args);
   }
 
   /**
@@ -337,343 +283,38 @@ export class FetchProvidersService {
     return 'active';
   }
 
-  /**
-   * Get health status for providers.
-   * Retrieves health information for a specific provider or all providers,
-   * including status, response times, uptime, and error rates.
-   * 
-   * @param providerId - Optional provider ID to get health for specific provider
-   * @param config - Optional request configuration for timeout, signal, headers
-   * @returns Promise<ProviderHealthStatusResponse> - Provider health status including:
-   *   - providers: Array of provider health information
-   *   - status: Overall health status (healthy, degraded, unhealthy, unknown)
-   *   - responseTime: Average response time in milliseconds
-   *   - uptime: Uptime percentage
-   *   - errorRate: Error rate percentage
-   * @throws {Error} When provider health data cannot be retrieved
-   * @since Issue #430 - Provider Health SDK Methods
-   */
-  async getHealth(
-    providerType?: ProviderType,
-    config?: RequestConfig
-  ): Promise<ProviderHealthStatusResponse> {
-    try {
-      // Try to get from provider health endpoint
-      const endpoint = providerType 
-        ? ENDPOINTS.HEALTH.STATUS_BY_ID(providerType)
-        : ENDPOINTS.HEALTH.STATUS;
-        
-      const healthData = await this.client['get']<HealthDataResponse>(
-        endpoint,
-        {
-          signal: config?.signal,
-          timeout: config?.timeout,
-          headers: config?.headers,
-        }
-      );
 
-      // Transform the response to match expected format
-      if (providerType) {
-        // Single provider response
-        return {
-          providers: [{
-            id: healthData.providerId ?? providerType.toString(),
-            status: (healthData.status ?? 'unknown') as 'healthy' | 'degraded' | 'unhealthy' | 'unknown',
-            responseTime: healthData.avgLatency ?? 0,
-            uptime: healthData.uptime?.percentage ?? 0,
-            errorRate: healthData.metrics?.issues?.rate ?? 0,
-          }]
-        };
-      } else {
-        // Multiple providers response
-        const providers = Array.isArray(healthData.providers) ? healthData.providers : [];
-        return {
-          providers: providers.map((provider: ProviderData) => ({
-            id: provider.providerId ?? provider.id ?? '',
-            name: provider.providerType?.toString() ?? provider.name ?? '',
-            status: (provider.status ?? 'unknown') as 'healthy' | 'degraded' | 'unhealthy' | 'unknown',
-            lastChecked: provider.lastChecked ?? new Date().toISOString(),
-            responseTime: provider.avgLatency ?? 0,
-            uptime: typeof provider.uptime === 'object' ? provider.uptime.percentage ?? 0 : provider.uptime ?? 0,
-            errorRate: provider.errorRate ?? 0,
-            details: provider.details as { lastError?: string; consecutiveFailures?: number; lastSuccessfulCheck?: string; } | undefined,
-          }))
-        };
-      }
-    } catch {
-      // Fallback: generate health data from providers list
-      const providersResponse = await this.list(1, 100, config);
-      
-      return {
-        providers: providersResponse.items.map(provider => ({
-          id: provider.id?.toString() ?? '',
-          name: provider.providerType?.toString() ?? 'Unknown',
-          status: provider.isEnabled 
-            ? (Math.random() > 0.1 ? 'healthy' : Math.random() > 0.5 ? 'degraded' : 'unhealthy')
-            : 'unknown' as 'healthy' | 'degraded' | 'unhealthy' | 'unknown',
-          lastChecked: new Date().toISOString(),
-          responseTime: Math.floor(Math.random() * 200) + 50,
-          uptime: 95 + Math.random() * 4.9,
-          errorRate: Math.random() * 10,
-          details: Math.random() > 0.8 ? {
-            lastError: 'Connection timeout',
-            consecutiveFailures: Math.floor(Math.random() * 5),
-            lastSuccessfulCheck: new Date(Date.now() - Math.random() * 3600000).toISOString(),
-          } : undefined,
-        }))
-      };
-    }
+  // Key credential methods are delegated to the keys service
+  async listKeys(...args: Parameters<FetchProvidersServiceKeys['listKeys']>) {
+    return this.keysService.listKeys(...args);
   }
 
-  /**
-   * Get all providers with their health status.
-   * Retrieves the complete list of providers enriched with current health
-   * information including status, response times, and availability metrics.
-   * 
-   * @param config - Optional request configuration for timeout, signal, headers
-   * @returns Promise<ProviderWithHealthDto[]> - Array of providers with health data
-   * @throws {Error} When provider data with health cannot be retrieved
-   * @since Issue #430 - Provider Health SDK Methods
-   */
-  async listWithHealth(config?: RequestConfig): Promise<ProviderWithHealthDto[]> {
-    // Provider health endpoints removed from backend - returning mock data
-    const providersResponse = await this.list(1, 100, config);
-    
-    return providersResponse.items.map(provider => ({
-      id: provider.id?.toString() ?? '',
-      name: provider.providerType?.toString() ?? 'Unknown',
-      isEnabled: provider.isEnabled ?? false,
-      providerType: provider.providerType ?? ProviderType.OpenAI,
-      apiKey: provider.isEnabled ? '***masked***' : undefined,
-      health: {
-        status: provider.isEnabled 
-          ? (Math.random() > 0.1 ? 'healthy' : Math.random() > 0.5 ? 'degraded' : 'unhealthy')
-          : 'unknown' as 'healthy' | 'degraded' | 'unhealthy' | 'unknown',
-        responseTime: Math.floor(Math.random() * 200) + 50,
-        uptime: 95 + Math.random() * 4.9,
-        errorRate: Math.random() * 10,
-      }
-    }));
+  async getKeyById(...args: Parameters<FetchProvidersServiceKeys['getKeyById']>) {
+    return this.keysService.getKeyById(...args);
   }
 
-  /**
-   * Get detailed health metrics for a specific provider.
-   * Retrieves comprehensive health metrics including request statistics,
-   * response time percentiles, endpoint health, model availability,
-   * rate limiting information, and recent incidents.
-   * 
-   * @param providerId - Provider ID to get detailed metrics for
-   * @param timeRange - Optional time range for metrics (e.g., '1h', '24h', '7d')
-   * @param config - Optional request configuration for timeout, signal, headers
-   * @returns Promise<ProviderHealthMetricsDto> - Detailed provider health metrics
-   * @throws {Error} When provider health metrics cannot be retrieved
-   * @since Issue #430 - Provider Health SDK Methods
-   */
-  async getHealthMetrics(
-    providerType: ProviderType,
-    timeRange?: string
-  ): Promise<ProviderHealthMetricsDto> {
-    const searchParams = new URLSearchParams();
-    if (timeRange) {
-      searchParams.set('timeRange', timeRange);
-    }
-
-    // Performance endpoint no longer exists - generate realistic health metrics
-    {
-      // Fallback: generate realistic health metrics
-      const baseRequestCount = Math.floor(Math.random() * 10000) + 1000;
-      const failureRate = Math.random() * 0.1; // 0-10% failure rate
-      
-      return {
-        providerId: providerType.toString(),
-        providerType: providerType,
-        totalRequests: baseRequestCount,
-        failedRequests: Math.floor(baseRequestCount * failureRate),
-        avgResponseTime: Math.floor(Math.random() * 200) + 50,
-        p95ResponseTime: Math.floor(Math.random() * 500) + 200,
-        p99ResponseTime: Math.floor(Math.random() * 1000) + 500,
-        availability: (1 - failureRate) * 100,
-        lastUpdated: new Date().toISOString()
-      };
-    }
+  async createKey(...args: Parameters<FetchProvidersServiceKeys['createKey']>) {
+    return this.keysService.createKey(...args);
   }
 
-  // Provider Key Credential methods
-
-  /**
-   * Get all key credentials for a provider
-   */
-  async listKeys(
-    providerId: number,
-    config?: RequestConfig
-  ): Promise<ProviderKeyCredentialDto[]> {
-    return this.client['get']<ProviderKeyCredentialDto[]>(
-      ENDPOINTS.PROVIDER_KEYS.BASE(providerId),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+  async updateKey(...args: Parameters<FetchProvidersServiceKeys['updateKey']>) {
+    return this.keysService.updateKey(...args);
   }
 
-  /**
-   * Get a specific key credential
-   */
-  async getKeyById(
-    providerId: number,
-    keyId: number,
-    config?: RequestConfig
-  ): Promise<ProviderKeyCredentialDto> {
-    return this.client['get']<ProviderKeyCredentialDto>(
-      ENDPOINTS.PROVIDER_KEYS.BY_ID(providerId, keyId),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+  async deleteKey(...args: Parameters<FetchProvidersServiceKeys['deleteKey']>) {
+    return this.keysService.deleteKey(...args);
   }
 
-  /**
-   * Create a new key credential for a provider
-   */
-  async createKey(
-    providerId: number,
-    data: CreateProviderKeyCredentialDto,
-    config?: RequestConfig
-  ): Promise<ProviderKeyCredentialDto> {
-    return this.client['post']<ProviderKeyCredentialDto, CreateProviderKeyCredentialDto>(
-      ENDPOINTS.PROVIDER_KEYS.BASE(providerId),
-      data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+  async setPrimaryKey(...args: Parameters<FetchProvidersServiceKeys['setPrimaryKey']>) {
+    return this.keysService.setPrimaryKey(...args);
   }
 
-  /**
-   * Update a key credential
-   */
-  async updateKey(
-    providerId: number,
-    keyId: number,
-    data: UpdateProviderKeyCredentialDto,
-    config?: RequestConfig
-  ): Promise<ProviderKeyCredentialDto> {
-    return this.client['put']<ProviderKeyCredentialDto, UpdateProviderKeyCredentialDto>(
-      ENDPOINTS.PROVIDER_KEYS.BY_ID(providerId, keyId),
-      data,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
+  async getPrimaryKey(...args: Parameters<FetchProvidersServiceKeys['getPrimaryKey']>) {
+    return this.keysService.getPrimaryKey(...args);
   }
 
-  /**
-   * Delete a key credential
-   */
-  async deleteKey(
-    providerId: number,
-    keyId: number,
-    config?: RequestConfig
-  ): Promise<void> {
-    return this.client['delete']<void>(
-      ENDPOINTS.PROVIDER_KEYS.BY_ID(providerId, keyId),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  /**
-   * Set a key as primary
-   */
-  async setPrimaryKey(
-    providerId: number,
-    keyId: number,
-    config?: RequestConfig
-  ): Promise<void> {
-    return this.client['post']<void>(
-      ENDPOINTS.PROVIDER_KEYS.SET_PRIMARY(providerId, keyId),
-      undefined,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
-    );
-  }
-
-  /**
-   * Get the primary key for a provider
-   */
-  async getPrimaryKey(
-    providerId: number,
-    config?: RequestConfig
-  ): Promise<ProviderKeyCredentialDto> {
-    // GET_PRIMARY endpoint was removed - fetch all keys and find primary
-    const keys = await this.listKeys(providerId, config);
-    const primaryKey = keys.find(key => key.isPrimary);
-    if (!primaryKey) {
-      throw new Error('No primary key found for provider');
-    }
-    return primaryKey;
-  }
-
-
-  /**
-   * Test a key credential
-   */
-  async testKey(
-    providerId: number,
-    keyId: number,
-    config?: RequestConfig
-  ): Promise<StandardApiKeyTestResponse> {
-    try {
-      const startTime = Date.now();
-      const result = await this.client['post']<TestConnectionResult>(
-        ENDPOINTS.PROVIDER_KEYS.TEST(providerId, keyId),
-        undefined,
-        {
-          signal: config?.signal,
-          timeout: config?.timeout,
-          headers: config?.headers,
-        }
-      );
-      
-      const responseTimeMs = Date.now() - startTime;
-      
-      // Convert old response format to new standardized format
-      if (result.success) {
-        return createSuccessResponse(
-          responseTimeMs,
-          (result.details as Record<string, unknown>)?.modelsAvailable as string[] | undefined
-        );
-      } else {
-        // Get provider info to determine type
-        const provider = await this.getById(providerId, config);
-        return classifyApiKeyTestError(
-          { message: result.message, status: 400 },
-          provider.providerType
-        );
-      }
-    } catch (error) {
-      // Get provider info to determine type for error classification
-      try {
-        const provider = await this.getById(providerId, config);
-        return classifyApiKeyTestError(error, provider.providerType);
-      } catch {
-        // If we can't get provider info, classify without it
-        return classifyApiKeyTestError(error);
-      }
-    }
+  async testKey(...args: Parameters<FetchProvidersServiceKeys['testKey']>) {
+    return this.keysService.testKey(...args);
   }
 
   /**

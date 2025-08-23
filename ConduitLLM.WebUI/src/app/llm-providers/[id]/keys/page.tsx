@@ -58,6 +58,8 @@ export default function ProviderKeysPage() {
     organization: '',
     isPrimary: false,
     isEnabled: true,
+    providerAccountGroup: 0,
+    baseUrl: '',
   });
 
   const fetchProvider = useCallback(async () => {
@@ -122,6 +124,8 @@ export default function ProviderKeysPage() {
         organization: '',
         isPrimary: false,
         isEnabled: true,
+        providerAccountGroup: 0,
+        baseUrl: '',
       });
       setShowAddForm(false);
       
@@ -371,6 +375,8 @@ export default function ProviderKeysPage() {
                     organization: '',
                     isPrimary: false,
                     isEnabled: true,
+                    providerAccountGroup: 0,
+                    baseUrl: '',
                   });
                 }}
               >

@@ -1,17 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using Moq;
-using StackExchange.Redis;
-using Xunit;
 using FluentAssertions;
 using ConduitLLM.Core.Models;
-using ConduitLLM.Core.Services;
-using ConduitLLM.Core.Interfaces;
 
 namespace ConduitLLM.Tests.Core.Services
 {

@@ -2,9 +2,6 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-
 namespace ConduitLLM.Admin.Extensions
 {
     /// <summary>

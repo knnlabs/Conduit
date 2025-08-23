@@ -1,4 +1,3 @@
-using System;
 using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Tests.Core.Builders

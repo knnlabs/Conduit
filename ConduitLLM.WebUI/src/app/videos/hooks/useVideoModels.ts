@@ -35,6 +35,7 @@ async function fetchVideoModels(): Promise<VideoModel[]> {
   // Map to the expected format
   const videoModels: VideoModel[] = videoMappings.map(mapping => {
     const provider = providersMap.get(mapping.providerId);
+    const model = modelsMap.get(mapping.modelId);
     
     return {
       id: mapping.modelAlias, // Use the alias as the ID for API calls
@@ -50,6 +51,7 @@ async function fetchVideoModels(): Promise<VideoModel[]> {
         supportsSeed: true,
         maxVideos: 1,
       },
+      parameters: (model?.series as { parameters?: string })?.parameters, // Get parameters from model series
     };
   });
   

@@ -1,8 +1,6 @@
-using System;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Providers.OpenAI;
-using Xunit;
 
 namespace ConduitLLM.Tests.Providers
 {

@@ -1,4 +1,3 @@
-using System;
 using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Tests.Core.Builders

@@ -1,11 +1,7 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using MassTransit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Xunit;
 using ConduitLLM.Configuration.Events;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Http.EventHandlers;

@@ -1,14 +1,9 @@
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
-
 using ConduitLLM.Core.Exceptions;
-using ConduitLLM.Configuration.Exceptions;
 
 using Microsoft.Extensions.Logging;
 using CoreModels = ConduitLLM.Core.Models;
 using CoreUtils = ConduitLLM.Core.Utilities;
-using OpenAIModels = ConduitLLM.Providers.OpenAI;
+using ConduitLLM.Providers.OpenAI;
 
 namespace ConduitLLM.Providers.OpenAICompatible
 {
@@ -55,7 +50,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 Logger.LogDebug("Sending chat completion request to {Provider} at {Endpoint}", ProviderName, endpoint);
 
                 // Use our common HTTP client helper to send the request
-                var openAiResponse = await CoreUtils.HttpClientHelper.SendJsonRequestAsync<object, OpenAIModels.OpenAIChatCompletionResponse>(
+                var openAiResponse = await CoreUtils.HttpClientHelper.SendJsonRequestAsync<object, OpenAIChatCompletionResponse>(
                     client,
                     HttpMethod.Post,
                     endpoint,

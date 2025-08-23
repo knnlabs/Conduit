@@ -1,7 +1,3 @@
-using System;
-using ConduitLLM.Configuration;
-using ConduitLLM.Core.Models;
-
 namespace ConduitLLM.Core.Events
 {
     // ===============================

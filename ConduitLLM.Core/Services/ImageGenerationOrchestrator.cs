@@ -1,14 +1,7 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
 using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Models;
-using ConduitLLM.Configuration;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -21,7 +14,7 @@ namespace ConduitLLM.Core.Services
     /// <summary>
     /// Orchestrates image generation tasks by consuming events and managing the generation lifecycle.
     /// </summary>
-    public class ImageGenerationOrchestrator : IConsumer<ImageGenerationRequested>, IConsumer<ImageGenerationCancelled>
+    public partial class ImageGenerationOrchestrator : IConsumer<ImageGenerationRequested>, IConsumer<ImageGenerationCancelled>
     {
         private readonly ILLMClientFactory _clientFactory;
         private readonly IAsyncTaskService _taskService;
@@ -375,83 +368,6 @@ namespace ConduitLLM.Core.Services
             }
         }
 
-        private async Task<ModelInfo?> GetModelInfoAsync(string? requestedModel, string virtualKeyHash)
-        {
-            // Get virtual key to check model access
-            var virtualKey = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKeyHash, requestedModel);
-            if (virtualKey == null)
-            {
-                return null;
-            }
-            
-            // If no model specified, use default image model
-            if (string.IsNullOrEmpty(requestedModel))
-            {
-                // Would need to implement default image model selection
-                requestedModel = "dall-e-3"; // Default to DALL-E 3
-            }
-            
-            // Get model mapping
-            var mapping = await _modelMappingService.GetMappingByModelAliasAsync(requestedModel);
-            if (mapping == null)
-            {
-                return null;
-            }
-            
-            // Verify model supports image generation
-            if (!mapping.SupportsImageGeneration)
-            {
-                _logger.LogWarning("Model {Model} does not support image generation", requestedModel);
-                return null;
-            }
-            
-            // Get the provider entity
-            var provider = await _providerService.GetProviderByIdAsync(mapping.ProviderId);
-            if (provider == null)
-            {
-                _logger.LogWarning("Provider not found for ProviderId {ProviderId}", mapping.ProviderId);
-                return null;
-            }
-            
-            return new ModelInfo
-            {
-                Provider = provider,
-                ModelId = mapping.ProviderModelId,
-                ProviderId = mapping.ProviderId
-            };
-        }
-
-        private async Task<decimal> CalculateImageGenerationCostAsync(ProviderType providerType, string model, int imageCount, CancellationToken cancellationToken)
-        {
-            // Create usage object for cost calculation
-            var usage = new Usage
-            {
-                ImageCount = imageCount
-            };
-            
-            // Use the centralized cost calculation service
-            var cost = await _costCalculationService.CalculateCostAsync(model, usage, cancellationToken);
-            
-            return cost;
-        }
-
-        private bool IsRetryableError(Exception ex)
-        {
-            // Determine if error is retryable
-            return ex switch
-            {
-                TaskCanceledException => true,
-                TimeoutException => true,
-                _ when ex.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase) => true,
-                _ when ex.Message.Contains("rate limit", StringComparison.OrdinalIgnoreCase) => true,
-                _ when ex.Message.Contains("temporary", StringComparison.OrdinalIgnoreCase) => true,
-                _ => false
-            };
-        }
-
-        /// <summary>
-        /// Handles image generation cancellation requests
-        /// </summary>
         public async Task Consume(ConsumeContext<ImageGenerationCancelled> context)
         {
             var request = context.Message;
@@ -460,336 +376,33 @@ namespace ConduitLLM.Core.Services
             {
                 _logger.LogInformation("Processing image generation cancellation for task {TaskId}", request.TaskId);
                 
-                // Try to cancel via the registry
-                var cancelled = _taskRegistry.TryCancel(request.TaskId);
-                
-                if (cancelled)
-                {
-                    _logger.LogInformation("Successfully cancelled image generation task {TaskId}", request.TaskId);
-                }
-                else
-                {
-                    _logger.LogWarning("Could not cancel image generation task {TaskId} - task may have already completed", 
-                        request.TaskId);
-                }
+                // Signal cancellation to the running task if it exists
+                _taskRegistry.TryCancel(request.TaskId);
                 
                 // Update task status to cancelled
                 await _taskService.UpdateTaskStatusAsync(
                     request.TaskId,
                     TaskState.Cancelled,
                     error: request.Reason ?? "Cancelled by user request");
+                
+                // Publish cancellation acknowledgement event
+                await _publishEndpoint.Publish(new ImageGenerationProgress
+                {
+                    TaskId = request.TaskId,
+                    Status = "cancelled",
+                    ImagesCompleted = 0,
+                    TotalImages = 0,
+                    Message = "Task cancelled",
+                    CorrelationId = request.CorrelationId
+                });
+                
+                _logger.LogInformation("Successfully processed cancellation for image generation task {TaskId}", request.TaskId);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing image generation cancellation for task {TaskId}", request.TaskId);
                 // Don't re-throw - cancellation is best effort
             }
-        }
-
-        private async Task<ConduitLLM.Core.Events.ImageData> ProcessSingleImageAsync(
-            ConduitLLM.Core.Models.ImageData imageData,
-            int index,
-            ImageGenerationRequested request,
-            ModelInfo modelInfo,
-            SemaphoreSlim semaphore,
-            CancellationToken cancellationToken,
-            Action onProgress,
-            Action<long, long> onTimingUpdate)
-        {
-            await semaphore.WaitAsync(cancellationToken);
-            try
-            {
-                string? finalUrl = imageData.Url;
-                
-                if (!string.IsNullOrEmpty(imageData.B64Json))
-                {
-                    // Store base64 image using streaming to avoid loading entire content into memory
-                    var metadata = new Dictionary<string, string>
-                    {
-                        ["prompt"] = request.Request.Prompt,
-                        ["model"] = modelInfo.ModelId,
-                        ["provider"] = modelInfo.ProviderName
-                    };
-                    
-                    var mediaMetadata = new MediaMetadata
-                    {
-                        ContentType = "image/png",
-                        FileName = $"generated_{DateTime.UtcNow:yyyyMMddHHmmss}_{index}.png",
-                        MediaType = MediaType.Image,
-                        CustomMetadata = metadata
-                    };
-                    
-                    // Use streaming to decode base64
-                    using var base64Stream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(imageData.B64Json));
-                    using var decodedStream = new System.Security.Cryptography.CryptoStream(
-                        base64Stream, 
-                        new System.Security.Cryptography.FromBase64Transform(), 
-                        System.Security.Cryptography.CryptoStreamMode.Read);
-                    
-                    var storageResult = await _storageService.StoreAsync(decodedStream, mediaMetadata);
-                    finalUrl = storageResult.Url;
-                    
-                    // Publish MediaGenerationCompleted event for lifecycle tracking
-                    await _publishEndpoint.Publish(new MediaGenerationCompleted
-                    {
-                        MediaType = MediaType.Image,
-                        VirtualKeyId = request.VirtualKeyId,
-                        MediaUrl = storageResult.Url,
-                        StorageKey = storageResult.StorageKey,
-                        FileSizeBytes = storageResult.SizeBytes,
-                        ContentType = mediaMetadata.ContentType,
-                        GeneratedByModel = modelInfo.ModelId,
-                        GenerationPrompt = request.Request.Prompt,
-                        GeneratedAt = DateTime.UtcNow,
-                        Metadata = new Dictionary<string, object>
-                        {
-                            ["provider"] = modelInfo.ProviderName,
-                            ["model"] = modelInfo.ModelId,
-                            ["index"] = index,
-                            ["format"] = "b64_json"
-                        },
-                        CorrelationId = request.CorrelationId?.ToString() ?? string.Empty
-                    });
-                }
-                else if (!string.IsNullOrEmpty(imageData.Url) && 
-                        (imageData.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || 
-                         imageData.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
-                {
-                    var (url, downloadMs, storageMs) = await DownloadAndStoreImageAsync(
-                        imageData.Url,
-                        index,
-                        request,
-                        modelInfo,
-                        cancellationToken);
-                    finalUrl = url;
-                    onTimingUpdate(downloadMs, storageMs);
-                }
-                
-                // Report progress
-                onProgress();
-                
-                return new ConduitLLM.Core.Events.ImageData
-                {
-                    Url = finalUrl,
-                    B64Json = request.Request.ResponseFormat == "b64_json" ? imageData.B64Json : null,
-                    RevisedPrompt = null,
-                    Metadata = new Dictionary<string, object>
-                    {
-                        ["provider"] = modelInfo.ProviderName,
-                        ["model"] = modelInfo.ModelId,
-                        ["index"] = index
-                    }
-                };
-            }
-            finally
-            {
-                semaphore.Release();
-            }
-        }
-
-        private async Task<(string url, long downloadMs, long storageMs)> DownloadAndStoreImageAsync(
-            string imageUrl,
-            int index,
-            ImageGenerationRequested request,
-            ModelInfo modelInfo,
-            CancellationToken cancellationToken)
-        {
-            var downloadStopwatch = Stopwatch.StartNew();
-            var storageStopwatch = new Stopwatch();
-            
-            try
-            {
-                using var httpClient = _httpClientFactory.CreateClient();
-                httpClient.Timeout = GetProviderTimeout(modelInfo.ProviderType);
-                
-                // Use streaming for better memory efficiency
-                using var response = await httpClient.GetAsync(imageUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-                downloadStopwatch.Stop();
-                
-                if (!response.IsSuccessStatusCode)
-                {
-                    _logger.LogWarning("Failed to download image from {Url}: {StatusCode}", 
-                        imageUrl, response.StatusCode);
-                    return (imageUrl, downloadStopwatch.ElapsedMilliseconds, 0); // Return original URL as fallback
-                }
-                
-                // Determine content type and extension
-                var contentType = "image/png";
-                var extension = "png";
-                
-                if (response.Content.Headers.ContentType != null)
-                {
-                    contentType = response.Content.Headers.ContentType.MediaType ?? contentType;
-                    extension = contentType.Split('/').LastOrDefault() ?? "png";
-                    if (extension == "jpeg") extension = "jpg";
-                }
-                else if (imageUrl.Contains(".jpeg", StringComparison.OrdinalIgnoreCase) || 
-                         imageUrl.Contains(".jpg", StringComparison.OrdinalIgnoreCase))
-                {
-                    contentType = "image/jpeg";
-                    extension = "jpg";
-                }
-                
-                var metadata = new Dictionary<string, string>
-                {
-                    ["prompt"] = request.Request.Prompt,
-                    ["model"] = modelInfo.ModelId,
-                    ["provider"] = modelInfo.ProviderName,
-                    ["originalUrl"] = imageUrl
-                };
-                
-                var mediaMetadata = new MediaMetadata
-                {
-                    ContentType = contentType,
-                    FileName = $"generated_{DateTime.UtcNow:yyyyMMddHHmmss}_{index}.{extension}",
-                    MediaType = MediaType.Image,
-                    CustomMetadata = metadata
-                };
-                
-                // Add CreatedBy if we have virtual key info
-                if (request.VirtualKeyId > 0)
-                {
-                    mediaMetadata.CreatedBy = request.VirtualKeyId.ToString();
-                }
-                
-                // Stream directly to storage
-                using var imageStream = await response.Content.ReadAsStreamAsync();
-                storageStopwatch.Start();
-                var storageResult = await _storageService.StoreAsync(imageStream, mediaMetadata);
-                storageStopwatch.Stop();
-                
-                _logger.LogInformation("Downloaded and stored image from {OriginalUrl} to {StorageUrl} (Download: {DownloadMs}ms, Storage: {StorageMs}ms)", 
-                    imageUrl, storageResult.Url, downloadStopwatch.ElapsedMilliseconds, storageStopwatch.ElapsedMilliseconds);
-                
-                // Get file size for the event
-                var contentLength = response.Content.Headers.ContentLength ?? 0;
-                
-                // Publish MediaGenerationCompleted event for lifecycle tracking
-                await _publishEndpoint.Publish(new MediaGenerationCompleted
-                {
-                    MediaType = MediaType.Image,
-                    VirtualKeyId = request.VirtualKeyId,
-                    MediaUrl = storageResult.Url,
-                    StorageKey = storageResult.StorageKey,
-                    FileSizeBytes = contentLength,
-                    ContentType = mediaMetadata.ContentType,
-                    GeneratedByModel = modelInfo.ModelId,
-                    GenerationPrompt = request.Request.Prompt,
-                    GeneratedAt = DateTime.UtcNow,
-                    Metadata = new Dictionary<string, object>
-                    {
-                        ["provider"] = modelInfo.ProviderName,
-                        ["model"] = modelInfo.ModelId,
-                        ["index"] = index
-                    },
-                    CorrelationId = request.CorrelationId
-                });
-                
-                return (storageResult.Url, downloadStopwatch.ElapsedMilliseconds, storageStopwatch.ElapsedMilliseconds);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to download and store image from URL: {Url}", imageUrl);
-                return (imageUrl, downloadStopwatch.ElapsedMilliseconds, storageStopwatch.ElapsedMilliseconds); // Return original URL as fallback
-            }
-        }
-
-        private async Task ReportProgressAsync(
-            string taskId,
-            string correlationId,
-            int totalImages,
-            Func<int> getCompletedCount,
-            string? webhookUrl,
-            Dictionary<string, string>? webhookHeaders,
-            CancellationToken cancellationToken)
-        {
-            var lastReportedCount = 0;
-            
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
-                
-                var currentCount = getCompletedCount();
-                if (currentCount != lastReportedCount)
-                {
-                    lastReportedCount = currentCount;
-                    
-                    await _publishEndpoint.Publish(new ImageGenerationProgress
-                    {
-                        TaskId = taskId,
-                        Status = "storing",
-                        ImagesCompleted = currentCount,
-                        TotalImages = totalImages,
-                        Message = $"Processed {currentCount} of {totalImages} images",
-                        CorrelationId = correlationId ?? string.Empty
-                    });
-                    
-                    // Send webhook notification if configured
-                    if (!string.IsNullOrEmpty(webhookUrl))
-                    {
-                        var webhookPayload = new ImageProgressWebhookPayload
-                        {
-                            TaskId = taskId,
-                            Status = "processing",
-                            ImagesCompleted = currentCount,
-                            TotalImages = totalImages,
-                            Message = $"Processed {currentCount} of {totalImages} images"
-                        };
-                        
-                        // Publish webhook delivery event for scalable processing
-                        await _publishEndpoint.Publish(new WebhookDeliveryRequested
-                        {
-                            TaskId = taskId,
-                            TaskType = "image",
-                            WebhookUrl = webhookUrl,
-                            EventType = WebhookEventType.TaskProgress,
-                            PayloadJson = ConduitLLM.Core.Helpers.WebhookPayloadHelper.SerializePayload(webhookPayload),
-                            Headers = webhookHeaders,
-                            CorrelationId = correlationId ?? Guid.NewGuid().ToString()
-                        });
-                    }
-                }
-                
-                if (currentCount >= totalImages)
-                {
-                    break;
-                }
-            }
-        }
-
-        private int GetOptimalConcurrency(string provider, int imageCount)
-        {
-            // Use configuration or fallback to defaults
-            var maxConcurrency = _performanceConfig.ProviderConcurrencyLimits.TryGetValue(
-                provider.ToLowerInvariant(), 
-                out var limit) ? limit : _performanceConfig.MaxConcurrentGenerations;
-            
-            // Don't exceed the number of images
-            return Math.Min(maxConcurrency, imageCount);
-        }
-
-        private TimeSpan GetProviderTimeout(ProviderType providerType)
-        {
-            // Use configuration or fallback to defaults
-            var providerKey = providerType.ToString().ToLowerInvariant();
-            var timeoutSeconds = _performanceConfig.ProviderDownloadTimeouts.TryGetValue(
-                providerKey, 
-                out var timeout) ? timeout : 30;
-            
-            return TimeSpan.FromSeconds(timeoutSeconds);
-        }
-
-        private class ModelInfo
-        {
-            public ConduitLLM.Configuration.Entities.Provider? Provider { get; set; }
-            public string ModelId { get; set; } = string.Empty;
-            public int ProviderId { get; set; }
-            
-            // Convenience property to get ProviderType from Provider
-            public ProviderType ProviderType => Provider?.ProviderType ?? ProviderType.OpenAI;
-            
-            // Convenience property to get provider name for responses
-            public string ProviderName => Provider?.ProviderName ?? Provider?.ProviderType.ToString() ?? "unknown";
         }
     }
 }

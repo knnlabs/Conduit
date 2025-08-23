@@ -1,10 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
 using Microsoft.Extensions.Logging;
 using CoreModels = ConduitLLM.Core.Models;
-using OpenAIModels = ConduitLLM.Providers.OpenAI;
+using ConduitLLM.Providers.OpenAI;
 using ProviderHelpers = ConduitLLM.Providers.Helpers;
 using ConduitLLM.Providers.Utilities;
 
@@ -57,7 +53,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 if (ProviderHelpers.ContentHelper.IsTextOnly(m.Content))
                 {
                     // Simple text-only message
-                    return new OpenAIModels.OpenAIMessage
+                    return new OpenAIMessage
                     {
                         Role = m.Role,
                         Content = ProviderHelpers.ContentHelper.GetContentAsString(m.Content),
@@ -78,7 +74,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 else
                 {
                     // Multimodal message with potential images
-                    return new OpenAIModels.OpenAIMessage
+                    return new OpenAIMessage
                     {
                         Role = m.Role,
                         Content = MapMultimodalContent(m.Content),
@@ -98,30 +94,59 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 }
             }).ToList();
 
-            // Create the OpenAI request
-            return new OpenAIModels.OpenAIChatCompletionRequest
+            // Create the OpenAI request as a dictionary to support extension data
+            var openAiRequest = new Dictionary<string, object?>
             {
-                Model = ProviderModelId,  // Always use the provider's model ID, not the alias
-                Messages = messages,
-                MaxTokens = request.MaxTokens,
-                Temperature = ParameterConverter.ToTemperature(request.Temperature),
-                TopP = ParameterConverter.ToProbability(request.TopP, 0.0, 1.0),
-                N = request.N,
-                Stop = ParameterConverter.ConvertStopSequences(request.Stop),
-                PresencePenalty = ParameterConverter.ToProbability(request.PresencePenalty),
-                FrequencyPenalty = ParameterConverter.ToProbability(request.FrequencyPenalty),
-                LogitBias = ParameterConverter.ConvertLogitBias(request.LogitBias),
-                User = request.User,
-                Seed = request.Seed,
-                Tools = openAiTools,
-                ToolChoice = openAiToolChoice,
-                // Only send ResponseFormat if explicitly requested and not "text" (default)
-                // Some providers like SambaNova don't support response_format with type "text"
-                ResponseFormat = request.ResponseFormat != null && request.ResponseFormat.Type != "text" 
-                    ? new OpenAIModels.ResponseFormat { Type = request.ResponseFormat.Type ?? "text" } 
-                    : null,
-                Stream = request.Stream ?? false
+                ["model"] = ProviderModelId,  // Always use the provider's model ID, not the alias
+                ["messages"] = messages
             };
+            
+            // Add optional standard parameters
+            if (request.MaxTokens != null)
+                openAiRequest["max_tokens"] = request.MaxTokens;
+            if (request.Temperature != null)
+                openAiRequest["temperature"] = ParameterConverter.ToTemperature(request.Temperature);
+            if (request.TopP != null)
+                openAiRequest["top_p"] = ParameterConverter.ToProbability(request.TopP, 0.0, 1.0);
+            if (request.N != null)
+                openAiRequest["n"] = request.N;
+            if (request.Stop != null)
+                openAiRequest["stop"] = ParameterConverter.ConvertStopSequences(request.Stop);
+            if (request.PresencePenalty != null)
+                openAiRequest["presence_penalty"] = ParameterConverter.ToProbability(request.PresencePenalty);
+            if (request.FrequencyPenalty != null)
+                openAiRequest["frequency_penalty"] = ParameterConverter.ToProbability(request.FrequencyPenalty);
+            if (request.LogitBias != null)
+                openAiRequest["logit_bias"] = ParameterConverter.ConvertLogitBias(request.LogitBias);
+            if (request.User != null)
+                openAiRequest["user"] = request.User;
+            if (request.Seed != null)
+                openAiRequest["seed"] = request.Seed;
+            if (openAiTools != null)
+                openAiRequest["tools"] = openAiTools;
+            if (openAiToolChoice != null)
+                openAiRequest["tool_choice"] = openAiToolChoice;
+            // Only send ResponseFormat if explicitly requested and not "text" (default)
+            // Some providers like SambaNova don't support response_format with type "text"
+            if (request.ResponseFormat != null && request.ResponseFormat.Type != "text")
+                openAiRequest["response_format"] = new ResponseFormat { Type = request.ResponseFormat.Type ?? "text" };
+            if (request.Stream != null)
+                openAiRequest["stream"] = request.Stream;
+                
+            // Pass through any extension data (model-specific parameters)
+            if (request.ExtensionData != null)
+            {
+                foreach (var kvp in request.ExtensionData)
+                {
+                    // Don't override standard parameters
+                    if (!openAiRequest.ContainsKey(kvp.Key))
+                    {
+                        openAiRequest[kvp.Key] = kvp.Value;
+                    }
+                }
+            }
+            
+            return openAiRequest;
         }
 
         /// <summary>
@@ -190,114 +215,79 @@ namespace ConduitLLM.Providers.OpenAICompatible
             object responseObj,
             string? originalModelAlias)
         {
-            // Cast using dynamic to avoid multiple type-specific methods
-            dynamic response = responseObj;
+            if (responseObj == null)
+            {
+                Logger.LogError("Received null response from OpenAI-compatible provider");
+                return CreateEmptyResponse(originalModelAlias);
+            }
+
+            // Cast to the strongly-typed response
+            var response = responseObj as OpenAIChatCompletionResponse;
+            if (response == null)
+            {
+                Logger.LogError("Response is not of expected type OpenAIChatCompletionResponse. Type: {Type}", 
+                    responseObj.GetType()?.FullName ?? "null");
+                return CreateEmptyResponse(originalModelAlias);
+            }
 
             try
             {
-                // Create the basic response with required fields
-                var result = CreateBasicChatCompletionResponse(response, originalModelAlias);
-
-                // Add optional properties if they exist
-                result = AddOptionalResponseProperties(result, response);
-
-                return result;
+                // Map the strongly-typed response
+                return new CoreModels.ChatCompletionResponse
+                {
+                    Id = response.Id ?? Guid.NewGuid().ToString(),
+                    Object = response.Object ?? "chat.completion",
+                    Created = response.Created ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    Model = originalModelAlias ?? response.Model ?? "unknown",
+                    Choices = response.Choices?.Select(c => new CoreModels.Choice
+                    {
+                        Index = c.Index,
+                        FinishReason = c.FinishReason ?? "stop",
+                        Message = c.Message != null ? new CoreModels.Message
+                        {
+                            Role = c.Message.Role ?? "assistant",
+                            Content = c.Message.Content
+                        } : new CoreModels.Message
+                        {
+                            Role = "assistant",
+                            Content = null
+                        }
+                    }).ToList() ?? new List<CoreModels.Choice>(),
+                    Usage = response.Usage != null ? new CoreModels.Usage
+                    {
+                        PromptTokens = response.Usage.PromptTokens,
+                        CompletionTokens = response.Usage.CompletionTokens,
+                        TotalTokens = response.Usage.TotalTokens
+                    } : null,
+                    SystemFingerprint = response.SystemFingerprint,
+                    Seed = response.Seed,
+                    OriginalModelAlias = originalModelAlias
+                };
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error mapping OpenAI response: {Message}", ex.Message);
-
-                // Create a minimal response with as much data as we can salvage
-                return CreateFallbackChatCompletionResponse(response, originalModelAlias);
+                return CreateEmptyResponse(originalModelAlias);
             }
         }
 
         /// <summary>
-        /// Creates a basic chat completion response with required fields.
+        /// Creates an empty chat completion response for error cases.
         /// </summary>
-        /// <param name="response">The dynamic response from the provider.</param>
         /// <param name="originalModelAlias">The original model alias from the request.</param>
-        /// <returns>A basic chat completion response.</returns>
-        private CoreModels.ChatCompletionResponse CreateBasicChatCompletionResponse(
-            dynamic response,
-            string? originalModelAlias)
+        /// <returns>An empty chat completion response.</returns>
+        private CoreModels.ChatCompletionResponse CreateEmptyResponse(string? originalModelAlias)
         {
             return new CoreModels.ChatCompletionResponse
             {
-                Id = response.Id,
-                Object = response.Object,
-                Created = response.Created,
-                Model = originalModelAlias ?? response.Model,
-                Choices = MapDynamicChoices(response.Choices),
-                Usage = MapUsage(response.Usage),
+                Id = Guid.NewGuid().ToString(),
+                Object = "chat.completion",
+                Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                Model = originalModelAlias ?? ProviderModelId,
+                Choices = new List<CoreModels.Choice>(),
                 OriginalModelAlias = originalModelAlias
             };
         }
 
-        /// <summary>
-        /// Creates a fallback chat completion response when the normal mapping fails.
-        /// </summary>
-        /// <param name="response">The dynamic response from the provider.</param>
-        /// <param name="originalModelAlias">The original model alias from the request.</param>
-        /// <returns>A minimal chat completion response.</returns>
-        private CoreModels.ChatCompletionResponse CreateFallbackChatCompletionResponse(
-            dynamic response,
-            string? originalModelAlias)
-        {
-            try
-            {
-                // Attempt to create a basic response with as much as we can extract
-                return new CoreModels.ChatCompletionResponse
-                {
-                    Id = TryGetProperty(response, "Id", Guid.NewGuid().ToString()),
-                    Object = TryGetProperty(response, "Object", "chat.completion"),
-                    Created = TryGetProperty(response, "Created", DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
-                    Model = originalModelAlias ?? TryGetProperty(response, "Model", ProviderModelId),
-                    Choices = new List<CoreModels.Choice>(),
-                    OriginalModelAlias = originalModelAlias
-                };
-            }
-            catch
-            {
-                // Absolute fallback if everything fails
-                return new CoreModels.ChatCompletionResponse
-                {
-                    Id = Guid.NewGuid().ToString(),
-                    Object = "chat.completion",
-                    Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                    Model = originalModelAlias ?? ProviderModelId,
-                    Choices = new List<CoreModels.Choice>(),
-                    OriginalModelAlias = originalModelAlias
-                };
-            }
-        }
-
-        /// <summary>
-        /// Maps the usage information from a dynamic response.
-        /// </summary>
-        /// <param name="usageInfo">The dynamic usage information.</param>
-        /// <returns>A strongly-typed Usage object, or null if the input is null.</returns>
-        private CoreModels.Usage? MapUsage(dynamic usageInfo)
-        {
-            if (usageInfo == null)
-            {
-                return null;
-            }
-
-            try
-            {
-                return new CoreModels.Usage
-                {
-                    PromptTokens = usageInfo.PromptTokens,
-                    CompletionTokens = usageInfo.CompletionTokens,
-                    TotalTokens = usageInfo.TotalTokens
-                };
-            }
-            catch (Exception ex)
-            {
-                Logger.LogWarning(ex, "Error mapping usage information: {Message}", ex.Message);
-                return null;
-            }
-        }
     }
 }

@@ -2,6 +2,7 @@ using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Options;
 using ConduitLLM.Admin.Security;
 using ConduitLLM.Admin.Services;
+using ConduitLLM.Configuration; // For ConduitDbContext
 using ConduitLLM.Core.Extensions; // For AddMediaServices extension method
 using ConduitLLM.Core.Interfaces; // For IVirtualKeyCache and ILLMClientFactory
 using ConduitLLM.Configuration.Interfaces; // For repository interfaces  
@@ -14,7 +15,6 @@ using Microsoft.EntityFrameworkCore; // For IDbContextFactory
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
-using StackExchange.Redis;
 
 namespace ConduitLLM.Admin.Extensions;
 
@@ -83,19 +83,21 @@ public static class ServiceCollectionExtensions
             var logger = serviceProvider.GetRequiredService<ILogger<AdminVirtualKeyService>>();
             var modelProviderMappingRepository = serviceProvider.GetRequiredService<IModelProviderMappingRepository>();
             var modelCapabilityService = serviceProvider.GetRequiredService<IModelCapabilityService>();
+            var dbContextFactory = serviceProvider.GetRequiredService<IDbContextFactory<ConduitDbContext>>();
             var mediaLifecycleService = serviceProvider.GetService<IMediaLifecycleService>(); // Optional - null if not configured
             
-            return new AdminVirtualKeyService(virtualKeyRepository, spendHistoryRepository, groupRepository, cache, publishEndpoint, logger, modelProviderMappingRepository, modelCapabilityService, mediaLifecycleService);
+            return new AdminVirtualKeyService(virtualKeyRepository, spendHistoryRepository, groupRepository, cache, publishEndpoint, logger, modelProviderMappingRepository, modelCapabilityService, dbContextFactory, mediaLifecycleService);
         });
         // Register AdminModelProviderMappingService with optional event publishing dependency
         services.AddScoped<IAdminModelProviderMappingService>(serviceProvider =>
         {
             var mappingRepository = serviceProvider.GetRequiredService<IModelProviderMappingRepository>();
             var credentialRepository = serviceProvider.GetRequiredService<IProviderRepository>();
+            var modelRepository = serviceProvider.GetRequiredService<IModelRepository>();
             var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
             var logger = serviceProvider.GetRequiredService<ILogger<AdminModelProviderMappingService>>();
             
-            return new AdminModelProviderMappingService(mappingRepository, credentialRepository, publishEndpoint, logger);
+            return new AdminModelProviderMappingService(mappingRepository, credentialRepository, modelRepository, publishEndpoint, logger);
         });
         services.AddScoped<IAdminRouterService, AdminRouterService>();
         
@@ -113,7 +115,6 @@ public static class ServiceCollectionExtensions
             
             return new AdminIpFilterService(ipFilterRepository, ipFilterOptions, publishEndpoint, logger);
         });
-        services.AddScoped<IAdminDatabaseBackupService, AdminDatabaseBackupService>();
         services.AddScoped<IAdminSystemInfoService, AdminSystemInfoService>();
         services.AddScoped<IAdminNotificationService, AdminNotificationService>();
         // Register AdminGlobalSettingService with optional event publishing dependency
@@ -136,10 +137,6 @@ public static class ServiceCollectionExtensions
             
             return new AdminModelCostService(modelCostRepository, requestLogRepository, dbContextFactory, publishEndpoint, logger);
         });
-
-        // Register Error Queue monitoring services
-        services.AddSingleton<IRabbitMQManagementClient, RabbitMQManagementClient>();
-        services.AddScoped<IErrorQueueService, ErrorQueueService>();
 
         // Register audio-related services
         services.AddScoped<IAdminAudioProviderService, AdminAudioProviderService>();

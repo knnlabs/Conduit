@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace ConduitLLM.Providers.MiniMax
 {
     /// <summary>

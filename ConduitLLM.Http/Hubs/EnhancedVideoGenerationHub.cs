@@ -1,11 +1,9 @@
-using System;
-using System.Threading.Tasks;
 using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Http.Models;
 using ConduitLLM.Http.Services;
+
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Http.Hubs
 {

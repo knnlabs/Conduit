@@ -1,9 +1,5 @@
-using System.Collections.Generic;
-using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
-
-using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Providers.OpenAI
 {
@@ -81,7 +77,7 @@ namespace ConduitLLM.Providers.OpenAI
     internal record OpenAIMessage
     {
         [JsonPropertyName("role")]
-        public required string Role { get; init; } // "system", "user", "assistant", "tool"
+        public string? Role { get; init; } // "system", "user", "assistant", "tool"
 
         [JsonPropertyName("content")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -116,7 +112,7 @@ namespace ConduitLLM.Providers.OpenAI
         public string? Model { get; init; } // Model used
 
         [JsonPropertyName("choices")]
-        public required List<OpenAIChoice> Choices { get; init; }
+        public List<OpenAIChoice>? Choices { get; init; }
 
         [JsonPropertyName("usage")]
         public OpenAIUsage? Usage { get; init; }
@@ -134,7 +130,7 @@ namespace ConduitLLM.Providers.OpenAI
         public int Index { get; init; }
 
         [JsonPropertyName("message")]
-        public required OpenAIMessage Message { get; init; }
+        public OpenAIMessage? Message { get; init; }
 
         [JsonPropertyName("finish_reason")]
         public string? FinishReason { get; init; } // e.g., "stop", "length", "tool_calls"
@@ -172,7 +168,7 @@ namespace ConduitLLM.Providers.OpenAI
         public string? Model { get; init; } // Model used
 
         [JsonPropertyName("choices")]
-        public required List<OpenAIStreamingChoice> Choices { get; init; }
+        public List<OpenAIStreamingChoice>? Choices { get; init; }
 
         [JsonPropertyName("system_fingerprint")]
         public string? SystemFingerprint { get; init; }
@@ -186,7 +182,7 @@ namespace ConduitLLM.Providers.OpenAI
         public int Index { get; init; }
 
         [JsonPropertyName("delta")]
-        public required OpenAIDeltaContent Delta { get; init; }
+        public OpenAIDeltaContent? Delta { get; init; }
 
         [JsonPropertyName("finish_reason")]
         public string? FinishReason { get; init; } // e.g., "stop", "length", "tool_calls"
@@ -402,7 +398,7 @@ namespace ConduitLLM.Providers.OpenAI
         public long Created { get; init; }
 
         [JsonPropertyName("data")]
-        public required List<ImageData> Data { get; init; }
+        public List<ImageData>? Data { get; init; }
     }
 
     internal record ImageData

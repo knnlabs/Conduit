@@ -1,8 +1,6 @@
-using System;
 using ConduitLLM.Admin.Models.ModelCapabilities;
-using ConduitLLM.Configuration.Entities;
+
 using FluentAssertions;
-using Xunit;
 
 namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
 {

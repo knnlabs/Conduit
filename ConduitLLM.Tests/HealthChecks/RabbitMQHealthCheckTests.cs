@@ -1,11 +1,7 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using MassTransit;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Xunit;
 using ConduitLLM.Core.HealthChecks;
 
 namespace ConduitLLM.Tests.HealthChecks

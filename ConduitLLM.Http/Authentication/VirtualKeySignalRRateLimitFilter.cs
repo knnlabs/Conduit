@@ -1,12 +1,8 @@
-using System;
 using System.Collections.Concurrent;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.Logging;
 using ConduitLLM.Http.Services;
 using MassTransit;
 using ConduitLLM.Core.Events;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace ConduitLLM.Http.Authentication
 {

@@ -1,6 +1,3 @@
-using System;
-using System.Net.Http;
-
 using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Providers.Configuration;
@@ -8,8 +5,6 @@ using ConduitLLM.Providers.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-
-using Polly;
 
 namespace ConduitLLM.Providers.Extensions;
 

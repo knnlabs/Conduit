@@ -1,4 +1,3 @@
-using System;
 using System.Net.WebSockets;
 
 namespace ConduitLLM.Core.Models.Audio

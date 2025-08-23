@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace ConduitLLM.Configuration.DTOs.HealthMonitoring
 {
     /// <summary>

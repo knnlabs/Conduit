@@ -1,22 +1,12 @@
 using ConduitLLM.Configuration.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 using ConduitLLM.Admin.Interfaces;
-using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Extensions;
-using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Models;
-using ModelProviderMapping = ConduitLLM.Configuration.Entities.ModelProviderMapping;
 
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Admin.Controllers;
 

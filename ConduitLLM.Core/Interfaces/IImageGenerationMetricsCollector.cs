@@ -1,9 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using ConduitLLM.Core.Models;
-
 namespace ConduitLLM.Core.Interfaces
 {
     /// <summary>
@@ -147,28 +141,6 @@ namespace ConduitLLM.Core.Interfaces
         public int TotalImagesLastHour { get; set; }
     }
 
-    /// <summary>
-    /// Provider-specific metrics summary.
-    /// </summary>
-    public class ProviderMetricsSummary
-    {
-        public string ProviderName { get; set; } = string.Empty;
-        public int TotalRequests { get; set; }
-        public int SuccessfulRequests { get; set; }
-        public int FailedRequests { get; set; }
-        public double SuccessRate { get; set; }
-        public double AverageResponseTimeMs { get; set; }
-        public double P50ResponseTimeMs { get; set; }
-        public double P95ResponseTimeMs { get; set; }
-        public double P99ResponseTimeMs { get; set; }
-        public decimal TotalCost { get; set; }
-        public int TotalImages { get; set; }
-        public decimal AverageCostPerImage { get; set; }
-        public Dictionary<string, int> ErrorBreakdown { get; set; } = new();
-        public Dictionary<string, ModelMetrics> ModelBreakdown { get; set; } = new();
-        public DateTime PeriodStart { get; set; }
-        public DateTime PeriodEnd { get; set; }
-    }
 
     /// <summary>
     /// Model-specific metrics.

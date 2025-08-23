@@ -5,10 +5,10 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: conduit
-      POSTGRES_PASSWORD: conduit
-      POSTGRES_DB: conduit
+      POSTGRES_PASSWORD: conduitpass
+      POSTGRES_DB: conduitdb
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U conduit"]
+      test: ["CMD-SHELL", "pg_isready -U conduit -d conduitdb"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -18,7 +18,7 @@ services:
       context: ../../..
       dockerfile: ConduitLLM.Http/Dockerfile
     environment:
-      DATABASE_URL: postgresql://conduit:conduit@postgres:5432/conduit
+      DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:5000
     ports:
@@ -37,7 +37,7 @@ services:
       context: ../../..
       dockerfile: ConduitLLM.Admin/Dockerfile
     environment:
-      DATABASE_URL: postgresql://conduit:conduit@postgres:5432/conduit
+      DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:5001
     ports:

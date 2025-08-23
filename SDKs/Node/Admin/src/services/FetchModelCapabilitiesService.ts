@@ -4,10 +4,10 @@ import type { RequestConfig } from '../client/types';
 import { ENDPOINTS } from '../constants';
 
 // Type aliases for better readability
-type CapabilitiesDto = components['schemas']['ConduitLLM.Admin.Controllers.CapabilitiesDto'];
-type CreateCapabilitiesDto = components['schemas']['ConduitLLM.Admin.Controllers.CreateCapabilitiesDto'];
-type UpdateCapabilitiesDto = components['schemas']['ConduitLLM.Admin.Controllers.UpdateCapabilitiesDto'];
-type CapabilitiesSimpleModelDto = components['schemas']['ConduitLLM.Admin.Controllers.CapabilitiesSimpleModelDto'];
+type CapabilitiesDto = components['schemas']['ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesDto'];
+type CreateCapabilitiesDto = components['schemas']['ConduitLLM.Admin.Models.ModelCapabilities.CreateCapabilitiesDto'];
+type UpdateCapabilitiesDto = components['schemas']['ConduitLLM.Admin.Models.ModelCapabilities.UpdateCapabilitiesDto'];
+type CapabilitiesSimpleModelDto = components['schemas']['ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesSimpleModelDto'];
 
 /**
  * Type-safe Model Capabilities service using native fetch

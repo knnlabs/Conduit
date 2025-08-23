@@ -17,6 +17,7 @@ import { notifications } from '@mantine/notifications';
 interface GenerateVideoParams {
   prompt: string;
   settings: VideoSettings;
+  dynamicParameters?: Record<string, unknown>;
 }
 
 interface UseEnhancedVideoGenerationOptions {
@@ -58,7 +59,7 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
     };
   }, []);
 
-  const generateVideo = useCallback(async ({ prompt, settings }: GenerateVideoParams) => {
+  const generateVideo = useCallback(async ({ prompt, settings, dynamicParameters }: GenerateVideoParams) => {
     setIsGenerating(true);
     setError(null);
 
@@ -77,6 +78,8 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
           fps: settings.fps,
           style: settings.style,
           response_format: settings.responseFormat,
+          // Include dynamic parameters from the UI
+          ...dynamicParameters,
         }),
       });
 

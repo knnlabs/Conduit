@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { notifications } from '@mantine/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
 
 interface RoutingSettings {
@@ -34,41 +33,10 @@ export function useConfigurationApi() {
     }
   }, []);
 
-  const updateRoutingSettings = useCallback(async (settings: Partial<RoutingSettings>): Promise<RoutingSettings> => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      // Note: updateConfiguration method doesn't exist in Admin SDK
-      // Using placeholder implementation
-      // TODO: Implement configuration update once SDK supports it
-      const result = await Promise.resolve(settings as RoutingSettings);
-
-      notifications.show({
-        title: 'Success',
-        message: 'Routing settings updated successfully',
-        color: 'green',
-      });
-
-      return result;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update routing settings';
-      setError(message);
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
 
 
   return {
     getRoutingSettings,
-    updateRoutingSettings,
     isLoading,
     error,
   };

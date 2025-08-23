@@ -118,6 +118,7 @@ export interface VideoModel {
     supportsSeed?: boolean;
     maxVideos?: number;
   };
+  parameters?: string; // JSON string of UI parameters from ModelSeries
 }
 
 export const VideoResolutions = {
