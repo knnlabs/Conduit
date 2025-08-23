@@ -92,7 +92,8 @@ export function ViewModelModal({ isOpen, model, onClose }: ViewModelModalProps) 
     };
 
     void loadModelProviders();
-  }, [isOpen, model.id, executeWithAdmin]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, model.id]);
 
   return (
     <Modal
