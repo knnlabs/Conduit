@@ -2,9 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { Modal, Stack, Group, Text, Badge, Divider, Loader } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import type { ModelDto } from '@knn_labs/conduit-admin-client';
 import { useAdminClient } from '@/lib/client/adminClient';
 import { getModelPrimaryType, getModelTypeBadgeColor } from '@/utils/modelHelpers';
+import { useModelSeriesById } from '@/hooks/useModelSeries';
+import { getProviderTypeName } from '@/constants/providers';
+import { getErrorMessage, isProviderMapping } from '@/utils/typeGuards';
 
 interface ViewModelModalProps {
   isOpen: boolean;
@@ -29,71 +33,112 @@ interface ProviderMapping {
 export function ViewModelModal({ isOpen, model, onClose }: ViewModelModalProps) {
   const [providerMappings, setProviderMappings] = useState<ProviderMapping[]>([]);
   const [loadingProviders, setLoadingProviders] = useState(false);
+  const [capabilitiesName, setCapabilitiesName] = useState<string | null>(null);
   const { executeWithAdmin } = useAdminClient();
+  const { seriesName } = useModelSeriesById(model.modelSeriesId);
 
 
-  const getProviderTypeName = (providerType: number) => {
-    switch (providerType) {
-      case 1: return 'OpenAI';
-      case 2: return 'Groq';
-      case 3: return 'Replicate';
-      case 4: return 'Fireworks';
-      case 5: return 'OpenAI Compatible';
-      case 6: return 'MiniMax';
-      case 7: return 'Ultravox';
-      case 8: return 'ElevenLabs';
-      case 9: return 'Cerebras';
-      case 10: return 'SambaNova';
-      case 11: return 'DeepInfra';
-      default: return 'Unknown';
-    }
-  };
 
 
 
   useEffect(() => {
-    const loadModelProviders = async () => {
+    const loadModelDetails = async () => {
       if (!isOpen || !model.id) {
         setProviderMappings([]);
+        setCapabilitiesName(null);
         return;
       }
 
       try {
         setLoadingProviders(true);
         
-        // Get model identifiers from the database
-        const identifiers = await executeWithAdmin(client => 
-          client.models.getIdentifiers(model.id as number)
+        // Load all data in parallel
+        const promises: Promise<void>[] = [];
+        
+        // Get model identifiers
+        promises.push(
+          executeWithAdmin(client => 
+            client.models.getIdentifiers(model.id as number)
+          ).then(identifiers => {
+            // Convert identifiers to provider mappings for display
+            const mappings = identifiers.map((identifier, index) => ({
+              id: index,
+              modelAlias: identifier.identifier,
+              providerModelId: identifier.identifier,
+              providerId: index,
+              modelId: model.id ?? 0,
+              isEnabled: true,
+              provider: {
+                id: index,
+                providerType: 0,
+                providerName: identifier.provider.charAt(0).toUpperCase() + identifier.provider.slice(1)
+              }
+            }));
+            
+            // Validate mappings before setting
+            const validMappings = mappings.filter(isProviderMapping);
+            setProviderMappings(validMappings);
+          }).catch((error) => {
+            const errorMessage = getErrorMessage(error);
+            console.warn('Failed to load model providers:', errorMessage);
+            setProviderMappings([]);
+            
+            notifications.show({
+              title: 'Warning',
+              message: 'Provider information could not be loaded',
+              color: 'yellow',
+            });
+          })
         );
         
-        // Convert identifiers to provider mappings for display
-        const providerMappings = identifiers.map((identifier, index) => ({
-          id: index,
-          modelAlias: identifier.identifier,
-          providerModelId: identifier.identifier,
-          providerId: index,
-          modelId: model.id ?? 0,
-          isEnabled: true,
-          provider: {
-            id: index,
-            providerType: 0,
-            providerName: identifier.provider.charAt(0).toUpperCase() + identifier.provider.slice(1)
-          }
-        }));
+        // Load capabilities details if present
+        if (model.modelCapabilitiesId) {
+          promises.push(
+            executeWithAdmin(client => 
+              client.modelCapabilities.get(model.modelCapabilitiesId as number)
+            ).then(capabilities => {
+              // Create a summary of capabilities
+              const capList: string[] = [];
+              if (capabilities.supportsChat) capList.push('Chat');
+              if (capabilities.supportsVision) capList.push('Vision');
+              if (capabilities.supportsImageGeneration) capList.push('Image Gen');
+              if (capabilities.supportsVideoGeneration) capList.push('Video Gen');
+              if (capabilities.supportsEmbeddings) capList.push('Embeddings');
+              if (capabilities.supportsFunctionCalling) capList.push('Functions');
+              if (capabilities.supportsAudioTranscription) capList.push('Audio');
+              
+              const capabilitiesSummary = capList.length > 0 
+                ? capList.join(', ') 
+                : 'Standard';
+                
+              setCapabilitiesName(capabilitiesSummary);
+            }).catch((error) => {
+              const errorMessage = getErrorMessage(error);
+              console.warn('Failed to load capabilities:', errorMessage);
+              setCapabilitiesName(`ID: ${model.modelCapabilitiesId}`);
+            })
+          );
+        }
         
-        setProviderMappings(providerMappings as ProviderMapping[]);
+        await Promise.all(promises);
         
       } catch (error) {
-        console.error('Failed to load model providers:', error);
-        setProviderMappings([]);
+        const errorMessage = getErrorMessage(error);
+        console.error('Failed to load model details:', errorMessage);
+        
+        notifications.show({
+          title: 'Error',
+          message: 'Some model details could not be loaded',
+          color: 'red',
+        });
       } finally {
         setLoadingProviders(false);
       }
     };
 
-    void loadModelProviders();
+    void loadModelDetails();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, model.id]);
+  }, [isOpen, model.id, model.modelCapabilitiesId]);
 
   return (
     <Modal
@@ -125,16 +170,14 @@ export function ViewModelModal({ isOpen, model, onClose }: ViewModelModalProps) 
         <Divider />
 
         <Group justify="space-between">
-          <Text fw={500}>Series ID:</Text>
-          <Text>{model.modelSeriesId ?? '-'}</Text>
+          <Text fw={500}>Series:</Text>
+          <Text>{seriesName ?? (model.modelSeriesId ? `Loading...` : '-')}</Text>
         </Group>
 
-        {model.modelCapabilitiesId && (
-          <Group justify="space-between">
-            <Text fw={500}>Capabilities ID:</Text>
-            <Text>{model.modelCapabilitiesId}</Text>
-          </Group>
-        )}
+        <Group justify="space-between">
+          <Text fw={500}>Capabilities:</Text>
+          <Text>{capabilitiesName ?? (model.modelCapabilitiesId ? `Loading...` : '-')}</Text>
+        </Group>
 
         <Divider />
 
@@ -160,7 +203,7 @@ export function ViewModelModal({ isOpen, model, onClose }: ViewModelModalProps) 
                       variant="light"
                       title={mapping.isEnabled ? 'Active mapping' : 'Inactive mapping'}
                     >
-                      {mapping.provider?.providerName ?? getProviderTypeName(mapping.provider?.providerType ?? 0)}
+                      {mapping.provider?.providerName ?? (mapping.provider?.providerType ? getProviderTypeName(mapping.provider.providerType) : 'Unknown')}
                     </Badge>
                   ))}
                 </Group>

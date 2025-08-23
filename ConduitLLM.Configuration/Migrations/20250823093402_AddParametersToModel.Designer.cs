@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ConduitLLM.Configuration.Migrations
 {
     [DbContext(typeof(ConduitDbContext))]
-    [Migration("20250823052541_RemoveApiParametersColumns")]
-    partial class RemoveApiParametersColumns
+    [Migration("20250823093402_AddParametersToModel")]
+    partial class AddParametersToModel
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -894,6 +894,10 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.Property<string>("ModelCardUrl")
                         .HasColumnType("text");
+
+                    b.Property<string>("ModelParameters")
+                        .HasColumnType("text")
+                        .HasColumnName("Parameters");
 
                     b.Property<int>("ModelSeriesId")
                         .HasColumnType("integer");

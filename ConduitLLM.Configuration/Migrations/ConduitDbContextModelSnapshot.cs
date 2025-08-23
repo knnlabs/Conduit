@@ -892,6 +892,10 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<string>("ModelCardUrl")
                         .HasColumnType("text");
 
+                    b.Property<string>("ModelParameters")
+                        .HasColumnType("text")
+                        .HasColumnName("Parameters");
+
                     b.Property<int>("ModelSeriesId")
                         .HasColumnType("integer");
 

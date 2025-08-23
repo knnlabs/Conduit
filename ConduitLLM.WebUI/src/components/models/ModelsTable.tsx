@@ -1,14 +1,28 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Table, TextInput, Select, Group, ActionIcon, Badge, Text, Tooltip, Stack } from '@mantine/core';
-import { IconEdit, IconTrash, IconSearch, IconEye, IconMessageCircle, IconPhoto, IconVideo, IconEye as IconVision } from '@tabler/icons-react';
+import { Table, TextInput, Select, Group, ActionIcon, Badge, Text, Tooltip, Stack, HoverCard } from '@mantine/core';
+import { IconEdit, IconTrash, IconSearch, IconEye, IconMessageCircle, IconPhoto, IconVideo, IconEye as IconVision, IconLink } from '@tabler/icons-react';
 import { useAdminClient } from '@/lib/client/adminClient';
 import { notifications } from '@mantine/notifications';
 import { EditModelModal } from './EditModelModal';
 import { ViewModelModal } from './ViewModelModal';
 import { DeleteModelModal } from './DeleteModelModal';
+import { useModelSeries } from '@/hooks/useModelSeries';
+import { extractCapabilities, getErrorMessage } from '@/utils/typeGuards';
 import type { ModelDto } from '@knn_labs/conduit-admin-client';
+
+// Extended model type with provider mapping status and details
+type ModelWithMappingStatus = ModelDto & { 
+  hasProviderMappings: boolean;
+  providerCount: number;
+  providers: Array<{
+    id: number;
+    identifier: string;
+    provider: string;
+    isPrimary: boolean;
+  }>;
+};
 
 
 interface ModelsTableProps {
@@ -16,33 +30,32 @@ interface ModelsTableProps {
 }
 
 export function ModelsTable({ onRefresh }: ModelsTableProps) {
-  const [models, setModels] = useState<ModelDto[]>([]);
-  const [filteredModels, setFilteredModels] = useState<ModelDto[]>([]);
+  const [models, setModels] = useState<ModelWithMappingStatus[]>([]);
+  const [filteredModels, setFilteredModels] = useState<ModelWithMappingStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [capabilityFilter, setCapabilityFilter] = useState<string | null>(null);
+  const [providerFilter, setProviderFilter] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<ModelDto | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [seriesNames, setSeriesNames] = useState<Record<number, string>>({});
   
   const { executeWithAdmin } = useAdminClient();
+  const { seriesNames } = useModelSeries(models);
 
   const loadModels = async () => {
     try {
       setLoading(true);
-      const data = await executeWithAdmin(client => client.models.list());
+      const data = await executeWithAdmin(client => client.models.listWithMappingStatus());
       setModels(data);
       setFilteredModels(data);
-      
-      // Load series names for models that have a series
-      await loadSeriesNames(data);
     } catch (error) {
-      console.error('Failed to load models:', error);
+      const errorMessage = getErrorMessage(error);
+      console.error('Failed to load models:', errorMessage);
       notifications.show({
         title: 'Error',
-        message: 'Failed to load models',
+        message: `Failed to load models: ${errorMessage}`,
         color: 'red',
       });
     } finally {
@@ -50,38 +63,6 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
     }
   };
 
-  const loadSeriesNames = async (modelsList: ModelDto[]) => {
-    const uniqueSeriesIds = Array.from(
-      new Set(
-        modelsList
-          .map(model => model.modelSeriesId)
-          .filter((id): id is number => id !== undefined && id !== null)
-      )
-    );
-
-    if (uniqueSeriesIds.length === 0) {
-      setSeriesNames({});
-      return;
-    }
-
-    const names: Record<number, string> = {};
-    
-    await Promise.all(
-      uniqueSeriesIds.map(async (seriesId) => {
-        try {
-          const series = await executeWithAdmin(client => 
-            client.modelSeries.get(seriesId)
-          );
-          names[seriesId] = series.name ?? `Series ${seriesId}`;
-        } catch (error) {
-          console.error(`Failed to load series name for ID ${seriesId}:`, error);
-          names[seriesId] = `Series ${seriesId}`;
-        }
-      })
-    );
-    
-    setSeriesNames(names);
-  };
 
   useEffect(() => {
     void loadModels();
@@ -100,18 +81,30 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
 
     if (capabilityFilter) {
       filtered = filtered.filter(model => {
-        const capabilities = model.capabilities as unknown;
-        if (!isCapabilitiesObject(capabilities)) return false;
+        const capabilities = extractCapabilities(model);
         
         switch (capabilityFilter) {
           case 'chat':
-            return capabilities.supportsChat === true;
+            return capabilities.supportsChat;
           case 'vision':
-            return capabilities.supportsVision === true;
+            return capabilities.supportsVision;
           case 'image':
-            return capabilities.supportsImageGeneration === true;
+            return capabilities.supportsImageGeneration;
           case 'video':
-            return capabilities.supportsVideoGeneration === true;
+            return capabilities.supportsVideoGeneration;
+          default:
+            return true;
+        }
+      });
+    }
+
+    if (providerFilter) {
+      filtered = filtered.filter(model => {
+        switch (providerFilter) {
+          case 'with-provider':
+            return model.hasProviderMappings === true;
+          case 'without-provider':
+            return model.hasProviderMappings === false;
           default:
             return true;
         }
@@ -119,7 +112,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
     }
 
     setFilteredModels(filtered);
-  }, [search, capabilityFilter, models]);
+  }, [search, capabilityFilter, providerFilter, models]);
 
   const handleEdit = (model: ModelDto) => {
     setSelectedModel(model);
@@ -145,21 +138,13 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
 
 
 
-  const isCapabilitiesObject = (capabilities: unknown): capabilities is Record<string, unknown> => {
-    return capabilities !== null && typeof capabilities === 'object';
-  };
 
   const renderCapabilityIcons = (model: ModelDto) => {
-    const capabilities = model.capabilities as unknown;
-    
-    if (!isCapabilitiesObject(capabilities)) {
-      return <Text c="dimmed" size="sm">-</Text>;
-    }
-
+    const capabilities = extractCapabilities(model);
     const icons = [];
     
     // Text/Chat capability
-    if (capabilities.supportsChat === true) {
+    if (capabilities.supportsChat) {
       icons.push(
         <Tooltip key="chat" label="Text Chat">
           <IconMessageCircle size={16} color="blue" />
@@ -168,7 +153,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
     }
 
     // Vision capability (Text + Vision)
-    if (capabilities.supportsVision === true) {
+    if (capabilities.supportsVision) {
       icons.push(
         <Tooltip key="vision" label="Text + Vision">
           <IconVision size={16} color="green" />
@@ -177,7 +162,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
     }
 
     // Image generation capability
-    if (capabilities.supportsImageGeneration === true) {
+    if (capabilities.supportsImageGeneration) {
       icons.push(
         <Tooltip key="image" label="Image Generation">
           <IconPhoto size={16} color="purple" />
@@ -186,7 +171,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
     }
 
     // Video generation capability
-    if (capabilities.supportsVideoGeneration === true) {
+    if (capabilities.supportsVideoGeneration) {
       icons.push(
         <Tooltip key="video" label="Video Generation">
           <IconVideo size={16} color="red" />
@@ -201,11 +186,65 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
     );
   };
 
+  const renderProviderInfo = (model: ModelWithMappingStatus) => {
+    if (model.providerCount === 0) {
+      return (
+        <Badge color="orange" variant="light">
+          No Providers
+        </Badge>
+      );
+    }
+
+    return (
+      <HoverCard width={280} shadow="md" openDelay={200} closeDelay={100}>
+        <HoverCard.Target>
+          <Badge 
+            color="blue" 
+            variant="light" 
+            leftSection={<IconLink size={14} />}
+            style={{ cursor: 'pointer' }}
+          >
+            {model.providerCount} {model.providerCount === 1 ? 'Provider' : 'Providers'}
+          </Badge>
+        </HoverCard.Target>
+        <HoverCard.Dropdown>
+          <Stack gap="xs">
+            <Text size="sm" fw={500}>Provider Mappings:</Text>
+            {model.providers.map((provider, index) => (
+              <Group key={index} gap="xs">
+                <Badge 
+                  size="sm" 
+                  color={provider.isPrimary ? 'green' : 'gray'} 
+                  variant="light"
+                >
+                  {provider.provider.toUpperCase()}
+                </Badge>
+                <Text size="xs" c="dimmed" style={{ flex: 1 }}>
+                  {provider.identifier}
+                </Text>
+                {provider.isPrimary && (
+                  <Badge size="xs" color="green" variant="dot">
+                    Primary
+                  </Badge>
+                )}
+              </Group>
+            ))}
+          </Stack>
+        </HoverCard.Dropdown>
+      </HoverCard>
+    );
+  };
+
   const capabilityOptions = [
     { value: 'chat', label: 'Text Chat' },
     { value: 'vision', label: 'Text + Vision' },
     { value: 'image', label: 'Image Generation' },
     { value: 'video', label: 'Video Generation' }
+  ];
+
+  const providerOptions = [
+    { value: 'with-provider', label: 'With Provider' },
+    { value: 'without-provider', label: 'Without Provider' }
   ];
 
   return (
@@ -226,6 +265,14 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
           clearable
           w={200}
         />
+        <Select
+          placeholder="Provider mapping"
+          data={providerOptions}
+          value={providerFilter}
+          onChange={setProviderFilter}
+          clearable
+          w={200}
+        />
       </Group>
 
       <Table>
@@ -234,6 +281,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
             <Table.Th>Name</Table.Th>
             <Table.Th>Capabilities</Table.Th>
             <Table.Th>Series</Table.Th>
+            <Table.Th>Provider</Table.Th>
             <Table.Th>Status</Table.Th>
             <Table.Th>Actions</Table.Th>
           </Table.Tr>
@@ -243,7 +291,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
             if (loading) {
               return (
                 <Table.Tr>
-                  <Table.Td colSpan={5}>
+                  <Table.Td colSpan={6}>
                     <Text ta="center" c="dimmed">Loading...</Text>
                   </Table.Td>
                 </Table.Tr>
@@ -252,7 +300,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
             if (filteredModels.length === 0) {
               return (
                 <Table.Tr>
-                  <Table.Td colSpan={5}>
+                  <Table.Td colSpan={6}>
                     <Text ta="center" c="dimmed">No models found</Text>
                   </Table.Td>
                 </Table.Tr>
@@ -272,6 +320,9 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
                   ) : (
                     <Text c="dimmed">-</Text>
                   )}
+                </Table.Td>
+                <Table.Td>
+                  {renderProviderInfo(model)}
                 </Table.Td>
                 <Table.Td>
                   <Badge color={model.isActive ? 'green' : 'gray'} variant="light">

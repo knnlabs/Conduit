@@ -5,7 +5,7 @@
 namespace ConduitLLM.Configuration.Migrations
 {
     /// <inheritdoc />
-    public partial class RemoveApiParametersColumns : Migration
+    public partial class AddParametersToModel : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -16,25 +16,25 @@ namespace ConduitLLM.Configuration.Migrations
 
             migrationBuilder.DropColumn(
                 name: "ApiParameters",
-                table: "Models");
-
-            migrationBuilder.DropColumn(
-                name: "ApiParameters",
                 table: "ModelProviderMappings");
+
+            migrationBuilder.RenameColumn(
+                name: "ApiParameters",
+                table: "Models",
+                newName: "Parameters");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "ApiParameters",
-                table: "ModelSeries",
-                type: "text",
-                nullable: true);
+            migrationBuilder.RenameColumn(
+                name: "Parameters",
+                table: "Models",
+                newName: "ApiParameters");
 
             migrationBuilder.AddColumn<string>(
                 name: "ApiParameters",
-                table: "Models",
+                table: "ModelSeries",
                 type: "text",
                 nullable: true);
 

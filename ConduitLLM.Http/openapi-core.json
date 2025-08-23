@@ -1028,7 +1028,7 @@
         "tags": [
           "Discovery"
         ],
-        "summary": "Gets all discovered models and their capabilities, filtered by virtual key permissions.",
+        "summary": "Gets all discovered models and their capabilities for authenticated virtual keys.",
         "parameters": [
           {
             "name": "capability",
@@ -1052,6 +1052,31 @@
           "Discovery"
         ],
         "summary": "Gets all available capabilities in the system.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/discovery/models/{model}/parameters": {
+      "get": {
+        "tags": [
+          "Discovery"
+        ],
+        "summary": "Gets UI parameters for a specific model to enable dynamic UI generation.",
+        "description": "This endpoint returns the UI-focused parameter definitions from the ModelSeries.Parameters field,\nwhich contains JSON objects defining sliders, selects, textareas, and other UI controls.\nThis allows clients to dynamically generate appropriate UI controls without Admin API access.",
+        "parameters": [
+          {
+            "name": "model",
+            "in": "path",
+            "description": "The model alias or identifier to get parameters for",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -4141,7 +4166,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": false
+        "additionalProperties": { }
       },
       "JsonNode": {
         "type": "object",
@@ -4757,7 +4782,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": false
+        "additionalProperties": { }
       },
       "VideoGenerationResponse": {
         "type": "object",

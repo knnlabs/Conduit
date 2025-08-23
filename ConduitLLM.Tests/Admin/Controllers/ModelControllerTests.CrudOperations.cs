@@ -96,6 +96,61 @@ namespace ConduitLLM.Tests.Admin.Controllers
         }
 
         [Fact]
+        public async Task CreateModel_WithModelParameters_ShouldReturnCreatedWithParameters()
+        {
+            // Arrange
+            var createDto = new CreateModelDto
+            {
+                Name = "model-with-params",
+                ModelSeriesId = 1,
+                ModelCapabilitiesId = 1,
+                ModelParameters = "{\"temperature\": {\"min\": 0, \"max\": 1.5}}",
+                IsActive = true
+            };
+
+            var author = new ModelAuthor { Id = 1, Name = "Test Author" };
+            var series = new ModelSeries { Id = 1, Name = "Test Series", Author = author };
+            var capabilities = new ModelCapabilities { Id = 1, SupportsChat = true, MaxTokens = 4096 };
+
+            var createdModel = new Model
+            {
+                Id = 1,
+                Name = createDto.Name,
+                ModelSeriesId = createDto.ModelSeriesId,
+                Series = series,
+                ModelCapabilitiesId = createDto.ModelCapabilitiesId,
+                Capabilities = capabilities,
+                ModelParameters = createDto.ModelParameters,
+                IsActive = createDto.IsActive ?? true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _mockRepository.Setup(r => r.GetByNameAsync(createDto.Name))
+                .ReturnsAsync((Model?)null);
+            _mockRepository.Setup(r => r.CreateAsync(It.IsAny<Model>()))
+                .ReturnsAsync((Model m) => {
+                    m.Id = 1;
+                    return m;
+                });
+            _mockRepository.Setup(r => r.GetByIdWithDetailsAsync(1))
+                .ReturnsAsync(createdModel);
+
+            // Act
+            var result = await _controller.CreateModel(createDto);
+
+            // Assert
+            result.Should().BeOfType<CreatedAtActionResult>();
+            var createdResult = result as CreatedAtActionResult;
+            var dto = createdResult!.Value as ModelDto;
+            dto.Should().NotBeNull();
+            dto!.ModelParameters.Should().Be("{\"temperature\": {\"min\": 0, \"max\": 1.5}}");
+
+            _mockRepository.Verify(r => r.CreateAsync(It.Is<Model>(m => 
+                m.ModelParameters == createDto.ModelParameters)), Times.Once);
+        }
+
+        [Fact]
         public async Task CreateModel_WithNullData_ShouldReturnBadRequest()
         {
             // Arrange
@@ -296,6 +351,128 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             _mockRepository.Verify(r => r.GetByIdWithDetailsAsync(modelId), Times.Once);
             _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Model>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task UpdateModel_WithModelParameters_ShouldUpdateParameters()
+        {
+            // Arrange
+            var modelId = 1;
+            var updateDto = new UpdateModelDto
+            {
+                ModelParameters = "{\"temperature\": {\"min\": 0, \"max\": 2}}"
+            };
+
+            var author = new ModelAuthor { Id = 1, Name = "Test Author" };
+            var series = new ModelSeries { Id = 1, Name = "Test Series", Author = author };
+            var capabilities = new ModelCapabilities { Id = 1, SupportsChat = true, MaxTokens = 4096 };
+
+            var existingModel = new Model
+            {
+                Id = modelId,
+                Name = "test-model",
+                ModelSeriesId = 1,
+                Series = series,
+                ModelCapabilitiesId = 1,
+                Capabilities = capabilities,
+                ModelParameters = null, // No existing parameters
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow.AddDays(-1),
+                UpdatedAt = DateTime.UtcNow.AddDays(-1)
+            };
+
+            var updatedModel = new Model
+            {
+                Id = modelId,
+                Name = existingModel.Name,
+                ModelSeriesId = 1,
+                Series = series,
+                ModelCapabilitiesId = 1,
+                Capabilities = capabilities,
+                ModelParameters = updateDto.ModelParameters,
+                IsActive = existingModel.IsActive,
+                CreatedAt = existingModel.CreatedAt,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _mockRepository.Setup(r => r.GetByIdWithDetailsAsync(modelId))
+                .ReturnsAsync(existingModel);
+            _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Model>()))
+                .ReturnsAsync(updatedModel);
+
+            // Act
+            var result = await _controller.UpdateModel(modelId, updateDto);
+
+            // Assert
+            result.Should().BeOfType<OkObjectResult>();
+            var okResult = result as OkObjectResult;
+            var dto = okResult!.Value as ModelDto;
+            dto.Should().NotBeNull();
+            dto!.ModelParameters.Should().Be("{\"temperature\": {\"min\": 0, \"max\": 2}}");
+
+            _mockRepository.Verify(r => r.UpdateAsync(It.Is<Model>(m => 
+                m.ModelParameters == updateDto.ModelParameters)), Times.Once);
+        }
+
+        [Fact]
+        public async Task UpdateModel_WithEmptyModelParameters_ShouldClearParameters()
+        {
+            // Arrange
+            var modelId = 1;
+            var updateDto = new UpdateModelDto
+            {
+                ModelParameters = "" // Empty string to clear parameters
+            };
+
+            var author = new ModelAuthor { Id = 1, Name = "Test Author" };
+            var series = new ModelSeries { Id = 1, Name = "Test Series", Author = author };
+            var capabilities = new ModelCapabilities { Id = 1, SupportsChat = true, MaxTokens = 4096 };
+
+            var existingModel = new Model
+            {
+                Id = modelId,
+                Name = "test-model",
+                ModelSeriesId = 1,
+                Series = series,
+                ModelCapabilitiesId = 1,
+                Capabilities = capabilities,
+                ModelParameters = "{\"temperature\": {\"min\": 0, \"max\": 1}}", // Has existing parameters
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow.AddDays(-1),
+                UpdatedAt = DateTime.UtcNow.AddDays(-1)
+            };
+
+            var updatedModel = new Model
+            {
+                Id = modelId,
+                Name = existingModel.Name,
+                ModelSeriesId = 1,
+                Series = series,
+                ModelCapabilitiesId = 1,
+                Capabilities = capabilities,
+                ModelParameters = null, // Parameters cleared
+                IsActive = existingModel.IsActive,
+                CreatedAt = existingModel.CreatedAt,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _mockRepository.Setup(r => r.GetByIdWithDetailsAsync(modelId))
+                .ReturnsAsync(existingModel);
+            _mockRepository.Setup(r => r.UpdateAsync(It.IsAny<Model>()))
+                .ReturnsAsync(updatedModel);
+
+            // Act
+            var result = await _controller.UpdateModel(modelId, updateDto);
+
+            // Assert
+            result.Should().BeOfType<OkObjectResult>();
+            var okResult = result as OkObjectResult;
+            var dto = okResult!.Value as ModelDto;
+            dto.Should().NotBeNull();
+            dto!.ModelParameters.Should().BeNull();
+
+            _mockRepository.Verify(r => r.UpdateAsync(It.Is<Model>(m => 
+                m.ModelParameters == null)), Times.Once);
         }
 
         [Fact]

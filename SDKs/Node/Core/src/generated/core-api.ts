@@ -759,7 +759,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Gets all discovered models and their capabilities, filtered by virtual key permissions. */
+    /** Gets all discovered models and their capabilities for authenticated virtual keys. */
     get: {
       parameters: {
         query?: {
@@ -802,6 +802,48 @@ export interface paths {
         query?: never;
         header?: never;
         path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/discovery/models/{model}/parameters": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Gets UI parameters for a specific model to enable dynamic UI generation.
+     * @description This endpoint returns the UI-focused parameter definitions from the ModelSeries.Parameters field,
+     *     which contains JSON objects defining sliders, selects, textareas, and other UI controls.
+     *     This allows clients to dynamically generate appropriate UI controls without Admin API access.
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The model alias or identifier to get parameters for */
+          model: string;
+        };
         cookie?: never;
       };
       requestBody?: never;
@@ -3407,6 +3449,8 @@ export interface components {
       image?: string | null;
       mask?: string | null;
       operation?: string | null;
+    } & {
+      [key: string]: unknown;
     };
     JsonNode: {
       options?: components["schemas"]["JsonNodeOptions"];
@@ -3613,6 +3657,8 @@ export interface components {
       webhook_headers?: {
         [key: string]: string;
       } | null;
+    } & {
+      [key: string]: unknown;
     };
     VideoGenerationResponse: {
       /** Format: int64 */
