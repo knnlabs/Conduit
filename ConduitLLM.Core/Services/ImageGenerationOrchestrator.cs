@@ -2,6 +2,7 @@ using System.Diagnostics;
 using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Validation;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -27,6 +28,7 @@ namespace ConduitLLM.Core.Services
         private readonly ICostCalculationService _costCalculationService;
         private readonly IProviderService _providerService;
         private readonly ImageGenerationPerformanceConfiguration _performanceConfig;
+        private readonly MinimalParameterValidator _parameterValidator;
         private readonly ILogger<ImageGenerationOrchestrator> _logger;
 
         public ImageGenerationOrchestrator(
@@ -41,6 +43,7 @@ namespace ConduitLLM.Core.Services
             ICostCalculationService costCalculationService,
             IProviderService providerService,
             IOptions<ImageGenerationPerformanceConfiguration> performanceOptions,
+            MinimalParameterValidator parameterValidator,
             ILogger<ImageGenerationOrchestrator> logger)
         {
             _clientFactory = clientFactory;
@@ -54,6 +57,7 @@ namespace ConduitLLM.Core.Services
             _costCalculationService = costCalculationService;
             _providerService = providerService;
             _performanceConfig = performanceOptions.Value;
+            _parameterValidator = parameterValidator;
             _logger = logger;
         }
 
@@ -109,11 +113,15 @@ namespace ConduitLLM.Core.Services
                     Quality = request.Request.Quality,
                     Style = request.Request.Style,
                     ResponseFormat = request.Request.ResponseFormat ?? "url",
-                    User = request.Request.User
+                    User = request.Request.User,
+                    ExtensionData = request.Request.ExtensionData // Pass through any additional parameters
                 };
                 
+                // Validate parameters (minimal, provider-agnostic)
+                _parameterValidator.ValidateImageParameters(generationRequest);
+                
                 _logger.LogInformation("Generating {Count} images with {Provider} using model {Model}", 
-                    request.Request.N, modelInfo.Provider, modelInfo.ModelId);
+                    generationRequest.N, modelInfo.Provider, modelInfo.ModelId);
                 
                 // Generate images with cancellation support
                 var response = await client.CreateImageAsync(generationRequest, cancellationToken: taskCts.Token);

@@ -24,6 +24,9 @@ namespace ConduitLLM.Core.Routing
                 throw new ArgumentNullException(nameof(request));
             }
 
+            // Validate parameters (minimal, provider-agnostic) if validator is available
+            _parameterValidator?.ValidateTextParameters(request);
+
             // Determine routing strategy
             var strategy = DetermineRoutingStrategy(routingStrategy);
             string? originalModelRequested = request.Model;

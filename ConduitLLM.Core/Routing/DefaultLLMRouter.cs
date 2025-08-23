@@ -4,6 +4,7 @@ using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Routing;
+using ConduitLLM.Core.Validation;
 
 using Microsoft.Extensions.Logging;
 
@@ -99,6 +100,7 @@ namespace ConduitLLM.Core.Routing
         private readonly ILogger<DefaultLLMRouter> _logger;
         private readonly IModelCapabilityDetector? _capabilityDetector;
         private readonly IEmbeddingCache? _embeddingCache;
+        private readonly MinimalParameterValidator? _parameterValidator;
 
 
         /// <summary>
@@ -131,16 +133,19 @@ namespace ConduitLLM.Core.Routing
         /// <param name="logger">Logger instance</param>
         /// <param name="capabilityDetector">Optional detector for model capabilities like vision support</param>
         /// <param name="embeddingCache">Optional cache for embedding responses</param>
+        /// <param name="parameterValidator">Optional validator for request parameters</param>
         public DefaultLLMRouter(
             ILLMClientFactory clientFactory,
             ILogger<DefaultLLMRouter> logger,
             IModelCapabilityDetector? capabilityDetector = null,
-            IEmbeddingCache? embeddingCache = null)
+            IEmbeddingCache? embeddingCache = null,
+            MinimalParameterValidator? parameterValidator = null)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _capabilityDetector = capabilityDetector;
             _embeddingCache = embeddingCache;
+            _parameterValidator = parameterValidator;
         }
 
         /// <summary>
@@ -151,13 +156,15 @@ namespace ConduitLLM.Core.Routing
         /// <param name="config">Router configuration</param>
         /// <param name="capabilityDetector">Optional detector for model capabilities like vision support</param>
         /// <param name="embeddingCache">Optional cache for embedding responses</param>
+        /// <param name="parameterValidator">Optional validator for request parameters</param>
         public DefaultLLMRouter(
             ILLMClientFactory clientFactory,
             ILogger<DefaultLLMRouter> logger,
             RouterConfig config,
             IModelCapabilityDetector? capabilityDetector = null,
-            IEmbeddingCache? embeddingCache = null)
-            : this(clientFactory, logger, capabilityDetector, embeddingCache)
+            IEmbeddingCache? embeddingCache = null,
+            MinimalParameterValidator? parameterValidator = null)
+            : this(clientFactory, logger, capabilityDetector, embeddingCache, parameterValidator)
         {
             Initialize(config);
         }

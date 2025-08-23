@@ -41,6 +41,9 @@ public partial class Program
         
         builder.Services.AddScoped<ConduitLLM.Core.Interfaces.ICostCalculationService, ConduitLLM.Core.Services.CostCalculationService>();
 
+        // Parameter validation service for minimal, provider-agnostic validation
+        builder.Services.AddScoped<ConduitLLM.Core.Validation.MinimalParameterValidator>();
+
         // Virtual key service (Configuration layer - used by RealtimeUsageTracker)
         builder.Services.AddScoped<ConduitLLM.Configuration.Interfaces.IVirtualKeyService, ConduitLLM.Configuration.Services.VirtualKeyService>();
 

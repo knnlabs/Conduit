@@ -32,13 +32,31 @@ namespace ConduitLLM.Providers.MiniMax
             {
                 using var httpClient = CreateVideoHttpClient(apiKey);
                 
-                var miniMaxRequest = new MiniMaxVideoGenerationRequest
+                // Create the request as a dictionary to support extension data
+                var miniMaxRequest = new Dictionary<string, object?>
                 {
-                    Model = request.Model ?? "video-01",
-                    Prompt = request.Prompt,
-                    VideoLength = request.Duration ?? 6, // Default to 6 seconds
-                    Resolution = MapSizeToResolution(request.Size)
+                    ["model"] = request.Model ?? "video-01",
+                    ["prompt"] = request.Prompt
                 };
+
+                // Add optional parameters with MiniMax-specific names
+                if (request.Duration.HasValue)
+                    miniMaxRequest["video_length"] = request.Duration.Value;
+                if (!string.IsNullOrEmpty(request.Size))
+                    miniMaxRequest["resolution"] = MapSizeToResolution(request.Size);
+
+                // Pass through any extension data (model-specific parameters)
+                if (request.ExtensionData != null)
+                {
+                    foreach (var kvp in request.ExtensionData)
+                    {
+                        // Don't override standard parameters
+                        if (!miniMaxRequest.ContainsKey(kvp.Key))
+                        {
+                            miniMaxRequest[kvp.Key] = kvp.Value;
+                        }
+                    }
+                }
 
                 var endpoint = $"{_baseUrl}/v1/video_generation";
                 

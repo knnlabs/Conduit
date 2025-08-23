@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Core.Models
@@ -94,5 +95,25 @@ namespace ConduitLLM.Core.Models
         /// </summary>
         [JsonPropertyName("operation")]
         public string Operation { get; set; } = "generate";
+
+        /// <summary>
+        /// Additional model-specific parameters that are passed through to the provider API.
+        /// These parameters are not explicitly mapped but are forwarded as-is to support
+        /// various open-source models with different parameter requirements.
+        /// Examples include negative_prompt, seed, guidance_scale, num_inference_steps, etc.
+        /// </summary>
+        /// <remarks>
+        /// This property captures any JSON properties not explicitly mapped to other properties.
+        /// Common parameters for open-source models include:
+        /// - negative_prompt: Text describing what to avoid in the generation
+        /// - seed: Random seed for reproducible results
+        /// - guidance_scale: How closely to follow the prompt (typically 1-20)
+        /// - num_inference_steps: Number of denoising steps (typically 20-100)
+        /// - sampler: Sampling method (e.g., "DPM++ 2M Karras", "Euler a")
+        /// - scheduler: Scheduling algorithm (e.g., "DDIM", "PNDM")
+        /// - width/height: Explicit dimensions instead of size string
+        /// </remarks>
+        [JsonExtensionData]
+        public Dictionary<string, JsonElement>? ExtensionData { get; set; }
     }
 }

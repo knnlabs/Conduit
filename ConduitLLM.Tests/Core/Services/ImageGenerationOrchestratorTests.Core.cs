@@ -1,6 +1,7 @@
 using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
+using ConduitLLM.Core.Validation;
 
 using MassTransit;
 
@@ -25,6 +26,7 @@ namespace ConduitLLM.Tests.Core.Services
         private readonly Mock<ConduitLLM.Configuration.Interfaces.IProviderService> _mockProviderService;
         private readonly Mock<ILogger<ImageGenerationOrchestrator>> _mockLogger;
         private readonly Mock<IOptions<ImageGenerationPerformanceConfiguration>> _mockPerformanceOptions;
+        private readonly Mock<MinimalParameterValidator> _mockParameterValidator;
         private readonly ImageGenerationPerformanceConfiguration _performanceConfig;
         private readonly ImageGenerationOrchestrator _orchestrator;
 
@@ -42,6 +44,7 @@ namespace ConduitLLM.Tests.Core.Services
             _mockProviderService = new Mock<ConduitLLM.Configuration.Interfaces.IProviderService>();
             _mockLogger = new Mock<ILogger<ImageGenerationOrchestrator>>();
             _mockPerformanceOptions = new Mock<IOptions<ImageGenerationPerformanceConfiguration>>();
+            _mockParameterValidator = new Mock<MinimalParameterValidator>(new Mock<ILogger<MinimalParameterValidator>>().Object);
 
             _performanceConfig = new ImageGenerationPerformanceConfiguration
             {
@@ -72,6 +75,7 @@ namespace ConduitLLM.Tests.Core.Services
                 _mockCostCalculationService.Object,
                 _mockProviderService.Object,
                 _mockPerformanceOptions.Object,
+                _mockParameterValidator.Object,
                 _mockLogger.Object);
         }
     }

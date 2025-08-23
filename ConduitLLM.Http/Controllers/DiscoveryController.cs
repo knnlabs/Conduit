@@ -133,8 +133,8 @@ namespace ConduitLLM.Http.Controllers
                         display_name = mapping.ModelAlias,
                         
                         // Metadata
-                        description = mapping.Model.Description ?? string.Empty,
-                        model_card_url = mapping.Model.ModelCardUrl ?? string.Empty,
+                        description = mapping.Model?.Description ?? string.Empty,
+                        model_card_url = mapping.Model?.ModelCardUrl ?? string.Empty,
                         max_tokens = caps.MaxTokens,
                         tokenizer_type = caps.TokenizerType.ToString().ToLowerInvariant(),
                         
