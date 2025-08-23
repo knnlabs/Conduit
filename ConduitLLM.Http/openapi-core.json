@@ -2017,7 +2017,7 @@
         "tags": [
           "ProviderModels"
         ],
-        "summary": "Gets available models for a specified provider",
+        "summary": "Gets models that are compatible with a specified provider based on provider type",
         "parameters": [
           {
             "name": "providerId",
@@ -2027,15 +2027,6 @@
             "schema": {
               "type": "integer",
               "format": "int32"
-            }
-          },
-          {
-            "name": "forceRefresh",
-            "in": "query",
-            "description": "Whether to bypass cache and force refresh",
-            "schema": {
-              "type": "boolean",
-              "default": false
             }
           }
         ],
@@ -2071,20 +2062,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": { }
-              },
-              "application/json": {
-                "schema": { }
-              },
-              "text/json": {
-                "schema": { }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
             "content": {
               "text/plain": {
                 "schema": { }

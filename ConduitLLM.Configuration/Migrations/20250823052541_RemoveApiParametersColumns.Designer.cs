@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ConduitLLM.Configuration.Migrations
 {
     [DbContext(typeof(ConduitDbContext))]
-    [Migration("20250822033650_FixRemainingVideoParameterNumericValues")]
-    partial class FixRemainingVideoParameterNumericValues
+    [Migration("20250823052541_RemoveApiParametersColumns")]
+    partial class RemoveApiParametersColumns
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -880,9 +880,6 @@ namespace ConduitLLM.Configuration.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ApiParameters")
-                        .HasColumnType("text");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1304,9 +1301,6 @@ namespace ConduitLLM.Configuration.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ApiParameters")
-                        .HasColumnType("text");
-
                     b.Property<string>("CapabilityOverrides")
                         .HasColumnType("text");
 
@@ -1381,9 +1375,6 @@ namespace ConduitLLM.Configuration.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ApiParameters")
-                        .HasColumnType("text");
 
                     b.Property<int>("AuthorId")
                         .HasColumnType("integer");

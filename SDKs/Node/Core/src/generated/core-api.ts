@@ -1868,13 +1868,10 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Gets available models for a specified provider */
+    /** Gets models that are compatible with a specified provider based on provider type */
     get: {
       parameters: {
-        query?: {
-          /** @description Whether to bypass cache and force refresh */
-          forceRefresh?: boolean;
-        };
+        query?: never;
         header?: never;
         path: {
           /** @description ID of the provider */
@@ -1897,17 +1894,6 @@ export interface paths {
         };
         /** @description Not Found */
         404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": unknown;
-            "application/json": unknown;
-            "text/json": unknown;
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
           headers: {
             [name: string]: unknown;
           };

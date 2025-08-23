@@ -285,17 +285,7 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
                     continue;
                 }
                 
-                // Merge API parameters from ModelSeries and Model if ModelId is set
-                if (mapping.ModelId > 0 && modelLookup.TryGetValue(mapping.ModelId, out var model))
-                {
-                    var mergedParams = MergeApiParameters(model.Series?.ApiParameters, model.ApiParameters);
-                    if (!string.IsNullOrEmpty(mergedParams))
-                    {
-                        mapping.ApiParameters = mergedParams;
-                        _logger.LogDebug("Merged API parameters for {ModelAlias}: {Parameters}", 
-                            mapping.ModelAlias, mergedParams);
-                    }
-                }
+                // ApiParameters removed - using full parameter pass-through now
 
                 // Set timestamps
                 mapping.CreatedAt = DateTime.UtcNow;
@@ -336,56 +326,4 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
         return (created, errors);
     }
     
-    /// <summary>
-    /// Merges API parameters from ModelSeries and Model levels.
-    /// </summary>
-    /// <param name="seriesParams">JSON array of series-level parameters</param>
-    /// <param name="modelParams">JSON array of model-level parameters</param>
-    /// <returns>Merged JSON array of unique parameters</returns>
-    private string? MergeApiParameters(string? seriesParams, string? modelParams)
-    {
-        try
-        {
-            var mergedSet = new HashSet<string>();
-            
-            // Parse and add series parameters
-            if (!string.IsNullOrEmpty(seriesParams))
-            {
-                var seriesArray = JsonSerializer.Deserialize<string[]>(seriesParams);
-                if (seriesArray != null)
-                {
-                    foreach (var param in seriesArray)
-                    {
-                        mergedSet.Add(param);
-                    }
-                }
-            }
-            
-            // Parse and add model parameters
-            if (!string.IsNullOrEmpty(modelParams))
-            {
-                var modelArray = JsonSerializer.Deserialize<string[]>(modelParams);
-                if (modelArray != null)
-                {
-                    foreach (var param in modelArray)
-                    {
-                        mergedSet.Add(param);
-                    }
-                }
-            }
-            
-            // Return merged parameters as JSON array
-            if (mergedSet.Count > 0)
-            {
-                return JsonSerializer.Serialize(mergedSet.OrderBy(p => p).ToArray());
-            }
-            
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to merge API parameters");
-            return null;
-        }
-    }
 }
