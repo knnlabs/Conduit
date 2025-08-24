@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { Modal, TextInput, Select, Switch, Button, Stack, Group, Textarea, Alert, Text } from '@mantine/core';
-import { CodeHighlight } from '@mantine/code-highlight';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { useAdminClient } from '@/lib/client/adminClient';
+import { ParameterPreview } from '@/components/parameters/ParameterPreview';
 import type { ModelDto, UpdateModelDto, ModelSeriesDto, ModelCapabilitiesDto } from '@knn_labs/conduit-admin-client';
 
 // Extend ModelDto to include modelParameters until SDK types are updated
@@ -33,7 +33,6 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
   const [series, setSeries] = useState<ModelSeriesDto[]>([]);
   const [capabilities, setCapabilities] = useState<ModelCapabilitiesDto[]>([]);
   const [jsonError, setJsonError] = useState<string | null>(null);
-  const [showJsonPreview, setShowJsonPreview] = useState(false);
   const { executeWithAdmin } = useAdminClient();
 
   const form = useForm<ExtendedUpdateModelDto>({
@@ -207,22 +206,20 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
 
 
           <Stack gap="xs">
-            <Group justify="space-between">
-              <Text size="sm" fw={500}>
-                Model Parameters (JSON)
-              </Text>
-              <Button
-                size="xs"
-                variant="subtle"
-                onClick={() => setShowJsonPreview(!showJsonPreview)}
-              >
-                {showJsonPreview ? 'Hide' : 'Show'} Preview
-              </Button>
-            </Group>
+            <Text size="sm" fw={500}>
+              Model Parameters (JSON)
+            </Text>
             
             <Text size="xs" c="dimmed">
               Optional: Override series-level parameters for this specific model
             </Text>
+            
+            <ParameterPreview 
+              parametersJson={form.values.modelParameters ?? ''}
+              context="chat"
+              label="Preview UI Components"
+              maxHeight={300}
+            />
             
             <Textarea
               placeholder="JSON parameters for UI generation (leave empty to use series defaults)..."
@@ -235,14 +232,6 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
               }}
               error={jsonError}
             />
-
-            {showJsonPreview && form.values.modelParameters && !jsonError && (
-              <CodeHighlight
-                code={form.values.modelParameters}
-                language="json"
-                withCopyButton={false}
-              />
-            )}
 
             {jsonError && (
               <Alert icon={<IconAlertCircle size={16} />} color="red" variant="light">
