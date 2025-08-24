@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Modal, Stack, Group, Text, Badge, Divider, Loader } from '@mantine/core';
+import { Modal, Stack, Group, Text, Badge, Divider, Loader, ScrollArea } from '@mantine/core';
+import { CodeHighlight } from '@mantine/code-highlight';
 import { notifications } from '@mantine/notifications';
 import type { ModelDto } from '@knn_labs/conduit-admin-client';
 import { useAdminClient } from '@/lib/client/adminClient';
@@ -9,10 +10,16 @@ import { getModelPrimaryType, getModelTypeBadgeColor } from '@/utils/modelHelper
 import { useModelSeriesById } from '@/hooks/useModelSeries';
 import { getProviderTypeName } from '@/constants/providers';
 import { getErrorMessage, isProviderMapping } from '@/utils/typeGuards';
+import { ParameterPreview } from '@/components/parameters/ParameterPreview';
+
+// Extend ModelDto to include modelParameters until SDK types are updated
+interface ExtendedModelDto extends ModelDto {
+  modelParameters?: string;
+}
 
 interface ViewModelModalProps {
   isOpen: boolean;
-  model: ModelDto;
+  model: ExtendedModelDto;
   onClose: () => void;
 }
 
@@ -35,7 +42,7 @@ export function ViewModelModal({ isOpen, model, onClose }: ViewModelModalProps) 
   const [loadingProviders, setLoadingProviders] = useState(false);
   const [capabilitiesName, setCapabilitiesName] = useState<string | null>(null);
   const { executeWithAdmin } = useAdminClient();
-  const { seriesName } = useModelSeriesById(model.modelSeriesId);
+  const { seriesName, seriesParameters } = useModelSeriesById(model.modelSeriesId);
 
 
 
@@ -213,6 +220,52 @@ export function ViewModelModal({ isOpen, model, onClose }: ViewModelModalProps) 
             return <Text size="sm" c="dimmed">No provider mappings found</Text>;
           })()}
         </div>
+
+        {(() => {
+          // Use model parameters if available, otherwise fall back to series parameters
+          const parametersToShow = model.modelParameters ?? seriesParameters;
+          
+          if (parametersToShow) {
+            return (
+              <>
+                <Divider />
+                <Stack gap="xs">
+                  <Text fw={500}>UI Parameters:</Text>
+                  {model.modelParameters && (
+                    <Text size="xs" c="dimmed">
+                      Using model-specific parameters
+                    </Text>
+                  )}
+                  {!model.modelParameters && seriesParameters && (
+                    <Text size="xs" c="dimmed">
+                      Using series default parameters
+                    </Text>
+                  )}
+                  <ParameterPreview 
+                    parametersJson={parametersToShow}
+                    context="chat"
+                    label="Preview UI Components"
+                    maxHeight={300}
+                  />
+                  <ScrollArea h={200}>
+                    <CodeHighlight
+                      code={(() => {
+                        try {
+                          return JSON.stringify(JSON.parse(parametersToShow), null, 2);
+                        } catch {
+                          return parametersToShow;
+                        }
+                      })()}
+                      language="json"
+                      withCopyButton={false}
+                    />
+                  </ScrollArea>
+                </Stack>
+              </>
+            );
+          }
+          return null;
+        })()}
 
         <Divider />
 

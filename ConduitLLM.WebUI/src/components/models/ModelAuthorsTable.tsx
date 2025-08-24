@@ -25,6 +25,7 @@ export function ModelAuthorsTable({ onRefresh }: ModelAuthorsTableProps) {
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [seriesCounts, setSeriesCounts] = useState<Record<number, number>>({});
+  const [modelCounts, setModelCounts] = useState<Record<number, number>>({});
   
   const { executeWithAdmin } = useAdminClient();
 
@@ -50,7 +51,8 @@ export function ModelAuthorsTable({ onRefresh }: ModelAuthorsTableProps) {
   };
 
   const loadSeriesCounts = async (authorsList: ModelAuthorDto[]) => {
-    const counts: Record<number, number> = {};
+    const seriesCountsMap: Record<number, number> = {};
+    const modelCountsMap: Record<number, number> = {};
     
     await Promise.all(
       authorsList.map(async (author) => {
@@ -59,16 +61,37 @@ export function ModelAuthorsTable({ onRefresh }: ModelAuthorsTableProps) {
             const series = await executeWithAdmin(client => 
               client.modelAuthors.getSeries(author.id as number)
             );
-            counts[author.id] = series.length;
+            seriesCountsMap[author.id] = series.length;
+            
+            // Load model counts for each series
+            const modelCountPromises = series.map(async (s) => {
+              if (s.id) {
+                try {
+                  const models = await executeWithAdmin(client => 
+                    client.modelSeries.getModels(s.id as number)
+                  );
+                  return models.length;
+                } catch (error) {
+                  console.error(`Failed to load models for series ${s.id}:`, error);
+                  return 0;
+                }
+              }
+              return 0;
+            });
+            
+            const modelCountsPerSeries = await Promise.all(modelCountPromises);
+            modelCountsMap[author.id] = modelCountsPerSeries.reduce((sum, count) => sum + count, 0);
           } catch (error) {
             console.error(`Failed to load series count for author ${author.id}:`, error);
-            counts[author.id] = 0;
+            seriesCountsMap[author.id] = 0;
+            modelCountsMap[author.id] = 0;
           }
         }
       })
     );
     
-    setSeriesCounts(counts);
+    setSeriesCounts(seriesCountsMap);
+    setModelCounts(modelCountsMap);
   };
 
   useEffect(() => {
@@ -126,6 +149,7 @@ export function ModelAuthorsTable({ onRefresh }: ModelAuthorsTableProps) {
             <Table.Th>Name</Table.Th>
             <Table.Th>Website</Table.Th>
             <Table.Th>Series Count</Table.Th>
+            <Table.Th>Model Count</Table.Th>
             <Table.Th>Actions</Table.Th>
           </Table.Tr>
         </Table.Thead>
@@ -134,7 +158,7 @@ export function ModelAuthorsTable({ onRefresh }: ModelAuthorsTableProps) {
             if (loading) {
               return (
                 <Table.Tr>
-                  <Table.Td colSpan={4}>
+                  <Table.Td colSpan={5}>
                     <Text ta="center" c="dimmed">Loading...</Text>
                   </Table.Td>
                 </Table.Tr>
@@ -143,7 +167,7 @@ export function ModelAuthorsTable({ onRefresh }: ModelAuthorsTableProps) {
             if (filteredAuthors.length === 0) {
               return (
                 <Table.Tr>
-                  <Table.Td colSpan={4}>
+                  <Table.Td colSpan={5}>
                     <Text ta="center" c="dimmed">No authors found</Text>
                   </Table.Td>
                 </Table.Tr>
@@ -166,6 +190,11 @@ export function ModelAuthorsTable({ onRefresh }: ModelAuthorsTableProps) {
                 <Table.Td>
                   <Badge variant="light">
                     {author.id ? (seriesCounts[author.id] ?? 0) : 0} series
+                  </Badge>
+                </Table.Td>
+                <Table.Td>
+                  <Badge variant="light" color="blue">
+                    {author.id ? (modelCounts[author.id] ?? 0) : 0} models
                   </Badge>
                 </Table.Td>
                 <Table.Td>

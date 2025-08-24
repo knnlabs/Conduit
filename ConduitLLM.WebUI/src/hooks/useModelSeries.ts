@@ -81,10 +81,11 @@ export function useModelSeries(models: ModelDto[]) {
 }
 
 /**
- * Hook to fetch a single model series name
+ * Hook to fetch a single model series name and parameters
  */
 export function useModelSeriesById(seriesId: number | null | undefined) {
   const [seriesName, setSeriesName] = useState<string | null>(null);
+  const [seriesParameters, setSeriesParameters] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const { executeWithAdmin } = useAdminClient();
@@ -92,10 +93,11 @@ export function useModelSeriesById(seriesId: number | null | undefined) {
   useEffect(() => {
     if (!seriesId) {
       setSeriesName(null);
+      setSeriesParameters(null);
       return;
     }
 
-    const loadSeriesName = async () => {
+    const loadSeriesData = async () => {
       setLoading(true);
       setError(null);
 
@@ -104,10 +106,12 @@ export function useModelSeriesById(seriesId: number | null | undefined) {
           client.modelSeries.get(seriesId)
         );
         setSeriesName(series.name ?? `Series ${seriesId}`);
+        setSeriesParameters(series.parameters ?? null);
       } catch (err) {
-        const error = err instanceof Error ? err : new Error('Failed to load series name');
+        const error = err instanceof Error ? err : new Error('Failed to load series data');
         setError(error);
         setSeriesName(`Series ${seriesId}`);
+        setSeriesParameters(null);
         
         console.warn(`Failed to load series ${seriesId}:`, error.message);
       } finally {
@@ -115,9 +119,9 @@ export function useModelSeriesById(seriesId: number | null | undefined) {
       }
     };
 
-    void loadSeriesName();
+    void loadSeriesData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seriesId]);
 
-  return { seriesName, loading, error };
+  return { seriesName, seriesParameters, loading, error };
 }
