@@ -9876,6 +9876,8 @@ export interface components {
       modelCapabilitiesId?: number;
       /** @description Gets or sets whether the model should be active upon creation. */
       isActive?: boolean | null;
+      /** @description Gets or sets the model-specific parameter configuration for UI generation. */
+      modelParameters?: string | null;
     };
     /** @description Data transfer object representing a canonical AI model in the system. */
     "ConduitLLM.Admin.Models.Models.ModelDto": {
@@ -9910,6 +9912,8 @@ export interface components {
        */
       updatedAt?: string;
       series?: components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto"];
+      /** @description Gets or sets the model-specific parameter configuration for UI generation. */
+      modelParameters?: string | null;
     };
     /** @description Extended model DTO that includes the provider-specific identifier for the model. */
     "ConduitLLM.Admin.Models.Models.ModelWithProviderIdDto": {
@@ -9944,6 +9948,8 @@ export interface components {
        */
       updatedAt?: string;
       series?: components["schemas"]["ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto"];
+      /** @description Gets or sets the model-specific parameter configuration for UI generation. */
+      modelParameters?: string | null;
       /**
        * @description Gets or sets the provider-specific identifier for this model.
        * @example gpt-4-0613
@@ -9971,6 +9977,8 @@ export interface components {
       modelCapabilitiesId?: number | null;
       /** @description Gets or sets the new activation status for the model. */
       isActive?: boolean | null;
+      /** @description Gets or sets the model-specific parameter configuration for UI generation. */
+      modelParameters?: string | null;
     };
     "ConduitLLM.Configuration.DTOs.Audio.AudioCostDto": {
       /** Format: int32 */

@@ -114,13 +114,8 @@ export interface ChatParameters {
   stream?: boolean;
 }
 
-export interface ChatPreset {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  parameters: Partial<ChatParameters>;
-}
+// Re-export ChatPreset type from Core SDK
+export type { ChatPreset, ChatPresetParameters } from '@knn_labs/conduit-core-client';
 
 export interface ConversationStarter {
   id: string;

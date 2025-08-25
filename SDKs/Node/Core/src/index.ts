@@ -345,3 +345,17 @@ export * from './models/metadata';
 export * from './models/common-types';
 export * from './models/providerType';
 
+// Export chat presets utility
+export {
+  CHAT_PRESETS,
+  getPresetById,
+  findMatchingPreset,
+  applyPreset,
+  getDefaultPreset,
+  PresetCategory,
+  PRESET_CATEGORIES,
+  getPresetsByCategory,
+  type ChatPreset,
+  type ChatPresetParameters,
+} from './utils/chat-presets';
+
