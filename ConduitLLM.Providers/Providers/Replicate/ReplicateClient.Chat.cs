@@ -208,6 +208,42 @@ namespace ConduitLLM.Providers.Replicate
                 input["stop_sequences"] = request.Stop;
             }
 
+            // Pass through any extension data (model-specific parameters)
+            if (request.ExtensionData != null)
+            {
+                Logger.LogWarning("ExtensionData has {Count} items for Replicate", request.ExtensionData.Count);
+                foreach (var kvp in request.ExtensionData)
+                {
+                    Logger.LogWarning("ExtensionData contains: {Key} = {Value} (Type: {Type})", 
+                        kvp.Key, kvp.Value.ToString(), kvp.Value.ValueKind);
+                    
+                    // Don't override standard parameters that we've already set
+                    if (!input.ContainsKey(kvp.Key))
+                    {
+                        // Convert JsonElement to actual value for proper serialization
+                        var converted = ConvertJsonElement(kvp.Value);
+                        if (converted != null)
+                        {
+                            input[kvp.Key] = converted;
+                            Logger.LogWarning("Added to Replicate request: {Key} = {Value} (Type: {Type})", 
+                                kvp.Key, converted, converted.GetType().Name);
+                        }
+                        else
+                        {
+                            Logger.LogWarning("Skipping ExtensionData key {Key} with null value", kvp.Key);
+                        }
+                    }
+                    else
+                    {
+                        Logger.LogWarning("Skipping ExtensionData key {Key} as it already exists in input", kvp.Key);
+                    }
+                }
+            }
+            else
+            {
+                Logger.LogWarning("ExtensionData is NULL for Replicate request");
+            }
+
             return new ReplicatePredictionRequest
             {
                 Version = ProviderModelId,
