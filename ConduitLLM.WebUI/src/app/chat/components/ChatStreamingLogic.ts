@@ -2,18 +2,19 @@ import { useCallback, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { 
   createToastErrorHandler,
-  shouldShowBalanceWarning
+  shouldShowBalanceWarning,
+  parseSSEStream,
+  buildMessageContent,
+  type ImageAttachment,
+  SSEEventType
 } from '@knn_labs/conduit-core-client';
 import { 
-  ImageAttachment, 
   ChatParameters, 
   ChatMessage,
   ChatCompletionRequest,
   type MessageContent
 } from '../types';
-import { StreamingPerformanceMetrics, UsageData, SSEEventType, MetricsEventData } from '../types/metrics';
-import { parseSSEStream } from '../utils/sse-parser';
-import { buildMessageContent } from './ChatHelpers';
+import { StreamingPerformanceMetrics, UsageData, MetricsEventData } from '../types/metrics';
 import { notifications } from '@mantine/notifications';
 
 interface ChatStreamingLogicParams {
