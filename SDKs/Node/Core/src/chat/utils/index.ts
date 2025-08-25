@@ -46,3 +46,20 @@ export {
   type EstimatorMessage,
   type ImageDetail
 } from './token-estimator';
+
+// Conversation export/import
+export {
+  ConversationExporter,
+  ConversationImporter,
+  type ExportableMessage,
+  type ExportOptions,
+  type MarkdownOptions,
+  type CSVOptions,
+  type CSVColumn,
+  type ImportOptions,
+  type ExportTemplate,
+  type ValidationResult,
+  type ValidationError,
+  type ValidationWarning,
+  type ConversationMetadata
+} from './conversation-export';
