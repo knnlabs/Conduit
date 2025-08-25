@@ -33,3 +33,16 @@ export {
   cleanBlockQuoteContent,
   type ProcessedBlockQuote
 } from './structured-content';
+
+// Token estimation
+export {
+  TokenEstimator,
+  TokenUtils,
+  DEFAULT_MODEL_PRICING,
+  ModelFamily,
+  type TokenStats,
+  type CostEstimate,
+  type ModelPricing,
+  type EstimatorMessage,
+  type ImageDetail
+} from './token-estimator';
