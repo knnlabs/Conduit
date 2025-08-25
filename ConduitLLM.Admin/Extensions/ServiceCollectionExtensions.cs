@@ -181,6 +181,9 @@ public static class ServiceCollectionExtensions
         // Register cache management service
         services.AddScoped<ICacheManagementService, CacheManagementService>();
 
+        // Register provider error tracking service for error management endpoints
+        services.AddSingleton<ConduitLLM.Core.Interfaces.IProviderErrorTrackingService, ConduitLLM.Core.Services.ProviderErrorTrackingService>();
+
         // Configure CORS for the Admin API
         services.AddCors(options =>
         {

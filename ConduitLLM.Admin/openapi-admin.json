@@ -11904,6 +11904,11 @@
             "type": "boolean",
             "description": "Gets or sets whether the model should be active upon creation.",
             "nullable": true
+          },
+          "modelParameters": {
+            "type": "string",
+            "description": "Gets or sets the model-specific parameter configuration for UI generation.",
+            "nullable": true
           }
         },
         "additionalProperties": false,
@@ -11951,6 +11956,11 @@
           },
           "series": {
             "$ref": "#/components/schemas/ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto"
+          },
+          "modelParameters": {
+            "type": "string",
+            "description": "Gets or sets the model-specific parameter configuration for UI generation.",
+            "nullable": true
           }
         },
         "additionalProperties": false,
@@ -11999,6 +12009,11 @@
           "series": {
             "$ref": "#/components/schemas/ConduitLLM.Admin.Models.ModelSeries.ModelSeriesDto"
           },
+          "modelParameters": {
+            "type": "string",
+            "description": "Gets or sets the model-specific parameter configuration for UI generation.",
+            "nullable": true
+          },
           "providerModelId": {
             "type": "string",
             "description": "Gets or sets the provider-specific identifier for this model.",
@@ -12037,6 +12052,11 @@
           "isActive": {
             "type": "boolean",
             "description": "Gets or sets the new activation status for the model.",
+            "nullable": true
+          },
+          "modelParameters": {
+            "type": "string",
+            "description": "Gets or sets the model-specific parameter configuration for UI generation.",
             "nullable": true
           }
         },
