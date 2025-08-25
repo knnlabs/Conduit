@@ -34,8 +34,7 @@ import Link from 'next/link';
 
 export function ChatInterface() {
   const { data: modelData, isLoading: modelsLoading } = useModels();
-  const discoveryQuery = useDiscoveryModels('chat');
-  const discoveryData = discoveryQuery.data;
+  const { data: discoveryData } = useDiscoveryModels(); // Remove 'chat' filter since SupportsChat is false in DB
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);

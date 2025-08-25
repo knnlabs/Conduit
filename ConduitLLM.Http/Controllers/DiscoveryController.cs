@@ -147,6 +147,9 @@ namespace ConduitLLM.Http.Controllers
                         // Configuration
                         // supported_parameters = supportedParameters ?? Array.Empty<string>(), // TODO: Re-implement based on Parameters field
                         
+                        // UI Parameters from Model or Series
+                        parameters = mapping.Model?.ModelParameters ?? mapping.Model?.Series?.Parameters ?? "{}",
+                        
                         // Capabilities (flat boolean flags)
                         supports_chat = caps.SupportsChat,
                         supports_streaming = caps.SupportsStreaming,

@@ -63,7 +63,7 @@ export interface ImageGenerationState {
 export interface ImageGenerationActions {
   setPrompt: (prompt: string) => void;
   updateSettings: (settings: Partial<ImageGenerationSettings>) => void;
-  generateImages: () => Promise<void>;
+  generateImages: (dynamicParameters?: Record<string, unknown>) => Promise<void>;
   clearResults: () => void;
   setError: (error: string | undefined) => void;
   toggleSettings: () => void;
