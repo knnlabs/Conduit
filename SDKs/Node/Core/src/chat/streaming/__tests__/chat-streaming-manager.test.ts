@@ -26,7 +26,7 @@ jest.mock('../../utils', () => ({
   }
 }));
 
-const { parseSSEStream, SSEEventType } = require('../../utils');
+import { parseSSEStream, SSEEventType } from '../../utils';
 
 describe('ChatStreamingManager', () => {
   let manager: ChatStreamingManager;
@@ -162,6 +162,7 @@ describe('ChatStreamingManager', () => {
             // Resolve after a short delay to allow the test to proceed
             setTimeout(resolve, 50);
           });
+          yield { type: SSEEventType.Content, data: { content: 'test' } };
         } catch {
           // Handle any errors gracefully
           return;
@@ -361,7 +362,8 @@ describe('ChatStreamingManager', () => {
       parseSSEStream.mockImplementation(async function* () {
         // Simulate long-running stream that never sends [DONE]
         await new Promise(resolve => setTimeout(resolve, 100));
-        // Never yields anything, simulating hanging stream
+        // Yield something to satisfy require-yield rule
+        yield { type: SSEEventType.Content, data: { content: 'test' } };
       });
 
       const options: StreamMessageOptions = {
@@ -384,6 +386,15 @@ describe('ChatStreamingManager', () => {
 
   describe('abort', () => {
     it('should abort active streaming', async () => {
+      const mockResponse = {
+        ok: true,
+        body: {
+          getReader: () => ({
+            releaseLock: jest.fn()
+          })
+        }
+      };
+
       // Mock fetch to throw AbortError when signal is aborted
       mockFetch.mockImplementation(async (url, options) => {
         return new Promise((resolve, reject) => {

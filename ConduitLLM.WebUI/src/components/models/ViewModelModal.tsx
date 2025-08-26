@@ -14,7 +14,7 @@ import { ParameterPreview } from '@/components/parameters/ParameterPreview';
 
 // Extend ModelDto to include modelParameters until SDK types are updated
 interface ExtendedModelDto extends ModelDto {
-  modelParameters?: string;
+  modelParameters?: string | null;
 }
 
 interface ViewModelModalProps {

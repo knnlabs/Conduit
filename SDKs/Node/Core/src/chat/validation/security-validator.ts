@@ -102,6 +102,7 @@ const SECURITY_PATTERNS = {
   
   [ThreatType.LDAP_INJECTION]: [
     /[()*/|&=!><~]/gi,
+    // eslint-disable-next-line no-control-regex
     /\u0000/gi,
     /(objectclass=\*)/gi,
     /(\|\(|\)\(|&\()/gi

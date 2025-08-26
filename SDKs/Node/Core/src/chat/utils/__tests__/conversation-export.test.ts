@@ -2,10 +2,6 @@ import {
   ConversationExporter,
   ConversationImporter,
   type ExportableMessage,
-  type ExportOptions,
-  type MarkdownOptions,
-  type CSVOptions,
-  type ImportOptions,
   type ExportTemplate
 } from '../conversation-export';
 
@@ -111,7 +107,7 @@ describe('ConversationExporter', () => {
       const parsed = JSON.parse(json);
 
       expect(parsed.messages).toHaveLength(3);
-      expect(parsed.messages.every((msg: any) => msg.role !== 'system')).toBe(true);
+      expect(parsed.messages.every((msg: ExportableMessage) => msg.role !== 'system')).toBe(true);
     });
 
     it('should include system messages by default', () => {
@@ -119,14 +115,14 @@ describe('ConversationExporter', () => {
       const parsed = JSON.parse(json);
 
       expect(parsed.messages).toHaveLength(4);
-      expect(parsed.messages.some((msg: any) => msg.role === 'system')).toBe(true);
+      expect(parsed.messages.some((msg: ExportableMessage) => msg.role === 'system')).toBe(true);
     });
 
     it('should include images in export', () => {
       const json = ConversationExporter.toJSON(sampleMessages);
       const parsed = JSON.parse(json);
 
-      const messageWithImage = parsed.messages.find((msg: any) => msg.images);
+      const messageWithImage = parsed.messages.find((msg: ExportableMessage) => msg.images);
       expect(messageWithImage).toBeDefined();
       expect(messageWithImage.images).toHaveLength(1);
       expect(messageWithImage.images[0].width).toBe(100);
@@ -238,7 +234,7 @@ describe('ConversationExporter', () => {
       const lines = csv.split('\n').filter(line => line.trim());
 
       expect(lines[0]).toBe('id,role,content,timestamp');
-      expect(lines[1]).toBe('msg1,user,\"Hello, how are you?\",2024-01-01T10:00:00.000Z');
+      expect(lines[1]).toBe('msg1,user,"Hello, how are you?",2024-01-01T10:00:00.000Z');
       expect(lines[2]).toContain('msg2,assistant');
       expect(lines[2]).toContain('I am doing well, thank you!');
     });
@@ -260,7 +256,7 @@ describe('ConversationExporter', () => {
       });
 
       expect(csv).toContain('id;role;content;timestamp');
-      expect(csv).toContain('msg1;user;\"Hello, how are you?\";');
+      expect(csv).toContain('msg1;user;"Hello, how are you?";');
     });
 
     it('should handle text with commas', () => {
@@ -295,7 +291,7 @@ describe('ConversationExporter', () => {
       });
 
       expect(csv).not.toContain('id,role,content,timestamp');
-      expect(csv).toContain('msg1,user,\"Hello, how are you?\",');
+      expect(csv).toContain('msg1,user,"Hello, how are you?",');
     });
 
     it('should handle image fields', () => {
@@ -383,19 +379,23 @@ describe('ConversationImporter', () => {
       const result = ConversationImporter.fromJSON(json);
 
       expect(result.success).toBe(true);
-      expect(result.data).toHaveLength(2);
-      expect(result.data![0].id).toBe('msg1');
-      expect(result.data![0].role).toBe('user');
-      expect(result.data![0].content).toBe('Hello');
-      expect(result.data![0].timestamp).toBeInstanceOf(Date);
+      if (result.success) {
+        expect(result.data).toHaveLength(2);
+        expect(result.data[0].id).toBe('msg1');
+        expect(result.data[0].role).toBe('user');
+        expect(result.data[0].content).toBe('Hello');
+        expect(result.data[0].timestamp).toBeInstanceOf(Date);
+      }
     });
 
     it('should handle invalid JSON', () => {
       const result = ConversationImporter.fromJSON('invalid json');
 
       expect(result.success).toBe(false);
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors![0].code).toBe('INVALID_JSON');
+      if (!result.success) {
+        expect(result.errors).toHaveLength(1);
+        expect(result.errors[0].code).toBe('INVALID_JSON');
+      }
     });
 
     it('should validate imported messages', () => {
@@ -412,7 +412,9 @@ describe('ConversationImporter', () => {
       const result = ConversationImporter.fromJSON(invalidJSON);
 
       expect(result.success).toBe(false);
-      expect(result.errors!.some(e => e.code === 'INVALID_ROLE')).toBe(true);
+      if (!result.success) {
+        expect(result.errors.some(e => e.code === 'INVALID_ROLE')).toBe(true);
+      }
     });
 
     it('should apply message limit', () => {
@@ -431,9 +433,11 @@ describe('ConversationImporter', () => {
       );
 
       expect(result.success).toBe(true);
-      expect(result.data).toHaveLength(10);
-      expect(result.warnings).toHaveLength(1);
-      expect(result.warnings![0].code).toBe('MESSAGE_LIMIT_EXCEEDED');
+      if (result.success) {
+        expect(result.data).toHaveLength(10);
+        expect(result.warnings).toHaveLength(1);
+        expect(result.warnings[0].code).toBe('MESSAGE_LIMIT_EXCEEDED');
+      }
     });
   });
 
@@ -450,14 +454,18 @@ describe('ConversationImporter', () => {
       const result = ConversationImporter.validate('not an object');
 
       expect(result.success).toBe(false);
-      expect(result.errors![0].code).toBe('INVALID_FORMAT');
+      if (!result.success) {
+        expect(result.errors[0].code).toBe('INVALID_FORMAT');
+      }
     });
 
     it('should reject data without messages array', () => {
       const result = ConversationImporter.validate({ version: '1.0' });
 
       expect(result.success).toBe(false);
-      expect(result.errors![0].code).toBe('MISSING_MESSAGES');
+      if (!result.success) {
+        expect(result.errors[0].code).toBe('MISSING_MESSAGES');
+      }
     });
 
     it('should validate individual messages', () => {
@@ -473,7 +481,9 @@ describe('ConversationImporter', () => {
       const result = ConversationImporter.validate(invalidData);
 
       expect(result.success).toBe(false);
-      expect(result.errors!.some(e => e.code === 'MISSING_REQUIRED_FIELD')).toBe(true);
+      if (!result.success) {
+        expect(result.errors.some(e => e.code === 'MISSING_REQUIRED_FIELD')).toBe(true);
+      }
     });
 
     it('should allow partial validation', () => {
@@ -491,9 +501,11 @@ describe('ConversationImporter', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.data).toHaveLength(1);
-      expect(result.data![0].role).toBe('user'); // Should default invalid role
-      expect(result.warnings!.some(w => w.code === 'INVALID_ROLE')).toBe(true);
+      if (result.success) {
+        expect(result.data).toHaveLength(1);
+        expect(result.data[0].role).toBe('user'); // Should default invalid role
+        expect(result.warnings.some(w => w.code === 'INVALID_ROLE')).toBe(true);
+      }
     });
 
     it('should validate timestamps', () => {
@@ -511,7 +523,9 @@ describe('ConversationImporter', () => {
       const result = ConversationImporter.validate(dataWithInvalidTimestamp);
 
       expect(result.success).toBe(false);
-      expect(result.errors!.some(e => e.code === 'INVALID_TIMESTAMP')).toBe(true);
+      if (!result.success) {
+        expect(result.errors.some(e => e.code === 'INVALID_TIMESTAMP')).toBe(true);
+      }
     });
 
     it('should handle missing timestamps with partial validation', () => {
@@ -530,7 +544,9 @@ describe('ConversationImporter', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.data![0].timestamp).toBeInstanceOf(Date);
+      if (result.success) {
+        expect(result.data[0].timestamp).toBeInstanceOf(Date);
+      }
     });
   });
 
@@ -586,7 +602,7 @@ describe('ConversationImporter', () => {
       const messagesWithInvalidRole = [
         {
           id: 'msg1',
-          role: 'invalid' as any,
+          role: 'invalid' as 'user' | 'assistant' | 'system',
           content: 'Hello',
           timestamp: new Date()
         }
@@ -603,7 +619,7 @@ describe('ConversationImporter', () => {
           id: 'msg1',
           role: 'user' as const,
           content: 'Hello',
-          timestamp: '2024-01-01T10:00:00Z' as any
+          timestamp: '2024-01-01T10:00:00Z' as unknown as Date
         }
       ];
 
@@ -654,16 +670,17 @@ describe('ConversationImporter', () => {
       const importResult = ConversationImporter.fromJSON(json);
 
       expect(importResult.success).toBe(true);
-      expect(importResult.data).toHaveLength(2);
+      if (importResult.success) {
+        expect(importResult.data).toHaveLength(2);
+        const imported = importResult.data;
+        expect(imported[0].id).toBe('msg1');
+        expect(imported[0].content).toBe('Hello world!');
+        expect(imported[0].timestamp.getTime()).toBe(originalMessages[0].timestamp.getTime());
+        expect(imported[0].images).toHaveLength(1);
 
-      const imported = importResult.data!;
-      expect(imported[0].id).toBe('msg1');
-      expect(imported[0].content).toBe('Hello world!');
-      expect(imported[0].timestamp.getTime()).toBe(originalMessages[0].timestamp.getTime());
-      expect(imported[0].images).toHaveLength(1);
-
-      expect(imported[1].metadata?.tokensUsed).toBe(12);
-      expect(imported[1].metadata?.latency).toBe(1500);
+        expect(imported[1].metadata?.tokensUsed).toBe(12);
+        expect(imported[1].metadata?.latency).toBe(1500);
+      }
     });
   });
 });

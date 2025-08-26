@@ -151,10 +151,12 @@ export function ProviderErrorTable({ summaries, onClearErrors }: ProviderErrorTa
                           ),
                           labels: { confirm: 'Clear & Re-enable', cancel: 'Cancel' },
                           confirmProps: { color: 'teal' },
-                          onConfirm: async () => {
-                            for (const keyId of summary.disabledKeyIds ?? []) {
-                              await onClearErrors(keyId, true);
-                            }
+                          onConfirm: () => {
+                            void (async () => {
+                              for (const keyId of summary.disabledKeyIds ?? []) {
+                                await onClearErrors(keyId, true);
+                              }
+                            })();
                           },
                         });
                       }}

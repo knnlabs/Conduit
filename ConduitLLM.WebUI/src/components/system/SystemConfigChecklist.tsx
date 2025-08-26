@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Stack,
@@ -65,6 +65,47 @@ export function SystemConfigChecklist() {
   const [checks, setChecks] = useState<CheckResult[]>([]);
   const [expanded, setExpanded] = useState(false);
 
+  const { executeWithAdmin } = useAdminClient();
+
+  const checkS3Configuration = useCallback(async (): Promise<CheckResult> => {
+    try {
+      // Test S3 storage by calling the media stats endpoint via Admin SDK
+      // This will fail if S3 is not properly configured or accessible
+      
+      const stats = await executeWithAdmin(async (client) => {
+        // Try to get overall media stats - this touches the storage service
+        return client.media.getMediaStats('overall');
+      });
+
+      return {
+        id: 's3-config',
+        title: 'S3 Storage Configuration',
+        status: 'success',
+        message: 'S3 storage is working',
+        details: [
+          'Successfully connected to media storage service',
+          `Total files: ${stats.totalFiles}`,
+          `Total size: ${Math.round(stats.totalSizeBytes / 1024 / 1024)} MB`
+        ],
+        icon: IconDatabase
+      };
+    } catch (error) {
+      return {
+        id: 's3-config',
+        title: 'S3 Storage Configuration', 
+        status: 'warning',
+        message: 'Unable to verify S3 storage status',
+        details: [
+          'Could not test media storage connectivity',
+          'S3 may be configured but not accessible',
+          'Check S3 credentials and bucket permissions',
+          `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
+        ],
+        icon: IconDatabase
+      };
+    }
+  }, [executeWithAdmin]);
+  
   useEffect(() => {
     let isMounted = true;
 
@@ -73,8 +114,6 @@ export function SystemConfigChecklist() {
         if (!isMounted) return;
         setLoading(true);
         setError(null);
-
-        const { executeWithAdmin } = useAdminClient();
 
         // Fetch all required data in parallel
         const [providersResponse, modelMappings, modelCostsResponse, settingsResponse] = await Promise.all([
@@ -148,14 +187,12 @@ export function SystemConfigChecklist() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [executeWithAdmin, checkS3Configuration]);
 
   async function handleRefresh() {
     try {
       setLoading(true);
       setError(null);
-
-      const { executeWithAdmin } = useAdminClient();
 
       // Fetch all required data in parallel
       const [providersResponse, modelMappings, modelCostsResponse, settingsResponse] = await Promise.all([
@@ -408,46 +445,6 @@ export function SystemConfigChecklist() {
     };
   };
 
-  async function checkS3Configuration(): Promise<CheckResult> {
-    try {
-      // Test S3 storage by calling the media stats endpoint via Admin SDK
-      // This will fail if S3 is not properly configured or accessible
-      const { executeWithAdmin } = useAdminClient();
-      
-      const stats = await executeWithAdmin(async (client) => {
-        // Try to get overall media stats - this touches the storage service
-        return await client.media.getMediaStats('overall');
-      });
-
-      return {
-        id: 's3-config',
-        title: 'S3 Storage Configuration',
-        status: 'success',
-        message: 'S3 storage is working',
-        details: [
-          'Successfully connected to media storage service',
-          `Total files: ${stats.totalFiles}`,
-          `Total size: ${Math.round(stats.totalSizeBytes / 1024 / 1024)} MB`
-        ],
-        icon: IconDatabase
-      };
-    } catch (error) {
-      return {
-        id: 's3-config',
-        title: 'S3 Storage Configuration', 
-        status: 'warning',
-        message: 'Unable to verify S3 storage status',
-        details: [
-          'Could not test media storage connectivity',
-          'S3 may be configured but not accessible',
-          'Check S3 credentials and bucket permissions',
-          `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
-        ],
-        icon: IconDatabase
-      };
-    }
-  }
-
   const getStatusIcon = (status: CheckResult['status']) => {
     switch (status) {
       case 'success':
@@ -472,17 +469,17 @@ export function SystemConfigChecklist() {
   const hasErrors = checks.some(check => check.status === 'error');
   const hasWarnings = checks.some(check => check.status === 'warning');
 
-  const overallStatus: CheckResult['status'] = hasErrors 
-    ? 'error' 
-    : hasWarnings 
-      ? 'warning' 
-      : 'success';
+  const overallStatus: CheckResult['status'] = (() => {
+    if (hasErrors) return 'error';
+    if (hasWarnings) return 'warning';
+    return 'success';
+  })();
   
-  const overallMessage = hasErrors 
-    ? 'System has configuration errors that require attention'
-    : hasWarnings 
-      ? 'System is functional but has some recommendations'
-      : 'System is properly configured';
+  const overallMessage = (() => {
+    if (hasErrors) return 'System has configuration errors that require attention';
+    if (hasWarnings) return 'System is functional but has some recommendations';
+    return 'System is properly configured';
+  })();
 
   if (loading) {
     return (
@@ -499,7 +496,7 @@ export function SystemConfigChecklist() {
     return (
       <Alert color="red" title="Configuration Check Failed">
         <Text size="sm">{error}</Text>
-        <Button size="xs" mt="sm" onClick={handleRefresh}>
+        <Button size="xs" mt="sm" onClick={() => { void handleRefresh(); }}>
           Retry
         </Button>
       </Alert>
@@ -514,7 +511,11 @@ export function SystemConfigChecklist() {
             <ThemeIcon 
               size="lg" 
               variant="light" 
-              color={overallStatus === 'success' ? 'green' : overallStatus === 'error' ? 'red' : 'yellow'}
+              color={(() => {
+                if (overallStatus === 'success') return 'green';
+                if (overallStatus === 'error') return 'red';
+                return 'yellow';
+              })()}
             >
               {getStatusIcon(overallStatus)}
             </ThemeIcon>
@@ -567,7 +568,7 @@ export function SystemConfigChecklist() {
             ))}
             
             <Group justify="center" mt="md">
-              <Button size="xs" variant="light" onClick={handleRefresh}>
+              <Button size="xs" variant="light" onClick={() => { void handleRefresh(); }}>
                 Refresh Checks
               </Button>
             </Group>

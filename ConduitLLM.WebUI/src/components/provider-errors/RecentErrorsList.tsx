@@ -30,9 +30,9 @@ export function RecentErrorsList({ errors }: RecentErrorsListProps) {
 
   const filteredErrors = errors.filter((error) => {
     const matchesSearch = 
-      error.errorMessage?.toLowerCase().includes(search.toLowerCase()) ||
-      error.providerName?.toLowerCase().includes(search.toLowerCase()) ||
-      error.modelName?.toLowerCase().includes(search.toLowerCase());
+      (error.errorMessage ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (error.providerName ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (error.modelName ?? '').toLowerCase().includes(search.toLowerCase());
     
     const matchesType = !filterType || error.errorType === filterType;
     
@@ -41,7 +41,7 @@ export function RecentErrorsList({ errors }: RecentErrorsListProps) {
 
   const formatTimestamp = (timestamp: string | undefined | null) => {
     if (!timestamp) return 'N/A';
-    const date = new Date(timestamp as string);
+    const date = new Date(timestamp);
     return date.toLocaleString();
   };
 

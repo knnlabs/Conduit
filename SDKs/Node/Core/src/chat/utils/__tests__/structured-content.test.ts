@@ -18,8 +18,8 @@ describe('structured-content', () => {
 
     it('should return empty string for empty input', () => {
       expect(processStructuredContent('')).toBe('');
-      expect(processStructuredContent(null as any)).toBe(null);
-      expect(processStructuredContent(undefined as any)).toBe(undefined);
+      expect(processStructuredContent(null as unknown as string)).toBe(null);
+      expect(processStructuredContent(undefined as unknown as string)).toBe(undefined);
     });
 
     it('should process thinking tags', () => {

@@ -6,7 +6,8 @@ import { PerformanceMetricsCalculator, MetricsUtils } from '../performance-metri
 import type { 
   StreamingPerformanceMetrics, 
   MetricsEventData, 
-  MessageMetadata 
+  MessageMetadata,
+  StreamingMetrics 
 } from '../types';
 
 // Mock Date.now for predictable testing
@@ -416,8 +417,8 @@ describe('MetricsUtils', () => {
     });
 
     it('should check completion status', () => {
-      expect(MetricsUtils.isComplete(testMetrics as any)).toBe(true);
-      expect(MetricsUtils.isComplete({ provider: 'test' } as any)).toBe(false);
+      expect(MetricsUtils.isComplete(testMetrics as StreamingMetrics)).toBe(true);
+      expect(MetricsUtils.isComplete({ provider: 'test' } as Partial<StreamingMetrics>)).toBe(false);
     });
   });
 });

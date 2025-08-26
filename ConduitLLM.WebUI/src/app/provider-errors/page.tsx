@@ -5,7 +5,6 @@ import {
   Title,
   Text,
   Group,
-  Button,
   Card,
   LoadingOverlay,
   Alert,
@@ -18,9 +17,8 @@ import {
   IconRefresh,
   IconAlertTriangle,
   IconCircleX,
-  IconKey,
 } from '@tabler/icons-react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { notifications } from '@mantine/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { ProviderErrorDashboard } from '@/components/provider-errors/ProviderErrorDashboard';
@@ -76,7 +74,7 @@ export default function ProviderErrorsPage() {
       });
 
       await refresh();
-    } catch (error) {
+    } catch {
       notifications.show({
         title: 'Error',
         message: 'Failed to clear errors',
@@ -110,7 +108,9 @@ export default function ProviderErrorsPage() {
             <ActionIcon
               variant="light"
               size="lg"
-              onClick={handleRefresh}
+              onClick={() => {
+                void handleRefresh();
+              }}
               loading={isRefreshing}
               mt={24}
             >

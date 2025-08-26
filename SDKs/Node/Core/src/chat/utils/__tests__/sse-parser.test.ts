@@ -2,7 +2,7 @@
  * Unit tests for sse-parser utilities
  */
 
-import { SSEParser, SSEEventType, type SSEEvent } from '../sse-parser';
+import { SSEParser, SSEEventType } from '../sse-parser';
 
 describe('sse-parser', () => {
   describe('SSEParser', () => {

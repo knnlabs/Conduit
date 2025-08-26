@@ -288,9 +288,9 @@ export class ConversationExporter {
     options: CSVOptions = {}
   ): string {
     const filteredMessages = this.filterMessages(messages, options);
-    const columns = options.columns || ['id', 'role', 'content', 'timestamp'];
-    const delimiter = options.delimiter || ',';
-    const textQualifier = options.textQualifier || '"';
+    const columns = options.columns ?? ['id', 'role', 'content', 'timestamp'];
+    const delimiter = options.delimiter ?? ',';
+    const textQualifier = options.textQualifier ?? '"';
     
     let csv = '';
     
@@ -340,7 +340,7 @@ export class ConversationExporter {
       })
     );
     
-    output += messageOutputs.join(template.messageSeparator || '\n');
+    output += messageOutputs.join(template.messageSeparator ?? '\n');
     
     // Footer
     if (template.footer) {
@@ -481,7 +481,7 @@ export class ConversationExporter {
     message: ExportableMessage, 
     options: MarkdownOptions
   ): string {
-    const headerLevel = options.headerLevel || 3;
+    const headerLevel = options.headerLevel ?? 3;
     const headerPrefix = '#'.repeat(headerLevel);
     
     let md = `${headerPrefix} ${this.capitalizeRole(message.role)}`;
@@ -532,7 +532,7 @@ export class ConversationExporter {
   }
 
   private static formatCSVField(value: unknown, qualifier: string): string {
-    const str = String(value || '');
+    const str = String(value ?? '');
     const needsQualification = str.includes(',') || str.includes('\n') || str.includes(qualifier);
     
     if (needsQualification) {
@@ -548,14 +548,14 @@ export class ConversationExporter {
       case 'role': return message.role;
       case 'content': return message.content.replace(/\n/g, ' ');
       case 'timestamp': return message.timestamp.toISOString();
-      case 'model': return message.model || message.metadata?.model || '';
-      case 'tokensUsed': return message.metadata?.tokensUsed !== undefined ? message.metadata.tokensUsed : '';
-      case 'latency': return message.metadata?.latency !== undefined ? message.metadata.latency : '';
-      case 'provider': return message.metadata?.provider || '';
-      case 'finishReason': return message.metadata?.finishReason || '';
+      case 'model': return message.model ?? message.metadata?.model ?? '';
+      case 'tokensUsed': return message.metadata?.tokensUsed ?? '';
+      case 'latency': return message.metadata?.latency ?? '';
+      case 'provider': return message.metadata?.provider ?? '';
+      case 'finishReason': return message.metadata?.finishReason ?? '';
       case 'hasImages': return (message.images && message.images.length > 0) ? 'true' : 'false';
-      case 'imageCount': return message.images?.length !== undefined ? message.images.length : '';
-      case 'error': return message.error ? `${message.error.type}:${message.error.code || ''}` : '';
+      case 'imageCount': return message.images?.length ?? '';
+      case 'error': return message.error ? `${message.error.type}:${message.error.code ?? ''}` : '';
       default: return '';
     }
   }
@@ -593,9 +593,9 @@ export class ConversationExporter {
     const modelCounts = new Map<string, number>();
     
     for (const message of messages) {
-      const model = message.model || message.metadata?.model;
+      const model = message.model ?? message.metadata?.model;
       if (model) {
-        modelCounts.set(model, (modelCounts.get(model) || 0) + 1);
+        modelCounts.set(model, (modelCounts.get(model) ?? 0) + 1);
       }
     }
     
@@ -614,7 +614,7 @@ export class ConversationExporter {
 
   private static calculateTotalTokens(messages: ExportableMessage[]): number {
     return messages.reduce((total, message) => {
-      return total + (message.metadata?.tokensUsed || 0);
+      return total + (message.metadata?.tokensUsed ?? 0);
     }, 0);
   }
 
@@ -727,7 +727,7 @@ export class ConversationImporter {
       );
       
       if (!messageResult.success) {
-        errors.push(...(messageResult.errors || []));
+        errors.push(...(messageResult.errors ?? []));
         if (!options.allowPartial) {
           break;
         }
@@ -735,7 +735,7 @@ export class ConversationImporter {
         validatedMessages.push(messageResult.data);
       }
       
-      warnings.push(...(messageResult.warnings || []));
+      warnings.push(...(messageResult.warnings ?? []));
     }
 
     // Apply sanitization if requested
@@ -857,9 +857,9 @@ export class ConversationImporter {
     return {
       success: true,
       data: {
-        id: String(message.id || this.generateId()),
+        id: String(message.id ?? this.generateId()),
         role: message.role as 'user' | 'assistant' | 'system' | 'function',
-        content: String(message.content || ''),
+        content: String(message.content ?? ''),
         timestamp: message.timestamp instanceof Date 
           ? message.timestamp 
           : new Date(String(message.timestamp) || Date.now()),
@@ -886,7 +886,8 @@ export class ConversationImporter {
     const validRoles: Array<'user' | 'assistant' | 'system' | 'function'> = 
       ['user', 'assistant', 'system', 'function'];
     
-    return validRoles.includes(role as any) ? role as any : 'user';
+    return validRoles.includes(role as 'user' | 'assistant' | 'system' | 'function') ? 
+      role as 'user' | 'assistant' | 'system' | 'function' : 'user';
   }
   
   private static generateId(): string {

@@ -48,13 +48,15 @@ describe('error-handlers', () => {
       const result = parseSSEError(errorResponse);
       
       expect(result).not.toBeNull();
-      expect(result!.status).toBe(404);
-      expect(result!.code).toBe('model_not_found');
-      expect(result!.title).toBe('Not Found');
-      expect(result!.message).toBe('The model "gpt-4" is not available. Please select a different model.');
-      expect(result!.isRecoverable).toBe(false);
-      expect(result!.severity).toBe('info');
-      expect(result!.iconName).toBe('MagnifyingGlassIcon');
+      if (result) {
+        expect(result.status).toBe(404);
+        expect(result.code).toBe('model_not_found');
+        expect(result.title).toBe('Not Found');
+        expect(result.message).toBe('The model "gpt-4" is not available. Please select a different model.');
+        expect(result.isRecoverable).toBe(false);
+        expect(result.severity).toBe('info');
+        expect(result.iconName).toBe('MagnifyingGlassIcon');
+      }
     });
 
     it('should map different error codes to correct status codes', () => {
@@ -76,7 +78,9 @@ describe('error-handlers', () => {
         };
 
         const result = parseSSEError(errorResponse);
-        expect(result!.status).toBe(expectedStatus);
+        if (result) {
+          expect(result.status).toBe(expectedStatus);
+        }
       });
     });
 
@@ -94,8 +98,10 @@ describe('error-handlers', () => {
       };
 
       const result = parseSSEError(errorResponse);
-      expect(result!.status).toBe(429);
-      expect(result!.code).toBe('unknown_error');
+      if (result) {
+        expect(result.status).toBe(429);
+        expect(result.code).toBe('unknown_error');
+      }
     });
   });
 
@@ -116,7 +122,9 @@ describe('error-handlers', () => {
       const result = processSSEEvent(errorResponse);
       expect(result.type).toBe('error');
       expect(result.error).toBeDefined();
-      expect(result.error!.message).toBe('Test error');
+      if (result.error) {
+        expect(result.error.message).toBe('Test error');
+      }
     });
 
     it('should identify metrics events', () => {

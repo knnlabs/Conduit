@@ -11,7 +11,7 @@ import type { ModelDto, UpdateModelDto, ModelSeriesDto, ModelCapabilitiesDto } f
 
 // Extend ModelDto to include modelParameters until SDK types are updated
 interface ExtendedModelDto extends ModelDto {
-  modelParameters?: string;
+  modelParameters?: string | null;
 }
 
 // Extend UpdateModelDto to include modelParameters until SDK types are updated

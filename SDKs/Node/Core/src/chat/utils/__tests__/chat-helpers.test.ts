@@ -3,6 +3,7 @@
  */
 
 import { buildMessageContent, type ImageAttachment } from '../chat-helpers';
+import type { TextContent, ImageContent } from '../../models/chat';
 
 describe('chat-helpers', () => {
   describe('buildMessageContent', () => {
@@ -37,7 +38,7 @@ describe('chat-helpers', () => {
       expect(Array.isArray(result)).toBe(true);
       expect(result).toHaveLength(2);
       
-      const contentArray = result as any[];
+      const contentArray = result as Array<TextContent | ImageContent>;
       expect(contentArray[0]).toEqual({
         type: 'text',
         text: 'Look at this image:'
@@ -67,7 +68,7 @@ describe('chat-helpers', () => {
       expect(Array.isArray(result)).toBe(true);
       expect(result).toHaveLength(2);
       
-      const contentArray = result as any[];
+      const contentArray = result as Array<TextContent | ImageContent>;
       expect(contentArray[0]).toEqual({
         type: 'text',
         text: 'Check this out:'
@@ -121,7 +122,7 @@ describe('chat-helpers', () => {
       expect(Array.isArray(result)).toBe(true);
       expect(result).toHaveLength(1); // Only the image, no empty text
       
-      const contentArray = result as any[];
+      const contentArray = result as Array<TextContent | ImageContent>;
       expect(contentArray[0]).toEqual({
         type: 'image_url',
         image_url: {
@@ -144,7 +145,7 @@ describe('chat-helpers', () => {
 
       const result = buildMessageContent(text, images);
       
-      const contentArray = result as any[];
+      const contentArray = result as Array<TextContent | ImageContent>;
       expect(contentArray[1]).toEqual({
         type: 'image_url',
         image_url: {
