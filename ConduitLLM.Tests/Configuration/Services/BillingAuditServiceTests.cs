@@ -351,11 +351,15 @@ namespace ConduitLLM.Tests.Configuration.Services
         [Fact]
         public async Task StartAsync_ShouldStartFlushTimer()
         {
+            // Arrange - Create a new service and logger mock for this test
+            var mockLogger = new Mock<ILogger<BillingAuditService>>();
+            var service = new BillingAuditService(_serviceProvider, mockLogger.Object);
+            
             // Act
-            await _service.StartAsync(CancellationToken.None);
+            await service.StartAsync(CancellationToken.None);
             
             // Assert
-            _mockLogger.Verify(
+            mockLogger.Verify(
                 x => x.Log(
                     LogLevel.Information,
                     It.IsAny<EventId>(),

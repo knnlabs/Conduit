@@ -26,7 +26,7 @@ namespace ConduitLLM.Tests.Http.Middleware
     public class BillingAuditIntegrationTests : IDisposable
     {
         private readonly ServiceProvider _serviceProvider;
-        private readonly ConduitDbContext _dbContext;
+        private readonly string _databaseName;
         private readonly IBillingAuditService _billingAuditService;
         private readonly Mock<ICostCalculationService> _mockCostService;
         private readonly Mock<IBatchSpendUpdateService> _mockBatchSpendService;
@@ -39,17 +39,22 @@ namespace ConduitLLM.Tests.Http.Middleware
         {
             var services = new ServiceCollection();
             
-            // Configure in-memory database
+            // Configure in-memory database with a consistent name for this test instance
+            _databaseName = $"BillingAuditIntegrationTestDb_{Guid.NewGuid()}";
             services.AddDbContext<ConduitDbContext>(options =>
-                options.UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString()));
+                options.UseInMemoryDatabase(databaseName: _databaseName),
+                ServiceLifetime.Scoped);
             
-            // Register BillingAuditService
-            services.AddSingleton<IBillingAuditService, BillingAuditService>();
+            // Register logger
             services.AddSingleton<ILogger<BillingAuditService>>(new Mock<ILogger<BillingAuditService>>().Object);
             
+            // Build the service provider first
             _serviceProvider = services.BuildServiceProvider();
-            _dbContext = _serviceProvider.GetRequiredService<ConduitDbContext>();
-            _billingAuditService = _serviceProvider.GetRequiredService<IBillingAuditService>();
+            
+            // Create BillingAuditService with the service provider
+            _billingAuditService = new BillingAuditService(
+                _serviceProvider, 
+                _serviceProvider.GetRequiredService<ILogger<BillingAuditService>>());
             
             // Start the billing audit service
             if (_billingAuditService is BillingAuditService billingService)
@@ -110,7 +115,9 @@ namespace ConduitLLM.Tests.Http.Middleware
             await ((BillingAuditService)_billingAuditService).StopAsync(default);
             
             // Assert
-            var auditEvent = await _dbContext.BillingAuditEvents
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
+            var auditEvent = await dbContext.BillingAuditEvents
                 .FirstOrDefaultAsync(e => e.EventType == BillingAuditEventType.UsageTracked);
             
             Assert.NotNull(auditEvent);
@@ -165,7 +172,9 @@ namespace ConduitLLM.Tests.Http.Middleware
             await ((BillingAuditService)_billingAuditService).StopAsync(default);
             
             // Assert
-            var auditEvent = await _dbContext.BillingAuditEvents
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
+            var auditEvent = await dbContext.BillingAuditEvents
                 .FirstOrDefaultAsync(e => e.EventType == BillingAuditEventType.ZeroCostSkipped);
             
             Assert.NotNull(auditEvent);
@@ -206,7 +215,9 @@ namespace ConduitLLM.Tests.Http.Middleware
             await ((BillingAuditService)_billingAuditService).StopAsync(default);
             
             // Assert
-            var auditEvent = await _dbContext.BillingAuditEvents
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
+            var auditEvent = await dbContext.BillingAuditEvents
                 .FirstOrDefaultAsync(e => e.EventType == BillingAuditEventType.MissingUsageData);
             
             Assert.NotNull(auditEvent);
@@ -236,7 +247,9 @@ namespace ConduitLLM.Tests.Http.Middleware
             await ((BillingAuditService)_billingAuditService).StopAsync(default);
             
             // Assert
-            var auditEvent = await _dbContext.BillingAuditEvents
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
+            var auditEvent = await dbContext.BillingAuditEvents
                 .FirstOrDefaultAsync(e => e.EventType == BillingAuditEventType.ErrorResponseSkipped);
             
             Assert.NotNull(auditEvent);
@@ -265,7 +278,9 @@ namespace ConduitLLM.Tests.Http.Middleware
             await ((BillingAuditService)_billingAuditService).StopAsync(default);
             
             // Assert
-            var auditEvent = await _dbContext.BillingAuditEvents
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
+            var auditEvent = await dbContext.BillingAuditEvents
                 .FirstOrDefaultAsync(e => e.EventType == BillingAuditEventType.NoVirtualKey);
             
             Assert.NotNull(auditEvent);
@@ -298,7 +313,9 @@ namespace ConduitLLM.Tests.Http.Middleware
             await ((BillingAuditService)_billingAuditService).StopAsync(default);
             
             // Assert
-            var auditEvent = await _dbContext.BillingAuditEvents
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
+            var auditEvent = await dbContext.BillingAuditEvents
                 .FirstOrDefaultAsync(e => e.EventType == BillingAuditEventType.StreamingUsageMissing);
             
             Assert.NotNull(auditEvent);
@@ -334,7 +351,9 @@ namespace ConduitLLM.Tests.Http.Middleware
             await ((BillingAuditService)_billingAuditService).StopAsync(default);
             
             // Assert
-            var auditEvent = await _dbContext.BillingAuditEvents
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
+            var auditEvent = await dbContext.BillingAuditEvents
                 .FirstOrDefaultAsync(e => e.EventType == BillingAuditEventType.JsonParseError);
             
             Assert.NotNull(auditEvent);
@@ -382,7 +401,9 @@ namespace ConduitLLM.Tests.Http.Middleware
             await ((BillingAuditService)_billingAuditService).StopAsync(default);
             
             // Assert
-            var auditEvent = await _dbContext.BillingAuditEvents
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
+            var auditEvent = await dbContext.BillingAuditEvents
                 .FirstOrDefaultAsync(e => e.VirtualKeyId == 444);
             
             Assert.NotNull(auditEvent);
@@ -421,7 +442,6 @@ namespace ConduitLLM.Tests.Http.Middleware
                 billingService.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
             }
             (_billingAuditService as IDisposable)?.Dispose();
-            _dbContext?.Dispose();
             _serviceProvider?.Dispose();
         }
     }
