@@ -61,6 +61,18 @@ namespace ConduitLLM.Http.Middleware
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
+        /// <summary>
+        /// Processes HTTP requests to track LLM usage and billing.
+        /// 
+        /// Billing Policy:
+        /// - Only successful responses (2xx) are billed to customers
+        /// - Client errors (4xx) are NOT billed - protects customers from malformed requests
+        /// - Server errors (5xx) are NOT billed - our infrastructure failures shouldn't cost customers
+        /// - Rate limiting (429) is NOT billed - capacity management shouldn't penalize customers
+        /// 
+        /// This follows Anthropic's customer-friendly approach rather than OpenAI's partial billing model.
+        /// The policy ensures customers only pay for successfully processed requests that deliver value.
+        /// </summary>
         public async Task InvokeAsync(
             HttpContext context,
             ICostCalculationService costCalculationService,
@@ -71,6 +83,8 @@ namespace ConduitLLM.Http.Middleware
             // Skip if not an API endpoint or no virtual key
             if (!ShouldTrackUsage(context))
             {
+                // Log billing decision for error responses if this is a tracked endpoint type
+                LogBillingDecision(context);
                 await _next(context);
                 return;
             }
@@ -116,6 +130,19 @@ namespace ConduitLLM.Http.Middleware
             }
         }
 
+        /// <summary>
+        /// Determines whether usage tracking and billing should be applied to this request.
+        /// 
+        /// Billing Policy Implementation:
+        /// - HTTP 2xx: Tracked and billed (successful processing)
+        /// - HTTP 4xx: NOT tracked or billed (client errors, malformed requests)
+        /// - HTTP 5xx: NOT tracked or billed (server errors, infrastructure issues)
+        /// 
+        /// This ensures customers are only charged for requests that successfully deliver value,
+        /// following Anthropic's customer-friendly billing approach.
+        /// </summary>
+        /// <param name="context">The HTTP context of the current request</param>
+        /// <returns>True if usage should be tracked and billed, false otherwise</returns>
         private bool ShouldTrackUsage(HttpContext context)
         {
             // Check if this is an API request
@@ -126,7 +153,7 @@ namespace ConduitLLM.Http.Middleware
             if (!context.Items.ContainsKey("VirtualKeyId"))
                 return false;
 
-            // Only track successful responses
+            // Only track successful responses - core billing policy enforcement
             if (context.Response.StatusCode >= 400)
                 return false;
 
@@ -470,6 +497,51 @@ namespace ConduitLLM.Http.Middleware
             }
             
             return 0;
+        }
+
+        /// <summary>
+        /// Logs billing decisions for transparency and audit purposes.
+        /// Tracks when billing is skipped due to error responses or other policy reasons.
+        /// </summary>
+        /// <param name="context">The HTTP context of the current request</param>
+        private void LogBillingDecision(HttpContext context)
+        {
+            // Only log for API endpoints that would normally be tracked
+            if (!context.Request.Path.StartsWithSegments("/v1"))
+                return;
+
+            var path = context.Request.Path.Value?.ToLowerInvariant() ?? "";
+            var isTrackableEndpoint = path.Contains("/completions") || 
+                                    path.Contains("/embeddings") || 
+                                    path.Contains("/images/generations") ||
+                                    path.Contains("/audio/transcriptions") ||
+                                    path.Contains("/audio/speech") ||
+                                    path.Contains("/videos/generations");
+
+            if (!isTrackableEndpoint)
+                return;
+
+            var virtualKeyId = context.Items.TryGetValue("VirtualKeyId", out var keyId) ? keyId : "none";
+            var statusCode = context.Response.StatusCode;
+            var requestId = context.TraceIdentifier;
+
+            // Log reason for skipping billing
+            if (statusCode >= 400)
+            {
+                _logger.LogDebug(
+                    "Billing Policy: Skipping billing for error response - " +
+                    "Status={StatusCode}, VirtualKey={VirtualKeyId}, Path={Path}, RequestId={RequestId}, " +
+                    "Reason=ErrorResponse_NoChargePolicy", 
+                    statusCode, virtualKeyId, context.Request.Path, requestId);
+            }
+            else if (!context.Items.ContainsKey("VirtualKeyId"))
+            {
+                _logger.LogDebug(
+                    "Billing Policy: Skipping billing - no virtual key found - " +
+                    "Status={StatusCode}, Path={Path}, RequestId={RequestId}, " +
+                    "Reason=NoVirtualKey", 
+                    statusCode, context.Request.Path, requestId);
+            }
         }
     }
 
