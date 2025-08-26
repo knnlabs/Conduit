@@ -190,9 +190,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
             else if (voiceCount > 50)
                 multiplier += 0.1;
 
-            // Known high-quality TTS providers
-            if (provider.Name.Equals("ElevenLabs", StringComparison.OrdinalIgnoreCase))
-                multiplier += 0.2;
+            // No arbitrary provider bonuses - quality should be based on actual metrics
 
             return Math.Min(1.4, multiplier);
         }
@@ -294,19 +292,9 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
         private bool SupportsAdvancedFeatures(AudioProviderInfo provider, TextToSpeechRequest request)
         {
             // Check if provider supports requested advanced features
-            if (request.VoiceSettings != null)
-            {
-                // Providers like ElevenLabs support advanced voice settings
-                return provider.Name.Equals("ElevenLabs", StringComparison.OrdinalIgnoreCase) ||
-                       provider.Name.Equals("Azure", StringComparison.OrdinalIgnoreCase);
-            }
-
-            if (request.EnableSSML == true)
-            {
-                // Not all providers support SSML
-                return provider.Name.Equals("Azure", StringComparison.OrdinalIgnoreCase) ||
-                       provider.Name.Equals("Google", StringComparison.OrdinalIgnoreCase);
-            }
+            // TODO: These capabilities should come from the database ModelCapabilities
+            // For now, assume all providers can handle the request unless proven otherwise
+            // through actual capability checks from the database
 
             return true;
         }

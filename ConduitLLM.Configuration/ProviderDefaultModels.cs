@@ -30,12 +30,12 @@ public class AudioDefaultModels
     /// <summary>
     /// Gets or sets the default model for speech-to-text transcription.
     /// </summary>
-    public string? DefaultTranscriptionModel { get; set; } = "whisper-1";
+    public string? DefaultTranscriptionModel { get; set; }
 
     /// <summary>
     /// Gets or sets the default model for text-to-speech generation.
     /// </summary>
-    public string? DefaultTextToSpeechModel { get; set; } = "tts-1";
+    public string? DefaultTextToSpeechModel { get; set; }
 
     /// <summary>
     /// Gets or sets provider-specific audio model defaults.
@@ -67,17 +67,12 @@ public class RealtimeDefaultModels
     /// <summary>
     /// Gets or sets the default model for realtime conversations.
     /// </summary>
-    public string? DefaultRealtimeModel { get; set; } = "gpt-4o-realtime-preview";
+    public string? DefaultRealtimeModel { get; set; }
 
     /// <summary>
     /// Gets or sets provider-specific realtime model defaults.
     /// </summary>
-    public Dictionary<string, string> ProviderOverrides { get; set; } = new()
-    {
-        ["openai"] = "gpt-4o-realtime-preview",
-        ["elevenlabs"] = "conversational-v1",
-        ["ultravox"] = "ultravox-v2"
-    };
+    public Dictionary<string, string> ProviderOverrides { get; set; } = new();
 }
 
 /// <summary>

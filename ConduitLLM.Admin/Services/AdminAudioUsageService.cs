@@ -20,6 +20,7 @@ namespace ConduitLLM.Admin.Services
         private readonly IVirtualKeyRepository _virtualKeyRepository;
         private readonly ILogger<AdminAudioUsageService> _logger;
         private readonly IServiceProvider _serviceProvider;
+        private readonly ConduitLLM.Core.Interfaces.ICostCalculationService _costCalculationService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AdminAudioUsageService"/> class.
@@ -28,12 +29,14 @@ namespace ConduitLLM.Admin.Services
             IAudioUsageLogRepository repository,
             IVirtualKeyRepository virtualKeyRepository,
             ILogger<AdminAudioUsageService> logger,
-            IServiceProvider serviceProvider)
+            IServiceProvider serviceProvider,
+            ConduitLLM.Core.Interfaces.ICostCalculationService costCalculationService)
         {
             _repository = repository;
             _virtualKeyRepository = virtualKeyRepository;
             _logger = logger;
             _serviceProvider = serviceProvider;
+            _costCalculationService = costCalculationService;
         }
 
         /// <inheritdoc/>
@@ -166,13 +169,8 @@ namespace ConduitLLM.Admin.Services
                 ? sessions.Average(s => s.Statistics.TurnCount)
                 : 0;
 
-            // Calculate cost (simplified - would need proper cost calculation)
-            var totalCostToday = todaySessions.Sum(s =>
-            {
-                var inputMinutes = s.Statistics.InputAudioDuration.TotalMinutes;
-                var outputMinutes = s.Statistics.OutputAudioDuration.TotalMinutes;
-                return (inputMinutes * 0.015) + (outputMinutes * 0.03); // Example rates
-            });
+            // Calculate cost using actual model costs from database
+            var totalCostToday = await CalculateTotalSessionsCostAsync(todaySessions);
 
             return new RealtimeSessionMetricsDto
             {
@@ -201,7 +199,12 @@ namespace ConduitLLM.Admin.Services
 
             var sessions = await sessionStore.GetActiveSessionsAsync();
 
-            return sessions.Select(s => MapSessionToDto(s)).ToList();
+            var mappedSessions = new List<RealtimeSessionDto>();
+            foreach (var session in sessions)
+            {
+                mappedSessions.Add(await MapSessionToDtoAsync(session));
+            }
+            return mappedSessions;
         }
 
         /// <inheritdoc/>
@@ -218,7 +221,7 @@ namespace ConduitLLM.Admin.Services
 
             var session = await sessionStore.GetSessionAsync(sessionId);
 
-            return session != null ? MapSessionToDto(session) : null;
+            return session != null ? await MapSessionToDtoAsync(session) : null;
         }
 
         /// <inheritdoc/>
@@ -314,7 +317,7 @@ namespace ConduitLLM.Admin.Services
             };
         }
 
-        private static RealtimeSessionDto MapSessionToDto(RealtimeSession session)
+        private async Task<RealtimeSessionDto> MapSessionToDtoAsync(RealtimeSession session)
         {
             // Try to get ProviderId from metadata
             var providerId = 0;
@@ -335,7 +338,7 @@ namespace ConduitLLM.Admin.Services
                 TurnCount = session.Statistics.TurnCount,
                 InputTokens = session.Statistics.InputTokens ?? 0,
                 OutputTokens = session.Statistics.OutputTokens ?? 0,
-                EstimatedCost = (decimal)CalculateSessionCost(session),
+                EstimatedCost = (decimal)await CalculateSessionCostAsync(session),
                 IpAddress = session.Metadata?.GetValueOrDefault("IpAddress")?.ToString(),
                 UserAgent = session.Metadata?.GetValueOrDefault("UserAgent")?.ToString(),
                 Model = session.Config?.Model,
@@ -344,18 +347,46 @@ namespace ConduitLLM.Admin.Services
             };
         }
 
-        private static double CalculateSessionCost(RealtimeSession session)
+        private async Task<double> CalculateSessionCostAsync(RealtimeSession session)
         {
-            // Simple cost calculation - should use actual provider rates
-            var inputMinutes = session.Statistics.InputAudioDuration.TotalMinutes;
-            var outputMinutes = session.Statistics.OutputAudioDuration.TotalMinutes;
-
-            return session.Provider.ToLowerInvariant() switch
+            // TODO: ICostCalculationService needs to be enhanced to support separate input/output audio durations
+            // For now, we'll use total audio duration and log a warning about the limitation
+            var totalAudioSeconds = (decimal)(session.Statistics.InputAudioDuration.TotalSeconds + 
+                                              session.Statistics.OutputAudioDuration.TotalSeconds);
+            
+            if (string.IsNullOrEmpty(session.Config?.Model))
             {
-                "openai" => (inputMinutes * 0.015) + (outputMinutes * 0.03),
-                "ultravox" => (inputMinutes * 0.01) + (outputMinutes * 0.02),
-                _ => (inputMinutes * 0.01) + (outputMinutes * 0.01)
+                _logger.LogWarning("No model specified for realtime session {SessionId}, cannot calculate cost", 
+                    session.Id);
+                return 0;
+            }
+
+            var usage = new ConduitLLM.Core.Models.Usage
+            {
+                AudioDurationSeconds = totalAudioSeconds
             };
+
+            try
+            {
+                var cost = await _costCalculationService.CalculateCostAsync(session.Config.Model, usage);
+                return (double)cost;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to calculate cost for session {SessionId} with model {Model}",
+                    session.Id, session.Config.Model);
+                return 0;
+            }
+        }
+        
+        private async Task<double> CalculateTotalSessionsCostAsync(IEnumerable<RealtimeSession> sessions)
+        {
+            var totalCost = 0.0;
+            foreach (var session in sessions)
+            {
+                totalCost += await CalculateSessionCostAsync(session);
+            }
+            return totalCost;
         }
 
         private async Task<string> GenerateCsvExport(List<Configuration.Entities.AudioUsageLog> logs)

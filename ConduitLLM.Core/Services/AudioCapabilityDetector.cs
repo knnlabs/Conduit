@@ -46,12 +46,27 @@ namespace ConduitLLM.Core.Services
                     return false;
                 }
 
-                return provider.ProviderType switch
+                // TODO: Query ModelCapabilities from database through ModelProviderMapping
+                // For now, check if the provider has any models that support transcription
+                // This should be replaced with proper database capability checks
+                
+                // Use capability service if available and model is specified
+                if (_capabilityService != null && !string.IsNullOrEmpty(model))
                 {
-                    ProviderType.OpenAI => true,
-                    ProviderType.Groq => true,
-                    _ => false
-                };
+                    try
+                    {
+                        var supportsTranscription = _capabilityService.SupportsAudioTranscriptionAsync(model).GetAwaiter().GetResult();
+                        return supportsTranscription;
+                    }
+                    catch (Exception capEx)
+                    {
+                        _logger.LogWarning(capEx, "Failed to get transcription capability for model {Model}", model);
+                    }
+                }
+
+                // Fallback: Return false - require explicit capability in database
+                _logger.LogWarning("No transcription capability found in database for provider {ProviderId}", providerId);
+                return false;
             }
             catch (Exception ex)
             {
@@ -73,12 +88,27 @@ namespace ConduitLLM.Core.Services
                     return false;
                 }
 
-                return provider.ProviderType switch
+                // TODO: Query ModelCapabilities from database through ModelProviderMapping
+                // For now, check if the provider has any models that support TTS
+                // This should be replaced with proper database capability checks
+                
+                // Use capability service if available and model is specified
+                if (_capabilityService != null && !string.IsNullOrEmpty(model))
                 {
-                    ProviderType.OpenAI => true,
-                    ProviderType.ElevenLabs => true,
-                    _ => false
-                };
+                    try
+                    {
+                        var supportsTTS = _capabilityService.SupportsTextToSpeechAsync(model).GetAwaiter().GetResult();
+                        return supportsTTS;
+                    }
+                    catch (Exception capEx)
+                    {
+                        _logger.LogWarning(capEx, "Failed to get TTS capability for model {Model}", model);
+                    }
+                }
+
+                // Fallback: Return false - require explicit capability in database
+                _logger.LogWarning("No TTS capability found in database for provider {ProviderId}", providerId);
+                return false;
             }
             catch (Exception ex)
             {
@@ -100,13 +130,27 @@ namespace ConduitLLM.Core.Services
                     return false;
                 }
 
-                return provider.ProviderType switch
+                // TODO: Query ModelCapabilities from database through ModelProviderMapping
+                // For now, check if the provider has any models that support realtime
+                // This should be replaced with proper database capability checks
+                
+                // Use capability service if available and model is specified
+                if (_capabilityService != null && !string.IsNullOrEmpty(model))
                 {
-                    ProviderType.OpenAI => true,
-                    ProviderType.ElevenLabs => true,
-                    ProviderType.Ultravox => true,
-                    _ => false
-                };
+                    try
+                    {
+                        var supportsRealtime = _capabilityService.SupportsRealtimeAudioAsync(model).GetAwaiter().GetResult();
+                        return supportsRealtime;
+                    }
+                    catch (Exception capEx)
+                    {
+                        _logger.LogWarning(capEx, "Failed to get realtime capability for model {Model}", model);
+                    }
+                }
+
+                // Fallback: Return false - require explicit capability in database
+                _logger.LogWarning("No realtime capability found in database for provider {ProviderId}", providerId);
+                return false;
             }
             catch (Exception ex)
             {

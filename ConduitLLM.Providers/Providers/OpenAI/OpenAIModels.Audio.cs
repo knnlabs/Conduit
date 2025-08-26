@@ -77,7 +77,7 @@ namespace ConduitLLM.Providers.OpenAI
     public class TextToSpeechRequest
     {
         [JsonPropertyName("model")]
-        public string Model { get; set; } = "tts-1";
+        public required string Model { get; set; }
 
         [JsonPropertyName("input")]
         public string Input { get; set; } = string.Empty;
