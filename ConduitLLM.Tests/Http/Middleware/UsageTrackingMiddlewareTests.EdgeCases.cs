@@ -39,7 +39,7 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             // Act
             await _middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
-                _mockRequestLogService.Object, _mockVirtualKeyService.Object);
+                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object);
 
             // Assert
             _mockCostService.Verify(x => x.CalculateCostAsync("gpt-4", 
@@ -79,7 +79,7 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             // Act
             await middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
-                _mockRequestLogService.Object, _mockVirtualKeyService.Object);
+                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object);
 
             // Assert
             _mockBatchSpendService.Verify(x => x.QueueSpendUpdate(It.IsAny<int>(), It.IsAny<decimal>()), Times.Never);
@@ -110,7 +110,7 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             // Act
             await _middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
-                _mockRequestLogService.Object, _mockVirtualKeyService.Object);
+                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object);
 
             // Assert
             _mockBatchSpendService.Verify(x => x.QueueSpendUpdate(It.IsAny<int>(), It.IsAny<decimal>()), Times.Never);
@@ -125,7 +125,7 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             // Act
             await _middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
-                _mockRequestLogService.Object, _mockVirtualKeyService.Object);
+                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object);
 
             // Assert
             _mockCostService.Verify(x => x.CalculateCostAsync(It.IsAny<string>(), It.IsAny<Usage>(), default), Times.Never);
@@ -142,7 +142,7 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             // Act
             await _middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
-                _mockRequestLogService.Object, _mockVirtualKeyService.Object);
+                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object);
 
             // Assert - No cost calculation or spend update should occur
             _mockCostService.Verify(x => x.CalculateCostAsync(It.IsAny<string>(), It.IsAny<Usage>(), default), Times.Never);
@@ -177,7 +177,7 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             // Act
             await _middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
-                _mockRequestLogService.Object, _mockVirtualKeyService.Object);
+                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object);
 
             // Assert - No billing should occur for any error status
             _mockCostService.Verify(x => x.CalculateCostAsync(It.IsAny<string>(), It.IsAny<Usage>(), default), Times.Never);
@@ -205,7 +205,7 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             // Act
             await _middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
-                _mockRequestLogService.Object, _mockVirtualKeyService.Object);
+                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object);
 
             // Assert
             _mockCostService.Verify(x => x.CalculateCostAsync(It.IsAny<string>(), It.IsAny<Usage>(), default), Times.Never);
@@ -253,7 +253,7 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             // Act
             await middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
-                _mockRequestLogService.Object, _mockVirtualKeyService.Object);
+                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object);
 
             // Assert
             _mockRequestLogService.Verify(x => x.LogRequestAsync(It.Is<LogRequestDto>(dto =>

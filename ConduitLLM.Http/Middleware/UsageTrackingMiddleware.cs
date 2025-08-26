@@ -3,6 +3,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.Entities;
 using Prometheus;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 namespace ConduitLLM.Http.Middleware
@@ -53,6 +54,43 @@ namespace ConduitLLM.Http.Middleware
                     Buckets = Histogram.ExponentialBuckets(0.001, 2, 10) // 1ms to ~1s
                 });
 
+        // Billing audit metrics
+        private static readonly Counter BillingAuditEvents = Prometheus.Metrics
+            .CreateCounter("conduit_billing_audit_events_total", "Total billing audit events",
+                new CounterConfiguration
+                {
+                    LabelNames = new[] { "event_type", "provider_type" }
+                });
+
+        private static readonly Counter BillingRevenue = Prometheus.Metrics
+            .CreateCounter("conduit_billing_revenue_dollars_total", "Total revenue from successful billing",
+                new CounterConfiguration
+                {
+                    LabelNames = new[] { "model", "provider_type" }
+                });
+
+        private static readonly Counter BillingRevenueLoss = Prometheus.Metrics
+            .CreateCounter("conduit_billing_revenue_loss_dollars_total", "Potential revenue loss from billing failures",
+                new CounterConfiguration
+                {
+                    LabelNames = new[] { "event_type", "reason" }
+                });
+
+        private static readonly Histogram BillingCostDistribution = Prometheus.Metrics
+            .CreateHistogram("conduit_billing_cost_dollars", "Distribution of billing costs",
+                new HistogramConfiguration
+                {
+                    LabelNames = new[] { "model", "provider_type" },
+                    Buckets = new[] { 0.0001, 0.001, 0.01, 0.1, 1, 10, 100 } // $0.0001 to $100
+                });
+
+        private static readonly Counter ZeroCostEvents = Prometheus.Metrics
+            .CreateCounter("conduit_billing_zero_cost_total", "Total zero cost events",
+                new CounterConfiguration
+                {
+                    LabelNames = new[] { "model", "reason" }
+                });
+
         public UsageTrackingMiddleware(
             RequestDelegate next,
             ILogger<UsageTrackingMiddleware> logger)
@@ -78,13 +116,14 @@ namespace ConduitLLM.Http.Middleware
             ICostCalculationService costCalculationService,
             IBatchSpendUpdateService batchSpendService,
             IRequestLogService requestLogService,
-            IVirtualKeyService virtualKeyService)
+            IVirtualKeyService virtualKeyService,
+            IBillingAuditService billingAuditService)
         {
             // Skip if not an API endpoint or no virtual key
             if (!ShouldTrackUsage(context))
             {
                 // Log billing decision for error responses if this is a tracked endpoint type
-                LogBillingDecision(context);
+                await LogBillingDecisionAsync(context, billingAuditService);
                 await _next(context);
                 return;
             }
@@ -107,7 +146,7 @@ namespace ConduitLLM.Http.Middleware
                     // For streaming, just copy the stream directly without parsing
                     responseBody.Seek(0, SeekOrigin.Begin);
                     await responseBody.CopyToAsync(originalBodyStream);
-                    await TrackStreamingUsageAsync(context, costCalculationService, batchSpendService, requestLogService, virtualKeyService);
+                    await TrackStreamingUsageAsync(context, costCalculationService, batchSpendService, requestLogService, virtualKeyService, billingAuditService);
                     return;
                 }
 
@@ -118,7 +157,8 @@ namespace ConduitLLM.Http.Middleware
                     costCalculationService,
                     batchSpendService,
                     requestLogService,
-                    virtualKeyService);
+                    virtualKeyService,
+                    billingAuditService);
 
                 // Copy the response body back to the original stream
                 responseBody.Seek(0, SeekOrigin.Begin);
@@ -186,7 +226,8 @@ namespace ConduitLLM.Http.Middleware
             ICostCalculationService costCalculationService,
             IBatchSpendUpdateService batchSpendService,
             IRequestLogService requestLogService,
-            IVirtualKeyService virtualKeyService)
+            IVirtualKeyService virtualKeyService,
+            IBillingAuditService billingAuditService)
         {
             var endpointType = DetermineRequestType(context.Request.Path);
             var extractionTimer = UsageExtractionTime.WithLabels(endpointType).NewTimer();
@@ -203,6 +244,24 @@ namespace ConduitLLM.Http.Middleware
                 if (!root.TryGetProperty("usage", out var usageElement))
                 {
                     _logger.LogDebug("No usage data found in response for {Path}", context.Request.Path);
+                    
+                    // Audit log missing usage data
+                    var vkId = context.Items.ContainsKey("VirtualKeyId") ? (int?)context.Items["VirtualKeyId"] : null;
+                    var ptMissing = context.Items.TryGetValue("ProviderType", out var pt) ? pt?.ToString() : "unknown";
+                    billingAuditService.LogBillingEvent(new BillingAuditEvent
+                    {
+                        EventType = BillingAuditEventType.MissingUsageData,
+                        VirtualKeyId = vkId,
+                        RequestId = context.TraceIdentifier,
+                        RequestPath = context.Request.Path.ToString(),
+                        HttpStatusCode = context.Response.StatusCode,
+                        ProviderType = ptMissing
+                    });
+                    
+                    // Increment metrics
+                    BillingAuditEvents.WithLabels("MissingUsageData", ptMissing ?? "unknown").Inc();
+                    BillingRevenueLoss.WithLabels("MissingUsageData", "no_usage_in_response").Inc();
+                    
                     return;
                 }
 
@@ -244,6 +303,25 @@ namespace ConduitLLM.Http.Middleware
                 {
                     _logger.LogDebug("Zero cost calculated for {Model} with usage {Usage}", model, JsonSerializer.Serialize(usage));
                     UsageTrackingFailures.WithLabels("zero_cost", endpointType).Inc();
+                    
+                    // Audit log zero cost event
+                    billingAuditService.LogBillingEvent(new BillingAuditEvent
+                    {
+                        EventType = BillingAuditEventType.ZeroCostSkipped,
+                        VirtualKeyId = virtualKeyId,
+                        Model = model,
+                        RequestId = context.TraceIdentifier,
+                        UsageJson = JsonSerializer.Serialize(usage),
+                        CalculatedCost = cost,
+                        ProviderType = providerType,
+                        RequestPath = context.Request.Path.ToString(),
+                        HttpStatusCode = context.Response.StatusCode
+                    });
+                    
+                    // Increment metrics
+                    BillingAuditEvents.WithLabels("ZeroCostSkipped", providerType ?? "unknown").Inc();
+                    ZeroCostEvents.WithLabels(model ?? "unknown", "calculated_zero").Inc();
+                    
                     return;
                 }
 
@@ -274,16 +352,71 @@ namespace ConduitLLM.Http.Middleware
                 _logger.LogInformation(
                     "Tracked usage for VirtualKey {VirtualKeyId}: Model={Model}, PromptTokens={PromptTokens}, CompletionTokens={CompletionTokens}, Cost={Cost:C}",
                     virtualKeyId, model, usage.PromptTokens, usage.CompletionTokens, cost);
+                
+                // Audit log successful billing
+                billingAuditService.LogBillingEvent(new BillingAuditEvent
+                {
+                    EventType = BillingAuditEventType.UsageTracked,
+                    VirtualKeyId = virtualKeyId,
+                    Model = model,
+                    RequestId = context.TraceIdentifier,
+                    UsageJson = JsonSerializer.Serialize(usage),
+                    CalculatedCost = cost,
+                    ProviderType = providerType,
+                    RequestPath = context.Request.Path.ToString(),
+                    HttpStatusCode = context.Response.StatusCode
+                });
+                
+                // Increment metrics
+                BillingAuditEvents.WithLabels("UsageTracked", providerType ?? "unknown").Inc();
+                BillingRevenue.WithLabels(model ?? "unknown", providerType ?? "unknown").Inc(Convert.ToDouble(cost));
+                BillingCostDistribution.WithLabels(model ?? "unknown", providerType ?? "unknown").Observe(Convert.ToDouble(cost));
             }
             catch (JsonException ex)
             {
                 _logger.LogError(ex, "Failed to parse response JSON for usage tracking");
                 UsageTrackingFailures.WithLabels("json_parse_error", endpointType).Inc();
+                
+                // Audit log JSON parsing error
+                var virtualKeyId = context.Items.ContainsKey("VirtualKeyId") ? (int?)context.Items["VirtualKeyId"] : null;
+                var providerType = context.Items.TryGetValue("ProviderType", out var pt) ? pt?.ToString() : "unknown";
+                billingAuditService.LogBillingEvent(new BillingAuditEvent
+                {
+                    EventType = BillingAuditEventType.JsonParseError,
+                    VirtualKeyId = virtualKeyId,
+                    RequestId = context.TraceIdentifier,
+                    RequestPath = context.Request.Path.ToString(),
+                    HttpStatusCode = context.Response.StatusCode,
+                    FailureReason = ex.Message,
+                    ProviderType = providerType
+                });
+                
+                // Increment metrics
+                BillingAuditEvents.WithLabels("JsonParseError", providerType ?? "unknown").Inc();
+                BillingRevenueLoss.WithLabels("JsonParseError", "parsing_failed").Inc();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error in usage tracking");
                 UsageTrackingFailures.WithLabels("unexpected_error", endpointType).Inc();
+                
+                // Audit log unexpected error
+                var virtualKeyId = context.Items.ContainsKey("VirtualKeyId") ? (int?)context.Items["VirtualKeyId"] : null;
+                var providerType = context.Items.TryGetValue("ProviderType", out var pt) ? pt?.ToString() : "unknown";
+                billingAuditService.LogBillingEvent(new BillingAuditEvent
+                {
+                    EventType = BillingAuditEventType.UnexpectedError,
+                    VirtualKeyId = virtualKeyId,
+                    RequestId = context.TraceIdentifier,
+                    RequestPath = context.Request.Path.ToString(),
+                    HttpStatusCode = context.Response.StatusCode,
+                    FailureReason = ex.Message,
+                    ProviderType = providerType
+                });
+                
+                // Increment metrics
+                BillingAuditEvents.WithLabels("UnexpectedError", providerType ?? "unknown").Inc();
+                BillingRevenueLoss.WithLabels("UnexpectedError", "exception").Inc();
             }
             finally
             {
@@ -413,7 +546,8 @@ namespace ConduitLLM.Http.Middleware
             ICostCalculationService costCalculationService,
             IBatchSpendUpdateService batchSpendService,
             IRequestLogService requestLogService,
-            IVirtualKeyService virtualKeyService)
+            IVirtualKeyService virtualKeyService,
+            IBillingAuditService billingAuditService)
         {
             var endpointType = DetermineRequestType(context.Request.Path);
             
@@ -424,6 +558,25 @@ namespace ConduitLLM.Http.Middleware
             {
                 _logger.LogDebug("No streaming usage data found for {Path}", context.Request.Path);
                 UsageTrackingFailures.WithLabels("no_streaming_usage", endpointType).Inc();
+                
+                // Audit log missing streaming usage
+                var vkId = context.Items.ContainsKey("VirtualKeyId") ? (int?)context.Items["VirtualKeyId"] : null;
+                var ptStreaming = context.Items.TryGetValue("ProviderType", out var pt) ? pt?.ToString() : "unknown";
+                billingAuditService.LogBillingEvent(new BillingAuditEvent
+                {
+                    EventType = BillingAuditEventType.StreamingUsageMissing,
+                    VirtualKeyId = vkId,
+                    RequestId = context.TraceIdentifier,
+                    RequestPath = context.Request.Path.ToString(),
+                    HttpStatusCode = context.Response.StatusCode,
+                    FailureReason = "No StreamingUsage in HttpContext.Items",
+                    ProviderType = ptStreaming
+                });
+                
+                // Increment metrics
+                BillingAuditEvents.WithLabels("StreamingUsageMissing", ptStreaming ?? "unknown").Inc();
+                BillingRevenueLoss.WithLabels("StreamingUsageMissing", "streaming_no_usage").Inc();
+                
                 return;
             }
 
@@ -459,10 +612,48 @@ namespace ConduitLLM.Http.Middleware
                 
                 await UpdateSpendAsync(virtualKeyId, cost, batchSpendService, virtualKeyService);
                 await LogRequestAsync(context, virtualKeyId, model, usage, cost, requestLogService, batchSpendService);
+                
+                // Audit log successful streaming billing
+                billingAuditService.LogBillingEvent(new BillingAuditEvent
+                {
+                    EventType = BillingAuditEventType.UsageTracked,
+                    VirtualKeyId = virtualKeyId,
+                    Model = model,
+                    RequestId = context.TraceIdentifier,
+                    UsageJson = JsonSerializer.Serialize(usage),
+                    CalculatedCost = cost,
+                    ProviderType = providerType,
+                    RequestPath = context.Request.Path.ToString(),
+                    HttpStatusCode = context.Response.StatusCode,
+                    IsEstimated = false
+                });
+                
+                // Increment metrics
+                BillingAuditEvents.WithLabels("UsageTracked", providerType ?? "unknown").Inc();
+                BillingRevenue.WithLabels(model ?? "unknown", providerType ?? "unknown").Inc(Convert.ToDouble(cost));
+                BillingCostDistribution.WithLabels(model ?? "unknown", providerType ?? "unknown").Observe(Convert.ToDouble(cost));
             }
             else
             {
                 UsageTrackingFailures.WithLabels("zero_cost_streaming", endpointType).Inc();
+                
+                // Audit log zero cost streaming
+                billingAuditService.LogBillingEvent(new BillingAuditEvent
+                {
+                    EventType = BillingAuditEventType.ZeroCostSkipped,
+                    VirtualKeyId = virtualKeyId,
+                    Model = model,
+                    RequestId = context.TraceIdentifier,
+                    UsageJson = JsonSerializer.Serialize(usage),
+                    CalculatedCost = cost,
+                    ProviderType = providerType,
+                    RequestPath = context.Request.Path.ToString(),
+                    HttpStatusCode = context.Response.StatusCode
+                });
+                
+                // Increment metrics
+                BillingAuditEvents.WithLabels("ZeroCostSkipped", providerType ?? "unknown").Inc();
+                ZeroCostEvents.WithLabels(model ?? "unknown", "streaming_zero").Inc();
             }
         }
 
@@ -504,11 +695,12 @@ namespace ConduitLLM.Http.Middleware
         /// Tracks when billing is skipped due to error responses or other policy reasons.
         /// </summary>
         /// <param name="context">The HTTP context of the current request</param>
-        private void LogBillingDecision(HttpContext context)
+        /// <param name="billingAuditService">The billing audit service</param>
+        private Task LogBillingDecisionAsync(HttpContext context, IBillingAuditService billingAuditService)
         {
             // Only log for API endpoints that would normally be tracked
             if (!context.Request.Path.StartsWithSegments("/v1"))
-                return;
+                return Task.CompletedTask;
 
             var path = context.Request.Path.Value?.ToLowerInvariant() ?? "";
             var isTrackableEndpoint = path.Contains("/completions") || 
@@ -519,7 +711,7 @@ namespace ConduitLLM.Http.Middleware
                                     path.Contains("/videos/generations");
 
             if (!isTrackableEndpoint)
-                return;
+                return Task.CompletedTask;
 
             var virtualKeyId = context.Items.TryGetValue("VirtualKeyId", out var keyId) ? keyId : "none";
             var statusCode = context.Response.StatusCode;
@@ -533,6 +725,22 @@ namespace ConduitLLM.Http.Middleware
                     "Status={StatusCode}, VirtualKey={VirtualKeyId}, Path={Path}, RequestId={RequestId}, " +
                     "Reason=ErrorResponse_NoChargePolicy", 
                     statusCode, virtualKeyId, context.Request.Path, requestId);
+                
+                // Audit log error response skipped
+                var providerType = context.Items.TryGetValue("ProviderType", out var pt) ? pt?.ToString() : "unknown";
+                billingAuditService.LogBillingEvent(new BillingAuditEvent
+                {
+                    EventType = BillingAuditEventType.ErrorResponseSkipped,
+                    VirtualKeyId = virtualKeyId is int vkId ? vkId : null,
+                    RequestId = requestId,
+                    RequestPath = context.Request.Path.ToString(),
+                    HttpStatusCode = statusCode,
+                    FailureReason = $"HTTP {statusCode} error response - no billing per policy",
+                    ProviderType = providerType
+                });
+                
+                // Increment metrics
+                BillingAuditEvents.WithLabels("ErrorResponseSkipped", providerType ?? "unknown").Inc();
             }
             else if (!context.Items.ContainsKey("VirtualKeyId"))
             {
@@ -541,7 +749,22 @@ namespace ConduitLLM.Http.Middleware
                     "Status={StatusCode}, Path={Path}, RequestId={RequestId}, " +
                     "Reason=NoVirtualKey", 
                     statusCode, context.Request.Path, requestId);
+                
+                // Audit log no virtual key
+                billingAuditService.LogBillingEvent(new BillingAuditEvent
+                {
+                    EventType = BillingAuditEventType.NoVirtualKey,
+                    RequestId = requestId,
+                    RequestPath = context.Request.Path.ToString(),
+                    HttpStatusCode = statusCode,
+                    FailureReason = "No virtual key found for request"
+                });
+                
+                // Increment metrics
+                BillingAuditEvents.WithLabels("NoVirtualKey", "unknown").Inc();
             }
+            
+            return Task.CompletedTask;
         }
     }
 

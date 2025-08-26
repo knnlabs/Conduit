@@ -16,6 +16,7 @@ namespace ConduitLLM.Tests.Http.Middleware
         private readonly Mock<IBatchSpendUpdateService> _mockBatchSpendService;
         private readonly Mock<IRequestLogService> _mockRequestLogService;
         private readonly Mock<IVirtualKeyService> _mockVirtualKeyService;
+        private readonly Mock<IBillingAuditService> _mockBillingAuditService;
         private readonly Mock<ILogger<UsageTrackingMiddleware>> _mockLogger;
         private readonly UsageTrackingMiddleware _middleware;
         private RequestDelegate _next;
@@ -26,6 +27,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             _mockBatchSpendService = new Mock<IBatchSpendUpdateService>();
             _mockRequestLogService = new Mock<IRequestLogService>();
             _mockVirtualKeyService = new Mock<IVirtualKeyService>();
+            _mockBillingAuditService = new Mock<IBillingAuditService>();
             _mockLogger = new Mock<ILogger<UsageTrackingMiddleware>>();
             
             // Default _next delegate - will be replaced by SetupMockResponse

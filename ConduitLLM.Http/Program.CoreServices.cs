@@ -47,6 +47,12 @@ public partial class Program
         // Virtual key service (Configuration layer - used by RealtimeUsageTracker)
         builder.Services.AddScoped<ConduitLLM.Configuration.Interfaces.IVirtualKeyService, ConduitLLM.Configuration.Services.VirtualKeyService>();
 
+        // Billing audit service for comprehensive billing event tracking
+        builder.Services.AddSingleton<ConduitLLM.Configuration.Interfaces.IBillingAuditService, ConduitLLM.Configuration.Services.BillingAuditService>();
+        builder.Services.AddHostedService<ConduitLLM.Configuration.Services.BillingAuditService>(provider => 
+            provider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IBillingAuditService>() as ConduitLLM.Configuration.Services.BillingAuditService 
+            ?? throw new InvalidOperationException("BillingAuditService must implement IHostedService"));
+
         // Provider error tracking service
         builder.Services.AddSingleton<IProviderErrorTrackingService, ProviderErrorTrackingService>();
 

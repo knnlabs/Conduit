@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ConduitLLM.Configuration.Migrations
 {
     [DbContext(typeof(ConduitDbContext))]
-    [Migration("20250823093402_AddParametersToModel")]
-    partial class AddParametersToModel
+    [Migration("20250826181103_AddBillingAuditEvents")]
+    partial class AddBillingAuditEvents
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -409,6 +409,63 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("OperationType", "Status", "StartedAt");
 
                     b.ToTable("BatchOperationHistory");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.BillingAuditEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("CalculatedCost")
+                        .HasColumnType("decimal(10, 6)");
+
+                    b.Property<int>("EventType")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FailureReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int?>("HttpStatusCode")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsEstimated")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("MetadataJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Model")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ProviderType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("RequestId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("RequestPath")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UsageJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<int?>("VirtualKeyId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VirtualKeyId");
+
+                    b.ToTable("BillingAuditEvents");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.CacheConfiguration", b =>
@@ -1901,6 +1958,15 @@ namespace ConduitLLM.Configuration.Migrations
                         .HasForeignKey("VirtualKeyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("VirtualKey");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.BillingAuditEvent", b =>
+                {
+                    b.HasOne("ConduitLLM.Configuration.Entities.VirtualKey", "VirtualKey")
+                        .WithMany()
+                        .HasForeignKey("VirtualKeyId");
 
                     b.Navigation("VirtualKey");
                 });

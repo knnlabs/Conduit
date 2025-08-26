@@ -182,6 +182,12 @@ public static class ServiceCollectionExtensions
         // Register cache management service
         services.AddScoped<ICacheManagementService, CacheManagementService>();
 
+        // Register billing audit service for comprehensive billing event tracking
+        services.AddSingleton<ConduitLLM.Configuration.Interfaces.IBillingAuditService, ConduitLLM.Configuration.Services.BillingAuditService>();
+        services.AddHostedService<ConduitLLM.Configuration.Services.BillingAuditService>(provider => 
+            provider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IBillingAuditService>() as ConduitLLM.Configuration.Services.BillingAuditService 
+            ?? throw new InvalidOperationException("BillingAuditService must implement IHostedService"));
+
         // Register provider error tracking service with deferred resolution
         // IConnectionMultiplexer will be registered by AddRedisDataProtection in Program.cs after this method
         services.AddSingleton<ConduitLLM.Core.Interfaces.IProviderErrorTrackingService>(serviceProvider =>

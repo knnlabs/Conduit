@@ -54,7 +54,7 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             // Act
             await middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
-                _mockRequestLogService.Object, _mockVirtualKeyService.Object);
+                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object);
 
             // Assert
             _mockCostService.Verify(x => x.CalculateCostAsync("gpt-4", 
@@ -118,7 +118,7 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             // Act
             await middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
-                _mockRequestLogService.Object, _mockVirtualKeyService.Object);
+                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object);
 
             // Assert
             _mockCostService.Verify(x => x.CalculateCostAsync("claude-3-5-sonnet-20241022", 
@@ -176,7 +176,7 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             // Act
             await middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
-                _mockRequestLogService.Object, _mockVirtualKeyService.Object);
+                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object);
 
             // Assert
             _mockCostService.Verify(x => x.CalculateCostAsync("claude-3-5-sonnet-20241022", 
