@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
+using ConduitLLM.Configuration.Exceptions;
 using Microsoft.EntityFrameworkCore;
 
 namespace ConduitLLM.Configuration.Services
@@ -17,6 +18,7 @@ namespace ConduitLLM.Configuration.Services
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<BatchSpendUpdateService> _logger;
         private readonly RedisConnectionFactory _redisConnectionFactory;
+        private readonly IBillingAlertingService _alertingService;
         private readonly BatchSpendingOptions _options;
         private readonly Timer _flushTimer;
         private readonly TimeSpan _flushInterval;
@@ -40,12 +42,14 @@ namespace ConduitLLM.Configuration.Services
             IServiceScopeFactory serviceScopeFactory,
             RedisConnectionFactory redisConnectionFactory,
             IOptions<BatchSpendingOptions> options,
-            ILogger<BatchSpendUpdateService> logger)
+            ILogger<BatchSpendUpdateService> logger,
+            IBillingAlertingService alertingService)
         {
             _serviceScopeFactory = serviceScopeFactory;
             _redisConnectionFactory = redisConnectionFactory;
             _options = options.Value;
             _logger = logger;
+            _alertingService = alertingService;
             
             // Validate and apply configuration
             var validationResult = _options.Validate();
@@ -96,6 +100,9 @@ namespace ConduitLLM.Configuration.Services
                     if (virtualKey == null)
                     {
                         _logger.LogWarning("Virtual Key {VirtualKeyId} not found for spend update", virtualKeyId);
+                        await _alertingService.SendCriticalAlertAsync(
+                            $"Virtual Key {virtualKeyId} not found for spend update", 
+                            virtualKeyId);
                         return;
                     }
                     
@@ -120,7 +127,19 @@ namespace ConduitLLM.Configuration.Services
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to queue spend update to Redis for Virtual Key {VirtualKeyId}", virtualKeyId);
-                    // In production, you might want to fall back to direct DB update here
+                    
+                    // Send critical alert
+                    await _alertingService.SendCriticalAlertAsync(
+                        $"Failed to queue spend update to Redis for Virtual Key {virtualKeyId}: {ex.Message}", 
+                        virtualKeyId,
+                        new { error = ex.GetType().Name, cost = cost });
+                    
+                    // Re-throw as BillingSystemException to prevent silent failures
+                    throw new BillingSystemException(
+                        $"Unable to process billing update for Virtual Key {virtualKeyId}. Service temporarily unavailable.",
+                        virtualKeyId,
+                        BillingSystemException.ErrorCodes.RedisUpdateFailed,
+                        ex);
                 }
             });
         }
