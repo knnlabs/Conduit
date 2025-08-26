@@ -7442,6 +7442,309 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/provider-errors/recent": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get recent errors across all providers */
+    get: {
+      parameters: {
+        query?: {
+          /** @description Optional provider ID filter */
+          providerId?: number;
+          /** @description Optional key ID filter */
+          keyId?: number;
+          /** @description Maximum number of errors to return (default: 100) */
+          limit?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ConduitLLM.Admin.DTOs.ProviderErrorDto"][];
+            "application/json": components["schemas"]["ConduitLLM.Admin.DTOs.ProviderErrorDto"][];
+            "text/json": components["schemas"]["ConduitLLM.Admin.DTOs.ProviderErrorDto"][];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/provider-errors/summary": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get error summary for all providers */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ConduitLLM.Admin.DTOs.ProviderErrorSummaryDto"][];
+            "application/json": components["schemas"]["ConduitLLM.Admin.DTOs.ProviderErrorSummaryDto"][];
+            "text/json": components["schemas"]["ConduitLLM.Admin.DTOs.ProviderErrorSummaryDto"][];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/provider-errors/keys/{keyId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get detailed error information for a specific key */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description ID of the key */
+          keyId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ConduitLLM.Admin.DTOs.KeyErrorDetailsDto"];
+            "application/json": components["schemas"]["ConduitLLM.Admin.DTOs.KeyErrorDetailsDto"];
+            "text/json": components["schemas"]["ConduitLLM.Admin.DTOs.KeyErrorDetailsDto"];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/provider-errors/keys/{keyId}/clear": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Clear errors and optionally re-enable a key */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description ID of the key */
+          keyId: number;
+        };
+        cookie?: never;
+      };
+      /** @description Clear errors request */
+      requestBody?: {
+        content: {
+          "application/json": components["schemas"]["ConduitLLM.Admin.DTOs.ClearErrorsRequest"];
+          "text/json": components["schemas"]["ConduitLLM.Admin.DTOs.ClearErrorsRequest"];
+          "application/*+json": components["schemas"]["ConduitLLM.Admin.DTOs.ClearErrorsRequest"];
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/provider-errors/stats": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get error statistics for dashboard */
+    get: {
+      parameters: {
+        query?: {
+          /** @description Time window in hours (default: 24) */
+          hours?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["ConduitLLM.Admin.DTOs.ErrorStatisticsDto"];
+            "application/json": components["schemas"]["ConduitLLM.Admin.DTOs.ErrorStatisticsDto"];
+            "text/json": components["schemas"]["ConduitLLM.Admin.DTOs.ErrorStatisticsDto"];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/provider-errors/providers/{providerId}/key-errors": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get error counts by key for a specific provider */
+    get: {
+      parameters: {
+        query?: {
+          /** @description Time window in hours (default: 1) */
+          hours?: number;
+        };
+        header?: never;
+        path: {
+          /** @description Provider ID */
+          providerId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": {
+              [key: string]: number;
+            };
+            "application/json": {
+              [key: string]: number;
+            };
+            "text/json": {
+              [key: string]: number;
+            };
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/provider-errors/keys/{keyId}/disable": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Manually disable a key due to errors */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description ID of the key to disable */
+          keyId: number;
+        };
+        cookie?: never;
+      };
+      /** @description Reason for disabling */
+      requestBody?: {
+        content: {
+          "application/json": string;
+          "text/json": string;
+          "application/*+json": string;
+        };
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/Router/config": {
     parameters: {
       query?: never;
@@ -9301,6 +9604,189 @@ export interface components {
       baseUrl?: string | null;
       /** @description Whether the provider is enabled */
       isEnabled?: boolean;
+    };
+    /** @description Request DTO for clearing errors and re-enabling a key */
+    "ConduitLLM.Admin.DTOs.ClearErrorsRequest": {
+      /** @description Whether to re-enable the key */
+      reenableKey?: boolean;
+      /** @description Confirmation that the admin wants to re-enable */
+      confirmReenable?: boolean;
+      /** @description Reason for re-enabling */
+      reason?: string | null;
+    };
+    /** @description DTO for error statistics */
+    "ConduitLLM.Admin.DTOs.ErrorStatisticsDto": {
+      /**
+       * Format: int32
+       * @description Total number of errors in the time window
+       */
+      totalErrors?: number;
+      /**
+       * Format: int32
+       * @description Number of fatal errors
+       */
+      fatalErrors?: number;
+      /**
+       * Format: int32
+       * @description Number of warnings
+       */
+      warnings?: number;
+      /**
+       * Format: int32
+       * @description Number of currently disabled keys
+       */
+      disabledKeys?: number;
+      /** @description Errors by type */
+      errorsByType?: {
+        [key: string]: number;
+      } | null;
+      /** @description Errors by provider */
+      errorsByProvider?: {
+        [key: string]: number;
+      } | null;
+      /**
+       * Format: date-span
+       * @description Time window for the statistics
+       */
+      timeWindow?: string;
+      /**
+       * Format: date-time
+       * @description When the statistics were generated
+       */
+      generatedAt?: string;
+    };
+    /** @description DTO for fatal error information */
+    "ConduitLLM.Admin.DTOs.FatalErrorDto": {
+      /** @description Type of error */
+      errorType?: string | null;
+      /**
+       * Format: int32
+       * @description Number of occurrences
+       */
+      count?: number;
+      /**
+       * Format: date-time
+       * @description When first seen
+       */
+      firstSeen?: string;
+      /**
+       * Format: date-time
+       * @description When last seen
+       */
+      lastSeen?: string;
+      /** @description Last error message */
+      lastErrorMessage?: string | null;
+      /**
+       * Format: int32
+       * @description Last HTTP status code
+       */
+      lastStatusCode?: number | null;
+    };
+    /** @description DTO for detailed key error information */
+    "ConduitLLM.Admin.DTOs.KeyErrorDetailsDto": {
+      /**
+       * Format: int32
+       * @description Key ID
+       */
+      keyId?: number;
+      /** @description Key name for display */
+      keyName?: string | null;
+      /** @description Whether the key is currently disabled */
+      isDisabled?: boolean;
+      /**
+       * Format: date-time
+       * @description When the key was disabled
+       */
+      disabledAt?: string | null;
+      fatalError?: components["schemas"]["ConduitLLM.Admin.DTOs.FatalErrorDto"];
+      /** @description Recent warning errors */
+      recentWarnings?:
+        | components["schemas"]["ConduitLLM.Admin.DTOs.WarningErrorDto"][]
+        | null;
+    };
+    /** @description DTO for individual provider error occurrence */
+    "ConduitLLM.Admin.DTOs.ProviderErrorDto": {
+      /**
+       * Format: int32
+       * @description ID of the key credential that caused the error
+       */
+      keyCredentialId?: number;
+      /** @description Name of the key for display */
+      keyName?: string | null;
+      /**
+       * Format: int32
+       * @description ID of the provider
+       */
+      providerId?: number;
+      /** @description Name of the provider */
+      providerName?: string | null;
+      /** @description Type of error */
+      errorType?: string | null;
+      /** @description Error message */
+      errorMessage?: string | null;
+      /**
+       * Format: int32
+       * @description HTTP status code if applicable
+       */
+      httpStatusCode?: number | null;
+      /**
+       * Format: date-time
+       * @description When the error occurred
+       */
+      occurredAt?: string;
+      /** @description Whether this is a fatal error */
+      isFatal?: boolean;
+      /** @description Model that was being used */
+      modelName?: string | null;
+    };
+    /** @description DTO for provider-level error summary */
+    "ConduitLLM.Admin.DTOs.ProviderErrorSummaryDto": {
+      /**
+       * Format: int32
+       * @description Provider ID
+       */
+      providerId?: number;
+      /** @description Provider name */
+      providerName?: string | null;
+      /**
+       * Format: int32
+       * @description Total number of errors
+       */
+      totalErrors?: number;
+      /**
+       * Format: int32
+       * @description Number of fatal errors
+       */
+      fatalErrors?: number;
+      /**
+       * Format: int32
+       * @description Number of warnings
+       */
+      warnings?: number;
+      /** @description List of disabled key IDs */
+      disabledKeyIds?: number[] | null;
+      /**
+       * Format: date-time
+       * @description When the last error occurred
+       */
+      lastError?: string | null;
+      /**
+       * Format: int32
+       * @description Number of currently disabled keys
+       */
+      readonly disabledKeyCount?: number;
+    };
+    /** @description DTO for warning error information */
+    "ConduitLLM.Admin.DTOs.WarningErrorDto": {
+      /** @description Type of warning */
+      type?: string | null;
+      /** @description Warning message */
+      message?: string | null;
+      /**
+       * Format: date-time
+       * @description When the warning occurred
+       */
+      timestamp?: string;
     };
     /** @description Combined analytics summary DTO */
     "ConduitLLM.Admin.Interfaces.AnalyticsSummaryDto": {
