@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ConduitLLM.Configuration.Migrations
 {
     [DbContext(typeof(ConduitDbContext))]
-    [Migration("20250826181229_AddBillingAuditEventsWithIndexes")]
-    partial class AddBillingAuditEventsWithIndexes
+    [Migration("20250826210126_RemoveApiParametersReferencesClean")]
+    partial class RemoveApiParametersReferencesClean
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

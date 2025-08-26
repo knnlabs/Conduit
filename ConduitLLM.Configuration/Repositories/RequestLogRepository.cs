@@ -88,10 +88,14 @@ namespace ConduitLLM.Configuration.Repositories
         {
             try
             {
+                // Ensure dates are UTC for PostgreSQL timestamp with time zone
+                var utcStartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+                var utcEndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+                
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.RequestLogs
                     .AsNoTracking()
-                    .Where(r => r.Timestamp >= startDate && r.Timestamp <= endDate)
+                    .Where(r => r.Timestamp >= utcStartDate && r.Timestamp <= utcEndDate)
                     .OrderByDescending(r => r.Timestamp)
                     .ToListAsync(cancellationToken);
             }
@@ -156,12 +160,16 @@ namespace ConduitLLM.Configuration.Repositories
 
             try
             {
+                // Ensure dates are UTC for PostgreSQL timestamp with time zone
+                var utcStartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+                var utcEndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+                
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
                 // Build the query with date range filter
                 var query = dbContext.RequestLogs
                     .AsNoTracking()
-                    .Where(r => r.Timestamp >= startDate && r.Timestamp <= endDate);
+                    .Where(r => r.Timestamp >= utcStartDate && r.Timestamp <= utcEndDate);
 
                 // Get total count
                 var totalCount = await query.CountAsync(cancellationToken);

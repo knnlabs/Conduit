@@ -73,8 +73,8 @@ public partial class AnalyticsService : IAnalyticsService
             // Validate and normalize parameters
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 100);
-            startDate ??= DateTime.UtcNow.AddDays(-7);
-            endDate ??= DateTime.UtcNow;
+            startDate = startDate.HasValue ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-7);
+            endDate = endDate.HasValue ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc) : DateTime.UtcNow;
 
             // Use paginated repository method for better performance
             var fetchStopwatch = Stopwatch.StartNew();

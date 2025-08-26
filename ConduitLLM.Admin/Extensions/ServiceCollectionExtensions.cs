@@ -139,6 +139,10 @@ public static class ServiceCollectionExtensions
             return new AdminModelCostService(modelCostRepository, requestLogRepository, dbContextFactory, publishEndpoint, logger);
         });
 
+        // Register cost calculation dependencies
+        services.AddScoped<ConduitLLM.Configuration.Interfaces.IModelCostService, ConduitLLM.Configuration.Services.ModelCostService>();
+        services.AddScoped<ConduitLLM.Core.Interfaces.ICostCalculationService, ConduitLLM.Core.Services.CostCalculationService>();
+        
         // Register audio-related services
         services.AddScoped<IAdminAudioProviderService, AdminAudioProviderService>();
         services.AddScoped<IAdminAudioCostService, AdminAudioCostService>();
