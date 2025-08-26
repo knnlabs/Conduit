@@ -1,11 +1,9 @@
 using System.Diagnostics;
-using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Validation;
 using MassTransit;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 using ConduitLLM.Configuration.Interfaces;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
@@ -27,7 +25,6 @@ namespace ConduitLLM.Core.Services
         private readonly ICancellableTaskRegistry _taskRegistry;
         private readonly ICostCalculationService _costCalculationService;
         private readonly IProviderService _providerService;
-        private readonly ImageGenerationPerformanceConfiguration _performanceConfig;
         private readonly MinimalParameterValidator _parameterValidator;
         private readonly ILogger<ImageGenerationOrchestrator> _logger;
 
@@ -42,7 +39,6 @@ namespace ConduitLLM.Core.Services
             ICancellableTaskRegistry taskRegistry,
             ICostCalculationService costCalculationService,
             IProviderService providerService,
-            IOptions<ImageGenerationPerformanceConfiguration> performanceOptions,
             MinimalParameterValidator parameterValidator,
             ILogger<ImageGenerationOrchestrator> logger)
         {
@@ -56,7 +52,6 @@ namespace ConduitLLM.Core.Services
             _taskRegistry = taskRegistry;
             _costCalculationService = costCalculationService;
             _providerService = providerService;
-            _performanceConfig = performanceOptions.Value;
             _parameterValidator = parameterValidator;
             _logger = logger;
         }
@@ -130,13 +125,9 @@ namespace ConduitLLM.Core.Services
                 var processedImages = new List<ConduitLLM.Core.Events.ImageData>();
                 var totalImages = response.Data?.Count ?? 0;
                 
-                // Determine optimal concurrency for image processing
-                var concurrency = GetOptimalConcurrency(modelInfo.ProviderType.ToString(), totalImages);
-                var semaphore = new SemaphoreSlim(concurrency);
-                _logger.LogInformation("Processing {Count} images in parallel with concurrency limit of {Concurrency}", 
-                    totalImages, concurrency);
+                _logger.LogInformation("Processing {Count} images in parallel", totalImages);
                 
-                // Process images in parallel
+                // Process images in parallel without artificial limits
                 var imageTasks = new Task<ConduitLLM.Core.Events.ImageData>[totalImages];
                 var progressCounter = 0;
                 var downloadTime = 0L;
@@ -152,7 +143,6 @@ namespace ConduitLLM.Core.Services
                         index, 
                         request, 
                         modelInfo, 
-                        semaphore,
                         taskCts.Token,
                         () => Interlocked.Increment(ref progressCounter),
                         (dt, st) => 

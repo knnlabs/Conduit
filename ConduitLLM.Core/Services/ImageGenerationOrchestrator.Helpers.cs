@@ -19,11 +19,11 @@ namespace ConduitLLM.Core.Services
                 return null;
             }
             
-            // If no model specified, use default image model
+            // Model must be specified - no fallback
             if (string.IsNullOrEmpty(requestedModel))
             {
-                // Would need to implement default image model selection
-                requestedModel = "dall-e-3"; // Default to DALL-E 3
+                _logger.LogWarning("No model specified for image generation request");
+                return null;
             }
             
             // Get model mapping
@@ -145,28 +145,6 @@ namespace ConduitLLM.Core.Services
                     break;
                 }
             }
-        }
-
-        private int GetOptimalConcurrency(string provider, int imageCount)
-        {
-            // Use configuration or fallback to defaults
-            var maxConcurrency = _performanceConfig.ProviderConcurrencyLimits.TryGetValue(
-                provider.ToLowerInvariant(), 
-                out var limit) ? limit : _performanceConfig.MaxConcurrentGenerations;
-            
-            // Don't exceed the number of images
-            return Math.Min(maxConcurrency, imageCount);
-        }
-
-        private TimeSpan GetProviderTimeout(ProviderType providerType)
-        {
-            // Use configuration or fallback to defaults
-            var providerKey = providerType.ToString().ToLowerInvariant();
-            var timeoutSeconds = _performanceConfig.ProviderDownloadTimeouts.TryGetValue(
-                providerKey, 
-                out var timeout) ? timeout : 30;
-            
-            return TimeSpan.FromSeconds(timeoutSeconds);
         }
 
         private class ModelInfo

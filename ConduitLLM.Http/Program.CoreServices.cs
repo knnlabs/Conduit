@@ -254,10 +254,6 @@ public partial class Program
                 taskRegistry);
         });
 
-        // Configure Image Generation Performance Settings
-        builder.Services.Configure<ConduitLLM.Core.Configuration.ImageGenerationPerformanceConfiguration>(
-            builder.Configuration.GetSection("ImageGeneration:Performance"));
-
         // Configure Video Generation Retry Settings
         builder.Services.Configure<ConduitLLM.Core.Configuration.VideoGenerationRetryConfiguration>(options =>
         {
