@@ -345,6 +345,9 @@ export * from './models/metadata';
 export * from './models/common-types';
 export * from './models/providerType';
 
+// Chat utilities
+export * from './chat';
+
 // Export chat presets utility
 export {
   CHAT_PRESETS,

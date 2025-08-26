@@ -1,10 +1,6 @@
-export interface ImageAttachment {
-  url: string;
-  base64?: string;
-  mimeType: string;
-  size: number;
-  name: string;
-}
+// ImageAttachment moved to SDK - import from @knn_labs/conduit-core-client
+import type { ImageAttachment } from '@knn_labs/conduit-core-client';
+export type { ImageAttachment };
 
 // Content types for chat messages (similar to SDK types)
 export interface TextContent {
