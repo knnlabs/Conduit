@@ -205,7 +205,7 @@ namespace ConduitLLM.Core.Decorators
                 return llmEx;
             
             // If it's an LLMCommunicationException without StatusCode, check its inner exceptions
-            if (ex is LLMCommunicationException outerLlmEx)
+            if (ex is LLMCommunicationException outerLlmEx && outerLlmEx.InnerException != null)
             {
                 var innerWithStatus = ExtractLLMCommunicationException(outerLlmEx.InnerException);
                 if (innerWithStatus != null)
