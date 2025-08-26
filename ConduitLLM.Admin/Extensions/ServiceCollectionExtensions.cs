@@ -15,6 +15,7 @@ using Microsoft.EntityFrameworkCore; // For IDbContextFactory
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
+using StackExchange.Redis;
 
 namespace ConduitLLM.Admin.Extensions;
 
@@ -181,8 +182,23 @@ public static class ServiceCollectionExtensions
         // Register cache management service
         services.AddScoped<ICacheManagementService, CacheManagementService>();
 
-        // Register provider error tracking service for error management endpoints
-        services.AddSingleton<ConduitLLM.Core.Interfaces.IProviderErrorTrackingService, ConduitLLM.Core.Services.ProviderErrorTrackingService>();
+        // Register provider error tracking service with deferred resolution
+        // IConnectionMultiplexer will be registered by AddRedisDataProtection in Program.cs after this method
+        services.AddSingleton<ConduitLLM.Core.Interfaces.IProviderErrorTrackingService>(serviceProvider =>
+        {
+            var redis = serviceProvider.GetService<StackExchange.Redis.IConnectionMultiplexer>();
+            var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
+            var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.ProviderErrorTrackingService>>();
+            
+            if (redis == null)
+            {
+                logger.LogError("[ConduitLLM.Admin] Redis connection not available. Provider error tracking will not function.");
+                throw new InvalidOperationException("Provider error tracking requires Redis. Ensure REDIS_URL or CONDUIT_REDIS_CONNECTION_STRING is configured.");
+            }
+            
+            logger.LogInformation("[ConduitLLM.Admin] Provider error tracking service initialized with Redis backend");
+            return new ConduitLLM.Core.Services.ProviderErrorTrackingService(redis, scopeFactory, logger);
+        });
 
         // Configure CORS for the Admin API
         services.AddCors(options =>
