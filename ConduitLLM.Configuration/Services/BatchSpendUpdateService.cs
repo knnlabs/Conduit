@@ -19,6 +19,7 @@ namespace ConduitLLM.Configuration.Services
         private readonly ILogger<BatchSpendUpdateService> _logger;
         private readonly RedisConnectionFactory _redisConnectionFactory;
         private readonly IBillingAlertingService _alertingService;
+        private readonly IRedisCircuitBreaker? _circuitBreaker;
         private readonly BatchSpendingOptions _options;
         private readonly Timer _flushTimer;
         private readonly TimeSpan _flushInterval;
@@ -43,13 +44,15 @@ namespace ConduitLLM.Configuration.Services
             RedisConnectionFactory redisConnectionFactory,
             IOptions<BatchSpendingOptions> options,
             ILogger<BatchSpendUpdateService> logger,
-            IBillingAlertingService alertingService)
+            IBillingAlertingService alertingService,
+            IRedisCircuitBreaker? circuitBreaker = null)
         {
             _serviceScopeFactory = serviceScopeFactory;
             _redisConnectionFactory = redisConnectionFactory;
             _options = options.Value;
             _logger = logger;
             _alertingService = alertingService;
+            _circuitBreaker = circuitBreaker;
             
             // Validate and apply configuration
             var validationResult = _options.Validate();
@@ -88,6 +91,15 @@ namespace ConduitLLM.Configuration.Services
             {
                 try
                 {
+                    // Check circuit breaker if available
+                    if (_circuitBreaker?.IsOpen == true)
+                    {
+                        _logger.LogWarning("Redis circuit breaker is open. Skipping spend update for Virtual Key {VirtualKeyId}", virtualKeyId);
+                        throw new RedisCircuitBreakerOpenException(
+                            "Cannot update spend - Redis circuit breaker is open",
+                            CircuitState.Open);
+                    }
+
                     // Need to get the group ID for this key
                     using var scope = _serviceScopeFactory.CreateScope();
                     var context = scope.ServiceProvider.GetRequiredService<IConfigurationDbContext>();
@@ -105,24 +117,33 @@ namespace ConduitLLM.Configuration.Services
                             virtualKeyId);
                         return;
                     }
-                    
-                    var redis = await _redisConnectionFactory.GetConnectionAsync();
-                    var db = redis.GetDatabase();
-                    
-                    // Use group ID for accumulation
-                    var key = $"{_redisKeyPrefix}{virtualKey.VirtualKeyGroupId}";
-                    await db.StringIncrementAsync(key, (double)cost);
-                    
-                    // Also track which key was used (for transaction history)
-                    var keyUsageKey = $"key_usage:group:{virtualKey.VirtualKeyGroupId}:key:{virtualKeyId}";
-                    await db.StringIncrementAsync(keyUsageKey, (double)cost);
-                    
-                    // Set TTL for safety
-                    await db.KeyExpireAsync(key, _redisTtl);
-                    await db.KeyExpireAsync(keyUsageKey, _redisTtl);
+
+                    // Execute Redis operations through circuit breaker if available
+                    if (_circuitBreaker != null)
+                    {
+                        await _circuitBreaker.ExecuteAsync(async () =>
+                        {
+                            await PerformRedisUpdate(virtualKeyId, virtualKey.VirtualKeyGroupId, cost);
+                        });
+                    }
+                    else
+                    {
+                        await PerformRedisUpdate(virtualKeyId, virtualKey.VirtualKeyGroupId, cost);
+                    }
                     
                     _logger.LogDebug("Queued spend update to Redis for Virtual Key {VirtualKeyId} (Group {GroupId}): {Cost:C}", 
                         virtualKeyId, virtualKey.VirtualKeyGroupId, cost);
+                }
+                catch (RedisCircuitBreakerOpenException ex)
+                {
+                    _logger.LogError(ex, "Redis circuit breaker prevented spend update for Virtual Key {VirtualKeyId}", virtualKeyId);
+                    
+                    // Don't alert for circuit breaker - it's already handling the issue
+                    throw new BillingSystemException(
+                        $"Unable to process billing update. Redis service is currently unavailable.",
+                        virtualKeyId,
+                        BillingSystemException.ErrorCodes.ServiceUnavailable,
+                        ex);
                 }
                 catch (Exception ex)
                 {
@@ -142,6 +163,24 @@ namespace ConduitLLM.Configuration.Services
                         ex);
                 }
             });
+        }
+
+        private async Task PerformRedisUpdate(int virtualKeyId, int groupId, decimal cost)
+        {
+            var redis = await _redisConnectionFactory.GetConnectionAsync();
+            var db = redis.GetDatabase();
+            
+            // Use group ID for accumulation
+            var key = $"{_redisKeyPrefix}{groupId}";
+            await db.StringIncrementAsync(key, (double)cost);
+            
+            // Also track which key was used (for transaction history)
+            var keyUsageKey = $"key_usage:group:{groupId}:key:{virtualKeyId}";
+            await db.StringIncrementAsync(keyUsageKey, (double)cost);
+            
+            // Set TTL for safety
+            await db.KeyExpireAsync(key, _redisTtl);
+            await db.KeyExpireAsync(keyUsageKey, _redisTtl);
         }
 
         /// <summary>

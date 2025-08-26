@@ -43,6 +43,10 @@ public partial class Program
         // Add security headers
         app.UseCoreApiSecurityHeaders();
 
+        // Add Redis availability check middleware (must be early in pipeline)
+        app.UseRedisAvailability();
+        Console.WriteLine("[Conduit] Redis circuit breaker middleware configured");
+
         // Add authentication and authorization middleware
         app.UseAuthentication();
         app.UseAuthorization();

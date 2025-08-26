@@ -431,6 +431,13 @@ See the `docs/` directory for detailed documentation:
 - [Cache Configuration](docs/Cache-Configuration.md)
 - [Distributed Cache Statistics](docs/claude/distributed-cache-statistics.md) - **Horizontal Scaling Guide**
 
+#### Redis Circuit Breaker (Resilience)
+ConduitLLM includes automatic circuit breaker protection for Redis operations:
+- **Automatic failure detection**: Opens circuit after 5 consecutive failures or 50% failure rate
+- **Service protection**: Returns 503 Service Unavailable when Redis is down (30-second recovery period)
+- **Health monitoring**: Circuit state exposed via `/health` endpoint under `redis_circuit_breaker`
+- **Manual control**: Emergency trip/reset available via environment variable `REDIS_CIRCUIT_BREAKER_ENABLE_MANUAL_CONTROL=true`
+
 ### API Reference
 - [API Reference](docs/api-reference/API-REFERENCE.md)
 - [Admin API Migration Guide](docs/admin-api-migration-guide.md)
