@@ -28,9 +28,10 @@ function convertToEstimatorMessage(message: ChatMessage): EstimatorMessage {
   return {
     role: message.role as 'user' | 'assistant' | 'system',
     content: message.content ?? '',
-    images: message.images?.map(img => ({
-      width: img.width,
-      height: img.height,
+    images: message.images?.map(() => ({
+      // Width and height are optional and may not exist on ImageAttachment
+      width: undefined,
+      height: undefined,
       detail: 'auto' as const
     }))
   };

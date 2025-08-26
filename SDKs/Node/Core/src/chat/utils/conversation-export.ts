@@ -296,7 +296,7 @@ export class ConversationExporter {
     
     // Headers
     if (options.includeHeaders !== false) {
-      csv += columns.join(delimiter) + '\n';
+      csv += `${columns.join(delimiter)  }\n`;
     }
     
     // Data rows
@@ -307,7 +307,7 @@ export class ConversationExporter {
           textQualifier
         )
       );
-      csv += row.join(delimiter) + '\n';
+      csv += `${row.join(delimiter)  }\n`;
     }
     
     return csv;
@@ -528,7 +528,7 @@ export class ConversationExporter {
       }
     }
     
-    return md + '\n';
+    return `${md  }\n`;
   }
 
   private static formatCSVField(value: unknown, qualifier: string): string {

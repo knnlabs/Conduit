@@ -442,7 +442,7 @@ export class ChatStreamingManager {
    */
   private log(...args: unknown[]): void {
     if (this.config.enableLogging) {
-      console.log('[ChatStreamingManager]', ...args);
+      console.warn('[ChatStreamingManager]', ...args);
     }
   }
 }

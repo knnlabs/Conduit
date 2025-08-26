@@ -84,7 +84,7 @@ describe('sse-parser', () => {
     it('should flush remaining events', () => {
       // Incomplete event without final newlines (but with complete data line)
       const chunk = 'data: {"pending": true}\n';
-      let events = parser.processChunk(chunk);
+      const events = parser.processChunk(chunk);
       expect(events).toHaveLength(0); // No events yet because no empty line
 
       // Flush should return the pending event

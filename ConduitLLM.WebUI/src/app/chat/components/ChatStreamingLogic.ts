@@ -5,13 +5,11 @@ import {
   ChatStreamingManager,
   type ImageAttachment,
   type StreamingCallbacks,
-  type StreamMessageOptions,
-  type MessageMetadata
+  type StreamMessageOptions
 } from '@knn_labs/conduit-core-client';
 import { 
   ChatParameters, 
-  ChatMessage,
-  type MessageContent
+  ChatMessage
 } from '../types';
 import { notifications } from '@mantine/notifications';
 
@@ -138,7 +136,7 @@ export function useChatStreamingLogic({
             role: 'assistant',
             content,
             timestamp: new Date(),
-            metadata: metadata as any // Convert SDK metadata to WebUI format
+            metadata: metadata as ChatMessage['metadata'] // Convert SDK metadata to WebUI format
           };
 
           setMessages(prev => [...prev, assistantMessage]);

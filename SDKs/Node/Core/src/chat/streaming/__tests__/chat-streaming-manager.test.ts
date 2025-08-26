@@ -162,7 +162,7 @@ describe('ChatStreamingManager', () => {
             // Resolve after a short delay to allow the test to proceed
             setTimeout(resolve, 50);
           });
-        } catch (error) {
+        } catch {
           // Handle any errors gracefully
           return;
         }
