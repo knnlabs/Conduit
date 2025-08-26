@@ -40,11 +40,24 @@ public static class HttpClientExtensions
                     TimeSpan.FromSeconds(timeoutOptions.TimeoutSeconds),
                     timeoutOptions.EnableTimeoutLogging ? logger : null);
             })
-            // --- Inner Policy: Retry ---
+            // --- Inner Policy: Retry with Error Tracking ---
             .AddPolicyHandler((provider, _) =>
             {
                 var logger = provider.GetRequiredService<ILogger<OpenAIClient>>();
                 var retryOptions = provider.GetService<IOptions<RetryOptions>>()?.Value ?? new RetryOptions();
+                
+                // Use error tracking retry policy if error tracking service is available
+                var errorTracker = provider.GetService<ConduitLLM.Core.Interfaces.IProviderErrorTrackingService>();
+                if (errorTracker != null)
+                {
+                    return ResiliencePolicies.GetRetryPolicyWithErrorTracking(
+                        provider,
+                        retryOptions.MaxRetries,
+                        TimeSpan.FromSeconds(retryOptions.InitialDelaySeconds),
+                        TimeSpan.FromSeconds(retryOptions.MaxDelaySeconds));
+                }
+                
+                // Fall back to standard retry policy if error tracking is not available
                 return ResiliencePolicies.GetRetryPolicy(
                     retryOptions.MaxRetries,
                     TimeSpan.FromSeconds(retryOptions.InitialDelaySeconds),
@@ -63,11 +76,24 @@ public static class HttpClientExtensions
                     TimeSpan.FromSeconds(timeoutOptions.TimeoutSeconds),
                     timeoutOptions.EnableTimeoutLogging ? logger : null);
             })
-            // --- Inner Policy: Retry ---
+            // --- Inner Policy: Retry with Error Tracking ---
             .AddPolicyHandler((provider, _) =>
             {
                 var logger = provider.GetRequiredService<ILogger<GroqClient>>();
                 var retryOptions = provider.GetService<IOptions<RetryOptions>>()?.Value ?? new RetryOptions();
+                
+                // Use error tracking retry policy if error tracking service is available
+                var errorTracker = provider.GetService<ConduitLLM.Core.Interfaces.IProviderErrorTrackingService>();
+                if (errorTracker != null)
+                {
+                    return ResiliencePolicies.GetRetryPolicyWithErrorTracking(
+                        provider,
+                        retryOptions.MaxRetries,
+                        TimeSpan.FromSeconds(retryOptions.InitialDelaySeconds),
+                        TimeSpan.FromSeconds(retryOptions.MaxDelaySeconds));
+                }
+                
+                // Fall back to standard retry policy if error tracking is not available
                 return ResiliencePolicies.GetRetryPolicy(
                     retryOptions.MaxRetries,
                     TimeSpan.FromSeconds(retryOptions.InitialDelaySeconds),
@@ -87,11 +113,24 @@ public static class HttpClientExtensions
                     TimeSpan.FromSeconds(timeoutOptions.TimeoutSeconds),
                     timeoutOptions.EnableTimeoutLogging ? logger : null);
             })
-            // --- Inner Policy: Retry ---
+            // --- Inner Policy: Retry with Error Tracking ---
             .AddPolicyHandler((provider, _) =>
             {
                 var logger = provider.GetService<ILogger<MiniMaxClient>>();
                 var retryOptions = provider.GetService<IOptions<RetryOptions>>()?.Value ?? new RetryOptions();
+                
+                // Use error tracking retry policy if error tracking service is available
+                var errorTracker = provider.GetService<ConduitLLM.Core.Interfaces.IProviderErrorTrackingService>();
+                if (errorTracker != null)
+                {
+                    return ResiliencePolicies.GetRetryPolicyWithErrorTracking(
+                        provider,
+                        retryOptions.MaxRetries,
+                        TimeSpan.FromSeconds(retryOptions.InitialDelaySeconds),
+                        TimeSpan.FromSeconds(retryOptions.MaxDelaySeconds));
+                }
+                
+                // Fall back to standard retry policy if error tracking is not available
                 return ResiliencePolicies.GetRetryPolicy(
                     retryOptions.MaxRetries,
                     TimeSpan.FromSeconds(retryOptions.InitialDelaySeconds),

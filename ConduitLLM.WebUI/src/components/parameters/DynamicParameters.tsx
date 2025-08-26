@@ -131,9 +131,9 @@ export function DynamicParameters({
   );
 
   const content = (
-    <Stack gap="md">
+    <Stack gap="lg" mt={expanded || !collapsible ? 'md' : 0}>
       {description && (
-        <Text size="sm" c="dimmed">{description}</Text>
+        <Text size="sm" c="dimmed" mb="sm">{description}</Text>
       )}
       
       {visibleParameters.map(([key, parameter]) => (

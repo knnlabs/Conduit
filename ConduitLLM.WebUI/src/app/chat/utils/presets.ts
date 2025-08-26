@@ -1,4 +1,4 @@
-import { ChatPreset, ConversationStarter } from '../types';
+import { ConversationStarter } from '../types';
 import { 
   IconBrain, 
   IconCode, 
@@ -11,68 +11,17 @@ import {
   IconTool
 } from '@tabler/icons-react';
 
-export const CHAT_PRESETS: ChatPreset[] = [
-  {
-    id: 'balanced',
-    name: 'Balanced',
-    description: 'Default settings for general conversation',
-    icon: 'message-circle',
-    parameters: {
-      temperature: 0.7,
-      topP: 1,
-      frequencyPenalty: 0,
-      presencePenalty: 0,
-    },
-  },
-  {
-    id: 'creative',
-    name: 'Creative Writing',
-    description: 'Higher creativity for storytelling and brainstorming',
-    icon: 'pencil',
-    parameters: {
-      temperature: 0.9,
-      topP: 0.95,
-      frequencyPenalty: 0.3,
-      presencePenalty: 0.3,
-    },
-  },
-  {
-    id: 'code',
-    name: 'Code Assistant',
-    description: 'Precise responses for programming tasks',
-    icon: 'code',
-    parameters: {
-      temperature: 0.2,
-      topP: 0.95,
-      frequencyPenalty: 0,
-      presencePenalty: 0,
-    },
-  },
-  {
-    id: 'analytical',
-    name: 'Analytical',
-    description: 'Focused and deterministic for analysis tasks',
-    icon: 'chart-bar',
-    parameters: {
-      temperature: 0.1,
-      topP: 0.9,
-      frequencyPenalty: 0,
-      presencePenalty: 0,
-    },
-  },
-  {
-    id: 'conversational',
-    name: 'Conversational',
-    description: 'Natural dialogue with varied responses',
-    icon: 'message-circle',
-    parameters: {
-      temperature: 0.8,
-      topP: 0.95,
-      frequencyPenalty: 0.5,
-      presencePenalty: 0.5,
-    },
-  },
-];
+// Re-export presets from Core SDK
+export { 
+  CHAT_PRESETS,
+  getPresetById,
+  findMatchingPreset,
+  applyPreset,
+  getDefaultPreset,
+  PresetCategory,
+  PRESET_CATEGORIES,
+  getPresetsByCategory,
+} from '@knn_labs/conduit-core-client';
 
 export const CONVERSATION_STARTERS: ConversationStarter[] = [
   {

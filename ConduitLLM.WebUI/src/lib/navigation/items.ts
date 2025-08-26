@@ -15,6 +15,7 @@ import {
   IconDeviceDesktop,
   IconEye,
   IconBrain,
+  IconAlertCircle,
 } from '@tabler/icons-react';
 import { NavigationSection } from '@/types/navigation';
 
@@ -182,6 +183,14 @@ export const navigationSections: NavigationSection[] = [
         icon: IconHealth,
         href: '/provider-health',
         description: 'Monitor provider status',
+      },
+      {
+        id: 'provider-errors',
+        label: 'Provider Errors',
+        icon: IconAlertCircle,
+        href: '/provider-errors',
+        description: 'Monitor and manage provider errors',
+        color: 'red',
       },
       {
         id: 'security-monitoring',

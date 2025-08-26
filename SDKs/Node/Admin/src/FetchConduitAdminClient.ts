@@ -18,6 +18,7 @@ import { FetchModelService } from './services/FetchModelService';
 import { FetchModelSeriesService } from './services/FetchModelSeriesService';
 import { FetchModelAuthorService } from './services/FetchModelAuthorService';
 import { FetchModelCapabilitiesService } from './services/FetchModelCapabilitiesService';
+import { FetchProviderErrorsService } from './services/FetchProviderErrorsService';
 import type { ApiClientConfig } from './client/types';
 import { ConduitError } from './utils/errors';
 
@@ -58,6 +59,7 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
   public readonly modelSeries: FetchModelSeriesService;
   public readonly modelAuthors: FetchModelAuthorService;
   public readonly modelCapabilities: FetchModelCapabilitiesService;
+  public readonly providerErrors: FetchProviderErrorsService;
 
   constructor(config: ApiClientConfig) {
     super(config);
@@ -82,6 +84,7 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
     this.modelSeries = new FetchModelSeriesService(this);
     this.modelAuthors = new FetchModelAuthorService(this);
     this.modelCapabilities = new FetchModelCapabilitiesService(this);
+    this.providerErrors = new FetchProviderErrorsService(this);
   }
 
   /**

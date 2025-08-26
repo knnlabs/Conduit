@@ -47,6 +47,9 @@ public partial class Program
         // Virtual key service (Configuration layer - used by RealtimeUsageTracker)
         builder.Services.AddScoped<ConduitLLM.Configuration.Interfaces.IVirtualKeyService, ConduitLLM.Configuration.Services.VirtualKeyService>();
 
+        // Provider error tracking service
+        builder.Services.AddSingleton<IProviderErrorTrackingService, ProviderErrorTrackingService>();
+
         builder.Services.AddMemoryCache();
 
         // Add cache infrastructure with distributed statistics collection
