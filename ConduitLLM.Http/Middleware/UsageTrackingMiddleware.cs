@@ -551,6 +551,10 @@ namespace ConduitLLM.Http.Middleware
         {
             var endpointType = DetermineRequestType(context.Request.Path);
             
+            // Check if usage was estimated
+            var isEstimated = context.Items.TryGetValue("UsageIsEstimated", out var estimatedObj) && 
+                              estimatedObj is bool estimated && estimated;
+            
             // For streaming responses, we need to rely on the SSE writer
             // to have stored the usage data in HttpContext.Items
             if (!context.Items.TryGetValue("StreamingUsage", out var usageObj) || 
@@ -569,7 +573,7 @@ namespace ConduitLLM.Http.Middleware
                     RequestId = context.TraceIdentifier,
                     RequestPath = context.Request.Path.ToString(),
                     HttpStatusCode = context.Response.StatusCode,
-                    FailureReason = "No StreamingUsage in HttpContext.Items",
+                    FailureReason = "No StreamingUsage in HttpContext.Items - estimation service may not be configured",
                     ProviderType = ptStreaming
                 });
                 
@@ -613,10 +617,11 @@ namespace ConduitLLM.Http.Middleware
                 await UpdateSpendAsync(virtualKeyId, cost, batchSpendService, virtualKeyService);
                 await LogRequestAsync(context, virtualKeyId, model, usage, cost, requestLogService, batchSpendService);
                 
-                // Audit log successful streaming billing
+                // Audit log successful streaming billing (either tracked or estimated)
+                var eventType = isEstimated ? BillingAuditEventType.UsageEstimated : BillingAuditEventType.UsageTracked;
                 billingAuditService.LogBillingEvent(new BillingAuditEvent
                 {
-                    EventType = BillingAuditEventType.UsageTracked,
+                    EventType = eventType,
                     VirtualKeyId = virtualKeyId,
                     Model = model,
                     RequestId = context.TraceIdentifier,
@@ -625,11 +630,20 @@ namespace ConduitLLM.Http.Middleware
                     ProviderType = providerType,
                     RequestPath = context.Request.Path.ToString(),
                     HttpStatusCode = context.Response.StatusCode,
-                    IsEstimated = false
+                    IsEstimated = isEstimated,
+                    FailureReason = isEstimated ? "Provider did not return usage data - usage was estimated conservatively" : null
                 });
                 
                 // Increment metrics
-                BillingAuditEvents.WithLabels("UsageTracked", providerType ?? "unknown").Inc();
+                BillingAuditEvents.WithLabels(eventType.ToString(), providerType ?? "unknown").Inc();
+                
+                // Track estimated vs actual usage metrics
+                if (isEstimated)
+                {
+                    _logger.LogInformation("Successfully billed estimated usage for streaming response: Cost={Cost:C}", cost);
+                    // Track that we recovered revenue through estimation
+                    BillingRevenue.WithLabels(model ?? "unknown", providerType ?? "unknown_estimated").Inc(Convert.ToDouble(cost));
+                }
                 BillingRevenue.WithLabels(model ?? "unknown", providerType ?? "unknown").Inc(Convert.ToDouble(cost));
                 BillingCostDistribution.WithLabels(model ?? "unknown", providerType ?? "unknown").Observe(Convert.ToDouble(cost));
             }
