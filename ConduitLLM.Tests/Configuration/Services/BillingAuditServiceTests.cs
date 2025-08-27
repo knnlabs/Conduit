@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -21,16 +22,28 @@ namespace ConduitLLM.Tests.Configuration.Services
         private readonly ConduitDbContext _dbContext;
         private readonly BillingAuditService _service;
         private readonly Mock<ILogger<BillingAuditService>> _mockLogger;
+        private readonly SqliteConnection _connection;
 
         public BillingAuditServiceTests()
         {
             var services = new ServiceCollection();
             
-            // Configure in-memory database - use same database name for all contexts
-            // This ensures data persists across different scoped DbContext instances
-            var databaseName = $"BillingAuditTestDb_{Guid.NewGuid()}";
+            // Create and open a SQLite in-memory connection
+            // This connection must be kept alive for the duration of the test
+            _connection = new SqliteConnection("DataSource=:memory:");
+            _connection.Open();
+            
+            // Disable foreign key enforcement for tests to avoid needing parent records
+            using (var command = _connection.CreateCommand())
+            {
+                command.CommandText = "PRAGMA foreign_keys = OFF";
+                command.ExecuteNonQuery();
+            }
+            
+            // Configure SQLite in-memory database
+            // This solves the scoping issue - all scoped contexts will share the same database
             services.AddDbContext<ConduitDbContext>(options =>
-                options.UseInMemoryDatabase(databaseName: databaseName)
+                options.UseSqlite(_connection)
                     .EnableSensitiveDataLogging(),
                 ServiceLifetime.Scoped);
             
@@ -40,6 +53,9 @@ namespace ConduitLLM.Tests.Configuration.Services
             
             _serviceProvider = services.BuildServiceProvider();
             _dbContext = _serviceProvider.GetRequiredService<ConduitDbContext>();
+            
+            // Create the database schema
+            _dbContext.Database.EnsureCreated();
             
             _service = new BillingAuditService(_serviceProvider, _mockLogger.Object);
             
@@ -474,6 +490,8 @@ namespace ConduitLLM.Tests.Configuration.Services
             _service?.Dispose();
             _dbContext?.Dispose();
             _serviceProvider?.Dispose();
+            _connection?.Close();
+            _connection?.Dispose();
         }
     }
 }
