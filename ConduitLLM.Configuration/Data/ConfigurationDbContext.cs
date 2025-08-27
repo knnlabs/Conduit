@@ -108,6 +108,11 @@ namespace ConduitLLM.Configuration
         public virtual DbSet<MediaRecord> MediaRecords { get; set; } = null!;
 
         /// <summary>
+        /// Database set for media retention policies
+        /// </summary>
+        public virtual DbSet<MediaRetentionPolicy> MediaRetentionPolicies { get; set; } = null!;
+
+        /// <summary>
         /// Database set for providers
         /// </summary>
         public virtual DbSet<Provider> Providers { get; set; } = null!;
@@ -173,10 +178,8 @@ namespace ConduitLLM.Configuration
         /// </summary>
         public virtual DbSet<AsyncTask> AsyncTasks { get; set; } = null!;
 
-        /// <summary>
-        /// Database set for media lifecycle records
-        /// </summary>
-        public virtual DbSet<MediaLifecycleRecord> MediaLifecycleRecords { get; set; } = null!;
+        // MediaLifecycleRecords removed - consolidated into MediaRecords table
+        // Migration: 20250827194408_ConsolidateMediaTables.cs
 
         /// <summary>
         /// Database set for batch operation history
@@ -441,21 +444,30 @@ namespace ConduitLLM.Configuration
                       .OnDelete(DeleteBehavior.Cascade);
             });
 
-            // Configure MediaLifecycleRecord entity
-            modelBuilder.Entity<MediaLifecycleRecord>(entity =>
+            // MediaLifecycleRecord configuration removed - consolidated into MediaRecords
+            // Migration: 20250827194408_ConsolidateMediaTables.cs
+
+            // Configure MediaRetentionPolicy entity
+            modelBuilder.Entity<MediaRetentionPolicy>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.HasIndex(e => e.StorageKey).IsUnique();
-                entity.HasIndex(e => e.VirtualKeyId);
-                entity.HasIndex(e => e.ExpiresAt);
-                entity.HasIndex(e => e.CreatedAt);
-                entity.HasIndex(e => new { e.VirtualKeyId, e.IsDeleted });
-                entity.HasIndex(e => new { e.ExpiresAt, e.IsDeleted });
+                entity.HasIndex(e => e.Name).IsUnique();
+                entity.HasIndex(e => e.IsDefault);
+                entity.HasIndex(e => e.IsActive);
                 
-                entity.HasOne(e => e.VirtualKey)
-                      .WithMany()
-                      .HasForeignKey(e => e.VirtualKeyId)
-                      .OnDelete(DeleteBehavior.Cascade);
+                // Ensure only one default policy
+                entity.HasIndex(e => e.IsDefault)
+                      .HasFilter("\"IsDefault\" = true")
+                      .IsUnique();
+            });
+
+            // Configure VirtualKeyGroup relationship with MediaRetentionPolicy
+            modelBuilder.Entity<VirtualKeyGroup>(entity =>
+            {
+                entity.HasOne(e => e.MediaRetentionPolicy)
+                      .WithMany(p => p.VirtualKeyGroups)
+                      .HasForeignKey(e => e.MediaRetentionPolicyId)
+                      .OnDelete(DeleteBehavior.SetNull);
             });
 
             // Configure BatchOperationHistory entity

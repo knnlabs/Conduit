@@ -56,6 +56,18 @@ public class VirtualKeyGroup
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
+    /// ID of the media retention policy for this group.
+    /// Null means use the default policy.
+    /// </summary>
+    public int? MediaRetentionPolicyId { get; set; }
+
+    /// <summary>
+    /// Navigation property to the media retention policy.
+    /// </summary>
+    [ForeignKey(nameof(MediaRetentionPolicyId))]
+    public virtual MediaRetentionPolicy? MediaRetentionPolicy { get; set; }
+
+    /// <summary>
     /// Collection of virtual keys that belong to this group
     /// </summary>
     public virtual ICollection<VirtualKey> VirtualKeys { get; set; } = new List<VirtualKey>();

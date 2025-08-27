@@ -63,6 +63,11 @@ namespace ConduitLLM.Configuration.Interfaces
         DbSet<MediaRecord> MediaRecords { get; }
 
         /// <summary>
+        /// Database set for media retention policies
+        /// </summary>
+        DbSet<MediaRetentionPolicy> MediaRetentionPolicies { get; }
+
+        /// <summary>
         /// Database set for providers
         /// </summary>
         DbSet<Provider> Providers { get; }

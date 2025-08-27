@@ -96,8 +96,8 @@ public partial class Program
         // Register settings refresh service for runtime configuration updates
         builder.Services.AddSingleton<ISettingsRefreshService, SettingsRefreshService>();
 
-        // Register media lifecycle repository
-        builder.Services.AddScoped<ConduitLLM.Configuration.Interfaces.IMediaLifecycleRepository, MediaLifecycleRepository>();
+        // MediaLifecycleRepository removed - consolidated into MediaRecordRepository
+        // Migration: 20250827194408_ConsolidateMediaTables.cs
 
         // Register video generation notification service
         builder.Services.AddSingleton<IVideoGenerationNotificationService, VideoGenerationNotificationService>();

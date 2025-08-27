@@ -116,7 +116,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("IsArchived", "CompletedAt", "State")
                         .HasDatabaseName("IX_AsyncTasks_Archival");
 
-                    b.ToTable("AsyncTasks");
+                    b.ToTable("AsyncTasks", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.AudioCost", b =>
@@ -174,7 +174,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("ProviderId", "OperationType", "Model", "IsActive");
 
-                    b.ToTable("AudioCosts");
+                    b.ToTable("AudioCosts", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.AudioProviderConfig", b =>
@@ -234,7 +234,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("ProviderId")
                         .IsUnique();
 
-                    b.ToTable("AudioProviderConfigs");
+                    b.ToTable("AudioProviderConfigs", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.AudioUsageLog", b =>
@@ -324,7 +324,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("ProviderId", "OperationType");
 
-                    b.ToTable("AudioUsageLogs");
+                    b.ToTable("AudioUsageLogs", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.BatchOperationHistory", b =>
@@ -405,7 +405,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("OperationType", "Status", "StartedAt");
 
-                    b.ToTable("BatchOperationHistory");
+                    b.ToTable("BatchOperationHistory", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.BillingAuditEvent", b =>
@@ -574,7 +574,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("Region", "IsActive");
 
-                    b.ToTable("CacheConfigurations");
+                    b.ToTable("CacheConfigurations", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.CacheConfigurationAudit", b =>
@@ -634,7 +634,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("Region", "ChangedAt");
 
-                    b.ToTable("CacheConfigurationAudits");
+                    b.ToTable("CacheConfigurationAudits", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.FallbackConfigurationEntity", b =>
@@ -671,7 +671,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("RouterConfigId");
 
-                    b.ToTable("FallbackConfigurations");
+                    b.ToTable("FallbackConfigurations", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.FallbackModelMappingEntity", b =>
@@ -709,7 +709,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("FallbackConfigurationId", "Order")
                         .IsUnique();
 
-                    b.ToTable("FallbackModelMappings");
+                    b.ToTable("FallbackModelMappings", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.GlobalSetting", b =>
@@ -745,7 +745,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("Key")
                         .IsUnique();
 
-                    b.ToTable("GlobalSettings");
+                    b.ToTable("GlobalSettings", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.IpFilterEntity", b =>
@@ -790,84 +790,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("FilterType", "IpAddressOrCidr");
 
-                    b.ToTable("IpFilters");
-                });
-
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.MediaLifecycleRecord", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ContentType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<long>("FileSizeBytes")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime>("GeneratedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("GeneratedByModel")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("GenerationPrompt")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("MediaType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("MediaUrl")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Metadata")
-                        .HasColumnType("text");
-
-                    b.Property<string>("StorageKey")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("VirtualKeyId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("ExpiresAt");
-
-                    b.HasIndex("StorageKey")
-                        .IsUnique();
-
-                    b.HasIndex("VirtualKeyId");
-
-                    b.HasIndex("ExpiresAt", "IsDeleted");
-
-                    b.HasIndex("VirtualKeyId", "IsDeleted");
-
-                    b.ToTable("MediaLifecycleRecords");
+                    b.ToTable("IpFilters", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.MediaRecord", b =>
@@ -942,7 +865,77 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("VirtualKeyId", "CreatedAt");
 
-                    b.ToTable("MediaRecords");
+                    b.ToTable("MediaRecords", (string)null);
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.MediaRetentionPolicy", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsProTier")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("MaxFileCount")
+                        .HasColumnType("integer");
+
+                    b.Property<long?>("MaxStorageSizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("NegativeBalanceRetentionDays")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PositiveBalanceRetentionDays")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RecentAccessWindowDays")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("RespectRecentAccess")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("SoftDeleteGracePeriodDays")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ZeroBalanceRetentionDays")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("IsDefault")
+                        .IsUnique()
+                        .HasFilter("\"IsDefault\" = true");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("MediaRetentionPolicies", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.Model", b =>
@@ -993,7 +986,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("ModelSeriesId")
                         .HasDatabaseName("IX_Model_ModelSeriesId");
 
-                    b.ToTable("Models");
+                    b.ToTable("Models", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelAuthor", b =>
@@ -1023,7 +1016,7 @@ namespace ConduitLLM.Configuration.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_ModelAuthor_Name_Unique");
 
-                    b.ToTable("ModelAuthors");
+                    b.ToTable("ModelAuthors", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelCapabilities", b =>
@@ -1107,7 +1100,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("SupportsChat", "SupportsFunctionCalling", "SupportsStreaming")
                         .HasDatabaseName("IX_ModelCapabilities_Chat_Function_Streaming");
 
-                    b.ToTable("ModelCapabilities");
+                    b.ToTable("ModelCapabilities", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelCost", b =>
@@ -1217,7 +1210,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("CostName");
 
-                    b.ToTable("ModelCosts");
+                    b.ToTable("ModelCosts", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelCostMapping", b =>
@@ -1247,7 +1240,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("ModelCostId", "ModelProviderMappingId")
                         .IsUnique();
 
-                    b.ToTable("ModelCostMappings");
+                    b.ToTable("ModelCostMappings", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelDeploymentEntity", b =>
@@ -1322,7 +1315,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("RouterConfigId");
 
-                    b.ToTable("ModelDeployments");
+                    b.ToTable("ModelDeployments", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelIdentifier", b =>
@@ -1367,7 +1360,7 @@ namespace ConduitLLM.Configuration.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_ModelIdentifier_Provider_Identifier_Unique");
 
-                    b.ToTable("ModelIdentifiers");
+                    b.ToTable("ModelIdentifiers", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelProviderMapping", b =>
@@ -1442,7 +1435,7 @@ namespace ConduitLLM.Configuration.Migrations
                         .HasDatabaseName("IX_ModelProviderMapping_ProviderId_IsEnabled")
                         .HasFilter("\"IsEnabled\" = true");
 
-                    b.ToTable("ModelProviderMappings");
+                    b.ToTable("ModelProviderMappings", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelSeries", b =>
@@ -1482,7 +1475,7 @@ namespace ConduitLLM.Configuration.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_ModelSeries_AuthorId_Name_Unique");
 
-                    b.ToTable("ModelSeries");
+                    b.ToTable("ModelSeries", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.Notification", b =>
@@ -1517,7 +1510,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("VirtualKeyId");
 
-                    b.ToTable("Notifications");
+                    b.ToTable("Notifications", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.Provider", b =>
@@ -1552,7 +1545,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("ProviderType");
 
-                    b.ToTable("Providers");
+                    b.ToTable("Providers", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ProviderKeyCredential", b =>
@@ -1608,7 +1601,7 @@ namespace ConduitLLM.Configuration.Migrations
                         .HasDatabaseName("IX_ProviderKeyCredential_OnePrimaryPerProvider")
                         .HasFilter("\"IsPrimary\" = true");
 
-                    b.ToTable("ProviderKeyCredentials", t =>
+                    b.ToTable("ProviderKeyCredentials", null, t =>
                         {
                             t.HasCheckConstraint("CK_ProviderKeyCredential_AccountGroupRange", "\"ProviderAccountGroup\" >= 0 AND \"ProviderAccountGroup\" <= 32");
 
@@ -1671,7 +1664,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("VirtualKeyId");
 
-                    b.ToTable("RequestLogs");
+                    b.ToTable("RequestLogs", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.RouterConfigEntity", b =>
@@ -1719,7 +1712,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("LastUpdated");
 
-                    b.ToTable("RouterConfigEntity");
+                    b.ToTable("RouterConfigEntity", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.VirtualKey", b =>
@@ -1783,7 +1776,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("VirtualKeyGroupId");
 
-                    b.ToTable("VirtualKeys");
+                    b.ToTable("VirtualKeys", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.VirtualKeyGroup", b =>
@@ -1815,6 +1808,9 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<decimal>("LifetimeSpent")
                         .HasColumnType("decimal(19, 8)");
 
+                    b.Property<int?>("MediaRetentionPolicyId")
+                        .HasColumnType("integer");
+
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -1827,7 +1823,9 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("ExternalGroupId");
 
-                    b.ToTable("VirtualKeyGroups");
+                    b.HasIndex("MediaRetentionPolicyId");
+
+                    b.ToTable("VirtualKeyGroups", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.VirtualKeyGroupTransaction", b =>
@@ -1893,7 +1891,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("VirtualKeyGroupId", "CreatedAt");
 
-                    b.ToTable("VirtualKeyGroupTransactions");
+                    b.ToTable("VirtualKeyGroupTransactions", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.VirtualKeySpendHistory", b =>
@@ -1920,7 +1918,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("VirtualKeyId");
 
-                    b.ToTable("VirtualKeySpendHistory");
+                    b.ToTable("VirtualKeySpendHistory", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.AsyncTask", b =>
@@ -2008,17 +2006,6 @@ namespace ConduitLLM.Configuration.Migrations
                         .IsRequired();
 
                     b.Navigation("FallbackConfiguration");
-                });
-
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.MediaLifecycleRecord", b =>
-                {
-                    b.HasOne("ConduitLLM.Configuration.Entities.VirtualKey", "VirtualKey")
-                        .WithMany()
-                        .HasForeignKey("VirtualKeyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("VirtualKey");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.MediaRecord", b =>
@@ -2173,6 +2160,16 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Navigation("VirtualKeyGroup");
                 });
 
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.VirtualKeyGroup", b =>
+                {
+                    b.HasOne("ConduitLLM.Configuration.Entities.MediaRetentionPolicy", "MediaRetentionPolicy")
+                        .WithMany("VirtualKeyGroups")
+                        .HasForeignKey("MediaRetentionPolicyId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("MediaRetentionPolicy");
+                });
+
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.VirtualKeyGroupTransaction", b =>
                 {
                     b.HasOne("ConduitLLM.Configuration.Entities.VirtualKeyGroup", "VirtualKeyGroup")
@@ -2198,6 +2195,11 @@ namespace ConduitLLM.Configuration.Migrations
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.FallbackConfigurationEntity", b =>
                 {
                     b.Navigation("FallbackMappings");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.MediaRetentionPolicy", b =>
+                {
+                    b.Navigation("VirtualKeyGroups");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.Model", b =>

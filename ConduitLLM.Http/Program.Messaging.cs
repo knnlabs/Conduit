@@ -66,6 +66,12 @@ public partial class Program
             // Add batch spend flush handler for admin operations and integration testing
             x.AddConsumer<ConduitLLM.Http.EventHandlers.BatchSpendFlushRequestedHandler>();
             
+            // Add media lifecycle consumers for retention policy management
+            x.AddConsumer<ConduitLLM.Http.Consumers.MediaRetentionPolicyConsumer>();
+            x.AddConsumer<ConduitLLM.Http.Consumers.MediaCleanupBatchConsumer>();
+            x.AddConsumer<ConduitLLM.Http.Consumers.R2BatchDeleteConsumer>();
+            x.AddConsumer<ConduitLLM.Http.Consumers.MediaCleanupScheduleConsumer>();
+            
             if (useRabbitMq)
             {
                 x.UsingRabbitMq((context, cfg) =>
@@ -200,6 +206,88 @@ public partial class Program
                         e.ConfigureConsumer<ConduitLLM.Http.EventHandlers.SpendUpdateProcessor>(context);
                     });
                     
+                    // Configure media retention policy evaluation endpoint
+                    cfg.ReceiveEndpoint("media-retention-checks", e =>
+                    {
+                        e.PrefetchCount = 5; // Low prefetch for controlled processing
+                        e.ConcurrentMessageLimit = 3; // Limited concurrency
+                        
+                        e.SetQuorumQueue();
+                        e.SetQueueArgument("x-max-length", 1000);
+                        
+                        e.UseMessageRetry(r => r.Incremental(3, 
+                            TimeSpan.FromSeconds(2), 
+                            TimeSpan.FromSeconds(5)));
+                        
+                        e.UseCircuitBreaker(cb =>
+                        {
+                            cb.TrackingPeriod = TimeSpan.FromMinutes(2);
+                            cb.TripThreshold = 15; // 15% failure rate
+                            cb.ActiveThreshold = 5;
+                            cb.ResetInterval = TimeSpan.FromMinutes(10);
+                        });
+                        
+                        e.ConfigureConsumer<ConduitLLM.Http.Consumers.MediaRetentionPolicyConsumer>(context);
+                    });
+                    
+                    // Configure media cleanup batch processing endpoint
+                    cfg.ReceiveEndpoint("media-cleanup-batches", e =>
+                    {
+                        e.PrefetchCount = 10;
+                        e.ConcurrentMessageLimit = 5;
+                        
+                        e.SetQuorumQueue();
+                        
+                        e.UseMessageRetry(r => r.Immediate(2));
+                        
+                        e.ConfigureConsumer<ConduitLLM.Http.Consumers.MediaCleanupBatchConsumer>(context);
+                    });
+                    
+                    // Configure R2 batch operations endpoint with strict rate limiting for free tier
+                    cfg.ReceiveEndpoint("r2-batch-operations", e =>
+                    {
+                        e.PrefetchCount = 2; // Very low prefetch for R2 free tier
+                        e.ConcurrentMessageLimit = 1; // Sequential processing to avoid rate limits
+                        
+                        e.SetQuorumQueue();
+                        e.SetQueueArgument("x-single-active-consumer", true); // Single consumer for rate control
+                        e.SetQueueArgument("x-max-length", 500); // Limit queue size
+                        
+                        // Exponential backoff for R2 rate limit handling
+                        e.UseMessageRetry(r => r.Exponential(10, 
+                            TimeSpan.FromSeconds(5),
+                            TimeSpan.FromMinutes(10),
+                            TimeSpan.FromSeconds(2)));
+                        
+                        // Rate limiting to stay within R2 free tier limits
+                        e.UseRateLimit(5, TimeSpan.FromSeconds(1)); // Max 5 operations per second
+                        
+                        // Circuit breaker for R2 service issues
+                        e.UseCircuitBreaker(cb =>
+                        {
+                            cb.TrackingPeriod = TimeSpan.FromMinutes(5);
+                            cb.TripThreshold = 20; // 20% failure rate
+                            cb.ActiveThreshold = 10;
+                            cb.ResetInterval = TimeSpan.FromMinutes(15);
+                        });
+                        
+                        e.ConfigureConsumer<ConduitLLM.Http.Consumers.R2BatchDeleteConsumer>(context);
+                    });
+                    
+                    // Configure media cleanup schedule endpoint
+                    cfg.ReceiveEndpoint("media-cleanup-schedule", e =>
+                    {
+                        e.PrefetchCount = 1;
+                        e.ConcurrentMessageLimit = 1; // Single processing for schedules
+                        
+                        e.SetQuorumQueue();
+                        e.SetQueueArgument("x-single-active-consumer", true);
+                        
+                        e.UseMessageRetry(r => r.Immediate(2));
+                        
+                        e.ConfigureConsumer<ConduitLLM.Http.Consumers.MediaCleanupScheduleConsumer>(context);
+                    });
+                    
                     // Configure dead letter exchange at the endpoint level
                     // Dead letter queues are configured per endpoint above
                     
@@ -220,6 +308,8 @@ public partial class Program
                 Console.WriteLine("  - Model cost changes (pricing updates)");
                 Console.WriteLine("  - Video generation tasks (partitioned processing per virtual key)");
                 Console.WriteLine("  - Image generation tasks (partitioned processing per virtual key)");
+                Console.WriteLine("  - Media lifecycle management (retention policies and cleanup)");
+                Console.WriteLine("  - R2 batch operations (rate-limited for free tier compliance)");
             }
             else
             {

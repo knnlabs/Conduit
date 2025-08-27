@@ -252,7 +252,8 @@ namespace ConduitLLM.Core.Extensions
             services.AddScoped<IMediaLifecycleService, MediaLifecycleService>();
             
             // Register media lifecycle repository
-            services.TryAddScoped<IMediaLifecycleRepository, MediaLifecycleRepository>();
+            // MediaLifecycleRepository removed - consolidated into MediaRecordRepository
+            // Migration: 20250827194408_ConsolidateMediaTables.cs
             
             return services;
         }

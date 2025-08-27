@@ -1,24 +1,23 @@
 using MassTransit;
 using ConduitLLM.Core.Events;
-using ConduitLLM.Configuration.Interfaces;
-using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Interfaces;
 
 namespace ConduitLLM.Http.EventHandlers
 {
     /// <summary>
-    /// Handles MediaGenerationCompleted events to track generated media for lifecycle management
-    /// Critical for future implementation of media cleanup when virtual keys are deleted
+    /// Handles MediaGenerationCompleted events to track generated media for lifecycle management.
+    /// CRITICAL: This handler writes to MediaRecords table via IMediaLifecycleService.
     /// </summary>
     public class MediaLifecycleHandler : IConsumer<MediaGenerationCompleted>
     {
-        private readonly IMediaLifecycleRepository _mediaLifecycleRepository;
+        private readonly IMediaLifecycleService _mediaLifecycleService;
         private readonly ILogger<MediaLifecycleHandler> _logger;
 
         public MediaLifecycleHandler(
-            IMediaLifecycleRepository mediaLifecycleRepository,
+            IMediaLifecycleService mediaLifecycleService,
             ILogger<MediaLifecycleHandler> logger)
         {
-            _mediaLifecycleRepository = mediaLifecycleRepository ?? throw new ArgumentNullException(nameof(mediaLifecycleRepository));
+            _mediaLifecycleService = mediaLifecycleService ?? throw new ArgumentNullException(nameof(mediaLifecycleService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -37,25 +36,23 @@ namespace ConduitLLM.Http.EventHandlers
                     @event.VirtualKeyId,
                     @event.MediaUrl);
 
-                // Create media lifecycle record
-                var mediaRecord = new MediaLifecycleRecord
+                // Create metadata for the media lifecycle service
+                var metadata = new MediaLifecycleMetadata
                 {
-                    VirtualKeyId = @event.VirtualKeyId,
-                    MediaType = @event.MediaType.ToString(),
-                    MediaUrl = @event.MediaUrl,
-                    StorageKey = @event.StorageKey,
-                    FileSizeBytes = @event.FileSizeBytes,
                     ContentType = @event.ContentType,
-                    GeneratedByModel = @event.GeneratedByModel,
-                    GenerationPrompt = @event.GenerationPrompt,
-                    GeneratedAt = @event.GeneratedAt,
-                    ExpiresAt = @event.ExpiresAt,
-                    Metadata = System.Text.Json.JsonSerializer.Serialize(@event.Metadata),
-                    CreatedAt = DateTime.UtcNow,
-                    IsDeleted = false
+                    SizeBytes = @event.FileSizeBytes,
+                    Provider = @event.GeneratedByModel,
+                    Prompt = @event.GenerationPrompt,
+                    StorageUrl = @event.MediaUrl,
+                    ExpiresAt = @event.ExpiresAt
                 };
 
-                await _mediaLifecycleRepository.AddAsync(mediaRecord);
+                // Track the media using the service (writes to MediaRecords table)
+                var mediaRecord = await _mediaLifecycleService.TrackMediaAsync(
+                    @event.VirtualKeyId,
+                    @event.StorageKey,
+                    @event.MediaType.ToString(),
+                    metadata);
                 
                 _logger.LogInformation(
                     "Successfully recorded {MediaType} lifecycle entry for VirtualKey {VirtualKeyId}: {StorageKey} ({FileSize} bytes)",
