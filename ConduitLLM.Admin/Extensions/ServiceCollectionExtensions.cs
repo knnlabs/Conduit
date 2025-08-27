@@ -192,22 +192,32 @@ public static class ServiceCollectionExtensions
             provider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IBillingAuditService>() as ConduitLLM.Configuration.Services.BillingAuditService 
             ?? throw new InvalidOperationException("BillingAuditService must implement IHostedService"));
 
-        // Register provider error tracking service with deferred resolution
+        // Register Redis error store with deferred resolution
         // IConnectionMultiplexer will be registered by AddRedisDataProtection in Program.cs after this method
-        services.AddSingleton<ConduitLLM.Core.Interfaces.IProviderErrorTrackingService>(serviceProvider =>
+        services.AddSingleton<ConduitLLM.Core.Interfaces.IRedisErrorStore>(serviceProvider =>
         {
             var redis = serviceProvider.GetService<StackExchange.Redis.IConnectionMultiplexer>();
-            var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
-            var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.ProviderErrorTrackingService>>();
+            var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.RedisErrorStore>>();
             
             if (redis == null)
             {
-                logger.LogError("[ConduitLLM.Admin] Redis connection not available. Provider error tracking will not function.");
-                throw new InvalidOperationException("Provider error tracking requires Redis. Ensure REDIS_URL or CONDUIT_REDIS_CONNECTION_STRING is configured.");
+                logger.LogError("[ConduitLLM.Admin] Redis connection not available. Redis error store will not function.");
+                throw new InvalidOperationException("Redis error store requires Redis. Ensure REDIS_URL or CONDUIT_REDIS_CONNECTION_STRING is configured.");
             }
             
+            logger.LogInformation("[ConduitLLM.Admin] Redis error store initialized");
+            return new ConduitLLM.Core.Services.RedisErrorStore(redis, logger);
+        });
+        
+        // Register provider error tracking service
+        services.AddSingleton<ConduitLLM.Core.Interfaces.IProviderErrorTrackingService>(serviceProvider =>
+        {
+            var errorStore = serviceProvider.GetRequiredService<ConduitLLM.Core.Interfaces.IRedisErrorStore>();
+            var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
+            var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.ProviderErrorTrackingService>>();
+            
             logger.LogInformation("[ConduitLLM.Admin] Provider error tracking service initialized with Redis backend");
-            return new ConduitLLM.Core.Services.ProviderErrorTrackingService(redis, scopeFactory, logger);
+            return new ConduitLLM.Core.Services.ProviderErrorTrackingService(errorStore, scopeFactory, logger);
         });
 
         // Configure CORS for the Admin API

@@ -54,6 +54,7 @@ public partial class Program
             ?? throw new InvalidOperationException("BillingAuditService must implement IHostedService"));
 
         // Provider error tracking service
+        builder.Services.AddSingleton<IRedisErrorStore, RedisErrorStore>();
         builder.Services.AddSingleton<IProviderErrorTrackingService, ProviderErrorTrackingService>();
 
         builder.Services.AddMemoryCache();

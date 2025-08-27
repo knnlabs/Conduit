@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration.Events;
 using ConduitLLM.Configuration.Interfaces;
@@ -15,15 +14,13 @@ using MassTransit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
-using StackExchange.Redis;
 using Xunit;
 
 namespace ConduitLLM.Tests.Services
 {
     public class ProviderErrorTrackingServiceTests
     {
-        private readonly Mock<IConnectionMultiplexer> _redisMock;
-        private readonly Mock<IDatabase> _databaseMock;
+        private readonly Mock<IRedisErrorStore> _errorStoreMock;
         private readonly Mock<IServiceScopeFactory> _scopeFactoryMock;
         private readonly Mock<ILogger<ProviderErrorTrackingService>> _loggerMock;
         private readonly ProviderErrorTrackingService _service;
@@ -33,70 +30,19 @@ namespace ConduitLLM.Tests.Services
 
         public ProviderErrorTrackingServiceTests()
         {
-            _redisMock = new Mock<IConnectionMultiplexer>();
-            _databaseMock = new Mock<IDatabase>();
+            _errorStoreMock = new Mock<IRedisErrorStore>();
             _scopeFactoryMock = new Mock<IServiceScopeFactory>();
             _loggerMock = new Mock<ILogger<ProviderErrorTrackingService>>();
             _keyRepoMock = new Mock<IProviderKeyCredentialRepository>();
             _providerRepoMock = new Mock<IProviderRepository>();
             _publishEndpointMock = new Mock<IPublishEndpoint>();
 
-            _redisMock.Setup(x => x.GetDatabase(It.IsAny<int>(), It.IsAny<object>()))
-                .Returns(_databaseMock.Object);
-
             SetupServiceScope();
 
             _service = new ProviderErrorTrackingService(
-                _redisMock.Object,
+                _errorStoreMock.Object,
                 _scopeFactoryMock.Object,
                 _loggerMock.Object);
-        }
-        
-        private void SetupCommonMocks()
-        {
-            // Setup common mocks that are used by TrackErrorAsync
-            _databaseMock.Setup(x => x.HashIncrementAsync(
-                It.IsAny<RedisKey>(),
-                It.IsAny<RedisValue>(),
-                It.IsAny<long>(),
-                CommandFlags.None))
-                .ReturnsAsync(1);
-            
-            _databaseMock.Setup(x => x.HashSetAsync(
-                It.IsAny<RedisKey>(),
-                It.IsAny<HashEntry[]>(),
-                CommandFlags.None))
-                .Returns(Task.CompletedTask);
-            
-            _databaseMock.Setup(x => x.HashSetAsync(
-                It.IsAny<RedisKey>(),
-                It.IsAny<RedisValue>(),
-                It.IsAny<RedisValue>(),
-                It.IsAny<When>(),
-                CommandFlags.None))
-                .ReturnsAsync(true);
-            
-            _databaseMock.Setup(x => x.SortedSetAddAsync(
-                It.IsAny<RedisKey>(),
-                It.IsAny<RedisValue>(),
-                It.IsAny<double>(),
-                It.IsAny<SortedSetWhen>(),
-                CommandFlags.None))
-                .ReturnsAsync(true);
-            
-            _databaseMock.Setup(x => x.SortedSetRemoveRangeByRankAsync(
-                It.IsAny<RedisKey>(),
-                It.IsAny<long>(),
-                It.IsAny<long>(),
-                CommandFlags.None))
-                .ReturnsAsync(0);
-            
-            _databaseMock.Setup(x => x.KeyExpireAsync(
-                It.IsAny<RedisKey>(),
-                It.IsAny<TimeSpan?>(),
-                It.IsAny<ExpireWhen>(),
-                CommandFlags.None))
-                .ReturnsAsync(true);
         }
 
         private void SetupServiceScope()
@@ -108,7 +54,7 @@ namespace ConduitLLM.Tests.Services
                 .Returns(_keyRepoMock.Object);
             serviceProviderMock.Setup(x => x.GetService(typeof(IProviderRepository)))
                 .Returns(_providerRepoMock.Object);
-            serviceProviderMock.Setup(x => x.GetService(typeof(IPublishEndpoint)))
+            serviceProviderMock.Setup(x => x.GetService(typeof(MassTransit.IPublishEndpoint)))
                 .Returns(_publishEndpointMock.Object);
 
             scopeMock.Setup(x => x.ServiceProvider)
@@ -119,7 +65,7 @@ namespace ConduitLLM.Tests.Services
         }
 
         [Fact]
-        public async Task TrackErrorAsync_FatalError_IncrementsCounter()
+        public async Task TrackErrorAsync_FatalError_CallsErrorStore()
         {
             // Arrange
             var error = new ProviderErrorInfoBuilder()
@@ -128,62 +74,19 @@ namespace ConduitLLM.Tests.Services
                 .WithFatalError(ProviderErrorType.InvalidApiKey)
                 .Build();
 
-            var keyPrefix = $"provider:errors:key:{error.KeyCredentialId}:fatal";
-            
-            _databaseMock.Setup(x => x.HashIncrementAsync(
-                keyPrefix, "count", 1, CommandFlags.None))
-                .ReturnsAsync(1);
-            
-            _databaseMock.Setup(x => x.HashSetAsync(
-                It.IsAny<RedisKey>(), 
-                It.IsAny<HashEntry[]>(), 
-                CommandFlags.None))
-                .Returns(Task.CompletedTask);
-
-            _databaseMock.Setup(x => x.SortedSetAddAsync(
-                It.IsAny<RedisKey>(),
-                It.IsAny<RedisValue>(),
-                It.IsAny<double>(),
-                It.IsAny<SortedSetWhen>(),
-                CommandFlags.None))
-                .ReturnsAsync(true);
-            
-            _databaseMock.Setup(x => x.SortedSetRemoveRangeByRankAsync(
-                It.IsAny<RedisKey>(),
-                It.IsAny<long>(),
-                It.IsAny<long>(),
-                CommandFlags.None))
-                .ReturnsAsync(0);
-            
-            _databaseMock.Setup(x => x.HashIncrementAsync(
-                It.IsAny<RedisKey>(),
-                It.IsAny<RedisValue>(),
-                It.IsAny<long>(),
-                CommandFlags.None))
-                .ReturnsAsync(1);
-            
-            _databaseMock.Setup(x => x.HashSetAsync(
-                It.IsAny<RedisKey>(),
-                It.IsAny<RedisValue>(),
-                It.IsAny<RedisValue>(),
-                It.IsAny<When>(),
-                CommandFlags.None))
-                .ReturnsAsync(true);
-
             // Act
             await _service.TrackErrorAsync(error);
 
             // Assert
-            _databaseMock.Verify(x => x.HashIncrementAsync(
-                keyPrefix, "count", 1, CommandFlags.None), 
+            _errorStoreMock.Verify(x => x.TrackFatalErrorAsync(
+                error.KeyCredentialId, error), 
                 Times.Once);
             
-            _databaseMock.Verify(x => x.HashSetAsync(
-                keyPrefix,
-                It.Is<HashEntry[]>(entries => 
-                    entries.Any(e => e.Name == "error_type" && e.Value == "InvalidApiKey") &&
-                    entries.Any(e => e.Name == "last_error_message" && e.Value == error.ErrorMessage)),
-                CommandFlags.None), 
+            _errorStoreMock.Verify(x => x.UpdateProviderSummaryAsync(
+                error.ProviderId, true), 
+                Times.Once);
+            
+            _errorStoreMock.Verify(x => x.AddToGlobalFeedAsync(error), 
                 Times.Once);
         }
 
@@ -196,19 +99,6 @@ namespace ConduitLLM.Tests.Services
                 .WithProviderId(456)
                 .WithFatalError(ProviderErrorType.InvalidApiKey) // Immediate disable
                 .Build();
-
-            var fatalKey = $"provider:errors:key:{error.KeyCredentialId}:fatal";
-            
-            // Setup all necessary mocks for the full flow
-            SetupCommonMocks();
-            
-            // Setup Redis to return values that trigger disable
-            _databaseMock.Setup(x => x.HashGetAsync(fatalKey, "error_type", CommandFlags.None))
-                .ReturnsAsync("InvalidApiKey");
-            _databaseMock.Setup(x => x.HashGetAsync(fatalKey, "count", CommandFlags.None))
-                .ReturnsAsync(1);
-            _databaseMock.Setup(x => x.HashGetAsync(fatalKey, "last_seen", CommandFlags.None))
-                .ReturnsAsync(DateTime.UtcNow.ToString("O"));
 
             var testKey = new ProviderKeyCredential
             {
@@ -223,6 +113,8 @@ namespace ConduitLLM.Tests.Services
                 .ReturnsAsync(testKey);
             _keyRepoMock.Setup(x => x.UpdateAsync(It.IsAny<ProviderKeyCredential>()))
                 .ReturnsAsync(true);
+            _keyRepoMock.Setup(x => x.GetByProviderIdAsync(error.ProviderId))
+                .ReturnsAsync(new List<ProviderKeyCredential> { testKey });
 
             // Act
             await _service.TrackErrorAsync(error);
@@ -250,22 +142,16 @@ namespace ConduitLLM.Tests.Services
                 .WithWarning(ProviderErrorType.RateLimitExceeded)
                 .Build();
 
-            var warningKey = $"provider:errors:key:{error.KeyCredentialId}:warnings";
-            
-            // Setup all common mocks
-            SetupCommonMocks();
-
             // Act
             await _service.TrackErrorAsync(error);
 
             // Assert
-            // Verify warning was added to sorted set
-            _databaseMock.Verify(x => x.SortedSetAddAsync(
-                warningKey,
-                It.IsAny<RedisValue>(),
-                It.IsAny<double>(),
-                It.IsAny<SortedSetWhen>(),
-                CommandFlags.None), 
+            _errorStoreMock.Verify(x => x.TrackWarningAsync(
+                error.KeyCredentialId, error), 
+                Times.Once);
+            
+            _errorStoreMock.Verify(x => x.UpdateProviderSummaryAsync(
+                error.ProviderId, false), 
                 Times.Once);
             
             // Should not attempt to disable key
@@ -273,7 +159,7 @@ namespace ConduitLLM.Tests.Services
         }
 
         [Fact]
-        public async Task TrackErrorAsync_MultipleWarnings_MaintainsLimit()
+        public async Task TrackErrorAsync_CallsAllRequiredMethods()
         {
             // Arrange
             var error = new ProviderErrorInfoBuilder()
@@ -282,54 +168,34 @@ namespace ConduitLLM.Tests.Services
                 .WithWarning(ProviderErrorType.RateLimitExceeded)
                 .Build();
 
-            var warningKey = $"provider:errors:key:{error.KeyCredentialId}:warnings";
-            
-            // Setup all common mocks
-            SetupCommonMocks();
-
             // Act
             await _service.TrackErrorAsync(error);
 
             // Assert
-            // Should trim old warnings (keep last 100)
-            _databaseMock.Verify(x => x.SortedSetRemoveRangeByRankAsync(
-                warningKey, 0, -101, CommandFlags.None), 
+            // Verify all required methods are called
+            _errorStoreMock.Verify(x => x.TrackWarningAsync(
+                error.KeyCredentialId, error), 
                 Times.Once);
             
-            // Should set TTL - verify it was called with the warning key
-            _databaseMock.Verify(x => x.KeyExpireAsync(
-                warningKey, 
-                It.IsAny<TimeSpan?>(), 
-                It.IsAny<ExpireWhen>(), 
-                CommandFlags.None), 
+            _errorStoreMock.Verify(x => x.UpdateProviderSummaryAsync(
+                error.ProviderId, false), 
+                Times.Once);
+            
+            _errorStoreMock.Verify(x => x.AddToGlobalFeedAsync(error), 
                 Times.Once);
         }
 
         [Fact]
-        public async Task ClearErrorsForKeyAsync_RemovesRedisData()
+        public async Task ClearErrorsForKeyAsync_CallsErrorStore()
         {
             // Arrange
             var keyId = 123;
-            var expectedKeys = new RedisKey[]
-            {
-                $"provider:errors:key:{keyId}:fatal",
-                $"provider:errors:key:{keyId}:warnings"
-            };
-
-            _databaseMock.Setup(x => x.KeyDeleteAsync(
-                It.IsAny<RedisKey[]>(), CommandFlags.None))
-                .ReturnsAsync(2);
 
             // Act
             await _service.ClearErrorsForKeyAsync(keyId);
 
             // Assert
-            _databaseMock.Verify(x => x.KeyDeleteAsync(
-                It.Is<RedisKey[]>(keys => 
-                    keys.Length == 2 &&
-                    keys[0] == expectedKeys[0] &&
-                    keys[1] == expectedKeys[1]),
-                CommandFlags.None), 
+            _errorStoreMock.Verify(x => x.ClearErrorsForKeyAsync(keyId), 
                 Times.Once);
         }
 
@@ -339,43 +205,36 @@ namespace ConduitLLM.Tests.Services
             // Arrange
             var providerId = 456;
             
-            var errorData1 = JsonSerializer.Serialize(new
+            var feedEntries = new List<ErrorFeedEntry>
             {
-                keyId = 123,
-                providerId = 456,
-                type = "InvalidApiKey",
-                message = "Invalid API key",
-                timestamp = DateTime.UtcNow.AddMinutes(-5)
-            });
-            
-            var errorData2 = JsonSerializer.Serialize(new
-            {
-                keyId = 124,
-                providerId = 456,
-                type = "RateLimitExceeded",
-                message = "Rate limit exceeded",
-                timestamp = DateTime.UtcNow.AddMinutes(-2)
-            });
-            
-            var errorData3 = JsonSerializer.Serialize(new
-            {
-                keyId = 125,
-                providerId = 457, // Different provider
-                type = "ServiceUnavailable",
-                message = "Service unavailable",
-                timestamp = DateTime.UtcNow.AddMinutes(-1)
-            });
+                new ErrorFeedEntry
+                {
+                    KeyId = 123,
+                    ProviderId = 456,
+                    ErrorType = "InvalidApiKey",
+                    Message = "Invalid API key",
+                    Timestamp = DateTime.UtcNow.AddMinutes(-5)
+                },
+                new ErrorFeedEntry
+                {
+                    KeyId = 124,
+                    ProviderId = 456,
+                    ErrorType = "RateLimitExceeded",
+                    Message = "Rate limit exceeded",
+                    Timestamp = DateTime.UtcNow.AddMinutes(-2)
+                },
+                new ErrorFeedEntry
+                {
+                    KeyId = 125,
+                    ProviderId = 457, // Different provider
+                    ErrorType = "ServiceUnavailable",
+                    Message = "Service unavailable",
+                    Timestamp = DateTime.UtcNow.AddMinutes(-1)
+                }
+            };
 
-            _databaseMock.Setup(x => x.SortedSetRangeByScoreAsync(
-                "provider:errors:recent",
-                It.IsAny<double>(),
-                It.IsAny<double>(),
-                It.IsAny<Exclude>(),
-                Order.Descending,
-                It.IsAny<long>(),
-                100,
-                CommandFlags.None))
-                .ReturnsAsync(new RedisValue[] { errorData1, errorData2, errorData3 });
+            _errorStoreMock.Setup(x => x.GetRecentErrorsAsync(100))
+                .ReturnsAsync(feedEntries);
 
             // Act
             var errors = await _service.GetRecentErrorsAsync(providerId: providerId);
@@ -408,16 +267,17 @@ namespace ConduitLLM.Tests.Services
             // Arrange
             var keyId = 123;
             var errorType = ProviderErrorType.InsufficientBalance;
-            var fatalKey = $"provider:errors:key:{keyId}:fatal";
             var lastSeenTime = DateTime.UtcNow.AddMinutes(-2); // Within 5 minute window
             
-            // Return RedisValue with proper values that HasValue will be true
-            _databaseMock.Setup(x => x.HashGetAsync(fatalKey, "error_type", CommandFlags.None))
-                .ReturnsAsync((RedisValue)"InsufficientBalance");
-            _databaseMock.Setup(x => x.HashGetAsync(fatalKey, "count", CommandFlags.None))
-                .ReturnsAsync((RedisValue)2); // Threshold is 2
-            _databaseMock.Setup(x => x.HashGetAsync(fatalKey, "last_seen", CommandFlags.None))
-                .ReturnsAsync((RedisValue)lastSeenTime.ToString("O"));
+            var fatalData = new FatalErrorData
+            {
+                ErrorType = "InsufficientBalance",
+                Count = 2, // Threshold is 2
+                LastSeen = lastSeenTime
+            };
+            
+            _errorStoreMock.Setup(x => x.GetFatalErrorDataAsync(keyId))
+                .ReturnsAsync(fatalData);
 
             // Act
             var result = await _service.ShouldDisableKeyAsync(keyId, errorType);
@@ -432,14 +292,16 @@ namespace ConduitLLM.Tests.Services
             // Arrange
             var keyId = 123;
             var errorType = ProviderErrorType.InsufficientBalance;
-            var fatalKey = $"provider:errors:key:{keyId}:fatal";
             
-            _databaseMock.Setup(x => x.HashGetAsync(fatalKey, "error_type", CommandFlags.None))
-                .ReturnsAsync("InsufficientBalance");
-            _databaseMock.Setup(x => x.HashGetAsync(fatalKey, "count", CommandFlags.None))
-                .ReturnsAsync(1); // Below threshold of 2
-            _databaseMock.Setup(x => x.HashGetAsync(fatalKey, "last_seen", CommandFlags.None))
-                .ReturnsAsync(DateTime.UtcNow.AddMinutes(-2).ToString("O"));
+            var fatalData = new FatalErrorData
+            {
+                ErrorType = "InsufficientBalance",
+                Count = 1, // Below threshold of 2
+                LastSeen = DateTime.UtcNow.AddMinutes(-2)
+            };
+            
+            _errorStoreMock.Setup(x => x.GetFatalErrorDataAsync(keyId))
+                .ReturnsAsync(fatalData);
 
             // Act
             var result = await _service.ShouldDisableKeyAsync(keyId, errorType);
@@ -598,20 +460,22 @@ namespace ConduitLLM.Tests.Services
             _keyRepoMock.Setup(x => x.GetByIdAsync(keyId))
                 .ReturnsAsync(key);
             
-            var fatalData = new HashEntry[]
+            var errorData = new KeyErrorData
             {
-                new HashEntry("error_type", "InvalidApiKey"),
-                new HashEntry("count", "3"),
-                new HashEntry("first_seen", DateTime.UtcNow.AddHours(-2).ToString("O")),
-                new HashEntry("last_seen", DateTime.UtcNow.AddMinutes(-5).ToString("O")),
-                new HashEntry("last_error_message", "Invalid API key"),
-                new HashEntry("last_status_code", "401"),
-                new HashEntry("disabled_at", DateTime.UtcNow.AddMinutes(-5).ToString("O"))
+                FatalError = new FatalErrorData
+                {
+                    ErrorType = "InvalidApiKey",
+                    Count = 3,
+                    FirstSeen = DateTime.UtcNow.AddHours(-2),
+                    LastSeen = DateTime.UtcNow.AddMinutes(-5),
+                    LastErrorMessage = "Invalid API key",
+                    LastStatusCode = 401,
+                    DisabledAt = DateTime.UtcNow.AddMinutes(-5)
+                }
             };
             
-            _databaseMock.Setup(x => x.HashGetAllAsync(
-                $"provider:errors:key:{keyId}:fatal", CommandFlags.None))
-                .ReturnsAsync(fatalData);
+            _errorStoreMock.Setup(x => x.GetKeyErrorDataAsync(keyId))
+                .ReturnsAsync(errorData);
 
             // Act
             var details = await _service.GetKeyErrorDetailsAsync(keyId);
@@ -633,17 +497,16 @@ namespace ConduitLLM.Tests.Services
         {
             // Arrange
             var providerId = 456;
-            var summaryData = new HashEntry[]
+            var summaryData = new ProviderSummaryData
             {
-                new HashEntry("total_errors", "50"),
-                new HashEntry("fatal_errors", "10"),
-                new HashEntry("warnings", "40"),
-                new HashEntry("disabled_keys", "[123,124]"),
-                new HashEntry("last_error", DateTime.UtcNow.AddMinutes(-5).ToString("O"))
+                TotalErrors = 50,
+                FatalErrors = 10,
+                Warnings = 40,
+                DisabledKeyIds = new List<int> { 123, 124 },
+                LastError = DateTime.UtcNow.AddMinutes(-5)
             };
             
-            _databaseMock.Setup(x => x.HashGetAllAsync(
-                $"provider:errors:provider:{providerId}:summary", CommandFlags.None))
+            _errorStoreMock.Setup(x => x.GetProviderSummaryAsync(providerId))
                 .ReturnsAsync(summaryData);
 
             // Act
@@ -666,24 +529,21 @@ namespace ConduitLLM.Tests.Services
             var window = TimeSpan.FromHours(1);
             var cutoff = DateTime.UtcNow - window;
             
-            var errorEntries = new[]
+            var statsData = new ErrorStatsData
             {
-                JsonSerializer.Serialize(new { type = "InvalidApiKey", timestamp = DateTime.UtcNow.AddMinutes(-30) }),
-                JsonSerializer.Serialize(new { type = "InvalidApiKey", timestamp = DateTime.UtcNow.AddMinutes(-20) }),
-                JsonSerializer.Serialize(new { type = "RateLimitExceeded", timestamp = DateTime.UtcNow.AddMinutes(-10) }),
-                JsonSerializer.Serialize(new { type = "ServiceUnavailable", timestamp = DateTime.UtcNow.AddMinutes(-5) })
+                TotalErrors = 4,
+                FatalErrors = 2,
+                Warnings = 2,
+                ErrorsByType = new Dictionary<string, int>
+                {
+                    ["InvalidApiKey"] = 2,
+                    ["RateLimitExceeded"] = 1,
+                    ["ServiceUnavailable"] = 1
+                }
             };
             
-            _databaseMock.Setup(x => x.SortedSetRangeByScoreAsync(
-                "provider:errors:recent",
-                It.IsAny<double>(),
-                It.IsAny<double>(),
-                It.IsAny<Exclude>(),
-                It.IsAny<Order>(),
-                It.IsAny<long>(),
-                It.IsAny<long>(),
-                CommandFlags.None))
-                .ReturnsAsync(errorEntries.Select(e => (RedisValue)e).ToArray());
+            _errorStoreMock.Setup(x => x.GetErrorStatisticsAsync(window))
+                .ReturnsAsync(statsData);
             
             var allKeys = new[]
             {
@@ -716,8 +576,8 @@ namespace ConduitLLM.Tests.Services
                 .WithFatalError(ProviderErrorType.InvalidApiKey)
                 .Build();
             
-            _databaseMock.Setup(x => x.HashIncrementAsync(
-                It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<long>(), CommandFlags.None))
+            _errorStoreMock.Setup(x => x.TrackFatalErrorAsync(
+                It.IsAny<int>(), It.IsAny<ProviderErrorInfo>()))
                 .ThrowsAsync(new Exception("Redis error"));
 
             // Act & Assert
