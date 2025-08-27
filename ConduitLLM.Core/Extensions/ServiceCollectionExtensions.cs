@@ -133,6 +133,29 @@ namespace ConduitLLM.Core.Extensions
         }
 
         /// <summary>
+        /// Adds the ConduitLLM Discovery Cache services to the service collection.
+        /// </summary>
+        /// <param name="services">The service collection to add services to.</param>
+        /// <param name="configuration">The configuration instance.</param>
+        /// <returns>The service collection for chaining.</returns>
+        public static IServiceCollection AddDiscoveryCache(
+            this IServiceCollection services,
+            IConfiguration configuration)
+        {
+            // Register configuration options
+            services.Configure<DiscoveryCacheOptions>(
+                configuration.GetSection("Discovery"));
+            
+            // Register discovery cache service as singleton for better performance
+            services.AddSingleton<IDiscoveryCacheService, DiscoveryCacheService>();
+            
+            // Ensure memory cache is registered
+            services.AddMemoryCache();
+            
+            return services;
+        }
+
+        /// <summary>
         /// Adds media storage and lifecycle services to the service collection.
         /// Shared configuration used by both Core API and Admin API.
         /// </summary>

@@ -95,6 +95,16 @@ services:
       CacheInvalidation__BatchWindow: "00:00:00.100"  # 100ms
       CacheInvalidation__MaxBatchSize: "100"
       CacheInvalidation__EnableCoalescing: "true"
+      # Discovery Cache configuration
+      Discovery__CacheDurationMinutes: "360"  # 6 hours
+      Discovery__EnableCaching: "true"
+      Discovery__WarmCacheOnStartup: "true"
+      Discovery__WarmupStartupDelaySeconds: "5"  # Configurable startup delay
+      Discovery__UseDistributedLockForWarming: "true"  # Use Postgres advisory locks
+      Discovery__DistributedLockTimeoutSeconds: "30"  # Lock acquisition timeout
+      Discovery__PriorityModels__0: "gpt-4"
+      Discovery__PriorityModels__1: "claude-3"
+      Discovery__PriorityModels__2: "gemini-pro"
       # Batch Spending configuration
       BatchSpending__FlushIntervalSeconds: "30"
       BatchSpending__MinimumIntervalSeconds: "1"
@@ -146,6 +156,16 @@ services:
       CacheInvalidation__BatchWindow: "00:00:00.100"  # 100ms
       CacheInvalidation__MaxBatchSize: "100"
       CacheInvalidation__EnableCoalescing: "true"
+      # Discovery Cache configuration
+      Discovery__CacheDurationMinutes: "360"  # 6 hours
+      Discovery__EnableCaching: "true"
+      Discovery__WarmCacheOnStartup: "true"
+      Discovery__WarmupStartupDelaySeconds: "5"  # Configurable startup delay
+      Discovery__UseDistributedLockForWarming: "true"  # Use Postgres advisory locks
+      Discovery__DistributedLockTimeoutSeconds: "30"  # Lock acquisition timeout
+      Discovery__PriorityModels__0: "gpt-4"
+      Discovery__PriorityModels__1: "claude-3"
+      Discovery__PriorityModels__2: "gemini-pro"
       # Batch Spending configuration
       BatchSpending__FlushIntervalSeconds: "30"
       BatchSpending__MinimumIntervalSeconds: "1"

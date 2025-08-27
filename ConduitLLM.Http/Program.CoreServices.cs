@@ -403,6 +403,12 @@ public partial class Program
 
         // Register Batch Cache Invalidation service
         builder.Services.AddBatchCacheInvalidation(builder.Configuration);
+        
+        // Register Discovery Cache service for model discovery endpoint caching
+        builder.Services.AddDiscoveryCache(builder.Configuration);
+        
+        // Register Discovery Cache warming as a hosted service (runs on startup)
+        builder.Services.AddHostedService<DiscoveryCacheWarmingService>();
 
         // Register Redis batch operations for optimized cache management
         builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IRedisBatchOperations, ConduitLLM.Http.Services.RedisBatchOperations>();

@@ -23,6 +23,7 @@ namespace ConduitLLM.Tests.Http.Controllers
         private readonly Mock<IDbContextFactory<ConduitDbContext>> _dbContextFactoryMock;
         private readonly Mock<IModelCapabilityService> _modelCapabilityServiceMock;
         private readonly Mock<IVirtualKeyService> _virtualKeyServiceMock;
+        private readonly Mock<IDiscoveryCacheService> _discoveryCacheServiceMock;
         private readonly Mock<ILogger<DiscoveryController>> _loggerMock;
         private readonly DiscoveryController _controller;
         private readonly ConduitDbContext _context;
@@ -42,6 +43,7 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             _modelCapabilityServiceMock = new Mock<IModelCapabilityService>();
             _virtualKeyServiceMock = new Mock<IVirtualKeyService>();
+            _discoveryCacheServiceMock = new Mock<IDiscoveryCacheService>();
             _loggerMock = new Mock<ILogger<DiscoveryController>>();
 
             // Create controller
@@ -49,6 +51,7 @@ namespace ConduitLLM.Tests.Http.Controllers
                 _dbContextFactoryMock.Object,
                 _modelCapabilityServiceMock.Object,
                 _virtualKeyServiceMock.Object,
+                _discoveryCacheServiceMock.Object,
                 _loggerMock.Object);
 
             // Setup HTTP context with claims

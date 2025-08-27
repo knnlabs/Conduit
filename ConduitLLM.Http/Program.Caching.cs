@@ -84,8 +84,9 @@ public partial class Program
             builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IModelCostCache, RedisModelCostCache>();
             builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IIpFilterCache, RedisIpFilterCache>();
             
-            // Register Redis distributed lock service
-            builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IDistributedLockService, ConduitLLM.Core.Services.RedisDistributedLockService>();
+            // Register distributed lock service - prefer PostgreSQL for better consistency
+            // PostgreSQL advisory locks are more reliable for cache warming coordination
+            builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IDistributedLockService, ConduitLLM.Core.Services.PostgresDistributedLockService>();
             
             // Register CachedApiVirtualKeyService with event publishing dependency
             builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService>(serviceProvider =>
@@ -100,7 +101,7 @@ public partial class Program
                 return new CachedApiVirtualKeyService(virtualKeyRepository, spendHistoryRepository, groupRepository, cache, publishEndpoint, logger);
             });
             
-            Console.WriteLine("[Conduit] Using Redis-cached services (high-performance mode) with distributed locking");
+            Console.WriteLine("[Conduit] Using Redis-cached services (high-performance mode) with PostgreSQL distributed locking");
             Console.WriteLine("[Conduit] Enabled caches: VirtualKey, Provider, GlobalSetting, ModelCost, IpFilter");
         }
         else
@@ -108,10 +109,10 @@ public partial class Program
             // Fall back to direct database Virtual Key service
             builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService, ConduitLLM.Http.Services.ApiVirtualKeyService>();
             
-            // Register in-memory distributed lock service (for development/single instance)
-            builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IDistributedLockService, ConduitLLM.Core.Services.InMemoryDistributedLockService>();
+            // Register PostgreSQL distributed lock service (works even without Redis)
+            builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IDistributedLockService, ConduitLLM.Core.Services.PostgresDistributedLockService>();
             
-            Console.WriteLine("[Conduit] Using direct database Virtual Key validation (fallback mode) with in-memory locking");
+            Console.WriteLine("[Conduit] Using direct database Virtual Key validation (fallback mode) with PostgreSQL distributed locking");
         }
 
         // Register Webhook Delivery Tracker for deduplication and statistics

@@ -24,6 +24,7 @@ namespace ConduitLLM.Tests.Http.Controllers
         private readonly Mock<IDbContextFactory<ConduitDbContext>> _mockDbContextFactory;
         private readonly Mock<IModelCapabilityService> _mockModelCapabilityService;
         private readonly Mock<IVirtualKeyService> _mockVirtualKeyService;
+        private readonly Mock<IDiscoveryCacheService> _mockDiscoveryCacheService;
         private readonly Mock<ILogger<DiscoveryController>> _mockLogger;
         private ConduitDbContext _dbContext;
         private readonly DiscoveryController _controller;
@@ -35,12 +36,14 @@ namespace ConduitLLM.Tests.Http.Controllers
             _mockDbContextFactory = new Mock<IDbContextFactory<ConduitDbContext>>();
             _mockModelCapabilityService = new Mock<IModelCapabilityService>();
             _mockVirtualKeyService = new Mock<IVirtualKeyService>();
+            _mockDiscoveryCacheService = new Mock<IDiscoveryCacheService>();
             _mockLogger = new Mock<ILogger<DiscoveryController>>();
 
             _controller = new DiscoveryController(
                 _mockDbContextFactory.Object,
                 _mockModelCapabilityService.Object,
                 _mockVirtualKeyService.Object,
+                _mockDiscoveryCacheService.Object,
                 _mockLogger.Object);
 
             // Setup default DbContext factory to return InMemory database
@@ -83,6 +86,7 @@ namespace ConduitLLM.Tests.Http.Controllers
                 _mockDbContextFactory.Object,
                 _mockModelCapabilityService.Object,
                 _mockVirtualKeyService.Object,
+                _mockDiscoveryCacheService.Object,
                 _mockLogger.Object);
 
             // Assert
@@ -97,6 +101,7 @@ namespace ConduitLLM.Tests.Http.Controllers
                 null!,
                 _mockModelCapabilityService.Object,
                 _mockVirtualKeyService.Object,
+                _mockDiscoveryCacheService.Object,
                 _mockLogger.Object));
             
             Assert.Equal("dbContextFactory", ex.ParamName);
@@ -110,6 +115,7 @@ namespace ConduitLLM.Tests.Http.Controllers
                 _mockDbContextFactory.Object,
                 null!,
                 _mockVirtualKeyService.Object,
+                _mockDiscoveryCacheService.Object,
                 _mockLogger.Object));
             
             Assert.Equal("modelCapabilityService", ex.ParamName);
@@ -123,6 +129,7 @@ namespace ConduitLLM.Tests.Http.Controllers
                 _mockDbContextFactory.Object,
                 _mockModelCapabilityService.Object,
                 null!,
+                _mockDiscoveryCacheService.Object,
                 _mockLogger.Object));
             
             Assert.Equal("virtualKeyService", ex.ParamName);
@@ -136,6 +143,7 @@ namespace ConduitLLM.Tests.Http.Controllers
                 _mockDbContextFactory.Object,
                 _mockModelCapabilityService.Object,
                 _mockVirtualKeyService.Object,
+                _mockDiscoveryCacheService.Object,
                 null!));
             
             Assert.Equal("logger", ex.ParamName);

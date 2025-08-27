@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Services;
 using Microsoft.AspNetCore.Authorization;
 using ConduitLLM.Configuration.DTOs;
 using Microsoft.AspNetCore.Mvc;
@@ -19,6 +20,7 @@ namespace ConduitLLM.Http.Controllers
         private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly IModelCapabilityService _modelCapabilityService;
         private readonly IVirtualKeyService _virtualKeyService;
+        private readonly IDiscoveryCacheService _discoveryCacheService;
         private readonly ILogger<DiscoveryController> _logger;
 
         /// <summary>
@@ -28,11 +30,13 @@ namespace ConduitLLM.Http.Controllers
             IDbContextFactory<ConduitDbContext> dbContextFactory,
             IModelCapabilityService modelCapabilityService,
             IVirtualKeyService virtualKeyService,
+            IDiscoveryCacheService discoveryCacheService,
             ILogger<DiscoveryController> logger)
         {
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
             _modelCapabilityService = modelCapabilityService ?? throw new ArgumentNullException(nameof(modelCapabilityService));
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
+            _discoveryCacheService = discoveryCacheService ?? throw new ArgumentNullException(nameof(discoveryCacheService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -58,6 +62,21 @@ namespace ConduitLLM.Http.Controllers
                 if (virtualKey == null)
                 {
                     return Unauthorized(new ErrorResponseDto("Invalid virtual key"));
+                }
+
+                // Build cache key based on capability filter
+                var cacheKey = DiscoveryCacheService.BuildCacheKey(capability);
+                
+                // Try to get from cache first
+                var cachedResult = await _discoveryCacheService.GetDiscoveryResultsAsync(cacheKey);
+                if (cachedResult != null)
+                {
+                    _logger.LogDebug("Returning cached discovery results for capability: {Capability}", capability ?? "all");
+                    return Ok(new
+                    {
+                        data = cachedResult.Data,
+                        count = cachedResult.Count
+                    });
                 }
 
                 using var context = await _dbContextFactory.CreateDbContextAsync();
@@ -174,7 +193,18 @@ namespace ConduitLLM.Http.Controllers
                     });
                 }
 
-                // TODO: Consider implementing caching for discovery results to improve performance
+                // Cache the results for future requests
+                var discoveryResult = new DiscoveryModelsResult
+                {
+                    Data = models,
+                    Count = models.Count,
+                    CapabilityFilter = capability
+                };
+                
+                await _discoveryCacheService.SetDiscoveryResultsAsync(cacheKey, discoveryResult);
+                
+                _logger.LogInformation("Cached discovery results for capability: {Capability} with {Count} models", 
+                    capability ?? "all", models.Count);
 
                 return Ok(new
                 {
