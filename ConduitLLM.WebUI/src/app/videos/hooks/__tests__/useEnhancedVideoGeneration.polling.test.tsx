@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { useEnhancedVideoGeneration } from '../useEnhancedVideoGeneration';
-import { setupMocks } from './useEnhancedVideoGeneration.setup';
+import { setupMocks } from './videoTest.helpers';
 import type { VideoTask } from '../../types';
 
 describe('useEnhancedVideoGeneration - Fallback Polling', () => {
