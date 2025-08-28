@@ -47,6 +47,7 @@ const navigationSections = [
       { id: 'ip-filtering', label: 'IP Filtering', href: '/ip-filtering', icon: IconShield },
       { id: 'system-info', label: 'System Info', href: '/system-info', icon: IconInfoCircle },
       { id: 'error-queues', label: 'Error Queues', href: '/error-queues', icon: IconBugOff },
+      { id: 'provider-errors', label: 'Provider Errors', href: '/provider-errors', icon: IconBugOff },
     ]
   },
   {
