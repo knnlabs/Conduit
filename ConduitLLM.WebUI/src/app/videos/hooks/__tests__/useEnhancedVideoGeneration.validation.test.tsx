@@ -1,13 +1,8 @@
 import { renderHook, act } from '@testing-library/react';
 import { useEnhancedVideoGeneration } from '../useEnhancedVideoGeneration';
-import { setupMocks } from './videoTest.helpers';
-
 describe('useEnhancedVideoGeneration - Settings Validation', () => {
-  let storeMocks: ReturnType<typeof setupMocks>;
-
   beforeEach(() => {
     jest.clearAllMocks();
-    storeMocks = setupMocks();
   });
 
   afterEach(() => {
@@ -65,7 +60,7 @@ describe('useEnhancedVideoGeneration - Settings Validation', () => {
       expect(global.fetch).toHaveBeenCalledWith('/api/videos/generate',
         expect.objectContaining({
           method: 'POST',
-          body: expect.stringContaining('"duration":100'),
+          body: expect.stringContaining('"duration":100') as unknown as string,
         })
       );
     });

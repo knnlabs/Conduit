@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { useEnhancedVideoGeneration } from '../useEnhancedVideoGeneration';
-import { setupMocks, mockGenerateVideoWithProgress } from './videoTest.helpers';
+import { setupMocks } from './videoTest.helpers';
 import type { VideoTask } from '../../types';
 
 describe('useEnhancedVideoGeneration - Task Management', () => {

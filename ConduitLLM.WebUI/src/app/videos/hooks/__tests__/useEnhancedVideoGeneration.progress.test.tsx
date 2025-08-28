@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { useEnhancedVideoGeneration } from '../useEnhancedVideoGeneration';
-import { setupMocks, mockGenerateVideoWithProgress, type VideoProgress } from './videoTest.helpers';
-import type { VideoTask, VideoGenerationResult } from '../../types';
+import { setupMocks } from './videoTest.helpers';
+import type { VideoTask } from '../../types';
 
 describe('useEnhancedVideoGeneration - Progress Tracking', () => {
   let storeMocks: ReturnType<typeof setupMocks>;
@@ -67,15 +67,24 @@ describe('useEnhancedVideoGeneration - Progress Tracking', () => {
     it('should handle progress updates correctly', async () => {
       // Mock the video SignalR client to simulate progress callbacks
       const mockVideoSignalRClient = {
-        connect: jest.fn().mockImplementation(async (taskId, ephemeralKey, callbacks) => {
+        connect: jest.fn().mockImplementation(async (
+          taskId: string, 
+          ephemeralKey?: string, 
+          callbacks?: {
+            onProgress?: (update: { taskId: string; status: string; progress?: number; message?: string }) => void;
+            onCompleted?: (videoUrl: string) => void;
+            onFailed?: (error: string) => void;
+          }
+        ) => {
           // Simulate immediate progress update
           setTimeout(() => {
-            if (callbacks.onProgress) {
+            if (callbacks?.onProgress) {
               callbacks.onProgress({
+                taskId,
                 percentage: 25,
                 status: 'Processing',
                 message: 'Initializing',
-              });
+              } as unknown as { taskId: string; status: string; progress?: number; message?: string });
             }
           }, 0);
           return Promise.resolve();
@@ -117,17 +126,25 @@ describe('useEnhancedVideoGeneration - Progress Tracking', () => {
           progress: 25,
           status: 'running',
           message: 'Initializing',
-        }) as Partial<VideoTask>
+        }) as unknown as Partial<VideoTask>
       );
     });
 
     it('should handle successful completion', async () => {
       // Mock the video SignalR client to simulate completion callback
       const mockVideoSignalRClient = {
-        connect: jest.fn().mockImplementation(async (taskId, ephemeralKey, callbacks) => {
+        connect: jest.fn().mockImplementation(async (
+          taskId: string, 
+          ephemeralKey?: string, 
+          callbacks?: {
+            onProgress?: (update: { taskId: string; status: string; progress?: number; message?: string }) => void;
+            onCompleted?: (videoUrl: string) => void;
+            onFailed?: (error: string) => void;
+          }
+        ) => {
           // Simulate completion
           setTimeout(() => {
-            if (callbacks.onCompleted) {
+            if (callbacks?.onCompleted) {
               callbacks.onCompleted('https://example.com/video.mp4');
             }
           }, 0);
@@ -170,20 +187,28 @@ describe('useEnhancedVideoGeneration - Progress Tracking', () => {
           status: 'completed',
           progress: 100,
           result: {
-            created: expect.any(Number),
+            created: expect.any(Number) as unknown as number,
             data: [{ url: 'https://example.com/video.mp4' }]
           },
-        }) as Partial<VideoTask>
+        }) as unknown as Partial<VideoTask>
       );
     });
 
     it('should handle failures', async () => {
       // Mock the video SignalR client to simulate failure callback
       const mockVideoSignalRClient = {
-        connect: jest.fn().mockImplementation(async (taskId, ephemeralKey, callbacks) => {
+        connect: jest.fn().mockImplementation(async (
+          taskId: string, 
+          ephemeralKey?: string, 
+          callbacks?: {
+            onProgress?: (update: { taskId: string; status: string; progress?: number; message?: string }) => void;
+            onCompleted?: (videoUrl: string) => void;
+            onFailed?: (error: string) => void;
+          }
+        ) => {
           // Simulate failure
           setTimeout(() => {
-            if (callbacks.onFailed) {
+            if (callbacks?.onFailed) {
               callbacks.onFailed('Insufficient GPU resources');
             }
           }, 0);
@@ -225,7 +250,7 @@ describe('useEnhancedVideoGeneration - Progress Tracking', () => {
         expect.objectContaining({
           status: 'failed',
           error: 'Insufficient GPU resources',
-        }) as Partial<VideoTask>
+        }) as unknown as Partial<VideoTask>
       );
 
       expect(storeMocks.mockSetError).toHaveBeenCalledWith('Insufficient GPU resources');
