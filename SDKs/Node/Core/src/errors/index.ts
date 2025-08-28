@@ -18,7 +18,6 @@ export {
   NetworkError,
   TimeoutError,
   StreamError,
-  InsufficientBalanceError,
   
   // Type guards
   isConduitError,
@@ -31,7 +30,6 @@ export {
   isNetworkError,
   isStreamError,
   isTimeoutError,
-  isInsufficientBalanceError,
   isSerializedConduitError,
   
   // Utility functions
@@ -47,3 +45,6 @@ export { ModelNotFoundException, isModelNotFoundException } from './ModelNotFoun
 export { InvalidRequestException, isInvalidRequestException } from './InvalidRequestException';
 export { ServiceUnavailableException, isServiceUnavailableException } from './ServiceUnavailableException';
 export { PayloadTooLargeException, isPayloadTooLargeException } from './PayloadTooLargeException';
+
+// Export InsufficientBalanceError from utils/errors (Core SDK specific implementation)
+export { InsufficientBalanceError, isInsufficientBalanceError } from '../utils/errors';

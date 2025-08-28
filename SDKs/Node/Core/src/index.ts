@@ -191,7 +191,7 @@ export {
   deserializeError,
   getErrorMessage,
   getErrorStatusCode,
-} from './utils/errors';
+} from './errors';
 
 // Enhanced error handling
 export {
