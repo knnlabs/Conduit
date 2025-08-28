@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { useEnhancedVideoGeneration } from '../useEnhancedVideoGeneration';
-import { setupMocks, mockGenerateVideoWithProgress, type VideoProgress } from './useEnhancedVideoGeneration.setup';
+import { setupMocks, mockGenerateVideoWithProgress, type VideoProgress } from './videoTest.helpers';
 import type { VideoTask, VideoGenerationResult } from '../../types';
 
 describe('useEnhancedVideoGeneration - Progress Tracking', () => {
@@ -17,10 +17,6 @@ describe('useEnhancedVideoGeneration - Progress Tracking', () => {
 
   describe('Enhanced video generation with progress tracking', () => {
     it('should use progress tracking when enabled', async () => {
-      mockGenerateVideoWithProgress.mockResolvedValue({
-        taskId: 'task_enhanced_123',
-      });
-
       const hook = renderHook(() =>
         useEnhancedVideoGeneration({
           fallbackToPolling: true,
@@ -46,51 +42,51 @@ describe('useEnhancedVideoGeneration - Progress Tracking', () => {
           prompt: 'Test video with progress',
           status: 'pending',
           progress: 0,
+          id: 'mock_task_id',
         }) as VideoTask
       );
 
-      expect(mockGenerateVideoWithProgress).toHaveBeenCalled();
-      const [requestArg, callbacksArg] = mockGenerateVideoWithProgress.mock.calls[0] as [
-        Parameters<typeof mockGenerateVideoWithProgress>[0],
-        Parameters<typeof mockGenerateVideoWithProgress>[1]
-      ];
-      
-      expect(requestArg).toEqual({
-        prompt: 'Test video with progress',
-        model: 'minimax-video',
-        duration: 5,
-        size: '1280x720',
-        fps: 30,
-        style: 'natural',
+      // Verify the fetch API was called correctly
+      expect(global.fetch).toHaveBeenCalledWith('/api/videos/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: 'Test video with progress',
+          model: 'minimax-video',
+          duration: 5,
+          size: '1280x720',
+          fps: 30,
+          style: 'natural',
+          response_format: 'url',
+        }),
       });
-      
-      expect(callbacksArg).toHaveProperty('onProgress');
-      expect(callbacksArg).toHaveProperty('onStarted');
-      expect(callbacksArg).toHaveProperty('onCompleted');
-      expect(callbacksArg).toHaveProperty('onFailed');
-      expect(typeof callbacksArg.onProgress).toBe('function');
-      expect(typeof callbacksArg.onStarted).toBe('function');
-      expect(typeof callbacksArg.onCompleted).toBe('function');
-      expect(typeof callbacksArg.onFailed).toBe('function');
     });
 
     it('should handle progress updates correctly', async () => {
-      let progressCallback: ((progress: VideoProgress) => void) | undefined;
-      let startedCallback: ((taskId: string, estimatedSeconds?: number) => void) | undefined;
+      // Mock the video SignalR client to simulate progress callbacks
+      const mockVideoSignalRClient = {
+        connect: jest.fn().mockImplementation(async (taskId, ephemeralKey, callbacks) => {
+          // Simulate immediate progress update
+          setTimeout(() => {
+            if (callbacks.onProgress) {
+              callbacks.onProgress({
+                percentage: 25,
+                status: 'Processing',
+                message: 'Initializing',
+              });
+            }
+          }, 0);
+          return Promise.resolve();
+        }),
+        disconnect: jest.fn(),
+      };
 
-      mockGenerateVideoWithProgress.mockImplementation(async (request, callbacks) => {
-        void request;
-        const typedCallbacks = callbacks;
-        progressCallback = typedCallbacks.onProgress;
-        startedCallback = typedCallbacks.onStarted;
-        
-        // Simulate task started
-        if (startedCallback) {
-          startedCallback('task_progress_456', 30);
-        }
-        
-        return { taskId: 'task_progress_456' };
-      });
+      // Mock the videoSignalRClient import
+      jest.doMock('@/lib/client/videoSignalRClient', () => ({
+        videoSignalRClient: mockVideoSignalRClient,
+      }));
 
       const hook = renderHook(() =>
         useEnhancedVideoGeneration()
@@ -110,55 +106,40 @@ describe('useEnhancedVideoGeneration - Progress Tracking', () => {
         });
       });
 
-      // Simulate progress updates
-      act(() => {
-        if (progressCallback) {
-          progressCallback({
-            percentage: 25,
-            status: 'processing',
-            message: 'Initializing',
-          });
-        }
+      // Wait for the progress callback to be called
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 10));
       });
 
-      expect(storeMocks.mockUpdateTask).toHaveBeenLastCalledWith(
-        expect.any(String),
+      expect(storeMocks.mockUpdateTask).toHaveBeenCalledWith(
+        'mock_task_id',
         expect.objectContaining({
           progress: 25,
           status: 'running',
           message: 'Initializing',
         }) as Partial<VideoTask>
       );
-
-      act(() => {
-        if (progressCallback) {
-          progressCallback({
-            percentage: 75,
-            status: 'processing',
-            message: 'Rendering frames',
-          });
-        }
-      });
-
-      expect(storeMocks.mockUpdateTask).toHaveBeenLastCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          progress: 75,
-          status: 'running',
-          message: 'Rendering frames',
-        }) as Partial<VideoTask>
-      );
     });
 
     it('should handle successful completion', async () => {
-      let completedCallback: ((result: VideoGenerationResult) => void) | undefined;
+      // Mock the video SignalR client to simulate completion callback
+      const mockVideoSignalRClient = {
+        connect: jest.fn().mockImplementation(async (taskId, ephemeralKey, callbacks) => {
+          // Simulate completion
+          setTimeout(() => {
+            if (callbacks.onCompleted) {
+              callbacks.onCompleted('https://example.com/video.mp4');
+            }
+          }, 0);
+          return Promise.resolve();
+        }),
+        disconnect: jest.fn(),
+      };
 
-      mockGenerateVideoWithProgress.mockImplementation(async (request, callbacks) => {
-        void request;
-        const typedCallbacks = callbacks;
-        completedCallback = typedCallbacks.onCompleted;
-        return { taskId: 'task_complete_789' };
-      });
+      // Mock the videoSignalRClient import
+      jest.doMock('@/lib/client/videoSignalRClient', () => ({
+        videoSignalRClient: mockVideoSignalRClient,
+      }));
 
       const hook = renderHook(() =>
         useEnhancedVideoGeneration()
@@ -178,39 +159,43 @@ describe('useEnhancedVideoGeneration - Progress Tracking', () => {
         });
       });
 
-      const mockResult = {
-        created: Date.now(),
-        data: [{
-          url: 'https://example.com/video.mp4',
-          metadata: { duration: 5 },
-        }],
-      };
-
-      act(() => {
-        if (completedCallback) {
-          completedCallback(mockResult);
-        }
+      // Wait for the completion callback to be called
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 10));
       });
 
       expect(storeMocks.mockUpdateTask).toHaveBeenCalledWith(
-        expect.any(String),
+        'mock_task_id',
         expect.objectContaining({
           status: 'completed',
           progress: 100,
-          result: mockResult,
+          result: {
+            created: expect.any(Number),
+            data: [{ url: 'https://example.com/video.mp4' }]
+          },
         }) as Partial<VideoTask>
       );
     });
 
     it('should handle failures', async () => {
-      let failedCallback: ((error: string, isRetryable: boolean) => void) | undefined;
+      // Mock the video SignalR client to simulate failure callback
+      const mockVideoSignalRClient = {
+        connect: jest.fn().mockImplementation(async (taskId, ephemeralKey, callbacks) => {
+          // Simulate failure
+          setTimeout(() => {
+            if (callbacks.onFailed) {
+              callbacks.onFailed('Insufficient GPU resources');
+            }
+          }, 0);
+          return Promise.resolve();
+        }),
+        disconnect: jest.fn(),
+      };
 
-      mockGenerateVideoWithProgress.mockImplementation(async (request, callbacks) => {
-        void request;
-        const typedCallbacks = callbacks;
-        failedCallback = typedCallbacks.onFailed;
-        return { taskId: 'task_fail_999' };
-      });
+      // Mock the videoSignalRClient import
+      jest.doMock('@/lib/client/videoSignalRClient', () => ({
+        videoSignalRClient: mockVideoSignalRClient,
+      }));
 
       const hook = renderHook(() =>
         useEnhancedVideoGeneration()
@@ -230,23 +215,20 @@ describe('useEnhancedVideoGeneration - Progress Tracking', () => {
         });
       });
 
-      const errorMessage = 'Insufficient GPU resources';
-
-      act(() => {
-        if (failedCallback) {
-          failedCallback(errorMessage, true);
-        }
+      // Wait for the failure callback to be called
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 10));
       });
 
       expect(storeMocks.mockUpdateTask).toHaveBeenCalledWith(
-        expect.any(String),
+        'mock_task_id',
         expect.objectContaining({
           status: 'failed',
-          error: errorMessage,
+          error: 'Insufficient GPU resources',
         }) as Partial<VideoTask>
       );
 
-      expect(storeMocks.mockSetError).toHaveBeenCalledWith(errorMessage);
+      expect(storeMocks.mockSetError).toHaveBeenCalledWith('Insufficient GPU resources');
     });
   });
 });

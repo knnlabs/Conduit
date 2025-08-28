@@ -13,7 +13,10 @@ jest.mock('../../client/ClientAdapter', () => ({
 // Mock the VideoProgressTracker
 jest.mock('../../tracking/VideoProgressTracker', () => ({
   VideoProgressTracker: jest.fn().mockImplementation(() => ({
-    track: jest.fn()
+    track: jest.fn().mockResolvedValue({
+      created: Date.now(),
+      data: [{ url: 'https://example.com/video.mp4' }],
+    })
   }))
 }));
 

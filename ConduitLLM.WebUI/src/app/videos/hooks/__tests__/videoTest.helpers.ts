@@ -55,8 +55,33 @@ export const setupMocks = () => {
   const storeMocks = createMockStore();
   mockUseVideoStore.mockReturnValue(storeMocks.mockStore);
   
-  // Mock window.fetch for fallback polling
-  global.fetch = jest.fn();
+  // Mock window.fetch for the actual API calls the implementation uses
+  global.fetch = jest.fn().mockImplementation(() => 
+    Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({
+        task_id: 'mock_task_id',
+        message: 'Video generation started',
+        estimated_time_to_completion: 30
+      }),
+      headers: new Headers(),
+      status: 200,
+      statusText: 'OK'
+    })
+  );
+  
+  // Mock the SDK method (although it's not actually used in current implementation)
+  mockGenerateVideoWithProgress.mockResolvedValue({
+    taskId: 'mock_task_id',
+  });
+
+  // Mock the video SignalR client to always fail connection so it falls back to polling
+  jest.doMock('@/lib/client/videoSignalRClient', () => ({
+    videoSignalRClient: {
+      connect: jest.fn().mockRejectedValue(new Error('Mocked SignalR connection failure')),
+      disconnect: jest.fn(),
+    },
+  }));
   
   return storeMocks;
 };

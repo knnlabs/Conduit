@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { useEnhancedVideoGeneration } from '../useEnhancedVideoGeneration';
-import { setupMocks, mockGenerateVideoWithProgress } from './useEnhancedVideoGeneration.setup';
+import { setupMocks, mockGenerateVideoWithProgress } from './videoTest.helpers';
 import type { VideoTask } from '../../types';
 
 describe('useEnhancedVideoGeneration - Task Management', () => {
@@ -17,9 +17,30 @@ describe('useEnhancedVideoGeneration - Task Management', () => {
 
   describe('Task management', () => {
     it('should generate unique task IDs', async () => {
-      mockGenerateVideoWithProgress.mockResolvedValue({
-        taskId: 'task_unique_123',
-      });
+      // Mock different task IDs for each call
+      (global.fetch as jest.Mock)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: jest.fn().mockResolvedValue({
+            task_id: 'task_unique_123',
+            message: 'First video generation started',
+            estimated_time_to_completion: 30
+          }),
+          headers: new Headers(),
+          status: 200,
+          statusText: 'OK'
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: jest.fn().mockResolvedValue({
+            task_id: 'task_unique_456',
+            message: 'Second video generation started',
+            estimated_time_to_completion: 30
+          }),
+          headers: new Headers(),
+          status: 200,
+          statusText: 'OK'
+        });
 
       const hook = renderHook(() =>
         useEnhancedVideoGeneration()
@@ -39,9 +60,6 @@ describe('useEnhancedVideoGeneration - Task Management', () => {
         });
       });
 
-      const firstCall = storeMocks.mockAddTask.mock.calls[0] as [VideoTask] | undefined;
-      const firstTaskCall = firstCall?.[0];
-      
       await act(async () => {
         await hook.result.current.generateVideo({
           prompt: 'Second video',
@@ -56,9 +74,14 @@ describe('useEnhancedVideoGeneration - Task Management', () => {
         });
       });
 
+      const firstCall = storeMocks.mockAddTask.mock.calls[0] as [VideoTask] | undefined;
+      const firstTaskCall = firstCall?.[0];
+      
       const secondCall = storeMocks.mockAddTask.mock.calls[1] as [VideoTask] | undefined;
       const secondTaskCall = secondCall?.[0];
       
+      expect(firstTaskCall?.id).toBe('task_unique_123');
+      expect(secondTaskCall?.id).toBe('task_unique_456');
       expect(firstTaskCall?.id).not.toBe(secondTaskCall?.id);
     });
 

@@ -38,8 +38,8 @@ stable-diffusion-xl,stable-diffusion-xl,image,0,0,0.00013,30`;
 
   it('should convert parsed Phase 2 data to DTOs correctly', () => {
     const csv = `Cost Name,Associated Model Aliases,Model Type,Input Cost (per million tokens),Output Cost (per million tokens),Cached Input Cost (per million tokens),Search Unit Cost (per 1K units),Priority,Active
-claude-opus-4,claude-3-opus,chat,15.00,75.00,1.50,0,100,yes
-rerank-3.5,rerank-3.5,chat,0,0,0,2.0,90,true`;
+claude-opus-4,claude-3-opus,chat,15.00,75.00,1.50,,100,yes
+rerank-3.5,rerank-3.5,chat,0,0,,2.0,90,true`;
     
     const parsed = parseCSVContent(csv);
     const dtos = convertParsedToDto(parsed);
@@ -48,7 +48,7 @@ rerank-3.5,rerank-3.5,chat,0,0,0,2.0,90,true`;
     
     // Check cached token costs (already per million)
     expect(dtos[0].cachedInputCostPerMillionTokens).toBe(1.50);
-    expect(dtos[0].costPerSearchUnit).toBe(0); // Not used for this model
+    expect(dtos[0].costPerSearchUnit).toBeUndefined(); // Empty field should be undefined
     
     // Check search unit cost (no conversion needed)
     expect(dtos[1].costPerSearchUnit).toBe(2.0);
@@ -56,8 +56,8 @@ rerank-3.5,rerank-3.5,chat,0,0,0,2.0,90,true`;
   });
 
   it('should validate negative Phase 2 costs', () => {
-    const csv = `Model Pattern,Provider,Model Type,Input Cost (per 1K tokens),Output Cost (per 1K tokens),Cached Input Cost (per 1K tokens),Search Unit Cost (per 1K units)
-bad-model,Test,chat,0.01,0.02,-0.001,-1.0`;
+    const csv = `Cost Name,Associated Model Aliases,Model Type,Input Cost (per million tokens),Output Cost (per million tokens),Cached Input Cost (per million tokens),Search Unit Cost (per 1K units)
+bad-model,bad-model,chat,1000,2000,-1000,-1.0`;
     
     const result = parseCSVContent(csv);
     
@@ -67,8 +67,8 @@ bad-model,Test,chat,0.01,0.02,-0.001,-1.0`;
   });
 
   it('should handle missing Phase 2 fields gracefully', () => {
-    const csv = `Model Pattern,Provider,Model Type,Input Cost (per 1K tokens),Output Cost (per 1K tokens)
-gpt-4,OpenAI,chat,0.03,0.06`;
+    const csv = `Cost Name,Associated Model Aliases,Model Type,Input Cost (per million tokens),Output Cost (per million tokens)
+gpt-4,gpt-4,chat,30000,60000`;
     
     const result = parseCSVContent(csv);
     
@@ -79,23 +79,23 @@ gpt-4,OpenAI,chat,0.03,0.06`;
   });
 
   it('should parse complex CSV with all Phase 2 fields', () => {
-    const csv = `Model Pattern,Provider,Model Type,Input Cost (per 1K tokens),Output Cost (per 1K tokens),Cached Input Cost (per 1K tokens),Cache Write Cost (per 1K tokens),Embedding Cost (per 1K tokens),Image Cost (per image),Search Unit Cost (per 1K units),Cost Per Inference Step,Default Inference Steps,Supports Batch Processing,Batch Processing Multiplier,Image Quality Multipliers,Priority,Active,Description
-claude-opus-4,Anthropic,chat,0.015,0.075,0.0015,0.01875,0,0,0,0,0,yes,0.5,{},100,true,"Premium Claude model with caching"
-embed-english-v3.0,Cohere,embedding,0,0,0,0,0.0001,0,0,0,0,no,0,{},80,yes,"Cohere embedding model"
-stable-diffusion-xl,Fireworks,image,0,0,0,0,0,0,0,0.00013,30,false,0,"{""standard"": 1.0, ""hd"": 2.0}",70,true,"SDXL with step-based pricing"`;
+    const csv = `Cost Name,Associated Model Aliases,Model Type,Input Cost (per million tokens),Output Cost (per million tokens),Cached Input Cost (per million tokens),Cache Write Cost (per million tokens),Embedding Cost (per million tokens),Image Cost (per image),Search Unit Cost (per 1K units),Cost Per Inference Step,Default Inference Steps,Supports Batch Processing,Batch Processing Multiplier,Image Quality Multipliers,Priority,Active,Description
+claude-opus-4,claude-opus-4,chat,15000,75000,1500,18750,,,,,,yes,0.5,{},100,true,"Premium Claude model with caching"
+embed-english-v3.0,embed-english-v3.0,embedding,,,,,100,,,,no,,{},80,yes,"Cohere embedding model"
+stable-diffusion-xl,stable-diffusion-xl,image,,,,,,0.00013,30,false,,"{""standard"": 1.0, ""hd"": 2.0}",70,true,"SDXL with step-based pricing"`;
     
     const result = parseCSVContent(csv);
     
     expect(result).toHaveLength(3);
     
     // Claude model with caching
-    expect(result[0].cachedInputCostPerMillion).toBe(1.5); // 0.0015 * 1000 = 1.5 per million
-    expect(result[0].cachedInputWriteCostPerMillion).toBe(18.75); // 0.01875 * 1000 = 18.75 per million
+    expect(result[0].cachedInputCostPerMillion).toBe(1500);
+    expect(result[0].cachedInputWriteCostPerMillion).toBe(18750);
     expect(result[0].supportsBatchProcessing).toBe(true);
     expect(result[0].batchProcessingMultiplier).toBe(0.5);
     
     // Cohere embedding
-    expect(result[1].embeddingCostPerMillion).toBe(0.1); // 0.0001 * 1000 = 0.1 per million
+    expect(result[1].embeddingCostPerMillion).toBe(100);
     expect(result[1].modelType).toBe('embedding');
     
     // SDXL with inference steps
@@ -124,8 +124,8 @@ stable-diffusion-xl,Fireworks,image,0,0,0,0,0,0,0,0.00013,30,false,0,"{""standar
   });
 
   it('should validate inference step fields correctly', () => {
-    const csv = `Model Pattern,Provider,Model Type,Input Cost (per 1K tokens),Output Cost (per 1K tokens),Cost Per Inference Step,Default Inference Steps
-bad-steps,Test,image,0,0,-0.0001,-5`;
+    const csv = `Cost Name,Associated Model Aliases,Model Type,Input Cost (per million tokens),Output Cost (per million tokens),Cost Per Inference Step,Default Inference Steps
+bad-steps,bad-steps,image,0,0,-0.0001,-5`;
     
     const result = parseCSVContent(csv);
     
@@ -135,8 +135,8 @@ bad-steps,Test,image,0,0,-0.0001,-5`;
   });
 
   it('should handle batch processing with Phase 2 costs', () => {
-    const csv = `Model Pattern,Provider,Model Type,Input Cost (per 1K tokens),Output Cost (per 1K tokens),Cached Input Cost (per 1K tokens),Supports Batch Processing,Batch Processing Multiplier
-claude-batch,Anthropic,chat,0.015,0.075,0.0015,yes,0.5`;
+    const csv = `Cost Name,Associated Model Aliases,Model Type,Input Cost (per million tokens),Output Cost (per million tokens),Cached Input Cost (per million tokens),Supports Batch Processing,Batch Processing Multiplier
+claude-batch,claude-batch,chat,15000,75000,1500,yes,0.5`;
     
     const result = parseCSVContent(csv);
     const dtos = convertParsedToDto(result);
