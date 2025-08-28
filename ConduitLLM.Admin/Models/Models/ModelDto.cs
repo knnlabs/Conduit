@@ -108,5 +108,16 @@ namespace ConduitLLM.Admin.Models.Models
         /// </remarks>
         /// <value>The series object, or null if not loaded.</value>
         public ModelSeriesDto? Series { get; set; }
+
+        /// <summary>
+        /// Gets or sets the model-specific parameter configuration for UI generation.
+        /// </summary>
+        /// <remarks>
+        /// This JSON string contains parameter definitions that override the series-level
+        /// parameters. When null, the model uses its series' parameter configuration.
+        /// This allows for model-specific customization while maintaining series defaults.
+        /// </remarks>
+        /// <value>JSON string containing parameter definitions, or null to use series defaults.</value>
+        public string? ModelParameters { get; set; }
     }
 }

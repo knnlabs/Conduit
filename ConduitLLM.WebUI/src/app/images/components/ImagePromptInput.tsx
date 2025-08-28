@@ -5,7 +5,11 @@ import { Textarea, Button, Group, Text } from '@mantine/core';
 import { IconPalette, IconTrash } from '@tabler/icons-react';
 import { useImageStore } from '../hooks/useImageStore';
 
-export default function ImagePromptInput() {
+interface ImagePromptInputProps {
+  dynamicParameters?: Record<string, unknown>;
+}
+
+export default function ImagePromptInput({ dynamicParameters }: ImagePromptInputProps) {
   const { 
     prompt, 
     status, 
@@ -25,7 +29,7 @@ export default function ImagePromptInput() {
     if (!localPrompt.trim()) {
       return;
     }
-    void generateImages();
+    void generateImages(dynamicParameters);
   };
 
   const handleClear = () => {

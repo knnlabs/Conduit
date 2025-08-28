@@ -31,6 +31,7 @@ namespace ConduitLLM.Tests.Configuration.Services
         private readonly Mock<IConnectionMultiplexer> _mockRedisConnection;
         private readonly Mock<IDatabase> _mockRedisDb;
         private readonly Mock<IServer> _mockRedisServer;
+        private readonly Mock<IBillingAlertingService> _mockAlertingService;
         private readonly BatchSpendUpdateService _service;
         private readonly IConfigurationDbContext _dbContext;
         private readonly ConduitDbContext _concreteDbContext;
@@ -77,13 +78,15 @@ namespace ConduitLLM.Tests.Configuration.Services
             _mockScopeFactory.Setup(x => x.CreateScope()).Returns(mockScope.Object);
             
             _mockLogger = new Mock<ILogger<BatchSpendUpdateService>>();
+            _mockAlertingService = new Mock<IBillingAlertingService>();
             
             var batchOptions = Microsoft.Extensions.Options.Options.Create(new BatchSpendingOptions()); // Use defaults
             _service = new BatchSpendUpdateService(
                 _mockScopeFactory.Object,
                 _testRedisFactory,
                 batchOptions,
-                _mockLogger.Object);
+                _mockLogger.Object,
+                _mockAlertingService.Object);
         }
 
         [Fact]

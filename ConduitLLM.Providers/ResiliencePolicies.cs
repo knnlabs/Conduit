@@ -12,7 +12,7 @@ namespace ConduitLLM.Providers;
 /// <summary>
 /// Defines resilience policies for HTTP requests made by LLM provider clients.
 /// </summary>
-public static class ResiliencePolicies
+public static partial class ResiliencePolicies
 {
     /// <summary>
     /// Creates a standard retry policy for HTTP requests to LLM provider APIs.

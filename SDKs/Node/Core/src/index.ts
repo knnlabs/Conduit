@@ -191,7 +191,7 @@ export {
   deserializeError,
   getErrorMessage,
   getErrorStatusCode,
-} from './utils/errors';
+} from './errors';
 
 // Enhanced error handling
 export {
@@ -344,4 +344,21 @@ export type {
 export * from './models/metadata';
 export * from './models/common-types';
 export * from './models/providerType';
+
+// Chat utilities
+export * from './chat';
+
+// Export chat presets utility
+export {
+  CHAT_PRESETS,
+  getPresetById,
+  findMatchingPreset,
+  applyPreset,
+  getDefaultPreset,
+  PresetCategory,
+  PRESET_CATEGORIES,
+  getPresetsByCategory,
+  type ChatPreset,
+  type ChatPresetParameters,
+} from './utils/chat-presets';
 

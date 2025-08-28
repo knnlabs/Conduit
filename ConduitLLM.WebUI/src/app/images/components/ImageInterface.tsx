@@ -16,6 +16,9 @@ import { useImageStore } from '../hooks/useImageStore';
 import { useImageModels } from '../hooks/useImageModels';
 import { ErrorDisplay } from '@/components/common/ErrorDisplay';
 import { createEnhancedError } from '@/lib/utils/error-enhancement';
+import { DynamicParameters } from '@/components/parameters/DynamicParameters';
+import { useParameterState } from '@/components/parameters/hooks/useParameterState';
+import { useDiscoveryModels } from '@/app/chat/hooks/useDiscoveryModels';
 import ImageSettings from './ImageSettings';
 import ImagePromptInput from './ImagePromptInput';
 import ImageGallery from './ImageGallery';
@@ -32,6 +35,18 @@ export default function ImageInterface() {
   } = useImageStore();
 
   const { data: models, isLoading: modelsLoading, error: modelsError } = useImageModels();
+  
+  // Fetch models with parameters from discovery endpoint
+  const { data: discoveryData } = useDiscoveryModels('image_generation');
+  
+  // Find the selected model with parameters
+  const selectedDiscoveryModel = discoveryData?.data?.find(m => m.id === settings.model);
+  
+  // Initialize parameter state with the model's parameters
+  const parameterState = useParameterState({
+    parameters: selectedDiscoveryModel?.parameters ?? '{}',
+    persistKey: `image-params-${settings.model ?? 'default'}`,
+  });
 
   // Auto-select first available model
   useEffect(() => {
@@ -165,9 +180,22 @@ export default function ImageInterface() {
         </Paper>
       )}
 
+      {/* Dynamic Parameters from Model */}
+      {selectedDiscoveryModel?.parameters && selectedDiscoveryModel.parameters !== '{}' && (
+        <DynamicParameters
+          parameters={selectedDiscoveryModel.parameters}
+          values={parameterState.values}
+          onChange={parameterState.updateValues}
+          context="image"
+          title="Image Generation Parameters"
+          collapsible={true}
+          defaultExpanded={false}
+        />
+      )}
+
       {/* Prompt Input */}
       <Paper p="md" withBorder>
-        <ImagePromptInput />
+        <ImagePromptInput dynamicParameters={parameterState.getSubmitValues()} />
       </Paper>
 
       {/* Image Gallery */}

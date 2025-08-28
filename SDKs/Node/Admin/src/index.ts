@@ -2,6 +2,9 @@
 export { FetchConduitAdminClient as ConduitAdminClient } from './FetchConduitAdminClient';
 export { FetchConduitAdminClient } from './FetchConduitAdminClient';
 
+// Export generated types
+export type { paths, components } from './generated/admin-api';
+
 // Types
 export * from './client/types';
 export { HttpMethod } from './client/HttpMethod';

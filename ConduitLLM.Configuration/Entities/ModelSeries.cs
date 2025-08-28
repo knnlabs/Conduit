@@ -60,13 +60,6 @@ namespace ConduitLLM.Configuration.Entities
         /// </summary>
         public string Parameters { get; set; } = "{}";
 
-        /// <summary>
-        /// JSON array of API parameters supported by models in this series.
-        /// These are passed through to the provider API without modification.
-        /// Example: ["reasoning_effort", "min_p", "top_k"]
-        /// Used during bulk mapping to auto-populate supported parameters.
-        /// </summary>
-        public string? ApiParameters { get; set; }
 
         /// <summary>
         /// Navigation property for models in this series.

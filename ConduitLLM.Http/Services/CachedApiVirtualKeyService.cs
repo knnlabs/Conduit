@@ -55,7 +55,7 @@ namespace ConduitLLM.Http.Services
 
             try
             {
-                var keyHash = HashKey(key);
+                var keyHash = VirtualKeyUtilities.HashKey(key);
                 _logger.LogDebug("Validating key for authentication: {KeyPrefix}..., Hash: {Hash}", 
                     key.Length > 10 ? key.Substring(0, 10) : key, keyHash);
                 
@@ -74,37 +74,15 @@ namespace ConduitLLM.Http.Services
                     return null;
                 }
 
-                // Check if key is enabled
-                if (!virtualKey.IsEnabled)
-                {
-                    _logger.LogWarning("Virtual key is disabled: {KeyName} (ID: {KeyId})", virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id);
-                    return null;
-                }
+                // Validate without balance check
+                var validationResult = await VirtualKeyValidationHelper.ValidateVirtualKeyAsync(
+                    virtualKey, 
+                    requestedModel, 
+                    checkBalance: false, 
+                    groupRepository: null, 
+                    _logger);
 
-                // Check expiration
-                if (virtualKey.ExpiresAt.HasValue && virtualKey.ExpiresAt.Value < DateTime.UtcNow)
-                {
-                    _logger.LogWarning("Virtual key has expired: {KeyName} (ID: {KeyId}), expired at {ExpiryDate}",
-                        virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id, virtualKey.ExpiresAt);
-                    return null;
-                }
-
-                // Check if model is allowed (but skip balance check for authentication)
-                if (!string.IsNullOrEmpty(requestedModel) && !string.IsNullOrEmpty(virtualKey.AllowedModels))
-                {
-                    bool isModelAllowed = IsModelAllowed(requestedModel, virtualKey.AllowedModels);
-                    if (!isModelAllowed)
-                    {
-                        _logger.LogWarning("Virtual key {KeyName} (ID: {KeyId}) attempted to access restricted model: {RequestedModel}",
-                            virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id, requestedModel.Replace(Environment.NewLine, ""));
-                        return null;
-                    }
-                }
-
-                // Authentication validation passed
-                _logger.LogDebug("Virtual key authenticated successfully: {KeyName} (ID: {KeyId})",
-                    virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id);
-                return virtualKey;
+                return validationResult.IsValid ? virtualKey : null;
             }
             catch (Exception ex)
             {
@@ -124,7 +102,7 @@ namespace ConduitLLM.Http.Services
 
             try
             {
-                var keyHash = HashKey(key);
+                var keyHash = VirtualKeyUtilities.HashKey(key);
                 _logger.LogDebug("Validating key: {KeyPrefix}..., Hash: {Hash}", 
                     key.Length > 10 ? key.Substring(0, 10) : key, keyHash);
                 
@@ -143,62 +121,34 @@ namespace ConduitLLM.Http.Services
                     return null;
                 }
 
-                // Check if key is enabled
-                if (!virtualKey.IsEnabled)
-                {
-                    _logger.LogWarning("Virtual key is disabled: {KeyName} (ID: {KeyId})", virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id);
-                    return null;
-                }
+                // Validate with balance check
+                var validationResult = await VirtualKeyValidationHelper.ValidateVirtualKeyAsync(
+                    virtualKey, 
+                    requestedModel, 
+                    checkBalance: true, 
+                    _groupRepository, 
+                    _logger);
 
-                // Check expiration
-                if (virtualKey.ExpiresAt.HasValue && virtualKey.ExpiresAt.Value < DateTime.UtcNow)
+                if (!validationResult.IsValid)
                 {
-                    _logger.LogWarning("Virtual key has expired: {KeyName} (ID: {KeyId}), expired at {ExpiryDate}",
-                        virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id, virtualKey.ExpiresAt);
-                    return null;
-                }
-
-                // Check group balance
-                var group = await _groupRepository.GetByIdAsync(virtualKey.VirtualKeyGroupId);
-                if (group != null && group.Balance <= 0)
-                {
-                    _logger.LogWarning("Virtual key group budget depleted: {KeyName} (ID: {KeyId}), group {GroupId} has balance {Balance}",
-                        virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id, group.Id, group.Balance);
-                    
-                    // TODO: We used to immediately invalidate over-budget keys, but this violated clean architecture
-                    // TODO: Find a better way to handle this
-                    // await _cache.InvalidateVirtualKeyAsync(keyHash);
-                    
-                    // Set 402 status code for insufficient balance
-                    // Note: This violates clean architecture but is pragmatic
-                    // TODO: Find a better way to handle this
-                    try 
+                    // Handle 402 status code for insufficient balance
+                    if (validationResult.StatusCode == 402)
                     {
-                        var httpContext = new Microsoft.AspNetCore.Http.HttpContextAccessor().HttpContext;
-                        if (httpContext != null)
+                        // Note: This violates clean architecture but is pragmatic
+                        // TODO: Find a better way to handle this
+                        try 
                         {
-                            httpContext.Response.StatusCode = 402;
+                            var httpContext = new Microsoft.AspNetCore.Http.HttpContextAccessor().HttpContext;
+                            if (httpContext != null)
+                            {
+                                httpContext.Response.StatusCode = 402;
+                            }
                         }
+                        catch { /* Ignore if no HTTP context */ }
                     }
-                    catch { /* Ignore if no HTTP context */ }
                     return null;
                 }
 
-                // Check if model is allowed
-                if (!string.IsNullOrEmpty(requestedModel) && !string.IsNullOrEmpty(virtualKey.AllowedModels))
-                {
-                    bool isModelAllowed = IsModelAllowed(requestedModel, virtualKey.AllowedModels);
-                    if (!isModelAllowed)
-                    {
-                        _logger.LogWarning("Virtual key {KeyName} (ID: {KeyId}) attempted to access restricted model: {RequestedModel}",
-                            virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id, requestedModel.Replace(Environment.NewLine, ""));
-                        return null;
-                    }
-                }
-
-                // All validations passed
-                _logger.LogInformation("Validated virtual key successfully: {KeyName} (ID: {KeyId})",
-                    virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id);
                 return virtualKey;
             }
             catch (Exception ex)
@@ -214,11 +164,11 @@ namespace ConduitLLM.Http.Services
             try
             {
                 // Generate a new key with prefix
-                var keyValue = GenerateSecureKey();
+                var keyValue = VirtualKeyUtilities.GenerateSecureKey();
                 var keyWithPrefix = $"condt_{keyValue}";
                 
                 // Hash the key for storage
-                var keyHash = HashKey(keyWithPrefix);
+                var keyHash = VirtualKeyUtilities.HashKey(keyWithPrefix);
                 
                 // VirtualKeyGroupId is now required
                 var groupId = request.VirtualKeyGroupId;
@@ -254,7 +204,7 @@ namespace ConduitLLM.Http.Services
                         return new CreateVirtualKeyResponseDto
                         {
                             VirtualKey = keyWithPrefix,
-                            KeyInfo = MapToDto(created)
+                            KeyInfo = VirtualKeyUtilities.MapToDto(created)
                         };
                     }
                 }
@@ -280,7 +230,7 @@ namespace ConduitLLM.Http.Services
                     return null;
                 }
                 
-                return MapToDto(virtualKey);
+                return VirtualKeyUtilities.MapToDto(virtualKey);
             }
             catch (Exception ex)
             {
@@ -295,7 +245,7 @@ namespace ConduitLLM.Http.Services
             try
             {
                 var virtualKeys = await _virtualKeyRepository.GetAllAsync();
-                return virtualKeys.Select(MapToDto).ToList();
+                return virtualKeys.Select(VirtualKeyUtilities.MapToDto).ToList();
             }
             catch (Exception ex)
             {
@@ -525,85 +475,6 @@ namespace ConduitLLM.Http.Services
         public async Task<ConduitLLM.Core.Interfaces.VirtualKeyCacheStats> GetCacheStatsAsync()
         {
             return await _cache.GetStatsAsync();
-        }
-
-        // Private helper methods
-        // Helper method to hash a key using SHA256
-        private string HashKey(string key)
-        {
-            using var sha256 = System.Security.Cryptography.SHA256.Create();
-            var bytes = System.Text.Encoding.UTF8.GetBytes(key);
-            var hash = sha256.ComputeHash(bytes);
-            
-            // Convert to hex string to match Admin API format
-            var builder = new System.Text.StringBuilder();
-            foreach (byte b in hash)
-            {
-                builder.Append(b.ToString("x2"));
-            }
-            return builder.ToString();
-        }
-        
-        // Helper method to generate a secure random key
-        private string GenerateSecureKey()
-        {
-            using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
-            var bytes = new byte[32]; // 256 bits
-            rng.GetBytes(bytes);
-            return Convert.ToBase64String(bytes)
-                .Replace("+", "")
-                .Replace("/", "")
-                .Replace("=", "")
-                .Substring(0, 32); // Take first 32 characters for consistency
-        }
-
-        // Helper method to check if a model is allowed
-        private bool IsModelAllowed(string requestedModel, string allowedModels)
-        {
-            if (string.IsNullOrEmpty(allowedModels))
-                return true; // No restrictions
-
-            var allowedModelsList = allowedModels.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-            // First check for exact match
-            if (allowedModelsList.Any(m => string.Equals(m, requestedModel, StringComparison.OrdinalIgnoreCase)))
-                return true;
-
-            // Then check for wildcard/prefix matches
-            foreach (var allowedModel in allowedModelsList)
-            {
-                // Handle wildcards like "gpt-4*" to match any GPT-4 model
-                if (allowedModel.EndsWith("*", StringComparison.OrdinalIgnoreCase) &&
-                    allowedModel.Length > 1)
-                {
-                    string prefix = allowedModel.Substring(0, allowedModel.Length - 1);
-                    if (requestedModel.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                        return true;
-                }
-            }
-
-            return false;
-        }
-
-        // Helper method to map VirtualKey entity to VirtualKeyDto
-        private VirtualKeyDto MapToDto(VirtualKey virtualKey)
-        {
-            return new VirtualKeyDto
-            {
-                Id = virtualKey.Id,
-                KeyName = virtualKey.KeyName,
-                KeyPrefix = "condt_****", // Don't expose the actual key
-                AllowedModels = virtualKey.AllowedModels,
-                VirtualKeyGroupId = virtualKey.VirtualKeyGroupId,
-                IsEnabled = virtualKey.IsEnabled,
-                ExpiresAt = virtualKey.ExpiresAt,
-                CreatedAt = virtualKey.CreatedAt,
-                UpdatedAt = virtualKey.UpdatedAt,
-                Metadata = virtualKey.Metadata,
-                RateLimitRpm = virtualKey.RateLimitRpm,
-                RateLimitRpd = virtualKey.RateLimitRpd,
-                Description = virtualKey.Description,
-            };
         }
     }
 }

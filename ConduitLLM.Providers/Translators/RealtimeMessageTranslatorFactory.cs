@@ -37,6 +37,9 @@ namespace ConduitLLM.Providers.Translators
 
             return _translators.GetOrAdd(normalizedProvider, key =>
             {
+                // TODO: This should be data-driven from database configuration
+                // Provider-to-translator mappings should be registered dynamically
+                // based on provider configuration, not hardcoded
                 IRealtimeMessageTranslator? translator = key switch
                 {
                     "openai" => CreateTranslator<OpenAIRealtimeTranslatorV2>(),

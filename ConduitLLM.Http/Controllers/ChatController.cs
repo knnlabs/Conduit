@@ -1,8 +1,10 @@
+using System.Text;
 using System.Text.Json;
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Core;
 using ConduitLLM.Core.Controllers;
+using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Http.Services;
@@ -31,6 +33,7 @@ namespace ConduitLLM.Http.Controllers
         private readonly ConduitLLM.Configuration.Interfaces.IModelProviderMappingService _modelMappingService;
         private readonly IOptions<ConduitSettings> _settings;
         private readonly JsonSerializerOptions _jsonSerializerOptions;
+        private readonly IUsageEstimationService? _usageEstimationService;
 
         public ChatController(
             Conduit conduit,
@@ -38,13 +41,15 @@ namespace ConduitLLM.Http.Controllers
             ConduitLLM.Configuration.Interfaces.IModelProviderMappingService modelMappingService,
             IOptions<ConduitSettings> settings,
             JsonSerializerOptions jsonSerializerOptions,
-            IPublishEndpoint publishEndpoint) : base(publishEndpoint, logger)
+            IPublishEndpoint publishEndpoint,
+            IUsageEstimationService? usageEstimationService = null) : base(publishEndpoint, logger)
         {
             _conduit = conduit ?? throw new ArgumentNullException(nameof(conduit));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _modelMappingService = modelMappingService ?? throw new ArgumentNullException(nameof(modelMappingService));
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
             _jsonSerializerOptions = jsonSerializerOptions ?? throw new ArgumentNullException(nameof(jsonSerializerOptions));
+            _usageEstimationService = usageEstimationService;
         }
 
         /// <summary>
@@ -134,6 +139,9 @@ namespace ConduitLLM.Http.Controllers
                         ConduitLLM.Core.Models.Usage? streamingUsage = null;
                         string? streamingModel = null;
                         
+                        // Accumulate content for usage estimation if needed
+                        var contentAccumulator = new StringBuilder();
+                        
                         var chunkCount = 0;
                         var firstChunkTime = DateTime.UtcNow;
                         
@@ -143,6 +151,18 @@ namespace ConduitLLM.Http.Controllers
                             if (chunkCount == 1)
                             {
                                 _logger.LogInformation("First chunk received at {Time}ms", (DateTime.UtcNow - firstChunkTime).TotalMilliseconds);
+                            }
+                            
+                            // Accumulate content from chunks for potential usage estimation
+                            if (chunk.Choices != null)
+                            {
+                                foreach (var choice in chunk.Choices)
+                                {
+                                    if (!string.IsNullOrEmpty(choice.Delta?.Content))
+                                    {
+                                        contentAccumulator.Append(choice.Delta.Content);
+                                    }
+                                }
                             }
                             
                             // Check for usage data in chunk (comes in final chunk for OpenAI-compatible APIs)
@@ -186,6 +206,39 @@ namespace ConduitLLM.Http.Controllers
                         {
                             HttpContext.Items["StreamingUsage"] = streamingUsage;
                             HttpContext.Items["StreamingModel"] = streamingModel;
+                            HttpContext.Items["UsageIsEstimated"] = false;
+                        }
+                        else if (_usageEstimationService != null && contentAccumulator.Length > 0)
+                        {
+                            // No usage data from provider, estimate it to prevent revenue loss
+                            _logger.LogWarning("No usage data received from provider for streaming response, estimating usage for model {Model}", request.Model);
+                            
+                            try
+                            {
+                                var estimatedUsage = await _usageEstimationService.EstimateUsageFromStreamingResponseAsync(
+                                    streamingModel ?? request.Model,
+                                    request.Messages,
+                                    contentAccumulator.ToString(),
+                                    cancellationToken);
+                                
+                                HttpContext.Items["StreamingUsage"] = estimatedUsage;
+                                HttpContext.Items["StreamingModel"] = streamingModel ?? request.Model;
+                                HttpContext.Items["UsageIsEstimated"] = true;
+                                
+                                _logger.LogInformation(
+                                    "Successfully estimated usage for streaming response: Prompt={PromptTokens}, Completion={CompletionTokens}, Total={TotalTokens}",
+                                    estimatedUsage.PromptTokens, estimatedUsage.CompletionTokens, estimatedUsage.TotalTokens);
+                            }
+                            catch (Exception estEx)
+                            {
+                                _logger.LogError(estEx, "Failed to estimate usage for streaming response");
+                                // Don't throw - we've already sent the response to the user
+                                // The middleware will log this as a billing failure
+                            }
+                        }
+                        else if (contentAccumulator.Length == 0)
+                        {
+                            _logger.LogWarning("No content accumulated from streaming response, cannot estimate usage");
                         }
 
                         // Write final metrics if tracking is enabled

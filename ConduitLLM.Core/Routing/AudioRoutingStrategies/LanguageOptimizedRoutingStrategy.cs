@@ -139,34 +139,9 @@ _logger.LogWarning("No eligible providers found for language {Language}", langua
 
         private double GetPredefinedLanguageScore(string provider, string language)
         {
-            var languageFamily = GetLanguageFamily(language);
-
-            return (provider.ToLower(), languageFamily) switch
-            {
-                // Google excels at Asian languages
-                ("google", "asian") => 0.95,
-                ("google", "european") => 0.85,
-                ("google", "english") => 0.90,
-
-                // Azure strong in European languages
-                ("azure", "european") => 0.95,
-                ("azure", "english") => 0.90,
-                ("azure", "asian") => 0.80,
-
-                // OpenAI/Whisper very good at English
-                ("openai", "english") => 0.95,
-                ("openai", "european") => 0.85,
-                ("openai", "asian") => 0.75,
-
-                // Deepgram excellent for English real-time
-                ("deepgram", "english") => 0.98,
-                ("deepgram", "european") => 0.80,
-                ("deepgram", "asian") => 0.70,
-
-                // Default scores
-                (_, "english") => 0.80,
-                (_, _) => 0.70
-            };
+            // All providers are assumed equally capable unless we have actual metrics
+            // No arbitrary scores based on assumptions
+            return 0.80;
         }
 
         private string GetLanguageFamily(string language)

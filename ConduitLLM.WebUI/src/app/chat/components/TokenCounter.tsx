@@ -2,126 +2,115 @@
 
 import { useEffect, useState } from 'react';
 import { Group, Text, Progress, Tooltip, Paper, Stack, Badge } from '@mantine/core';
-import { IconCoin } from '@tabler/icons-react';
-import type { ChatMessage } from '@/types/chat';
+import { IconCoin, IconAlertTriangle } from '@tabler/icons-react';
+import { 
+  TokenEstimator, 
+  TokenUtils, 
+  ModelFamily,
+  type TokenStats,
+  type EstimatorMessage 
+} from '@knn_labs/conduit-core-client';
+import type { ChatMessage } from '../types';
 
 interface TokenCounterProps {
   messages: ChatMessage[];
   maxTokens?: number;
-  model?: string;
+  modelName?: string;
   compact?: boolean;
+  showCost?: boolean;
 }
 
-interface TokenStats {
-  prompt: number;
-  completion: number;
-  total: number;
+interface TokenCounterStats extends TokenStats {
   estimatedCost?: number;
 }
 
-// Rough token estimation (actual tokenization varies by model)
-function estimateTokens(text: string): number {
-  // Approximate: 1 token ≈ 4 characters for English text
-  return Math.ceil(text.length / 4);
+function convertToEstimatorMessage(message: ChatMessage): EstimatorMessage {
+  return {
+    role: message.role as 'user' | 'assistant' | 'system',
+    content: message.content ?? '',
+    images: message.images?.map(() => ({
+      // Width and height are optional and may not exist on ImageAttachment
+      width: undefined,
+      height: undefined,
+      detail: 'auto' as const
+    }))
+  };
 }
 
-function getMessageText(message: ChatMessage): string {
-  if (typeof message.content === 'string') {
-    return message.content;
-  }
-  
-  if (Array.isArray(message.content)) {
-    const parts = message.content.map((c) => {
-      if ('type' in c && c.type === 'text' && 'text' in c) {
-        return c.text;
-      }
-      return '[image]';
-    });
-    return parts.join(' ');
-  }
-  
-  return '';
-}
-
-// Model pricing per 1K tokens (example values)
-const MODEL_PRICING: Record<string, { input: number; output: number }> = {
-  ['gpt-4']: { input: 0.03, output: 0.06 },
-  ['gpt-4-turbo']: { input: 0.01, output: 0.03 },
-  ['gpt-3.5-turbo']: { input: 0.0005, output: 0.0015 },
-  ['claude-3-opus']: { input: 0.015, output: 0.075 },
-  ['claude-3-sonnet']: { input: 0.003, output: 0.015 },
-  ['claude-3-haiku']: { input: 0.00025, output: 0.00125 },
-};
-
-export function TokenCounter({ messages, maxTokens = 4096, model, compact = false }: TokenCounterProps) {
-  const [stats, setStats] = useState<TokenStats>({
+export function TokenCounter({ 
+  messages, 
+  maxTokens = 128000, 
+  modelName, 
+  compact = false,
+  showCost = false 
+}: TokenCounterProps) {
+  const [stats, setStats] = useState<TokenCounterStats>({
     prompt: 0,
     completion: 0,
     total: 0,
   });
 
   useEffect(() => {
-    // Calculate token counts
-    let promptTokens = 0;
-    let completionTokens = 0;
-
-    messages.forEach((msg) => {
-      const text = getMessageText(msg);
-      const tokens = estimateTokens(text);
-
-      if (msg.role === 'assistant') {
-        completionTokens += tokens;
-      } else {
-        promptTokens += tokens;
-      }
-    });
-
-    const totalTokens = promptTokens + completionTokens;
+    // Convert ChatMessage to EstimatorMessage format
+    const estimatorMessages: EstimatorMessage[] = messages.map(convertToEstimatorMessage);
+    
+    // Use TokenEstimator for accurate token calculation
+    const modelFamily = modelName ? TokenEstimator.getModelFamily(modelName) : ModelFamily.Generic;
+    const tokenStats = TokenEstimator.estimateConversationTokens(estimatorMessages, modelFamily);
 
     // Calculate estimated cost
     let estimatedCost;
-    if (model && MODEL_PRICING[model]) {
-      const pricing = MODEL_PRICING[model];
-      estimatedCost = (promptTokens / 1000) * pricing.input + 
-                     (completionTokens / 1000) * pricing.output;
+    if (showCost && modelName) {
+      const pricing = TokenEstimator.getModelPricing(modelName);
+      if (pricing) {
+        const cost = TokenEstimator.estimateCost(tokenStats, pricing, modelName);
+        estimatedCost = cost.totalCost;
+      }
     }
 
     setStats({
-      prompt: promptTokens,
-      completion: completionTokens,
-      total: totalTokens,
+      ...tokenStats,
       estimatedCost,
     });
-  }, [messages, model]);
+  }, [messages, modelName, showCost]);
 
-  const percentage = (stats.total / maxTokens) * 100;
-  const isNearLimit = percentage > 80;
-  const isOverLimit = percentage > 100;
+  const analysis = TokenEstimator.analyzeTokenUsage(stats, maxTokens);
+  const percentage = analysis.percentage;
+  const isWarning = analysis.isWarning;
+  const isNearLimit = analysis.isNearLimit;
+  const isCritical = analysis.isCritical;
 
   if (compact) {
     return (
       <Tooltip
         label={
           <Stack gap={4}>
-            <Text size="xs">Prompt: {stats.prompt.toLocaleString()} tokens</Text>
-            <Text size="xs">Completion: {stats.completion.toLocaleString()} tokens</Text>
+            <Text size="xs">Prompt: {TokenUtils.formatTokenCount(stats.prompt)} tokens</Text>
+            <Text size="xs">Completion: {TokenUtils.formatTokenCount(stats.completion)} tokens</Text>
+            <Text size="xs">Remaining: {TokenUtils.formatTokenCount(analysis.remaining)} tokens</Text>
             {stats.estimatedCost !== undefined && (
-              <Text size="xs">Est. cost: ${stats.estimatedCost.toFixed(4)}</Text>
+              <Text size="xs">Est. cost: {TokenUtils.formatCost(stats.estimatedCost)}</Text>
+            )}
+            {isCritical && (
+              <Text size="xs" c="red" fw={500}>
+                ⚠️ Context limit reached - messages may be truncated
+              </Text>
             )}
           </Stack>
         }
       >
         <Badge
           size="sm"
-          variant={isOverLimit ? 'filled' : 'light'}
+          variant={isCritical ? 'filled' : 'light'}
           color={(() => {
-            if (isOverLimit) return 'red';
-            if (isNearLimit) return 'yellow';
+            if (isCritical) return 'red';
+            if (isNearLimit) return 'orange';
+            if (isWarning) return 'yellow';
             return 'blue';
           })()}
-          leftSection={<IconCoin size={14} />}
+          leftSection={isCritical ? <IconAlertTriangle size={14} /> : <IconCoin size={14} />}
         >
-          {stats.total.toLocaleString()} / {maxTokens.toLocaleString()}
+          {TokenUtils.formatTokenCount(stats.total)} / {TokenUtils.formatTokenCount(maxTokens)} ({Math.round(percentage)}%)
         </Badge>
       </Tooltip>
     );
@@ -132,49 +121,59 @@ export function TokenCounter({ messages, maxTokens = 4096, model, compact = fals
       <Stack gap="xs">
         <Group justify="space-between">
           <Group gap="xs">
-            <IconCoin size={18} />
-            <Text size="sm" fw={500}>Token Usage</Text>
+            {isCritical ? <IconAlertTriangle size={18} color="var(--mantine-color-red-6)" /> : <IconCoin size={18} />}
+            <Text size="sm" fw={500}>Context Window</Text>
           </Group>
-          <Text size="sm" c={(() => {
-            if (isOverLimit) return 'red';
-            if (isNearLimit) return 'yellow';
-            return undefined;
-          })()}>
-            {stats.total.toLocaleString()} / {maxTokens.toLocaleString()}
-          </Text>
+          <Group gap="xs">
+            <Text size="sm" c={(() => {
+              if (isCritical) return 'red';
+              if (isNearLimit) return 'orange';
+              if (isWarning) return 'yellow';
+              return undefined;
+            })()}>
+              {stats.total.toLocaleString()} / {maxTokens.toLocaleString()}
+            </Text>
+            <Badge size="sm" variant="light" color={TokenUtils.getUsageColor(percentage)}>
+              {Math.round(percentage)}%
+            </Badge>
+          </Group>
         </Group>
 
         <Progress
           value={percentage}
-          color={(() => {
-            if (isOverLimit) return 'red';
-            if (isNearLimit) return 'yellow';
-            return 'blue';
-          })()}
+          color={TokenUtils.getUsageColor(percentage) === 'green' ? 'blue' : TokenUtils.getUsageColor(percentage)}
           size="sm"
-          striped={isNearLimit}
-          animated={isNearLimit}
+          striped={isNearLimit || isCritical}
+          animated={isNearLimit || isCritical}
         />
 
         <Group justify="space-between" gap="xs">
           <Stack gap={2}>
             <Text size="xs" c="dimmed">
-              Prompt: {stats.prompt.toLocaleString()}
+              Prompt: {TokenUtils.formatTokenCount(stats.prompt)} tokens
             </Text>
             <Text size="xs" c="dimmed">
-              Completion: {stats.completion.toLocaleString()}
+              Completion: {TokenUtils.formatTokenCount(stats.completion)} tokens
+            </Text>
+            <Text size="xs" c="dimmed" fw={500}>
+              Remaining: {TokenUtils.formatTokenCount(analysis.remaining)} tokens
             </Text>
           </Stack>
           {stats.estimatedCost !== undefined && (
             <Text size="xs" c="dimmed">
-              Est. cost: ${stats.estimatedCost.toFixed(4)}
+              Est. cost: {TokenUtils.formatCost(stats.estimatedCost)}
             </Text>
           )}
         </Group>
 
-        {isOverLimit && (
-          <Text size="xs" c="red">
-            Token limit exceeded. Some messages may be truncated.
+        {isCritical && (
+          <Text size="xs" c="red" fw={500}>
+            ⚠️ Context limit reached. Older messages will be automatically trimmed to stay within limits.
+          </Text>
+        )}
+        {isNearLimit && !isCritical && (
+          <Text size="xs" c="orange">
+            Approaching context limit. Consider starting a new conversation soon.
           </Text>
         )}
       </Stack>

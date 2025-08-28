@@ -4,6 +4,7 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Decorators;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Services;
 using ConduitLLM.Providers.OpenAI;
 using ConduitLLM.Providers.Groq;
 using ConduitLLM.Providers.Replicate;
@@ -39,6 +40,7 @@ namespace ConduitLLM.Providers
         private readonly ILogger<DatabaseAwareLLMClientFactory> _logger;
         private readonly IPerformanceMetricsService? _performanceMetricsService;
         private readonly IModelCapabilityService? _capabilityService;
+        private readonly IServiceProvider _serviceProvider;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DatabaseAwareLLMClientFactory"/> class.
@@ -49,6 +51,7 @@ namespace ConduitLLM.Providers
             ILoggerFactory loggerFactory,
             IHttpClientFactory httpClientFactory,
             ILogger<DatabaseAwareLLMClientFactory> logger,
+            IServiceProvider serviceProvider,
             IPerformanceMetricsService? performanceMetricsService = null,
             IModelCapabilityService? capabilityService = null)
         {
@@ -57,6 +60,7 @@ namespace ConduitLLM.Providers
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _performanceMetricsService = performanceMetricsService;
             _capabilityService = capabilityService;
         }
@@ -314,6 +318,11 @@ namespace ConduitLLM.Providers
                 default:
                     throw new ConfigurationException($"Unsupported provider type: {provider.ProviderType}");
             }
+
+            // Apply context decorator to set provider key context for error tracking
+            _logger.LogDebug("Applying context decorator for KeyId: {KeyId}, ProviderId: {ProviderId}", 
+                keyCredential.Id, provider.Id);
+            client = new ContextAwareLLMClient(client, keyCredential.Id, provider.Id, _serviceProvider);
 
             // Apply decorators if configured
             if (_performanceMetricsService != null)

@@ -234,6 +234,7 @@ namespace ConduitLLM.Admin.Controllers
                     Name = dto.Name,
                     ModelSeriesId = dto.ModelSeriesId,
                     ModelCapabilitiesId = dto.ModelCapabilitiesId,
+                    ModelParameters = dto.ModelParameters,
                     IsActive = dto.IsActive ?? true,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
@@ -309,6 +310,8 @@ namespace ConduitLLM.Admin.Controllers
                     model.ModelCapabilitiesId = dto.ModelCapabilitiesId.Value;
                 if (dto.IsActive.HasValue)
                     model.IsActive = dto.IsActive.Value;
+                if (dto.ModelParameters != null)
+                    model.ModelParameters = string.IsNullOrWhiteSpace(dto.ModelParameters) ? null : dto.ModelParameters;
 
                 model.UpdatedAt = DateTime.UtcNow;
 
@@ -373,7 +376,8 @@ namespace ConduitLLM.Admin.Controllers
                 IsActive = model.IsActive,
                 CreatedAt = model.CreatedAt,
                 UpdatedAt = model.UpdatedAt,
-                Series = model.Series != null ? MapSeriesToDto(model.Series) : null
+                Series = model.Series != null ? MapSeriesToDto(model.Series) : null,
+                ModelParameters = model.ModelParameters
             };
         }
 

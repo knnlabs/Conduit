@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { Modal, TextInput, Button, Stack, Group, Textarea, Alert, Text } from '@mantine/core';
-import { CodeHighlight } from '@mantine/code-highlight';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { useAdminClient } from '@/lib/client/adminClient';
+import { ParameterPreview } from '@/components/parameters/ParameterPreview';
 import type { ModelSeriesDto, UpdateModelSeriesDto } from '@knn_labs/conduit-admin-client';
 
 
@@ -20,7 +20,6 @@ interface EditModelSeriesModalProps {
 export function EditModelSeriesModal({ isOpen, series, onClose, onSuccess }: EditModelSeriesModalProps) {
   const [loading, setLoading] = useState(false);
   const [jsonError, setJsonError] = useState<string | null>(null);
-  const [showJsonPreview, setShowJsonPreview] = useState(false);
   const { executeWithAdmin } = useAdminClient();
 
   const form = useForm<UpdateModelSeriesDto & { parameters?: string }>({
@@ -128,18 +127,16 @@ export function EditModelSeriesModal({ isOpen, series, onClose, onSuccess }: Edi
           />
 
           <Stack gap="xs">
-            <Group justify="space-between">
-              <Text size="sm" fw={500}>
-                Parameters (JSON)
-              </Text>
-              <Button
-                size="xs"
-                variant="subtle"
-                onClick={() => setShowJsonPreview(!showJsonPreview)}
-              >
-                {showJsonPreview ? 'Hide' : 'Show'} Preview
-              </Button>
-            </Group>
+            <Text size="sm" fw={500}>
+              Parameters (JSON)
+            </Text>
+            
+            <ParameterPreview 
+              parametersJson={form.values.parameters ?? ''}
+              context="chat"
+              label="Preview UI Components"
+              maxHeight={300}
+            />
             
             <Textarea
               placeholder="JSON parameters for UI generation..."
@@ -152,14 +149,6 @@ export function EditModelSeriesModal({ isOpen, series, onClose, onSuccess }: Edi
               }}
               error={jsonError}
             />
-
-            {showJsonPreview && form.values.parameters && !jsonError && (
-              <CodeHighlight
-                code={form.values.parameters}
-                language="json"
-                withCopyButton={false}
-              />
-            )}
 
             {jsonError && (
               <Alert icon={<IconAlertCircle size={16} />} color="red" variant="light">

@@ -8,6 +8,7 @@ import { ErrorDisplay } from '@/components/common/ErrorDisplay';
 import { createEnhancedError } from '@/lib/utils/error-enhancement';
 import { DynamicParameters } from '@/components/parameters/DynamicParameters';
 import { useParameterState } from '@/components/parameters/hooks/useParameterState';
+import { useDiscoveryModels } from '@/app/chat/hooks/useDiscoveryModels';
 import VideoSettings from './VideoSettings';
 import EnhancedVideoPromptInput from './EnhancedVideoPromptInput';
 import VideoGallery from './VideoGallery';
@@ -25,13 +26,17 @@ export default function VideoInterface() {
   } = useVideoStore();
 
   const { data: models, isLoading: modelsLoading, error: modelsError } = useVideoModels();
-
+  
+  // Fetch models with parameters from discovery endpoint
+  const { data: discoveryData } = useDiscoveryModels('video_generation');
+  
   // Find the currently selected model to get its parameters
   const selectedModel = models?.find(m => m.id === settings.model);
+  const selectedDiscoveryModel = discoveryData?.data?.find(m => m.id === settings.model);
   
-  // Initialize parameter state with the model's parameters
+  // Initialize parameter state with the model's parameters (prefer discovery data)
   const parameterState = useParameterState({
-    parameters: selectedModel?.parameters ?? '{}',
+    parameters: selectedDiscoveryModel?.parameters ?? selectedModel?.parameters ?? '{}',
     persistKey: `video-params-${settings.model}`,
   });
 
@@ -173,9 +178,10 @@ export default function VideoInterface() {
       )}
 
       {/* Dynamic Parameters from Model */}
-      {selectedModel?.parameters && selectedModel.parameters !== '{}' && (
+      {(selectedDiscoveryModel?.parameters ?? selectedModel?.parameters) && 
+       (selectedDiscoveryModel?.parameters ?? selectedModel?.parameters) !== '{}' && (
         <DynamicParameters
-          parameters={selectedModel.parameters}
+          parameters={selectedDiscoveryModel?.parameters ?? selectedModel?.parameters ?? '{}'}
           values={parameterState.values}
           onChange={parameterState.updateValues}
           context="video"

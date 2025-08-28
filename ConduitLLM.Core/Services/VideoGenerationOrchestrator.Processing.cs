@@ -105,6 +105,9 @@ namespace ConduitLLM.Core.Services
                 // Update request to use the provider's model ID (already retrieved in modelInfo)
                 videoRequest.Model = modelInfo.ModelId;
 
+                // Validate parameters (minimal, provider-agnostic)
+                _parameterValidator.ValidateVideoParameters(videoRequest);
+
                 // Get the appropriate client for the model using the alias
                 var client = _clientFactory.GetClient(originalModelAlias);
                 if (client == null)

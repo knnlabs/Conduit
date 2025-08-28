@@ -1,11 +1,10 @@
-using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
+using ConduitLLM.Core.Validation;
 
 using MassTransit;
 
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 using Moq;
 
@@ -24,8 +23,7 @@ namespace ConduitLLM.Tests.Core.Services
         private readonly Mock<ICostCalculationService> _mockCostCalculationService;
         private readonly Mock<ConduitLLM.Configuration.Interfaces.IProviderService> _mockProviderService;
         private readonly Mock<ILogger<ImageGenerationOrchestrator>> _mockLogger;
-        private readonly Mock<IOptions<ImageGenerationPerformanceConfiguration>> _mockPerformanceOptions;
-        private readonly ImageGenerationPerformanceConfiguration _performanceConfig;
+        private readonly Mock<MinimalParameterValidator> _mockParameterValidator;
         private readonly ImageGenerationOrchestrator _orchestrator;
 
         public ImageGenerationOrchestratorTests()
@@ -41,24 +39,7 @@ namespace ConduitLLM.Tests.Core.Services
             _mockCostCalculationService = new Mock<ICostCalculationService>();
             _mockProviderService = new Mock<ConduitLLM.Configuration.Interfaces.IProviderService>();
             _mockLogger = new Mock<ILogger<ImageGenerationOrchestrator>>();
-            _mockPerformanceOptions = new Mock<IOptions<ImageGenerationPerformanceConfiguration>>();
-
-            _performanceConfig = new ImageGenerationPerformanceConfiguration
-            {
-                MaxConcurrentGenerations = 5,
-                ProviderConcurrencyLimits = new Dictionary<string, int>
-                {
-                    ["openai"] = 3,
-                    ["minimax"] = 2
-                },
-                ProviderDownloadTimeouts = new Dictionary<string, int>
-                {
-                    ["openai"] = 30,
-                    ["minimax"] = 60
-                }
-            };
-
-            _mockPerformanceOptions.Setup(x => x.Value).Returns(_performanceConfig);
+            _mockParameterValidator = new Mock<MinimalParameterValidator>(new Mock<ILogger<MinimalParameterValidator>>().Object);
 
             _orchestrator = new ImageGenerationOrchestrator(
                 _mockClientFactory.Object,
@@ -71,7 +52,7 @@ namespace ConduitLLM.Tests.Core.Services
                 _mockTaskRegistry.Object,
                 _mockCostCalculationService.Object,
                 _mockProviderService.Object,
-                _mockPerformanceOptions.Object,
+                _mockParameterValidator.Object,
                 _mockLogger.Object);
         }
     }

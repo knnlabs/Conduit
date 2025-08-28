@@ -408,6 +408,82 @@ namespace ConduitLLM.Configuration.Migrations
                     b.ToTable("BatchOperationHistory");
                 });
 
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.BillingAuditEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<decimal?>("CalculatedCost")
+                        .HasColumnType("decimal(10, 6)");
+
+                    b.Property<int>("EventType")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FailureReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int?>("HttpStatusCode")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsEstimated")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("MetadataJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Model")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ProviderType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("RequestId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("RequestPath")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTime>("Timestamp")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("UsageJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<int?>("VirtualKeyId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventType")
+                        .HasDatabaseName("IX_BillingAuditEvents_EventType");
+
+                    b.HasIndex("RequestId")
+                        .HasDatabaseName("IX_BillingAuditEvents_RequestId");
+
+                    b.HasIndex("Timestamp")
+                        .HasDatabaseName("IX_BillingAuditEvents_Timestamp");
+
+                    b.HasIndex("VirtualKeyId")
+                        .HasDatabaseName("IX_BillingAuditEvents_VirtualKeyId");
+
+                    b.HasIndex("EventType", "Timestamp")
+                        .HasDatabaseName("IX_BillingAuditEvents_EventType_Timestamp");
+
+                    b.HasIndex("VirtualKeyId", "Timestamp")
+                        .HasDatabaseName("IX_BillingAuditEvents_VirtualKeyId_Timestamp");
+
+                    b.ToTable("BillingAuditEvents", (string)null);
+                });
+
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.CacheConfiguration", b =>
                 {
                     b.Property<int>("Id")
@@ -717,83 +793,6 @@ namespace ConduitLLM.Configuration.Migrations
                     b.ToTable("IpFilters");
                 });
 
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.MediaLifecycleRecord", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ContentType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<long>("FileSizeBytes")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime>("GeneratedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("GeneratedByModel")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("GenerationPrompt")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("MediaType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("MediaUrl")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Metadata")
-                        .HasColumnType("text");
-
-                    b.Property<string>("StorageKey")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("VirtualKeyId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("ExpiresAt");
-
-                    b.HasIndex("StorageKey")
-                        .IsUnique();
-
-                    b.HasIndex("VirtualKeyId");
-
-                    b.HasIndex("ExpiresAt", "IsDeleted");
-
-                    b.HasIndex("VirtualKeyId", "IsDeleted");
-
-                    b.ToTable("MediaLifecycleRecords");
-                });
-
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.MediaRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -869,7 +868,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.ToTable("MediaRecords");
                 });
 
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.Model", b =>
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.MediaRetentionPolicy", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -877,8 +876,75 @@ namespace ConduitLLM.Configuration.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ApiParameters")
-                        .HasColumnType("text");
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsProTier")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("MaxFileCount")
+                        .HasColumnType("integer");
+
+                    b.Property<long?>("MaxStorageSizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("NegativeBalanceRetentionDays")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PositiveBalanceRetentionDays")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RecentAccessWindowDays")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("RespectRecentAccess")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("SoftDeleteGracePeriodDays")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ZeroBalanceRetentionDays")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("IsDefault")
+                        .IsUnique()
+                        .HasFilter("\"IsDefault\" = true");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("MediaRetentionPolicies");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.Model", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -894,6 +960,10 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.Property<string>("ModelCardUrl")
                         .HasColumnType("text");
+
+                    b.Property<string>("ModelParameters")
+                        .HasColumnType("text")
+                        .HasColumnName("Parameters");
 
                     b.Property<int>("ModelSeriesId")
                         .HasColumnType("integer");
@@ -1301,9 +1371,6 @@ namespace ConduitLLM.Configuration.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ApiParameters")
-                        .HasColumnType("text");
-
                     b.Property<string>("CapabilityOverrides")
                         .HasColumnType("text");
 
@@ -1378,9 +1445,6 @@ namespace ConduitLLM.Configuration.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ApiParameters")
-                        .HasColumnType("text");
 
                     b.Property<int>("AuthorId")
                         .HasColumnType("integer");
@@ -1744,6 +1808,9 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<decimal>("LifetimeSpent")
                         .HasColumnType("decimal(19, 8)");
 
+                    b.Property<int?>("MediaRetentionPolicyId")
+                        .HasColumnType("integer");
+
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -1755,6 +1822,8 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ExternalGroupId");
+
+                    b.HasIndex("MediaRetentionPolicyId");
 
                     b.ToTable("VirtualKeyGroups");
                 });
@@ -1907,6 +1976,16 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Navigation("VirtualKey");
                 });
 
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.BillingAuditEvent", b =>
+                {
+                    b.HasOne("ConduitLLM.Configuration.Entities.VirtualKey", "VirtualKey")
+                        .WithMany()
+                        .HasForeignKey("VirtualKeyId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("VirtualKey");
+                });
+
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.FallbackConfigurationEntity", b =>
                 {
                     b.HasOne("ConduitLLM.Configuration.Entities.RouterConfigEntity", "RouterConfig")
@@ -1927,17 +2006,6 @@ namespace ConduitLLM.Configuration.Migrations
                         .IsRequired();
 
                     b.Navigation("FallbackConfiguration");
-                });
-
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.MediaLifecycleRecord", b =>
-                {
-                    b.HasOne("ConduitLLM.Configuration.Entities.VirtualKey", "VirtualKey")
-                        .WithMany()
-                        .HasForeignKey("VirtualKeyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("VirtualKey");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.MediaRecord", b =>
@@ -2092,6 +2160,16 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Navigation("VirtualKeyGroup");
                 });
 
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.VirtualKeyGroup", b =>
+                {
+                    b.HasOne("ConduitLLM.Configuration.Entities.MediaRetentionPolicy", "MediaRetentionPolicy")
+                        .WithMany("VirtualKeyGroups")
+                        .HasForeignKey("MediaRetentionPolicyId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("MediaRetentionPolicy");
+                });
+
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.VirtualKeyGroupTransaction", b =>
                 {
                     b.HasOne("ConduitLLM.Configuration.Entities.VirtualKeyGroup", "VirtualKeyGroup")
@@ -2117,6 +2195,11 @@ namespace ConduitLLM.Configuration.Migrations
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.FallbackConfigurationEntity", b =>
                 {
                     b.Navigation("FallbackMappings");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.MediaRetentionPolicy", b =>
+                {
+                    b.Navigation("VirtualKeyGroups");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.Model", b =>

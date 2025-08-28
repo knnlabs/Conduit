@@ -136,14 +136,26 @@ namespace ConduitLLM.Providers.OpenAICompatible
             // Pass through any extension data (model-specific parameters)
             if (request.ExtensionData != null)
             {
+                Logger.LogWarning("ExtensionData has {Count} items", request.ExtensionData.Count);
                 foreach (var kvp in request.ExtensionData)
                 {
+                    Logger.LogWarning("ExtensionData contains: {Key} = {Value} (Type: {Type})", 
+                        kvp.Key, kvp.Value.ToString(), kvp.Value.ValueKind);
+                    
                     // Don't override standard parameters
                     if (!openAiRequest.ContainsKey(kvp.Key))
                     {
-                        openAiRequest[kvp.Key] = kvp.Value;
+                        // Convert JsonElement to actual value for proper serialization
+                        var converted = ConvertJsonElement(kvp.Value);
+                        openAiRequest[kvp.Key] = converted;
+                        Logger.LogWarning("Added to request: {Key} = {Value} (Type: {Type})", 
+                            kvp.Key, converted, converted?.GetType().Name ?? "null");
                     }
                 }
+            }
+            else
+            {
+                Logger.LogWarning("ExtensionData is NULL");
             }
             
             return openAiRequest;
@@ -287,6 +299,45 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 Choices = new List<CoreModels.Choice>(),
                 OriginalModelAlias = originalModelAlias
             };
+        }
+
+        /// <summary>
+        /// Converts a JsonElement to its actual .NET value for proper serialization.
+        /// </summary>
+        /// <param name="element">The JsonElement to convert.</param>
+        /// <returns>The converted value as a proper .NET type.</returns>
+        private static object? ConvertJsonElement(System.Text.Json.JsonElement element)
+        {
+            switch (element.ValueKind)
+            {
+                case System.Text.Json.JsonValueKind.String:
+                    return element.GetString();
+                case System.Text.Json.JsonValueKind.Number:
+                    if (element.TryGetInt32(out var intValue))
+                        return intValue;
+                    if (element.TryGetInt64(out var longValue))
+                        return longValue;
+                    return element.GetDouble();
+                case System.Text.Json.JsonValueKind.True:
+                    return true;
+                case System.Text.Json.JsonValueKind.False:
+                    return false;
+                case System.Text.Json.JsonValueKind.Null:
+                    return null;
+                case System.Text.Json.JsonValueKind.Array:
+                    return element.EnumerateArray()
+                        .Select(e => ConvertJsonElement(e))
+                        .ToList();
+                case System.Text.Json.JsonValueKind.Object:
+                    var dict = new Dictionary<string, object?>();
+                    foreach (var property in element.EnumerateObject())
+                    {
+                        dict[property.Name] = ConvertJsonElement(property.Value);
+                    }
+                    return dict;
+                default:
+                    return element.ToString();
+            }
         }
 
     }

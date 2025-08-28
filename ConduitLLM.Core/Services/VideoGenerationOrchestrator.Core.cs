@@ -2,6 +2,7 @@ using System.Diagnostics;
 using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Validation;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -30,6 +31,7 @@ namespace ConduitLLM.Core.Services
         private readonly IWebhookNotificationService _webhookService;
         private readonly VideoGenerationRetryConfiguration _retryConfiguration;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly MinimalParameterValidator _parameterValidator;
         private readonly ILogger<VideoGenerationOrchestrator> _logger;
 
         public VideoGenerationOrchestrator(
@@ -44,6 +46,7 @@ namespace ConduitLLM.Core.Services
             IWebhookNotificationService webhookService,
             IOptions<VideoGenerationRetryConfiguration> retryConfiguration,
             IHttpClientFactory httpClientFactory,
+            MinimalParameterValidator parameterValidator,
             ILogger<VideoGenerationOrchestrator> logger)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
@@ -57,6 +60,7 @@ namespace ConduitLLM.Core.Services
             _webhookService = webhookService ?? throw new ArgumentNullException(nameof(webhookService));
             _retryConfiguration = retryConfiguration?.Value ?? new VideoGenerationRetryConfiguration();
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+            _parameterValidator = parameterValidator ?? throw new ArgumentNullException(nameof(parameterValidator));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 

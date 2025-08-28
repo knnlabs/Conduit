@@ -1028,7 +1028,7 @@
         "tags": [
           "Discovery"
         ],
-        "summary": "Gets all discovered models and their capabilities, filtered by virtual key permissions.",
+        "summary": "Gets all discovered models and their capabilities for authenticated virtual keys.",
         "parameters": [
           {
             "name": "capability",
@@ -1052,6 +1052,31 @@
           "Discovery"
         ],
         "summary": "Gets all available capabilities in the system.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/discovery/models/{model}/parameters": {
+      "get": {
+        "tags": [
+          "Discovery"
+        ],
+        "summary": "Gets UI parameters for a specific model to enable dynamic UI generation.",
+        "description": "This endpoint returns the UI-focused parameter definitions from the ModelSeries.Parameters field,\nwhich contains JSON objects defining sliders, selects, textareas, and other UI controls.\nThis allows clients to dynamically generate appropriate UI controls without Admin API access.",
+        "parameters": [
+          {
+            "name": "model",
+            "in": "path",
+            "description": "The model alias or identifier to get parameters for",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -2017,7 +2042,7 @@
         "tags": [
           "ProviderModels"
         ],
-        "summary": "Gets available models for a specified provider",
+        "summary": "Gets models that are compatible with a specified provider based on provider type",
         "parameters": [
           {
             "name": "providerId",
@@ -2027,15 +2052,6 @@
             "schema": {
               "type": "integer",
               "format": "int32"
-            }
-          },
-          {
-            "name": "forceRefresh",
-            "in": "query",
-            "description": "Whether to bypass cache and force refresh",
-            "schema": {
-              "type": "boolean",
-              "default": false
             }
           }
         ],
@@ -2071,20 +2087,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": { }
-              },
-              "application/json": {
-                "schema": { }
-              },
-              "text/json": {
-                "schema": { }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
             "content": {
               "text/plain": {
                 "schema": { }
@@ -4164,7 +4166,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": false
+        "additionalProperties": { }
       },
       "JsonNode": {
         "type": "object",
@@ -4780,7 +4782,7 @@
             "nullable": true
           }
         },
-        "additionalProperties": false
+        "additionalProperties": { }
       },
       "VideoGenerationResponse": {
         "type": "object",

@@ -83,6 +83,79 @@ dotnet ef database update
 dotnet build
 ```
 
+## Column Renaming
+
+### CRITICAL: EF Core Column Rename Process
+
+When renaming a column, EF Core CANNOT detect your intent and will generate DROP/ADD operations that cause DATA LOSS. You MUST manually intervene:
+
+1. **Understand the Current State**:
+   - Check database actual column name: `\d "TableName"` in psql
+   - Check model's `[Column("name")]` attribute
+   - Check snapshot's `.HasColumnName("name")` configuration
+   - If these don't match, you have a synchronization issue
+
+2. **Fix Synchronization Issues First**:
+   ```csharp
+   // If database has "ApiParameters" but model expects "Parameters":
+   // Temporarily change model to match database
+   [Column("ApiParameters")] // Match current database
+   public string? ModelParameters { get; set; }
+   ```
+
+3. **Create Migration with Manual Edit**:
+   ```bash
+   # Generate migration
+   DATABASE_URL='...' dotnet ef migrations add RenameColumnName --no-build
+   
+   # Migration will likely be empty or have DROP/ADD
+   # MANUALLY replace with RenameColumn:
+   ```
+   
+   ```csharp
+   protected override void Up(MigrationBuilder migrationBuilder)
+   {
+       migrationBuilder.RenameColumn(
+           name: "OldColumnName",
+           table: "TableName",
+           newName: "NewColumnName");
+   }
+   
+   protected override void Down(MigrationBuilder migrationBuilder)
+   {
+       migrationBuilder.RenameColumn(
+           name: "NewColumnName",
+           table: "TableName",
+           newName: "OldColumnName");
+   }
+   ```
+
+4. **Update Model After Creating Migration**:
+   ```csharp
+   // Now update model to final state
+   [Column("Parameters")] // Final desired name
+   public string? ModelParameters { get; set; }
+   ```
+
+5. **Validate and Apply**:
+   ```bash
+   # Validate syntax
+   ./scripts/migrations/validate-postgresql-syntax.sh
+   
+   # Apply migration
+   DATABASE_URL='...' dotnet ef database update
+   
+   # Verify in database
+   docker exec conduit-postgres-1 psql -U conduit -d conduitdb -c "\d \"TableName\""
+   ```
+
+### Common Pitfalls to Avoid
+
+1. **Never trust EF Core to detect renames** - It will DROP and recreate, losing data
+2. **Snapshot out of sync** - If someone edits the snapshot without a migration, future migrations break
+3. **NotMapped properties accessing navigation properties** - Can cause EF to generate invalid SQL
+4. **Column attribute mismatch** - `[Column("name")]` must match actual database column
+
 ## Common PostgreSQL-Specific Patterns
 
 ### Boolean Columns

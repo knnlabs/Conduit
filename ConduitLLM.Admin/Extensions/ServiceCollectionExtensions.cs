@@ -15,6 +15,7 @@ using Microsoft.EntityFrameworkCore; // For IDbContextFactory
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
+using StackExchange.Redis;
 
 namespace ConduitLLM.Admin.Extensions;
 
@@ -138,6 +139,10 @@ public static class ServiceCollectionExtensions
             return new AdminModelCostService(modelCostRepository, requestLogRepository, dbContextFactory, publishEndpoint, logger);
         });
 
+        // Register cost calculation dependencies
+        services.AddScoped<ConduitLLM.Configuration.Interfaces.IModelCostService, ConduitLLM.Configuration.Services.ModelCostService>();
+        services.AddScoped<ConduitLLM.Core.Interfaces.ICostCalculationService, ConduitLLM.Core.Services.CostCalculationService>();
+        
         // Register audio-related services
         services.AddScoped<IAdminAudioProviderService, AdminAudioProviderService>();
         services.AddScoped<IAdminAudioCostService, AdminAudioCostService>();
@@ -180,6 +185,40 @@ public static class ServiceCollectionExtensions
 
         // Register cache management service
         services.AddScoped<ICacheManagementService, CacheManagementService>();
+
+        // Register billing audit service for comprehensive billing event tracking
+        services.AddSingleton<ConduitLLM.Configuration.Interfaces.IBillingAuditService, ConduitLLM.Configuration.Services.BillingAuditService>();
+        services.AddHostedService<ConduitLLM.Configuration.Services.BillingAuditService>(provider => 
+            provider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IBillingAuditService>() as ConduitLLM.Configuration.Services.BillingAuditService 
+            ?? throw new InvalidOperationException("BillingAuditService must implement IHostedService"));
+
+        // Register Redis error store with deferred resolution
+        // IConnectionMultiplexer will be registered by AddRedisDataProtection in Program.cs after this method
+        services.AddSingleton<ConduitLLM.Core.Interfaces.IRedisErrorStore>(serviceProvider =>
+        {
+            var redis = serviceProvider.GetService<StackExchange.Redis.IConnectionMultiplexer>();
+            var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.RedisErrorStore>>();
+            
+            if (redis == null)
+            {
+                logger.LogError("[ConduitLLM.Admin] Redis connection not available. Redis error store will not function.");
+                throw new InvalidOperationException("Redis error store requires Redis. Ensure REDIS_URL or CONDUIT_REDIS_CONNECTION_STRING is configured.");
+            }
+            
+            logger.LogInformation("[ConduitLLM.Admin] Redis error store initialized");
+            return new ConduitLLM.Core.Services.RedisErrorStore(redis, logger);
+        });
+        
+        // Register provider error tracking service
+        services.AddSingleton<ConduitLLM.Core.Interfaces.IProviderErrorTrackingService>(serviceProvider =>
+        {
+            var errorStore = serviceProvider.GetRequiredService<ConduitLLM.Core.Interfaces.IRedisErrorStore>();
+            var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
+            var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.ProviderErrorTrackingService>>();
+            
+            logger.LogInformation("[ConduitLLM.Admin] Provider error tracking service initialized with Redis backend");
+            return new ConduitLLM.Core.Services.ProviderErrorTrackingService(errorStore, scopeFactory, logger);
+        });
 
         // Configure CORS for the Admin API
         services.AddCors(options =>

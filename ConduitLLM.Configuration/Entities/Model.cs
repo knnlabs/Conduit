@@ -73,11 +73,23 @@ namespace ConduitLLM.Configuration.Entities
         public bool IsActive { get; set; } = true;
 
         /// <summary>
-        /// JSON array of API parameters supported by this specific model.
-        /// These are merged with ModelSeries.ApiParameters during bulk mapping.
-        /// Example: ["seed", "user"] for model-specific additions.
+        /// Internal storage for model-specific parameters.
+        /// When null, Parameters property will fall back to ModelSeries.Parameters.
         /// </summary>
-        public string? ApiParameters { get; set; }
+        [Column("Parameters")]
+        public string? ModelParameters { get; set; }
+
+        /// <summary>
+        /// JSON string containing parameter definitions for UI generation.
+        /// If ModelParameters is null, falls back to ModelSeries.Parameters.
+        /// Allows model-specific parameter overrides while inheriting series defaults.
+        /// </summary>
+        [NotMapped]
+        public string? Parameters 
+        { 
+            get => ModelParameters ?? Series?.Parameters ?? "{}";
+            set => ModelParameters = value;
+        }
 
         /// <summary>
         /// Date the model was created.

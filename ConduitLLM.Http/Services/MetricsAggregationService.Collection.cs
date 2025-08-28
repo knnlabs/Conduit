@@ -158,16 +158,12 @@ namespace ConduitLLM.Http.Services
                     AverageCostPerRequest = (decimal)GetMetricValue("conduit_cost_per_request_dollars_sum")
                 };
 
-                // Cost by provider
-                var providers = new[] { "openai", "anthropic", "google", "minimax", "replicate" };
-                foreach (var provider in providers)
-                {
-                    var cost = GetMetricValue($"conduit_cost_rate_dollars_per_minute{{provider=\"{provider}\"}}");
-                    if (cost > 0)
-                    {
-                        snapshot.Business.Costs.CostByProvider[provider] = (decimal)cost;
-                    }
-                }
+                // Cost by provider - dynamically get from database
+                // TODO: This should be data-driven from database configuration
+                // Provider cost metrics should be collected based on enabled providers
+                // not a hardcoded list. For now, leaving empty as metrics collection
+                // should be refactored to use actual provider repository data.
+                snapshot.Business.Costs.CostByProvider = new Dictionary<string, decimal>();
 
                 // Model usage (top 5)
                 // In production, this would query from database or Prometheus

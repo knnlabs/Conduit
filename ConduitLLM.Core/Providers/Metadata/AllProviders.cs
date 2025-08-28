@@ -4,6 +4,10 @@ using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Core.Providers.Metadata
 {
+    // TODO: Provider metadata, including default base URLs and capabilities,
+    // should eventually be migrated to database configuration for full
+    // data-driven architecture. These classes provide reasonable defaults
+    // but should not be the source of truth for provider configuration.
 
 
 

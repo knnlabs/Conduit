@@ -38,7 +38,7 @@ export const useImageStore = create<ImageStore>((set, get) => ({
       settings: { ...state.settings, ...newSettings },
     })),
 
-  generateImages: async () => {
+  generateImages: async (dynamicParameters?: Record<string, unknown>) => {
     const { prompt, settings } = get();
     
     if (!prompt.trim()) {
@@ -71,6 +71,8 @@ export const useImageStore = create<ImageStore>((set, get) => ({
           style: settings.style,
           n: settings.n,
           response_format: settings.responseFormat,
+          // Include dynamic parameters if provided
+          ...(dynamicParameters && Object.keys(dynamicParameters).length > 0 ? { parameters: dynamicParameters } : {}),
         }),
       });
 

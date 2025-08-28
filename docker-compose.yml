@@ -69,6 +69,22 @@ services:
       Conduit__PerformanceTracking__Enabled: "true"
       Conduit__PerformanceTracking__IncludeInResponse: "true"
       Conduit__PerformanceTracking__TrackStreamingMetrics: "true"
+      # Media Lifecycle Configuration
+      MediaLifecycle__SchedulerMode: "CoreApi"  # Options: Disabled, CoreApi, AdminApi, Any
+      MediaLifecycle__DryRunMode: "true"  # Set to false to enable actual deletions
+      MediaLifecycle__ScheduleIntervalMinutes: "5"  # How often to run cleanup
+      MediaLifecycle__EnableSoftDelete: "true"
+      MediaLifecycle__SoftDeleteGracePeriodDays: "7"
+      MediaLifecycle__TestVirtualKeyGroups__0: "1"  # Test with group ID 1
+      MediaLifecycle__RequireManualApprovalForLargeBatches: "false"
+      MediaLifecycle__LargeBatchThreshold: "100"
+      MediaLifecycle__MaxBatchSize: "50"
+      MediaLifecycle__DelayBetweenBatchesMs: "500"
+      MediaLifecycle__MaxConcurrentBatches: "2"
+      MediaLifecycle__MonthlyDeleteBudget: "500000"
+      MediaLifecycle__EnableAuditLogging: "true"
+      MediaLifecycle__EnableMetrics: "true"
+      MediaLifecycle__R2OperationTimeoutSeconds: "30"
       Logging__LogLevel__Default: "Information"
       Logging__LogLevel__ConduitLLM: "Information"
       Logging__LogLevel__ConduitLLM__Providers: "Debug"
@@ -95,6 +111,16 @@ services:
       CacheInvalidation__BatchWindow: "00:00:00.100"  # 100ms
       CacheInvalidation__MaxBatchSize: "100"
       CacheInvalidation__EnableCoalescing: "true"
+      # Discovery Cache configuration
+      Discovery__CacheDurationMinutes: "360"  # 6 hours
+      Discovery__EnableCaching: "true"
+      Discovery__WarmCacheOnStartup: "true"
+      Discovery__WarmupStartupDelaySeconds: "5"  # Configurable startup delay
+      Discovery__UseDistributedLockForWarming: "true"  # Use Postgres advisory locks
+      Discovery__DistributedLockTimeoutSeconds: "30"  # Lock acquisition timeout
+      Discovery__PriorityModels__0: "gpt-4"
+      Discovery__PriorityModels__1: "claude-3"
+      Discovery__PriorityModels__2: "gemini-pro"
       # Batch Spending configuration
       BatchSpending__FlushIntervalSeconds: "30"
       BatchSpending__MinimumIntervalSeconds: "1"
@@ -146,6 +172,16 @@ services:
       CacheInvalidation__BatchWindow: "00:00:00.100"  # 100ms
       CacheInvalidation__MaxBatchSize: "100"
       CacheInvalidation__EnableCoalescing: "true"
+      # Discovery Cache configuration
+      Discovery__CacheDurationMinutes: "360"  # 6 hours
+      Discovery__EnableCaching: "true"
+      Discovery__WarmCacheOnStartup: "true"
+      Discovery__WarmupStartupDelaySeconds: "5"  # Configurable startup delay
+      Discovery__UseDistributedLockForWarming: "true"  # Use Postgres advisory locks
+      Discovery__DistributedLockTimeoutSeconds: "30"  # Lock acquisition timeout
+      Discovery__PriorityModels__0: "gpt-4"
+      Discovery__PriorityModels__1: "claude-3"
+      Discovery__PriorityModels__2: "gemini-pro"
       # Batch Spending configuration
       BatchSpending__FlushIntervalSeconds: "30"
       BatchSpending__MinimumIntervalSeconds: "1"

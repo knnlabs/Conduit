@@ -422,7 +422,17 @@ secrets.json
 *.p12
 *credentials*
 *secret*
-*token*
+*token*.txt
+*token*.json
+*token*.env
 api-keys.txt
 .secrets
 .vault
+
+# CodeQL analysis artifacts
+.codeql/
+codeql-db/
+codeql-results/
+*.sarif
+qlconfig.yml
+.codeql-build.sh

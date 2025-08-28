@@ -1,6 +1,7 @@
 using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
+using ConduitLLM.Core.Validation;
 
 using MassTransit;
 
@@ -25,6 +26,7 @@ namespace ConduitLLM.Tests.Core.Services
         private readonly Mock<IHttpClientFactory> _mockHttpClientFactory;
         private readonly Mock<ILogger<VideoGenerationOrchestrator>> _mockLogger;
         private readonly Mock<IOptions<VideoGenerationRetryConfiguration>> _mockRetryOptions;
+        private readonly Mock<MinimalParameterValidator> _mockParameterValidator;
         private readonly VideoGenerationRetryConfiguration _retryConfiguration;
         private readonly VideoGenerationOrchestrator _orchestrator;
 
@@ -42,6 +44,7 @@ namespace ConduitLLM.Tests.Core.Services
             _mockHttpClientFactory = new Mock<IHttpClientFactory>();
             _mockLogger = new Mock<ILogger<VideoGenerationOrchestrator>>();
             _mockRetryOptions = new Mock<IOptions<VideoGenerationRetryConfiguration>>();
+            _mockParameterValidator = new Mock<MinimalParameterValidator>(new Mock<ILogger<MinimalParameterValidator>>().Object);
 
             _retryConfiguration = new VideoGenerationRetryConfiguration
             {
@@ -65,6 +68,7 @@ namespace ConduitLLM.Tests.Core.Services
                 _mockWebhookService.Object,
                 _mockRetryOptions.Object,
                 _mockHttpClientFactory.Object,
+                _mockParameterValidator.Object,
                 _mockLogger.Object);
         }
     }

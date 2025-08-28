@@ -8,9 +8,9 @@ namespace ConduitLLM.Providers.OpenAI
     public partial class OpenAIClient
     {
         /// <summary>
-        /// Gets the default transcription model from configuration or falls back to whisper-1.
+        /// Gets the default transcription model from configuration.
         /// </summary>
-        private string GetDefaultTranscriptionModel()
+        private string? GetDefaultTranscriptionModel()
         {
             // Check provider-specific override first
             var providerOverride = DefaultModels?.Audio?.ProviderOverrides
@@ -39,14 +39,14 @@ namespace ConduitLLM.Providers.OpenAI
                 }
             }
 
-            // Fallback to hardcoded default for backward compatibility
-            return "whisper-1";
+            // No default found - model must be specified
+            return null;
         }
 
         /// <summary>
-        /// Gets the default text-to-speech model from configuration or falls back to tts-1.
+        /// Gets the default text-to-speech model from configuration.
         /// </summary>
-        private string GetDefaultTextToSpeechModel()
+        private string? GetDefaultTextToSpeechModel()
         {
             // Check provider-specific override first
             var providerOverride = DefaultModels?.Audio?.ProviderOverrides
@@ -75,14 +75,14 @@ namespace ConduitLLM.Providers.OpenAI
                 }
             }
 
-            // Fallback to hardcoded default for backward compatibility
-            return "tts-1";
+            // No default found - model must be specified
+            return null;
         }
 
         /// <summary>
-        /// Gets the default realtime model from configuration or falls back to gpt-4o-realtime-preview.
+        /// Gets the default realtime model from configuration.
         /// </summary>
-        private string GetDefaultRealtimeModel()
+        private string? GetDefaultRealtimeModel()
         {
             // Check provider-specific override first
             var providerOverride = DefaultModels?.Realtime?.ProviderOverrides
@@ -111,8 +111,8 @@ namespace ConduitLLM.Providers.OpenAI
                 }
             }
 
-            // Fallback to hardcoded default for backward compatibility
-            return "gpt-4o-realtime-preview";
+            // No default found - model must be specified
+            return null;
         }
     }
 }

@@ -13,7 +13,7 @@ import {
 } from '@mantine/core';
 import { IconRefresh } from '@tabler/icons-react';
 import { useChatStore } from '../hooks/useChatStore';
-import { CHAT_PRESETS, getPresetIcon } from '../utils/presets';
+import { CHAT_PRESETS, findMatchingPreset, getPresetIcon } from '../utils/presets';
 import { ChatParameters } from '../types';
 
 export function ChatSettings() {
@@ -33,7 +33,13 @@ export function ChatSettings() {
     
     const preset = CHAT_PRESETS.find(p => p.id === presetId);
     if (preset) {
-      handleParameterChange(preset.parameters);
+      // The preset parameters from SDK match our ChatParameters interface
+      handleParameterChange({
+        temperature: preset.parameters.temperature,
+        topP: preset.parameters.topP,
+        frequencyPenalty: preset.parameters.frequencyPenalty,
+        presencePenalty: preset.parameters.presencePenalty,
+      });
     }
   };
 
@@ -75,13 +81,13 @@ export function ChatSettings() {
             onChange={handlePresetSelect}
             clearable
             leftSection={(() => {
-              const matchingPreset = CHAT_PRESETS.find(p => 
-                p.parameters.temperature === parameters.temperature &&
-                p.parameters.topP === parameters.topP &&
-                p.parameters.frequencyPenalty === parameters.frequencyPenalty &&
-                p.parameters.presencePenalty === parameters.presencePenalty
-              );
-              if (matchingPreset) {
+              const matchingPreset = findMatchingPreset({
+                temperature: parameters.temperature,
+                topP: parameters.topP,
+                frequencyPenalty: parameters.frequencyPenalty,
+                presencePenalty: parameters.presencePenalty,
+              });
+              if (matchingPreset?.icon) {
                 const Icon = getPresetIcon(matchingPreset.icon);
                 return <Icon size={16} />;
               }

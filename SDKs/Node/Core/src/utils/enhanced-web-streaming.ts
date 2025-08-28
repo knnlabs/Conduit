@@ -205,7 +205,7 @@ function processEvent(
     if (type === 'error') {
       return {
         type,
-        data: { message: data, parse_error: true }
+        data: data as string
       };
     }
     return null;

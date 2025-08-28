@@ -198,16 +198,22 @@ export class VideoProgressTracker {
         signal: this.abortController?.signal
       });
 
+      // Validate status response
+      if (!status) {
+        throw new ConduitError('Task status response is null or undefined');
+      }
+
       // If SignalR hasn't provided updates, use polling data for callbacks
       if (!this.hasReceivedSignalRUpdate || !this.isSignalRConnected) {
         // Update progress if changed
-        if (status.progress !== lastProgress || status.status !== lastStatus) {
-          lastProgress = status.progress;
+        const currentProgress = status.progress ?? 0;
+        if (currentProgress !== lastProgress || status.status !== lastStatus) {
+          lastProgress = currentProgress;
           lastStatus = status.status;
 
           if (this.callbacks?.onProgress) {
             this.callbacks.onProgress({
-              percentage: status.progress,
+              percentage: currentProgress,
               status: status.status,
               message: status.message
             });

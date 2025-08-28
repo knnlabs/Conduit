@@ -93,6 +93,23 @@ public partial class Program
                     tags: new[] { "messaging", "rabbitmq", "performance", "monitoring" });
             }
 
+            // Add Redis health check if Redis is configured
+            if (!string.IsNullOrEmpty(redisConnectionString))
+            {
+                var redisConnStr = redisConnectionString; // Capture for closure
+                healthChecksBuilder.AddTypeActivatedCheck<ConduitLLM.Configuration.HealthChecks.RedisHealthCheck>(
+                    "redis",
+                    failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
+                    tags: new[] { "cache", "redis", "billing" },
+                    args: new object[] { redisConnStr });
+                
+                // Add circuit breaker health check
+                healthChecksBuilder.AddCheck<ConduitLLM.Configuration.HealthChecks.RedisCircuitBreakerHealthCheck>(
+                    "redis_circuit_breaker",
+                    failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
+                    tags: new[] { "circuit_breaker", "redis", "resilience" });
+            }
+
             // Audio health checks removed per YAGNI principle
             
             // Add advanced health monitoring checks (includes SignalR and HTTP connection pool checks)

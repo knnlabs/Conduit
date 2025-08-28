@@ -41,8 +41,21 @@ public partial class Program
         
         builder.Services.AddScoped<ConduitLLM.Core.Interfaces.ICostCalculationService, ConduitLLM.Core.Services.CostCalculationService>();
 
+        // Parameter validation service for minimal, provider-agnostic validation
+        builder.Services.AddScoped<ConduitLLM.Core.Validation.MinimalParameterValidator>();
+
         // Virtual key service (Configuration layer - used by RealtimeUsageTracker)
         builder.Services.AddScoped<ConduitLLM.Configuration.Interfaces.IVirtualKeyService, ConduitLLM.Configuration.Services.VirtualKeyService>();
+
+        // Billing audit service for comprehensive billing event tracking
+        builder.Services.AddSingleton<ConduitLLM.Configuration.Interfaces.IBillingAuditService, ConduitLLM.Configuration.Services.BillingAuditService>();
+        builder.Services.AddHostedService<ConduitLLM.Configuration.Services.BillingAuditService>(provider => 
+            provider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IBillingAuditService>() as ConduitLLM.Configuration.Services.BillingAuditService 
+            ?? throw new InvalidOperationException("BillingAuditService must implement IHostedService"));
+
+        // Provider error tracking service
+        builder.Services.AddSingleton<IRedisErrorStore, RedisErrorStore>();
+        builder.Services.AddSingleton<IProviderErrorTrackingService, ProviderErrorTrackingService>();
 
         builder.Services.AddMemoryCache();
 
@@ -248,10 +261,6 @@ public partial class Program
                 taskRegistry);
         });
 
-        // Configure Image Generation Performance Settings
-        builder.Services.Configure<ConduitLLM.Core.Configuration.ImageGenerationPerformanceConfiguration>(
-            builder.Configuration.GetSection("ImageGeneration:Performance"));
-
         // Configure Video Generation Retry Settings
         builder.Services.Configure<ConduitLLM.Core.Configuration.VideoGenerationRetryConfiguration>(options =>
         {
@@ -394,6 +403,12 @@ public partial class Program
 
         // Register Batch Cache Invalidation service
         builder.Services.AddBatchCacheInvalidation(builder.Configuration);
+        
+        // Register Discovery Cache service for model discovery endpoint caching
+        builder.Services.AddDiscoveryCache(builder.Configuration);
+        
+        // Register Discovery Cache warming as a hosted service (runs on startup)
+        builder.Services.AddHostedService<DiscoveryCacheWarmingService>();
 
         // Register Redis batch operations for optimized cache management
         builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IRedisBatchOperations, ConduitLLM.Http.Services.RedisBatchOperations>();

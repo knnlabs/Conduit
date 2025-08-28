@@ -2,19 +2,13 @@
 import { 
   HTTP_HEADERS as COMMON_HTTP_HEADERS,
   CONTENT_TYPES as COMMON_CONTENT_TYPES,
-  HTTP_STATUS,
   ERROR_CODES,
-  TIMEOUTS,
-  RETRY_CONFIG,
   HttpMethod
 } from '@knn_labs/conduit-common';
 
 // Re-export for backward compatibility
 export { 
-  HTTP_STATUS, 
   ERROR_CODES, 
-  TIMEOUTS, 
-  RETRY_CONFIG,
   HttpMethod 
 };
 

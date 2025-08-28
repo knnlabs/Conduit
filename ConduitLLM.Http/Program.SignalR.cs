@@ -96,8 +96,8 @@ public partial class Program
         // Register settings refresh service for runtime configuration updates
         builder.Services.AddSingleton<ISettingsRefreshService, SettingsRefreshService>();
 
-        // Register media lifecycle repository
-        builder.Services.AddScoped<ConduitLLM.Configuration.Interfaces.IMediaLifecycleRepository, MediaLifecycleRepository>();
+        // MediaLifecycleRepository removed - consolidated into MediaRecordRepository
+        // Migration: 20250827194408_ConsolidateMediaTables.cs
 
         // Register video generation notification service
         builder.Services.AddSingleton<IVideoGenerationNotificationService, VideoGenerationNotificationService>();
@@ -116,6 +116,16 @@ public partial class Program
 
         // Model discovery notification services removed - capabilities now come from ModelProviderMapping
 
+        // Register billing alerting service for critical failure notifications
+        builder.Services.AddSingleton<ConduitLLM.Configuration.Interfaces.IBillingAlertingService, ConduitLLM.Configuration.Services.BillingAlertingService>();
+
+        // Register Redis circuit breaker configuration
+        builder.Services.Configure<ConduitLLM.Configuration.Options.RedisCircuitBreakerOptions>(
+            builder.Configuration.GetSection("RedisCircuitBreaker"));
+
+        // Register Redis circuit breaker service
+        builder.Services.AddSingleton<ConduitLLM.Configuration.Interfaces.IRedisCircuitBreaker, ConduitLLM.Configuration.Services.RedisCircuitBreaker>();
+
         // Register batch spend update service for optimized Virtual Key operations
         builder.Services.AddSingleton<ConduitLLM.Configuration.Services.BatchSpendUpdateService>(serviceProvider =>
         {
@@ -123,7 +133,9 @@ public partial class Program
             var serviceScopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
             var redisConnectionFactory = serviceProvider.GetRequiredService<ConduitLLM.Configuration.Services.RedisConnectionFactory>();
             var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<ConduitLLM.Configuration.Options.BatchSpendingOptions>>();
-            var batchService = new ConduitLLM.Configuration.Services.BatchSpendUpdateService(serviceScopeFactory, redisConnectionFactory, options, logger);
+            var alertingService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IBillingAlertingService>();
+            var circuitBreaker = serviceProvider.GetService<ConduitLLM.Configuration.Interfaces.IRedisCircuitBreaker>();
+            var batchService = new ConduitLLM.Configuration.Services.BatchSpendUpdateService(serviceScopeFactory, redisConnectionFactory, options, logger, alertingService, circuitBreaker);
             
             // Wire up cache invalidation event if Redis cache is available
             var cache = serviceProvider.GetService<ConduitLLM.Core.Interfaces.IVirtualKeyCache>();

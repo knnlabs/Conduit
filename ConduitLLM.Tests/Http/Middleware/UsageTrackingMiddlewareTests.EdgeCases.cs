@@ -1,6 +1,7 @@
 using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Http.Middleware;
+using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace ConduitLLM.Tests.Http.Middleware
@@ -38,7 +39,7 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             // Act
             await _middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
-                _mockRequestLogService.Object, _mockVirtualKeyService.Object);
+                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object);
 
             // Assert
             _mockCostService.Verify(x => x.CalculateCostAsync("gpt-4", 
@@ -78,7 +79,7 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             // Act
             await middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
-                _mockRequestLogService.Object, _mockVirtualKeyService.Object);
+                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object);
 
             // Assert
             _mockBatchSpendService.Verify(x => x.QueueSpendUpdate(It.IsAny<int>(), It.IsAny<decimal>()), Times.Never);
@@ -109,7 +110,7 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             // Act
             await _middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
-                _mockRequestLogService.Object, _mockVirtualKeyService.Object);
+                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object);
 
             // Assert
             _mockBatchSpendService.Verify(x => x.QueueSpendUpdate(It.IsAny<int>(), It.IsAny<decimal>()), Times.Never);
@@ -124,7 +125,7 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             // Act
             await _middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
-                _mockRequestLogService.Object, _mockVirtualKeyService.Object);
+                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object);
 
             // Assert
             _mockCostService.Verify(x => x.CalculateCostAsync(It.IsAny<string>(), It.IsAny<Usage>(), default), Times.Never);
@@ -141,10 +142,58 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             // Act
             await _middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
-                _mockRequestLogService.Object, _mockVirtualKeyService.Object);
+                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object);
 
-            // Assert
+            // Assert - No cost calculation or spend update should occur
             _mockCostService.Verify(x => x.CalculateCostAsync(It.IsAny<string>(), It.IsAny<Usage>(), default), Times.Never);
+            _mockBatchSpendService.Verify(x => x.QueueSpendUpdate(It.IsAny<int>(), It.IsAny<decimal>()), Times.Never);
+            
+            // Assert - Debug log should indicate billing was skipped due to error response
+            _mockLogger.Verify(
+                x => x.Log(
+                    Microsoft.Extensions.Logging.LogLevel.Debug,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Billing Policy: Skipping billing for error response") && 
+                                                  v.ToString().Contains("Status=400") &&
+                                                  v.ToString().Contains("Reason=ErrorResponse_NoChargePolicy")),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                Times.Once);
+        }
+
+        [Theory]
+        [InlineData(400)] // Bad Request
+        [InlineData(401)] // Unauthorized
+        [InlineData(404)] // Not Found
+        [InlineData(429)] // Rate Limited
+        [InlineData(500)] // Internal Server Error
+        [InlineData(503)] // Service Unavailable
+        public async Task Billing_Policy_Skips_All_Error_Status_Codes(int statusCode)
+        {
+            // Arrange
+            var context = CreateHttpContext("/v1/chat/completions", statusCode);
+            context.Items["VirtualKeyId"] = 123;
+            context.Items["VirtualKey"] = "test-key";
+
+            // Act
+            await _middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
+                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object);
+
+            // Assert - No billing should occur for any error status
+            _mockCostService.Verify(x => x.CalculateCostAsync(It.IsAny<string>(), It.IsAny<Usage>(), default), Times.Never);
+            _mockBatchSpendService.Verify(x => x.QueueSpendUpdate(It.IsAny<int>(), It.IsAny<decimal>()), Times.Never);
+            
+            // Assert - Appropriate debug logging
+            _mockLogger.Verify(
+                x => x.Log(
+                    Microsoft.Extensions.Logging.LogLevel.Debug,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Billing Policy: Skipping billing for error response") && 
+                                                  v.ToString().Contains($"Status={statusCode}") &&
+                                                  v.ToString().Contains("Reason=ErrorResponse_NoChargePolicy")),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                Times.Once);
         }
 
         [Fact]
@@ -156,10 +205,21 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             // Act
             await _middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
-                _mockRequestLogService.Object, _mockVirtualKeyService.Object);
+                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object);
 
             // Assert
             _mockCostService.Verify(x => x.CalculateCostAsync(It.IsAny<string>(), It.IsAny<Usage>(), default), Times.Never);
+            
+            // Assert - Debug log should indicate no virtual key
+            _mockLogger.Verify(
+                x => x.Log(
+                    Microsoft.Extensions.Logging.LogLevel.Debug,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Billing Policy: Skipping billing - no virtual key found") && 
+                                                  v.ToString().Contains("Reason=NoVirtualKey")),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                Times.Once);
         }
 
         [Fact]
@@ -193,7 +253,7 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             // Act
             await middleware.InvokeAsync(context, _mockCostService.Object, _mockBatchSpendService.Object, 
-                _mockRequestLogService.Object, _mockVirtualKeyService.Object);
+                _mockRequestLogService.Object, _mockVirtualKeyService.Object, _mockBillingAuditService.Object);
 
             // Assert
             _mockRequestLogService.Verify(x => x.LogRequestAsync(It.Is<LogRequestDto>(dto =>

@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Tests.Helpers;
@@ -21,12 +22,14 @@ namespace ConduitLLM.Tests.Configuration.Services
     {
         private readonly Mock<IServiceScopeFactory> _mockScopeFactory;
         private readonly Mock<ILogger<BatchSpendUpdateService>> _mockLogger;
+        private readonly Mock<IBillingAlertingService> _mockAlertingService;
         private readonly TestRedisConnectionFactory _testRedisFactory;
 
         public BatchSpendUpdateServiceConfigurationTests()
         {
             _mockScopeFactory = new Mock<IServiceScopeFactory>();
             _mockLogger = new Mock<ILogger<BatchSpendUpdateService>>();
+            _mockAlertingService = new Mock<IBillingAlertingService>();
             
             var mockRedisConnection = new Mock<IConnectionMultiplexer>();
             var mockRedisDb = new Mock<IDatabase>();
@@ -71,7 +74,8 @@ namespace ConduitLLM.Tests.Configuration.Services
                 _mockScopeFactory.Object,
                 _testRedisFactory,
                 options,
-                _mockLogger.Object);
+                _mockLogger.Object,
+                _mockAlertingService.Object);
 
             // IsHealthy will be false until the service starts (ExecuteAsync is called)
             // For unit tests, we just verify construction succeeded
@@ -96,7 +100,8 @@ namespace ConduitLLM.Tests.Configuration.Services
                     _mockScopeFactory.Object,
                     _testRedisFactory,
                     options,
-                    _mockLogger.Object));
+                    _mockLogger.Object,
+                    _mockAlertingService.Object));
 
             Assert.Contains("Invalid BatchSpending configuration", exception.Message);
         }
@@ -119,7 +124,8 @@ namespace ConduitLLM.Tests.Configuration.Services
                     _mockScopeFactory.Object,
                     _testRedisFactory,
                     options,
-                    _mockLogger.Object));
+                    _mockLogger.Object,
+                    _mockAlertingService.Object));
 
             Assert.Contains("prevent transaction loss", exception.Message);
         }
@@ -146,7 +152,8 @@ namespace ConduitLLM.Tests.Configuration.Services
                 _mockScopeFactory.Object,
                 _testRedisFactory,
                 options,
-                _mockLogger.Object);
+                _mockLogger.Object,
+                _mockAlertingService.Object);
 
             // Assert - Verify the service was created successfully
             Assert.NotNull(service);
@@ -180,7 +187,8 @@ namespace ConduitLLM.Tests.Configuration.Services
                     _mockScopeFactory.Object,
                     _testRedisFactory,
                     options,
-                    _mockLogger.Object));
+                    _mockLogger.Object,
+                    _mockAlertingService.Object));
 
             Assert.Contains("cannot be greater than MaximumIntervalSeconds", exception.Message);
         }
@@ -201,7 +209,8 @@ namespace ConduitLLM.Tests.Configuration.Services
                 _mockScopeFactory.Object,
                 _testRedisFactory,
                 options,
-                _mockLogger.Object);
+                _mockLogger.Object,
+                _mockAlertingService.Object);
 
             // Act
             var statistics = await service.GetStatisticsAsync();
@@ -235,7 +244,8 @@ namespace ConduitLLM.Tests.Configuration.Services
                 _mockScopeFactory.Object,
                 _testRedisFactory,
                 options,
-                _mockLogger.Object);
+                _mockLogger.Object,
+                _mockAlertingService.Object);
 
             // Assert - Service created successfully
             Assert.NotNull(service);

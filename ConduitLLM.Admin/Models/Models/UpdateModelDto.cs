@@ -84,5 +84,19 @@ namespace ConduitLLM.Admin.Models.Models
         /// </remarks>
         /// <value>True to activate, false to deactivate, or null to keep existing status.</value>
         public bool? IsActive { get; set; }
+
+        /// <summary>
+        /// Gets or sets the model-specific parameter configuration for UI generation.
+        /// </summary>
+        /// <remarks>
+        /// This JSON string contains parameter definitions that override the series-level
+        /// parameters. When null or empty, the model uses its series' parameter configuration.
+        /// This allows for model-specific customization while maintaining series defaults.
+        /// 
+        /// The JSON should follow the same schema as series parameters, defining UI controls
+        /// like sliders, selects, and inputs for model-specific parameters.
+        /// </remarks>
+        /// <value>JSON string containing parameter definitions, or null to use series defaults.</value>
+        public string? ModelParameters { get; set; }
     }
 }

@@ -59,20 +59,21 @@ export function ResolutionControl({
   };
   
   return (
-    <Stack gap="xs">
-      <Group justify="space-between">
-        <Text size="sm" fw={500}>{parameter.label}</Text>
+    <Stack gap="sm" mb="md">
+      <Group justify="space-between" align="flex-start" wrap="nowrap">
+        <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
+          <Text size="sm" fw={500}>{parameter.label}</Text>
+          {parameter.description && (
+            <Text size="xs" c="dimmed">{parameter.description}</Text>
+          )}
+        </Stack>
         {selectedOption && (
-          <Badge size="sm" variant="light">
+          <Badge size="sm" variant="light" style={{ flexShrink: 0 }}>
             {selectedOption.width} × {selectedOption.height}
             {selectedOption.aspectRatio && ` (${selectedOption.aspectRatio})`}
           </Badge>
         )}
       </Group>
-      
-      {parameter.description && (
-        <Text size="xs" c="dimmed">{parameter.description}</Text>
-      )}
       
       <Select
         value={customMode ? 'custom' : currentValue}
@@ -83,7 +84,7 @@ export function ResolutionControl({
       />
       
       {customMode && parameter.allowCustom && (
-        <Group grow>
+        <Group grow mt="xs">
           <NumberInput
             value={customWidth}
             onChange={(val) => typeof val === 'number' && handleCustomChange(val, customHeight)}

@@ -23,9 +23,20 @@ namespace ConduitLLM.Providers.OpenAI
         {
             // OpenAI Realtime API uses WebSocket connection
             var wsUrl = UrlBuilder.ToWebSocketUrl(BaseUrl);
-            var defaultRealtimeModel = GetDefaultRealtimeModel();
+            
+            // Model must be specified
+            var model = config.Model;
+            if (string.IsNullOrWhiteSpace(model))
+            {
+                model = GetDefaultRealtimeModel();
+                if (string.IsNullOrWhiteSpace(model))
+                {
+                    throw new ArgumentException("Model must be specified for realtime audio sessions", nameof(config));
+                }
+            }
+            
             wsUrl = UrlBuilder.Combine(wsUrl, "realtime");
-            wsUrl = UrlBuilder.AppendQueryString(wsUrl, ("model", config.Model ?? defaultRealtimeModel));
+            wsUrl = UrlBuilder.AppendQueryString(wsUrl, ("model", model));
 
             var effectiveApiKey = apiKey ?? PrimaryKeyCredential.ApiKey ?? throw new InvalidOperationException("API key is required");
             var session = new OpenAIRealtimeSession(wsUrl, effectiveApiKey, config, Logger);

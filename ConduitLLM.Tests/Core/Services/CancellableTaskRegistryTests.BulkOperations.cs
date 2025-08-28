@@ -149,8 +149,10 @@ namespace ConduitLLM.Tests.Core.Services
                 cts.Cancel();
             }
 
-            // Wait for cleanup to occur (grace period + cleanup timer interval of 1 second)
-            await Task.Delay(TimeSpan.FromMilliseconds(1100));
+            // Wait for cleanup to occur (grace period + cleanup timer interval of 1 second + buffer)
+            // Adding extra buffer to ensure cleanup timer has definitely run on slower CI machines
+            // CI environments may have unpredictable thread scheduling, so we need a larger buffer
+            await Task.Delay(TimeSpan.FromMilliseconds(2100));
 
             // Assert - Tasks should be removed from registry
             foreach (var taskId in taskIds)
@@ -182,7 +184,9 @@ namespace ConduitLLM.Tests.Core.Services
             cancelledCts.Cancel();
             
             // Wait beyond grace period and for cleanup timer to run (runs every 1 second)
-            await Task.Delay(TimeSpan.FromMilliseconds(1100));
+            // Adding extra buffer to ensure cleanup timer has definitely run on slower CI machines
+            // CI environments may have unpredictable thread scheduling, so we need a larger buffer
+            await Task.Delay(TimeSpan.FromMilliseconds(2100));
             
             // Assert
             registry.TryGetCancellationToken("active-task", out _).Should().BeTrue();

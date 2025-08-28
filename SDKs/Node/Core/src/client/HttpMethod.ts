@@ -1,7 +1,6 @@
 // Re-export HTTP types from Common package
 export {
-  HttpMethod,
-  isHttpMethod
+  HttpMethod
 } from '@knn_labs/conduit-common';
 
 export type {

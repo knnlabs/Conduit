@@ -34,6 +34,9 @@ namespace ConduitLLM.Core.Extensions
 
             // Register token counter - changed to Scoped to match IModelCapabilityService lifetime
             services.AddScoped<ITokenCounter, TiktokenCounter>();
+            
+            // Register usage estimation service for streaming responses without usage data
+            services.AddScoped<IUsageEstimationService, UsageEstimationService>();
 
             // Register context manager
             services.AddScoped<IContextManager, ContextManager>();
@@ -125,6 +128,29 @@ namespace ConduitLLM.Core.Extensions
                 provider.GetRequiredService<BatchCacheInvalidationService>());
             services.AddHostedService(provider => 
                 provider.GetRequiredService<BatchCacheInvalidationService>());
+            
+            return services;
+        }
+
+        /// <summary>
+        /// Adds the ConduitLLM Discovery Cache services to the service collection.
+        /// </summary>
+        /// <param name="services">The service collection to add services to.</param>
+        /// <param name="configuration">The configuration instance.</param>
+        /// <returns>The service collection for chaining.</returns>
+        public static IServiceCollection AddDiscoveryCache(
+            this IServiceCollection services,
+            IConfiguration configuration)
+        {
+            // Register configuration options
+            services.Configure<DiscoveryCacheOptions>(
+                configuration.GetSection("Discovery"));
+            
+            // Register discovery cache service as singleton for better performance
+            services.AddSingleton<IDiscoveryCacheService, DiscoveryCacheService>();
+            
+            // Ensure memory cache is registered
+            services.AddMemoryCache();
             
             return services;
         }
@@ -226,7 +252,8 @@ namespace ConduitLLM.Core.Extensions
             services.AddScoped<IMediaLifecycleService, MediaLifecycleService>();
             
             // Register media lifecycle repository
-            services.TryAddScoped<IMediaLifecycleRepository, MediaLifecycleRepository>();
+            // MediaLifecycleRepository removed - consolidated into MediaRecordRepository
+            // Migration: 20250827194408_ConsolidateMediaTables.cs
             
             return services;
         }

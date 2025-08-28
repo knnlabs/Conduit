@@ -159,4 +159,56 @@ export class FetchModelService {
       }
     );
   }
+
+  /**
+   * Get models with their provider mapping status and details
+   * This is a helper method that checks which models have provider mappings
+   */
+  async listWithMappingStatus(config?: RequestConfig): Promise<Array<ModelDto & { 
+    hasProviderMappings: boolean;
+    providerCount: number;
+    providers: Array<{
+      id: number;
+      identifier: string;
+      provider: string;
+      isPrimary: boolean;
+    }>;
+  }>> {
+    // Get all models
+    const models = await this.list(config);
+    
+    // Check each model for provider mappings in parallel
+    const modelsWithStatus = await Promise.all(
+      models.map(async (model) => {
+        if (!model.id) {
+          return { 
+            ...model, 
+            hasProviderMappings: false,
+            providerCount: 0,
+            providers: []
+          };
+        }
+        
+        try {
+          const identifiers = await this.getIdentifiers(model.id, config);
+          return { 
+            ...model, 
+            hasProviderMappings: identifiers.length > 0,
+            providerCount: identifiers.length,
+            providers: identifiers
+          };
+        } catch {
+          // If there's an error getting identifiers, assume no mappings
+          return { 
+            ...model, 
+            hasProviderMappings: false,
+            providerCount: 0,
+            providers: []
+          };
+        }
+      })
+    );
+    
+    return modelsWithStatus;
+  }
 }

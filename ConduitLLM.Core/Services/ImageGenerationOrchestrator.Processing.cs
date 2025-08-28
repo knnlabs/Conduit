@@ -17,14 +17,10 @@ namespace ConduitLLM.Core.Services
             int index,
             ImageGenerationRequested request,
             ModelInfo modelInfo,
-            SemaphoreSlim semaphore,
             CancellationToken cancellationToken,
             Action onProgress,
             Action<long, long> onTimingUpdate)
         {
-            await semaphore.WaitAsync(cancellationToken);
-            try
-            {
                 string? finalUrl = imageData.Url;
                 
                 if (!string.IsNullOrEmpty(imageData.B64Json))
@@ -107,11 +103,6 @@ namespace ConduitLLM.Core.Services
                     }
                 };
             }
-            finally
-            {
-                semaphore.Release();
-            }
-        }
 
         private async Task<(string url, long downloadMs, long storageMs)> DownloadAndStoreImageAsync(
             string imageUrl,
@@ -126,7 +117,8 @@ namespace ConduitLLM.Core.Services
             try
             {
                 using var httpClient = _httpClientFactory.CreateClient();
-                httpClient.Timeout = GetProviderTimeout(modelInfo.ProviderType);
+                // Use a reasonable default timeout for image downloads
+                httpClient.Timeout = TimeSpan.FromSeconds(60);
                 
                 // Use streaming for better memory efficiency
                 using var response = await httpClient.GetAsync(imageUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);

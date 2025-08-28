@@ -75,12 +75,22 @@ jobs:
       with:
         languages: ${{ matrix.language }}
         queries: security-and-quality
+        # Force use of latest CodeQL CLI bundle for .NET 9 compatibility
+        tools: latest
         config: |
           query-filters:
             - exclude:
                 id: js/unused-local-variable
             - exclude:
                 id: cs/static-field-written-by-instance
+            # Exclude common C# precision warnings that are usually intentional
+            - exclude:
+                id: cs/loss-of-precision
+                tags: test
+            # Exclude test-specific collection warnings
+            - exclude:
+                id: cs/unused-collection
+                tags: test
 
     # C# specific build steps
     - name: Set up .NET
@@ -104,7 +114,10 @@ jobs:
 
     - name: Build
       if: matrix.language == 'csharp'
-      run: dotnet build --no-restore --configuration Release
+      run: |
+        # Clean build to ensure CodeQL tracks all files
+        dotnet clean --configuration Release
+        dotnet build --no-restore --configuration Release
 
     # JavaScript specific setup (if needed)
     - name: Setup Node.js

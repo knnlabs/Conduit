@@ -28,12 +28,15 @@ namespace ConduitLLM.Tests.Providers
             _mockLoggerFactory.Setup(x => x.CreateLogger(It.IsAny<string>()))
                 .Returns(Mock.Of<ILogger>());
             
+            var mockServiceProvider = new Mock<IServiceProvider>();
+            
             _factory = new DatabaseAwareLLMClientFactory(
                 _mockCredentialService.Object,
                 _mockMappingService.Object,
                 _mockLoggerFactory.Object,
                 _mockHttpClientFactory.Object,
-                _mockLogger.Object);
+                _mockLogger.Object,
+                mockServiceProvider.Object);
         }
 
         [Fact]

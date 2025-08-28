@@ -37,36 +37,57 @@ namespace ConduitLLM.Providers.OpenAICompatible
             {
                 using var client = CreateHttpClient(apiKey);
 
+                // Create the request as a dictionary to support extension data
+                var openAiRequest = new Dictionary<string, object?>
+                {
+                    ["prompt"] = request.Prompt,
+                    ["model"] = request.Model ?? ProviderModelId,
+                    ["n"] = request.N
+                };
+
+                // Add optional standard parameters
+                if (!string.IsNullOrEmpty(request.Size))
+                    openAiRequest["size"] = request.Size;
+                if (!string.IsNullOrEmpty(request.ResponseFormat))
+                    openAiRequest["response_format"] = request.ResponseFormat;
+                if (!string.IsNullOrEmpty(request.User))
+                    openAiRequest["user"] = request.User;
+
                 // Only include quality and style for DALL-E 3
                 var modelName = request.Model ?? ProviderModelId;
-                var openAiRequest = modelName?.Contains("dall-e-3", StringComparison.OrdinalIgnoreCase) == true
-                    ? new ImageGenerationRequest
+                if (modelName?.Contains("dall-e-3", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    if (!string.IsNullOrEmpty(request.Quality))
+                        openAiRequest["quality"] = request.Quality;
+                    if (!string.IsNullOrEmpty(request.Style))
+                        openAiRequest["style"] = request.Style;
+                }
+
+                // Handle edit/variation operations
+                if (!string.IsNullOrEmpty(request.Image))
+                    openAiRequest["image"] = request.Image;
+                if (!string.IsNullOrEmpty(request.Mask))
+                    openAiRequest["mask"] = request.Mask;
+
+                // Pass through any extension data (model-specific parameters)
+                if (request.ExtensionData != null)
+                {
+                    foreach (var kvp in request.ExtensionData)
                     {
-                        Prompt = request.Prompt,
-                        Model = request.Model ?? ProviderModelId,
-                        N = request.N,
-                        Size = request.Size ?? "1024x1024",
-                        Quality = request.Quality,
-                        Style = request.Style,
-                        ResponseFormat = request.ResponseFormat ?? "url",
-                        User = request.User
+                        // Don't override standard parameters
+                        if (!openAiRequest.ContainsKey(kvp.Key))
+                        {
+                            openAiRequest[kvp.Key] = kvp.Value;
+                        }
                     }
-                    : new ImageGenerationRequest
-                    {
-                        Prompt = request.Prompt,
-                        Model = request.Model ?? ProviderModelId,
-                        N = request.N,
-                        Size = request.Size ?? "1024x1024",
-                        ResponseFormat = request.ResponseFormat ?? "url",
-                        User = request.User
-                    };
+                }
 
                 var endpoint = GetImageGenerationEndpoint();
 
                 Logger.LogInformation("Creating images using {Provider} at {Endpoint} with model {Model}, prompt: {Prompt}, size: {Size}, format: {Format}", 
-                    ProviderName, endpoint, openAiRequest.Model, 
-                    openAiRequest.Prompt?.Substring(0, Math.Min(50, openAiRequest.Prompt?.Length ?? 0)), 
-                    openAiRequest.Size, openAiRequest.ResponseFormat);
+                    ProviderName, endpoint, openAiRequest["model"], 
+                    request.Prompt?.Substring(0, Math.Min(50, request.Prompt?.Length ?? 0)), 
+                    openAiRequest.GetValueOrDefault("size"), openAiRequest.GetValueOrDefault("response_format"));
                     
                 // Log a warning about potential quota issues if using OpenAI
                 if (ProviderName.Equals("openai", StringComparison.OrdinalIgnoreCase))
@@ -74,7 +95,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
                     Logger.LogWarning("Note: OpenAI image generation errors with null messages often indicate quota/billing issues");
                 }
 
-                var response = await CoreUtils.HttpClientHelper.SendJsonRequestAsync<ImageGenerationRequest, ImageGenerationResponse>(
+                var response = await CoreUtils.HttpClientHelper.SendJsonRequestAsync<Dictionary<string, object?>, ImageGenerationResponse>(
                     client,
                     HttpMethod.Post,
                     endpoint,

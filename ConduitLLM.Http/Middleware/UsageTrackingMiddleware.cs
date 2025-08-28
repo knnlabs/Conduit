@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 using Prometheus;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
+
 namespace ConduitLLM.Http.Middleware
 {
     /// <summary>
@@ -16,43 +17,6 @@ namespace ConduitLLM.Http.Middleware
         private readonly RequestDelegate _next;
         private readonly ILogger<UsageTrackingMiddleware> _logger;
 
-        // Metrics for usage tracking
-        private static readonly Counter UsageTrackingRequests = Prometheus.Metrics
-            .CreateCounter("conduit_usage_tracking_requests_total", "Total usage tracking requests",
-                new CounterConfiguration
-                {
-                    LabelNames = new[] { "endpoint_type", "status" }
-                });
-
-        private static readonly Counter UsageTrackingTokens = Prometheus.Metrics
-            .CreateCounter("conduit_usage_tracking_tokens_total", "Total tokens tracked",
-                new CounterConfiguration
-                {
-                    LabelNames = new[] { "model", "provider_type", "token_type" }
-                });
-
-        private static readonly Counter UsageTrackingCosts = Prometheus.Metrics
-            .CreateCounter("conduit_usage_tracking_cost_dollars", "Total cost tracked in dollars",
-                new CounterConfiguration
-                {
-                    LabelNames = new[] { "model", "provider_type", "endpoint_type" }
-                });
-
-        private static readonly Counter UsageTrackingFailures = Prometheus.Metrics
-            .CreateCounter("conduit_usage_tracking_failures_total", "Usage tracking failures",
-                new CounterConfiguration
-                {
-                    LabelNames = new[] { "reason", "endpoint_type" }
-                });
-
-        private static readonly Histogram UsageExtractionTime = Prometheus.Metrics
-            .CreateHistogram("conduit_usage_extraction_time_seconds", "Time to extract usage from response",
-                new HistogramConfiguration
-                {
-                    LabelNames = new[] { "endpoint_type" },
-                    Buckets = Histogram.ExponentialBuckets(0.001, 2, 10) // 1ms to ~1s
-                });
-
         public UsageTrackingMiddleware(
             RequestDelegate next,
             ILogger<UsageTrackingMiddleware> logger)
@@ -61,16 +25,31 @@ namespace ConduitLLM.Http.Middleware
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
+        /// <summary>
+        /// Processes HTTP requests to track LLM usage and billing.
+        /// 
+        /// Billing Policy:
+        /// - Only successful responses (2xx) are billed to customers
+        /// - Client errors (4xx) are NOT billed - protects customers from malformed requests
+        /// - Server errors (5xx) are NOT billed - our infrastructure failures shouldn't cost customers
+        /// - Rate limiting (429) is NOT billed - capacity management shouldn't penalize customers
+        /// 
+        /// This follows Anthropic's customer-friendly approach rather than OpenAI's partial billing model.
+        /// The policy ensures customers only pay for successfully processed requests that deliver value.
+        /// </summary>
         public async Task InvokeAsync(
             HttpContext context,
             ICostCalculationService costCalculationService,
             IBatchSpendUpdateService batchSpendService,
             IRequestLogService requestLogService,
-            IVirtualKeyService virtualKeyService)
+            IVirtualKeyService virtualKeyService,
+            IBillingAuditService billingAuditService)
         {
             // Skip if not an API endpoint or no virtual key
             if (!ShouldTrackUsage(context))
             {
+                // Log billing decision for error responses if this is a tracked endpoint type
+                await LogBillingDecisionAsync(context, billingAuditService);
                 await _next(context);
                 return;
             }
@@ -93,7 +72,8 @@ namespace ConduitLLM.Http.Middleware
                     // For streaming, just copy the stream directly without parsing
                     responseBody.Seek(0, SeekOrigin.Begin);
                     await responseBody.CopyToAsync(originalBodyStream);
-                    await TrackStreamingUsageAsync(context, costCalculationService, batchSpendService, requestLogService, virtualKeyService);
+                    await TrackStreamingUsageAsync(context, costCalculationService, batchSpendService, 
+                        requestLogService, virtualKeyService, billingAuditService);
                     return;
                 }
 
@@ -104,7 +84,8 @@ namespace ConduitLLM.Http.Middleware
                     costCalculationService,
                     batchSpendService,
                     requestLogService,
-                    virtualKeyService);
+                    virtualKeyService,
+                    billingAuditService);
 
                 // Copy the response body back to the original stream
                 responseBody.Seek(0, SeekOrigin.Begin);
@@ -126,7 +107,7 @@ namespace ConduitLLM.Http.Middleware
             if (!context.Items.ContainsKey("VirtualKeyId"))
                 return false;
 
-            // Only track successful responses
+            // Only track successful responses - core billing policy enforcement
             if (context.Response.StatusCode >= 400)
                 return false;
 
@@ -140,29 +121,17 @@ namespace ConduitLLM.Http.Middleware
                    path.Contains("/videos/generations");
         }
 
-        private bool IsStreamingRequest(HttpContext context)
-        {
-            // Check if the request body indicates streaming
-            if (context.Items.TryGetValue("IsStreamingRequest", out var isStreaming) && 
-                isStreaming is bool streamingBool)
-            {
-                return streamingBool;
-            }
-
-            // Check response content type for SSE
-            return context.Response.ContentType?.Contains("text/event-stream") == true;
-        }
-
         private async Task ProcessResponseAsync(
             HttpContext context,
             MemoryStream responseBody,
             ICostCalculationService costCalculationService,
             IBatchSpendUpdateService batchSpendService,
             IRequestLogService requestLogService,
-            IVirtualKeyService virtualKeyService)
+            IVirtualKeyService virtualKeyService,
+            IBillingAuditService billingAuditService)
         {
-            var endpointType = DetermineRequestType(context.Request.Path);
-            var extractionTimer = UsageExtractionTime.WithLabels(endpointType).NewTimer();
+            var endpointType = UsageExtractor.DetermineRequestType(context.Request.Path);
+            using var extractionTimer = UsageMetrics.UsageExtractionTime.WithLabels(endpointType).NewTimer();
             
             try
             {
@@ -176,6 +145,7 @@ namespace ConduitLLM.Http.Middleware
                 if (!root.TryGetProperty("usage", out var usageElement))
                 {
                     _logger.LogDebug("No usage data found in response for {Path}", context.Request.Path);
+                    LogMissingUsageData(context, billingAuditService);
                     return;
                 }
 
@@ -194,7 +164,7 @@ namespace ConduitLLM.Http.Middleware
                 }
 
                 // Build Usage object
-                var usage = ExtractUsage(usageElement);
+                var usage = UsageExtractor.ExtractUsage(usageElement, _logger);
                 if (usage == null)
                 {
                     _logger.LogWarning("Failed to extract usage data for {Path}", context.Request.Path);
@@ -203,7 +173,6 @@ namespace ConduitLLM.Http.Middleware
 
                 // Get virtual key ID
                 var virtualKeyId = (int)context.Items["VirtualKeyId"]!;
-                var virtualKey = (string)context.Items["VirtualKey"]!;
 
                 // Get provider type for metrics
                 var providerType = context.Items.TryGetValue("ProviderType", out var providerTypeObj) 
@@ -216,168 +185,42 @@ namespace ConduitLLM.Http.Middleware
                 if (cost <= 0)
                 {
                     _logger.LogDebug("Zero cost calculated for {Model} with usage {Usage}", model, JsonSerializer.Serialize(usage));
-                    UsageTrackingFailures.WithLabels("zero_cost", endpointType).Inc();
+                    UsageMetrics.UsageTrackingFailures.WithLabels("zero_cost", endpointType).Inc();
+                    LogZeroCostBilling(context, model, usage, cost, providerType, billingAuditService);
                     return;
                 }
 
                 // Update metrics
-                UsageTrackingRequests.WithLabels(endpointType, "success").Inc();
+                UsageMetrics.UsageTrackingRequests.WithLabels(endpointType, "success").Inc();
                 
                 if (usage.PromptTokens.HasValue)
-                    UsageTrackingTokens.WithLabels(model, providerType, "prompt").Inc(usage.PromptTokens.Value);
+                    UsageMetrics.UsageTrackingTokens.WithLabels(model, providerType, "prompt").Inc(usage.PromptTokens.Value);
                 
                 if (usage.CompletionTokens.HasValue)
-                    UsageTrackingTokens.WithLabels(model, providerType, "completion").Inc(usage.CompletionTokens.Value);
+                    UsageMetrics.UsageTrackingTokens.WithLabels(model, providerType, "completion").Inc(usage.CompletionTokens.Value);
                 
-                UsageTrackingCosts.WithLabels(model, providerType, endpointType).Inc(Convert.ToDouble(cost));
+                UsageMetrics.UsageTrackingCosts.WithLabels(model, providerType, endpointType).Inc(Convert.ToDouble(cost));
 
                 // Update spend using batch service
-                await UpdateSpendAsync(virtualKeyId, cost, batchSpendService, virtualKeyService);
+                await SpendUpdateHelper.UpdateSpendAsync(virtualKeyId, cost, batchSpendService, virtualKeyService, _logger);
 
                 // Log the request
-                await LogRequestAsync(
-                    context,
-                    virtualKeyId,
-                    model,
-                    usage,
-                    cost,
-                    requestLogService,
-                    batchSpendService);
-
-                _logger.LogInformation(
-                    "Tracked usage for VirtualKey {VirtualKeyId}: Model={Model}, PromptTokens={PromptTokens}, CompletionTokens={CompletionTokens}, Cost={Cost:C}",
-                    virtualKeyId, model, usage.PromptTokens, usage.CompletionTokens, cost);
+                await LogRequestAsync(context, virtualKeyId, model, usage, cost, requestLogService);
+                
+                // Audit log successful billing
+                LogSuccessfulBilling(context, model, usage, cost, providerType, billingAuditService);
             }
             catch (JsonException ex)
             {
                 _logger.LogError(ex, "Failed to parse response JSON for usage tracking");
-                UsageTrackingFailures.WithLabels("json_parse_error", endpointType).Inc();
+                UsageMetrics.UsageTrackingFailures.WithLabels("json_parse_error", endpointType).Inc();
+                LogJsonParseError(context, ex, billingAuditService);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error in usage tracking");
-                UsageTrackingFailures.WithLabels("unexpected_error", endpointType).Inc();
-            }
-            finally
-            {
-                extractionTimer.Dispose();
-            }
-        }
-
-        private Usage? ExtractUsage(JsonElement usageElement)
-        {
-            try
-            {
-                var usage = new Usage();
-
-                // Standard OpenAI fields
-                if (usageElement.TryGetProperty("prompt_tokens", out var promptTokens))
-                    usage.PromptTokens = promptTokens.GetInt32();
-
-                if (usageElement.TryGetProperty("completion_tokens", out var completionTokens))
-                    usage.CompletionTokens = completionTokens.GetInt32();
-
-                if (usageElement.TryGetProperty("total_tokens", out var totalTokens))
-                    usage.TotalTokens = totalTokens.GetInt32();
-
-                // Anthropic format (uses input_tokens/output_tokens)
-                // Note: These will override OpenAI fields if both exist
-                if (usageElement.TryGetProperty("input_tokens", out var inputTokens))
-                    usage.PromptTokens = inputTokens.GetInt32();
-
-                if (usageElement.TryGetProperty("output_tokens", out var outputTokens))
-                    usage.CompletionTokens = outputTokens.GetInt32();
-
-                // Anthropic cached tokens
-                if (usageElement.TryGetProperty("cache_creation_input_tokens", out var cacheWriteTokens))
-                    usage.CachedWriteTokens = cacheWriteTokens.GetInt32();
-
-                if (usageElement.TryGetProperty("cache_read_input_tokens", out var cacheReadTokens))
-                    usage.CachedInputTokens = cacheReadTokens.GetInt32();
-
-                // Image generation
-                if (usageElement.TryGetProperty("images", out var imageCount))
-                    usage.ImageCount = imageCount.GetInt32();
-
-                // Validate we have at least some usage data
-                if (usage.PromptTokens == null && 
-                    usage.CompletionTokens == null && 
-                    usage.ImageCount == null)
-                {
-                    return null;
-                }
-
-                return usage;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to extract usage data from response");
-                return null;
-            }
-        }
-
-        private async Task UpdateSpendAsync(
-            int virtualKeyId,
-            decimal cost,
-            IBatchSpendUpdateService batchSpendService,
-            IVirtualKeyService virtualKeyService)
-        {
-            try
-            {
-                // Try batch update first
-                if (batchSpendService.IsHealthy)
-                {
-                    batchSpendService.QueueSpendUpdate(virtualKeyId, cost);
-                }
-                else
-                {
-                    // Fallback to direct update
-                    _logger.LogWarning("BatchSpendUpdateService unhealthy, using direct update for VirtualKey {VirtualKeyId}", virtualKeyId);
-                    await virtualKeyService.UpdateSpendAsync(virtualKeyId, cost);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to update spend for VirtualKey {VirtualKeyId}, Cost {Cost:C}", virtualKeyId, cost);
-                // Don't throw - we've already sent the response to the user
-            }
-        }
-
-        private async Task LogRequestAsync(
-            HttpContext context,
-            int virtualKeyId,
-            string model,
-            Usage usage,
-            decimal cost,
-            IRequestLogService requestLogService,
-            IBatchSpendUpdateService batchSpendService)
-        {
-            try
-            {
-                var requestType = DetermineRequestType(context.Request.Path);
-                
-                var logRequest = new LogRequestDto
-                {
-                    VirtualKeyId = virtualKeyId,
-                    ModelName = model,
-                    RequestType = requestType,
-                    InputTokens = usage.PromptTokens ?? 0,
-                    OutputTokens = usage.CompletionTokens ?? 0,
-                    Cost = cost,
-                    ResponseTimeMs = GetResponseTime(context),
-                    UserId = context.User?.Identity?.Name,
-                    ClientIp = context.Connection.RemoteIpAddress?.ToString(),
-                    RequestPath = context.Request.Path.ToString(),
-                    StatusCode = context.Response.StatusCode
-                };
-
-                // Use the method that doesn't double-charge
-                await requestLogService.LogRequestAsync(logRequest);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to log request for VirtualKey {VirtualKeyId}", virtualKeyId);
-                // Don't throw - logging failure shouldn't break the request
+                UsageMetrics.UsageTrackingFailures.WithLabels("unexpected_error", endpointType).Inc();
+                LogUnexpectedError(context, ex, billingAuditService);
             }
         }
 
@@ -386,9 +229,14 @@ namespace ConduitLLM.Http.Middleware
             ICostCalculationService costCalculationService,
             IBatchSpendUpdateService batchSpendService,
             IRequestLogService requestLogService,
-            IVirtualKeyService virtualKeyService)
+            IVirtualKeyService virtualKeyService,
+            IBillingAuditService billingAuditService)
         {
-            var endpointType = DetermineRequestType(context.Request.Path);
+            var endpointType = UsageExtractor.DetermineRequestType(context.Request.Path);
+            
+            // Check if usage was estimated
+            var isEstimated = context.Items.TryGetValue("UsageIsEstimated", out var estimatedObj) && 
+                              estimatedObj is bool estimated && estimated;
             
             // For streaming responses, we need to rely on the SSE writer
             // to have stored the usage data in HttpContext.Items
@@ -396,7 +244,8 @@ namespace ConduitLLM.Http.Middleware
                 usageObj is not Usage usage)
             {
                 _logger.LogDebug("No streaming usage data found for {Path}", context.Request.Path);
-                UsageTrackingFailures.WithLabels("no_streaming_usage", endpointType).Inc();
+                UsageMetrics.UsageTrackingFailures.WithLabels("no_streaming_usage", endpointType).Inc();
+                LogMissingStreamingUsage(context, billingAuditService);
                 return;
             }
 
@@ -404,7 +253,7 @@ namespace ConduitLLM.Http.Middleware
                 modelObj is not string model)
             {
                 _logger.LogWarning("No streaming model found for {Path}", context.Request.Path);
-                UsageTrackingFailures.WithLabels("no_streaming_model", endpointType).Inc();
+                UsageMetrics.UsageTrackingFailures.WithLabels("no_streaming_model", endpointType).Inc();
                 return;
             }
 
@@ -420,57 +269,115 @@ namespace ConduitLLM.Http.Middleware
             if (cost > 0)
             {
                 // Update metrics
-                UsageTrackingRequests.WithLabels(endpointType + "_stream", "success").Inc();
+                UsageMetrics.UsageTrackingRequests.WithLabels(endpointType + "_stream", "success").Inc();
                 
                 if (usage.PromptTokens.HasValue)
-                    UsageTrackingTokens.WithLabels(model, providerType, "prompt").Inc(usage.PromptTokens.Value);
+                    UsageMetrics.UsageTrackingTokens.WithLabels(model, providerType, "prompt").Inc(usage.PromptTokens.Value);
                 
                 if (usage.CompletionTokens.HasValue)
-                    UsageTrackingTokens.WithLabels(model, providerType, "completion").Inc(usage.CompletionTokens.Value);
+                    UsageMetrics.UsageTrackingTokens.WithLabels(model, providerType, "completion").Inc(usage.CompletionTokens.Value);
                 
-                UsageTrackingCosts.WithLabels(model, providerType, endpointType + "_stream").Inc(Convert.ToDouble(cost));
+                UsageMetrics.UsageTrackingCosts.WithLabels(model, providerType, endpointType + "_stream").Inc(Convert.ToDouble(cost));
                 
-                await UpdateSpendAsync(virtualKeyId, cost, batchSpendService, virtualKeyService);
-                await LogRequestAsync(context, virtualKeyId, model, usage, cost, requestLogService, batchSpendService);
+                await SpendUpdateHelper.UpdateSpendAsync(virtualKeyId, cost, batchSpendService, virtualKeyService, _logger);
+                await LogRequestAsync(context, virtualKeyId, model, usage, cost, requestLogService);
+                
+                LogStreamingBilling(context, model, usage, cost, providerType, isEstimated, billingAuditService);
             }
             else
             {
-                UsageTrackingFailures.WithLabels("zero_cost_streaming", endpointType).Inc();
+                UsageMetrics.UsageTrackingFailures.WithLabels("zero_cost_streaming", endpointType).Inc();
+                LogZeroCostBilling(context, model, usage, cost, providerType, billingAuditService);
+                UsageMetrics.ZeroCostEvents.WithLabels(model ?? "unknown", "streaming_zero").Inc();
             }
         }
 
-        private string DetermineRequestType(PathString path)
+        private async Task LogRequestAsync(
+            HttpContext context,
+            int virtualKeyId,
+            string model,
+            Usage usage,
+            decimal cost,
+            IRequestLogService requestLogService)
         {
-            var pathValue = path.Value?.ToLowerInvariant() ?? "";
-            
-            if (pathValue.Contains("/chat/completions"))
-                return "chat";
-            if (pathValue.Contains("/completions"))
-                return "completion";
-            if (pathValue.Contains("/embeddings"))
-                return "embedding";
-            if (pathValue.Contains("/images/generations"))
-                return "image";
-            if (pathValue.Contains("/audio/transcriptions"))
-                return "transcription";
-            if (pathValue.Contains("/audio/speech"))
-                return "tts";
-            if (pathValue.Contains("/videos/generations"))
-                return "video";
-            
-            return "other";
-        }
-
-        private double GetResponseTime(HttpContext context)
-        {
-            if (context.Items.TryGetValue("RequestStartTime", out var startTimeObj) && 
-                startTimeObj is DateTime startTime)
+            try
             {
-                return (DateTime.UtcNow - startTime).TotalMilliseconds;
+                var requestType = UsageExtractor.DetermineRequestType(context.Request.Path);
+                
+                var logRequest = new LogRequestDto
+                {
+                    VirtualKeyId = virtualKeyId,
+                    ModelName = model,
+                    RequestType = requestType,
+                    InputTokens = usage.PromptTokens ?? 0,
+                    OutputTokens = usage.CompletionTokens ?? 0,
+                    Cost = cost,
+                    ResponseTimeMs = UsageExtractor.GetResponseTime(context),
+                    UserId = context.User?.Identity?.Name,
+                    ClientIp = context.Connection.RemoteIpAddress?.ToString(),
+                    RequestPath = context.Request.Path.ToString(),
+                    StatusCode = context.Response.StatusCode
+                };
+
+                await requestLogService.LogRequestAsync(logRequest);
+                
+                _logger.LogInformation(
+                    "Tracked usage for VirtualKey {VirtualKeyId}: Model={Model}, PromptTokens={PromptTokens}, CompletionTokens={CompletionTokens}, Cost={Cost:C}",
+                    virtualKeyId, model, usage.PromptTokens, usage.CompletionTokens, cost);
             }
-            
-            return 0;
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to log request for VirtualKey {VirtualKeyId}", virtualKeyId);
+                // Don't throw - logging failure shouldn't break the request
+            }
         }
+
+        #region Billing Audit Logging
+
+        private async Task LogBillingDecisionAsync(HttpContext context, IBillingAuditService billingAuditService)
+        {
+            await BillingPolicyHandler.LogBillingDecisionAsync(context, billingAuditService, _logger);
+        }
+
+        private void LogSuccessfulBilling(HttpContext context, string model, Usage usage, decimal cost, 
+            string providerType, IBillingAuditService billingAuditService)
+        {
+            BillingPolicyHandler.LogSuccessfulBilling(context, model, usage, cost, providerType, billingAuditService, _logger);
+        }
+
+        private void LogZeroCostBilling(HttpContext context, string model, Usage usage, decimal cost, 
+            string providerType, IBillingAuditService billingAuditService)
+        {
+            BillingPolicyHandler.LogZeroCostBilling(context, model, usage, cost, providerType, billingAuditService);
+        }
+
+        private void LogMissingUsageData(HttpContext context, IBillingAuditService billingAuditService)
+        {
+            BillingPolicyHandler.LogMissingUsageData(context, billingAuditService);
+        }
+
+        private void LogStreamingBilling(HttpContext context, string model, Usage usage, decimal cost, 
+            string providerType, bool isEstimated, IBillingAuditService billingAuditService)
+        {
+            BillingPolicyHandler.LogStreamingBilling(context, model, usage, cost, providerType, isEstimated, billingAuditService, _logger);
+        }
+
+        private void LogMissingStreamingUsage(HttpContext context, IBillingAuditService billingAuditService)
+        {
+            BillingPolicyHandler.LogMissingStreamingUsage(context, billingAuditService);
+        }
+
+        private void LogJsonParseError(HttpContext context, Exception ex, IBillingAuditService billingAuditService)
+        {
+            BillingPolicyHandler.LogJsonParseError(context, ex, billingAuditService);
+        }
+
+        private void LogUnexpectedError(HttpContext context, Exception ex, IBillingAuditService billingAuditService)
+        {
+            BillingPolicyHandler.LogUnexpectedError(context, ex, billingAuditService);
+        }
+
+        #endregion
     }
 
     /// <summary>

@@ -82,13 +82,6 @@ namespace ConduitLLM.Configuration.Entities
         /// Example: {"supportsFunctionCalling": false} if provider disabled this feature.
         /// </summary>
         public string? CapabilityOverrides { get; set; }
-        
-        /// <summary>
-        /// JSON array of API parameters supported by this model on this provider.
-        /// Populated during bulk mapping by merging ModelSeries and Model ApiParameters.
-        /// Example: ["reasoning_effort", "min_p", "top_k", "seed"]
-        /// </summary>
-        public string? ApiParameters { get; set; }
 
         // Helper properties that read from Model.Capabilities with optional overrides
 

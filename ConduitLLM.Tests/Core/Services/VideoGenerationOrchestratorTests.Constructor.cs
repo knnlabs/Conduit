@@ -1,4 +1,7 @@
 using ConduitLLM.Core.Services;
+using ConduitLLM.Core.Validation;
+using Microsoft.Extensions.Logging;
+using Moq;
 
 namespace ConduitLLM.Tests.Core.Services
 {
@@ -22,6 +25,7 @@ namespace ConduitLLM.Tests.Core.Services
                 _mockWebhookService.Object,
                 _mockRetryOptions.Object,
                 _mockHttpClientFactory.Object,
+                new Mock<MinimalParameterValidator>(new Mock<ILogger<MinimalParameterValidator>>().Object).Object,
                 _mockLogger.Object));
         }
 
@@ -41,6 +45,7 @@ namespace ConduitLLM.Tests.Core.Services
                 _mockWebhookService.Object,
                 _mockRetryOptions.Object,
                 _mockHttpClientFactory.Object,
+                new Mock<MinimalParameterValidator>(new Mock<ILogger<MinimalParameterValidator>>().Object).Object,
                 _mockLogger.Object));
         }
 
@@ -60,6 +65,7 @@ namespace ConduitLLM.Tests.Core.Services
                 _mockWebhookService.Object,
                 null,
                 _mockHttpClientFactory.Object,
+                new Mock<MinimalParameterValidator>(new Mock<ILogger<MinimalParameterValidator>>().Object).Object,
                 _mockLogger.Object);
 
             // Assert - Should not throw and use default configuration

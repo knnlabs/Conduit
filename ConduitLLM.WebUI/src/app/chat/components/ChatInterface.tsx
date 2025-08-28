@@ -18,6 +18,7 @@ import { ModelSelector } from './ModelSelector';
 import { ChatInput } from './ChatInput';
 import { ChatMessages } from './ChatMessages';
 import { ChatSettings } from './ChatSettings';
+import { TokenCounter } from './TokenCounter';
 import { ErrorDisplay } from '@/components/common/ErrorDisplay';
 import { 
   ChatMessage,
@@ -33,8 +34,7 @@ import Link from 'next/link';
 
 export function ChatInterface() {
   const { data: modelData, isLoading: modelsLoading } = useModels();
-  const discoveryQuery = useDiscoveryModels('chat');
-  const discoveryData = discoveryQuery.data;
+  const { data: discoveryData } = useDiscoveryModels(); // Remove 'chat' filter since SupportsChat is false in DB
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -144,9 +144,9 @@ export function ChatInterface() {
   }
 
   return (
-    <Container size="lg" py="md">
-      <Stack h="calc(100vh - 100px)">
-        <Paper p="md" withBorder>
+    <Container size="lg" py="md" style={{ height: 'calc(100vh - 32px)', display: 'flex', flexDirection: 'column' }}>
+      <Stack style={{ flex: 1, overflow: 'hidden' }}>
+        <Paper p="md" withBorder style={{ flexShrink: 0 }}>
           <Stack gap="md">
             <Group justify="space-between">
               <Group style={{ flex: 1 }}>
@@ -161,6 +161,15 @@ export function ChatInterface() {
                     Vision Enabled
                   </Badge>
                 )}
+                {currentModel && messages.length > 0 && (
+                  <TokenCounter
+                    messages={messages}
+                    maxTokens={currentModel.maxContextTokens}
+                    modelName={currentModel.displayName}
+                    compact={true}
+                    showCost={false}
+                  />
+                )}
               </Group>
               <ActionIcon
                 size="lg"
@@ -173,7 +182,20 @@ export function ChatInterface() {
             </Group>
             
             <Collapse in={showSettings}>
-              <ChatSettings />
+              <Stack gap="md">
+                <ChatSettings />
+                
+                {/* Token Counter */}
+                {currentModel && (
+                  <TokenCounter
+                    messages={messages}
+                    maxTokens={currentModel.maxContextTokens}
+                    modelName={currentModel.displayName}
+                    compact={false}
+                    showCost={false}
+                  />
+                )}
+              </Stack>
             </Collapse>
             
             {/* Dynamic Parameters UI */}
@@ -191,7 +213,7 @@ export function ChatInterface() {
           </Stack>
         </Paper>
 
-        <Paper p="md" withBorder style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <Paper p="md" withBorder style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <ChatMessages 
             messages={messages}
             streamingContent={isLoading ? streamingContent : undefined}
@@ -199,7 +221,7 @@ export function ChatInterface() {
           />
         </Paper>
 
-        <Paper p="md" withBorder>
+        <Paper p="md" withBorder style={{ flexShrink: 0 }}>
           <ChatInput
             onSendMessage={(message, images) => void sendMessage(message, images)}
             isStreaming={isLoading}

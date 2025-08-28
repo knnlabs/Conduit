@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Core.Models
@@ -79,6 +80,26 @@ namespace ConduitLLM.Core.Models
         /// </summary>
         [JsonPropertyName("webhook_headers")]
         public Dictionary<string, string>? WebhookHeaders { get; set; }
+
+        /// <summary>
+        /// Additional model-specific parameters that are passed through to the provider API.
+        /// These parameters are not explicitly mapped but are forwarded as-is to support
+        /// various open-source video models with different parameter requirements.
+        /// Examples include negative_prompt, seed, guidance_scale, num_inference_steps, etc.
+        /// </summary>
+        /// <remarks>
+        /// This property captures any JSON properties not explicitly mapped to other properties.
+        /// Common parameters for open-source video models include:
+        /// - negative_prompt: Text describing what to avoid in the generation
+        /// - seed: Random seed for reproducible results
+        /// - guidance_scale: How closely to follow the prompt
+        /// - num_inference_steps: Number of denoising steps
+        /// - motion_bucket_id: Controls amount of motion (for SVD models)
+        /// - decode_chunk_size: Number of frames to decode at once
+        /// - aspect_ratio: Alternative to size (e.g., "16:9", "9:16")
+        /// </remarks>
+        [JsonExtensionData]
+        public Dictionary<string, JsonElement>? ExtensionData { get; set; }
     }
 
     /// <summary>

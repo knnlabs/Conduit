@@ -5,6 +5,7 @@ import { Modal, Stack, Group, Text, Badge, Title, Divider, ScrollArea } from '@m
 import { CodeHighlight } from '@mantine/code-highlight';
 import { useAdminClient } from '@/lib/client/adminClient';
 import { notifications } from '@mantine/notifications';
+import { ParameterPreview } from '@/components/parameters/ParameterPreview';
 import type { ModelSeriesDto, SeriesSimpleModelDto } from '@knn_labs/conduit-admin-client';
 
 
@@ -81,6 +82,12 @@ export function ViewModelSeriesModal({ isOpen, series, onClose }: ViewModelSerie
             <Divider />
             <Stack gap="xs">
               <Text fw={500}>UI Parameters:</Text>
+              <ParameterPreview 
+                parametersJson={series.parameters}
+                context="chat"
+                label="Preview UI Components"
+                maxHeight={300}
+              />
               <ScrollArea h={200}>
                 <CodeHighlight
                   code={(() => {

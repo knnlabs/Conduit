@@ -46,9 +46,17 @@ namespace ConduitLLM.Providers.OpenAI
                 throw new NotSupportedException("URL-based audio transcription is not supported by OpenAI API. Please provide audio data directly.");
             }
 
-            // Add model - use configuration or fallback to whisper-1
-            var defaultTranscriptionModel = GetDefaultTranscriptionModel();
-            content.Add(new StringContent(request.Model ?? defaultTranscriptionModel), "model");
+            // Add model - must be specified
+            if (string.IsNullOrWhiteSpace(request.Model))
+            {
+                var defaultTranscriptionModel = GetDefaultTranscriptionModel();
+                if (string.IsNullOrWhiteSpace(defaultTranscriptionModel))
+                {
+                    throw new ArgumentException("Model must be specified for transcription requests", nameof(request));
+                }
+                request.Model = defaultTranscriptionModel;
+            }
+            content.Add(new StringContent(request.Model), "model");
 
             // Add optional parameters
             if (!string.IsNullOrWhiteSpace(request.Language))
@@ -86,7 +94,7 @@ namespace ConduitLLM.Providers.OpenAI
                     return new AudioTranscriptionResponse
                     {
                         Text = responseText,
-                        Model = request.Model ?? GetDefaultTranscriptionModel()
+                        Model = request.Model ?? GetDefaultTranscriptionModel() ?? "unknown"
                     };
                 }
 
@@ -134,7 +142,7 @@ namespace ConduitLLM.Providers.OpenAI
 
             var openAIRequest = new TextToSpeechRequest
             {
-                Model = request.Model ?? GetDefaultTextToSpeechModel(),
+                Model = request.Model ?? GetDefaultTextToSpeechModel() ?? throw new ArgumentException("Model must be specified for text-to-speech requests", nameof(request)),
                 Input = request.Input,
                 Voice = request.Voice,
                 ResponseFormat = MapAudioFormat(request.ResponseFormat),
@@ -164,7 +172,7 @@ namespace ConduitLLM.Providers.OpenAI
                     AudioData = audioData,
                     Format = request.ResponseFormat?.ToString().ToLowerInvariant() ?? "mp3",
                     VoiceUsed = request.Voice,
-                    ModelUsed = request.Model ?? GetDefaultTextToSpeechModel(),
+                    ModelUsed = request.Model ?? GetDefaultTextToSpeechModel() ?? "unknown",
                     CharacterCount = request.Input.Length
                 };
             }, "CreateSpeech", cancellationToken);

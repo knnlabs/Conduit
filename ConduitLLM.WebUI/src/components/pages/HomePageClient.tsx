@@ -19,6 +19,7 @@ import {
   IconMicrophone
 } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
+import { SystemConfigChecklist } from '@/components/system/SystemConfigChecklist';
 
 export function HomePageClient() {
   const router = useRouter();
@@ -78,6 +79,8 @@ export function HomePageClient() {
           Your centralized platform for managing AI providers and services
         </Text>
       </div>
+
+      <SystemConfigChecklist />
 
       <Grid>
         {quickAccessCards.map((card) => (

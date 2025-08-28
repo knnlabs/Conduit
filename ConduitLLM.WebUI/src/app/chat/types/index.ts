@@ -1,10 +1,6 @@
-export interface ImageAttachment {
-  url: string;
-  base64?: string;
-  mimeType: string;
-  size: number;
-  name: string;
-}
+// ImageAttachment moved to SDK - import from @knn_labs/conduit-core-client
+import type { ImageAttachment } from '@knn_labs/conduit-core-client';
+export type { ImageAttachment };
 
 // Content types for chat messages (similar to SDK types)
 export interface TextContent {
@@ -114,13 +110,8 @@ export interface ChatParameters {
   stream?: boolean;
 }
 
-export interface ChatPreset {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  parameters: Partial<ChatParameters>;
-}
+// Re-export ChatPreset type from Core SDK
+export type { ChatPreset, ChatPresetParameters } from '@knn_labs/conduit-core-client';
 
 export interface ConversationStarter {
   id: string;

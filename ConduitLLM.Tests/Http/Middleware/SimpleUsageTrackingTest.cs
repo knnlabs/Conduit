@@ -38,10 +38,11 @@ namespace ConduitLLM.Tests.Http.Middleware
             var mockBatchSpendService = new Mock<IBatchSpendUpdateService>();
             var mockRequestLogService = new Mock<IRequestLogService>();
             var mockVirtualKeyService = new Mock<IVirtualKeyService>();
+            var mockBillingAuditService = new Mock<IBillingAuditService>();
             
             // Act
             await middleware.InvokeAsync(context, mockCostService.Object, mockBatchSpendService.Object, 
-                mockRequestLogService.Object, mockVirtualKeyService.Object);
+                mockRequestLogService.Object, mockVirtualKeyService.Object, mockBillingAuditService.Object);
             
             // Assert
             Assert.True(wasCalled, "The next delegate should have been called");
@@ -92,10 +93,11 @@ namespace ConduitLLM.Tests.Http.Middleware
             
             var mockRequestLogService = new Mock<IRequestLogService>();
             var mockVirtualKeyService = new Mock<IVirtualKeyService>();
+            var mockBillingAuditService = new Mock<IBillingAuditService>();
             
             // Act
             await middleware.InvokeAsync(context, mockCostService.Object, mockBatchSpendService.Object, 
-                mockRequestLogService.Object, mockVirtualKeyService.Object);
+                mockRequestLogService.Object, mockVirtualKeyService.Object, mockBillingAuditService.Object);
             
             // Assert
             mockCostService.Verify(x => x.CalculateCostAsync("gpt-4", It.IsAny<Usage>(), default), Times.Once);

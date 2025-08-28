@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
@@ -413,6 +414,125 @@ namespace ConduitLLM.Providers
         protected virtual string GetDefaultBaseUrl()
         {
             return "https://api.example.com";
+        }
+
+        /// <summary>
+        /// Classifies an HTTP error response into a provider error type.
+        /// </summary>
+        /// <param name="response">The HTTP response message.</param>
+        /// <param name="responseBody">The response body content.</param>
+        /// <returns>The classified error type.</returns>
+        protected virtual ProviderErrorType ClassifyHttpError(
+            HttpResponseMessage response, 
+            string? responseBody)
+        {
+            // Base classification by status code
+            var errorType = response.StatusCode switch
+            {
+                HttpStatusCode.Unauthorized => ProviderErrorType.InvalidApiKey,
+                HttpStatusCode.PaymentRequired => ProviderErrorType.InsufficientBalance,
+                HttpStatusCode.Forbidden => ProviderErrorType.AccessForbidden,
+                HttpStatusCode.TooManyRequests => ProviderErrorType.RateLimitExceeded,
+                HttpStatusCode.NotFound => ProviderErrorType.ModelNotFound,
+                HttpStatusCode.ServiceUnavailable => ProviderErrorType.ServiceUnavailable,
+                HttpStatusCode.BadGateway => ProviderErrorType.ServiceUnavailable,
+                HttpStatusCode.GatewayTimeout => ProviderErrorType.Timeout,
+                HttpStatusCode.RequestTimeout => ProviderErrorType.Timeout,
+                _ => ProviderErrorType.Unknown
+            };
+
+            // Allow provider-specific refinement
+            return RefineErrorClassification(errorType, responseBody);
+        }
+
+        /// <summary>
+        /// Refines error classification based on provider-specific response patterns.
+        /// Override in derived classes to handle provider-specific error messages.
+        /// </summary>
+        /// <param name="baseType">The base error type from status code.</param>
+        /// <param name="responseBody">The response body for additional context.</param>
+        /// <returns>The refined error type.</returns>
+        protected virtual ProviderErrorType RefineErrorClassification(
+            ProviderErrorType baseType, 
+            string? responseBody)
+        {
+            // Base implementation returns the status code-based classification
+            // Derived classes should override to parse provider-specific error messages
+            return baseType;
+        }
+
+        /// <summary>
+        /// Extracts a user-friendly error message from an HTTP response.
+        /// </summary>
+        /// <param name="response">The HTTP response.</param>
+        /// <param name="responseBody">The response body.</param>
+        /// <returns>A user-friendly error message.</returns>
+        protected virtual async Task<string> ExtractErrorMessageAsync(
+            HttpResponseMessage response,
+            string? responseBody = null)
+        {
+            if (string.IsNullOrEmpty(responseBody) && response.Content != null)
+            {
+                try
+                {
+                    responseBody = await response.Content.ReadAsStringAsync();
+                }
+                catch
+                {
+                    // Ignore read errors
+                }
+            }
+
+            // Try to parse JSON error message
+            if (!string.IsNullOrEmpty(responseBody))
+            {
+                try
+                {
+                    var json = JsonDocument.Parse(responseBody);
+                    
+                    // Common error message patterns
+                    if (json.RootElement.TryGetProperty("error", out var error))
+                    {
+                        if (error.TryGetProperty("message", out var message))
+                            return message.GetString() ?? responseBody;
+                        
+                        if (error.ValueKind == JsonValueKind.String)
+                            return error.GetString() ?? responseBody;
+                    }
+                    
+                    if (json.RootElement.TryGetProperty("message", out var directMessage))
+                        return directMessage.GetString() ?? responseBody;
+                }
+                catch
+                {
+                    // Not JSON or parsing failed
+                }
+            }
+
+            // Fallback to status code description
+            return $"{response.StatusCode}: {response.ReasonPhrase ?? "Unknown error"}";
+        }
+
+        /// <summary>
+        /// Sends an HTTP request with provider key tracking for error attribution.
+        /// </summary>
+        /// <param name="request">The HTTP request to send.</param>
+        /// <param name="keyCredential">The key credential being used.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The HTTP response.</returns>
+        protected async Task<HttpResponseMessage> SendRequestWithKeyTracking(
+            HttpRequestMessage request,
+            ProviderKeyCredential keyCredential,
+            CancellationToken cancellationToken = default)
+        {
+            // Attach key context to request for error tracking
+            request.Options.Set(new HttpRequestOptionsKey<int>("KeyCredentialId"), keyCredential.Id);
+            request.Options.Set(new HttpRequestOptionsKey<int>("ProviderId"), keyCredential.ProviderId);
+            
+            // Use the appropriate HttpClient
+            var httpClient = CreateHttpClient(keyCredential.ApiKey ?? string.Empty);
+            
+            return await httpClient.SendAsync(request, cancellationToken);
         }
     }
 }

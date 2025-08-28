@@ -293,5 +293,30 @@ namespace ConduitLLM.Core.Events
         /// User identifier for tracking
         /// </summary>
         public string? User { get; init; }
+        
+        /// <summary>
+        /// Base64-encoded image to use as input for image-to-image generation.
+        /// When provided, the prompt will be used to modify or enhance this image.
+        /// </summary>
+        public string? Image { get; init; }
+        
+        /// <summary>
+        /// Base64-encoded mask image for image editing (PNG with transparency).
+        /// Only the transparent areas will be edited when both image and mask are provided.
+        /// </summary>
+        public string? Mask { get; init; }
+        
+        /// <summary>
+        /// The operation type for image generation.
+        /// - "generate": Standard text-to-image generation (default)
+        /// - "edit": Edit existing image using prompt and optional mask
+        /// - "variation": Create variations of existing image
+        /// </summary>
+        public string Operation { get; init; } = "generate";
+        
+        /// <summary>
+        /// Additional model-specific parameters that are passed through to the provider API.
+        /// </summary>
+        public Dictionary<string, System.Text.Json.JsonElement>? ExtensionData { get; init; }
     }
 }

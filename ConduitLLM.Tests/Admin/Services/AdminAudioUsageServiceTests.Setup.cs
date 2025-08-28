@@ -17,6 +17,7 @@ namespace ConduitLLM.Tests.Admin.Services
         private readonly Mock<ILogger<AdminAudioUsageService>> _mockLogger;
         private readonly Mock<IServiceProvider> _mockServiceProvider;
         private readonly Mock<IRealtimeSessionStore> _mockSessionStore;
+        private readonly Mock<ConduitLLM.Core.Interfaces.ICostCalculationService> _mockCostCalculationService;
         private readonly AdminAudioUsageService _service;
         private readonly ITestOutputHelper _output;
 
@@ -28,6 +29,7 @@ namespace ConduitLLM.Tests.Admin.Services
             _mockLogger = new Mock<ILogger<AdminAudioUsageService>>();
             _mockServiceProvider = new Mock<IServiceProvider>();
             _mockSessionStore = new Mock<IRealtimeSessionStore>();
+            _mockCostCalculationService = new Mock<ConduitLLM.Core.Interfaces.ICostCalculationService>();
             
             // Setup service provider to return session store
             var mockScope = new Mock<IServiceScope>();
@@ -43,7 +45,8 @@ namespace ConduitLLM.Tests.Admin.Services
                 _mockRepository.Object,
                 _mockVirtualKeyRepository.Object,
                 _mockLogger.Object,
-                _mockServiceProvider.Object);
+                _mockServiceProvider.Object,
+                _mockCostCalculationService.Object);
         }
 
         #region Helper Methods

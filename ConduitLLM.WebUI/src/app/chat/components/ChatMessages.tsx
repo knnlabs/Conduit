@@ -6,7 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { ImagePreview } from './ImagePreview';
-import { processStructuredContent, getBlockQuoteMetadata, cleanBlockQuoteContent } from '../utils/structured-content';
+import { processStructuredContent, getBlockQuoteMetadata, cleanBlockQuoteContent } from '@knn_labs/conduit-core-client';
 
 interface ChatMessagesProps {
   messages: ChatMessage[];

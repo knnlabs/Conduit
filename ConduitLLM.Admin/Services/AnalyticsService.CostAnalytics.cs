@@ -32,8 +32,8 @@ namespace ConduitLLM.Admin.Services
 
                 // Normalize parameters
                 timeframe = NormalizeTimeframe(timeframe);
-                startDate ??= DateTime.UtcNow.AddDays(-30);
-                endDate ??= DateTime.UtcNow;
+                startDate = startDate.HasValue ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
+                endDate = endDate.HasValue ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc) : DateTime.UtcNow;
 
                 var fetchStopwatch = Stopwatch.StartNew();
                 var logs = await _requestLogRepository.GetByDateRangeAsync(startDate.Value, endDate.Value);
@@ -129,8 +129,8 @@ namespace ConduitLLM.Admin.Services
                 _logger.LogInformation("Getting cost trends with period: {Period}", period);
 
                 period = NormalizeTimeframe(period);
-                startDate ??= DateTime.UtcNow.AddDays(-30);
-                endDate ??= DateTime.UtcNow;
+                startDate = startDate.HasValue ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
+                endDate = endDate.HasValue ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc) : DateTime.UtcNow;
 
                 var fetchStopwatch = Stopwatch.StartNew();
                 var logs = await _requestLogRepository.GetByDateRangeAsync(startDate.Value, endDate.Value);
@@ -182,8 +182,8 @@ namespace ConduitLLM.Admin.Services
         {
             _logger.LogInformation("Getting model costs breakdown");
 
-            startDate ??= DateTime.UtcNow.AddDays(-30);
-            endDate ??= DateTime.UtcNow;
+            startDate = startDate.HasValue ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
+            endDate = endDate.HasValue ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc) : DateTime.UtcNow;
 
             var logs = await _requestLogRepository.GetByDateRangeAsync(startDate.Value, endDate.Value);
             var modelBreakdown = CalculateModelBreakdown(logs);
@@ -206,8 +206,8 @@ namespace ConduitLLM.Admin.Services
         {
             _logger.LogInformation("Getting virtual key costs breakdown");
 
-            startDate ??= DateTime.UtcNow.AddDays(-30);
-            endDate ??= DateTime.UtcNow;
+            startDate = startDate.HasValue ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-30);
+            endDate = endDate.HasValue ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc) : DateTime.UtcNow;
 
             var logs = await _requestLogRepository.GetByDateRangeAsync(startDate.Value, endDate.Value);
             var virtualKeys = await _virtualKeyRepository.GetAllAsync();
