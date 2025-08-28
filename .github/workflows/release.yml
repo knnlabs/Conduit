@@ -71,8 +71,8 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/knnlabs/conduit-${{ matrix.service }}:${{ needs.release.outputs.version }}
             ${{ env.REGISTRY }}/knnlabs/conduit-${{ matrix.service }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,scope=${{ matrix.service }},mode=max
 
   npm:
     name: NPM Release
