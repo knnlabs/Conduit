@@ -61,6 +61,8 @@ describe('VideoProgressTracker - track', () => {
           created: Date.now(),
           data: [{ url: 'https://example.com/video.mp4' }],
         },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       });
 
       const trackPromise = tracker.track();
@@ -87,13 +89,15 @@ describe('VideoProgressTracker - track', () => {
       );
 
       const statusResponses = [
-        { task_id: 'task_123', status: VideoTaskStatus.Running, progress: 30 },
-        { task_id: 'task_123', status: VideoTaskStatus.Running, progress: 60 },
+        { task_id: 'task_123', status: VideoTaskStatus.Running, progress: 30, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+        { task_id: 'task_123', status: VideoTaskStatus.Running, progress: 60, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
         {
           task_id: 'task_123',
           status: VideoTaskStatus.Completed,
           progress: 100,
           result: { created: Date.now(), data: [] },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         },
       ];
 
@@ -141,6 +145,8 @@ describe('VideoProgressTracker - track', () => {
         task_id: 'task_123',
         status: VideoTaskStatus.Running,
         progress: 50,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       });
 
       const trackPromise = tracker.track();

@@ -250,7 +250,7 @@ describe('Streaming Types', () => {
           delta: {
             content: 'Hello'
           },
-          finish_reason: null
+          finish_reason: undefined
         }]
       };
 

@@ -6,9 +6,9 @@ import { PerformanceMetricsCalculator, MetricsUtils } from '../performance-metri
 import type { 
   StreamingPerformanceMetrics, 
   MetricsEventData, 
-  MessageMetadata,
-  StreamingMetrics 
+  MessageMetadata
 } from '../types';
+import type { StreamingMetrics } from '../../../models/enhanced-streaming';
 
 // Mock Date.now for predictable testing
 const mockDateNow = jest.spyOn(Date, 'now');

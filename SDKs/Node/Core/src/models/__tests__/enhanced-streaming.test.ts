@@ -190,11 +190,11 @@ describe('enhanced-streaming types', () => {
     it('should properly type error events', () => {
       const event: EnhancedStreamEvent = {
         type: EnhancedSSEEventType.Error,
-        data: { message: 'Stream error', code: 'STREAM_ERROR' }
+        data: 'Stream error'
       };
       
       expect(event.type).toBe('error');
-      expect(event.data).toHaveProperty('message');
+      expect(typeof event.data).toBe('string');
     });
   });
 });

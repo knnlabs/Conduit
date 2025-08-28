@@ -3,7 +3,7 @@
     "lib": [
       "dom",
       "dom.iterable",
-      "es6"
+      "ES2023"
     ],
     "allowJs": true,
     "skipLibCheck": true,
@@ -27,7 +27,7 @@
         "./src/*"
       ]
     },
-    "target": "ES2017",
+    "target": "ES2023",
     // Additional strict checks for better error detection
     "noImplicitAny": true,
     "noImplicitThis": true,

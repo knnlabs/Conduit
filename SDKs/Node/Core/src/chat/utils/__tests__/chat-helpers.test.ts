@@ -3,7 +3,7 @@
  */
 
 import { buildMessageContent, type ImageAttachment } from '../chat-helpers';
-import type { TextContent, ImageContent } from '../../models/chat';
+import type { TextContent, ImageContent } from '../../../models/chat';
 
 describe('chat-helpers', () => {
   describe('buildMessageContent', () => {

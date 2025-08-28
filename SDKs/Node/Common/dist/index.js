@@ -149,6 +149,16 @@ function getCapabilityCategory(capability) {
 
 // src/errors/index.ts
 var ConduitError = class _ConduitError extends Error {
+  statusCode;
+  code;
+  context;
+  // Admin SDK specific fields
+  details;
+  endpoint;
+  method;
+  // Core SDK specific fields
+  type;
+  param;
   constructor(message, statusCode = 500, code = "INTERNAL_ERROR", context) {
     super(message);
     this.name = this.constructor.name;
@@ -222,6 +232,7 @@ var AuthorizationError = class extends ConduitError {
   }
 };
 var ValidationError = class extends ConduitError {
+  field;
   constructor(message = "Validation failed", context) {
     super(message, 400, "VALIDATION_ERROR", context);
     this.field = context?.field;
@@ -238,6 +249,8 @@ var ConflictError = class extends ConduitError {
   }
 };
 var InsufficientBalanceError = class extends ConduitError {
+  balance;
+  requiredAmount;
   constructor(message = "Insufficient balance to complete request", context) {
     super(message, 402, "INSUFFICIENT_BALANCE", context);
     this.balance = context?.balance;
@@ -245,6 +258,7 @@ var InsufficientBalanceError = class extends ConduitError {
   }
 };
 var RateLimitError = class extends ConduitError {
+  retryAfter;
   constructor(message = "Rate limit exceeded", retryAfter, context) {
     super(message, 429, "RATE_LIMIT_ERROR", { ...context, retryAfter });
     this.retryAfter = retryAfter;
@@ -596,8 +610,13 @@ var DefaultTransports = 1 /* WebSockets */ | 2 /* ServerSentEvents */ | 4 /* Lon
 // src/signalr/BaseSignalRConnection.ts
 var signalR = __toESM(require("@microsoft/signalr"));
 var BaseSignalRConnection = class {
+  connection;
+  config;
+  connectionReadyPromise;
+  connectionReadyResolve;
+  connectionReadyReject;
+  disposed = false;
   constructor(config) {
-    this.disposed = false;
     this.config = {
       ...config,
       baseUrl: config.baseUrl.replace(/\/$/, "")
@@ -635,6 +654,13 @@ var BaseSignalRConnection = class {
         return "Disconnected" /* Disconnected */;
     }
   }
+  /**
+   * Event handlers
+   */
+  onConnected;
+  onDisconnected;
+  onReconnecting;
+  onReconnected;
   /**
    * Establishes the SignalR connection.
    */
@@ -805,6 +831,10 @@ var BaseSignalRConnection = class {
 
 // src/client/types.ts
 var HttpError = class extends Error {
+  code;
+  response;
+  request;
+  config;
   constructor(message, code) {
     super(message);
     this.name = "HttpError";
