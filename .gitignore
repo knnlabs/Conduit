@@ -428,3 +428,10 @@ secrets.json
 api-keys.txt
 .secrets
 .vault
+
+# CodeQL analysis artifacts
+.codeql/
+codeql-db/
+codeql-results/
+*.sarif
+qlconfig.yml
