@@ -79,7 +79,8 @@
     "jest-environment-jsdom": "^30.0.4",
     "lint-staged": "^16.1.2",
     "playwright": "^1.54.1",
-    "ts-jest": "^29.4.0"
+    "ts-jest": "^29.4.0",
+    "ts-node": "^10.9.2"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

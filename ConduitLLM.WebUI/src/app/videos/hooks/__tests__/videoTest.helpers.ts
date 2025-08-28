@@ -57,7 +57,7 @@ export const setupMocks = () => {
   // Add logging to mock functions (for debugging)
   const originalAddTask = storeMocks.mockAddTask;
   storeMocks.mockStore.addTask = (...args: unknown[]) => {
-    return originalAddTask(...args);
+    return originalAddTask(...args) as void;
   };
   
   // Ensure the mock is properly set up every time

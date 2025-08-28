@@ -1,5 +1,10 @@
 // Jest setup file
-import '@testing-library/jest-dom'
+import '@testing-library/jest-dom';
+
+// Extend global namespace for test mocks
+declare global {
+  var fetch: jest.Mock;
+}
 
 // Mock fetch globally
 global.fetch = jest.fn();
@@ -19,7 +24,7 @@ jest.mock('@/lib/client/videoSignalRClient', () => ({
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: jest.fn().mockImplementation(query => ({
+  value: jest.fn().mockImplementation((query: string) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -36,19 +41,19 @@ global.ResizeObserver = jest.fn().mockImplementation(() => ({
   observe: jest.fn(),
   unobserve: jest.fn(),
   disconnect: jest.fn(),
-}));
+})) as unknown as typeof ResizeObserver;
 
 // Mock IntersectionObserver
 global.IntersectionObserver = jest.fn().mockImplementation(() => ({
   observe: jest.fn(),
   unobserve: jest.fn(),
   disconnect: jest.fn(),
-}));
+})) as unknown as typeof IntersectionObserver;
 
 // Silence console errors in tests
 const originalError = console.error;
 beforeAll(() => {
-  console.error = (...args) => {
+  console.error = (...args: unknown[]) => {
     if (
       typeof args[0] === 'string' &&
       args[0].includes('Warning: ReactDOM.render')

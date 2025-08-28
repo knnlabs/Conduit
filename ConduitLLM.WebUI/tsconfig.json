@@ -27,7 +27,7 @@
         "./src/*"
       ]
     },
-    "target": "ES2023",
+    "target": "esnext",
     // Additional strict checks for better error detection
     "noImplicitAny": true,
     "noImplicitThis": true,
