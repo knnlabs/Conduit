@@ -379,12 +379,12 @@ describe('ConversationImporter', () => {
       const result = ConversationImporter.fromJSON(json);
 
       expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data!).toHaveLength(2);
-        expect(result.data![0].id).toBe('msg1');
-        expect(result.data![0].role).toBe('user');
-        expect(result.data![0].content).toBe('Hello');
-        expect(result.data![0].timestamp).toBeInstanceOf(Date);
+      if (result.success && result.data) {
+        expect(result.data).toHaveLength(2);
+        expect(result.data[0].id).toBe('msg1');
+        expect(result.data[0].role).toBe('user');
+        expect(result.data[0].content).toBe('Hello');
+        expect(result.data[0].timestamp).toBeInstanceOf(Date);
       }
     });
 
@@ -392,9 +392,9 @@ describe('ConversationImporter', () => {
       const result = ConversationImporter.fromJSON('invalid json');
 
       expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.errors!).toHaveLength(1);
-        expect(result.errors![0].code).toBe('INVALID_JSON');
+      if (!result.success && result.errors) {
+        expect(result.errors).toHaveLength(1);
+        expect(result.errors[0].code).toBe('INVALID_JSON');
       }
     });
 
@@ -413,7 +413,7 @@ describe('ConversationImporter', () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.errors!.some(e => e.code === 'INVALID_ROLE')).toBe(true);
+        expect(result.errors?.some(e => e.code === 'INVALID_ROLE')).toBe(true);
       }
     });
 
@@ -434,9 +434,9 @@ describe('ConversationImporter', () => {
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data!).toHaveLength(10);
-        expect(result.warnings!).toHaveLength(1);
-        expect(result.warnings![0].code).toBe('MESSAGE_LIMIT_EXCEEDED');
+        expect(result.data).toHaveLength(10);
+        expect(result.warnings).toHaveLength(1);
+        expect(result.warnings?.[0].code).toBe('MESSAGE_LIMIT_EXCEEDED');
       }
     });
   });
@@ -455,7 +455,7 @@ describe('ConversationImporter', () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.errors![0].code).toBe('INVALID_FORMAT');
+        expect(result.errors?.[0].code).toBe('INVALID_FORMAT');
       }
     });
 
@@ -464,7 +464,7 @@ describe('ConversationImporter', () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.errors![0].code).toBe('MISSING_MESSAGES');
+        expect(result.errors?.[0].code).toBe('MISSING_MESSAGES');
       }
     });
 
@@ -482,7 +482,7 @@ describe('ConversationImporter', () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.errors!.some(e => e.code === 'MISSING_REQUIRED_FIELD')).toBe(true);
+        expect(result.errors?.some(e => e.code === 'MISSING_REQUIRED_FIELD')).toBe(true);
       }
     });
 
@@ -502,9 +502,9 @@ describe('ConversationImporter', () => {
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data!).toHaveLength(1);
-        expect(result.data![0].role).toBe('user'); // Should default invalid role
-        expect(result.warnings!.some(w => w.code === 'INVALID_ROLE')).toBe(true);
+        expect(result.data).toHaveLength(1);
+        expect(result.data?.[0].role).toBe('user'); // Should default invalid role
+        expect(result.warnings?.some(w => w.code === 'INVALID_ROLE')).toBe(true);
       }
     });
 
@@ -524,7 +524,7 @@ describe('ConversationImporter', () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.errors!.some(e => e.code === 'INVALID_TIMESTAMP')).toBe(true);
+        expect(result.errors?.some(e => e.code === 'INVALID_TIMESTAMP')).toBe(true);
       }
     });
 
@@ -545,7 +545,7 @@ describe('ConversationImporter', () => {
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data![0].timestamp).toBeInstanceOf(Date);
+        expect(result.data?.[0].timestamp).toBeInstanceOf(Date);
       }
     });
   });
@@ -670,9 +670,9 @@ describe('ConversationImporter', () => {
       const importResult = ConversationImporter.fromJSON(json);
 
       expect(importResult.success).toBe(true);
-      if (importResult.success) {
+      if (importResult.success && importResult.data) {
         expect(importResult.data).toHaveLength(2);
-        const imported = importResult.data!;
+        const imported = importResult.data;
         expect(imported[0].id).toBe('msg1');
         expect(imported[0].content).toBe('Hello world!');
         expect(imported[0].timestamp.getTime()).toBe(originalMessages[0].timestamp.getTime());
