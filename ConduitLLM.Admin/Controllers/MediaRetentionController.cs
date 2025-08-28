@@ -619,14 +619,44 @@ namespace ConduitLLM.Admin.Controllers
         public bool? IsActive { get; set; }
     }
 
+    /// <summary>
+    /// Represents the result of a media cleanup operation.
+    /// </summary>
     public class CleanupResultDto
     {
+        /// <summary>
+        /// Gets or sets the ID of the virtual key group that was cleaned up.
+        /// </summary>
         public int VirtualKeyGroupId { get; set; }
+        
+        /// <summary>
+        /// Gets or sets a value indicating whether this was a dry run (no actual deletions).
+        /// </summary>
         public bool DryRun { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the total number of media records evaluated during cleanup.
+        /// </summary>
         public int MediaRecordsEvaluated { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the number of media records marked for deletion.
+        /// </summary>
         public int MediaRecordsMarkedForDeletion { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the number of media records actually deleted.
+        /// </summary>
         public int MediaRecordsDeleted { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the total amount of storage space freed in bytes.
+        /// </summary>
         public long StorageBytesFreed { get; set; }
+        
+        /// <summary>
+        /// Gets or sets an informational message about the cleanup operation.
+        /// </summary>
         public string Message { get; set; } = string.Empty;
     }
     
