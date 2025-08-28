@@ -150,10 +150,25 @@ jobs:
           npm ci
           npm run build
           
-          # Publish with 'next' tag for continuous releases from master
-          # Fail fast if any publish fails
-          cd Common && npm publish --tag next --access public
-          cd ../Admin && npm publish --tag next --access public
-          cd ../Core && npm publish --tag next --access public
+          # Generate unique timestamp suffix for continuous releases
+          TIMESTAMP=$(date +%s)
+          
+          # Update version and publish Common first (others depend on it)
+          cd Common
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          npm version "${CURRENT_VERSION}-next.${TIMESTAMP}" --no-git-tag-version
+          npm publish --tag next --access public
+          
+          # Update version and publish Admin
+          cd ../Admin
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          npm version "${CURRENT_VERSION}-next.${TIMESTAMP}" --no-git-tag-version
+          npm publish --tag next --access public
+          
+          # Update version and publish Core
+          cd ../Core
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          npm version "${CURRENT_VERSION}-next.${TIMESTAMP}" --no-git-tag-version
+          npm publish --tag next --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
