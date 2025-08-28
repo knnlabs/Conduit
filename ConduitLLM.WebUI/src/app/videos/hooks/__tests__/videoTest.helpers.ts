@@ -53,18 +53,35 @@ export const createMockStore = () => {
 
 export const setupMocks = () => {
   const storeMocks = createMockStore();
+  
+  // Add logging to mock functions (for debugging)
+  const originalAddTask = storeMocks.mockAddTask;
+  storeMocks.mockStore.addTask = (...args: unknown[]) => {
+    return originalAddTask(...args);
+  };
+  
+  // Ensure the mock is properly set up every time
+  mockUseVideoStore.mockClear();
   mockUseVideoStore.mockReturnValue(storeMocks.mockStore);
   
   // Mock window.fetch for the actual API calls the implementation uses
-  global.fetch = jest.fn().mockImplementation(() => 
+  (global.fetch as jest.Mock).mockClear();
+  (global.fetch as jest.Mock).mockImplementation(() => 
     Promise.resolve({
       ok: true,
       json: () => Promise.resolve({
         task_id: 'mock_task_id',
+        status: 'pending',
+        progress: 0,
         message: 'Video generation started',
-        estimated_time_to_completion: 30
+        estimated_time_to_completion: 30,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       }),
-      headers: new Headers(),
+      headers: {
+        entries: () => [['content-type', 'application/json']],
+        get: (name: string) => name === 'content-type' ? 'application/json' : null,
+      },
       status: 200,
       statusText: 'OK'
     })

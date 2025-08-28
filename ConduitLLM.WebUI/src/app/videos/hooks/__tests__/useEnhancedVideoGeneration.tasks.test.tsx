@@ -3,6 +3,9 @@ import { useEnhancedVideoGeneration } from '../useEnhancedVideoGeneration';
 import { setupMocks } from './videoTest.helpers';
 import type { VideoTask } from '../../types';
 
+// Mock the useVideoStore hook directly in this test file
+jest.mock('../useVideoStore');
+
 describe('useEnhancedVideoGeneration - Task Management', () => {
   let storeMocks: ReturnType<typeof setupMocks>;
 
@@ -23,8 +26,12 @@ describe('useEnhancedVideoGeneration - Task Management', () => {
           ok: true,
           json: jest.fn().mockResolvedValue({
             task_id: 'task_unique_123',
+            status: 'pending',
+            progress: 0,
             message: 'First video generation started',
-            estimated_time_to_completion: 30
+            estimated_time_to_completion: 30,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           }),
           headers: new Headers(),
           status: 200,
@@ -34,8 +41,12 @@ describe('useEnhancedVideoGeneration - Task Management', () => {
           ok: true,
           json: jest.fn().mockResolvedValue({
             task_id: 'task_unique_456',
+            status: 'pending',
+            progress: 0,
             message: 'Second video generation started',
-            estimated_time_to_completion: 30
+            estimated_time_to_completion: 30,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           }),
           headers: new Headers(),
           status: 200,

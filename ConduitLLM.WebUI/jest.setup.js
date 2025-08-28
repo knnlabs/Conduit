@@ -1,6 +1,21 @@
 // Jest setup file
 import '@testing-library/jest-dom'
 
+// Mock fetch globally
+global.fetch = jest.fn();
+
+// Set up environment variables for tests
+process.env.NEXT_PUBLIC_API_URL = 'http://localhost:5000';
+process.env.NEXT_PUBLIC_SIGNALR_URL = 'http://localhost:5000';
+
+// Mock SignalR VideoSignalRClient
+jest.mock('@/lib/client/videoSignalRClient', () => ({
+  videoSignalRClient: {
+    connect: jest.fn().mockResolvedValue(undefined),
+    disconnect: jest.fn().mockResolvedValue(undefined),
+  }
+}));
+
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
