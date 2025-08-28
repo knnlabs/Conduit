@@ -422,7 +422,9 @@ secrets.json
 *.p12
 *credentials*
 *secret*
-*token*
+*token*.txt
+*token*.json
+*token*.env
 api-keys.txt
 .secrets
 .vault

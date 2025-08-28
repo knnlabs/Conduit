@@ -1,13 +1,8 @@
 // Jest setup file
 import '@testing-library/jest-dom';
 
-// Extend global namespace for test mocks
-declare global {
-  var fetch: jest.Mock;
-}
-
 // Mock fetch globally
-global.fetch = jest.fn();
+global.fetch = jest.fn() as jest.Mock;
 
 // Set up environment variables for tests
 process.env.NEXT_PUBLIC_API_URL = 'http://localhost:5000';

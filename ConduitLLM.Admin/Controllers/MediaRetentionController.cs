@@ -17,6 +17,11 @@ namespace ConduitLLM.Admin.Controllers
         private readonly IConfigurationDbContext _context;
         private readonly ILogger<MediaRetentionController> _logger;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MediaRetentionController"/> class.
+        /// </summary>
+        /// <param name="context">The database context for configuration operations.</param>
+        /// <param name="logger">The logger instance for diagnostic logging.</param>
         public MediaRetentionController(
             IConfigurationDbContext context,
             ILogger<MediaRetentionController> logger)
@@ -335,11 +340,11 @@ namespace ConduitLLM.Admin.Controllers
         [HttpPost("cleanup/{groupId}")]
         [ProducesResponseType(typeof(CleanupResultDto), 200)]
         [ProducesResponseType(404)]
-        public async Task<IActionResult> TriggerCleanup(int groupId, [FromQuery] bool dryRun = true)
+        public Task<IActionResult> TriggerCleanup(int groupId, [FromQuery] bool dryRun = true)
         {
             // This would trigger the media cleanup process
             // For now, return a placeholder response
-            return Ok(new CleanupResultDto
+            return Task.FromResult<IActionResult>(Ok(new CleanupResultDto
             {
                 VirtualKeyGroupId = groupId,
                 DryRun = dryRun,
@@ -348,75 +353,269 @@ namespace ConduitLLM.Admin.Controllers
                 MediaRecordsDeleted = 0,
                 StorageBytesFreed = 0,
                 Message = "Manual cleanup trigger not yet implemented. Use the scheduled cleanup system."
-            });
+            }));
         }
     }
 
     #region DTOs
     
+    /// <summary>
+    /// Data transfer object for media retention policy information.
+    /// </summary>
     public class MediaRetentionPolicyDto
     {
+        /// <summary>
+        /// Gets or sets the unique identifier of the retention policy.
+        /// </summary>
         public int Id { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the name of the retention policy.
+        /// </summary>
         public string Name { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Gets or sets the description of the retention policy.
+        /// </summary>
         public string? Description { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the retention period in days for media when balance is positive.
+        /// </summary>
         public int PositiveBalanceRetentionDays { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the retention period in days for media when balance is zero.
+        /// </summary>
         public int ZeroBalanceRetentionDays { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the retention period in days for media when balance is negative.
+        /// </summary>
         public int NegativeBalanceRetentionDays { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the grace period in days before permanently deleting soft-deleted media.
+        /// </summary>
         public int SoftDeleteGracePeriodDays { get; set; }
+        
+        /// <summary>
+        /// Gets or sets a value indicating whether to respect recent access when determining retention.
+        /// </summary>
         public bool RespectRecentAccess { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the window in days for considering recent access.
+        /// </summary>
         public int RecentAccessWindowDays { get; set; }
+        
+        /// <summary>
+        /// Gets or sets a value indicating whether this is a pro tier policy.
+        /// </summary>
         public bool IsProTier { get; set; }
+        
+        /// <summary>
+        /// Gets or sets a value indicating whether this is the default policy.
+        /// </summary>
         public bool IsDefault { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the maximum storage size in bytes allowed for this policy.
+        /// </summary>
         public long? MaxStorageSizeBytes { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the maximum number of files allowed for this policy.
+        /// </summary>
         public int? MaxFileCount { get; set; }
+        
+        /// <summary>
+        /// Gets or sets a value indicating whether this policy is active.
+        /// </summary>
         public bool IsActive { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the date and time when the policy was created.
+        /// </summary>
         public DateTime CreatedAt { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the date and time when the policy was last updated.
+        /// </summary>
         public DateTime UpdatedAt { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the count of virtual key groups using this policy.
+        /// </summary>
         public int VirtualKeyGroupCount { get; set; }
     }
 
+    /// <summary>
+    /// Extended DTO for media retention policy with additional details.
+    /// </summary>
     public class MediaRetentionPolicyDetailDto : MediaRetentionPolicyDto
     {
+        /// <summary>
+        /// Gets or sets the list of virtual key groups associated with this policy.
+        /// </summary>
         public List<VirtualKeyGroupSummaryDto> VirtualKeyGroups { get; set; } = new();
     }
 
+    /// <summary>
+    /// Summary information for a virtual key group.
+    /// </summary>
     public class VirtualKeyGroupSummaryDto
     {
+        /// <summary>
+        /// Gets or sets the virtual key group identifier.
+        /// </summary>
         public int Id { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the current balance of the virtual key group.
+        /// </summary>
         public decimal Balance { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the count of virtual keys in the group.
+        /// </summary>
         public int VirtualKeyCount { get; set; }
     }
 
+    /// <summary>
+    /// Request model for creating a new media retention policy.
+    /// </summary>
     public class CreateMediaRetentionPolicyRequest
     {
+        /// <summary>
+        /// Gets or sets the name of the retention policy.
+        /// </summary>
         public string Name { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Gets or sets the description of the retention policy.
+        /// </summary>
         public string? Description { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the retention period in days for media when balance is positive.
+        /// </summary>
         public int PositiveBalanceRetentionDays { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the retention period in days for media when balance is zero.
+        /// </summary>
         public int ZeroBalanceRetentionDays { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the retention period in days for media when balance is negative.
+        /// </summary>
         public int NegativeBalanceRetentionDays { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the grace period in days before permanently deleting soft-deleted media.
+        /// </summary>
         public int SoftDeleteGracePeriodDays { get; set; } = 7;
+        
+        /// <summary>
+        /// Gets or sets a value indicating whether to respect recent access when determining retention.
+        /// </summary>
         public bool RespectRecentAccess { get; set; } = true;
+        
+        /// <summary>
+        /// Gets or sets the window in days for considering recent access.
+        /// </summary>
         public int RecentAccessWindowDays { get; set; } = 7;
+        
+        /// <summary>
+        /// Gets or sets a value indicating whether this is a pro tier policy.
+        /// </summary>
         public bool IsProTier { get; set; }
+        
+        /// <summary>
+        /// Gets or sets a value indicating whether this is the default policy.
+        /// </summary>
         public bool IsDefault { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the maximum storage size in bytes allowed for this policy.
+        /// </summary>
         public long? MaxStorageSizeBytes { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the maximum number of files allowed for this policy.
+        /// </summary>
         public int? MaxFileCount { get; set; }
     }
 
+    /// <summary>
+    /// Request model for updating an existing media retention policy.
+    /// </summary>
     public class UpdateMediaRetentionPolicyRequest
     {
+        /// <summary>
+        /// Gets or sets the name of the retention policy.
+        /// </summary>
         public string? Name { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the description of the retention policy.
+        /// </summary>
         public string? Description { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the retention period in days for media when balance is positive.
+        /// </summary>
         public int? PositiveBalanceRetentionDays { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the retention period in days for media when balance is zero.
+        /// </summary>
         public int? ZeroBalanceRetentionDays { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the retention period in days for media when balance is negative.
+        /// </summary>
         public int? NegativeBalanceRetentionDays { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the grace period in days before permanently deleting soft-deleted media.
+        /// </summary>
         public int? SoftDeleteGracePeriodDays { get; set; }
+        
+        /// <summary>
+        /// Gets or sets a value indicating whether to respect recent access when determining retention.
+        /// </summary>
         public bool? RespectRecentAccess { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the window in days for considering recent access.
+        /// </summary>
         public int? RecentAccessWindowDays { get; set; }
+        
+        /// <summary>
+        /// Gets or sets a value indicating whether this is a pro tier policy.
+        /// </summary>
         public bool? IsProTier { get; set; }
+        
+        /// <summary>
+        /// Gets or sets a value indicating whether this is the default policy.
+        /// </summary>
         public bool? IsDefault { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the maximum storage size in bytes allowed for this policy.
+        /// </summary>
         public long? MaxStorageSizeBytes { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the maximum number of files allowed for this policy.
+        /// </summary>
         public int? MaxFileCount { get; set; }
+        
+        /// <summary>
+        /// Gets or sets a value indicating whether this policy is active.
+        /// </summary>
         public bool? IsActive { get; set; }
     }
 
