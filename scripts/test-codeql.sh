@@ -113,11 +113,25 @@ if [ "$CLEAN_BUILD" = true ] || [ ! -d "$CODEQL_DB" ]; then
     rm -rf "$CODEQL_DB"
     
     # Create database with build tracing
+    # Note: CodeQL requires a script or single command, not shell syntax
+    # Create a temporary build script
+    BUILD_SCRIPT="$PROJECT_ROOT/.codeql-build.sh"
+    cat > "$BUILD_SCRIPT" << 'EOF'
+#!/bin/bash
+set -e
+dotnet clean --configuration Release
+dotnet build --configuration Release
+EOF
+    chmod +x "$BUILD_SCRIPT"
+    
     codeql database create "$CODEQL_DB" \
         --language=csharp \
         --source-root="$PROJECT_ROOT" \
-        --command="dotnet clean --configuration Release && dotnet build --configuration Release" \
+        --command="$BUILD_SCRIPT" \
         --overwrite
+    
+    # Clean up build script
+    rm -f "$BUILD_SCRIPT"
     
     if [ $? -ne 0 ]; then
         echo -e "${RED}Failed to create CodeQL database${NC}"

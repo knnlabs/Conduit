@@ -435,3 +435,4 @@ codeql-db/
 codeql-results/
 *.sarif
 qlconfig.yml
+.codeql-build.sh
