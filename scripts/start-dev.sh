@@ -97,6 +97,7 @@ clean_volumes() {
     rm -rf ./ConduitLLM.WebUI/.next 2>/dev/null || true
     rm -rf ./ConduitLLM.WebUI/node_modules 2>/dev/null || true
     rm -rf ./SDKs/Node/*/node_modules 2>/dev/null || true
+    rm -rf ./SDKs/Node/*/dist 2>/dev/null || true
     
     log_info "Volumes cleaned"
 }
@@ -122,8 +123,51 @@ build_containers() {
     log_info "Containers built (CACHEBUST: $cachebust)"
 }
 
+build_sdks() {
+    log_info "Building SDK packages for WebUI..."
+    
+    # Check if SDKs need building
+    if [[ ! -d "./SDKs/Node/Common/dist" ]] || [[ ! -d "./SDKs/Node/Core/dist" ]] || [[ ! -d "./SDKs/Node/Admin/dist" ]]; then
+        log_info "SDK packages not built, building now..."
+        
+        # Build Common SDK first (dependency for others)
+        if [[ -d "./SDKs/Node/Common" ]]; then
+            log_info "Building Common SDK..."
+            (cd ./SDKs/Node/Common && npm install && npm run build) || {
+                log_error "Failed to build Common SDK"
+                exit 1
+            }
+        fi
+        
+        # Build Core SDK
+        if [[ -d "./SDKs/Node/Core" ]]; then
+            log_info "Building Core SDK..."
+            (cd ./SDKs/Node/Core && npm install && npm run build) || {
+                log_error "Failed to build Core SDK"
+                exit 1
+            }
+        fi
+        
+        # Build Admin SDK
+        if [[ -d "./SDKs/Node/Admin" ]]; then
+            log_info "Building Admin SDK..."
+            (cd ./SDKs/Node/Admin && npm install && npm run build) || {
+                log_error "Failed to build Admin SDK"
+                exit 1
+            }
+        fi
+        
+        log_info "SDK packages built successfully"
+    else
+        log_info "SDK packages already built, skipping..."
+    fi
+}
+
 rebuild_webui() {
     log_info "Restarting WebUI container to fix Next.js issues..."
+    
+    # Ensure SDKs are built (WebUI depends on them)
+    build_sdks
     
     # Stop and remove WebUI container
     docker compose -f docker-compose.yml -f docker-compose.dev.yml stop webui 2>/dev/null || true
@@ -229,6 +273,9 @@ main() {
     
     # Build containers
     build_containers "$build_flag"
+    
+    # Build SDKs (required for WebUI)
+    build_sdks
     
     # Start development environment
     start_development
