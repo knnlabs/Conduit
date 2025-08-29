@@ -79,5 +79,13 @@ namespace ConduitLLM.Configuration.Repositories
         /// </summary>
         /// <param name="providerName">The provider name (e.g., "groq", "openai", "anthropic")</param>
         Task<List<Model>> GetByProviderAsync(string providerName);
+
+        /// <summary>
+        /// Deletes a model identifier by ID.
+        /// </summary>
+        /// <param name="modelId">The model ID</param>
+        /// <param name="identifierId">The identifier ID to delete</param>
+        /// <returns>True if deleted, false if not found</returns>
+        Task<bool> DeleteIdentifierAsync(int modelId, int identifierId);
     }
 }

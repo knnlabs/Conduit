@@ -16,7 +16,7 @@ namespace ConduitLLM.Configuration.EntityConfigurations
         {
             // Apply all configurations
             modelBuilder.ApplyConfiguration(new ModelEntityConfiguration());
-            modelBuilder.ApplyConfiguration(new ModelIdentifierEntityConfiguration());
+            modelBuilder.ApplyConfiguration(new ModelProviderTypeAssociationEntityConfiguration());
             modelBuilder.ApplyConfiguration(new ModelSeriesEntityConfiguration());
             modelBuilder.ApplyConfiguration(new ModelCapabilitiesEntityConfiguration());
             modelBuilder.ApplyConfiguration(new ModelProviderMappingEntityConfiguration());

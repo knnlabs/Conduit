@@ -22,10 +22,13 @@ namespace ConduitLLM.Configuration.EntityConfigurations
         }
     }
 
-    public class ModelIdentifierEntityConfiguration : IEntityTypeConfiguration<ModelIdentifier>
+    public class ModelProviderTypeAssociationEntityConfiguration : IEntityTypeConfiguration<ModelProviderTypeAssociation>
     {
-        public void Configure(EntityTypeBuilder<ModelIdentifier> builder)
+        public void Configure(EntityTypeBuilder<ModelProviderTypeAssociation> builder)
         {
+            // Table name to maintain backward compatibility with database
+            builder.ToTable("ModelIdentifiers");
+
             // Unique constraint on provider + identifier combination
             // This ensures no duplicate identifiers within the same provider
             builder.HasIndex(e => new { e.Provider, e.Identifier })

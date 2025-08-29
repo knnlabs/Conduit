@@ -22,21 +22,12 @@ import { notifications } from '@mantine/notifications';
 import { 
   IconAlertCircle, 
   IconCheck, 
-  IconBrain,
-  IconEye,
-  IconPhoto,
-  IconMicrophone,
-  IconVolume,
-  IconBroadcast,
-  IconCode,
-  IconPlayerPlay,
-  IconVideo,
-  IconVectorBezier,
-  IconMessageCircle,
+  IconBrain
 } from '@tabler/icons-react';
 import { useProviders } from '@/hooks/useProviderApi';
 import { useBulkDiscoverModels, useBulkCreateMappings } from '@/hooks/useModelMappingsApi';
 import { getProviderTypeFromDto, providerTypeToName } from '@/lib/utils/providerTypeUtils';
+import { CapabilityIcons } from '@/components/common/CapabilityIcons';
 import type { ProviderDto } from '@knn_labs/conduit-admin-client';
 
 interface BulkMappingModalProps {
@@ -66,42 +57,6 @@ interface DiscoveredModel {
     maxOutputTokens?: number | null;
   };
 }
-
-const CapabilityIcon = ({ capability, supported }: { capability: string; supported: boolean }) => {
-  const iconProps = { size: 16, style: { opacity: supported ? 1 : 0.3 } };
-  
-  const icons: Record<string, React.ReactNode> = {
-    supportsVision: <IconEye {...iconProps} />,
-    supportsImageGeneration: <IconPhoto {...iconProps} />,
-    supportsAudioTranscription: <IconMicrophone {...iconProps} />,
-    supportsTextToSpeech: <IconVolume {...iconProps} />,
-    supportsRealtimeAudio: <IconBroadcast {...iconProps} />,
-    supportsFunctionCalling: <IconCode {...iconProps} />,
-    supportsStreaming: <IconPlayerPlay {...iconProps} />,
-    supportsVideoGeneration: <IconVideo {...iconProps} />,
-    supportsEmbeddings: <IconVectorBezier {...iconProps} />,
-    supportsChat: <IconMessageCircle {...iconProps} />,
-  };
-  
-  const labels: Record<string, string> = {
-    supportsVision: 'Vision',
-    supportsImageGeneration: 'Image Generation',
-    supportsAudioTranscription: 'Audio Transcription',
-    supportsTextToSpeech: 'Text to Speech',
-    supportsRealtimeAudio: 'Realtime Audio',
-    supportsFunctionCalling: 'Function Calling',
-    supportsStreaming: 'Streaming',
-    supportsVideoGeneration: 'Video Generation',
-    supportsEmbeddings: 'Embeddings',
-    supportsChat: 'Chat',
-  };
-  
-  return (
-    <Tooltip label={`${labels[capability]}: ${supported ? 'Supported' : 'Not supported'}`}>
-      <span>{icons[capability]}</span>
-    </Tooltip>
-  );
-};
 
 export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModalProps) {
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
@@ -316,14 +271,7 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
                         <Text size="sm">{model.displayName}</Text>
                       </Table.Td>
                       <Table.Td>
-                        <Group gap={4}>
-                          {Object.entries(model.capabilities).map(([key, value]) => {
-                            if (typeof value === 'boolean' && key.startsWith('supports')) {
-                              return <CapabilityIcon key={key} capability={key} supported={value} />;
-                            }
-                            return null;
-                          })}
-                        </Group>
+                        <CapabilityIcons capabilities={model.capabilities} />
                       </Table.Td>
                       <Table.Td>
                         {model.capabilities.maxContextLength && (

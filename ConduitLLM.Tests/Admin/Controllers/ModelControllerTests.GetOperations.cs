@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Controllers;
+using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Models.Models;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
@@ -21,14 +22,16 @@ namespace ConduitLLM.Tests.Admin.Controllers
     public class ModelControllerGetOperationsTests
     {
         private readonly Mock<IModelRepository> _mockRepository;
+        private readonly Mock<IAdminModelProviderMappingService> _mockMappingService;
         private readonly Mock<ILogger<ModelController>> _mockLogger;
         private readonly ModelController _controller;
 
         public ModelControllerGetOperationsTests()
         {
             _mockRepository = new Mock<IModelRepository>();
+            _mockMappingService = new Mock<IAdminModelProviderMappingService>();
             _mockLogger = new Mock<ILogger<ModelController>>();
-            _controller = new ModelController(_mockRepository.Object, _mockLogger.Object);
+            _controller = new ModelController(_mockRepository.Object, _mockMappingService.Object, _mockLogger.Object);
         }
 
         #region GetAllModels Tests
@@ -257,9 +260,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 ModelCapabilitiesId = 1,
                 Capabilities = capabilities,
                 IsActive = true,
-                Identifiers = new List<ModelIdentifier>
+                Identifiers = new List<ModelProviderTypeAssociation>
                 {
-                    new ModelIdentifier 
+                    new ModelProviderTypeAssociation 
                     { 
                         Id = 1, 
                         ModelId = modelId, 
@@ -267,7 +270,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
                         Provider = "groq",
                         IsPrimary = true
                     },
-                    new ModelIdentifier 
+                    new ModelProviderTypeAssociation 
                     { 
                         Id = 2, 
                         ModelId = modelId, 
@@ -275,7 +278,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
                         Provider = "fireworks",
                         IsPrimary = true
                     },
-                    new ModelIdentifier 
+                    new ModelProviderTypeAssociation 
                     { 
                         Id = 3, 
                         ModelId = modelId, 
@@ -336,7 +339,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 ModelCapabilitiesId = 1,
                 Capabilities = capabilities,
                 IsActive = true,
-                Identifiers = new List<ModelIdentifier>() // Empty identifiers
+                Identifiers = new List<ModelProviderTypeAssociation>() // Empty identifiers
             };
 
             _mockRepository.Setup(r => r.GetByIdWithDetailsAsync(modelId))

@@ -16,7 +16,7 @@ import {
   Flex,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconInfoCircle, IconRobot, IconEye, IconMicrophone, IconBrush, IconVideo, IconBrain } from '@tabler/icons-react';
+import { IconInfoCircle, IconRobot, IconEye, IconBrush, IconVideo, IconBrain } from '@tabler/icons-react';
 import { useCreateModelMapping } from '@/hooks/useModelMappingsApi';
 import { useProviders } from '@/hooks/useProviderApi';
 import { useModels } from '@/hooks/useModelsApi';
@@ -174,7 +174,6 @@ export function CreateModelMappingModal({
                     {modelCapabilities.supportsVision && <Badge size="sm" leftSection={<IconEye size={12} />}>Vision</Badge>}
                     {modelCapabilities.supportsImageGeneration && <Badge size="sm" leftSection={<IconBrush size={12} />}>Images</Badge>}
                     {modelCapabilities.supportsVideoGeneration && <Badge size="sm" leftSection={<IconVideo size={12} />}>Video</Badge>}
-                    {modelCapabilities.supportsAudioTranscription && <Badge size="sm" leftSection={<IconMicrophone size={12} />}>Audio</Badge>}
                     {modelCapabilities.supportsEmbeddings && <Badge size="sm" leftSection={<IconBrain size={12} />}>Embeddings</Badge>}
                   </Flex>
                   <Text size="xs" mt="xs">Max Tokens: {modelCapabilities.maxTokens?.toLocaleString()}</Text>

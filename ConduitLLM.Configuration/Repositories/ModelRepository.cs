@@ -56,7 +56,7 @@ namespace ConduitLLM.Configuration.Repositories
         {
             using var context = await _dbContextFactory.CreateDbContextAsync();
             // First check ModelIdentifiers table
-            var modelIdentifier = await context.Set<ModelIdentifier>()
+            var modelIdentifier = await context.Set<ModelProviderTypeAssociation>()
                 .Include(mi => mi.Model)
                     .ThenInclude(m => m.Capabilities)
                 .Include(mi => mi.Model)
@@ -151,7 +151,7 @@ namespace ConduitLLM.Configuration.Repositories
             using var context = await _dbContextFactory.CreateDbContextAsync();
             
             // Get model IDs that have identifiers for this provider
-            var modelIds = await context.Set<ModelIdentifier>()
+            var modelIds = await context.Set<ModelProviderTypeAssociation>()
                 .Where(mi => mi.Provider == providerName.ToLower())
                 .Select(mi => mi.ModelId)
                 .Distinct()
@@ -166,6 +166,24 @@ namespace ConduitLLM.Configuration.Repositories
                 .Where(m => modelIds.Contains(m.Id))
                 .OrderBy(m => m.Name)
                 .ToListAsync();
+        }
+
+        public async Task<bool> DeleteIdentifierAsync(int modelId, int identifierId)
+        {
+            using var context = await _dbContextFactory.CreateDbContextAsync();
+            
+            var identifier = await context.Set<ModelProviderTypeAssociation>()
+                .FirstOrDefaultAsync(i => i.Id == identifierId && i.ModelId == modelId);
+            
+            if (identifier == null)
+            {
+                return false;
+            }
+            
+            context.Set<ModelProviderTypeAssociation>().Remove(identifier);
+            await context.SaveChangesAsync();
+            
+            return true;
         }
     }
 }

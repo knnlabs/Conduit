@@ -182,9 +182,9 @@ export function useBulkDiscoverModels() {
             capabilities: {
               supportsVision: model.capabilities?.supportsVision ?? false,
               supportsImageGeneration: model.capabilities?.supportsImageGeneration ?? false,
-              supportsAudioTranscription: model.capabilities?.supportsAudioTranscription ?? false,
-              supportsTextToSpeech: model.capabilities?.supportsTextToSpeech ?? false,
-              supportsRealtimeAudio: model.capabilities?.supportsRealtimeAudio ?? false,
+              supportsAudioTranscription: false, // Audio capabilities removed from project
+              supportsTextToSpeech: false, // Audio capabilities removed from project
+              supportsRealtimeAudio: false, // Audio capabilities removed from project
               supportsFunctionCalling: model.capabilities?.supportsFunctionCalling ?? false,
               supportsStreaming: model.capabilities?.supportsStreaming ?? true,
               supportsVideoGeneration: model.capabilities?.supportsVideoGeneration ?? false,

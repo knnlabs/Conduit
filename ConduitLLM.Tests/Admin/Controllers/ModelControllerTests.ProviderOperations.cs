@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Controllers;
+using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Models.Models;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
@@ -21,14 +22,16 @@ namespace ConduitLLM.Tests.Admin.Controllers
     public class ModelControllerProviderOperationsTests
     {
         private readonly Mock<IModelRepository> _mockRepository;
+        private readonly Mock<IAdminModelProviderMappingService> _mockMappingService;
         private readonly Mock<ILogger<ModelController>> _mockLogger;
         private readonly ModelController _controller;
 
         public ModelControllerProviderOperationsTests()
         {
             _mockRepository = new Mock<IModelRepository>();
+            _mockMappingService = new Mock<IAdminModelProviderMappingService>();
             _mockLogger = new Mock<ILogger<ModelController>>();
-            _controller = new ModelController(_mockRepository.Object, _mockLogger.Object);
+            _controller = new ModelController(_mockRepository.Object, _mockMappingService.Object, _mockLogger.Object);
         }
 
         #region GetModelsByProvider Tests
@@ -58,9 +61,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
                     ModelCapabilitiesId = 1,
                     Capabilities = capabilities,
                     IsActive = true,
-                    Identifiers = new List<ModelIdentifier>
+                    Identifiers = new List<ModelProviderTypeAssociation>
                     {
-                        new ModelIdentifier 
+                        new ModelProviderTypeAssociation 
                         { 
                             Id = 1, 
                             ModelId = 1, 
@@ -79,9 +82,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
                     ModelCapabilitiesId = 1,
                     Capabilities = capabilities,
                     IsActive = true,
-                    Identifiers = new List<ModelIdentifier>
+                    Identifiers = new List<ModelProviderTypeAssociation>
                     {
-                        new ModelIdentifier 
+                        new ModelProviderTypeAssociation 
                         { 
                             Id = 2, 
                             ModelId = 2, 
@@ -216,10 +219,10 @@ namespace ConduitLLM.Tests.Admin.Controllers
                     ModelCapabilitiesId = 1,
                     Capabilities = capabilities,
                     IsActive = true,
-                    Identifiers = new List<ModelIdentifier>
+                    Identifiers = new List<ModelProviderTypeAssociation>
                     {
                         // Identifier for different provider
-                        new ModelIdentifier 
+                        new ModelProviderTypeAssociation 
                         { 
                             Id = 1, 
                             ModelId = 1, 
@@ -267,9 +270,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
                     ModelCapabilitiesId = 1,
                     Capabilities = capabilities,
                     IsActive = true,
-                    Identifiers = new List<ModelIdentifier>
+                    Identifiers = new List<ModelProviderTypeAssociation>
                     {
-                        new ModelIdentifier 
+                        new ModelProviderTypeAssociation 
                         { 
                             Id = 1, 
                             ModelId = 1, 
@@ -346,9 +349,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
                     ModelCapabilitiesId = 1,
                     Capabilities = null, // Null capabilities
                     IsActive = true,
-                    Identifiers = new List<ModelIdentifier>
+                    Identifiers = new List<ModelProviderTypeAssociation>
                     {
-                        new ModelIdentifier 
+                        new ModelProviderTypeAssociation 
                         { 
                             Id = 1, 
                             ModelId = 1, 

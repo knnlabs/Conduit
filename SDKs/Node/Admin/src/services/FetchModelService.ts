@@ -7,6 +7,7 @@ import { ENDPOINTS } from '../constants';
 type ModelDto = components['schemas']['ConduitLLM.Admin.Models.Models.ModelDto'];
 type CreateModelDto = components['schemas']['ConduitLLM.Admin.Models.Models.CreateModelDto'];
 type UpdateModelDto = components['schemas']['ConduitLLM.Admin.Models.Models.UpdateModelDto'];
+type ModelProviderMappingDto = components['schemas']['ConduitLLM.Configuration.DTOs.ModelProviderMappingDto'];
 
 /**
  * Type-safe Model service using native fetch
@@ -210,5 +211,153 @@ export class FetchModelService {
     );
     
     return modelsWithStatus;
+  }
+
+  /**
+   * Get all provider mappings for a specific model
+   */
+  async getProviderMappings(id: number, config?: RequestConfig): Promise<ModelProviderMappingDto[]> {
+    return this.client['get']<ModelProviderMappingDto[]>(
+      `${ENDPOINTS.MODELS.BY_ID(id)}/provider-mappings`,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Create a new provider mapping for a model
+   */
+  async createProviderMapping(
+    id: number, 
+    mapping: ModelProviderMappingDto, 
+    config?: RequestConfig
+  ): Promise<ModelProviderMappingDto> {
+    return this.client['post']<ModelProviderMappingDto, ModelProviderMappingDto>(
+      `${ENDPOINTS.MODELS.BY_ID(id)}/provider-mappings`,
+      mapping,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Update a provider mapping for a model
+   */
+  async updateProviderMapping(
+    id: number,
+    mappingId: number,
+    mapping: ModelProviderMappingDto,
+    config?: RequestConfig
+  ): Promise<void> {
+    return this.client['put']<void, ModelProviderMappingDto>(
+      `${ENDPOINTS.MODELS.BY_ID(id)}/provider-mappings/${mappingId}`,
+      mapping,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Delete a provider mapping for a model
+   */
+  async deleteProviderMapping(
+    id: number,
+    mappingId: number,
+    config?: RequestConfig
+  ): Promise<void> {
+    return this.client['delete']<void>(
+      `${ENDPOINTS.MODELS.BY_ID(id)}/provider-mappings/${mappingId}`,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Create a new model identifier
+   */
+  async createIdentifier(
+    id: number,
+    data: {
+      identifier: string;
+      provider?: string;
+      isPrimary?: boolean;
+      metadata?: string;
+    },
+    config?: RequestConfig
+  ): Promise<{
+    id: number;
+    identifier: string;
+    provider: string;
+    isPrimary: boolean;
+  }> {
+    return this.client['post']<{
+      id: number;
+      identifier: string;
+      provider: string;
+      isPrimary: boolean;
+    }, typeof data>(
+      `${ENDPOINTS.MODELS.BY_ID(id)}/identifiers`,
+      data,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Update a model identifier
+   */
+  async updateIdentifier(
+    id: number,
+    identifierId: number,
+    data: {
+      identifier: string;
+      provider?: string;
+      isPrimary?: boolean;
+      metadata?: string;
+    },
+    config?: RequestConfig
+  ): Promise<void> {
+    return this.client['put']<void, typeof data>(
+      `${ENDPOINTS.MODELS.BY_ID(id)}/identifiers/${identifierId}`,
+      data,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Delete a model identifier
+   */
+  async deleteIdentifier(
+    id: number,
+    identifierId: number,
+    config?: RequestConfig
+  ): Promise<void> {
+    return this.client['delete']<void>(
+      `${ENDPOINTS.MODELS.BY_ID(id)}/identifiers/${identifierId}`,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
   }
 }

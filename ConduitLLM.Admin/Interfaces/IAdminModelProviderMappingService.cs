@@ -28,6 +28,13 @@ public interface IAdminModelProviderMappingService
     Task<ModelProviderMapping?> GetMappingByModelIdAsync(int modelId);
 
     /// <summary>
+    /// Gets all model provider mappings for a specific model
+    /// </summary>
+    /// <param name="modelId">The model ID to look up</param>
+    /// <returns>List of model provider mappings for the specified model</returns>
+    Task<IEnumerable<ModelProviderMapping>> GetMappingsByModelIdAsync(int modelId);
+
+    /// <summary>
     /// Adds a new model provider mapping
     /// </summary>
     /// <param name="mapping">The mapping to add</param>

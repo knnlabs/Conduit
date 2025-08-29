@@ -98,9 +98,9 @@ namespace ConduitLLM.Configuration
         public virtual DbSet<ModelAuthor> ModelAuthors { get; set; } = null!;
         
         /// <summary>
-        /// Database set for model identifiers
+        /// Database set for model provider type associations
         /// </summary>
-        public virtual DbSet<ModelIdentifier> ModelIdentifiers { get; set; } = null!;
+        public virtual DbSet<ModelProviderTypeAssociation> ModelProviderTypeAssociations { get; set; } = null!;
 
         /// <summary>
         /// Database set for media records

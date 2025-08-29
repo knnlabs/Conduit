@@ -914,1345 +914,6 @@
         }
       }
     },
-    "/api/admin/audio/providers": {
-      "get": {
-        "tags": [
-          "AudioConfiguration"
-        ],
-        "summary": "Gets all audio provider configurations.",
-        "responses": {
-          "200": {
-            "description": "Returns the list of audio provider configurations",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioProviderConfigDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioProviderConfigDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioProviderConfigDto"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "AudioConfiguration"
-        ],
-        "summary": "Creates a new audio provider configuration.",
-        "requestBody": {
-          "description": "The provider configuration to create",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.CreateAudioProviderConfigDto"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.CreateAudioProviderConfigDto"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.CreateAudioProviderConfigDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Returns the created provider configuration",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioProviderConfigDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioProviderConfigDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioProviderConfigDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "If the configuration is invalid",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/audio/providers/{id}": {
-      "get": {
-        "tags": [
-          "AudioConfiguration"
-        ],
-        "summary": "Gets a specific audio provider configuration.",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The provider configuration ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Returns the audio provider configuration",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioProviderConfigDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioProviderConfigDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioProviderConfigDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "If the provider configuration is not found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "AudioConfiguration"
-        ],
-        "summary": "Updates an audio provider configuration.",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The provider configuration ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "requestBody": {
-          "description": "The updated configuration",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.UpdateAudioProviderConfigDto"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.UpdateAudioProviderConfigDto"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.UpdateAudioProviderConfigDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Returns the updated provider configuration",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioProviderConfigDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioProviderConfigDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioProviderConfigDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "If the provider configuration is not found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "AudioConfiguration"
-        ],
-        "summary": "Deletes an audio provider configuration.",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The provider configuration ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "If the provider configuration was deleted"
-          },
-          "404": {
-            "description": "If the provider configuration is not found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/audio/providers/by-id/{providerId}": {
-      "get": {
-        "tags": [
-          "AudioConfiguration"
-        ],
-        "summary": "Gets audio provider configurations by provider ID.",
-        "parameters": [
-          {
-            "name": "providerId",
-            "in": "path",
-            "description": "The provider ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Returns the list of configurations for the provider",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioProviderConfigDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioProviderConfigDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioProviderConfigDto"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/audio/providers/enabled/{operationType}": {
-      "get": {
-        "tags": [
-          "AudioConfiguration"
-        ],
-        "summary": "Gets enabled providers for a specific audio operation.",
-        "parameters": [
-          {
-            "name": "operationType",
-            "in": "path",
-            "description": "The operation type (transcription, tts, realtime)",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Returns the list of enabled providers",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioProviderConfigDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioProviderConfigDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioProviderConfigDto"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/audio/providers/{id}/test": {
-      "post": {
-        "tags": [
-          "AudioConfiguration"
-        ],
-        "summary": "Tests audio provider connectivity.",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The provider configuration ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "operationType",
-            "in": "query",
-            "description": "The operation type to test",
-            "schema": {
-              "type": "string",
-              "default": "transcription"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Returns the test results",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.AudioProviderTestResult"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.AudioProviderTestResult"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.AudioProviderTestResult"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "If the provider configuration is not found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/audio/costs": {
-      "get": {
-        "tags": [
-          "AudioConfiguration"
-        ],
-        "summary": "Gets all audio cost configurations.",
-        "responses": {
-          "200": {
-            "description": "Returns the list of audio cost configurations",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioCostDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioCostDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioCostDto"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "AudioConfiguration"
-        ],
-        "summary": "Creates a new audio cost configuration.",
-        "requestBody": {
-          "description": "The cost configuration to create",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.CreateAudioCostDto"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.CreateAudioCostDto"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.CreateAudioCostDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Returns the created cost configuration",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioCostDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioCostDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioCostDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "If the configuration is invalid",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/audio/costs/{id}": {
-      "get": {
-        "tags": [
-          "AudioConfiguration"
-        ],
-        "summary": "Gets a specific audio cost configuration.",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The cost configuration ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Returns the audio cost configuration",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioCostDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioCostDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioCostDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "If the cost configuration is not found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "AudioConfiguration"
-        ],
-        "summary": "Updates an audio cost configuration.",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The cost configuration ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "requestBody": {
-          "description": "The updated configuration",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.UpdateAudioCostDto"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.UpdateAudioCostDto"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.UpdateAudioCostDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Returns the updated cost configuration",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioCostDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioCostDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioCostDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "If the cost configuration is not found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "AudioConfiguration"
-        ],
-        "summary": "Deletes an audio cost configuration.",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The cost configuration ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "If the cost configuration was deleted"
-          },
-          "404": {
-            "description": "If the cost configuration is not found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/audio/costs/by-provider/{providerId}": {
-      "get": {
-        "tags": [
-          "AudioConfiguration"
-        ],
-        "summary": "Gets audio costs by provider.",
-        "parameters": [
-          {
-            "name": "providerId",
-            "in": "path",
-            "description": "The provider ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Returns the list of costs for the provider",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioCostDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioCostDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioCostDto"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/audio/costs/current": {
-      "get": {
-        "tags": [
-          "AudioConfiguration"
-        ],
-        "summary": "Gets the current cost for a specific operation.",
-        "parameters": [
-          {
-            "name": "providerId",
-            "in": "query",
-            "description": "The provider ID",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "operationType",
-            "in": "query",
-            "description": "The operation type",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "model",
-            "in": "query",
-            "description": "The model name (optional)",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Returns the current cost",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioCostDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioCostDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioCostDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "If no cost is found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/audio/usage": {
-      "get": {
-        "tags": [
-          "AudioConfiguration"
-        ],
-        "summary": "Gets audio usage logs with pagination and filtering.",
-        "parameters": [
-          {
-            "name": "VirtualKey",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "ProviderId",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "OperationType",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "StartDate",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          },
-          {
-            "name": "EndDate",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          },
-          {
-            "name": "Page",
-            "in": "query",
-            "schema": {
-              "maximum": 2147483647,
-              "minimum": 1,
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "PageSize",
-            "in": "query",
-            "schema": {
-              "maximum": 1000,
-              "minimum": 1,
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "OnlyErrors",
-            "in": "query",
-            "schema": {
-              "type": "boolean"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Returns paginated usage logs",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.Audio.AudioUsageDto, ConduitLLM.Configuration, Version=0.1.3.0, Culture=neutral, PublicKeyToken=null]]"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.Audio.AudioUsageDto, ConduitLLM.Configuration, Version=0.1.3.0, Culture=neutral, PublicKeyToken=null]]"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.Audio.AudioUsageDto, ConduitLLM.Configuration, Version=0.1.3.0, Culture=neutral, PublicKeyToken=null]]"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/audio/usage/summary": {
-      "get": {
-        "tags": [
-          "AudioConfiguration"
-        ],
-        "summary": "Gets audio usage summary statistics.",
-        "parameters": [
-          {
-            "name": "startDate",
-            "in": "query",
-            "description": "Start date for the summary",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          },
-          {
-            "name": "endDate",
-            "in": "query",
-            "description": "End date for the summary",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          },
-          {
-            "name": "virtualKey",
-            "in": "query",
-            "description": "Filter by virtual key (optional)",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "providerId",
-            "in": "query",
-            "description": "Filter by provider ID (optional)",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Returns usage summary",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioUsageSummaryDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioUsageSummaryDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioUsageSummaryDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/audio/usage/by-key/{virtualKey}": {
-      "get": {
-        "tags": [
-          "AudioConfiguration"
-        ],
-        "summary": "Gets audio usage by virtual key.",
-        "parameters": [
-          {
-            "name": "virtualKey",
-            "in": "path",
-            "description": "The virtual key",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "startDate",
-            "in": "query",
-            "description": "Start date (optional)",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          },
-          {
-            "name": "endDate",
-            "in": "query",
-            "description": "End date (optional)",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Returns usage data for the key",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioKeyUsageDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioKeyUsageDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioKeyUsageDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/audio/usage/by-provider/{providerId}": {
-      "get": {
-        "tags": [
-          "AudioConfiguration"
-        ],
-        "summary": "Gets audio usage by provider.",
-        "parameters": [
-          {
-            "name": "providerId",
-            "in": "path",
-            "description": "The provider ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          },
-          {
-            "name": "startDate",
-            "in": "query",
-            "description": "Start date (optional)",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          },
-          {
-            "name": "endDate",
-            "in": "query",
-            "description": "End date (optional)",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Returns usage data for the provider",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioProviderUsageDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioProviderUsageDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioProviderUsageDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/audio/sessions/metrics": {
-      "get": {
-        "tags": [
-          "AudioConfiguration"
-        ],
-        "summary": "Gets real-time session metrics.",
-        "responses": {
-          "200": {
-            "description": "Returns session metrics",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.RealtimeSessionMetricsDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.RealtimeSessionMetricsDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.RealtimeSessionMetricsDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/audio/sessions": {
-      "get": {
-        "tags": [
-          "AudioConfiguration"
-        ],
-        "summary": "Gets active real-time sessions.",
-        "responses": {
-          "200": {
-            "description": "Returns list of active sessions",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.RealtimeSessionDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.RealtimeSessionDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.RealtimeSessionDto"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/audio/sessions/{sessionId}": {
-      "get": {
-        "tags": [
-          "AudioConfiguration"
-        ],
-        "summary": "Gets details of a specific real-time session.",
-        "parameters": [
-          {
-            "name": "sessionId",
-            "in": "path",
-            "description": "The session ID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Returns session details",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.RealtimeSessionDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.RealtimeSessionDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.RealtimeSessionDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "If the session is not found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "AudioConfiguration"
-        ],
-        "summary": "Terminates an active real-time session.",
-        "parameters": [
-          {
-            "name": "sessionId",
-            "in": "path",
-            "description": "The session ID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "If the session was terminated"
-          },
-          "404": {
-            "description": "If the session is not found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/admin/auth/ephemeral-master-key": {
       "post": {
         "tags": [
@@ -2419,6 +1080,375 @@
           "BatchSpending"
         ],
         "summary": "Gets operational information about the batch spending flush capability.\n\nThis endpoint provides documentation and operational guidance for administrators\nwithout exposing internal Core API details.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit/billing/query": {
+      "post": {
+        "tags": [
+          "BillingAudit"
+        ],
+        "summary": "Query billing audit events with filtering and pagination",
+        "requestBody": {
+          "description": "Query parameters",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.DTOs.BillingAuditQueryRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.DTOs.BillingAuditQueryRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.DTOs.BillingAuditQueryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.DTOs.BillingAuditResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.DTOs.BillingAuditResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.DTOs.BillingAuditResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit/billing/summary": {
+      "get": {
+        "tags": [
+          "BillingAudit"
+        ],
+        "summary": "Get summary statistics for billing audit events",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Start date",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "End date",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "virtualKeyId",
+            "in": "query",
+            "description": "Optional virtual key ID filter",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Interfaces.BillingAuditSummary"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Interfaces.BillingAuditSummary"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.Interfaces.BillingAuditSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit/billing/anomalies": {
+      "get": {
+        "tags": [
+          "BillingAudit"
+        ],
+        "summary": "Detect anomalies in billing patterns",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Start date",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "End date",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Interfaces.BillingAnomaly"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Interfaces.BillingAnomaly"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.Interfaces.BillingAnomaly"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit/billing/revenue-loss": {
+      "get": {
+        "tags": [
+          "BillingAudit"
+        ],
+        "summary": "Get potential revenue loss from billing failures",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Start date",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "End date",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit/billing/export": {
+      "post": {
+        "tags": [
+          "BillingAudit"
+        ],
+        "summary": "Export billing audit events in various formats",
+        "requestBody": {
+          "description": "Export parameters",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.DTOs.BillingAuditExportRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.DTOs.BillingAuditExportRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.DTOs.BillingAuditExportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit/billing/event-types": {
+      "get": {
+        "tags": [
+          "BillingAudit"
+        ],
+        "summary": "Get distinct event types",
         "responses": {
           "200": {
             "description": "OK",
@@ -4082,6 +3112,464 @@
         }
       }
     },
+    "/api/admin/media-retention/policies": {
+      "get": {
+        "tags": [
+          "MediaRetention"
+        ],
+        "summary": "Get all media retention policies.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.MediaRetentionPolicyDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.MediaRetentionPolicyDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.MediaRetentionPolicyDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "MediaRetention"
+        ],
+        "summary": "Create a new media retention policy.",
+        "requestBody": {
+          "description": "Policy creation request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CreateMediaRetentionPolicyRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CreateMediaRetentionPolicyRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CreateMediaRetentionPolicyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.MediaRetentionPolicyDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.MediaRetentionPolicyDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.MediaRetentionPolicyDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/media-retention/policies/{id}": {
+      "get": {
+        "tags": [
+          "MediaRetention"
+        ],
+        "summary": "Get a specific media retention policy by ID.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Policy ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.MediaRetentionPolicyDetailDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.MediaRetentionPolicyDetailDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.MediaRetentionPolicyDetailDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "MediaRetention"
+        ],
+        "summary": "Update an existing media retention policy.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Policy ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Policy update request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateMediaRetentionPolicyRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateMediaRetentionPolicyRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.UpdateMediaRetentionPolicyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.MediaRetentionPolicyDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.MediaRetentionPolicyDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.MediaRetentionPolicyDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "MediaRetention"
+        ],
+        "summary": "Delete a media retention policy.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Policy ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/media-retention/assign/{groupId}/{policyId}": {
+      "post": {
+        "tags": [
+          "MediaRetention"
+        ],
+        "summary": "Assign a retention policy to a virtual key group.",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "description": "Virtual key group ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "policyId",
+            "in": "path",
+            "description": "Retention policy ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/media-retention/cleanup/{groupId}": {
+      "post": {
+        "tags": [
+          "MediaRetention"
+        ],
+        "summary": "Trigger a manual media cleanup for a specific virtual key group.",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "description": "Virtual key group ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "dryRun",
+            "in": "query",
+            "description": "Whether to perform a dry run (default: true)",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CleanupResultDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CleanupResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.CleanupResultDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/metrics/database/pool": {
       "get": {
         "tags": [
@@ -4661,6 +4149,357 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/Model/{id}/provider-mappings": {
+      "get": {
+        "tags": [
+          "Model"
+        ],
+        "summary": "Gets all provider mappings for a specific model",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The model ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Model"
+        ],
+        "summary": "Creates a new provider mapping for a specific model",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The model ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The provider mapping to create",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/Model/{id}/provider-mappings/{mappingId}": {
+      "put": {
+        "tags": [
+          "Model"
+        ],
+        "summary": "Updates a provider mapping for a specific model",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The model ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "mappingId",
+            "in": "path",
+            "description": "The mapping ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The updated provider mapping data",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ModelProviderMappingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Model"
+        ],
+        "summary": "Deletes a provider mapping for a specific model",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The model ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "mappingId",
+            "in": "path",
+            "description": "The mapping ID to delete",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
           },
           "404": {
             "description": "Not Found",
@@ -6273,26 +6112,6 @@
           }
         },
         "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.BulkImportResult"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.BulkImportResult"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.BulkImportResult"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Bad Request",
             "content": {
@@ -6347,26 +6166,6 @@
           }
         },
         "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.BulkImportResult"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.BulkImportResult"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Admin.Interfaces.BulkImportResult"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Bad Request",
             "content": {
@@ -9022,670 +8821,6 @@
         }
       }
     },
-    "/api/Router/config": {
-      "get": {
-        "tags": [
-          "Router"
-        ],
-        "summary": "Gets the current router configuration",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Core.Models.Routing.RouterConfig"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Core.Models.Routing.RouterConfig"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Core.Models.Routing.RouterConfig"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "Router"
-        ],
-        "summary": "Updates the router configuration",
-        "requestBody": {
-          "description": "The new router configuration",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Core.Models.Routing.RouterConfig"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Core.Models.Routing.RouterConfig"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Core.Models.Routing.RouterConfig"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/Router/deployments": {
-      "get": {
-        "tags": [
-          "Router"
-        ],
-        "summary": "Gets all model deployments",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Core.Models.Routing.ModelDeployment"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Core.Models.Routing.ModelDeployment"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ConduitLLM.Core.Models.Routing.ModelDeployment"
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Router"
-        ],
-        "summary": "Creates or updates a model deployment",
-        "requestBody": {
-          "description": "The deployment to save",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Core.Models.Routing.ModelDeployment"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Core.Models.Routing.ModelDeployment"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConduitLLM.Core.Models.Routing.ModelDeployment"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/Router/deployments/{deploymentName}": {
-      "get": {
-        "tags": [
-          "Router"
-        ],
-        "summary": "Gets a specific model deployment",
-        "parameters": [
-          {
-            "name": "deploymentName",
-            "in": "path",
-            "description": "The name of the deployment",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Core.Models.Routing.ModelDeployment"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Core.Models.Routing.ModelDeployment"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConduitLLM.Core.Models.Routing.ModelDeployment"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Router"
-        ],
-        "summary": "Deletes a model deployment",
-        "parameters": [
-          {
-            "name": "deploymentName",
-            "in": "path",
-            "description": "The name of the deployment to delete",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/Router/fallbacks": {
-      "get": {
-        "tags": [
-          "Router"
-        ],
-        "summary": "Gets all fallback configurations",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/Router/fallbacks/{primaryModel}": {
-      "post": {
-        "tags": [
-          "Router"
-        ],
-        "summary": "Sets a fallback configuration",
-        "parameters": [
-          {
-            "name": "primaryModel",
-            "in": "path",
-            "description": "The primary model",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "description": "The fallback models",
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              }
-            },
-            "text/json": {
-              "schema": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Router"
-        ],
-        "summary": "Removes a fallback configuration",
-        "parameters": [
-          {
-            "name": "primaryModel",
-            "in": "path",
-            "description": "The primary model",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Microsoft.AspNetCore.Mvc.ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
     "/api/security/events": {
       "get": {
         "tags": [
@@ -11152,6 +10287,47 @@
         "additionalProperties": false,
         "description": "Result of a bulk mapping operation"
       },
+      "ConduitLLM.Admin.Controllers.CleanupResultDto": {
+        "type": "object",
+        "properties": {
+          "virtualKeyGroupId": {
+            "type": "integer",
+            "description": "Gets or sets the ID of the virtual key group that was cleaned up.",
+            "format": "int32"
+          },
+          "dryRun": {
+            "type": "boolean",
+            "description": "Gets or sets a value indicating whether this was a dry run (no actual deletions)."
+          },
+          "mediaRecordsEvaluated": {
+            "type": "integer",
+            "description": "Gets or sets the total number of media records evaluated during cleanup.",
+            "format": "int32"
+          },
+          "mediaRecordsMarkedForDeletion": {
+            "type": "integer",
+            "description": "Gets or sets the number of media records marked for deletion.",
+            "format": "int32"
+          },
+          "mediaRecordsDeleted": {
+            "type": "integer",
+            "description": "Gets or sets the number of media records actually deleted.",
+            "format": "int32"
+          },
+          "storageBytesFreed": {
+            "type": "integer",
+            "description": "Gets or sets the total amount of storage space freed in bytes.",
+            "format": "int64"
+          },
+          "message": {
+            "type": "string",
+            "description": "Gets or sets an informational message about the cleanup operation.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Represents the result of a media cleanup operation."
+      },
       "ConduitLLM.Admin.Controllers.CreateKeyRequest": {
         "type": "object",
         "properties": {
@@ -11193,6 +10369,72 @@
         "additionalProperties": false,
         "description": "Request model for creating a key credential"
       },
+      "ConduitLLM.Admin.Controllers.CreateMediaRetentionPolicyRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Gets or sets the name of the retention policy.",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "description": "Gets or sets the description of the retention policy.",
+            "nullable": true
+          },
+          "positiveBalanceRetentionDays": {
+            "type": "integer",
+            "description": "Gets or sets the retention period in days for media when balance is positive.",
+            "format": "int32"
+          },
+          "zeroBalanceRetentionDays": {
+            "type": "integer",
+            "description": "Gets or sets the retention period in days for media when balance is zero.",
+            "format": "int32"
+          },
+          "negativeBalanceRetentionDays": {
+            "type": "integer",
+            "description": "Gets or sets the retention period in days for media when balance is negative.",
+            "format": "int32"
+          },
+          "softDeleteGracePeriodDays": {
+            "type": "integer",
+            "description": "Gets or sets the grace period in days before permanently deleting soft-deleted media.",
+            "format": "int32"
+          },
+          "respectRecentAccess": {
+            "type": "boolean",
+            "description": "Gets or sets a value indicating whether to respect recent access when determining retention."
+          },
+          "recentAccessWindowDays": {
+            "type": "integer",
+            "description": "Gets or sets the window in days for considering recent access.",
+            "format": "int32"
+          },
+          "isProTier": {
+            "type": "boolean",
+            "description": "Gets or sets a value indicating whether this is a pro tier policy."
+          },
+          "isDefault": {
+            "type": "boolean",
+            "description": "Gets or sets a value indicating whether this is the default policy."
+          },
+          "maxStorageSizeBytes": {
+            "type": "integer",
+            "description": "Gets or sets the maximum storage size in bytes allowed for this policy.",
+            "format": "int64",
+            "nullable": true
+          },
+          "maxFileCount": {
+            "type": "integer",
+            "description": "Gets or sets the maximum number of files allowed for this policy.",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request model for creating a new media retention policy."
+      },
       "ConduitLLM.Admin.Controllers.CreateProviderRequest": {
         "type": "object",
         "properties": {
@@ -11216,6 +10458,194 @@
         },
         "additionalProperties": false,
         "description": "Request model for creating a provider"
+      },
+      "ConduitLLM.Admin.Controllers.MediaRetentionPolicyDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Gets or sets the unique identifier of the retention policy.",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Gets or sets the name of the retention policy.",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "description": "Gets or sets the description of the retention policy.",
+            "nullable": true
+          },
+          "positiveBalanceRetentionDays": {
+            "type": "integer",
+            "description": "Gets or sets the retention period in days for media when balance is positive.",
+            "format": "int32"
+          },
+          "zeroBalanceRetentionDays": {
+            "type": "integer",
+            "description": "Gets or sets the retention period in days for media when balance is zero.",
+            "format": "int32"
+          },
+          "negativeBalanceRetentionDays": {
+            "type": "integer",
+            "description": "Gets or sets the retention period in days for media when balance is negative.",
+            "format": "int32"
+          },
+          "softDeleteGracePeriodDays": {
+            "type": "integer",
+            "description": "Gets or sets the grace period in days before permanently deleting soft-deleted media.",
+            "format": "int32"
+          },
+          "respectRecentAccess": {
+            "type": "boolean",
+            "description": "Gets or sets a value indicating whether to respect recent access when determining retention."
+          },
+          "recentAccessWindowDays": {
+            "type": "integer",
+            "description": "Gets or sets the window in days for considering recent access.",
+            "format": "int32"
+          },
+          "isProTier": {
+            "type": "boolean",
+            "description": "Gets or sets a value indicating whether this is a pro tier policy."
+          },
+          "isDefault": {
+            "type": "boolean",
+            "description": "Gets or sets a value indicating whether this is the default policy."
+          },
+          "maxStorageSizeBytes": {
+            "type": "integer",
+            "description": "Gets or sets the maximum storage size in bytes allowed for this policy.",
+            "format": "int64",
+            "nullable": true
+          },
+          "maxFileCount": {
+            "type": "integer",
+            "description": "Gets or sets the maximum number of files allowed for this policy.",
+            "format": "int32",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Gets or sets a value indicating whether this policy is active."
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Gets or sets the date and time when the policy was created.",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Gets or sets the date and time when the policy was last updated.",
+            "format": "date-time"
+          },
+          "virtualKeyGroupCount": {
+            "type": "integer",
+            "description": "Gets or sets the count of virtual key groups using this policy.",
+            "format": "int32"
+          },
+          "virtualKeyGroups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConduitLLM.Admin.Controllers.VirtualKeyGroupSummaryDto"
+            },
+            "description": "Gets or sets the list of virtual key groups associated with this policy.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Extended DTO for media retention policy with additional details."
+      },
+      "ConduitLLM.Admin.Controllers.MediaRetentionPolicyDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Gets or sets the unique identifier of the retention policy.",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "description": "Gets or sets the name of the retention policy.",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "description": "Gets or sets the description of the retention policy.",
+            "nullable": true
+          },
+          "positiveBalanceRetentionDays": {
+            "type": "integer",
+            "description": "Gets or sets the retention period in days for media when balance is positive.",
+            "format": "int32"
+          },
+          "zeroBalanceRetentionDays": {
+            "type": "integer",
+            "description": "Gets or sets the retention period in days for media when balance is zero.",
+            "format": "int32"
+          },
+          "negativeBalanceRetentionDays": {
+            "type": "integer",
+            "description": "Gets or sets the retention period in days for media when balance is negative.",
+            "format": "int32"
+          },
+          "softDeleteGracePeriodDays": {
+            "type": "integer",
+            "description": "Gets or sets the grace period in days before permanently deleting soft-deleted media.",
+            "format": "int32"
+          },
+          "respectRecentAccess": {
+            "type": "boolean",
+            "description": "Gets or sets a value indicating whether to respect recent access when determining retention."
+          },
+          "recentAccessWindowDays": {
+            "type": "integer",
+            "description": "Gets or sets the window in days for considering recent access.",
+            "format": "int32"
+          },
+          "isProTier": {
+            "type": "boolean",
+            "description": "Gets or sets a value indicating whether this is a pro tier policy."
+          },
+          "isDefault": {
+            "type": "boolean",
+            "description": "Gets or sets a value indicating whether this is the default policy."
+          },
+          "maxStorageSizeBytes": {
+            "type": "integer",
+            "description": "Gets or sets the maximum storage size in bytes allowed for this policy.",
+            "format": "int64",
+            "nullable": true
+          },
+          "maxFileCount": {
+            "type": "integer",
+            "description": "Gets or sets the maximum number of files allowed for this policy.",
+            "format": "int32",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Gets or sets a value indicating whether this policy is active."
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Gets or sets the date and time when the policy was created.",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Gets or sets the date and time when the policy was last updated.",
+            "format": "date-time"
+          },
+          "virtualKeyGroupCount": {
+            "type": "integer",
+            "description": "Gets or sets the count of virtual key groups using this policy.",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Data transfer object for media retention policy information."
       },
       "ConduitLLM.Admin.Controllers.PruneMediaRequest": {
         "type": "object",
@@ -11298,6 +10728,85 @@
         "additionalProperties": false,
         "description": "Request model for updating a key credential"
       },
+      "ConduitLLM.Admin.Controllers.UpdateMediaRetentionPolicyRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Gets or sets the name of the retention policy.",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "description": "Gets or sets the description of the retention policy.",
+            "nullable": true
+          },
+          "positiveBalanceRetentionDays": {
+            "type": "integer",
+            "description": "Gets or sets the retention period in days for media when balance is positive.",
+            "format": "int32",
+            "nullable": true
+          },
+          "zeroBalanceRetentionDays": {
+            "type": "integer",
+            "description": "Gets or sets the retention period in days for media when balance is zero.",
+            "format": "int32",
+            "nullable": true
+          },
+          "negativeBalanceRetentionDays": {
+            "type": "integer",
+            "description": "Gets or sets the retention period in days for media when balance is negative.",
+            "format": "int32",
+            "nullable": true
+          },
+          "softDeleteGracePeriodDays": {
+            "type": "integer",
+            "description": "Gets or sets the grace period in days before permanently deleting soft-deleted media.",
+            "format": "int32",
+            "nullable": true
+          },
+          "respectRecentAccess": {
+            "type": "boolean",
+            "description": "Gets or sets a value indicating whether to respect recent access when determining retention.",
+            "nullable": true
+          },
+          "recentAccessWindowDays": {
+            "type": "integer",
+            "description": "Gets or sets the window in days for considering recent access.",
+            "format": "int32",
+            "nullable": true
+          },
+          "isProTier": {
+            "type": "boolean",
+            "description": "Gets or sets a value indicating whether this is a pro tier policy.",
+            "nullable": true
+          },
+          "isDefault": {
+            "type": "boolean",
+            "description": "Gets or sets a value indicating whether this is the default policy.",
+            "nullable": true
+          },
+          "maxStorageSizeBytes": {
+            "type": "integer",
+            "description": "Gets or sets the maximum storage size in bytes allowed for this policy.",
+            "format": "int64",
+            "nullable": true
+          },
+          "maxFileCount": {
+            "type": "integer",
+            "description": "Gets or sets the maximum number of files allowed for this policy.",
+            "format": "int32",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Gets or sets a value indicating whether this policy is active.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request model for updating an existing media retention policy."
+      },
       "ConduitLLM.Admin.Controllers.UpdateProviderRequest": {
         "type": "object",
         "properties": {
@@ -11318,6 +10827,212 @@
         },
         "additionalProperties": false,
         "description": "Request model for updating a provider"
+      },
+      "ConduitLLM.Admin.Controllers.VirtualKeyGroupSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Gets or sets the virtual key group identifier.",
+            "format": "int32"
+          },
+          "balance": {
+            "type": "number",
+            "description": "Gets or sets the current balance of the virtual key group.",
+            "format": "double"
+          },
+          "virtualKeyCount": {
+            "type": "integer",
+            "description": "Gets or sets the count of virtual keys in the group.",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Summary information for a virtual key group."
+      },
+      "ConduitLLM.Admin.DTOs.BillingAuditEventDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the audit event",
+            "format": "uuid"
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "Timestamp when the event occurred",
+            "format": "date-time"
+          },
+          "eventType": {
+            "type": "string",
+            "description": "Type of billing event",
+            "nullable": true
+          },
+          "virtualKeyId": {
+            "type": "integer",
+            "description": "Virtual key ID if applicable",
+            "format": "int32",
+            "nullable": true
+          },
+          "virtualKeyName": {
+            "type": "string",
+            "description": "Virtual key name for display",
+            "nullable": true
+          },
+          "model": {
+            "type": "string",
+            "description": "Model name",
+            "nullable": true
+          },
+          "requestId": {
+            "type": "string",
+            "description": "Request identifier",
+            "nullable": true
+          },
+          "calculatedCost": {
+            "type": "number",
+            "description": "Calculated cost",
+            "format": "double",
+            "nullable": true
+          },
+          "failureReason": {
+            "type": "string",
+            "description": "Failure reason if applicable",
+            "nullable": true
+          },
+          "providerType": {
+            "type": "string",
+            "description": "Provider type",
+            "nullable": true
+          },
+          "httpStatusCode": {
+            "type": "integer",
+            "description": "HTTP status code",
+            "format": "int32",
+            "nullable": true
+          },
+          "requestPath": {
+            "type": "string",
+            "description": "Request path",
+            "nullable": true
+          },
+          "isEstimated": {
+            "type": "boolean",
+            "description": "Whether cost was estimated"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/ConduitLLM.Admin.DTOs.UsageDto"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": { },
+            "description": "Additional metadata",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "DTO for billing audit event"
+      },
+      "ConduitLLM.Admin.DTOs.BillingAuditExportRequest": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "description": "Start date for export",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "description": "End date for export",
+            "format": "date-time"
+          },
+          "format": {
+            "$ref": "#/components/schemas/ConduitLLM.Admin.DTOs.ExportFormat"
+          },
+          "virtualKeyId": {
+            "type": "integer",
+            "description": "Optional virtual key ID filter",
+            "format": "int32",
+            "nullable": true
+          },
+          "eventType": {
+            "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.BillingAuditEventType"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request DTO for exporting audit events"
+      },
+      "ConduitLLM.Admin.DTOs.BillingAuditQueryRequest": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "description": "Start date for the query (inclusive)",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "description": "End date for the query (inclusive)",
+            "format": "date-time"
+          },
+          "eventType": {
+            "$ref": "#/components/schemas/ConduitLLM.Configuration.Entities.BillingAuditEventType"
+          },
+          "virtualKeyId": {
+            "type": "integer",
+            "description": "Optional virtual key ID filter",
+            "format": "int32",
+            "nullable": true
+          },
+          "pageNumber": {
+            "type": "integer",
+            "description": "Page number (1-based)",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "description": "Page size (max 1000)",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Request DTO for querying billing audit events"
+      },
+      "ConduitLLM.Admin.DTOs.BillingAuditResponse": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConduitLLM.Admin.DTOs.BillingAuditEventDto"
+            },
+            "description": "List of audit events",
+            "nullable": true
+          },
+          "totalCount": {
+            "type": "integer",
+            "description": "Total count of matching events",
+            "format": "int32"
+          },
+          "pageNumber": {
+            "type": "integer",
+            "description": "Current page number",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "description": "Page size",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "description": "Total pages available",
+            "format": "int32",
+            "readOnly": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Response DTO for billing audit event queries"
       },
       "ConduitLLM.Admin.DTOs.ClearErrorsRequest": {
         "type": "object",
@@ -11393,6 +11108,16 @@
         },
         "additionalProperties": false,
         "description": "DTO for error statistics"
+      },
+      "ConduitLLM.Admin.DTOs.ExportFormat": {
+        "enum": [
+          1,
+          2,
+          3
+        ],
+        "type": "integer",
+        "description": "Export format options",
+        "format": "int32"
       },
       "ConduitLLM.Admin.DTOs.FatalErrorDto": {
         "type": "object",
@@ -11580,6 +11305,37 @@
         "additionalProperties": false,
         "description": "DTO for provider-level error summary"
       },
+      "ConduitLLM.Admin.DTOs.UsageDto": {
+        "type": "object",
+        "properties": {
+          "promptTokens": {
+            "type": "integer",
+            "description": "Prompt/input tokens",
+            "format": "int32",
+            "nullable": true
+          },
+          "completionTokens": {
+            "type": "integer",
+            "description": "Completion/output tokens",
+            "format": "int32",
+            "nullable": true
+          },
+          "totalTokens": {
+            "type": "integer",
+            "description": "Total tokens",
+            "format": "int32",
+            "nullable": true
+          },
+          "imageCount": {
+            "type": "integer",
+            "description": "Image count for image generation",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "DTO for usage data"
+      },
       "ConduitLLM.Admin.DTOs.WarningErrorDto": {
         "type": "object",
         "properties": {
@@ -11675,61 +11431,6 @@
         },
         "additionalProperties": false,
         "description": "Combined analytics summary DTO"
-      },
-      "ConduitLLM.Admin.Interfaces.AudioProviderTestResult": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "description": "Whether the test was successful."
-          },
-          "message": {
-            "type": "string",
-            "description": "Test message or error description.",
-            "nullable": true
-          },
-          "responseTimeMs": {
-            "type": "integer",
-            "description": "Response time in milliseconds.",
-            "format": "int32",
-            "nullable": true
-          },
-          "capabilities": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "boolean"
-            },
-            "description": "Provider capabilities detected.",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false,
-        "description": "Result of audio provider connectivity test."
-      },
-      "ConduitLLM.Admin.Interfaces.BulkImportResult": {
-        "type": "object",
-        "properties": {
-          "successCount": {
-            "type": "integer",
-            "description": "Number of costs successfully imported.",
-            "format": "int32"
-          },
-          "failureCount": {
-            "type": "integer",
-            "description": "Number of costs that failed to import.",
-            "format": "int32"
-          },
-          "errors": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Error messages for failed imports.",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false,
-        "description": "Result of bulk cost import operation."
       },
       "ConduitLLM.Admin.Interfaces.DailyStatistics": {
         "type": "object",
@@ -12055,18 +11756,6 @@
             "type": "boolean",
             "description": "Gets or sets whether the model supports streaming responses."
           },
-          "supportsAudioTranscription": {
-            "type": "boolean",
-            "description": "Gets or sets whether the model supports audio transcription (speech-to-text)."
-          },
-          "supportsTextToSpeech": {
-            "type": "boolean",
-            "description": "Gets or sets whether the model supports text-to-speech synthesis."
-          },
-          "supportsRealtimeAudio": {
-            "type": "boolean",
-            "description": "Gets or sets whether the model supports real-time audio interactions."
-          },
           "supportsImageGeneration": {
             "type": "boolean",
             "description": "Gets or sets whether the model supports image generation."
@@ -12091,21 +11780,6 @@
           },
           "tokenizerType": {
             "$ref": "#/components/schemas/TokenizerType"
-          },
-          "supportedVoices": {
-            "type": "string",
-            "description": "Gets or sets the comma-separated list of supported voice IDs for TTS models.",
-            "nullable": true
-          },
-          "supportedLanguages": {
-            "type": "string",
-            "description": "Gets or sets the comma-separated list of supported languages.",
-            "nullable": true
-          },
-          "supportedFormats": {
-            "type": "string",
-            "description": "Gets or sets the comma-separated list of supported input/output formats.",
-            "nullable": true
           }
         },
         "additionalProperties": false,
@@ -12156,18 +11830,6 @@
             "type": "boolean",
             "description": "Gets or sets whether models support streaming responses."
           },
-          "supportsAudioTranscription": {
-            "type": "boolean",
-            "description": "Gets or sets whether models support audio transcription."
-          },
-          "supportsTextToSpeech": {
-            "type": "boolean",
-            "description": "Gets or sets whether models support text-to-speech synthesis."
-          },
-          "supportsRealtimeAudio": {
-            "type": "boolean",
-            "description": "Gets or sets whether models support real-time audio interactions."
-          },
           "supportsImageGeneration": {
             "type": "boolean",
             "description": "Gets or sets whether models support image generation."
@@ -12192,21 +11854,6 @@
           },
           "tokenizerType": {
             "$ref": "#/components/schemas/TokenizerType"
-          },
-          "supportedVoices": {
-            "type": "string",
-            "description": "Gets or sets the comma-separated list of supported voices for TTS.",
-            "nullable": true
-          },
-          "supportedLanguages": {
-            "type": "string",
-            "description": "Gets or sets the comma-separated list of supported languages.",
-            "nullable": true
-          },
-          "supportedFormats": {
-            "type": "string",
-            "description": "Gets or sets the comma-separated list of supported formats.",
-            "nullable": true
           }
         },
         "additionalProperties": false,
@@ -12236,18 +11883,6 @@
             "type": "boolean",
             "description": "Gets or sets whether the model supports streaming responses."
           },
-          "supportsAudioTranscription": {
-            "type": "boolean",
-            "description": "Gets or sets whether the model supports audio transcription (speech-to-text)."
-          },
-          "supportsTextToSpeech": {
-            "type": "boolean",
-            "description": "Gets or sets whether the model supports text-to-speech synthesis."
-          },
-          "supportsRealtimeAudio": {
-            "type": "boolean",
-            "description": "Gets or sets whether the model supports real-time audio interactions."
-          },
           "supportsImageGeneration": {
             "type": "boolean",
             "description": "Gets or sets whether the model supports image generation."
@@ -12272,21 +11907,6 @@
           },
           "tokenizerType": {
             "$ref": "#/components/schemas/TokenizerType"
-          },
-          "supportedVoices": {
-            "type": "string",
-            "description": "Gets or sets the comma-separated list of supported voice IDs for TTS models.",
-            "nullable": true
-          },
-          "supportedLanguages": {
-            "type": "string",
-            "description": "Gets or sets the comma-separated list of supported languages.",
-            "nullable": true
-          },
-          "supportedFormats": {
-            "type": "string",
-            "description": "Gets or sets the comma-separated list of supported input/output formats.",
-            "nullable": true
           }
         },
         "additionalProperties": false,
@@ -12320,21 +11940,6 @@
             "description": "Gets or sets the new streaming support, or null to keep existing.",
             "nullable": true
           },
-          "supportsAudioTranscription": {
-            "type": "boolean",
-            "description": "Gets or sets the new audio transcription support, or null to keep existing.",
-            "nullable": true
-          },
-          "supportsTextToSpeech": {
-            "type": "boolean",
-            "description": "Gets or sets the new TTS support, or null to keep existing.",
-            "nullable": true
-          },
-          "supportsRealtimeAudio": {
-            "type": "boolean",
-            "description": "Gets or sets the new real-time audio support, or null to keep existing.",
-            "nullable": true
-          },
           "supportsImageGeneration": {
             "type": "boolean",
             "description": "Gets or sets the new image generation support, or null to keep existing.",
@@ -12364,21 +11969,6 @@
           },
           "tokenizerType": {
             "$ref": "#/components/schemas/TokenizerType"
-          },
-          "supportedVoices": {
-            "type": "string",
-            "description": "Gets or sets the new supported voices list, or null to keep existing.",
-            "nullable": true
-          },
-          "supportedLanguages": {
-            "type": "string",
-            "description": "Gets or sets the new supported languages list, or null to keep existing.",
-            "nullable": true
-          },
-          "supportedFormats": {
-            "type": "string",
-            "description": "Gets or sets the new supported formats list, or null to keep existing.",
-            "nullable": true
           }
         },
         "additionalProperties": false,
@@ -12691,809 +12281,6 @@
         },
         "additionalProperties": false,
         "description": "Data transfer object for updating an existing AI model in the system."
-      },
-      "ConduitLLM.Configuration.DTOs.Audio.AudioCostDto": {
-        "required": [
-          "costUnit",
-          "operationType",
-          "providerId"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "providerId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "providerName": {
-            "type": "string",
-            "nullable": true
-          },
-          "operationType": {
-            "maxLength": 50,
-            "minLength": 1,
-            "type": "string"
-          },
-          "model": {
-            "maxLength": 100,
-            "type": "string",
-            "nullable": true
-          },
-          "costUnit": {
-            "maxLength": 50,
-            "minLength": 1,
-            "type": "string"
-          },
-          "costPerUnit": {
-            "type": "number",
-            "format": "double"
-          },
-          "minimumCharge": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "additionalFactors": {
-            "type": "string",
-            "nullable": true
-          },
-          "isActive": {
-            "type": "boolean"
-          },
-          "effectiveFrom": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "effectiveTo": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.Audio.AudioKeyUsageDto": {
-        "type": "object",
-        "properties": {
-          "virtualKey": {
-            "type": "string",
-            "nullable": true
-          },
-          "keyName": {
-            "type": "string",
-            "nullable": true
-          },
-          "totalOperations": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "totalCost": {
-            "type": "number",
-            "format": "double"
-          },
-          "totalDurationSeconds": {
-            "type": "number",
-            "format": "double"
-          },
-          "lastUsed": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "successRate": {
-            "type": "number",
-            "format": "double"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.Audio.AudioProviderConfigDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "providerId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "providerType": {
-            "$ref": "#/components/schemas/ConduitLLM.Configuration.ProviderType"
-          },
-          "transcriptionEnabled": {
-            "type": "boolean"
-          },
-          "defaultTranscriptionModel": {
-            "maxLength": 100,
-            "type": "string",
-            "nullable": true
-          },
-          "textToSpeechEnabled": {
-            "type": "boolean"
-          },
-          "defaultTTSModel": {
-            "maxLength": 100,
-            "type": "string",
-            "nullable": true
-          },
-          "defaultTTSVoice": {
-            "maxLength": 100,
-            "type": "string",
-            "nullable": true
-          },
-          "realtimeEnabled": {
-            "type": "boolean"
-          },
-          "defaultRealtimeModel": {
-            "maxLength": 100,
-            "type": "string",
-            "nullable": true
-          },
-          "realtimeEndpoint": {
-            "maxLength": 500,
-            "type": "string",
-            "nullable": true
-          },
-          "customSettings": {
-            "type": "string",
-            "nullable": true
-          },
-          "routingPriority": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.Audio.AudioProviderUsageDto": {
-        "type": "object",
-        "properties": {
-          "providerId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "providerName": {
-            "type": "string",
-            "nullable": true
-          },
-          "totalOperations": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "transcriptionCount": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "textToSpeechCount": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "realtimeSessionCount": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "totalCost": {
-            "type": "number",
-            "format": "double"
-          },
-          "averageResponseTime": {
-            "type": "number",
-            "format": "double"
-          },
-          "successRate": {
-            "type": "number",
-            "format": "double"
-          },
-          "mostUsedModel": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.Audio.AudioUsageDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "virtualKey": {
-            "type": "string",
-            "nullable": true
-          },
-          "providerId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "operationType": {
-            "type": "string",
-            "nullable": true
-          },
-          "model": {
-            "type": "string",
-            "nullable": true
-          },
-          "requestId": {
-            "type": "string",
-            "nullable": true
-          },
-          "sessionId": {
-            "type": "string",
-            "nullable": true
-          },
-          "durationSeconds": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "characterCount": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "inputTokens": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "outputTokens": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "cost": {
-            "type": "number",
-            "format": "double"
-          },
-          "language": {
-            "type": "string",
-            "nullable": true
-          },
-          "voice": {
-            "type": "string",
-            "nullable": true
-          },
-          "statusCode": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "errorMessage": {
-            "type": "string",
-            "nullable": true
-          },
-          "ipAddress": {
-            "type": "string",
-            "nullable": true
-          },
-          "userAgent": {
-            "type": "string",
-            "nullable": true
-          },
-          "metadata": {
-            "type": "string",
-            "nullable": true
-          },
-          "timestamp": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.Audio.AudioUsageSummaryDto": {
-        "type": "object",
-        "properties": {
-          "startDate": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "endDate": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "totalOperations": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "successfulOperations": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "failedOperations": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "totalCost": {
-            "type": "number",
-            "format": "double"
-          },
-          "totalDurationSeconds": {
-            "type": "number",
-            "format": "double"
-          },
-          "totalCharacters": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "totalInputTokens": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "totalOutputTokens": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "operationBreakdown": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.OperationTypeBreakdown"
-            },
-            "nullable": true
-          },
-          "providerBreakdown": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.ProviderBreakdown"
-            },
-            "nullable": true
-          },
-          "virtualKeyBreakdown": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.VirtualKeyBreakdown"
-            },
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.Audio.CreateAudioCostDto": {
-        "required": [
-          "costPerUnit",
-          "costUnit",
-          "operationType",
-          "providerId"
-        ],
-        "type": "object",
-        "properties": {
-          "providerId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "operationType": {
-            "maxLength": 50,
-            "minLength": 1,
-            "type": "string"
-          },
-          "model": {
-            "maxLength": 100,
-            "type": "string",
-            "nullable": true
-          },
-          "costUnit": {
-            "maxLength": 50,
-            "minLength": 1,
-            "type": "string"
-          },
-          "costPerUnit": {
-            "minimum": 0,
-            "type": "number",
-            "format": "double"
-          },
-          "minimumCharge": {
-            "minimum": 0,
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "additionalFactors": {
-            "type": "string",
-            "nullable": true
-          },
-          "isActive": {
-            "type": "boolean"
-          },
-          "effectiveFrom": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "effectiveTo": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.Audio.CreateAudioProviderConfigDto": {
-        "required": [
-          "providerId"
-        ],
-        "type": "object",
-        "properties": {
-          "providerId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "transcriptionEnabled": {
-            "type": "boolean"
-          },
-          "defaultTranscriptionModel": {
-            "maxLength": 100,
-            "type": "string",
-            "nullable": true
-          },
-          "textToSpeechEnabled": {
-            "type": "boolean"
-          },
-          "defaultTTSModel": {
-            "maxLength": 100,
-            "type": "string",
-            "nullable": true
-          },
-          "defaultTTSVoice": {
-            "maxLength": 100,
-            "type": "string",
-            "nullable": true
-          },
-          "realtimeEnabled": {
-            "type": "boolean"
-          },
-          "defaultRealtimeModel": {
-            "maxLength": 100,
-            "type": "string",
-            "nullable": true
-          },
-          "realtimeEndpoint": {
-            "maxLength": 500,
-            "type": "string",
-            "nullable": true
-          },
-          "customSettings": {
-            "type": "string",
-            "nullable": true
-          },
-          "routingPriority": {
-            "type": "integer",
-            "format": "int32"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.Audio.OperationTypeBreakdown": {
-        "type": "object",
-        "properties": {
-          "operationType": {
-            "type": "string",
-            "nullable": true
-          },
-          "count": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "totalCost": {
-            "type": "number",
-            "format": "double"
-          },
-          "averageCost": {
-            "type": "number",
-            "format": "double"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.Audio.ProviderBreakdown": {
-        "type": "object",
-        "properties": {
-          "providerId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "providerName": {
-            "type": "string",
-            "nullable": true
-          },
-          "count": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "totalCost": {
-            "type": "number",
-            "format": "double"
-          },
-          "successRate": {
-            "type": "number",
-            "format": "double"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.Audio.RealtimeSessionDto": {
-        "type": "object",
-        "properties": {
-          "sessionId": {
-            "type": "string",
-            "nullable": true
-          },
-          "virtualKey": {
-            "type": "string",
-            "nullable": true
-          },
-          "providerId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "providerName": {
-            "type": "string",
-            "nullable": true
-          },
-          "model": {
-            "type": "string",
-            "nullable": true
-          },
-          "state": {
-            "type": "string",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "durationSeconds": {
-            "type": "number",
-            "format": "double"
-          },
-          "inputFormat": {
-            "type": "string",
-            "nullable": true
-          },
-          "outputFormat": {
-            "type": "string",
-            "nullable": true
-          },
-          "language": {
-            "type": "string",
-            "nullable": true
-          },
-          "voice": {
-            "type": "string",
-            "nullable": true
-          },
-          "turnCount": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "inputTokens": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "outputTokens": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "estimatedCost": {
-            "type": "number",
-            "format": "double"
-          },
-          "ipAddress": {
-            "type": "string",
-            "nullable": true
-          },
-          "userAgent": {
-            "type": "string",
-            "nullable": true
-          },
-          "metadata": {
-            "type": "object",
-            "additionalProperties": { },
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.Audio.RealtimeSessionMetricsDto": {
-        "type": "object",
-        "properties": {
-          "activeSessions": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "sessionsByProvider": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "integer",
-              "format": "int32"
-            },
-            "nullable": true
-          },
-          "averageSessionDuration": {
-            "type": "number",
-            "format": "double"
-          },
-          "totalSessionTimeToday": {
-            "type": "number",
-            "format": "double"
-          },
-          "totalCostToday": {
-            "type": "number",
-            "format": "double"
-          },
-          "peakConcurrentSessions": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "peakTime": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "successRate": {
-            "type": "number",
-            "format": "double"
-          },
-          "averageTurnsPerSession": {
-            "type": "number",
-            "format": "double"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.Audio.UpdateAudioCostDto": {
-        "required": [
-          "costPerUnit",
-          "costUnit",
-          "operationType",
-          "providerId"
-        ],
-        "type": "object",
-        "properties": {
-          "providerId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "operationType": {
-            "maxLength": 50,
-            "minLength": 1,
-            "type": "string"
-          },
-          "model": {
-            "maxLength": 100,
-            "type": "string",
-            "nullable": true
-          },
-          "costUnit": {
-            "maxLength": 50,
-            "minLength": 1,
-            "type": "string"
-          },
-          "costPerUnit": {
-            "minimum": 0,
-            "type": "number",
-            "format": "double"
-          },
-          "minimumCharge": {
-            "minimum": 0,
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "additionalFactors": {
-            "type": "string",
-            "nullable": true
-          },
-          "isActive": {
-            "type": "boolean"
-          },
-          "effectiveFrom": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "effectiveTo": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.Audio.UpdateAudioProviderConfigDto": {
-        "required": [
-          "providerId"
-        ],
-        "type": "object",
-        "properties": {
-          "providerId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "transcriptionEnabled": {
-            "type": "boolean"
-          },
-          "defaultTranscriptionModel": {
-            "maxLength": 100,
-            "type": "string",
-            "nullable": true
-          },
-          "textToSpeechEnabled": {
-            "type": "boolean"
-          },
-          "defaultTTSModel": {
-            "maxLength": 100,
-            "type": "string",
-            "nullable": true
-          },
-          "defaultTTSVoice": {
-            "maxLength": 100,
-            "type": "string",
-            "nullable": true
-          },
-          "realtimeEnabled": {
-            "type": "boolean"
-          },
-          "defaultRealtimeModel": {
-            "maxLength": 100,
-            "type": "string",
-            "nullable": true
-          },
-          "realtimeEndpoint": {
-            "maxLength": 500,
-            "type": "string",
-            "nullable": true
-          },
-          "customSettings": {
-            "type": "string",
-            "nullable": true
-          },
-          "routingPriority": {
-            "type": "integer",
-            "format": "int32"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Configuration.DTOs.Audio.VirtualKeyBreakdown": {
-        "type": "object",
-        "properties": {
-          "virtualKey": {
-            "type": "string",
-            "nullable": true
-          },
-          "keyName": {
-            "type": "string",
-            "nullable": true
-          },
-          "count": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "totalCost": {
-            "type": "number",
-            "format": "double"
-          }
-        },
-        "additionalProperties": false
       },
       "ConduitLLM.Configuration.DTOs.Cache.UpdateCacheConfigDto": {
         "type": "object",
@@ -13898,26 +12685,6 @@
             "nullable": true
           },
           "imageCostPerImage": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "audioCostPerMinute": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "audioCostPerKCharacters": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "audioInputCostPerMinute": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "audioOutputCostPerMinute": {
             "type": "number",
             "format": "double",
             "nullable": true
@@ -14374,26 +13141,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "audioCostPerMinute": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "audioCostPerKCharacters": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "audioInputCostPerMinute": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "audioOutputCostPerMinute": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
           "videoCostPerSecond": {
             "type": "number",
             "format": "double",
@@ -14781,51 +13528,6 @@
         },
         "additionalProperties": false
       },
-      "ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.Audio.AudioUsageDto, ConduitLLM.Configuration, Version=0.1.3.0, Culture=neutral, PublicKeyToken=null]]": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.Audio.AudioUsageDto"
-            },
-            "nullable": true
-          },
-          "totalCount": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "currentPage": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "pageSize": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "hasPreviousPage": {
-            "type": "boolean",
-            "readOnly": true
-          },
-          "hasNextPage": {
-            "type": "boolean",
-            "readOnly": true
-          },
-          "page": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "totalItems": {
-            "type": "integer",
-            "format": "int32"
-          }
-        },
-        "additionalProperties": false
-      },
       "ConduitLLM.Configuration.DTOs.PagedResult`1[[ConduitLLM.Configuration.DTOs.LogRequestDto, ConduitLLM.Configuration, Version=0.1.3.0, Culture=neutral, PublicKeyToken=null]]": {
         "type": "object",
         "properties": {
@@ -15049,26 +13751,6 @@
             "nullable": true
           },
           "imageCostPerImage": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "audioCostPerMinute": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "audioCostPerKCharacters": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "audioInputCostPerMinute": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "audioOutputCostPerMinute": {
             "type": "number",
             "format": "double",
             "nullable": true
@@ -15663,6 +14345,23 @@
         },
         "additionalProperties": false
       },
+      "ConduitLLM.Configuration.Entities.BillingAuditEventType": {
+        "enum": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
       "ConduitLLM.Configuration.Entities.NotificationSeverity": {
         "enum": [
           0,
@@ -15809,6 +14508,146 @@
         "type": "integer",
         "format": "int32"
       },
+      "ConduitLLM.Configuration.Interfaces.BillingAnomaly": {
+        "type": "object",
+        "properties": {
+          "anomalyType": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "severity": {
+            "type": "string",
+            "nullable": true
+          },
+          "detectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "affectedVirtualKeyIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "estimatedImpact": {
+            "type": "number",
+            "format": "double"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": { },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConduitLLM.Configuration.Interfaces.BillingAuditSummary": {
+        "type": "object",
+        "properties": {
+          "totalEvents": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "successfulBillings": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "zeroCostSkipped": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "estimatedUsages": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "failedUpdates": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "errorResponsesSkipped": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "missingUsageData": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalBilledAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "potentialRevenueLoss": {
+            "type": "number",
+            "format": "double"
+          },
+          "eventTypeBreakdown": {
+            "type": "object",
+            "properties": {
+              "UsageTracked": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "UsageEstimated": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "ZeroCostSkipped": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "MissingCostConfig": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "MissingUsageData": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "SpendUpdateFailed": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "ErrorResponseSkipped": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "StreamingUsageMissing": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "NoVirtualKey": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "JsonParseError": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "UnexpectedError": {
+                "type": "integer",
+                "format": "int64"
+              }
+            },
+            "additionalProperties": false,
+            "nullable": true
+          },
+          "providerTypeBreakdown": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ConduitLLM.Configuration.PricingModel": {
         "enum": [
           0,
@@ -15839,154 +14678,6 @@
         ],
         "type": "integer",
         "format": "int32"
-      },
-      "ConduitLLM.Core.Models.Routing.FallbackConfiguration": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "primaryModelDeploymentId": {
-            "type": "string",
-            "nullable": true
-          },
-          "fallbackModelDeploymentIds": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Core.Models.Routing.ModelDeployment": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "modelName": {
-            "type": "string",
-            "nullable": true
-          },
-          "providerName": {
-            "type": "string",
-            "nullable": true
-          },
-          "deploymentName": {
-            "type": "string",
-            "nullable": true
-          },
-          "modelAlias": {
-            "type": "string",
-            "nullable": true
-          },
-          "weight": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "healthCheckEnabled": {
-            "type": "boolean"
-          },
-          "isEnabled": {
-            "type": "boolean"
-          },
-          "rpm": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "tpm": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "inputTokenCostPer1K": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "outputTokenCostPer1K": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "priority": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "isHealthy": {
-            "type": "boolean"
-          },
-          "lastUsed": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "requestCount": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "averageLatencyMs": {
-            "type": "number",
-            "format": "double"
-          },
-          "supportsEmbeddings": {
-            "type": "boolean"
-          }
-        },
-        "additionalProperties": false
-      },
-      "ConduitLLM.Core.Models.Routing.RouterConfig": {
-        "type": "object",
-        "properties": {
-          "modelDeployments": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ConduitLLM.Core.Models.Routing.ModelDeployment"
-            },
-            "nullable": true
-          },
-          "defaultRoutingStrategy": {
-            "type": "string",
-            "nullable": true
-          },
-          "fallbacks": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "nullable": true
-          },
-          "maxRetries": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "retryBaseDelayMs": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "retryMaxDelayMs": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "fallbacksEnabled": {
-            "type": "boolean"
-          },
-          "fallbackConfigurations": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ConduitLLM.Core.Models.Routing.FallbackConfiguration"
-            },
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
       },
       "Microsoft.AspNetCore.Mvc.ProblemDetails": {
         "type": "object",

@@ -60,7 +60,7 @@ namespace ConduitLLM.Configuration.Entities
         /// <summary>
         /// Navigation property for all identifiers associated with this model.
         /// </summary>
-        public virtual ICollection<ModelIdentifier> Identifiers { get; set; } = new List<ModelIdentifier>();
+        public virtual ICollection<ModelProviderTypeAssociation> Identifiers { get; set; } = new List<ModelProviderTypeAssociation>();
 
         /// <summary>
         /// Navigation property for all provider mappings using this model.

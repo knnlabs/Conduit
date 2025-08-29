@@ -68,6 +68,14 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
     }
 
     /// <inheritdoc />
+    public async Task<IEnumerable<ModelProviderMapping>> GetMappingsByModelIdAsync(int modelId)
+    {
+        _logger.LogInformation("Getting all model provider mappings for model ID: {ModelId}", modelId);
+        var mappings = await _mappingRepository.GetAllAsync();
+        return mappings.Where(m => m.ModelId == modelId).ToList();
+    }
+
+    /// <inheritdoc />
     public async Task<bool> AddMappingAsync(ModelProviderMapping mapping)
     {
         try

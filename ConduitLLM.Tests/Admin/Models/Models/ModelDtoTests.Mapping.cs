@@ -173,9 +173,9 @@ namespace ConduitLLM.Tests.Admin.Models.Models
                     SupportsChat = true,
                     MaxTokens = 200000
                 },
-                Identifiers = new List<ModelIdentifier>
+                Identifiers = new List<ModelProviderTypeAssociation>
                 {
-                    new ModelIdentifier
+                    new ModelProviderTypeAssociation
                     {
                         Id = 1,
                         ModelId = 99,
@@ -183,7 +183,7 @@ namespace ConduitLLM.Tests.Admin.Models.Models
                         Identifier = "claude-3-opus-20240229",
                         IsPrimary = true
                     },
-                    new ModelIdentifier
+                    new ModelProviderTypeAssociation
                     {
                         Id = 2,
                         ModelId = 99,
@@ -233,7 +233,7 @@ namespace ConduitLLM.Tests.Admin.Models.Models
                 Name = "generic-model",
                 ModelSeriesId = 1,
                 ModelCapabilitiesId = 1,
-                Identifiers = new List<ModelIdentifier>(), // No identifiers
+                Identifiers = new List<ModelProviderTypeAssociation>(), // No identifiers
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow

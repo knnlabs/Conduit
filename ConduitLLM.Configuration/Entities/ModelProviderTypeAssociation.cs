@@ -8,7 +8,7 @@ namespace ConduitLLM.Configuration.Entities
     /// This allows us to recognize that "gpt-4-0125-preview", "gpt-4-turbo-preview", and "gpt-4-1106-preview"
     /// all refer to the same underlying model.
     /// </summary>
-    public class ModelIdentifier
+    public class ModelProviderTypeAssociation
     {
         /// <summary>
         /// Unique identifier for this model identifier mapping.

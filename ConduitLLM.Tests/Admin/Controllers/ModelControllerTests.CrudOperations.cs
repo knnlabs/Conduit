@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Controllers;
+using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Models.Models;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
@@ -21,14 +22,16 @@ namespace ConduitLLM.Tests.Admin.Controllers
     public class ModelControllerCrudOperationsTests
     {
         private readonly Mock<IModelRepository> _mockRepository;
+        private readonly Mock<IAdminModelProviderMappingService> _mockMappingService;
         private readonly Mock<ILogger<ModelController>> _mockLogger;
         private readonly ModelController _controller;
 
         public ModelControllerCrudOperationsTests()
         {
             _mockRepository = new Mock<IModelRepository>();
+            _mockMappingService = new Mock<IAdminModelProviderMappingService>();
             _mockLogger = new Mock<ILogger<ModelController>>();
-            _controller = new ModelController(_mockRepository.Object, _mockLogger.Object);
+            _controller = new ModelController(_mockRepository.Object, _mockMappingService.Object, _mockLogger.Object);
         }
 
         #region CreateModel Tests

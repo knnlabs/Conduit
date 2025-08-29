@@ -2,7 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { Table, TextInput, Select, Group, ActionIcon, Badge, Text, Tooltip, Stack, HoverCard } from '@mantine/core';
-import { IconEdit, IconTrash, IconSearch, IconEye, IconMessageCircle, IconPhoto, IconVideo, IconEye as IconVision, IconLink } from '@tabler/icons-react';
+import { 
+  IconEdit, 
+  IconTrash, 
+  IconSearch, 
+  IconEye, 
+  IconLink
+} from '@tabler/icons-react';
 import { useAdminClient } from '@/lib/client/adminClient';
 import { notifications } from '@mantine/notifications';
 import { EditModelModal } from './EditModelModal';
@@ -10,6 +16,7 @@ import { ViewModelModal } from './ViewModelModal';
 import { DeleteModelModal } from './DeleteModelModal';
 import { useModelSeries } from '@/hooks/useModelSeries';
 import { extractCapabilities, getErrorMessage } from '@/utils/typeGuards';
+import { CapabilityIcons } from '@/components/common/CapabilityIcons';
 import type { ModelDto } from '@knn_labs/conduit-admin-client';
 
 // Extended model type with provider mapping status and details
@@ -139,52 +146,6 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
 
 
 
-  const renderCapabilityIcons = (model: ModelDto) => {
-    const capabilities = extractCapabilities(model);
-    const icons = [];
-    
-    // Text/Chat capability
-    if (capabilities.supportsChat) {
-      icons.push(
-        <Tooltip key="chat" label="Text Chat">
-          <IconMessageCircle size={16} color="blue" />
-        </Tooltip>
-      );
-    }
-
-    // Vision capability (Text + Vision)
-    if (capabilities.supportsVision) {
-      icons.push(
-        <Tooltip key="vision" label="Text + Vision">
-          <IconVision size={16} color="green" />
-        </Tooltip>
-      );
-    }
-
-    // Image generation capability
-    if (capabilities.supportsImageGeneration) {
-      icons.push(
-        <Tooltip key="image" label="Image Generation">
-          <IconPhoto size={16} color="purple" />
-        </Tooltip>
-      );
-    }
-
-    // Video generation capability
-    if (capabilities.supportsVideoGeneration) {
-      icons.push(
-        <Tooltip key="video" label="Video Generation">
-          <IconVideo size={16} color="red" />
-        </Tooltip>
-      );
-    }
-
-    return icons.length > 0 ? (
-      <Group gap="xs">{icons}</Group>
-    ) : (
-      <Text c="dimmed" size="sm">-</Text>
-    );
-  };
 
   const renderProviderInfo = (model: ModelWithMappingStatus) => {
     if (model.providerCount === 0) {
@@ -312,7 +273,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
                   <Text fw={500}>{model.name ?? 'Unnamed'}</Text>
                 </Table.Td>
                 <Table.Td>
-                  {renderCapabilityIcons(model)}
+                  <CapabilityIcons capabilities={extractCapabilities(model)} />
                 </Table.Td>
                 <Table.Td>
                   {model.modelSeriesId ? (
