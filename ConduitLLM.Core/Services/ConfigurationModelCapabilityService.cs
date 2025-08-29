@@ -44,23 +44,6 @@ namespace ConduitLLM.Core.Services
             return capability?.SupportsVision ?? false;
         }
 
-        public async Task<bool> SupportsAudioTranscriptionAsync(string model)
-        {
-            var capability = await GetModelCapabilityAsync(model);
-            return capability?.SupportsTranscription ?? false;
-        }
-
-        public async Task<bool> SupportsTextToSpeechAsync(string model)
-        {
-            var capability = await GetModelCapabilityAsync(model);
-            return capability?.SupportsTextToSpeech ?? false;
-        }
-
-        public async Task<bool> SupportsRealtimeAudioAsync(string model)
-        {
-            var capability = await GetModelCapabilityAsync(model);
-            return capability?.SupportsRealtimeAudio ?? false;
-        }
 
         public async Task<bool> SupportsVideoGenerationAsync(string model)
         {
@@ -74,23 +57,6 @@ namespace ConduitLLM.Core.Services
             return capability?.TokenizerType;
         }
 
-        public async Task<List<string>> GetSupportedVoicesAsync(string model)
-        {
-            var capability = await GetModelCapabilityAsync(model);
-            return capability?.SupportedVoices ?? new List<string>();
-        }
-
-        public async Task<List<string>> GetSupportedLanguagesAsync(string model)
-        {
-            var capability = await GetModelCapabilityAsync(model);
-            return capability?.SupportedLanguages ?? new List<string>();
-        }
-
-        public async Task<List<string>> GetSupportedFormatsAsync(string model)
-        {
-            var capability = await GetModelCapabilityAsync(model);
-            return capability?.SupportedFormats ?? new List<string>();
-        }
 
         public async Task<string?> GetDefaultModelAsync(string provider, string capabilityType)
         {
@@ -118,9 +84,6 @@ namespace ConduitLLM.Core.Services
                 {
                     "chat" => models.FirstOrDefault(m => m.Capabilities.SupportsChat)?.ModelId,
                     "vision" => models.FirstOrDefault(m => m.Capabilities.SupportsVision)?.ModelId,
-                    "transcription" => models.FirstOrDefault(m => m.Capabilities.SupportsTranscription)?.ModelId,
-                    "tts" => models.FirstOrDefault(m => m.Capabilities.SupportsTextToSpeech)?.ModelId,
-                    "realtime" => models.FirstOrDefault(m => m.Capabilities.SupportsRealtimeAudio)?.ModelId,
                     "embeddings" => models.FirstOrDefault(m => m.Capabilities.SupportsEmbeddings)?.ModelId,
                     _ => null
                 };

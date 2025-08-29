@@ -182,10 +182,6 @@ public partial class Program
 
         // Image generation metrics service removed - not needed
 
-        // Add required services for the router components
-        builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IModelSelectionStrategy, ConduitLLM.Core.Routing.Strategies.SimpleModelSelectionStrategy>();
-        builder.Services.AddScoped<ILLMRouter, ConduitLLM.Core.Routing.DefaultLLMRouter>();
-
         // Register token counter service for context management
         builder.Services.AddScoped<ITokenCounter, ConduitLLM.Core.Services.TiktokenCounter>();
         builder.Services.AddScoped<IContextManager, ConduitLLM.Core.Services.ContextManager>();
@@ -398,8 +394,8 @@ public partial class Program
         // Register File Retrieval Service
         builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IFileRetrievalService, ConduitLLM.Core.Services.FileRetrievalService>();
 
-        // Register Audio services
-        builder.Services.AddConduitAudioServices(builder.Configuration);
+        // Register Model Capability services (capability detection and caching)
+        builder.Services.AddModelCapabilityServices(builder.Configuration);
 
         // Register Batch Cache Invalidation service
         builder.Services.AddBatchCacheInvalidation(builder.Configuration);
@@ -413,23 +409,7 @@ public partial class Program
         // Register Redis batch operations for optimized cache management
         builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IRedisBatchOperations, ConduitLLM.Http.Services.RedisBatchOperations>();
 
-        // Register Real-time Audio services
-        builder.Services.AddSingleton<IRealtimeConnectionManager, RealtimeConnectionManager>();
-        builder.Services.AddSingleton<IRealtimeMessageTranslatorFactory, RealtimeMessageTranslatorFactory>();
-        builder.Services.AddScoped<IRealtimeProxyService, RealtimeProxyService>();
-        builder.Services.AddScoped<IRealtimeUsageTracker, RealtimeUsageTracker>();
-        builder.Services.AddHostedService<RealtimeConnectionManager>(provider =>
-            provider.GetRequiredService<IRealtimeConnectionManager>() as RealtimeConnectionManager ??
-            throw new InvalidOperationException("RealtimeConnectionManager not registered properly"));
 
-        // Register Real-time Message Translators
-        builder.Services.AddSingleton<ConduitLLM.Providers.Translators.OpenAIRealtimeTranslatorV2>();
-        builder.Services.AddSingleton<ConduitLLM.Providers.Translators.UltravoxRealtimeTranslator>();
-        builder.Services.AddSingleton<ConduitLLM.Providers.Translators.ElevenLabsRealtimeTranslator>();
-
-        // Register Audio routing
-        builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IAudioRouter, ConduitLLM.Core.Routing.AudioRouter>();
-        builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IAudioCapabilityDetector, ConduitLLM.Core.Services.AudioCapabilityDetector>();
 
         // Register Image Generation Retry Configuration
         builder.Services.Configure<ConduitLLM.Core.Configuration.ImageGenerationRetryConfiguration>(

@@ -11,9 +11,6 @@ export interface DiscoveryModel {
   supports_streaming?: boolean;
   supports_vision?: boolean;
   supports_function_calling?: boolean;
-  supports_audio_transcription?: boolean;
-  supports_text_to_speech?: boolean;
-  supports_realtime_audio?: boolean;
   supports_video_generation?: boolean;
   supports_image_generation?: boolean;
   supports_embeddings?: boolean;

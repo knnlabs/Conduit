@@ -1,3 +1,4 @@
+using ConduitLLM.Core;
 using ConduitLLM.Core.Controllers;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -20,17 +21,17 @@ namespace ConduitLLM.Http.Controllers
     [Tags("Embeddings")]
     public class EmbeddingsController : EventPublishingControllerBase
     {
-        private readonly ILLMRouter _router;
+        private readonly Conduit _conduit;
         private readonly ILogger<EmbeddingsController> _logger;
         private readonly ConduitLLM.Configuration.Interfaces.IModelProviderMappingService _modelMappingService;
 
         public EmbeddingsController(
-            ILLMRouter router,
+            Conduit conduit,
             ILogger<EmbeddingsController> logger,
             ConduitLLM.Configuration.Interfaces.IModelProviderMappingService modelMappingService,
             IPublishEndpoint publishEndpoint) : base(publishEndpoint, logger)
         {
-            _router = router ?? throw new ArgumentNullException(nameof(router));
+            _conduit = conduit ?? throw new ArgumentNullException(nameof(conduit));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _modelMappingService = modelMappingService ?? throw new ArgumentNullException(nameof(modelMappingService));
         }
@@ -81,7 +82,9 @@ namespace ConduitLLM.Http.Controllers
                     _logger.LogWarning(ex, "Failed to get provider info for model {Model}", request.Model);
                 }
                 
-                var response = await _router.CreateEmbeddingAsync(request, cancellationToken: cancellationToken);
+                // Get the client for the specified model and create embeddings
+                var client = _conduit.GetClient(request.Model);
+                var response = await client.CreateEmbeddingAsync(request, cancellationToken: cancellationToken);
                 return Ok(response);
             }
             catch (Exception ex)

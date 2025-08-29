@@ -52,21 +52,6 @@ namespace ConduitLLM.Core.Models.Configuration
         public bool SupportsVision { get; set; }
 
         /// <summary>
-        /// Gets or sets whether the model supports audio transcription.
-        /// </summary>
-        public bool SupportsTranscription { get; set; }
-
-        /// <summary>
-        /// Gets or sets whether the model supports text-to-speech.
-        /// </summary>
-        public bool SupportsTextToSpeech { get; set; }
-
-        /// <summary>
-        /// Gets or sets whether the model supports real-time audio streaming.
-        /// </summary>
-        public bool SupportsRealtimeAudio { get; set; }
-
-        /// <summary>
         /// Gets or sets whether the model supports function calling.
         /// </summary>
         public bool SupportsFunctionCalling { get; set; }
@@ -96,20 +81,6 @@ namespace ConduitLLM.Core.Models.Configuration
         /// </summary>
         public int? MaxTokens { get; set; }
 
-        /// <summary>
-        /// Gets or sets the supported voices for TTS models.
-        /// </summary>
-        public List<string> SupportedVoices { get; set; } = new();
-
-        /// <summary>
-        /// Gets or sets the supported languages.
-        /// </summary>
-        public List<string> SupportedLanguages { get; set; } = new();
-
-        /// <summary>
-        /// Gets or sets the supported audio formats.
-        /// </summary>
-        public List<string> SupportedFormats { get; set; } = new();
 
         /// <summary>
         /// Gets or sets additional capability metadata.

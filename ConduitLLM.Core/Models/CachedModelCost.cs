@@ -103,25 +103,6 @@ namespace ConduitLLM.Core.Models
         /// </summary>
         public int? DefaultInferenceSteps { get; set; }
 
-        /// <summary>
-        /// Cost per minute for audio transcription, if applicable.
-        /// </summary>
-        public decimal? AudioCostPerMinute { get; set; }
-
-        /// <summary>
-        /// Cost per 1000 characters for text-to-speech synthesis, if applicable.
-        /// </summary>
-        public decimal? AudioCostPerKCharacters { get; set; }
-
-        /// <summary>
-        /// Cost per minute for real-time audio input, if applicable.
-        /// </summary>
-        public decimal? AudioInputCostPerMinute { get; set; }
-
-        /// <summary>
-        /// Cost per minute for real-time audio output, if applicable.
-        /// </summary>
-        public decimal? AudioOutputCostPerMinute { get; set; }
 
         /// <summary>
         /// Model type for categorization.

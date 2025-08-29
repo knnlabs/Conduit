@@ -196,7 +196,6 @@ public class UsageValidatorTests
         {
             ImageCount = 0,
             VideoDurationSeconds = -5.5,
-            AudioDurationSeconds = 0
         };
 
         // Act
@@ -204,10 +203,9 @@ public class UsageValidatorTests
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().HaveCount(3);
+        result.Errors.Should().HaveCount(2);
         result.Errors.Should().Contain("Image count must be positive");
         result.Errors.Should().Contain("Video duration must be positive");
-        result.Errors.Should().Contain("Audio duration must be positive");
     }
 
     [Fact]
@@ -271,7 +269,6 @@ public class UsageValidatorTests
             ImageCount = 2,
             ImageQuality = "hd",
             InferenceSteps = 50,
-            AudioDurationSeconds = 120.5m,
             Metadata = new Dictionary<string, object>
             {
                 ["cache_ttl"] = 3600,

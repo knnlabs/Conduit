@@ -26,9 +26,6 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery
             Assert.Contains("chat", capabilities);
             Assert.Contains("chat_stream", capabilities);
             Assert.Contains("vision", capabilities);
-            Assert.Contains("audio_transcription", capabilities);
-            Assert.Contains("text_to_speech", capabilities);
-            Assert.Contains("realtime_audio", capabilities);
             Assert.Contains("video_generation", capabilities);
             Assert.Contains("image_generation", capabilities);
             Assert.Contains("embeddings", capabilities);
@@ -47,7 +44,7 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery
             var okResult = Assert.IsType<OkObjectResult>(result);
             dynamic response = okResult.Value!;
             var capabilities = (string[])response.capabilities;
-            Assert.Equal(12, capabilities.Length);
+            Assert.Equal(9, capabilities.Length);
         }
 
         // NOTE: GetCapabilities_WhenExceptionOccurs_Returns500Error test was removed

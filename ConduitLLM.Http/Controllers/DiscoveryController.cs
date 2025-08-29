@@ -113,9 +113,6 @@ namespace ConduitLLM.Http.Controllers
                             "chat" => caps.SupportsChat,
                             "streaming" or "chat_stream" => caps.SupportsStreaming,
                             "vision" => caps.SupportsVision,
-                            "audio_transcription" => caps.SupportsAudioTranscription,
-                            "text_to_speech" => caps.SupportsTextToSpeech,
-                            "realtime_audio" => caps.SupportsRealtimeAudio,
                             "video_generation" => caps.SupportsVideoGeneration,
                             "image_generation" => caps.SupportsImageGeneration,
                             "embeddings" => caps.SupportsEmbeddings,
@@ -174,9 +171,6 @@ namespace ConduitLLM.Http.Controllers
                         supports_streaming = caps.SupportsStreaming,
                         supports_vision = caps.SupportsVision,
                         supports_function_calling = caps.SupportsFunctionCalling,
-                        supports_audio_transcription = caps.SupportsAudioTranscription,
-                        supports_text_to_speech = caps.SupportsTextToSpeech,
-                        supports_realtime_audio = caps.SupportsRealtimeAudio,
                         supports_video_generation = caps.SupportsVideoGeneration,
                         supports_image_generation = caps.SupportsImageGeneration,
                         supports_embeddings = caps.SupportsEmbeddings
@@ -185,9 +179,6 @@ namespace ConduitLLM.Http.Controllers
                         // - context_window (from capabilities or series metadata)
                         // - training_cutoff date
                         // - pricing_tier or cost information
-                        // - supported_languages (parsed from JSON)
-                        // - supported_voices (for TTS models)
-                        // - supported_formats (for audio models)
                         // - rate_limits
                         // - model_version
                     });
@@ -234,9 +225,6 @@ namespace ConduitLLM.Http.Controllers
                     "chat",
                     "chat_stream",
                     "vision",
-                    "audio_transcription",
-                    "text_to_speech",
-                    "realtime_audio",
                     "video_generation",
                     "image_generation",
                     "embeddings",

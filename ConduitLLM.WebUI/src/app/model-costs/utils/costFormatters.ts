@@ -39,8 +39,6 @@ export const formatModelType = (type: ModelType): string => {
       return 'Embedding';
     case ModelType.Image:
       return 'Image';
-    case ModelType.Audio:
-      return 'Audio';
     case ModelType.Video:
       return 'Video';
     default:
@@ -80,8 +78,6 @@ export const getCostDisplayForModelType = (cost: ModelCost): string => {
       return '-';
     case ModelType.Image:
       return formatCostPerImage(cost.imageCostPerImage);
-    case ModelType.Audio:
-      return formatCostPerSecond(cost.audioCostPerMinute ? cost.audioCostPerMinute / 60 : undefined);
     case ModelType.Video:
       return formatCostPerSecond(cost.videoCostPerSecond);
     default:
@@ -97,8 +93,6 @@ export const getCostTypeLabel = (modelType: ModelType): string => {
       return 'Per million tokens';
     case ModelType.Image:
       return 'Per image';
-    case ModelType.Audio:
-      return 'Per second';
     case ModelType.Video:
       return 'Per second';
     default:

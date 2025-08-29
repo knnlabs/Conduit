@@ -77,7 +77,6 @@ export {
   ExportStatus,
 } from './models/analyticsExport';
 export * from './models/system';
-export * from './models/audioConfiguration';
 export * from './models/metrics';
 export * from './models/databaseBackup';
 export * from './models/signalr';
@@ -186,7 +185,6 @@ export { FetchModelCapabilitiesService } from './services/FetchModelCapabilities
 export { AnalyticsService } from './services/AnalyticsService';
 export { SystemService } from './services/SystemService';
 // DiscoveryService removed - use ModelMappingService.discoverProviderModels() instead
-export { AudioConfigurationService } from './services/AudioConfigurationService';
 export { MetricsService } from './services/MetricsService';
 export { NotificationsService } from './services/NotificationsService';
 // export { DatabaseBackupService } from './services/DatabaseBackupService'; // Removed

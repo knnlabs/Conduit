@@ -73,8 +73,6 @@ namespace ConduitLLM.Core.Models
         public bool ImageGeneration { get; set; }
         public bool VisionInput { get; set; }
         public bool FunctionCalling { get; set; }
-        public bool AudioTranscription { get; set; }
-        public bool TextToSpeech { get; set; }
     }
     
     /// <summary>

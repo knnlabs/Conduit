@@ -58,35 +58,6 @@ namespace ConduitLLM.Admin.Models.ModelCapabilities
         /// <value>True if streaming is supported; otherwise, false.</value>
         public bool SupportsStreaming { get; set; }
 
-        /// <summary>
-        /// Gets or sets whether models support audio transcription.
-        /// </summary>
-        /// <remarks>
-        /// Set to true for speech-to-text models like Whisper that convert
-        /// audio files into text transcripts.
-        /// </remarks>
-        /// <value>True if audio transcription is supported; otherwise, false.</value>
-        public bool SupportsAudioTranscription { get; set; }
-
-        /// <summary>
-        /// Gets or sets whether models support text-to-speech synthesis.
-        /// </summary>
-        /// <remarks>
-        /// Set to true for models that can generate natural-sounding speech from text.
-        /// Examples: OpenAI TTS, ElevenLabs models.
-        /// </remarks>
-        /// <value>True if TTS is supported; otherwise, false.</value>
-        public bool SupportsTextToSpeech { get; set; }
-
-        /// <summary>
-        /// Gets or sets whether models support real-time audio interactions.
-        /// </summary>
-        /// <remarks>
-        /// Set to true for models supporting live, bidirectional audio conversations
-        /// with low latency. More advanced than simple TTS/STT.
-        /// </remarks>
-        /// <value>True if real-time audio is supported; otherwise, false.</value>
-        public bool SupportsRealtimeAudio { get; set; }
 
         /// <summary>
         /// Gets or sets whether models support image generation.
@@ -157,44 +128,5 @@ namespace ConduitLLM.Admin.Models.ModelCapabilities
         /// <value>The tokenizer type enum value.</value>
         public TokenizerType TokenizerType { get; set; }
 
-        /// <summary>
-        /// Gets or sets the comma-separated list of supported voices for TTS.
-        /// </summary>
-        /// <remarks>
-        /// For TTS-capable models, list available voice options.
-        /// Format: "voice1,voice2,voice3"
-        /// Example: "alloy,echo,fable,onyx,nova,shimmer"
-        /// 
-        /// Leave null if not applicable.
-        /// </remarks>
-        /// <value>Comma-separated voice IDs, or null.</value>
-        public string? SupportedVoices { get; set; }
-
-        /// <summary>
-        /// Gets or sets the comma-separated list of supported languages.
-        /// </summary>
-        /// <remarks>
-        /// List languages the model can process using ISO 639-1 codes or names.
-        /// Format: "en,es,fr,de,zh,ja" or "English,Spanish,French"
-        /// 
-        /// Leave null if not specified or if the model supports all common languages.
-        /// </remarks>
-        /// <value>Comma-separated language codes, or null.</value>
-        public string? SupportedLanguages { get; set; }
-
-        /// <summary>
-        /// Gets or sets the comma-separated list of supported formats.
-        /// </summary>
-        /// <remarks>
-        /// Specify input/output formats the model can handle:
-        /// - Audio: "mp3,wav,ogg,flac"
-        /// - Image: "png,jpg,webp,gif"
-        /// - Video: "mp4,avi,mov,webm"
-        /// - Text: "text,json,markdown"
-        /// 
-        /// Leave null if using default formats for the capability type.
-        /// </remarks>
-        /// <value>Comma-separated format specifications, or null.</value>
-        public string? SupportedFormats { get; set; }
     }
 }

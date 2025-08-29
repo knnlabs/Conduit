@@ -463,9 +463,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
                     Embeddings = false, // Usually separate models
                     ImageGeneration = false, // Usually separate models
                     VisionInput = false, // Provider-specific
-                    FunctionCalling = true,
-                    AudioTranscription = false, // Provider-specific
-                    TextToSpeech = false // Provider-specific
+                    FunctionCalling = true
                 }
             });
         }

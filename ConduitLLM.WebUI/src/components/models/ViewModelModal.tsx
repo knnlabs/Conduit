@@ -112,7 +112,6 @@ export function ViewModelModal({ isOpen, model, onClose }: ViewModelModalProps) 
               if (capabilities.supportsVideoGeneration) capList.push('Video Gen');
               if (capabilities.supportsEmbeddings) capList.push('Embeddings');
               if (capabilities.supportsFunctionCalling) capList.push('Functions');
-              if (capabilities.supportsAudioTranscription) capList.push('Audio');
               
               const capabilitiesSummary = capList.length > 0 
                 ? capList.join(', ') 

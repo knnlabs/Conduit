@@ -100,7 +100,6 @@ public static class ServiceCollectionExtensions
             
             return new AdminModelProviderMappingService(mappingRepository, credentialRepository, modelRepository, publishEndpoint, logger);
         });
-        services.AddScoped<IAdminRouterService, AdminRouterService>();
         
         // Register Analytics services
         services.AddSingleton<IAnalyticsMetrics, AnalyticsMetricsService>();
@@ -143,11 +142,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ConduitLLM.Configuration.Interfaces.IModelCostService, ConduitLLM.Configuration.Services.ModelCostService>();
         services.AddScoped<ConduitLLM.Core.Interfaces.ICostCalculationService, ConduitLLM.Core.Services.CostCalculationService>();
         
-        // Register audio-related services
-        services.AddScoped<IAdminAudioProviderService, AdminAudioProviderService>();
-        services.AddScoped<IAdminAudioCostService, AdminAudioCostService>();
-        services.AddScoped<IAdminAudioUsageService, AdminAudioUsageService>();
-
         // Register media management service (requires IMediaLifecycleService to be registered)
         services.AddScoped<IAdminMediaService>(serviceProvider =>
         {

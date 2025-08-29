@@ -16,18 +16,18 @@ namespace ConduitLLM.Http.Controllers
     [Tags("Models")]
     public class ModelsController : ControllerBase
     {
-        private readonly ILLMRouter _router;
         private readonly ILogger<ModelsController> _logger;
         private readonly IModelMetadataService _metadataService;
+        private readonly ConduitLLM.Configuration.Interfaces.IModelProviderMappingRepository _modelMappingRepository;
 
         public ModelsController(
-            ILLMRouter router,
             ILogger<ModelsController> logger,
-            IModelMetadataService metadataService)
+            IModelMetadataService metadataService,
+            ConduitLLM.Configuration.Interfaces.IModelProviderMappingRepository modelMappingRepository)
         {
-            _router = router ?? throw new ArgumentNullException(nameof(router));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _metadataService = metadataService ?? throw new ArgumentNullException(nameof(metadataService));
+            _modelMappingRepository = modelMappingRepository ?? throw new ArgumentNullException(nameof(modelMappingRepository));
         }
 
         /// <summary>
@@ -37,21 +37,24 @@ namespace ConduitLLM.Http.Controllers
         [HttpGet("models")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(OpenAIErrorResponse), StatusCodes.Status500InternalServerError)]
-        public IActionResult ListModels()
+        public async Task<IActionResult> ListModels()
         {
             try
             {
                 _logger.LogInformation("Getting available models");
 
-                // Get model names from the router
-                var modelNames = _router.GetAvailableModels();
-
-                // Convert to OpenAI format
-                var basicModelData = modelNames.Select(m => new
-                {
-                    id = m,
-                    @object = "model"
-                }).ToList();
+                // Get model mappings from the repository
+                var mappings = await _modelMappingRepository.GetAllAsync();
+                
+                // Convert to OpenAI format using model aliases
+                var basicModelData = mappings
+                    .Select(m => m.ModelAlias)
+                    .Distinct()
+                    .Select(alias => new
+                    {
+                        id = alias,
+                        @object = "model"
+                    }).ToList();
 
                 // Create the response envelope
                 var response = new

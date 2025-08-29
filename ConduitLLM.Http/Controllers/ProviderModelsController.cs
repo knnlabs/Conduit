@@ -70,9 +70,7 @@ namespace ConduitLLM.Http.Controllers
                     case ProviderType.OpenAICompatible:
                         query = query.Where(m => m.Capabilities.SupportsChat || 
                                                  m.Capabilities.SupportsImageGeneration ||
-                                                 m.Capabilities.SupportsEmbeddings ||
-                                                 m.Capabilities.SupportsAudioTranscription ||
-                                                 m.Capabilities.SupportsTextToSpeech);
+                                                 m.Capabilities.SupportsEmbeddings);
                         break;
                     
                     case ProviderType.Replicate:
@@ -82,9 +80,6 @@ namespace ConduitLLM.Http.Controllers
                                                  m.Capabilities.SupportsChat);
                         break;
                     
-                    case ProviderType.ElevenLabs:
-                        query = query.Where(m => m.Capabilities.SupportsTextToSpeech);
-                        break;
                     
                     case ProviderType.Groq:
                     case ProviderType.Cerebras:

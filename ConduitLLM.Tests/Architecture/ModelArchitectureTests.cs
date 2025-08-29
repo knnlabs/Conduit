@@ -73,9 +73,6 @@ namespace ConduitLLM.Tests.Architecture
             {
                 "SupportsChat",
                 "SupportsVision",
-                "SupportsAudioTranscription",
-                "SupportsTextToSpeech",
-                "SupportsRealtimeAudio",
                 "SupportsImageGeneration",
                 "SupportsVideoGeneration",
                 "SupportsEmbeddings",
@@ -165,9 +162,6 @@ namespace ConduitLLM.Tests.Architecture
                     SupportsEmbeddings = false,
                     SupportsFunctionCalling = true,
                     SupportsStreaming = true,
-                    SupportsAudioTranscription = true,
-                    SupportsTextToSpeech = false,
-                    SupportsRealtimeAudio = false,
                     SupportsImageGeneration = false,
                     SupportsVideoGeneration = false,
                     MaxTokens = 8192,
@@ -187,9 +181,6 @@ namespace ConduitLLM.Tests.Architecture
             Assert.Equal(model.Capabilities.SupportsEmbeddings, mapping.SupportsEmbeddings);
             Assert.Equal(model.Capabilities.SupportsFunctionCalling, mapping.SupportsFunctionCalling);
             Assert.Equal(model.Capabilities.SupportsStreaming, mapping.SupportsStreaming);
-            Assert.Equal(model.Capabilities.SupportsAudioTranscription, mapping.SupportsAudioTranscription);
-            Assert.Equal(model.Capabilities.SupportsTextToSpeech, mapping.SupportsTextToSpeech);
-            Assert.Equal(model.Capabilities.SupportsRealtimeAudio, mapping.SupportsRealtimeAudio);
             Assert.Equal(model.Capabilities.SupportsImageGeneration, mapping.SupportsImageGeneration);
             Assert.Equal(model.Capabilities.SupportsVideoGeneration, mapping.SupportsVideoGeneration);
             Assert.Equal(model.Capabilities.MaxTokens, mapping.MaxContextTokens);

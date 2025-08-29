@@ -23,18 +23,12 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
                 SupportsVision = false,
                 SupportsFunctionCalling = true,
                 SupportsStreaming = false,
-                SupportsAudioTranscription = true,
-                SupportsTextToSpeech = false,
-                SupportsRealtimeAudio = true,
                 SupportsImageGeneration = false,
                 SupportsVideoGeneration = true,
                 SupportsEmbeddings = false,
                 MaxTokens = 128000,
                 MinTokens = 1,
                 TokenizerType = TokenizerType.Cl100KBase,
-                SupportedVoices = "alloy,echo",
-                SupportedLanguages = "en,es,fr",
-                SupportedFormats = "text,json"
             };
 
             // Act
@@ -47,9 +41,6 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
             deserialized.SupportsVision.Should().BeFalse();
             deserialized.SupportsFunctionCalling.Should().BeTrue();
             deserialized.SupportsStreaming.Should().BeFalse();
-            deserialized.SupportsAudioTranscription.Should().BeTrue();
-            deserialized.SupportsTextToSpeech.Should().BeFalse();
-            deserialized.SupportsRealtimeAudio.Should().BeTrue();
             deserialized.SupportsImageGeneration.Should().BeFalse();
             deserialized.SupportsVideoGeneration.Should().BeTrue();
             deserialized.SupportsEmbeddings.Should().BeFalse();
@@ -101,9 +92,6 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
                 MaxTokens = 4096,
                 MinTokens = 1,
                 TokenizerType = TokenizerType.BPE,
-                SupportedVoices = null,
-                SupportedLanguages = null,
-                SupportedFormats = null
             };
 
             // Act
@@ -112,9 +100,6 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
 
             // Assert
             deserialized.Should().NotBeNull();
-            deserialized!.SupportedVoices.Should().BeNull();
-            deserialized.SupportedLanguages.Should().BeNull();
-            deserialized.SupportedFormats.Should().BeNull();
         }
 
         [Fact]
@@ -124,10 +109,6 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
             var dto = new CapabilitiesDto
             {
                 Id = 1,
-                SupportsTextToSpeech = true,
-                SupportedVoices = "alloy,echo,fable,onyx,nova,shimmer",
-                SupportedLanguages = "en,es,fr,de,it,pt,ru,zh,ja,ko",
-                SupportedFormats = "mp3,opus,aac,flac,wav,pcm",
                 TokenizerType = TokenizerType.BPE,
                 MaxTokens = 4096,
                 MinTokens = 1
@@ -139,9 +120,6 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
 
             // Assert
             deserialized.Should().NotBeNull();
-            deserialized!.SupportedVoices.Should().Be("alloy,echo,fable,onyx,nova,shimmer");
-            deserialized.SupportedLanguages.Should().Be("en,es,fr,de,it,pt,ru,zh,ja,ko");
-            deserialized.SupportedFormats.Should().Be("mp3,opus,aac,flac,wav,pcm");
         }
 
         [Fact]
@@ -232,9 +210,6 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
             var dto = new CapabilitiesDto
             {
                 Id = 1,
-                SupportedVoices = "",
-                SupportedLanguages = "",
-                SupportedFormats = "",
                 TokenizerType = TokenizerType.BPE,
                 MaxTokens = 4096,
                 MinTokens = 1
@@ -246,9 +221,6 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
 
             // Assert
             deserialized.Should().NotBeNull();
-            deserialized!.SupportedVoices.Should().BeEmpty();
-            deserialized.SupportedLanguages.Should().BeEmpty();
-            deserialized.SupportedFormats.Should().BeEmpty();
         }
 
         [Fact]
@@ -281,7 +253,6 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
             var dto = new CapabilitiesDto
             {
                 Id = 1,
-                SupportedLanguages = "中文,日本語,한국어,العربية,עברית,русский",
                 TokenizerType = TokenizerType.BPE,
                 MaxTokens = 4096,
                 MinTokens = 1
@@ -293,7 +264,6 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
 
             // Assert
             deserialized.Should().NotBeNull();
-            deserialized!.SupportedLanguages.Should().Be("中文,日本語,한국어,العربية,עברית,русский");
         }
 
         [Fact]

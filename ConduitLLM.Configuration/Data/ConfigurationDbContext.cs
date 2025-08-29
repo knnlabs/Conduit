@@ -123,50 +123,10 @@ namespace ConduitLLM.Configuration
         public virtual DbSet<ProviderKeyCredential> ProviderKeyCredentials { get; set; } = null!;
 
         /// <summary>
-        /// Database set for router configurations
-        /// </summary>
-        public virtual DbSet<RouterConfigEntity> RouterConfigurations { get; set; } = null!;
-
-        /// <summary>
-        /// Database set for router configurations (alias for backward compatibility)
-        /// </summary>
-        public virtual DbSet<RouterConfigEntity> RouterConfigs => RouterConfigurations;
-
-        /// <summary>
-        /// Database set for model deployments
-        /// </summary>
-        public virtual DbSet<ModelDeploymentEntity> ModelDeployments { get; set; } = null!;
-
-        /// <summary>
-        /// Database set for fallback configurations
-        /// </summary>
-        public virtual DbSet<FallbackConfigurationEntity> FallbackConfigurations { get; set; } = null!;
-
-        /// <summary>
-        /// Database set for fallback model mappings
-        /// </summary>
-        public virtual DbSet<FallbackModelMappingEntity> FallbackModelMappings { get; set; } = null!;
-
-
-        /// <summary>
         /// Database set for IP filters
         /// </summary>
         public virtual DbSet<IpFilterEntity> IpFilters { get; set; } = null!;
 
-        /// <summary>
-        /// Database set for audio provider configurations
-        /// </summary>
-        public virtual DbSet<AudioProviderConfig> AudioProviderConfigs { get; set; } = null!;
-
-        /// <summary>
-        /// Database set for audio costs
-        /// </summary>
-        public virtual DbSet<AudioCost> AudioCosts { get; set; } = null!;
-
-        /// <summary>
-        /// Database set for audio usage logs
-        /// </summary>
-        public virtual DbSet<AudioUsageLog> AudioUsageLogs { get; set; } = null!;
 
         /// <summary>
         /// Database set for model cost mappings
@@ -306,55 +266,6 @@ namespace ConduitLLM.Configuration
                 // Remove redundant relationship configuration as it's already defined by annotations and the VirtualKey configuration
             });
 
-            // Configure Router entities
-            modelBuilder.Entity<RouterConfigEntity>(entity =>
-            {
-                entity.HasIndex(e => e.LastUpdated);
-
-                // Configure relationships with model deployments and fallback configurations
-                entity.HasMany(e => e.ModelDeployments)
-                      .WithOne(e => e.RouterConfig)
-                      .HasForeignKey(e => e.RouterConfigId)
-                      .OnDelete(DeleteBehavior.Cascade);
-
-                entity.HasMany(e => e.FallbackConfigurations)
-                      .WithOne(e => e.RouterConfig)
-                      .HasForeignKey(e => e.RouterConfigId)
-                      .OnDelete(DeleteBehavior.Cascade);
-            });
-
-            modelBuilder.Entity<ModelDeploymentEntity>(entity =>
-            {
-                entity.HasIndex(e => e.ModelName);
-                entity.HasIndex(e => e.ProviderId);
-                entity.HasIndex(e => e.IsEnabled);
-                entity.HasIndex(e => e.IsHealthy);
-                
-                // Configure relationship with Provider
-                entity.HasOne(e => e.Provider)
-                      .WithMany()
-                      .HasForeignKey(e => e.ProviderId)
-                      .OnDelete(DeleteBehavior.Restrict);
-            });
-
-            modelBuilder.Entity<FallbackConfigurationEntity>(entity =>
-            {
-                entity.HasIndex(e => e.PrimaryModelDeploymentId);
-
-                // Configure relationship with fallback model mappings
-                entity.HasMany(e => e.FallbackMappings)
-                      .WithOne(e => e.FallbackConfiguration)
-                      .HasForeignKey(e => e.FallbackConfigurationId)
-                      .OnDelete(DeleteBehavior.Cascade);
-            });
-
-            modelBuilder.Entity<FallbackModelMappingEntity>(entity =>
-            {
-                entity.HasIndex(e => new { e.FallbackConfigurationId, e.Order }).IsUnique();
-                entity.HasIndex(e => new { e.FallbackConfigurationId, e.ModelDeploymentId }).IsUnique();
-            });
-
-
             // Configure IP Filter entity
             modelBuilder.Entity<IpFilterEntity>(entity =>
             {
@@ -365,35 +276,6 @@ namespace ConduitLLM.Configuration
                 entity.HasIndex(e => e.IsEnabled);
             });
 
-            // Configure AudioProviderConfig entity
-            modelBuilder.Entity<AudioProviderConfig>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.HasIndex(e => e.ProviderId);
-
-                entity.HasOne(e => e.Provider)
-                      .WithOne()
-                      .HasForeignKey<AudioProviderConfig>(e => e.ProviderId)
-                      .OnDelete(DeleteBehavior.Cascade);
-            });
-
-            // Configure AudioCost entity
-            modelBuilder.Entity<AudioCost>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.HasIndex(e => new { e.ProviderId, e.OperationType, e.Model, e.IsActive });
-                entity.HasIndex(e => new { e.EffectiveFrom, e.EffectiveTo });
-            });
-
-            // Configure AudioUsageLog entity
-            modelBuilder.Entity<AudioUsageLog>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.HasIndex(e => e.VirtualKey);
-                entity.HasIndex(e => e.Timestamp);
-                entity.HasIndex(e => new { e.ProviderId, e.OperationType });
-                entity.HasIndex(e => e.SessionId);
-            });
 
             // Configure AsyncTask entity
             modelBuilder.Entity<AsyncTask>(entity =>

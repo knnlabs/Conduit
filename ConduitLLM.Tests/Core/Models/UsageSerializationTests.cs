@@ -29,7 +29,6 @@ public class UsageSerializationTests
             InferenceSteps = 30,
             VideoDurationSeconds = 60.5,
             VideoResolution = "1920x1080",
-            AudioDurationSeconds = 120.75m,
             SearchUnits = 5,
             SearchMetadata = new SearchUsageMetadata
             {
@@ -62,7 +61,6 @@ public class UsageSerializationTests
         deserialized.InferenceSteps.Should().Be(30);
         deserialized.VideoDurationSeconds.Should().Be(60.5);
         deserialized.VideoResolution.Should().Be("1920x1080");
-        deserialized.AudioDurationSeconds.Should().Be(120.75m);
         deserialized.SearchUnits.Should().Be(5);
         deserialized.IsBatch.Should().BeTrue();
         
@@ -98,7 +96,6 @@ public class UsageSerializationTests
         json.Should().NotContain("inference_steps");
         json.Should().NotContain("video_duration_seconds");
         json.Should().NotContain("video_resolution");
-        json.Should().NotContain("audio_duration_seconds");
         json.Should().NotContain("search_units");
         json.Should().NotContain("search_metadata");
         json.Should().NotContain("is_batch");
@@ -129,7 +126,6 @@ public class UsageSerializationTests
         usage.CachedWriteTokens.Should().BeNull();
         usage.ImageQuality.Should().BeNull();
         usage.InferenceSteps.Should().BeNull();
-        usage.AudioDurationSeconds.Should().BeNull();
         usage.SearchUnits.Should().BeNull();
         usage.SearchMetadata.Should().BeNull();
         usage.Metadata.Should().BeNull();
@@ -162,7 +158,6 @@ public class UsageSerializationTests
         
         // Other fields should be null
         usage.CachedWriteTokens.Should().BeNull();
-        usage.AudioDurationSeconds.Should().BeNull();
         usage.SearchUnits.Should().BeNull();
     }
 
@@ -177,7 +172,6 @@ public class UsageSerializationTests
             TotalTokens = 150,
             CachedInputTokens = 30,
             CachedWriteTokens = 20,
-            AudioDurationSeconds = 60.5m,
             SearchUnits = 2,
             InferenceSteps = 30,
             ImageQuality = "hd"
@@ -194,7 +188,6 @@ public class UsageSerializationTests
         root.GetProperty("total_tokens").GetInt32().Should().Be(150);
         root.GetProperty("cached_input_tokens").GetInt32().Should().Be(30);
         root.GetProperty("cached_write_tokens").GetInt32().Should().Be(20);
-        root.GetProperty("audio_duration_seconds").GetDecimal().Should().Be(60.5m);
         root.GetProperty("search_units").GetInt32().Should().Be(2);
         root.GetProperty("inference_steps").GetInt32().Should().Be(30);
         root.GetProperty("image_quality").GetString().Should().Be("hd");
@@ -221,7 +214,6 @@ public class UsageSerializationTests
         usage.InferenceSteps.Should().BeNull();
         usage.VideoDurationSeconds.Should().BeNull();
         usage.VideoResolution.Should().BeNull();
-        usage.AudioDurationSeconds.Should().BeNull();
         usage.SearchUnits.Should().BeNull();
         usage.SearchMetadata.Should().BeNull();
         usage.IsBatch.Should().BeNull();

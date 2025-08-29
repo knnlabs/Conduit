@@ -383,7 +383,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="file">CSV file containing model costs</param>
         /// <returns>Import result with statistics</returns>
         [HttpPost("import/csv")]
-        [ProducesResponseType(typeof(BulkImportResult), StatusCodes.Status200OK)]
+        // [ProducesResponseType(typeof(BulkImportResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ImportCsv(IFormFile file)
@@ -430,7 +430,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="file">JSON file containing model costs</param>
         /// <returns>Import result with statistics</returns>
         [HttpPost("import/json")]
-        [ProducesResponseType(typeof(BulkImportResult), StatusCodes.Status200OK)]
+        // [ProducesResponseType(typeof(BulkImportResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ImportJson(IFormFile file)

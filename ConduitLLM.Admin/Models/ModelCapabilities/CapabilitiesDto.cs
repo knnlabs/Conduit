@@ -69,38 +69,6 @@ namespace ConduitLLM.Admin.Models.ModelCapabilities
         /// <value>True if streaming is supported; otherwise, false.</value>
         public bool SupportsStreaming { get; set; }
 
-        /// <summary>
-        /// Gets or sets whether the model supports audio transcription (speech-to-text).
-        /// </summary>
-        /// <remarks>
-        /// Audio transcription models can convert spoken audio into text.
-        /// Examples include Whisper models and other STT (speech-to-text) services.
-        /// These models typically accept audio files in various formats (mp3, wav, etc.).
-        /// </remarks>
-        /// <value>True if audio transcription is supported; otherwise, false.</value>
-        public bool SupportsAudioTranscription { get; set; }
-
-        /// <summary>
-        /// Gets or sets whether the model supports text-to-speech synthesis.
-        /// </summary>
-        /// <remarks>
-        /// TTS models can convert text into natural-sounding speech.
-        /// Examples include OpenAI TTS, ElevenLabs, and other voice synthesis services.
-        /// These models typically support multiple voices and languages.
-        /// </remarks>
-        /// <value>True if text-to-speech is supported; otherwise, false.</value>
-        public bool SupportsTextToSpeech { get; set; }
-
-        /// <summary>
-        /// Gets or sets whether the model supports real-time audio interactions.
-        /// </summary>
-        /// <remarks>
-        /// Real-time audio support enables live, bidirectional audio conversations.
-        /// This is more advanced than simple TTS/STT, supporting interruptions,
-        /// natural conversation flow, and low-latency responses. Example: OpenAI Realtime API.
-        /// </remarks>
-        /// <value>True if real-time audio is supported; otherwise, false.</value>
-        public bool SupportsRealtimeAudio { get; set; }
 
         /// <summary>
         /// Gets or sets whether the model supports image generation.
@@ -178,40 +146,5 @@ namespace ConduitLLM.Admin.Models.ModelCapabilities
         /// <value>The tokenizer type enum value.</value>
         public TokenizerType TokenizerType { get; set; }
 
-        /// <summary>
-        /// Gets or sets the comma-separated list of supported voice IDs for TTS models.
-        /// </summary>
-        /// <remarks>
-        /// For text-to-speech capable models, this lists the available voice options.
-        /// Format: "voice1,voice2,voice3" or JSON array as string.
-        /// Examples: "alloy,echo,fable,onyx,nova,shimmer" for OpenAI TTS.
-        /// </remarks>
-        /// <value>Comma-separated voice IDs or JSON array string, or null if not applicable.</value>
-        public string? SupportedVoices { get; set; }
-
-        /// <summary>
-        /// Gets or sets the comma-separated list of supported languages.
-        /// </summary>
-        /// <remarks>
-        /// Lists the languages the model can process or generate.
-        /// Format: ISO 639-1 codes like "en,es,fr,de,zh,ja" or full names.
-        /// Some models support 100+ languages while others are English-only.
-        /// Applies to chat, TTS, STT, and other language-processing capabilities.
-        /// </remarks>
-        /// <value>Comma-separated language codes or names, or null if not specified.</value>
-        public string? SupportedLanguages { get; set; }
-
-        /// <summary>
-        /// Gets or sets the comma-separated list of supported input/output formats.
-        /// </summary>
-        /// <remarks>
-        /// Specifies the file formats or data formats the model can handle.
-        /// For audio models: "mp3,wav,ogg,flac"
-        /// For image models: "png,jpg,webp,gif"
-        /// For video models: "mp4,avi,mov,webm"
-        /// For chat models: "text,json,markdown"
-        /// </remarks>
-        /// <value>Comma-separated format specifications, or null if not specified.</value>
-        public string? SupportedFormats { get; set; }
     }
 }

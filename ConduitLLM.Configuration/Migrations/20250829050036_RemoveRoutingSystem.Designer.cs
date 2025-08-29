@@ -3,6 +3,7 @@ using System;
 using ConduitLLM.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ConduitLLM.Configuration.Migrations
 {
     [DbContext(typeof(ConduitDbContext))]
-    partial class ConduitDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250829050036_RemoveRoutingSystem")]
+    partial class RemoveRoutingSystem
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -117,6 +120,214 @@ namespace ConduitLLM.Configuration.Migrations
                         .HasDatabaseName("IX_AsyncTasks_Archival");
 
                     b.ToTable("AsyncTasks");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.AudioCost", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AdditionalFactors")
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("CostPerUnit")
+                        .HasColumnType("decimal(10, 6)");
+
+                    b.Property<string>("CostUnit")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("EffectiveFrom")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("EffectiveTo")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal?>("MinimumCharge")
+                        .HasColumnType("decimal(10, 6)");
+
+                    b.Property<string>("Model")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("OperationType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("ProviderId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EffectiveFrom", "EffectiveTo");
+
+                    b.HasIndex("ProviderId", "OperationType", "Model", "IsActive");
+
+                    b.ToTable("AudioCosts");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.AudioProviderConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CustomSettings")
+                        .HasColumnType("text");
+
+                    b.Property<string>("DefaultRealtimeModel")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("DefaultTTSModel")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("DefaultTTSVoice")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("DefaultTranscriptionModel")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("ProviderId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("RealtimeEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("RealtimeEndpoint")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("RoutingPriority")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("TextToSpeechEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("TranscriptionEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProviderId")
+                        .IsUnique();
+
+                    b.ToTable("AudioProviderConfigs");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.AudioUsageLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int?>("CharacterCount")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Cost")
+                        .HasColumnType("decimal(10, 6)");
+
+                    b.Property<double?>("DurationSeconds")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int?>("InputTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)");
+
+                    b.Property<string>("Language")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("Metadata")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Model")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("OperationType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int?>("OutputTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ProviderId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RequestId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("SessionId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int?>("StatusCode")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("VirtualKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Voice")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionId");
+
+                    b.HasIndex("Timestamp");
+
+                    b.HasIndex("VirtualKey");
+
+                    b.HasIndex("ProviderId", "OperationType");
+
+                    b.ToTable("AudioUsageLogs");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.BatchOperationHistory", b =>
@@ -427,6 +638,81 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("Region", "ChangedAt");
 
                     b.ToTable("CacheConfigurationAudits");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.FallbackConfigurationEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("PrimaryModelDeploymentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("RouterConfigId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PrimaryModelDeploymentId");
+
+                    b.HasIndex("RouterConfigId");
+
+                    b.ToTable("FallbackConfigurations");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.FallbackModelMappingEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("FallbackConfigurationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ModelDeploymentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SourceModelName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FallbackConfigurationId", "ModelDeploymentId")
+                        .IsUnique();
+
+                    b.HasIndex("FallbackConfigurationId", "Order")
+                        .IsUnique();
+
+                    b.ToTable("FallbackModelMappings");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.GlobalSetting", b =>
@@ -750,6 +1036,18 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<int>("MinTokens")
                         .HasColumnType("integer");
 
+                    b.Property<string>("SupportedFormats")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SupportedLanguages")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SupportedVoices")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("SupportsAudioTranscription")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("SupportsChat")
                         .HasColumnType("boolean");
 
@@ -762,7 +1060,13 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<bool>("SupportsImageGeneration")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("SupportsRealtimeAudio")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("SupportsStreaming")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("SupportsTextToSpeech")
                         .HasColumnType("boolean");
 
                     b.Property<bool>("SupportsVideoGeneration")
@@ -809,6 +1113,18 @@ namespace ConduitLLM.Configuration.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal?>("AudioCostPerKCharacters")
+                        .HasColumnType("decimal(18, 4)");
+
+                    b.Property<decimal?>("AudioCostPerMinute")
+                        .HasColumnType("decimal(18, 4)");
+
+                    b.Property<decimal?>("AudioInputCostPerMinute")
+                        .HasColumnType("decimal(18, 4)");
+
+                    b.Property<decimal?>("AudioOutputCostPerMinute")
+                        .HasColumnType("decimal(18, 4)");
 
                     b.Property<decimal?>("BatchProcessingMultiplier")
                         .HasColumnType("decimal(18, 4)");
@@ -928,6 +1244,81 @@ namespace ConduitLLM.Configuration.Migrations
                         .IsUnique();
 
                     b.ToTable("ModelCostMappings");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelDeploymentEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DeploymentName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("HealthCheckEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal?>("InputTokenCostPer1K")
+                        .HasColumnType("decimal(18, 8)");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsHealthy")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModelName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<decimal?>("OutputTokenCostPer1K")
+                        .HasColumnType("decimal(18, 8)");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ProviderId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("RPM")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RouterConfigId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("SupportsEmbeddings")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("TPM")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Weight")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsEnabled");
+
+                    b.HasIndex("IsHealthy");
+
+                    b.HasIndex("ModelName");
+
+                    b.HasIndex("ProviderId");
+
+                    b.HasIndex("RouterConfigId");
+
+                    b.ToTable("ModelDeployments");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelIdentifier", b =>
@@ -1279,6 +1670,54 @@ namespace ConduitLLM.Configuration.Migrations
                     b.ToTable("RequestLogs");
                 });
 
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.RouterConfigEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DefaultRoutingStrategy")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<bool>("FallbacksEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("MaxRetries")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("RetryBaseDelayMs")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RetryMaxDelayMs")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LastUpdated");
+
+                    b.ToTable("RouterConfigEntity");
+                });
+
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.VirtualKey", b =>
                 {
                     b.Property<int>("Id")
@@ -1496,6 +1935,39 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Navigation("VirtualKey");
                 });
 
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.AudioCost", b =>
+                {
+                    b.HasOne("ConduitLLM.Configuration.Entities.Provider", "Provider")
+                        .WithMany()
+                        .HasForeignKey("ProviderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Provider");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.AudioProviderConfig", b =>
+                {
+                    b.HasOne("ConduitLLM.Configuration.Entities.Provider", "Provider")
+                        .WithOne()
+                        .HasForeignKey("ConduitLLM.Configuration.Entities.AudioProviderConfig", "ProviderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Provider");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.AudioUsageLog", b =>
+                {
+                    b.HasOne("ConduitLLM.Configuration.Entities.Provider", "Provider")
+                        .WithMany()
+                        .HasForeignKey("ProviderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Provider");
+                });
+
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.BatchOperationHistory", b =>
                 {
                     b.HasOne("ConduitLLM.Configuration.Entities.VirtualKey", "VirtualKey")
@@ -1515,6 +1987,28 @@ namespace ConduitLLM.Configuration.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("VirtualKey");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.FallbackConfigurationEntity", b =>
+                {
+                    b.HasOne("ConduitLLM.Configuration.Entities.RouterConfigEntity", "RouterConfig")
+                        .WithMany("FallbackConfigurations")
+                        .HasForeignKey("RouterConfigId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("RouterConfig");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.FallbackModelMappingEntity", b =>
+                {
+                    b.HasOne("ConduitLLM.Configuration.Entities.FallbackConfigurationEntity", "FallbackConfiguration")
+                        .WithMany("FallbackMappings")
+                        .HasForeignKey("FallbackConfigurationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FallbackConfiguration");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.MediaRecord", b =>
@@ -1564,6 +2058,25 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Navigation("ModelCost");
 
                     b.Navigation("ModelProviderMapping");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelDeploymentEntity", b =>
+                {
+                    b.HasOne("ConduitLLM.Configuration.Entities.Provider", "Provider")
+                        .WithMany()
+                        .HasForeignKey("ProviderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ConduitLLM.Configuration.Entities.RouterConfigEntity", "RouterConfig")
+                        .WithMany("ModelDeployments")
+                        .HasForeignKey("RouterConfigId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Provider");
+
+                    b.Navigation("RouterConfig");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelIdentifier", b =>
@@ -1682,6 +2195,11 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Navigation("VirtualKey");
                 });
 
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.FallbackConfigurationEntity", b =>
+                {
+                    b.Navigation("FallbackMappings");
+                });
+
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.MediaRetentionPolicy", b =>
                 {
                     b.Navigation("VirtualKeyGroups");
@@ -1717,6 +2235,13 @@ namespace ConduitLLM.Configuration.Migrations
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.Provider", b =>
                 {
                     b.Navigation("ProviderKeyCredentials");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.RouterConfigEntity", b =>
+                {
+                    b.Navigation("FallbackConfigurations");
+
+                    b.Navigation("ModelDeployments");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.VirtualKey", b =>

@@ -1,6 +1,5 @@
 import { FetchBasedClient } from './client/FetchBasedClient';
 import { FetchChatService } from './services/FetchChatService';
-import { AudioService } from './services/AudioService';
 import { AuthService } from './services/AuthService';
 import { HealthService } from './services/HealthService';
 import { ImagesService } from './services/ImagesService';
@@ -32,7 +31,6 @@ import { ConduitError } from './utils/errors';
  */
 export class FetchConduitCoreClient extends FetchBasedClient {
   public readonly chat: FetchChatService;
-  public readonly audio: AudioService;
   public readonly auth: AuthService;
   public readonly health: HealthService;
   public readonly images: ImagesService;
@@ -45,7 +43,6 @@ export class FetchConduitCoreClient extends FetchBasedClient {
 
     // Initialize services
     this.chat = new FetchChatService(config);
-    this.audio = new AudioService(this);
     this.auth = new AuthService(this);
     this.health = new HealthService(this);
     this.images = new ImagesService(this);

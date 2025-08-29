@@ -15,10 +15,6 @@ export interface FormValues {
   inferenceStepCost: number;
   defaultInferenceSteps: number;
   imageCostPerImage: number;
-  audioCostPerMinute: number;
-  audioCostPerKCharacters: number;
-  audioInputCostPerMinute: number;
-  audioOutputCostPerMinute: number;
   videoCostPerSecond: number;
   videoResolutionMultipliers: string;
   // Batch processing

@@ -113,26 +113,6 @@ namespace ConduitLLM.Configuration.Entities
         public bool SupportsStreaming => GetCapability(nameof(SupportsStreaming), 
             () => Model?.Capabilities?.SupportsStreaming ?? false);
 
-        /// <summary>
-        /// Gets whether this model supports audio transcription, checking overrides first.
-        /// </summary>
-        [NotMapped]
-        public bool SupportsAudioTranscription => GetCapability(nameof(SupportsAudioTranscription),
-            () => Model?.Capabilities?.SupportsAudioTranscription ?? false);
-
-        /// <summary>
-        /// Gets whether this model supports text-to-speech, checking overrides first.
-        /// </summary>
-        [NotMapped]
-        public bool SupportsTextToSpeech => GetCapability(nameof(SupportsTextToSpeech),
-            () => Model?.Capabilities?.SupportsTextToSpeech ?? false);
-
-        /// <summary>
-        /// Gets whether this model supports realtime audio, checking overrides first.
-        /// </summary>
-        [NotMapped]
-        public bool SupportsRealtimeAudio => GetCapability(nameof(SupportsRealtimeAudio),
-            () => Model?.Capabilities?.SupportsRealtimeAudio ?? false);
 
         /// <summary>
         /// Gets whether this model supports image generation, checking overrides first.
@@ -161,23 +141,6 @@ namespace ConduitLLM.Configuration.Entities
         [NotMapped]
         public TokenizerType? TokenizerType => Model?.Capabilities?.TokenizerType;
 
-        /// <summary>
-        /// Gets supported voices from Model.Capabilities.
-        /// </summary>
-        [NotMapped]
-        public string? SupportedVoices => Model?.Capabilities?.SupportedVoices;
-
-        /// <summary>
-        /// Gets supported languages from Model.Capabilities.
-        /// </summary>
-        [NotMapped]
-        public string? SupportedLanguages => Model?.Capabilities?.SupportedLanguages;
-
-        /// <summary>
-        /// Gets supported formats from Model.Capabilities.
-        /// </summary>
-        [NotMapped]
-        public string? SupportedFormats => Model?.Capabilities?.SupportedFormats;
 
         /// <summary>
         /// Indicates whether this is the default model for its provider and capability type.

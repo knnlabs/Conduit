@@ -76,25 +76,6 @@ namespace ConduitLLM.Configuration.DTOs
         /// </summary>
         public decimal? ImageCostPerImage { get; set; }
 
-        /// <summary>
-        /// Cost per minute for audio transcription (speech-to-text) in USD, if applicable
-        /// </summary>
-        public decimal? AudioCostPerMinute { get; set; }
-
-        /// <summary>
-        /// Cost per 1000 characters for text-to-speech synthesis in USD, if applicable
-        /// </summary>
-        public decimal? AudioCostPerKCharacters { get; set; }
-
-        /// <summary>
-        /// Cost per minute for real-time audio input in USD, if applicable
-        /// </summary>
-        public decimal? AudioInputCostPerMinute { get; set; }
-
-        /// <summary>
-        /// Cost per minute for real-time audio output in USD, if applicable
-        /// </summary>
-        public decimal? AudioOutputCostPerMinute { get; set; }
 
         /// <summary>
         /// Cost per second for video generation in USD, if applicable

@@ -253,17 +253,5 @@ public partial class CostCalculationService
         return Task.FromResult(cost);
     }
 
-    private async Task<decimal> CalculatePerMinuteAudioCostAsync(string modelId, ModelCost modelCost, Usage usage)
-    {
-        // This pricing model is for audio transcription/realtime
-        // Delegate to standard calculation which already handles audio costs
-        return await CalculateStandardCostAsync(modelId, modelCost, usage);
-    }
-
-    private async Task<decimal> CalculatePerThousandCharactersCostAsync(string modelId, ModelCost modelCost, Usage usage)
-    {
-        // This pricing model is for text-to-speech
-        // The standard calculation already handles AudioCostPerKCharacters
-        return await CalculateStandardCostAsync(modelId, modelCost, usage);
-    }
+    // Audio calculation methods removed - audio functionality has been removed from the system
 }

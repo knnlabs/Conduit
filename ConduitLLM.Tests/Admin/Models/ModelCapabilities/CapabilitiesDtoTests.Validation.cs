@@ -21,18 +21,12 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
             dto.SupportsVision.Should().BeFalse();
             dto.SupportsFunctionCalling.Should().BeFalse();
             dto.SupportsStreaming.Should().BeFalse();
-            dto.SupportsAudioTranscription.Should().BeFalse();
-            dto.SupportsTextToSpeech.Should().BeFalse();
-            dto.SupportsRealtimeAudio.Should().BeFalse();
             dto.SupportsImageGeneration.Should().BeFalse();
             dto.SupportsVideoGeneration.Should().BeFalse();
             dto.SupportsEmbeddings.Should().BeFalse();
             dto.MaxTokens.Should().Be(0);
             dto.MinTokens.Should().Be(1); // Default should be 1
             dto.TokenizerType.Should().Be(TokenizerType.Cl100KBase); // Default enum value is 0
-            dto.SupportedVoices.Should().BeNull();
-            dto.SupportedLanguages.Should().BeNull();
-            dto.SupportedFormats.Should().BeNull();
         }
 
         [Fact]
@@ -98,9 +92,6 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
                 MaxTokens = 200000, // Update
                 MinTokens = null, // Don't update
                 TokenizerType = TokenizerType.O200KBase, // Update
-                SupportedVoices = null, // Don't update
-                SupportedLanguages = "en,es", // Update
-                SupportedFormats = null // Don't update
             };
 
             // Assert - nulls mean "don't update"
@@ -112,9 +103,6 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
             dto.MaxTokens.Should().Be(200000);
             dto.MinTokens.Should().BeNull();
             dto.TokenizerType.Should().Be(TokenizerType.O200KBase);
-            dto.SupportedVoices.Should().BeNull();
-            dto.SupportedLanguages.Should().Be("en,es");
-            dto.SupportedFormats.Should().BeNull();
         }
 
         [Fact]
@@ -128,18 +116,12 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
                 SupportsVision = null,
                 SupportsFunctionCalling = null,
                 SupportsStreaming = null,
-                SupportsAudioTranscription = null,
-                SupportsTextToSpeech = null,
-                SupportsRealtimeAudio = null,
                 SupportsImageGeneration = null,
                 SupportsVideoGeneration = null,
                 SupportsEmbeddings = null,
                 MaxTokens = null,
                 MinTokens = null,
                 TokenizerType = null,
-                SupportedVoices = null,
-                SupportedLanguages = null,
-                SupportedFormats = null
             };
 
             // Assert - all nulls is valid (no-op update)
@@ -175,58 +157,7 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
             isInconsistent.Should().BeTrue("Function calling typically requires chat support");
         }
 
-        [Theory]
-        [InlineData("alloy")]
-        [InlineData("alloy,echo")]
-        [InlineData("alloy,echo,fable,onyx,nova,shimmer")]
-        [InlineData("voice1|voice2|voice3")] // Different separator
-        [InlineData("UPPERCASE,lowercase,MixedCase")]
-        [InlineData("")] // Empty
-        [InlineData(" ")] // Whitespace
-        public void CapabilitiesDto_Should_Accept_Various_Voice_Formats(string voices)
-        {
-            // Arrange & Act
-            var dto = new CapabilitiesDto
-            {
-                Id = 1,
-                SupportsTextToSpeech = true,
-                SupportedVoices = voices,
-                MaxTokens = 4096,
-                MinTokens = 1,
-                TokenizerType = TokenizerType.BPE
-            };
 
-            // Assert
-            dto.SupportedVoices.Should().Be(voices);
-        }
-
-        [Fact]
-        public void CapabilitiesDto_Should_Handle_Very_Long_Supported_Lists()
-        {
-            // Arrange
-            var longVoiceList = string.Join(",", new string[100].Select((_, i) => $"voice{i}"));
-            var longLanguageList = string.Join(",", new string[200].Select((_, i) => $"lang{i}"));
-            var longFormatList = string.Join(",", new string[50].Select((_, i) => $"format{i}"));
-
-            var dto = new CapabilitiesDto
-            {
-                Id = 1,
-                SupportedVoices = longVoiceList,
-                SupportedLanguages = longLanguageList,
-                SupportedFormats = longFormatList,
-                MaxTokens = 4096,
-                MinTokens = 1,
-                TokenizerType = TokenizerType.BPE
-            };
-
-            // Act & Assert
-            dto.SupportedVoices.Should().Contain("voice0");
-            dto.SupportedVoices.Should().Contain("voice99");
-            dto.SupportedLanguages.Should().Contain("lang0");
-            dto.SupportedLanguages.Should().Contain("lang199");
-            dto.SupportedFormats.Should().Contain("format0");
-            dto.SupportedFormats.Should().Contain("format49");
-        }
 
         [Fact]
         public void CreateCapabilitiesDto_Should_Default_MinTokens_To_One()
@@ -277,25 +208,13 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
             var dto = new CapabilitiesDto
             {
                 Id = 1,
-                SupportsAudioTranscription = true,
-                SupportsTextToSpeech = true,
-                SupportsRealtimeAudio = true,
-                SupportedVoices = "alloy,echo,fable",
-                SupportedLanguages = "en,es,fr,de",
-                SupportedFormats = "mp3,opus,aac",
                 MaxTokens = 0, // Audio models might not have token limits
                 MinTokens = 0,
                 TokenizerType = TokenizerType.BPE
             };
 
             // Act & Assert
-            dto.SupportsAudioTranscription.Should().BeTrue();
-            dto.SupportsTextToSpeech.Should().BeTrue();
-            
-            // Business validation - TTS requires voices
-            var hasTTSWithVoices = dto.SupportsTextToSpeech && 
-                                   !string.IsNullOrEmpty(dto.SupportedVoices);
-            hasTTSWithVoices.Should().BeTrue("TTS models should specify supported voices");
+            dto.Should().NotBeNull();
         }
 
         [Fact]
@@ -305,16 +224,9 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
             var dto = new UpdateCapabilitiesDto
             {
                 Id = 1,
-                SupportedVoices = "", // Clear voices
-                SupportedLanguages = "", // Clear languages
-                SupportedFormats = "" // Clear formats
             };
 
             // Act & Assert
-            dto.SupportedVoices.Should().BeEmpty();
-            dto.SupportedLanguages.Should().BeEmpty();
-            dto.SupportedFormats.Should().BeEmpty();
-            dto.SupportedVoices.Should().NotBeNull("Empty string is different from null for updates");
         }
 
         [Fact]
@@ -328,9 +240,6 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
                 SupportsVision = true,
                 SupportsFunctionCalling = true,
                 SupportsStreaming = true,
-                SupportsAudioTranscription = true,
-                SupportsTextToSpeech = true,
-                SupportsRealtimeAudio = true,
                 SupportsImageGeneration = true,
                 SupportsVideoGeneration = true,
                 SupportsEmbeddings = true,
@@ -346,9 +255,6 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
                 dto.SupportsVision,
                 dto.SupportsFunctionCalling,
                 dto.SupportsStreaming,
-                dto.SupportsAudioTranscription,
-                dto.SupportsTextToSpeech,
-                dto.SupportsRealtimeAudio,
                 dto.SupportsImageGeneration,
                 dto.SupportsVideoGeneration,
                 dto.SupportsEmbeddings

@@ -15,10 +15,6 @@ export interface FormValues {
   inferenceStepCost: number;
   defaultInferenceSteps: number;
   imageCostPerImage: number;
-  audioCostPerMinute: number;
-  audioCostPerKCharacters: number;
-  audioInputCostPerMinute: number;
-  audioOutputCostPerMinute: number;
   videoCostPerSecond: number;
   videoResolutionMultipliers: string;
   // Batch processing
@@ -45,7 +41,6 @@ export const getFormValidation = () => ({
   inferenceStepCost: (value: number) => value < 0 ? 'Cost must be non-negative' : null,
   defaultInferenceSteps: (value: number) => value < 0 ? 'Steps must be non-negative' : null,
   imageCostPerImage: (value: number) => value < 0 ? 'Cost must be non-negative' : null,
-  audioCostPerMinute: (value: number) => value < 0 ? 'Cost must be non-negative' : null,
   videoCostPerSecond: (value: number) => value < 0 ? 'Cost must be non-negative' : null,
   batchProcessingMultiplier: (value: number, values: FormValues) => {
     if (values.supportsBatchProcessing && value) {

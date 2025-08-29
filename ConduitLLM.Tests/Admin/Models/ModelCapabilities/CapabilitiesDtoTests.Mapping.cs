@@ -21,18 +21,12 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
                 SupportsVision = true,
                 SupportsFunctionCalling = true,
                 SupportsStreaming = true,
-                SupportsAudioTranscription = false,
-                SupportsTextToSpeech = true,
-                SupportsRealtimeAudio = false,
                 SupportsImageGeneration = false,
                 SupportsVideoGeneration = false,
                 SupportsEmbeddings = false,
                 MaxTokens = 128000,
                 MinTokens = 1,
                 TokenizerType = TokenizerType.Cl100KBase,
-                SupportedVoices = "alloy,echo,fable,onyx,nova,shimmer",
-                SupportedLanguages = "en,es,fr,de,it,pt,ru,zh,ja,ko",
-                SupportedFormats = "text,json,json_object"
             };
 
             // Act - simulate the mapping logic from controller
@@ -45,18 +39,12 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
             dto.SupportsVision.Should().Be(entity.SupportsVision);
             dto.SupportsFunctionCalling.Should().Be(entity.SupportsFunctionCalling);
             dto.SupportsStreaming.Should().Be(entity.SupportsStreaming);
-            dto.SupportsAudioTranscription.Should().Be(entity.SupportsAudioTranscription);
-            dto.SupportsTextToSpeech.Should().Be(entity.SupportsTextToSpeech);
-            dto.SupportsRealtimeAudio.Should().Be(entity.SupportsRealtimeAudio);
             dto.SupportsImageGeneration.Should().Be(entity.SupportsImageGeneration);
             dto.SupportsVideoGeneration.Should().Be(entity.SupportsVideoGeneration);
             dto.SupportsEmbeddings.Should().Be(entity.SupportsEmbeddings);
             dto.MaxTokens.Should().Be(entity.MaxTokens);
             dto.MinTokens.Should().Be(entity.MinTokens);
             dto.TokenizerType.Should().Be(entity.TokenizerType);
-            dto.SupportedVoices.Should().Be(entity.SupportedVoices);
-            dto.SupportedLanguages.Should().Be(entity.SupportedLanguages);
-            dto.SupportedFormats.Should().Be(entity.SupportedFormats);
         }
 
         [Fact]
@@ -69,18 +57,12 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
                 SupportsVision = false,
                 SupportsFunctionCalling = true,
                 SupportsStreaming = true,
-                SupportsAudioTranscription = false,
-                SupportsTextToSpeech = false,
-                SupportsRealtimeAudio = false,
                 SupportsImageGeneration = false,
                 SupportsVideoGeneration = false,
                 SupportsEmbeddings = false,
                 MaxTokens = 4096,
                 MinTokens = 1,
                 TokenizerType = TokenizerType.P50KBase,
-                SupportedVoices = null,
-                SupportedLanguages = "en",
-                SupportedFormats = "text"
             };
 
             // Act - simulate controller logic
@@ -90,18 +72,12 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
                 SupportsVision = createDto.SupportsVision,
                 SupportsFunctionCalling = createDto.SupportsFunctionCalling,
                 SupportsStreaming = createDto.SupportsStreaming,
-                SupportsAudioTranscription = createDto.SupportsAudioTranscription,
-                SupportsTextToSpeech = createDto.SupportsTextToSpeech,
-                SupportsRealtimeAudio = createDto.SupportsRealtimeAudio,
                 SupportsImageGeneration = createDto.SupportsImageGeneration,
                 SupportsVideoGeneration = createDto.SupportsVideoGeneration,
                 SupportsEmbeddings = createDto.SupportsEmbeddings,
                 MaxTokens = createDto.MaxTokens,
                 MinTokens = createDto.MinTokens,
                 TokenizerType = createDto.TokenizerType,
-                SupportedVoices = createDto.SupportedVoices,
-                SupportedLanguages = createDto.SupportedLanguages,
-                SupportedFormats = createDto.SupportedFormats
             };
 
             // Assert
@@ -112,9 +88,6 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
             entity.MaxTokens.Should().Be(4096);
             entity.MinTokens.Should().Be(1);
             entity.TokenizerType.Should().Be(TokenizerType.P50KBase);
-            entity.SupportedVoices.Should().BeNull();
-            entity.SupportedLanguages.Should().Be("en");
-            entity.SupportedFormats.Should().Be("text");
         }
 
         [Fact]
@@ -128,18 +101,12 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
                 SupportsVision = false,
                 SupportsFunctionCalling = false,
                 SupportsStreaming = true,
-                SupportsAudioTranscription = false,
-                SupportsTextToSpeech = false,
-                SupportsRealtimeAudio = false,
                 SupportsImageGeneration = false,
                 SupportsVideoGeneration = false,
                 SupportsEmbeddings = false,
                 MaxTokens = 4096,
                 MinTokens = 1,
                 TokenizerType = TokenizerType.P50KBase,
-                SupportedVoices = "alloy",
-                SupportedLanguages = "en",
-                SupportedFormats = "text"
             };
 
             var updateDto = new UpdateCapabilitiesDto
@@ -152,9 +119,6 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
                 MaxTokens = 128000, // Increase max tokens
                 MinTokens = null, // Don't update
                 TokenizerType = TokenizerType.Cl100KBase, // Update tokenizer
-                SupportedVoices = null, // Don't update
-                SupportedLanguages = "en,es,fr", // Add languages
-                SupportedFormats = null // Don't update
             };
 
             // Act - simulate controller update logic
@@ -172,12 +136,6 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
                 existingEntity.MinTokens = updateDto.MinTokens.Value;
             if (updateDto.TokenizerType.HasValue)
                 existingEntity.TokenizerType = updateDto.TokenizerType.Value;
-            if (updateDto.SupportedVoices != null)
-                existingEntity.SupportedVoices = updateDto.SupportedVoices;
-            if (updateDto.SupportedLanguages != null)
-                existingEntity.SupportedLanguages = updateDto.SupportedLanguages;
-            if (updateDto.SupportedFormats != null)
-                existingEntity.SupportedFormats = updateDto.SupportedFormats;
 
             // Assert
             existingEntity.SupportsChat.Should().BeTrue(); // Unchanged
@@ -187,9 +145,6 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
             existingEntity.MaxTokens.Should().Be(128000); // Updated
             existingEntity.MinTokens.Should().Be(1); // Unchanged
             existingEntity.TokenizerType.Should().Be(TokenizerType.Cl100KBase); // Updated
-            existingEntity.SupportedVoices.Should().Be("alloy"); // Unchanged
-            existingEntity.SupportedLanguages.Should().Be("en,es,fr"); // Updated
-            existingEntity.SupportedFormats.Should().Be("text"); // Unchanged
         }
 
         [Fact]
@@ -199,9 +154,6 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
             var existingEntity = new ConduitLLM.Configuration.Entities.ModelCapabilities
             {
                 Id = 1,
-                SupportedVoices = "alloy,echo,fable",
-                SupportedLanguages = "en,es,fr",
-                SupportedFormats = "text,json",
                 MaxTokens = 4096,
                 MinTokens = 1,
                 TokenizerType = TokenizerType.BPE
@@ -210,23 +162,11 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
             var updateDto = new UpdateCapabilitiesDto
             {
                 Id = 1,
-                SupportedVoices = "", // Clear voices
-                SupportedLanguages = "", // Clear languages
-                SupportedFormats = "" // Clear formats
             };
 
             // Act - simulate controller update logic
-            if (updateDto.SupportedVoices != null)
-                existingEntity.SupportedVoices = updateDto.SupportedVoices;
-            if (updateDto.SupportedLanguages != null)
-                existingEntity.SupportedLanguages = updateDto.SupportedLanguages;
-            if (updateDto.SupportedFormats != null)
-                existingEntity.SupportedFormats = updateDto.SupportedFormats;
 
             // Assert
-            existingEntity.SupportedVoices.Should().BeEmpty();
-            existingEntity.SupportedLanguages.Should().BeEmpty();
-            existingEntity.SupportedFormats.Should().BeEmpty();
         }
 
         [Fact]
@@ -236,9 +176,6 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
             var existingEntity = new ConduitLLM.Configuration.Entities.ModelCapabilities
             {
                 Id = 1,
-                SupportedVoices = "alloy,echo,fable",
-                SupportedLanguages = "en,es,fr",
-                SupportedFormats = "text,json",
                 MaxTokens = 4096,
                 MinTokens = 1,
                 TokenizerType = TokenizerType.BPE
@@ -247,23 +184,11 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
             var updateDto = new UpdateCapabilitiesDto
             {
                 Id = 1,
-                SupportedVoices = null, // Don't update
-                SupportedLanguages = null, // Don't update
-                SupportedFormats = null // Don't update
             };
 
             // Act - simulate controller update logic
-            if (updateDto.SupportedVoices != null)
-                existingEntity.SupportedVoices = updateDto.SupportedVoices;
-            if (updateDto.SupportedLanguages != null)
-                existingEntity.SupportedLanguages = updateDto.SupportedLanguages;
-            if (updateDto.SupportedFormats != null)
-                existingEntity.SupportedFormats = updateDto.SupportedFormats;
 
             // Assert - values unchanged
-            existingEntity.SupportedVoices.Should().Be("alloy,echo,fable");
-            existingEntity.SupportedLanguages.Should().Be("en,es,fr");
-            existingEntity.SupportedFormats.Should().Be("text,json");
         }
 
         [Fact]
@@ -277,18 +202,12 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
                 SupportsVision = true,
                 SupportsFunctionCalling = true,
                 SupportsStreaming = true,
-                SupportsAudioTranscription = true,
-                SupportsTextToSpeech = true,
-                SupportsRealtimeAudio = true,
                 SupportsImageGeneration = true,
                 SupportsVideoGeneration = true,
                 SupportsEmbeddings = true,
                 MaxTokens = int.MaxValue,
                 MinTokens = 1,
                 TokenizerType = TokenizerType.O200KBase,
-                SupportedVoices = "all-voices",
-                SupportedLanguages = "all-languages",
-                SupportedFormats = "all-formats"
             };
 
             // Act
@@ -299,9 +218,6 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
             dto.SupportsVision.Should().BeTrue();
             dto.SupportsFunctionCalling.Should().BeTrue();
             dto.SupportsStreaming.Should().BeTrue();
-            dto.SupportsAudioTranscription.Should().BeTrue();
-            dto.SupportsTextToSpeech.Should().BeTrue();
-            dto.SupportsRealtimeAudio.Should().BeTrue();
             dto.SupportsImageGeneration.Should().BeTrue();
             dto.SupportsVideoGeneration.Should().BeTrue();
             dto.SupportsEmbeddings.Should().BeTrue();
@@ -319,18 +235,12 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
                 SupportsVision = false,
                 SupportsFunctionCalling = false,
                 SupportsStreaming = false,
-                SupportsAudioTranscription = false,
-                SupportsTextToSpeech = false,
-                SupportsRealtimeAudio = false,
                 SupportsImageGeneration = false,
                 SupportsVideoGeneration = false,
                 SupportsEmbeddings = false,
                 MaxTokens = 0,
                 MinTokens = 0,
                 TokenizerType = TokenizerType.BPE,
-                SupportedVoices = null,
-                SupportedLanguages = null,
-                SupportedFormats = null
             };
 
             // Act
@@ -341,9 +251,6 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
             dto.SupportsVision.Should().BeFalse();
             dto.SupportsFunctionCalling.Should().BeFalse();
             dto.SupportsStreaming.Should().BeFalse();
-            dto.SupportsAudioTranscription.Should().BeFalse();
-            dto.SupportsTextToSpeech.Should().BeFalse();
-            dto.SupportsRealtimeAudio.Should().BeFalse();
             dto.SupportsImageGeneration.Should().BeFalse();
             dto.SupportsVideoGeneration.Should().BeFalse();
             dto.SupportsEmbeddings.Should().BeFalse();
@@ -385,18 +292,12 @@ namespace ConduitLLM.Tests.Admin.Models.ModelCapabilities
                 SupportsVision = entity.SupportsVision,
                 SupportsFunctionCalling = entity.SupportsFunctionCalling,
                 SupportsStreaming = entity.SupportsStreaming,
-                SupportsAudioTranscription = entity.SupportsAudioTranscription,
-                SupportsTextToSpeech = entity.SupportsTextToSpeech,
-                SupportsRealtimeAudio = entity.SupportsRealtimeAudio,
                 SupportsImageGeneration = entity.SupportsImageGeneration,
                 SupportsVideoGeneration = entity.SupportsVideoGeneration,
                 SupportsEmbeddings = entity.SupportsEmbeddings,
                 MaxTokens = entity.MaxTokens,
                 MinTokens = entity.MinTokens,
                 TokenizerType = entity.TokenizerType,
-                SupportedVoices = entity.SupportedVoices,
-                SupportedLanguages = entity.SupportedLanguages,
-                SupportedFormats = entity.SupportedFormats
             };
         }
     }

@@ -15,9 +15,6 @@ export function isCapabilitiesObject(capabilities: unknown): capabilities is {
   supportsEmbeddings?: boolean;
   supportsFunctionCalling?: boolean;
   supportsStreaming?: boolean;
-  supportsAudioTranscription?: boolean;
-  supportsTextToSpeech?: boolean;
-  supportsRealtimeAudio?: boolean;
   maxTokens?: number;
 } {
   return capabilities !== null && 
@@ -76,9 +73,6 @@ export function extractCapabilities(model: ModelDto) {
       supportsEmbeddings: false,
       supportsFunctionCalling: false,
       supportsStreaming: true,
-      supportsAudioTranscription: false,
-      supportsTextToSpeech: false,
-      supportsRealtimeAudio: false,
       maxTokens: undefined,
     };
   }
@@ -91,9 +85,6 @@ export function extractCapabilities(model: ModelDto) {
     supportsEmbeddings: capabilities.supportsEmbeddings ?? false,
     supportsFunctionCalling: capabilities.supportsFunctionCalling ?? false,
     supportsStreaming: capabilities.supportsStreaming ?? true,
-    supportsAudioTranscription: capabilities.supportsAudioTranscription ?? false,
-    supportsTextToSpeech: capabilities.supportsTextToSpeech ?? false,
-    supportsRealtimeAudio: capabilities.supportsRealtimeAudio ?? false,
     maxTokens: capabilities.maxTokens,
   };
 }

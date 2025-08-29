@@ -95,10 +95,6 @@ namespace ConduitLLM.Core.Services
                 p => p.Capabilities.Features.VisionInput);
             AddCapabilityGroup(capabilityGroups, "FunctionCalling", 
                 p => p.Capabilities.Features.FunctionCalling);
-            AddCapabilityGroup(capabilityGroups, "AudioTranscription", 
-                p => p.Capabilities.Features.AudioTranscription);
-            AddCapabilityGroup(capabilityGroups, "TextToSpeech", 
-                p => p.Capabilities.Features.TextToSpeech);
 
             // Group by authentication
             AddCapabilityGroup(capabilityGroups, "RequiresApiKey", 

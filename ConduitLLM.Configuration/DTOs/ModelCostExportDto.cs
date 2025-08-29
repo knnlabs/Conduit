@@ -12,10 +12,6 @@ namespace ConduitLLM.Configuration.DTOs
         public decimal OutputCostPerMillionTokens { get; set; }
         public decimal? EmbeddingCostPerMillionTokens { get; set; }
         public decimal? ImageCostPerImage { get; set; }
-        public decimal? AudioCostPerMinute { get; set; }
-        public decimal? AudioCostPerKCharacters { get; set; }
-        public decimal? AudioInputCostPerMinute { get; set; }
-        public decimal? AudioOutputCostPerMinute { get; set; }
         public decimal? VideoCostPerSecond { get; set; }
         public string? VideoResolutionMultipliers { get; set; }
         public string? ImageResolutionMultipliers { get; set; }

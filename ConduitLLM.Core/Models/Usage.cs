@@ -140,16 +140,6 @@ public class Usage
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? InferenceSteps { get; set; }
 
-    /// <summary>
-    /// Duration of audio in seconds (used for speech generation and transcription).
-    /// </summary>
-    /// <remarks>
-    /// Used by audio models for both text-to-speech and speech-to-text operations.
-    /// Most providers charge per minute of audio, which is calculated from this value.
-    /// </remarks>
-    [JsonPropertyName("audio_duration_seconds")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public decimal? AudioDurationSeconds { get; set; }
 
     /// <summary>
     /// Optional metadata for provider-specific usage information.

@@ -16,7 +16,6 @@ namespace ConduitLLM.Core
     public class Conduit : IConduit
     {
         private readonly ILLMClientFactory _clientFactory;
-        private readonly ILLMRouter? _router;
         private readonly IContextManager? _contextManager;
         private readonly IModelProviderMappingService? _modelProviderMappingService;
         private readonly IOptions<ContextManagementOptions>? _contextOptions;
@@ -27,7 +26,6 @@ namespace ConduitLLM.Core
         /// </summary>
         /// <param name="clientFactory">The factory used to obtain provider-specific LLM clients.</param>
         /// <param name="logger">Logger instance.</param>
-        /// <param name="router">Optional router for load balancing and fallback (if null, direct model calls will be used).</param>
         /// <param name="contextManager">Optional context manager for handling token limits.</param>
         /// <param name="modelProviderMappingService">Optional service to retrieve model mappings.</param>
         /// <param name="contextOptions">Optional configuration for context management.</param>
@@ -35,14 +33,12 @@ namespace ConduitLLM.Core
         public Conduit(
             ILLMClientFactory clientFactory,
             ILogger<Conduit> logger,
-            ILLMRouter? router = null,
             IContextManager? contextManager = null,
             IModelProviderMappingService? modelProviderMappingService = null,
             IOptions<ContextManagementOptions>? contextOptions = null)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _router = router;
             _contextManager = contextManager;
             _modelProviderMappingService = modelProviderMappingService;
             _contextOptions = contextOptions;
@@ -74,33 +70,13 @@ namespace ConduitLLM.Core
             // Apply context management if enabled
             request = await ApplyContextManagementAsync(request);
 
-            // If a router is configured and the model uses the 'router:' prefix, use the router
-            if (_router != null && IsRouterRequest(request.Model))
-            {
-                // Extract the routing strategy if specified in the model name
-                var (routingStrategy, actualModel) = ExtractRoutingInfoFromModel(request.Model);
+            // Get the appropriate client from the factory based on the model alias in the request
+            ILLMClient client = _clientFactory.GetClient(request.Model);
 
-                // Set the cleaned model name back in the request if provided
-                if (!string.IsNullOrEmpty(actualModel))
-                {
-                    request.Model = actualModel;
-                }
-
-                // Use the router for this request
-                return await _router.CreateChatCompletionAsync(request, routingStrategy, apiKey, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            else
-            {
-                // Use direct model access via client factory (original behavior)
-                // 1. Get the appropriate client from the factory based on the model alias in the request
-                ILLMClient client = _clientFactory.GetClient(request.Model);
-
-                // 2. Call the client's method, passing the optional apiKey
-                // Exceptions specific to providers (like communication errors) are expected to bubble up from the client.
-                // The factory handles ConfigurationException and UnsupportedProviderException.
-                return await client.CreateChatCompletionAsync(request, apiKey, cancellationToken).ConfigureAwait(false);
-            }
+            // Call the client's method, passing the optional apiKey
+            // Exceptions specific to providers (like communication errors) are expected to bubble up from the client.
+            // The factory handles ConfigurationException and UnsupportedProviderException.
+            return await client.CreateChatCompletionAsync(request, apiKey, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -129,37 +105,15 @@ namespace ConduitLLM.Core
             // Apply context management if enabled
             request = await ApplyContextManagementAsync(request);
 
-            // If a router is configured and the model uses the 'router:' prefix, use the router
-            if (_router != null && IsRouterRequest(request.Model))
+            // Get the appropriate client from the factory based on the model alias in the request
+            ILLMClient client = _clientFactory.GetClient(request.Model);
+
+            // Call the client's streaming method, passing the optional apiKey
+            // Exceptions specific to providers (like communication errors) are expected to bubble up from the client.
+            // The factory handles ConfigurationException and UnsupportedProviderException.
+            await foreach (var chunk in client.StreamChatCompletionAsync(request, apiKey, cancellationToken))
             {
-                // Extract the routing strategy if specified in the model name
-                var (routingStrategy, actualModel) = ExtractRoutingInfoFromModel(request.Model);
-
-                // Set the cleaned model name back in the request if provided
-                if (!string.IsNullOrEmpty(actualModel))
-                {
-                    request.Model = actualModel;
-                }
-
-                // Use the router for this streaming request
-                await foreach (var chunk in _router.StreamChatCompletionAsync(request, routingStrategy, apiKey, cancellationToken))
-                {
-                    yield return chunk;
-                }
-            }
-            else
-            {
-                // Use direct model access via client factory (original behavior)
-                // 1. Get the appropriate client from the factory based on the model alias in the request
-                ILLMClient client = _clientFactory.GetClient(request.Model);
-
-                // 2. Call the client's streaming method, passing the optional apiKey
-                // Exceptions specific to providers (like communication errors) are expected to bubble up from the client.
-                // The factory handles ConfigurationException and UnsupportedProviderException.
-                await foreach (var chunk in client.StreamChatCompletionAsync(request, apiKey, cancellationToken))
-                {
-                    yield return chunk;
-                }
+                yield return chunk;
             }
         }
 
@@ -271,79 +225,6 @@ namespace ConduitLLM.Core
             // No router for image generation (OpenAI spec does not support routing for images)
             ILLMClient client = _clientFactory.GetClient(request.Model);
             return await client.CreateImageAsync(request, apiKey, cancellationToken).ConfigureAwait(false);
-        }
-
-        /// <summary>
-        /// Gets the router instance if one is configured
-        /// </summary>
-        /// <returns>The router instance or null if none is configured</returns>
-        public ILLMRouter? GetRouter() => _router;
-
-        /// <summary>
-        /// Determines if a model request should be handled by the router
-        /// </summary>
-        /// <param name="modelName">The model name to check</param>
-        /// <returns>True if this is a router request, false otherwise</returns>
-        private bool IsRouterRequest(string modelName)
-        {
-            return modelName.StartsWith("router:", StringComparison.OrdinalIgnoreCase) ||
-                   modelName.Equals("router", StringComparison.OrdinalIgnoreCase);
-        }
-
-        /// <summary>
-        /// Extracts routing information from a model name
-        /// </summary>
-        /// <param name="modelName">The model name to parse</param>
-        /// <returns>Tuple containing routing strategy and actual model name (both may be null)</returns>
-        private (string? strategy, string? model) ExtractRoutingInfoFromModel(string modelName)
-        {
-            // Default case: just "router"
-            if (modelName.Equals("router", StringComparison.OrdinalIgnoreCase))
-            {
-                return (null, null);
-            }
-
-            // Model name format: router:strategy:model or router:strategy or router:model
-            if (modelName.StartsWith("router:", StringComparison.OrdinalIgnoreCase))
-            {
-                string remaining = modelName.Substring("router:".Length);
-
-                // Split by colon to extract strategy and model (if present)
-                var parts = remaining.Split(':', 2);
-
-                if (parts.Length == 2)
-                {
-                    // Format: router:strategy:model
-                    return (parts[0], parts[1]);
-                }
-                else
-                {
-                    // Could be either router:strategy or router:model
-                    // Check if the remaining part is a known strategy
-                    if (IsKnownStrategy(parts[0]))
-                    {
-                        return (parts[0], null);
-                    }
-                    else
-                    {
-                        // Assume it's a model name
-                        return (null, parts[0]);
-                    }
-                }
-            }
-
-            // Not a router format
-            return (null, modelName);
-        }
-
-        /// <summary>
-        /// Checks if a string is a known routing strategy
-        /// </summary>
-        private bool IsKnownStrategy(string strategy)
-        {
-            // List of supported strategies
-            return new[] { "simple", "random", "roundrobin", "leastused", "passthrough" }
-                .Contains(strategy.ToLowerInvariant());
         }
 
         /// <summary>

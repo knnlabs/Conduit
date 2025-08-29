@@ -47,25 +47,7 @@ namespace ConduitLLM.Providers.Common.Models
         /// </summary>
         public bool JsonMode { get; set; }
 
-        /// <summary>
-        /// Gets or sets a value indicating whether the model supports audio transcription.
-        /// </summary>
-        public bool AudioTranscription { get; set; }
 
-        /// <summary>
-        /// Gets or sets a value indicating whether the model supports text-to-speech.
-        /// </summary>
-        public bool TextToSpeech { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether the model supports real-time audio.
-        /// </summary>
-        public bool RealtimeAudio { get; set; }
-
-        /// <summary>
-        /// Gets or sets the list of supported audio operations.
-        /// </summary>
-        public List<AudioOperation>? SupportedAudioOperations { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the model supports video generation.
@@ -88,10 +70,6 @@ namespace ConduitLLM.Providers.Common.Models
                 [nameof(FunctionCalling)] = FunctionCalling,
                 [nameof(ToolUsage)] = ToolUsage,
                 [nameof(JsonMode)] = JsonMode,
-                [nameof(AudioTranscription)] = AudioTranscription,
-                [nameof(TextToSpeech)] = TextToSpeech,
-                [nameof(RealtimeAudio)] = RealtimeAudio,
-                [nameof(SupportedAudioOperations)] = SupportedAudioOperations,
                 [nameof(VideoGeneration)] = VideoGeneration
             };
         }

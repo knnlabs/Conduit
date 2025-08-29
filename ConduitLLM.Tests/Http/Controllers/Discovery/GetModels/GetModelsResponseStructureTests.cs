@@ -42,9 +42,6 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             Assert.True(model.supports_streaming);
             Assert.True(model.supports_vision);
             Assert.True(model.supports_function_calling);
-            Assert.True(model.supports_audio_transcription);
-            Assert.True(model.supports_text_to_speech);
-            Assert.True(model.supports_realtime_audio);
             Assert.True(model.supports_video_generation);
             Assert.True(model.supports_image_generation);
             Assert.True(model.supports_embeddings);

@@ -404,17 +404,11 @@ namespace ConduitLLM.Admin.Controllers
                 SupportsVision = capabilities.SupportsVision,
                 SupportsFunctionCalling = capabilities.SupportsFunctionCalling,
                 SupportsStreaming = capabilities.SupportsStreaming,
-                SupportsAudioTranscription = capabilities.SupportsAudioTranscription,
-                SupportsTextToSpeech = capabilities.SupportsTextToSpeech,
-                SupportsRealtimeAudio = capabilities.SupportsRealtimeAudio,
                 SupportsImageGeneration = capabilities.SupportsImageGeneration,
                 SupportsVideoGeneration = capabilities.SupportsVideoGeneration,
                 SupportsEmbeddings = capabilities.SupportsEmbeddings,
                 MaxTokens = capabilities.MaxTokens,
                 TokenizerType = capabilities.TokenizerType,
-                SupportedVoices = capabilities.SupportedVoices,
-                SupportedLanguages = capabilities.SupportedLanguages,
-                SupportedFormats = capabilities.SupportedFormats
             };
         }
     }

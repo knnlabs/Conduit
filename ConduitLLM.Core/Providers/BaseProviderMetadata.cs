@@ -125,9 +125,7 @@ namespace ConduitLLM.Core.Providers
                     Embeddings = false,
                     ImageGeneration = false,
                     VisionInput = false,
-                    FunctionCalling = false,
-                    AudioTranscription = false,
-                    TextToSpeech = false
+                    FunctionCalling = false
                 }
             };
         }

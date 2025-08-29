@@ -35,20 +35,6 @@ namespace ConduitLLM.Admin.Models.ModelCapabilities
         /// </summary>
         public bool? SupportsStreaming { get; set; }
 
-        /// <summary>
-        /// Gets or sets the new audio transcription support, or null to keep existing.
-        /// </summary>
-        public bool? SupportsAudioTranscription { get; set; }
-
-        /// <summary>
-        /// Gets or sets the new TTS support, or null to keep existing.
-        /// </summary>
-        public bool? SupportsTextToSpeech { get; set; }
-
-        /// <summary>
-        /// Gets or sets the new real-time audio support, or null to keep existing.
-        /// </summary>
-        public bool? SupportsRealtimeAudio { get; set; }
 
         /// <summary>
         /// Gets or sets the new image generation support, or null to keep existing.
@@ -80,19 +66,5 @@ namespace ConduitLLM.Admin.Models.ModelCapabilities
         /// </summary>
         public TokenizerType? TokenizerType { get; set; }
 
-        /// <summary>
-        /// Gets or sets the new supported voices list, or null to keep existing.
-        /// </summary>
-        public string? SupportedVoices { get; set; }
-
-        /// <summary>
-        /// Gets or sets the new supported languages list, or null to keep existing.
-        /// </summary>
-        public string? SupportedLanguages { get; set; }
-
-        /// <summary>
-        /// Gets or sets the new supported formats list, or null to keep existing.
-        /// </summary>
-        public string? SupportedFormats { get; set; }
     }
 }

@@ -31,9 +31,6 @@ namespace ConduitLLM.Tests.Admin.Models.Models
                     MaxTokens = 128000,
                     MinTokens = 1,
                     TokenizerType = TokenizerType.Cl100KBase,
-                    SupportedVoices = "alloy,echo,fable",
-                    SupportedLanguages = "en,es,fr,de,ja,zh",
-                    SupportedFormats = "text,json"
                 },
                 IsActive = true,
                 CreatedAt = new DateTime(2024, 1, 15, 10, 30, 0, DateTimeKind.Utc),
@@ -278,18 +275,12 @@ namespace ConduitLLM.Tests.Admin.Models.Models
                 SupportsVision = capabilities.SupportsVision,
                 SupportsFunctionCalling = capabilities.SupportsFunctionCalling,
                 SupportsStreaming = capabilities.SupportsStreaming,
-                SupportsAudioTranscription = capabilities.SupportsAudioTranscription,
-                SupportsTextToSpeech = capabilities.SupportsTextToSpeech,
-                SupportsRealtimeAudio = capabilities.SupportsRealtimeAudio,
                 SupportsImageGeneration = capabilities.SupportsImageGeneration,
                 SupportsVideoGeneration = capabilities.SupportsVideoGeneration,
                 SupportsEmbeddings = capabilities.SupportsEmbeddings,
                 MaxTokens = capabilities.MaxTokens,
                 MinTokens = capabilities.MinTokens,
                 TokenizerType = capabilities.TokenizerType,
-                SupportedVoices = capabilities.SupportedVoices,
-                SupportedLanguages = capabilities.SupportedLanguages,
-                SupportedFormats = capabilities.SupportedFormats
             };
         }
 

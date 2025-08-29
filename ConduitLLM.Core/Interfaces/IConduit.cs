@@ -57,12 +57,6 @@ namespace ConduitLLM.Core.Interfaces
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Gets the router instance if one is configured.
-        /// </summary>
-        /// <returns>The router instance or null if none is configured.</returns>
-        ILLMRouter? GetRouter();
-
-        /// <summary>
         /// Gets an LLM client for the specified model.
         /// </summary>
         /// <param name="modelAlias">The model alias to get a client for.</param>

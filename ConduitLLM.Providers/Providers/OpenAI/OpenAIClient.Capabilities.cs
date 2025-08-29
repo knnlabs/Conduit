@@ -23,8 +23,6 @@ namespace ConduitLLM.Providers.OpenAI
             var isGpt35Turbo = modelLower.Contains("gpt-3.5-turbo", StringComparison.OrdinalIgnoreCase);
             var isChatModel = isGpt4 || isGpt35Turbo || modelLower.Contains("gpt", StringComparison.OrdinalIgnoreCase);
             var isEmbeddingModel = modelLower.Contains("embedding", StringComparison.OrdinalIgnoreCase);
-            var isWhisperModel = modelLower.Contains("whisper", StringComparison.OrdinalIgnoreCase);
-            var isTtsModel = modelLower.Contains("tts", StringComparison.OrdinalIgnoreCase);
             
             return Task.FromResult(new ProviderCapabilities
             {
@@ -59,9 +57,7 @@ namespace ConduitLLM.Providers.OpenAI
                     Embeddings = isEmbeddingModel,
                     ImageGeneration = isDalleModel,
                     VisionInput = isGpt4Vision,
-                    FunctionCalling = isGpt4 || isGpt35Turbo,
-                    AudioTranscription = isWhisperModel,
-                    TextToSpeech = isTtsModel
+                    FunctionCalling = isGpt4 || isGpt35Turbo
                 }
             });
         }

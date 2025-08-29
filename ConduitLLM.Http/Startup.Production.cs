@@ -75,8 +75,7 @@ namespace ConduitLLM.Http
                 options.EnableForHttps = true;
             });
 
-            // Add production audio services
-            services.AddProductionAudioServices(Configuration);
+            // Audio services removed - system no longer supports audio functionality
 
             // Health checks are registered in Program.cs via AddConduitHealthChecks
             // Audio-specific health checks should be added there as well to avoid duplicate registrations
@@ -140,9 +139,6 @@ namespace ConduitLLM.Http
 
             app.UseHttpsRedirection();
             app.UseResponseCompression();
-            
-            // Use production audio services middleware
-            app.UseProductionAudioServices();
             
             app.UseRouting();
             app.UseCors("ProductionCors");

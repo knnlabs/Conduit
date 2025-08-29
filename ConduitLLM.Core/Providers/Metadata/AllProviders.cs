@@ -46,7 +46,6 @@ namespace ConduitLLM.Core.Providers.Metadata
         public ReplicateProviderMetadata()
         {
             Capabilities.Features.ImageGeneration = true;
-            Capabilities.Features.AudioTranscription = true;
             Capabilities.Features.VisionInput = true;
             
             AuthRequirements.ApiKeyHeaderName = "Authorization";
@@ -110,50 +109,11 @@ namespace ConduitLLM.Core.Providers.Metadata
 
         public MiniMaxProviderMetadata()
         {
-            Capabilities.Features.TextToSpeech = true;
-            Capabilities.Features.AudioTranscription = true;
             
             ConfigurationHints.DocumentationUrl = "https://api.minimax.chat/document/introduction";
         }
     }
 
-    /// <summary>
-    /// Provider metadata for Ultravox.
-    /// </summary>
-    public class UltravoxProviderMetadata : BaseProviderMetadata
-    {
-        public override ProviderType ProviderType => ProviderType.Ultravox;
-        public override string DisplayName => "Ultravox";
-        public override string DefaultBaseUrl => "https://api.ultravox.ai/v1";
-
-        public UltravoxProviderMetadata()
-        {
-            Capabilities.Features.AudioTranscription = true;
-            Capabilities.Features.TextToSpeech = true;
-            
-            ConfigurationHints.DocumentationUrl = "https://docs.ultravox.ai/";
-        }
-    }
-
-    /// <summary>
-    /// Provider metadata for ElevenLabs.
-    /// </summary>
-    public class ElevenLabsProviderMetadata : BaseProviderMetadata
-    {
-        public override ProviderType ProviderType => ProviderType.ElevenLabs;
-        public override string DisplayName => "ElevenLabs";
-        public override string DefaultBaseUrl => "https://api.elevenlabs.io/v1";
-
-        public ElevenLabsProviderMetadata()
-        {
-            Capabilities.Features.TextToSpeech = true;
-            Capabilities.Features.Streaming = false;
-            Capabilities.ChatParameters = new ChatParameterSupport(); // Audio provider, limited chat params
-            
-            AuthRequirements.ApiKeyHeaderName = "xi-api-key";
-            ConfigurationHints.DocumentationUrl = "https://docs.elevenlabs.io/";
-        }
-    }
 
 
     /// <summary>

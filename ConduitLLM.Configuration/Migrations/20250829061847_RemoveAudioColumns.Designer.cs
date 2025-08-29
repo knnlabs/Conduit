@@ -3,6 +3,7 @@ using System;
 using ConduitLLM.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ConduitLLM.Configuration.Migrations
 {
     [DbContext(typeof(ConduitDbContext))]
-    partial class ConduitDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250829061847_RemoveAudioColumns")]
+    partial class RemoveAudioColumns
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -750,6 +753,18 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<int>("MinTokens")
                         .HasColumnType("integer");
 
+                    b.Property<string>("SupportedFormats")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SupportedLanguages")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SupportedVoices")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("SupportsAudioTranscription")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("SupportsChat")
                         .HasColumnType("boolean");
 
@@ -762,7 +777,13 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<bool>("SupportsImageGeneration")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("SupportsRealtimeAudio")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("SupportsStreaming")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("SupportsTextToSpeech")
                         .HasColumnType("boolean");
 
                     b.Property<bool>("SupportsVideoGeneration")
@@ -809,6 +830,18 @@ namespace ConduitLLM.Configuration.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal?>("AudioCostPerKCharacters")
+                        .HasColumnType("decimal(18, 4)");
+
+                    b.Property<decimal?>("AudioCostPerMinute")
+                        .HasColumnType("decimal(18, 4)");
+
+                    b.Property<decimal?>("AudioInputCostPerMinute")
+                        .HasColumnType("decimal(18, 4)");
+
+                    b.Property<decimal?>("AudioOutputCostPerMinute")
+                        .HasColumnType("decimal(18, 4)");
 
                     b.Property<decimal?>("BatchProcessingMultiplier")
                         .HasColumnType("decimal(18, 4)");

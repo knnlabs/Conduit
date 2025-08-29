@@ -19,10 +19,7 @@ namespace ConduitLLM.Providers.OpenAI
     /// It supports both OpenAI's standard API endpoint structure and Azure OpenAI's deployment-based
     /// endpoints, with automatic URL and authentication format selection based on the provider name.
     /// </remarks>
-    public partial class OpenAIClient : ConduitLLM.Providers.OpenAICompatible.OpenAICompatibleClient,
-        Core.Interfaces.IAudioTranscriptionClient,
-        Core.Interfaces.ITextToSpeechClient,
-        Core.Interfaces.IRealtimeAudioClient
+    public partial class OpenAIClient : ConduitLLM.Providers.OpenAICompatible.OpenAICompatibleClient
     {
         // Default API configuration constants
         private static class Constants

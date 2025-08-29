@@ -54,9 +54,7 @@ namespace ConduitLLM.Core.Providers.Metadata
                     Embeddings = true,
                     ImageGeneration = true,
                     VisionInput = true,
-                    FunctionCalling = true,
-                    AudioTranscription = true,
-                    TextToSpeech = true
+                    FunctionCalling = true
                 }
             };
 

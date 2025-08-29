@@ -72,20 +72,6 @@ namespace ConduitLLM.Configuration.DTOs
         /// </summary>
         public bool SupportsVision { get; set; } = false;
 
-        /// <summary>
-        /// Whether this model supports audio transcription capabilities
-        /// </summary>
-        public bool SupportsAudioTranscription { get; set; } = false;
-
-        /// <summary>
-        /// Whether this model supports text-to-speech capabilities
-        /// </summary>
-        public bool SupportsTextToSpeech { get; set; } = false;
-
-        /// <summary>
-        /// Whether this model supports real-time audio streaming capabilities
-        /// </summary>
-        public bool SupportsRealtimeAudio { get; set; } = false;
 
         /// <summary>
         /// Whether this model supports image generation capabilities

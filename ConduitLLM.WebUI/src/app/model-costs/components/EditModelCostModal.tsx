@@ -70,10 +70,6 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
     inferenceStepCost: (modelCost.costPerInferenceStep as number) ?? 0,
     defaultInferenceSteps: (modelCost.defaultInferenceSteps as number) ?? 0,
     imageCostPerImage: (modelCost.imageCostPerImage as number) ?? 0,
-    audioCostPerMinute: (modelCost.audioCostPerMinute as number) ?? 0,
-    audioCostPerKCharacters: (modelCost.audioCostPerKCharacters as number) ?? 0,
-    audioInputCostPerMinute: (modelCost.audioInputCostPerMinute as number) ?? 0,
-    audioOutputCostPerMinute: (modelCost.audioOutputCostPerMinute as number) ?? 0,
     videoCostPerSecond: (modelCost.videoCostPerSecond as number) ?? 0,
     videoResolutionMultipliers: (modelCost.videoResolutionMultipliers as string) ?? '',
     supportsBatchProcessing: (modelCost.supportsBatchProcessing) ?? false,
@@ -140,18 +136,6 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
       updates.imageCostPerImage = values.imageCostPerImage || undefined;
     }
     
-    if (values.audioCostPerMinute > 0) {
-      updates.audioCostPerMinute = values.audioCostPerMinute;
-    }
-    if (values.audioCostPerKCharacters > 0) {
-      updates.audioCostPerKCharacters = values.audioCostPerKCharacters;
-    }
-    if (values.audioInputCostPerMinute > 0) {
-      updates.audioInputCostPerMinute = values.audioInputCostPerMinute;
-    }
-    if (values.audioOutputCostPerMinute > 0) {
-      updates.audioOutputCostPerMinute = values.audioOutputCostPerMinute;
-    }
     
     if (values.videoCostPerSecond !== modelCost.videoCostPerSecond) {
       updates.videoCostPerSecond = values.videoCostPerSecond || undefined;
@@ -258,16 +242,6 @@ export function EditModelCostModal({ isOpen, modelCost, onClose, onSuccess }: Ed
               </Accordion.Item>
             )}
 
-            {modelType === ModelType.Audio && (
-              <Accordion.Item value="basic">
-                <Accordion.Control icon={<IconCurrencyDollar size={20} />}>
-                  Audio Pricing
-                </Accordion.Control>
-                <Accordion.Panel>
-                  <ModelCostFormSections form={form} modelType={modelType} />
-                </Accordion.Panel>
-              </Accordion.Item>
-            )}
 
             {modelType === ModelType.Video && (
               <Accordion.Item value="basic">

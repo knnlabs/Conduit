@@ -77,25 +77,6 @@ namespace ConduitLLM.Configuration.Interfaces
         /// </summary>
         DbSet<ProviderKeyCredential> ProviderKeyCredentials { get; }
 
-        /// <summary>
-        /// Database set for router configurations
-        /// </summary>
-        DbSet<RouterConfigEntity> RouterConfigurations { get; }
-
-        /// <summary>
-        /// Database set for model deployments
-        /// </summary>
-        DbSet<ModelDeploymentEntity> ModelDeployments { get; }
-
-        /// <summary>
-        /// Database set for fallback configurations
-        /// </summary>
-        DbSet<FallbackConfigurationEntity> FallbackConfigurations { get; }
-
-        /// <summary>
-        /// Database set for fallback model mappings
-        /// </summary>
-        DbSet<FallbackModelMappingEntity> FallbackModelMappings { get; }
 
 
         /// <summary>
@@ -103,20 +84,6 @@ namespace ConduitLLM.Configuration.Interfaces
         /// </summary>
         DbSet<IpFilterEntity> IpFilters { get; }
 
-        /// <summary>
-        /// Database set for audio provider configurations
-        /// </summary>
-        DbSet<AudioProviderConfig> AudioProviderConfigs { get; }
-
-        /// <summary>
-        /// Database set for audio costs
-        /// </summary>
-        DbSet<AudioCost> AudioCosts { get; }
-
-        /// <summary>
-        /// Database set for audio usage logs
-        /// </summary>
-        DbSet<AudioUsageLog> AudioUsageLogs { get; }
 
         /// <summary>
         /// Database set for async tasks

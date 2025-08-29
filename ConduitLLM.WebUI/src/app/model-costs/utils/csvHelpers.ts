@@ -10,10 +10,6 @@ export interface ParsedModelCost {
   cachedInputWriteCostPerMillion?: number;
   embeddingCostPerMillion?: number;
   imageCostPerImage?: number;
-  audioCostPerMinute?: number;
-  audioCostPerKCharacters?: number;
-  audioInputCostPerMinute?: number;
-  audioOutputCostPerMinute?: number;
   videoCostPerSecond?: number;
   videoResolutionMultipliers?: string;
   batchProcessingMultiplier?: number;
@@ -127,10 +123,6 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
       cachedInputWriteCostPerMillion: parseNumericValue(row['cache write cost (per million tokens)']),
       embeddingCostPerMillion: parseNumericValue(row['embedding cost (per million tokens)']),
       imageCostPerImage: parseNumericValue(row['image cost (per image)']),
-      audioCostPerMinute: parseNumericValue(row['audio cost (per minute)']),
-      audioCostPerKCharacters: parseNumericValue(row['audio cost (per 1k characters)']),
-      audioInputCostPerMinute: parseNumericValue(row['audio input cost (per minute)']),
-      audioOutputCostPerMinute: parseNumericValue(row['audio output cost (per minute)']),
       videoCostPerSecond: parseNumericValue(row['video cost (per second)']),
       videoResolutionMultipliers: row['video resolution multipliers']?.trim(),
       batchProcessingMultiplier: parseNumericValue(row['batch processing multiplier']),
@@ -163,10 +155,6 @@ export const parseCSVContent = (text: string): ParsedModelCost[] => {
     if (cost.cachedInputWriteCostPerMillion !== undefined && cost.cachedInputWriteCostPerMillion < 0) errors.push('Cache write cost cannot be negative');
     if (cost.embeddingCostPerMillion !== undefined && cost.embeddingCostPerMillion < 0) errors.push('Embedding cost cannot be negative');
     if (cost.imageCostPerImage !== undefined && cost.imageCostPerImage < 0) errors.push('Image cost cannot be negative');
-    if (cost.audioCostPerMinute !== undefined && cost.audioCostPerMinute < 0) errors.push('Audio cost per minute cannot be negative');
-    if (cost.audioCostPerKCharacters !== undefined && cost.audioCostPerKCharacters < 0) errors.push('Audio cost per 1k characters cannot be negative');
-    if (cost.audioInputCostPerMinute !== undefined && cost.audioInputCostPerMinute < 0) errors.push('Audio input cost per minute cannot be negative');
-    if (cost.audioOutputCostPerMinute !== undefined && cost.audioOutputCostPerMinute < 0) errors.push('Audio output cost per minute cannot be negative');
     if (cost.videoCostPerSecond !== undefined && cost.videoCostPerSecond < 0) errors.push('Video cost cannot be negative');
     if (cost.batchProcessingMultiplier !== undefined && cost.batchProcessingMultiplier < 0) errors.push('Batch processing multiplier cannot be negative');
     if (cost.batchProcessingMultiplier !== undefined && cost.batchProcessingMultiplier > 1) errors.push('Batch processing multiplier cannot be greater than 1 (>100% cost)');
@@ -255,7 +243,6 @@ export const convertParsedToDto = (parsedData: ParsedModelCost[]): CreateModelCo
       cachedInputWriteCostPerMillionTokens: cost.cachedInputWriteCostPerMillion,
       embeddingCostPerMillionTokens: cost.embeddingCostPerMillion,
       imageCostPerImage: cost.imageCostPerImage,
-      audioCostPerMinute: cost.audioCostPerMinute,
       videoCostPerSecond: cost.videoCostPerSecond,
       batchProcessingMultiplier: cost.batchProcessingMultiplier,
       supportsBatchProcessing: cost.supportsBatchProcessing,

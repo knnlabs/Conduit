@@ -10,8 +10,6 @@ using ConduitLLM.Providers.Groq;
 using ConduitLLM.Providers.Replicate;
 using ConduitLLM.Providers.Fireworks;
 using ConduitLLM.Providers.MiniMax;
-using ConduitLLM.Providers.Ultravox;
-using ConduitLLM.Providers.ElevenLabs;
 using ConduitLLM.Providers.Cerebras;
 using ConduitLLM.Providers.SambaNova;
 using ConduitLLM.Providers.DeepInfra;
@@ -285,17 +283,6 @@ namespace ConduitLLM.Providers
                         _httpClientFactory, defaultModels);
                     break;
 
-                case ProviderType.Ultravox:
-                    var ultravoxLogger = _loggerFactory.CreateLogger<UltravoxClient>();
-                    client = new UltravoxClient(provider, keyCredential, modelId, ultravoxLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
-                case ProviderType.ElevenLabs:
-                    var elevenLabsLogger = _loggerFactory.CreateLogger<ElevenLabsClient>();
-                    client = new ElevenLabsClient(provider, keyCredential, modelId, elevenLabsLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
 
                 case ProviderType.Cerebras:
                     var cerebrasLogger = _loggerFactory.CreateLogger<CerebrasClient>();

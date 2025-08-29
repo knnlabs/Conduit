@@ -18,8 +18,6 @@ const PRICING_MODEL_OPTIONS = [
   { value: String(PricingModel.InferenceSteps), label: 'Inference Steps' },
   { value: String(PricingModel.TieredTokens), label: 'Tiered Tokens' },
   { value: String(PricingModel.PerImage), label: 'Per Image' },
-  { value: String(PricingModel.PerMinuteAudio), label: 'Per Minute Audio' },
-  { value: String(PricingModel.PerThousandCharacters), label: 'Per Thousand Characters' },
 ];
 
 const getDefaultConfiguration = (model: PricingModel): string => {
@@ -93,10 +91,6 @@ const getPricingModelDescription = (model: PricingModel): string => {
       return 'Different token rates based on context length tiers (e.g., MiniMax M1).';
     case PricingModel.PerImage:
       return 'Per-image pricing with quality and resolution multipliers.';
-    case PricingModel.PerMinuteAudio:
-      return 'Audio pricing based on minutes of audio processed.';
-    case PricingModel.PerThousandCharacters:
-      return 'Text-to-speech pricing based on character count.';
     default:
       return '';
   }

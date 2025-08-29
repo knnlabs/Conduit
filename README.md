@@ -34,7 +34,6 @@ Built with .NET and designed for containerization (Docker), ConduitLLM streamlin
 - **SDKs**: Stable APIs for Node.js and other platforms
 
 ### ⚠️ **In Development**
-- **Audio Support**: Not feature complete - expect significant changes in upcoming releases
 - **Core & Admin APIs**: May evolve without backward compatibility - use SDKs instead
 
 ### 💡 **Recommended Integration**
@@ -51,7 +50,6 @@ npm install @knn_labs/conduit-admin-client
 - **Model Routing & Mapping**: Define custom model aliases (e.g., `my-gpt4`) and map them to specific provider models (e.g., `openai/gpt-4`)
 - **Virtual API Key Management**: Create and manage Conduit-specific API keys (`condt_...`) with built-in spend tracking
 - **Streaming Support**: Real-time token streaming for responsive applications
-- **Audio API Support**: Audio capabilities including transcription (STT), text-to-speech (TTS), and real-time audio streaming ⚠️ *In Development*
 - **Web-Based User Interface**: Administrative dashboard for configuration and monitoring
 - **Enterprise Security Features**: IP filtering, rate limiting, failed login protection, and security headers
 - **Security Dashboard**: Real-time monitoring of security events and access attempts
@@ -450,10 +448,6 @@ ConduitLLM includes automatic circuit breaker protection for Redis operations:
 - [Troubleshooting Guide](docs/troubleshooting/TROUBLESHOOTING-GUIDE.md)
 
 ### Feature Documentation
-- [Audio API Guide](docs/Audio-API-Guide.md)
-- [Audio Architecture](docs/Audio-Architecture.md)
-- [Real-time Architecture](docs/Realtime-Architecture.md)
-- [Audio Implementation Status](docs/Audio-Implementation-Status.md)
 - [Budget Management](docs/Budget-Management.md)
 - [Dashboard Features](docs/Dashboard-Features.md)
 - [LLM Routing](docs/LLM-Routing.md)

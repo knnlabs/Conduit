@@ -9,7 +9,6 @@ export function getModelPrimaryType(capabilities?: ModelCapabilitiesDto): string
   // Priority order for determining primary type
   if (capabilities.supportsVideoGeneration) return 'Video';
   if (capabilities.supportsImageGeneration) return 'Image';
-  if (capabilities.supportsRealtimeAudio || capabilities.supportsTextToSpeech || capabilities.supportsAudioTranscription) return 'Audio';
   if (capabilities.supportsEmbeddings) return 'Embedding';
   if (capabilities.supportsChat || capabilities.supportsVision) return 'Chat';
   
@@ -23,7 +22,6 @@ export function getModelTypeBadgeColor(type: string): string {
   switch (type) {
     case 'Chat': return 'blue';
     case 'Image': return 'purple';
-    case 'Audio': return 'orange';
     case 'Video': return 'pink';
     case 'Embedding': return 'green';
     default: return 'gray';
@@ -42,9 +40,6 @@ export function getModelCapabilityList(capabilities?: ModelCapabilitiesDto): str
   if (capabilities.supportsVision) capabilityList.push('Vision');
   if (capabilities.supportsFunctionCalling) capabilityList.push('Functions');
   if (capabilities.supportsStreaming) capabilityList.push('Streaming');
-  if (capabilities.supportsAudioTranscription) capabilityList.push('Transcription');
-  if (capabilities.supportsTextToSpeech) capabilityList.push('TTS');
-  if (capabilities.supportsRealtimeAudio) capabilityList.push('Realtime Audio');
   if (capabilities.supportsImageGeneration) capabilityList.push('Image Gen');
   if (capabilities.supportsVideoGeneration) capabilityList.push('Video Gen');
   if (capabilities.supportsEmbeddings) capabilityList.push('Embeddings');

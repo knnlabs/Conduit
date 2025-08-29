@@ -113,11 +113,13 @@ public partial class CostCalculationService : ICostCalculationService
             case PricingModel.PerImage:
                 calculatedCost = await CalculatePerImageCostAsync(modelId, modelCost, usage);
                 break;
+            // Audio pricing models have been removed - fallback to standard calculation
+#pragma warning disable CS0618 // Type or member is obsolete
             case PricingModel.PerMinuteAudio:
-                calculatedCost = await CalculatePerMinuteAudioCostAsync(modelId, modelCost, usage);
-                break;
             case PricingModel.PerThousandCharacters:
-                calculatedCost = await CalculatePerThousandCharactersCostAsync(modelId, modelCost, usage);
+#pragma warning restore CS0618 // Type or member is obsolete
+                _logger.LogWarning("Audio pricing model {PricingModel} is obsolete for model {ModelId}. Using standard calculation.", modelCost.PricingModel, modelId);
+                calculatedCost = await CalculateStandardCostAsync(modelId, modelCost, usage);
                 break;
             default:
                 _logger.LogWarning("Unknown pricing model {PricingModel} for model {ModelId}. Using standard calculation.", modelCost.PricingModel, modelId);

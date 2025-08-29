@@ -46,16 +46,7 @@ namespace ConduitLLM.Configuration.Extensions
             // Register new repositories
             services.AddScoped<INotificationRepository, NotificationRepository>();
             services.AddScoped<IVirtualKeySpendHistoryRepository, VirtualKeySpendHistoryRepository>();
-            services.AddScoped<IRouterConfigRepository, RouterConfigRepository>();
-            services.AddScoped<IModelDeploymentRepository, ModelDeploymentRepository>();
-            services.AddScoped<IFallbackConfigurationRepository, FallbackConfigurationRepository>();
-            services.AddScoped<IFallbackModelMappingRepository, FallbackModelMappingRepository>();
             services.AddScoped<IIpFilterRepository, IpFilterRepository>();
-
-            // Register audio-related repositories
-            services.AddScoped<IAudioProviderConfigRepository, AudioProviderConfigRepository>();
-            services.AddScoped<IAudioCostRepository, AudioCostRepository>();
-            services.AddScoped<IAudioUsageLogRepository, AudioUsageLogRepository>();
 
             // Register async task repository
             services.AddScoped<IAsyncTaskRepository, AsyncTaskRepository>();

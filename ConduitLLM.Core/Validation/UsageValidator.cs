@@ -83,11 +83,6 @@ public class UsageValidator
             errors.Add("Video duration must be positive");
         }
 
-        // Validate audio duration
-        if (usage.AudioDurationSeconds.HasValue && usage.AudioDurationSeconds.Value <= 0)
-        {
-            errors.Add("Audio duration must be positive");
-        }
 
         // Validate search metadata consistency
         if (usage.SearchMetadata != null)

@@ -122,53 +122,6 @@ export function ModelCostFormSections({ form, modelType }: ModelCostFormSections
         </Stack>
       )}
 
-      {/* Audio Pricing */}
-      {modelType === ModelType.Audio && (
-        <Stack gap="sm">
-          <Group grow>
-            <NumberInput
-              label="Cost per Minute"
-              placeholder="0.00"
-              decimalScale={2}
-              min={0}
-              step={0.01}
-              leftSection="$"
-              {...form.getInputProps('audioCostPerMinute')}
-            />
-            <NumberInput
-              label="Cost per 1K Characters"
-              placeholder="0.00"
-              decimalScale={2}
-              min={0}
-              step={0.01}
-              leftSection="$"
-              {...form.getInputProps('audioCostPerKCharacters')}
-            />
-          </Group>
-          <Group grow>
-            <NumberInput
-              label="Input Cost per Minute"
-              placeholder="0.00"
-              decimalScale={2}
-              min={0}
-              step={0.01}
-              leftSection="$"
-              {...form.getInputProps('audioInputCostPerMinute')}
-              description="For transcription services"
-            />
-            <NumberInput
-              label="Output Cost per Minute"
-              placeholder="0.00"
-              decimalScale={2}
-              min={0}
-              step={0.01}
-              leftSection="$"
-              {...form.getInputProps('audioOutputCostPerMinute')}
-              description="For speech generation"
-            />
-          </Group>
-        </Stack>
-      )}
 
       {/* Video Generation Pricing */}
       {modelType === ModelType.Video && (

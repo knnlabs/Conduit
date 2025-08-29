@@ -170,20 +170,6 @@ namespace ConduitLLM.Tests.Core.Services
             Assert.Contains(imageProviders, p => p.ProviderType == ProviderType.Replicate);
         }
 
-        [Fact]
-        public void GetProvidersByFeature_WithAudioFilter_ReturnsCorrectProviders()
-        {
-            // Act
-            var audioProviders = _registry.GetProvidersByFeature(f => f.TextToSpeech).ToList();
-
-            // Assert
-            Assert.NotEmpty(audioProviders);
-            Assert.All(audioProviders, p => Assert.True(p.Capabilities.Features.TextToSpeech));
-            
-            // Verify known audio providers
-            Assert.Contains(audioProviders, p => p.ProviderType == ProviderType.ElevenLabs);
-            Assert.Contains(audioProviders, p => p.ProviderType == ProviderType.OpenAI);
-        }
 
         [Fact]
         public void GetProvidersByFeature_WithNullPredicate_ThrowsArgumentNullException()

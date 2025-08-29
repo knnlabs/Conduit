@@ -43,14 +43,16 @@ namespace ConduitLLM.Configuration
 
         /// <summary>
         /// Audio pricing per minute of input/output.
-        /// Used by transcription and real-time audio models.
+        /// OBSOLETE - Audio functionality removed
         /// </summary>
+        [Obsolete("Audio functionality has been removed from the system")]
         PerMinuteAudio = 6,
 
         /// <summary>
         /// Audio pricing per thousand characters.
-        /// Used by text-to-speech models.
+        /// OBSOLETE - Audio functionality removed
         /// </summary>
+        [Obsolete("Audio functionality has been removed from the system")]
         PerThousandCharacters = 7
     }
 }

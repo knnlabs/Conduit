@@ -33,9 +33,6 @@ namespace ConduitLLM.Tests.Http.Builders
                 SupportsStreaming = false,
                 SupportsVision = false,
                 SupportsFunctionCalling = false,
-                SupportsAudioTranscription = false,
-                SupportsTextToSpeech = false,
-                SupportsRealtimeAudio = false,
                 SupportsVideoGeneration = false,
                 SupportsImageGeneration = false,
                 SupportsEmbeddings = false
@@ -178,9 +175,6 @@ namespace ConduitLLM.Tests.Http.Builders
                 _capabilities.SupportsStreaming = true;
                 _capabilities.SupportsVision = true;
                 _capabilities.SupportsFunctionCalling = true;
-                _capabilities.SupportsAudioTranscription = true;
-                _capabilities.SupportsTextToSpeech = true;
-                _capabilities.SupportsRealtimeAudio = true;
                 _capabilities.SupportsVideoGeneration = true;
                 _capabilities.SupportsImageGeneration = true;
                 _capabilities.SupportsEmbeddings = true;

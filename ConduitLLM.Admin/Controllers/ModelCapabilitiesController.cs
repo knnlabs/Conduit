@@ -138,9 +138,6 @@ namespace ConduitLLM.Admin.Controllers
                     MaxTokens = dto.MaxTokens,
                     MinTokens = dto.MinTokens,
                     SupportsVision = dto.SupportsVision,
-                    SupportsAudioTranscription = dto.SupportsAudioTranscription,
-                    SupportsTextToSpeech = dto.SupportsTextToSpeech,
-                    SupportsRealtimeAudio = dto.SupportsRealtimeAudio,
                     SupportsImageGeneration = dto.SupportsImageGeneration,
                     SupportsVideoGeneration = dto.SupportsVideoGeneration,
                     SupportsEmbeddings = dto.SupportsEmbeddings,
@@ -148,9 +145,6 @@ namespace ConduitLLM.Admin.Controllers
                     SupportsFunctionCalling = dto.SupportsFunctionCalling,
                     SupportsStreaming = dto.SupportsStreaming,
                     TokenizerType = dto.TokenizerType,
-                    SupportedVoices = dto.SupportedVoices,
-                    SupportedLanguages = dto.SupportedLanguages,
-                    SupportedFormats = dto.SupportedFormats
                 };
 
                 await _repository.CreateAsync(capabilities);
@@ -205,12 +199,6 @@ namespace ConduitLLM.Admin.Controllers
                     capabilities.MinTokens = dto.MinTokens.Value;
                 if (dto.SupportsVision.HasValue)
                     capabilities.SupportsVision = dto.SupportsVision.Value;
-                if (dto.SupportsAudioTranscription.HasValue)
-                    capabilities.SupportsAudioTranscription = dto.SupportsAudioTranscription.Value;
-                if (dto.SupportsTextToSpeech.HasValue)
-                    capabilities.SupportsTextToSpeech = dto.SupportsTextToSpeech.Value;
-                if (dto.SupportsRealtimeAudio.HasValue)
-                    capabilities.SupportsRealtimeAudio = dto.SupportsRealtimeAudio.Value;
                 if (dto.SupportsImageGeneration.HasValue)
                     capabilities.SupportsImageGeneration = dto.SupportsImageGeneration.Value;
                 if (dto.SupportsVideoGeneration.HasValue)
@@ -225,12 +213,6 @@ namespace ConduitLLM.Admin.Controllers
                     capabilities.SupportsStreaming = dto.SupportsStreaming.Value;
                 if (dto.TokenizerType.HasValue)
                     capabilities.TokenizerType = dto.TokenizerType.Value;
-                if (dto.SupportedVoices != null)
-                    capabilities.SupportedVoices = dto.SupportedVoices;
-                if (dto.SupportedLanguages != null)
-                    capabilities.SupportedLanguages = dto.SupportedLanguages;
-                if (dto.SupportedFormats != null)
-                    capabilities.SupportedFormats = dto.SupportedFormats;
 
                 await _repository.UpdateAsync(capabilities);
 
@@ -289,9 +271,6 @@ namespace ConduitLLM.Admin.Controllers
                 MaxTokens = capabilities.MaxTokens,
                 MinTokens = capabilities.MinTokens,
                 SupportsVision = capabilities.SupportsVision,
-                SupportsAudioTranscription = capabilities.SupportsAudioTranscription,
-                SupportsTextToSpeech = capabilities.SupportsTextToSpeech,
-                SupportsRealtimeAudio = capabilities.SupportsRealtimeAudio,
                 SupportsImageGeneration = capabilities.SupportsImageGeneration,
                 SupportsVideoGeneration = capabilities.SupportsVideoGeneration,
                 SupportsEmbeddings = capabilities.SupportsEmbeddings,
@@ -299,9 +278,6 @@ namespace ConduitLLM.Admin.Controllers
                 SupportsFunctionCalling = capabilities.SupportsFunctionCalling,
                 SupportsStreaming = capabilities.SupportsStreaming,
                 TokenizerType = capabilities.TokenizerType,
-                SupportedVoices = capabilities.SupportedVoices,
-                SupportedLanguages = capabilities.SupportedLanguages,
-                SupportedFormats = capabilities.SupportedFormats
             };
         }
     }
