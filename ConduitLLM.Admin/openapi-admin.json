@@ -11829,6 +11829,35 @@
             "type": "string",
             "description": "Optional metadata as JSON",
             "nullable": true
+          },
+          "maxInputTokens": {
+            "type": "integer",
+            "description": "Provider-specific override for maximum input tokens",
+            "format": "int32",
+            "nullable": true
+          },
+          "maxOutputTokens": {
+            "type": "integer",
+            "description": "Provider-specific override for maximum output tokens",
+            "format": "int32",
+            "nullable": true
+          },
+          "speedScore": {
+            "type": "number",
+            "description": "Speed score relative to baseline (1.0 = baseline, 2.0 = 2x faster)",
+            "format": "double",
+            "nullable": true
+          },
+          "qualityScore": {
+            "type": "number",
+            "description": "Quality score (0.0 to 1.0, where 1.0 = highest quality)",
+            "format": "double",
+            "nullable": true
+          },
+          "providerVariation": {
+            "type": "string",
+            "description": "Model variation or quantization level (e.g., \"GGUF\", \"Q4_K_M\", \"instruct\")",
+            "nullable": true
           }
         },
         "additionalProperties": false,
@@ -12115,6 +12144,35 @@
           "metadata": {
             "type": "string",
             "description": "Optional metadata as JSON",
+            "nullable": true
+          },
+          "maxInputTokens": {
+            "type": "integer",
+            "description": "Provider-specific override for maximum input tokens",
+            "format": "int32",
+            "nullable": true
+          },
+          "maxOutputTokens": {
+            "type": "integer",
+            "description": "Provider-specific override for maximum output tokens",
+            "format": "int32",
+            "nullable": true
+          },
+          "speedScore": {
+            "type": "number",
+            "description": "Speed score relative to baseline (1.0 = baseline, 2.0 = 2x faster)",
+            "format": "double",
+            "nullable": true
+          },
+          "qualityScore": {
+            "type": "number",
+            "description": "Quality score (0.0 to 1.0, where 1.0 = highest quality)",
+            "format": "double",
+            "nullable": true
+          },
+          "providerVariation": {
+            "type": "string",
+            "description": "Model variation or quantization level (e.g., \"GGUF\", \"Q4_K_M\", \"instruct\")",
             "nullable": true
           }
         },

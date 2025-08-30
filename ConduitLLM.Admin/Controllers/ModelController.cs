@@ -203,7 +203,12 @@ namespace ConduitLLM.Admin.Controllers
                     id = i.Id,
                     identifier = i.Identifier,
                     provider = i.Provider,
-                    isPrimary = i.IsPrimary
+                    isPrimary = i.IsPrimary,
+                    maxInputTokens = i.MaxInputTokens,
+                    maxOutputTokens = i.MaxOutputTokens,
+                    speedScore = i.SpeedScore,
+                    qualityScore = i.QualityScore,
+                    providerVariation = i.ProviderVariation
                 });
 
                 return Ok(identifiers);
@@ -252,7 +257,12 @@ namespace ConduitLLM.Admin.Controllers
                     Identifier = dto.Identifier,
                     Provider = dto.Provider,
                     IsPrimary = dto.IsPrimary ?? false,
-                    Metadata = dto.Metadata
+                    Metadata = dto.Metadata,
+                    MaxInputTokens = dto.MaxInputTokens,
+                    MaxOutputTokens = dto.MaxOutputTokens,
+                    SpeedScore = dto.SpeedScore,
+                    QualityScore = dto.QualityScore,
+                    ProviderVariation = dto.ProviderVariation
                 };
 
                 model.Identifiers.Add(identifier);
@@ -263,7 +273,12 @@ namespace ConduitLLM.Admin.Controllers
                     id = identifier.Id,
                     identifier = identifier.Identifier,
                     provider = identifier.Provider,
-                    isPrimary = identifier.IsPrimary
+                    isPrimary = identifier.IsPrimary,
+                    maxInputTokens = identifier.MaxInputTokens,
+                    maxOutputTokens = identifier.MaxOutputTokens,
+                    speedScore = identifier.SpeedScore,
+                    qualityScore = identifier.QualityScore,
+                    providerVariation = identifier.ProviderVariation
                 });
             }
             catch (Exception ex)
@@ -319,6 +334,11 @@ namespace ConduitLLM.Admin.Controllers
                 identifier.Provider = dto.Provider;
                 identifier.IsPrimary = dto.IsPrimary ?? identifier.IsPrimary;
                 identifier.Metadata = dto.Metadata;
+                identifier.MaxInputTokens = dto.MaxInputTokens;
+                identifier.MaxOutputTokens = dto.MaxOutputTokens;
+                identifier.SpeedScore = dto.SpeedScore;
+                identifier.QualityScore = dto.QualityScore;
+                identifier.ProviderVariation = dto.ProviderVariation;
 
                 await _modelRepository.UpdateAsync(model);
 

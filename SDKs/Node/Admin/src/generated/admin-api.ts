@@ -9823,6 +9823,28 @@ export interface components {
       isPrimary?: boolean | null;
       /** @description Optional metadata as JSON */
       metadata?: string | null;
+      /**
+       * Format: int32
+       * @description Provider-specific override for maximum input tokens
+       */
+      maxInputTokens?: number | null;
+      /**
+       * Format: int32
+       * @description Provider-specific override for maximum output tokens
+       */
+      maxOutputTokens?: number | null;
+      /**
+       * Format: double
+       * @description Speed score relative to baseline (1.0 = baseline, 2.0 = 2x faster)
+       */
+      speedScore?: number | null;
+      /**
+       * Format: double
+       * @description Quality score (0.0 to 1.0, where 1.0 = highest quality)
+       */
+      qualityScore?: number | null;
+      /** @description Model variation or quantization level (e.g., "GGUF", "Q4_K_M", "instruct") */
+      providerVariation?: string | null;
     };
     /** @description Data transfer object representing a canonical AI model in the system. */
     "ConduitLLM.Admin.Models.Models.ModelDto": {
@@ -9992,6 +10014,28 @@ export interface components {
       isPrimary?: boolean | null;
       /** @description Optional metadata as JSON */
       metadata?: string | null;
+      /**
+       * Format: int32
+       * @description Provider-specific override for maximum input tokens
+       */
+      maxInputTokens?: number | null;
+      /**
+       * Format: int32
+       * @description Provider-specific override for maximum output tokens
+       */
+      maxOutputTokens?: number | null;
+      /**
+       * Format: double
+       * @description Speed score relative to baseline (1.0 = baseline, 2.0 = 2x faster)
+       */
+      speedScore?: number | null;
+      /**
+       * Format: double
+       * @description Quality score (0.0 to 1.0, where 1.0 = highest quality)
+       */
+      qualityScore?: number | null;
+      /** @description Model variation or quantization level (e.g., "GGUF", "Q4_K_M", "instruct") */
+      providerVariation?: string | null;
     };
     "ConduitLLM.Configuration.DTOs.Cache.UpdateCacheConfigDto": {
       /** Format: int32 */
