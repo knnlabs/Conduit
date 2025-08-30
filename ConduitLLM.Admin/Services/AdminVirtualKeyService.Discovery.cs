@@ -83,7 +83,8 @@ namespace ConduitLLM.Admin.Services
                 // Add metadata
                 capabilities["description"] = mapping.Model.Description ?? "";
                 capabilities["model_card_url"] = mapping.Model.ModelCardUrl ?? "";
-                capabilities["max_tokens"] = mapping.Model.MaxOutputTokens; // TODO: Think about provider-specific overrides. Also, should we break down input and output token counts?
+                capabilities["input_tokens"] = mapping.Model.MaxInputTokens ?? 0;
+                capabilities["output_tokens"] = mapping.Model.MaxOutputTokens ?? 0;
                 capabilities["tokenizer_type"] = mapping.Model.TokenizerType.ToString().ToLowerInvariant();
 
                 var model = new DiscoveredModelDto
