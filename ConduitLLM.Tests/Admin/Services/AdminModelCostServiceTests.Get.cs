@@ -20,13 +20,15 @@ namespace ConduitLLM.Tests.Admin.Services
                 CostName = "Test Cost",
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 20.00m,
-                ModelCostMappings = new List<ModelCostMapping>
+                ModelProviderTypeAssociations = new List<ModelProviderTypeAssociation>
                 {
-                    new ModelCostMapping 
+                    new ModelProviderTypeAssociation 
                     { 
-                        ModelProviderMappingId = 1, 
-                        IsActive = true,
-                        ModelProviderMapping = new ModelProviderMapping { ModelAlias = "gpt-4", ModelId = 1 }
+                        Id = 1,
+                        ModelCostId = 1,
+                        Identifier = "gpt-4", 
+                        IsEnabled = true,
+                        ModelId = 1
                     }
                 }
             };

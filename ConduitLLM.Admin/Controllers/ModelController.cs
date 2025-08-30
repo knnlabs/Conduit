@@ -208,7 +208,8 @@ namespace ConduitLLM.Admin.Controllers
                     maxOutputTokens = i.MaxOutputTokens,
                     speedScore = i.SpeedScore,
                     qualityScore = i.QualityScore,
-                    providerVariation = i.ProviderVariation
+                    providerVariation = i.ProviderVariation,
+                    modelCostId = i.ModelCostId
                 });
 
                 return Ok(identifiers);
@@ -524,10 +525,11 @@ namespace ConduitLLM.Admin.Controllers
                     model.SupportsVideoGeneration = dto.SupportsVideoGeneration.Value;
                 if (dto.SupportsEmbeddings.HasValue)
                     model.SupportsEmbeddings = dto.SupportsEmbeddings.Value;
-                if (dto.MaxInputTokens.HasValue)
-                    model.MaxInputTokens = dto.MaxInputTokens.Value;
-                if (dto.MaxOutputTokens.HasValue)
-                    model.MaxOutputTokens = dto.MaxOutputTokens.Value;
+                // For nullable int fields, we need to handle them differently
+                // The DTO will have the property set if it was included in the JSON
+                // We always update these fields since the frontend always sends them
+                model.MaxInputTokens = dto.MaxInputTokens;
+                model.MaxOutputTokens = dto.MaxOutputTokens;
 
                 model.UpdatedAt = DateTime.UtcNow;
 

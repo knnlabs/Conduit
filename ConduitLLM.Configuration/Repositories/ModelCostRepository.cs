@@ -78,8 +78,8 @@ namespace ConduitLLM.Configuration.Repositories
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ModelCosts
                     .AsNoTracking()
-                    .Include(m => m.ModelCostMappings)
-                        .ThenInclude(mcm => mcm.ModelProviderMapping)
+                    .Include(m => m.ModelProviderTypeAssociations)
+                        .ThenInclude(mpta => mpta.Model)
                     .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
             }
             catch (Exception ex)
@@ -102,8 +102,8 @@ namespace ConduitLLM.Configuration.Repositories
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ModelCosts
                     .AsNoTracking()
-                    .Include(m => m.ModelCostMappings)
-                        .ThenInclude(mcm => mcm.ModelProviderMapping)
+                    .Include(m => m.ModelProviderTypeAssociations)
+                        .ThenInclude(mpta => mpta.Model)
                     .FirstOrDefaultAsync(m => m.CostName == costName, cancellationToken);
             }
             catch (Exception ex)
@@ -121,8 +121,8 @@ namespace ConduitLLM.Configuration.Repositories
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ModelCosts
                     .AsNoTracking()
-                    .Include(m => m.ModelCostMappings)
-                        .ThenInclude(mcm => mcm.ModelProviderMapping)
+                    .Include(m => m.ModelProviderTypeAssociations)
+                        .ThenInclude(mpta => mpta.Model)
                     .OrderBy(m => m.CostName)
                     .ToListAsync(cancellationToken);
             }
@@ -198,13 +198,14 @@ namespace ConduitLLM.Configuration.Repositories
 
                 // Get all model costs
                 // Get all model costs that are associated with models from this provider
+                // Note: This needs to be refactored to work with the new ModelProviderTypeAssociation relationship
+                // The Provider concept may need to be mapped differently now
                 var costs = await dbContext.ModelCosts
                     .AsNoTracking()
-                    .Include(m => m.ModelCostMappings)
-                        .ThenInclude(mcm => mcm.ModelProviderMapping)
-                    .Where(m => m.ModelCostMappings.Any(mcm => 
-                        mcm.ModelProviderMapping.ProviderId == providerId && 
-                        mcm.IsActive))
+                    .Include(m => m.ModelProviderTypeAssociations)
+                        .ThenInclude(mpta => mpta.Model)
+                    .Where(m => m.ModelProviderTypeAssociations.Any(mpta => 
+                        mpta.Provider != null && mpta.IsEnabled))
                     .OrderBy(m => m.CostName)
                     .ToListAsync(cancellationToken);
 

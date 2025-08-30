@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.Entities;
 
 using FluentAssertions;
 
@@ -19,9 +20,22 @@ namespace ConduitLLM.Tests.Admin.Integration
         {
             // Arrange
             var providerId = await SetupTestDataAsync();
-            var allMappings = await _modelMappingRepository.GetAllAsync();
-            var initialMappingIds = allMappings.Select(m => m.Id).Take(2).ToList();
-            var newMappingIds = allMappings.Select(m => m.Id).Skip(1).Take(2).ToList();
+            
+            // Create Models
+            _dbContext.Models.AddRange(
+                new Model { Id = 30, Name = "GPT-4", ModelSeriesId = 1 },
+                new Model { Id = 31, Name = "GPT-3.5 Turbo", ModelSeriesId = 1 },
+                new Model { Id = 32, Name = "Embedding Ada", ModelSeriesId = 1 }
+            );
+            await _dbContext.SaveChangesAsync();
+            
+            // Create ModelProviderTypeAssociations
+            _dbContext.ModelProviderTypeAssociations.AddRange(
+                new ModelProviderTypeAssociation { Id = 30, Identifier = "gpt-4", ModelId = 30, IsEnabled = true },
+                new ModelProviderTypeAssociation { Id = 31, Identifier = "gpt-3.5-turbo", ModelId = 31, IsEnabled = true },
+                new ModelProviderTypeAssociation { Id = 32, Identifier = "text-embedding-ada-002", ModelId = 32, IsEnabled = true }
+            );
+            await _dbContext.SaveChangesAsync();
 
             // Create initial cost with mappings
             var createDto = new CreateModelCostDto
@@ -29,7 +43,7 @@ namespace ConduitLLM.Tests.Admin.Integration
                 CostName = "Test Pricing",
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 20.00m,
-                ModelProviderMappingIds = initialMappingIds
+                ModelProviderTypeAssociationIds = new List<int> { 30, 31 }
             };
             
             var createResult = await _controller.CreateModelCost(createDto);
@@ -43,7 +57,7 @@ namespace ConduitLLM.Tests.Admin.Integration
                 CostName = "Updated Pricing",
                 InputCostPerMillionTokens = 15.00m,
                 OutputCostPerMillionTokens = 25.00m,
-                ModelProviderMappingIds = newMappingIds
+                ModelProviderTypeAssociationIds = new List<int> { 31, 32 }
             };
 
             // Act
@@ -56,10 +70,10 @@ namespace ConduitLLM.Tests.Admin.Integration
             var updatedCost = await _modelCostRepository.GetByIdAsync(createdCost.Id);
             updatedCost.Should().NotBeNull();
             updatedCost!.CostName.Should().Be("Updated Pricing");
-            updatedCost.ModelCostMappings.Should().HaveCount(2);
+            updatedCost.ModelProviderTypeAssociations.Should().HaveCount(2);
             
-            var actualMappingIds = updatedCost.ModelCostMappings.Select(m => m.ModelProviderMappingId).ToList();
-            actualMappingIds.Should().BeEquivalentTo(newMappingIds);
+            var actualAssociationIds = updatedCost.ModelProviderTypeAssociations.Select(a => a.Id).OrderBy(id => id).ToList();
+            actualAssociationIds.Should().BeEquivalentTo(new List<int> { 31, 32 });
         }
 
         [Fact]
@@ -76,7 +90,7 @@ namespace ConduitLLM.Tests.Admin.Integration
                 CostName = "Test Cost",
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 20.00m,
-                ModelProviderMappingIds = mappingIds
+                ModelProviderTypeAssociationIds = mappingIds
             };
             
             var createResult = await _controller.CreateModelCost(createDto);
@@ -89,7 +103,7 @@ namespace ConduitLLM.Tests.Admin.Integration
                 CostName = createdCost.CostName,
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 20.00m,
-                ModelProviderMappingIds = new List<int>() // Empty list
+                ModelProviderTypeAssociationIds = new List<int>() // Empty list
             };
 
             // Act
@@ -101,7 +115,7 @@ namespace ConduitLLM.Tests.Admin.Integration
             // Verify mappings removed
             using (var verifyContext = new ConduitDbContext(_dbContextOptions))
             {
-                var dbMappings = verifyContext.ModelCostMappings
+                var dbMappings = verifyContext.ModelProviderTypeAssociations
                     .Where(m => m.ModelCostId == createdCost.Id)
                     .ToList();
                 dbMappings.Should().BeEmpty();

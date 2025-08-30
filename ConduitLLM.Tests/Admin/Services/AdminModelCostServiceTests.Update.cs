@@ -21,7 +21,7 @@ namespace ConduitLLM.Tests.Admin.Services
                 CostName = "Updated Cost Name",
                 InputCostPerMillionTokens = 15.00m,
                 OutputCostPerMillionTokens = 25.00m,
-                ModelProviderMappingIds = new List<int>()
+                ModelProviderTypeAssociationIds = new List<int>()
             };
 
             var existingCost = new ModelCost
@@ -46,17 +46,17 @@ namespace ConduitLLM.Tests.Admin.Services
         }
 
         [Fact]
-        public async Task UpdateModelCostAsync_WithModelProviderMappingIds_ShouldUpdateMappings()
+        public async Task UpdateModelCostAsync_WithModelProviderTypeAssociationIds_ShouldUpdateAssociations()
         {
             // Arrange
-            var newMappingIds = new List<int> { 4, 5 };
+            var newAssociationIds = new List<int> { 4, 5 };
             var updateDto = new UpdateModelCostDto
             {
                 Id = 1,
                 CostName = "Updated Cost",
                 InputCostPerMillionTokens = 15.00m,
                 OutputCostPerMillionTokens = 25.00m,
-                ModelProviderMappingIds = newMappingIds
+                ModelProviderTypeAssociationIds = newAssociationIds
             };
 
             var existingCost = new ModelCost
@@ -67,14 +67,16 @@ namespace ConduitLLM.Tests.Admin.Services
                 OutputCostPerMillionTokens = 20.00m
             };
 
-            // Add existing mappings to test context
+            // Add existing associations to test context
             using (var setupContext = CreateDbContext())
             {
-                setupContext.ModelCostMappings.AddRange(new[]
+                setupContext.ModelProviderTypeAssociations.AddRange(new[]
                 {
-                    new ModelCostMapping { Id = 1, ModelCostId = 1, ModelProviderMappingId = 1, IsActive = true },
-                    new ModelCostMapping { Id = 2, ModelCostId = 1, ModelProviderMappingId = 2, IsActive = true },
-                    new ModelCostMapping { Id = 3, ModelCostId = 1, ModelProviderMappingId = 3, IsActive = true }
+                    new ModelProviderTypeAssociation { Id = 1, ModelCostId = 1, Identifier = "gpt-4", ModelId = 1, IsEnabled = true },
+                    new ModelProviderTypeAssociation { Id = 2, ModelCostId = 1, Identifier = "gpt-3.5", ModelId = 2, IsEnabled = true },
+                    new ModelProviderTypeAssociation { Id = 3, ModelCostId = 1, Identifier = "claude", ModelId = 3, IsEnabled = true },
+                    new ModelProviderTypeAssociation { Id = 4, ModelCostId = null, Identifier = "llama-3", ModelId = 4, IsEnabled = true },
+                    new ModelProviderTypeAssociation { Id = 5, ModelCostId = null, Identifier = "mistral", ModelId = 5, IsEnabled = true }
                 });
                 await setupContext.SaveChangesAsync();
             }
@@ -90,13 +92,17 @@ namespace ConduitLLM.Tests.Admin.Services
             // Assert
             result.Should().BeTrue();
             
-            // Verify old mappings were removed and new ones added
+            // Verify old associations were cleared and new ones set
             using (var verifyContext = CreateDbContext())
             {
-                var mappings = verifyContext.ModelCostMappings.Where(m => m.ModelCostId == 1).ToList();
-                mappings.Should().HaveCount(2);
-                mappings.Select(m => m.ModelProviderMappingId).Should().BeEquivalentTo(new[] { 4, 5 });
-                mappings.Should().AllSatisfy(m => m.IsActive.Should().BeTrue());
+                var associations = verifyContext.ModelProviderTypeAssociations.Where(a => a.ModelCostId == 1).ToList();
+                associations.Should().HaveCount(2);
+                associations.Select(a => a.Id).Should().BeEquivalentTo(new[] { 4, 5 });
+                associations.Should().AllSatisfy(a => a.IsEnabled.Should().BeTrue());
+                
+                // Verify old associations were cleared
+                var clearedAssociations = verifyContext.ModelProviderTypeAssociations.Where(a => new[] { 1, 2, 3 }.Contains(a.Id)).ToList();
+                clearedAssociations.Should().AllSatisfy(a => a.ModelCostId.Should().BeNull());
             }
         }
 

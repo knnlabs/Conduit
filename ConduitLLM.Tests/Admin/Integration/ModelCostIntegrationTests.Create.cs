@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.Entities;
 
 using FluentAssertions;
 
@@ -14,19 +15,31 @@ namespace ConduitLLM.Tests.Admin.Integration
         #region Create Model Cost Tests
 
         [Fact]
-        public async Task CreateModelCost_WithMappings_ShouldCreateAndAssociate()
+        public async Task CreateModelCost_WithAssociations_ShouldCreateAndAssociate()
         {
             // Arrange
             var providerId = await SetupTestDataAsync();
-            var mappings = await _modelMappingRepository.GetAllAsync();
-            var mappingIds = mappings.Select(m => m.Id).Take(2).ToList(); // Use first 2 mappings
+            
+            // Create Models first
+            _dbContext.Models.AddRange(
+                new Model { Id = 1, Name = "GPT-4", ModelSeriesId = 1 },
+                new Model { Id = 2, Name = "GPT-3.5 Turbo", ModelSeriesId = 1 }
+            );
+            await _dbContext.SaveChangesAsync();
+            
+            // Create some ModelProviderTypeAssociations for testing
+            _dbContext.ModelProviderTypeAssociations.AddRange(
+                new ModelProviderTypeAssociation { Id = 1, Identifier = "gpt-4", ModelId = 1, IsEnabled = true },
+                new ModelProviderTypeAssociation { Id = 2, Identifier = "gpt-3.5-turbo", ModelId = 2, IsEnabled = true }
+            );
+            await _dbContext.SaveChangesAsync();
 
             var createDto = new CreateModelCostDto
             {
                 CostName = "GPT-4 Pricing",
                 InputCostPerMillionTokens = 30.00m,
                 OutputCostPerMillionTokens = 60.00m,
-                ModelProviderMappingIds = mappingIds
+                ModelProviderTypeAssociationIds = new List<int> { 1, 2 }
             };
 
             // Act
@@ -43,7 +56,7 @@ namespace ConduitLLM.Tests.Admin.Integration
             // Verify in database
             var dbCost = await _modelCostRepository.GetByIdAsync(createdCost.Id);
             dbCost.Should().NotBeNull();
-            dbCost!.ModelCostMappings.Should().HaveCount(2);
+            dbCost!.ModelProviderTypeAssociations.Should().HaveCount(2);
         }
 
         [Fact]

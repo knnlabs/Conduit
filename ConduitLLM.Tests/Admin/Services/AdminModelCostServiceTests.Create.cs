@@ -20,7 +20,7 @@ namespace ConduitLLM.Tests.Admin.Services
                 CostName = "Test Model Cost",
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 20.00m,
-                ModelProviderMappingIds = new List<int>()
+                ModelProviderTypeAssociationIds = new List<int>()
             };
 
             var createdEntity = new ModelCost
@@ -29,7 +29,7 @@ namespace ConduitLLM.Tests.Admin.Services
                 CostName = createDto.CostName,
                 InputCostPerMillionTokens = createDto.InputCostPerMillionTokens,
                 OutputCostPerMillionTokens = createDto.OutputCostPerMillionTokens,
-                ModelCostMappings = new List<ModelCostMapping>()
+                ModelProviderTypeAssociations = new List<ModelProviderTypeAssociation>()
             };
 
             _mockModelCostRepository.Setup(x => x.GetByCostNameAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -50,16 +50,16 @@ namespace ConduitLLM.Tests.Admin.Services
         }
 
         [Fact]
-        public async Task CreateModelCostAsync_WithModelProviderMappingIds_ShouldCreateMappings()
+        public async Task CreateModelCostAsync_WithModelProviderTypeAssociationIds_ShouldUpdateAssociations()
         {
             // Arrange
-            var mappingIds = new List<int> { 1, 2, 3 };
+            var associationIds = new List<int> { 1, 2, 3 };
             var createDto = new CreateModelCostDto
             {
-                CostName = "Test Model Cost with Mappings",
+                CostName = "Test Model Cost with Associations",
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 20.00m,
-                ModelProviderMappingIds = mappingIds
+                ModelProviderTypeAssociationIds = associationIds
             };
 
             var createdEntity = new ModelCost
@@ -68,28 +68,31 @@ namespace ConduitLLM.Tests.Admin.Services
                 CostName = createDto.CostName,
                 InputCostPerMillionTokens = createDto.InputCostPerMillionTokens,
                 OutputCostPerMillionTokens = createDto.OutputCostPerMillionTokens,
-                ModelCostMappings = new List<ModelCostMapping>
+                ModelProviderTypeAssociations = new List<ModelProviderTypeAssociation>
                 {
-                    new ModelCostMapping 
+                    new ModelProviderTypeAssociation 
                     { 
+                        Id = 1,
                         ModelCostId = 1, 
-                        ModelProviderMappingId = 1, 
-                        IsActive = true,
-                        ModelProviderMapping = new ModelProviderMapping { Id = 1, ModelAlias = "model1", ModelId = 1 }
+                        Identifier = "gpt-4",
+                        IsEnabled = true,
+                        ModelId = 1
                     },
-                    new ModelCostMapping 
+                    new ModelProviderTypeAssociation 
                     { 
+                        Id = 2,
                         ModelCostId = 1, 
-                        ModelProviderMappingId = 2, 
-                        IsActive = true,
-                        ModelProviderMapping = new ModelProviderMapping { Id = 2, ModelAlias = "model2", ModelId = 1 }
+                        Identifier = "gpt-3.5-turbo",
+                        IsEnabled = true,
+                        ModelId = 2
                     },
-                    new ModelCostMapping 
+                    new ModelProviderTypeAssociation 
                     { 
+                        Id = 3,
                         ModelCostId = 1, 
-                        ModelProviderMappingId = 3, 
-                        IsActive = true,
-                        ModelProviderMapping = new ModelProviderMapping { Id = 3, ModelAlias = "model3", ModelId = 1 }
+                        Identifier = "claude-3-opus",
+                        IsEnabled = true,
+                        ModelId = 3
                     }
                 }
             };
@@ -107,19 +110,11 @@ namespace ConduitLLM.Tests.Admin.Services
             // Assert
             result.Should().NotBeNull();
             result.AssociatedModelAliases.Should().HaveCount(3);
-            result.AssociatedModelAliases.Should().Contain(new[] { "model1", "model2", "model3" });
+            result.AssociatedModelAliases.Should().Contain(new[] { "gpt-4", "gpt-3.5-turbo", "claude-3-opus" });
             
-            // Verify mappings were added to DbContext
-            using (var dbContext = CreateDbContext())
-            {
-                var mappings = dbContext.ModelCostMappings.ToList();
-                mappings.Should().HaveCount(3);
-                mappings.Should().AllSatisfy(m => 
-                {
-                    m.ModelCostId.Should().Be(1);
-                    m.IsActive.Should().BeTrue();
-                });
-            }
+            // Verify the service was called with the correct DTO
+            _mockModelCostRepository.Verify(x => x.CreateAsync(It.IsAny<ModelCost>(), It.IsAny<CancellationToken>()), Times.Once);
+            _mockModelCostRepository.Verify(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]

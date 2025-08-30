@@ -32,6 +32,7 @@ namespace ConduitLLM.Configuration.Entities
         /// Some providers may have different limits than the base model.
         /// This only applies to chat and embedding models.
         /// </summary>
+        [Range(1024, int.MaxValue)]
         public int? MaxInputTokens { get; set; }
 
         /// <summary>
@@ -40,6 +41,7 @@ namespace ConduitLLM.Configuration.Entities
         /// Some providers may have different limits than the base model.
         /// This only applies to chat and embedding models.
         /// </summary>
+        [Range(1024, int.MaxValue)]
         public int? MaxOutputTokens { get; set; }
 
 

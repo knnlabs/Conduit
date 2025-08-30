@@ -28,7 +28,7 @@ namespace ConduitLLM.Tests.Admin.Integration
                 CostName = "Cost with Invalid Mappings",
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 20.00m,
-                ModelProviderMappingIds = new List<int> { 9999, 10000 } // Non-existent IDs
+                ModelProviderTypeAssociationIds = new List<int> { 9999, 10000 } // Non-existent IDs
             };
 
             // Act
@@ -44,10 +44,10 @@ namespace ConduitLLM.Tests.Admin.Integration
             // Verify in database
             using (var verifyContext = new ConduitDbContext(_dbContextOptions))
             {
-                var dbMappings = verifyContext.ModelCostMappings
+                var dbMappings = verifyContext.ModelProviderTypeAssociations
                     .Where(m => m.ModelCostId == createdCost.Id)
                     .ToList();
-                dbMappings.Should().HaveCount(2); // Invalid mappings still created but won't resolve
+                dbMappings.Should().BeEmpty(); // No associations should be linked since IDs were invalid
             }
         }
 

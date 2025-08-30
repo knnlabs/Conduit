@@ -294,10 +294,10 @@ namespace ConduitLLM.Admin.Extensions
             {
                 Id = modelCost.Id,
                 CostName = modelCost.CostName,
-                AssociatedModelAliases = modelCost.ModelCostMappings?
-                    .Where(mcm => mcm.IsActive)
-                    .Select(mcm => mcm.ModelProviderMapping?.ModelAlias ?? "")
-                    .Where(alias => !string.IsNullOrEmpty(alias))
+                AssociatedModelAliases = modelCost.ModelProviderTypeAssociations?
+                    .Where(mpta => mpta.IsEnabled)
+                    .Select(mpta => mpta.Identifier)
+                    .Where(identifier => !string.IsNullOrEmpty(identifier))
                     .ToList() ?? new List<string>(),
                 PricingModel = modelCost.PricingModel,
                 PricingConfiguration = modelCost.PricingConfiguration,

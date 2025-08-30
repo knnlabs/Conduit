@@ -28,7 +28,6 @@ public class ModelCost
     /// Examples: "GPT-4 Standard Pricing", "Llama 3 Unified Cost", "Embedding Models - Ada"
     /// This helps administrators identify and manage different cost configurations.
     /// </remarks>
-    [Required]
     [MaxLength(255)]
     public string CostName { get; set; } = string.Empty;
 
@@ -315,11 +314,11 @@ public class ModelCost
     public int? DefaultInferenceSteps { get; set; }
 
     /// <summary>
-    /// Gets or sets the collection of model mappings that use this cost configuration.
+    /// Gets or sets the collection of model provider type associations that use this cost configuration.
     /// </summary>
     /// <remarks>
-    /// This navigation property represents the many-to-many relationship between ModelCost and ModelProviderMapping.
-    /// Through this collection, one cost configuration can be applied to multiple models across different providers.
+    /// This navigation property represents the one-to-many relationship between ModelCost and ModelProviderTypeAssociation.
+    /// One cost configuration can be used by multiple model-provider combinations.
     /// </remarks>
-    public virtual ICollection<ModelCostMapping> ModelCostMappings { get; set; } = new List<ModelCostMapping>();
+    public virtual ICollection<ModelProviderTypeAssociation> ModelProviderTypeAssociations { get; set; } = new List<ModelProviderTypeAssociation>();
 }

@@ -20,14 +20,14 @@ namespace ConduitLLM.Tests.Admin.Services
                 CostName = "Cost without mappings",
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 20.00m,
-                ModelProviderMappingIds = new List<int>() // Empty list
+                ModelProviderTypeAssociationIds = new List<int>() // Empty list
             };
 
             var createdEntity = new ModelCost
             {
                 Id = 1,
                 CostName = createDto.CostName,
-                ModelCostMappings = new List<ModelCostMapping>()
+                ModelProviderTypeAssociations = new List<ModelProviderTypeAssociation>()
             };
 
             _mockModelCostRepository.Setup(x => x.GetByCostNameAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -45,7 +45,8 @@ namespace ConduitLLM.Tests.Admin.Services
             result.AssociatedModelAliases.Should().BeEmpty();
             using (var verifyContext = CreateDbContext())
             {
-                verifyContext.ModelCostMappings.Should().BeEmpty();
+                // No new associations should have their ModelCostId set to this cost
+                verifyContext.ModelProviderTypeAssociations.Where(a => a.ModelCostId == 1).Should().BeEmpty();
             }
         }
 
@@ -59,7 +60,7 @@ namespace ConduitLLM.Tests.Admin.Services
                 CostName = "Updated Cost",
                 InputCostPerMillionTokens = 15.00m,
                 OutputCostPerMillionTokens = 25.00m,
-                ModelProviderMappingIds = new List<int>() // Empty list to clear all mappings
+                ModelProviderTypeAssociationIds = new List<int>() // Empty list to clear all mappings
             };
 
             var existingCost = new ModelCost
@@ -68,13 +69,13 @@ namespace ConduitLLM.Tests.Admin.Services
                 CostName = "Original Cost"
             };
 
-            // Add existing mappings
+            // Add existing associations
             using (var setupContext = CreateDbContext())
             {
-                setupContext.ModelCostMappings.AddRange(new[]
+                setupContext.ModelProviderTypeAssociations.AddRange(new[]
                 {
-                    new ModelCostMapping { Id = 1, ModelCostId = 1, ModelProviderMappingId = 1 },
-                    new ModelCostMapping { Id = 2, ModelCostId = 1, ModelProviderMappingId = 2 }
+                    new ModelProviderTypeAssociation { Id = 1, ModelCostId = 1, Identifier = "gpt-4", ModelId = 1, IsEnabled = true },
+                    new ModelProviderTypeAssociation { Id = 2, ModelCostId = 1, Identifier = "gpt-3.5", ModelId = 2, IsEnabled = true }
                 });
                 await setupContext.SaveChangesAsync();
             }
@@ -91,7 +92,7 @@ namespace ConduitLLM.Tests.Admin.Services
             result.Should().BeTrue();
             using (var verifyContext = CreateDbContext())
             {
-                verifyContext.ModelCostMappings.Where(m => m.ModelCostId == 1).Should().BeEmpty();
+                verifyContext.ModelProviderTypeAssociations.Where(a => a.ModelCostId == 1).Should().BeEmpty();
             }
         }
 
@@ -103,17 +104,19 @@ namespace ConduitLLM.Tests.Admin.Services
             {
                 Id = 1,
                 CostName = "Test Cost",
-                ModelCostMappings = new List<ModelCostMapping>
+                ModelProviderTypeAssociations = new List<ModelProviderTypeAssociation>
                 {
-                    new ModelCostMapping 
+                    new ModelProviderTypeAssociation 
                     { 
-                        IsActive = true,
-                        ModelProviderMapping = new ModelProviderMapping { ModelAlias = "active-model", ModelId = 1 }
+                        IsEnabled = true,
+                        Identifier = "active-model",
+                        ModelId = 1
                     },
-                    new ModelCostMapping 
+                    new ModelProviderTypeAssociation 
                     { 
-                        IsActive = false, // Inactive mapping
-                        ModelProviderMapping = new ModelProviderMapping { ModelAlias = "inactive-model", ModelId = 1 }
+                        IsEnabled = false, // Disabled association
+                        Identifier = "inactive-model",
+                        ModelId = 2
                     }
                 }
             };

@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.Entities;
 
 using FluentAssertions;
 
@@ -18,15 +19,29 @@ namespace ConduitLLM.Tests.Admin.Integration
         {
             // Arrange
             var providerId = await SetupTestDataAsync();
-            var mappings = await _modelMappingRepository.GetAllAsync();
-            var mappingIds = mappings.Select(m => m.Id).ToList();
+            
+            // Create Models first
+            _dbContext.Models.AddRange(
+                new Model { Id = 10, Name = "GPT-4", ModelSeriesId = 1 },
+                new Model { Id = 11, Name = "GPT-3.5 Turbo", ModelSeriesId = 1 },
+                new Model { Id = 12, Name = "Embedding Ada", ModelSeriesId = 1 }
+            );
+            await _dbContext.SaveChangesAsync();
+            
+            // Create ModelProviderTypeAssociations
+            _dbContext.ModelProviderTypeAssociations.AddRange(
+                new ModelProviderTypeAssociation { Id = 10, Identifier = "gpt-4", ModelId = 10, IsEnabled = true },
+                new ModelProviderTypeAssociation { Id = 11, Identifier = "gpt-3.5-turbo", ModelId = 11, IsEnabled = true },
+                new ModelProviderTypeAssociation { Id = 12, Identifier = "text-embedding-ada-002", ModelId = 12, IsEnabled = true }
+            );
+            await _dbContext.SaveChangesAsync();
 
             var createDto = new CreateModelCostDto
             {
                 CostName = "Test Cost with Associations",
                 InputCostPerMillionTokens = 25.00m,
                 OutputCostPerMillionTokens = 50.00m,
-                ModelProviderMappingIds = mappingIds
+                ModelProviderTypeAssociationIds = new List<int> { 10, 11, 12 }
             };
             
             var createResult = await _controller.CreateModelCost(createDto);
@@ -49,13 +64,22 @@ namespace ConduitLLM.Tests.Admin.Integration
         {
             // Arrange
             var providerId = await SetupTestDataAsync();
-            var mappings = await _modelMappingRepository.GetAllAsync();
-            var mappingsList = mappings.OrderBy(m => m.ModelAlias).ToList(); // Order for predictability
-
-            // Get specific mappings by alias
-            var gpt4Mapping = mappingsList.First(m => m.ModelAlias == "gpt-4");
-            var gpt35Mapping = mappingsList.First(m => m.ModelAlias == "gpt-3.5-turbo");
-            var embeddingMapping = mappingsList.First(m => m.ModelAlias == "text-embedding-ada-002");
+            
+            // Create Models
+            _dbContext.Models.AddRange(
+                new Model { Id = 20, Name = "GPT-4", ModelSeriesId = 1 },
+                new Model { Id = 21, Name = "GPT-3.5 Turbo", ModelSeriesId = 1 },
+                new Model { Id = 22, Name = "Embedding Ada", ModelSeriesId = 1 }
+            );
+            await _dbContext.SaveChangesAsync();
+            
+            // Create ModelProviderTypeAssociations
+            _dbContext.ModelProviderTypeAssociations.AddRange(
+                new ModelProviderTypeAssociation { Id = 20, Identifier = "gpt-4", ModelId = 20, IsEnabled = true },
+                new ModelProviderTypeAssociation { Id = 21, Identifier = "gpt-3.5-turbo", ModelId = 21, IsEnabled = true },
+                new ModelProviderTypeAssociation { Id = 22, Identifier = "text-embedding-ada-002", ModelId = 22, IsEnabled = true }
+            );
+            await _dbContext.SaveChangesAsync();
 
             // Create multiple costs with different mappings
             var cost1 = new CreateModelCostDto
@@ -63,7 +87,7 @@ namespace ConduitLLM.Tests.Admin.Integration
                 CostName = "Cost 1",
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 20.00m,
-                ModelProviderMappingIds = new List<int> { gpt4Mapping.Id }
+                ModelProviderTypeAssociationIds = new List<int> { 20 }
             };
 
             var cost2 = new CreateModelCostDto
@@ -71,7 +95,7 @@ namespace ConduitLLM.Tests.Admin.Integration
                 CostName = "Cost 2",
                 InputCostPerMillionTokens = 15.00m,
                 OutputCostPerMillionTokens = 30.00m,
-                ModelProviderMappingIds = new List<int> { gpt35Mapping.Id, embeddingMapping.Id }
+                ModelProviderTypeAssociationIds = new List<int> { 21, 22 }
             };
 
             await _controller.CreateModelCost(cost1);

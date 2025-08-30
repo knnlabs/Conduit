@@ -123,10 +123,7 @@ namespace ConduitLLM.Configuration
         public virtual DbSet<IpFilterEntity> IpFilters { get; set; } = null!;
 
 
-        /// <summary>
-        /// Database set for model cost mappings
-        /// </summary>
-        public virtual DbSet<ModelCostMapping> ModelCostMappings { get; set; } = null!;
+        // ModelCostMapping removed - costs are now directly associated with ModelProviderTypeAssociation
 
         /// <summary>
         /// Database set for async tasks
@@ -223,27 +220,27 @@ namespace ConduitLLM.Configuration
             {
                 entity.HasIndex(e => e.CostName);
                 
-                // Configure many-to-many relationship through ModelCostMapping
-                entity.HasMany(e => e.ModelCostMappings)
+                // Configure one-to-many relationship with ModelProviderTypeAssociation
+                entity.HasMany(e => e.ModelProviderTypeAssociations)
                       .WithOne(e => e.ModelCost)
                       .HasForeignKey(e => e.ModelCostId)
-                      .OnDelete(DeleteBehavior.Cascade);
+                      .OnDelete(DeleteBehavior.SetNull);
             });
 
-            // Configure ModelCostMapping entity (junction table)
-            modelBuilder.Entity<ModelCostMapping>(entity =>
+            // Configure ModelProviderTypeAssociation entity
+            modelBuilder.Entity<ModelProviderTypeAssociation>(entity =>
             {
-                entity.HasIndex(e => new { e.ModelCostId, e.ModelProviderMappingId })
-                      .IsUnique(); // Each model-cost combination should be unique
+                entity.HasIndex(e => new { e.ModelId, e.Identifier, e.Provider })
+                      .IsUnique(); // Each model-identifier-provider combination should be unique
                 
                 entity.HasOne(e => e.ModelCost)
-                      .WithMany(e => e.ModelCostMappings)
+                      .WithMany(e => e.ModelProviderTypeAssociations)
                       .HasForeignKey(e => e.ModelCostId)
-                      .OnDelete(DeleteBehavior.Cascade);
+                      .OnDelete(DeleteBehavior.SetNull);
                 
-                entity.HasOne(e => e.ModelProviderMapping)
-                      .WithMany(e => e.ModelCostMappings)
-                      .HasForeignKey(e => e.ModelProviderMappingId)
+                entity.HasOne(e => e.Model)
+                      .WithMany(e => e.Identifiers)
+                      .HasForeignKey(e => e.ModelId)
                       .OnDelete(DeleteBehavior.Cascade);
             });
 

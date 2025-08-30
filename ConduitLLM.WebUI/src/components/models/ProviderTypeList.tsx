@@ -1,13 +1,15 @@
 'use client';
 
-import { Table, Badge, ActionIcon, Group, Button, Text, Loader, Stack } from '@mantine/core';
-import { IconEdit, IconTrash, IconPlus } from '@tabler/icons-react';
+import { Table, Badge, ActionIcon, Group, Button, Text, Loader, Stack, Anchor } from '@mantine/core';
+import { IconEdit, IconTrash, IconPlus, IconCoin } from '@tabler/icons-react';
+import Link from 'next/link';
 
 interface ProviderTypeAssociation {
   id: number;
   identifier: string;
   provider: string;
   isPrimary: boolean;
+  modelCostId?: number | null;
 }
 
 interface ProviderTypeListProps {
@@ -54,13 +56,14 @@ export function ProviderTypeList({
             <Table.Th>Identifier</Table.Th>
             <Table.Th>Provider Type</Table.Th>
             <Table.Th>Status</Table.Th>
+            <Table.Th>Cost</Table.Th>
             <Table.Th>Actions</Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
           {associations.length === 0 ? (
             <Table.Tr>
-              <Table.Td colSpan={4}>
+              <Table.Td colSpan={5}>
                 <Text ta="center" c="dimmed">
                   No provider associations configured
                 </Text>
@@ -82,6 +85,21 @@ export function ProviderTypeList({
                     <Badge color="green" variant="light" size="sm">
                       Primary
                     </Badge>
+                  )}
+                </Table.Td>
+                <Table.Td>
+                  {association.modelCostId ? (
+                    <Anchor
+                      component={Link}
+                      href={`/model-costs/${association.modelCostId}`}
+                      size="sm"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                    >
+                      <IconCoin size={14} />
+                      View Cost
+                    </Anchor>
+                  ) : (
+                    <Text size="sm" c="dimmed">-</Text>
                   )}
                 </Table.Td>
                 <Table.Td>

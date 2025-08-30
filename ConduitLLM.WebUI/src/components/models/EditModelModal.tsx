@@ -18,6 +18,7 @@ interface ProviderTypeAssociation {
   identifier: string;
   provider: string;
   isPrimary: boolean;
+  modelCostId?: number | null;
 }
 
 // Extend ModelDto to include capability fields and modelParameters until SDK types are updated
@@ -60,7 +61,21 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
   
   const { executeWithAdmin } = useAdminClient();
 
-  const form = useForm({
+  const form = useForm<{
+    name: string;
+    modelSeriesId: number | null;
+    isActive: boolean;
+    modelParameters: string;
+    supportsChat: boolean;
+    supportsVision: boolean;
+    supportsFunctionCalling: boolean;
+    supportsStreaming: boolean;
+    supportsImageGeneration: boolean;
+    supportsVideoGeneration: boolean;
+    supportsEmbeddings: boolean;
+    maxInputTokens: number | null;
+    maxOutputTokens: number | null;
+  }>({
     initialValues: {
       name: model?.name ?? '',
       modelSeriesId: model?.modelSeriesId ?? null,
@@ -74,8 +89,8 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       supportsImageGeneration: model?.supportsImageGeneration ?? false,
       supportsVideoGeneration: model?.supportsVideoGeneration ?? false,
       supportsEmbeddings: model?.supportsEmbeddings ?? false,
-      maxInputTokens: model?.maxInputTokens ?? 0,
-      maxOutputTokens: model?.maxOutputTokens ?? 0
+      maxInputTokens: model?.maxInputTokens ?? null,
+      maxOutputTokens: model?.maxOutputTokens ?? null
     },
     validate: {
       name: (value) => !value ? 'Name is required' : null,
@@ -90,6 +105,18 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
             setJsonError(error);
             return error;
           }
+        }
+        return null;
+      },
+      maxInputTokens: (value) => {
+        if (value !== null && value !== undefined && value < 1024) {
+          return 'Minimum value is 1024 tokens';
+        }
+        return null;
+      },
+      maxOutputTokens: (value) => {
+        if (value !== null && value !== undefined && value < 1024) {
+          return 'Minimum value is 1024 tokens';
         }
         return null;
       }
@@ -111,8 +138,8 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
         supportsImageGeneration: model.supportsImageGeneration ?? false,
         supportsVideoGeneration: model.supportsVideoGeneration ?? false,
         supportsEmbeddings: model.supportsEmbeddings ?? false,
-        maxInputTokens: model.maxInputTokens ?? 0,
-        maxOutputTokens: model.maxOutputTokens ?? 0
+        maxInputTokens: model.maxInputTokens ?? null,
+        maxOutputTokens: model.maxOutputTokens ?? null
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -148,12 +175,16 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       const modelId = model.id;
       if (!modelId) throw new Error('Model ID is required');
       
-      const dto = {
+      // Build DTO with only non-null/non-empty values
+      // Using Partial<UpdateModelDto> to allow building incrementally
+      const dto: Partial<UpdateModelDto> & {
+        maxInputTokens?: number | null;
+        maxOutputTokens?: number | null;
+      } = {
         name: values.name,
         modelSeriesId: values.modelSeriesId,
         isActive: values.isActive,
-        modelParameters: values.modelParameters ?? null,
-        // Include capability fields directly in the update
+        // Always include boolean capability fields
         supportsChat: values.supportsChat,
         supportsVision: values.supportsVision,
         supportsFunctionCalling: values.supportsFunctionCalling,
@@ -161,9 +192,17 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
         supportsImageGeneration: values.supportsImageGeneration,
         supportsVideoGeneration: values.supportsVideoGeneration,
         supportsEmbeddings: values.supportsEmbeddings,
-        maxInputTokens: values.maxInputTokens,
-        maxOutputTokens: values.maxOutputTokens
       };
+      
+      // Only include optional string fields if they have content
+      if (values.modelParameters && values.modelParameters.trim() !== '') {
+        dto.modelParameters = values.modelParameters;
+      }
+      
+      // Include token fields - null means "clear the value"
+      // Backend validates that values must be >= 1024 or null
+      dto.maxInputTokens = values.maxInputTokens;
+      dto.maxOutputTokens = values.maxOutputTokens;
       
       // Cast to unknown first to bypass type checking until SDK is updated
       await executeWithAdmin(client => client.models.update(modelId, dto as unknown as UpdateModelDto));
@@ -361,16 +400,20 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
                 <TextInput
                   label="Max Input Tokens"
                   type="number"
+                  min={1024}
                   placeholder="e.g., 128000"
-                  {...form.getInputProps('maxInputTokens')}
-                  onChange={(e) => form.setFieldValue('maxInputTokens', parseInt(e.currentTarget.value) || 0)}
+                  value={form.values.maxInputTokens?.toString() ?? ''}
+                  onChange={(e) => form.setFieldValue('maxInputTokens', e.currentTarget.value ? parseInt(e.currentTarget.value) : null)}
+                  error={form.errors.maxInputTokens}
                 />
                 <TextInput
                   label="Max Output Tokens"
                   type="number"
+                  min={1024}
                   placeholder="e.g., 4096"
-                  {...form.getInputProps('maxOutputTokens')}
-                  onChange={(e) => form.setFieldValue('maxOutputTokens', parseInt(e.currentTarget.value) || 0)}
+                  value={form.values.maxOutputTokens?.toString() ?? ''}
+                  onChange={(e) => form.setFieldValue('maxOutputTokens', e.currentTarget.value ? parseInt(e.currentTarget.value) : null)}
+                  error={form.errors.maxOutputTokens}
                 />
               </SimpleGrid>
             </Stack>

@@ -175,9 +175,9 @@ namespace ConduitLLM.Configuration.Entities
         /// Gets or sets the collection of cost configurations applied to this model mapping.
         /// </summary>
         /// <remarks>
-        /// This navigation property represents the many-to-many relationship between ModelProviderMapping and ModelCost.
-        /// A model can have multiple cost configurations (e.g., different costs for different time periods or regions).
+        /// This navigation property is obsolete. Model costs are now associated directly with ModelProviderTypeAssociation.
         /// </remarks>
+        [Obsolete("Model costs are now associated directly with ModelProviderTypeAssociation via the ModelCostId foreign key.")]
         public virtual ICollection<ModelCostMapping> ModelCostMappings { get; set; } = new List<ModelCostMapping>();
 
         /// <summary>

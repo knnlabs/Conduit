@@ -8,6 +8,7 @@ namespace ConduitLLM.Configuration.Entities
     /// This enables a many-to-many relationship where one cost configuration can apply
     /// to multiple model mappings (e.g., Llama cost applies to Llama on multiple providers).
     /// </summary>
+    [Obsolete("This entity is being replaced by a direct relationship between ModelProviderTypeAssociation and ModelCost. ModelProviderTypeAssociation now has a ModelCostId foreign key.")]
     public class ModelCostMapping
     {
         /// <summary>
@@ -29,15 +30,15 @@ namespace ConduitLLM.Configuration.Entities
         public virtual ModelCost ModelCost { get; set; } = null!;
 
         /// <summary>
-        /// Gets or sets the foreign key to the ModelProviderMapping entity.
+        /// Gets or sets the foreign key to the ModelProviderTypeAssociation entity.
         /// </summary>
-        public int ModelProviderMappingId { get; set; }
+        public int ModelProviderTypeAssociationId { get; set; }
 
         /// <summary>
-        /// Gets or sets the navigation property to the associated ModelProviderMapping.
+        /// Gets or sets the navigation property to the associated ModelProviderTypeAssociation.
         /// </summary>
-        [ForeignKey("ModelProviderMappingId")]
-        public virtual ModelProviderMapping ModelProviderMapping { get; set; } = null!;
+        [ForeignKey("ModelProviderTypeAssociationId")]
+        public virtual ModelProviderTypeAssociation ModelProviderTypeAssociation { get; set; } = null!;
 
         /// <summary>
         /// Gets or sets the UTC timestamp when this mapping was created.

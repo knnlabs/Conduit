@@ -68,21 +68,21 @@ namespace ConduitLLM.Admin.Services
                 // Save to database
                 var id = await _modelCostRepository.CreateAsync(modelCostEntity);
 
-                // Create model-cost mappings if provided
-                if (modelCost.ModelProviderMappingIds != null && modelCost.ModelProviderMappingIds.Count() > 0)
+                // Update ModelProviderTypeAssociations to reference this cost if provided
+                if (modelCost.ModelProviderTypeAssociationIds != null && modelCost.ModelProviderTypeAssociationIds.Count() > 0)
                 {
                     using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-                    foreach (var mappingId in modelCost.ModelProviderMappingIds)
+                    
+                    // Find the ModelProviderTypeAssociations by their IDs and update their ModelCostId
+                    var associations = await dbContext.ModelProviderTypeAssociations
+                        .Where(mpta => modelCost.ModelProviderTypeAssociationIds.Contains(mpta.Id))
+                        .ToListAsync();
+                    
+                    foreach (var association in associations)
                     {
-                        var modelCostMapping = new ModelCostMapping
-                        {
-                            ModelCostId = id,
-                            ModelProviderMappingId = mappingId,
-                            CreatedAt = DateTime.UtcNow,
-                            IsActive = true
-                        };
-                        dbContext.ModelCostMappings.Add(modelCostMapping);
+                        association.ModelCostId = id;
                     }
+                    
                     await dbContext.SaveChangesAsync();
                 }
 
@@ -322,29 +322,31 @@ namespace ConduitLLM.Admin.Services
                 // Save changes
                 var result = await _modelCostRepository.UpdateAsync(existingModelCost);
 
-                // Update model-cost mappings if provided
-                if (modelCost.ModelProviderMappingIds != null)
+                // Update ModelProviderTypeAssociations if provided
+                if (modelCost.ModelProviderTypeAssociationIds != null)
                 {
                     using var dbContext = await _dbContextFactory.CreateDbContextAsync();
                     
-                    // Remove existing mappings
-                    var existingMappings = await dbContext.ModelCostMappings
-                        .Where(mcm => mcm.ModelCostId == modelCost.Id)
+                    // Clear existing associations for this cost
+                    var existingAssociations = await dbContext.ModelProviderTypeAssociations
+                        .Where(mpta => mpta.ModelCostId == modelCost.Id)
                         .ToListAsync();
-                    dbContext.ModelCostMappings.RemoveRange(existingMappings);
                     
-                    // Add new mappings
-                    foreach (var mappingId in modelCost.ModelProviderMappingIds)
+                    foreach (var association in existingAssociations)
                     {
-                        var modelCostMapping = new ModelCostMapping
-                        {
-                            ModelCostId = modelCost.Id,
-                            ModelProviderMappingId = mappingId,
-                            CreatedAt = DateTime.UtcNow,
-                            IsActive = true
-                        };
-                        dbContext.ModelCostMappings.Add(modelCostMapping);
+                        association.ModelCostId = null;
                     }
+                    
+                    // Set new associations
+                    var newAssociations = await dbContext.ModelProviderTypeAssociations
+                        .Where(mpta => modelCost.ModelProviderTypeAssociationIds.Contains(mpta.Id))
+                        .ToListAsync();
+                    
+                    foreach (var association in newAssociations)
+                    {
+                        association.ModelCostId = modelCost.Id;
+                    }
+                    
                     await dbContext.SaveChangesAsync();
                 }
 

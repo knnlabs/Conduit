@@ -34,12 +34,12 @@ namespace ConduitLLM.Configuration.DTOs
         public string? PricingConfiguration { get; set; }
 
         /// <summary>
-        /// List of model mapping IDs to associate with this cost
+        /// List of model provider type association IDs to associate with this cost
         /// </summary>
         /// <remarks>
-        /// These are the IDs of ModelProviderMapping entities that should use this cost configuration.
+        /// These are the IDs of ModelProviderTypeAssociation entities that should use this cost configuration.
         /// </remarks>
-        public List<int> ModelProviderMappingIds { get; set; } = new List<int>();
+        public List<int> ModelProviderTypeAssociationIds { get; set; } = new List<int>();
 
         /// <summary>
         /// Model type for categorization

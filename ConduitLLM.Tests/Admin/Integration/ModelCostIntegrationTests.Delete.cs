@@ -27,7 +27,7 @@ namespace ConduitLLM.Tests.Admin.Integration
                 CostName = "Cost to Delete",
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 20.00m,
-                ModelProviderMappingIds = mappingIds
+                ModelProviderTypeAssociationIds = mappingIds
             };
             
             var createResult = await _controller.CreateModelCost(createDto);

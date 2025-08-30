@@ -59,43 +59,23 @@ public class ModelCostService : IModelCostService
 
             _logger.LogDebug("Cache miss for model cost: {ModelId}, querying database", modelId);
 
-            // Find the ModelProviderMapping by alias
-            var modelMapping = await _modelProviderMappingRepository.GetByModelNameAsync(modelId, cancellationToken);
-
-            if (modelMapping == null)
-            {
-                _logger.LogDebug("No model provider mapping found for alias: {ModelId}", modelId);
-                _cache.Set<ModelCost?>(cacheKey, null, _cacheDuration);
-                return null;
-            }
-
-            // Get the associated cost through the junction table
-            // First, get all model costs to include the navigation properties
+            // Get all model costs with their associated ModelProviderTypeAssociations
             var allCosts = await _modelCostRepository.GetAllAsync(cancellationToken);
             
-            // Find the cost associated with this model mapping
-            var modelCost = allCosts.FirstOrDefault(cost => 
-                cost.ModelCostMappings.Any(mapping => 
-                    mapping.ModelProviderMappingId == modelMapping.Id && 
-                    mapping.IsActive));
+            // Find a cost where one of its associated ModelProviderTypeAssociations has this identifier
+            var now = DateTime.UtcNow;
+            var modelCost = allCosts
+                .Where(cost => cost.IsActive && cost.EffectiveDate <= now)
+                .Where(cost => !cost.ExpiryDate.HasValue || cost.ExpiryDate.Value > now)
+                .Where(cost => cost.ModelProviderTypeAssociations.Any(assoc => 
+                    assoc.Identifier == modelId && assoc.IsEnabled))
+                .OrderByDescending(cost => cost.Priority)
+                .ThenByDescending(cost => cost.EffectiveDate)
+                .FirstOrDefault();
 
-            // If we found multiple costs, prioritize by:
-            // 1. Active status
-            // 2. Effective date (most recent that's not in the future)
-            // 3. Priority
             if (modelCost == null)
             {
-                var now = DateTime.UtcNow;
-                var candidateCosts = allCosts
-                    .Where(cost => cost.ModelCostMappings.Any(mapping => 
-                        mapping.ModelProviderMappingId == modelMapping.Id &&
-                        mapping.IsActive))
-                    .Where(cost => cost.IsActive && cost.EffectiveDate <= now)
-                    .Where(cost => !cost.ExpiryDate.HasValue || cost.ExpiryDate.Value > now)
-                    .OrderByDescending(cost => cost.Priority)
-                    .ThenByDescending(cost => cost.EffectiveDate);
-
-                modelCost = candidateCosts.FirstOrDefault();
+                _logger.LogDebug("No model cost found for identifier: {ModelId}", modelId);
             }
 
             _cache.Set<ModelCost?>(cacheKey, modelCost, _cacheDuration);
