@@ -15,6 +15,7 @@ This directory contains utility scripts for development, testing, and maintenanc
 
 ### 🔧 Code Quality & Linting
 
+- **`ts-lint.sh`** - **QUICK**: Fast lint check for WebUI and SDKs (no fixes, just status)
 - **`validate-eslint.sh`** - **UNIFIED**: ESLint validation with normal/strict modes
   - Normal mode: `./scripts/validate-eslint.sh`
   - Strict mode: `./scripts/validate-eslint.sh --strict`
@@ -97,6 +98,12 @@ Located in `scripts/migrations/`:
 ```
 
 ### Code Quality Checks
+
+**Quick status check:**
+```bash
+# Fast lint status for WebUI and SDKs
+./scripts/ts-lint.sh
+```
 
 **Before committing:**
 ```bash
