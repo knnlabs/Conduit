@@ -59,7 +59,6 @@ namespace ConduitLLM.Http.Controllers
                 // Get all models that have the appropriate capabilities for this provider type
                 // For now, we'll return model identifiers that are commonly used with this provider type
                 var query = dbContext.Models
-                    .Include(m => m.Capabilities)
                     .Include(m => m.Identifiers)
                     .Where(m => m.IsActive);
 
@@ -68,16 +67,16 @@ namespace ConduitLLM.Http.Controllers
                 {
                     case ProviderType.OpenAI:
                     case ProviderType.OpenAICompatible:
-                        query = query.Where(m => m.Capabilities.SupportsChat || 
-                                                 m.Capabilities.SupportsImageGeneration ||
-                                                 m.Capabilities.SupportsEmbeddings);
+                        query = query.Where(m => m.SupportsChat || 
+                                                 m.SupportsImageGeneration ||
+                                                 m.SupportsEmbeddings);
                         break;
                     
                     case ProviderType.Replicate:
                         // Replicate supports various model types including video
-                        query = query.Where(m => m.Capabilities.SupportsImageGeneration || 
-                                                 m.Capabilities.SupportsVideoGeneration ||
-                                                 m.Capabilities.SupportsChat);
+                        query = query.Where(m => m.SupportsImageGeneration || 
+                                                 m.SupportsVideoGeneration ||
+                                                 m.SupportsChat);
                         break;
                     
                     
@@ -86,7 +85,7 @@ namespace ConduitLLM.Http.Controllers
                     case ProviderType.SambaNova:
                     case ProviderType.Fireworks:
                         // Fast inference providers typically support chat models
-                        query = query.Where(m => m.Capabilities.SupportsChat);
+                        query = query.Where(m => m.SupportsChat);
                         break;
                     
                     default:

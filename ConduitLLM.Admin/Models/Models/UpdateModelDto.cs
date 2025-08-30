@@ -57,18 +57,58 @@ namespace ConduitLLM.Admin.Models.Models
         public int? ModelSeriesId { get; set; }
 
         /// <summary>
-        /// Gets or sets the new capabilities configuration ID.
+        /// Gets or sets whether the model supports chat/conversation interactions.
         /// </summary>
-        /// <remarks>
-        /// Use this to change what capabilities the model advertises. This is useful when:
-        /// - A model gains new capabilities through provider updates
-        /// - Capabilities were initially misconfigured
-        /// - Sharing a different capability set with other models
-        /// 
-        /// The new capabilities configuration must exist. Leave null to keep current capabilities.
-        /// </remarks>
-        /// <value>The new capabilities ID, or null to keep existing.</value>
-        public int? ModelCapabilitiesId { get; set; }
+        /// <value>True to enable chat support, false to disable, or null to keep existing.</value>
+        public bool? SupportsChat { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the model supports vision/image understanding.
+        /// </summary>
+        /// <value>True to enable vision support, false to disable, or null to keep existing.</value>
+        public bool? SupportsVision { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the model supports function/tool calling.
+        /// </summary>
+        /// <value>True to enable function calling, false to disable, or null to keep existing.</value>
+        public bool? SupportsFunctionCalling { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the model supports streaming responses.
+        /// </summary>
+        /// <value>True to enable streaming, false to disable, or null to keep existing.</value>
+        public bool? SupportsStreaming { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the model supports image generation.
+        /// </summary>
+        /// <value>True to enable image generation, false to disable, or null to keep existing.</value>
+        public bool? SupportsImageGeneration { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the model supports video generation.
+        /// </summary>
+        /// <value>True to enable video generation, false to disable, or null to keep existing.</value>
+        public bool? SupportsVideoGeneration { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the model supports text embeddings generation.
+        /// </summary>
+        /// <value>True to enable embeddings, false to disable, or null to keep existing.</value>
+        public bool? SupportsEmbeddings { get; set; }
+
+        /// <summary>
+        /// Gets or sets the maximum number of input tokens the model can process.
+        /// </summary>
+        /// <value>The new max input tokens, or null to keep existing.</value>
+        public int? MaxInputTokens { get; set; }
+
+        /// <summary>
+        /// Gets or sets the maximum number of output tokens the model can generate.
+        /// </summary>
+        /// <value>The new max output tokens, or null to keep existing.</value>
+        public int? MaxOutputTokens { get; set; }
 
         /// <summary>
         /// Gets or sets the new activation status for the model.

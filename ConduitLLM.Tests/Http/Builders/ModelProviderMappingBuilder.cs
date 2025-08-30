@@ -9,7 +9,6 @@ namespace ConduitLLM.Tests.Http.Builders
         private ModelProviderMapping _mapping;
         private Provider? _provider;
         private Model? _model;
-        private ModelCapabilities? _capabilities;
         private ModelSeries? _series;
 
         public ModelProviderMappingBuilder()
@@ -22,22 +21,6 @@ namespace ConduitLLM.Tests.Http.Builders
                 Name = "GPT-4",
                 Parameters = "{}"
             };
-
-            _capabilities = new ModelCapabilities
-            {
-                Id = baseId * 10 + 2,
-                MaxTokens = 4096,
-                MinTokens = 1,
-                TokenizerType = TokenizerType.Cl100KBase,
-                SupportsChat = true,
-                SupportsStreaming = false,
-                SupportsVision = false,
-                SupportsFunctionCalling = false,
-                SupportsVideoGeneration = false,
-                SupportsImageGeneration = false,
-                SupportsEmbeddings = false
-            };
-
             _model = new Model
             {
                 Id = baseId * 10 + 3,
@@ -47,8 +30,16 @@ namespace ConduitLLM.Tests.Http.Builders
                 ModelCardUrl = "https://example.com/model",
                 ModelSeriesId = _series.Id,
                 Series = _series,
-                ModelCapabilitiesId = _capabilities.Id,
-                Capabilities = _capabilities,
+                MaxInputTokens = 4096,
+                MaxOutputTokens = 4096,
+                TokenizerType = TokenizerType.Cl100KBase,
+                SupportsChat = true,
+                SupportsStreaming = false,
+                SupportsVision = false,
+                SupportsFunctionCalling = false,
+                SupportsVideoGeneration = false,
+                SupportsImageGeneration = false,
+                SupportsEmbeddings = false,
                 IsActive = true
             };
 
@@ -137,47 +128,35 @@ namespace ConduitLLM.Tests.Http.Builders
             }
             return this;
         }
-
-        public ModelProviderMappingBuilder WithCapabilities(ModelCapabilities? capabilities)
-        {
-            _capabilities = capabilities;
-            if (_model != null && capabilities != null)
-            {
-                _model.Capabilities = capabilities;
-                _model.ModelCapabilitiesId = capabilities.Id;
-            }
-            return this;
-        }
-
         public ModelProviderMappingBuilder WithVisionSupport(bool supports)
         {
-            if (_capabilities != null)
+            if (_model != null)
             {
-                _capabilities.SupportsVision = supports;
+                _model.SupportsVision = supports;
             }
             return this;
         }
 
         public ModelProviderMappingBuilder WithStreamingSupport(bool supports)
         {
-            if (_capabilities != null)
+            if (_model != null)
             {
-                _capabilities.SupportsStreaming = supports;
+                _model.SupportsStreaming = supports;
             }
             return this;
         }
 
         public ModelProviderMappingBuilder WithFullCapabilities()
         {
-            if (_capabilities != null)
+            if (_model != null)
             {
-                _capabilities.SupportsChat = true;
-                _capabilities.SupportsStreaming = true;
-                _capabilities.SupportsVision = true;
-                _capabilities.SupportsFunctionCalling = true;
-                _capabilities.SupportsVideoGeneration = true;
-                _capabilities.SupportsImageGeneration = true;
-                _capabilities.SupportsEmbeddings = true;
+                _model.SupportsChat = true;
+                _model.SupportsStreaming = true;
+                _model.SupportsVision = true;
+                _model.SupportsFunctionCalling = true;
+                _model.SupportsVideoGeneration = true;
+                _model.SupportsImageGeneration = true;
+                _model.SupportsEmbeddings = true;
             }
             return this;
         }
@@ -202,18 +181,21 @@ namespace ConduitLLM.Tests.Http.Builders
 
         public ModelProviderMappingBuilder WithMaxTokens(int maxTokens)
         {
-            if (_capabilities != null)
+            if (_model != null)
             {
-                _capabilities.MaxTokens = maxTokens;
+                // Split the total max tokens between input and output
+                // This maintains backward compatibility where max_tokens is the sum
+                _model.MaxInputTokens = maxTokens / 2;
+                _model.MaxOutputTokens = maxTokens / 2;
             }
             return this;
         }
 
         public ModelProviderMappingBuilder WithTokenizerType(TokenizerType type)
         {
-            if (_capabilities != null)
+            if (_model != null)
             {
-                _capabilities.TokenizerType = type;
+                _model.TokenizerType = type;
             }
             return this;
         }
@@ -251,7 +233,7 @@ namespace ConduitLLM.Tests.Http.Builders
                 Model = _model!,
                 CreatedAt = _mapping.CreatedAt,
                 UpdatedAt = _mapping.UpdatedAt,
-                MaxContextTokensOverride = _mapping.MaxContextTokensOverride,
+                
                 CapabilityOverrides = _mapping.CapabilityOverrides,
                 IsDefault = _mapping.IsDefault,
                 DefaultCapabilityType = _mapping.DefaultCapabilityType,
@@ -271,8 +253,19 @@ namespace ConduitLLM.Tests.Http.Builders
                     ModelCardUrl = _model.ModelCardUrl,
                     ModelSeriesId = _model.ModelSeriesId,
                     Series = _series!,
-                    ModelCapabilitiesId = _model.ModelCapabilitiesId,
-                    Capabilities = _capabilities!,
+                    
+                    // Copy capability properties
+                    SupportsChat = _model.SupportsChat,
+                    SupportsStreaming = _model.SupportsStreaming,
+                    SupportsVision = _model.SupportsVision,
+                    SupportsFunctionCalling = _model.SupportsFunctionCalling,
+                    SupportsVideoGeneration = _model.SupportsVideoGeneration,
+                    SupportsImageGeneration = _model.SupportsImageGeneration,
+                    SupportsEmbeddings = _model.SupportsEmbeddings,
+                    MaxInputTokens = _model.MaxInputTokens,
+                    MaxOutputTokens = _model.MaxOutputTokens,
+                    TokenizerType = _model.TokenizerType,
+                    
                     IsActive = _model.IsActive,
                     ModelParameters = _model.ModelParameters,
                     CreatedAt = _model.CreatedAt,

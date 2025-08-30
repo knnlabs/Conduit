@@ -42,7 +42,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Arrange
             var author = new ModelAuthor { Id = 1, Name = "Test Author" };
             var series = new ModelSeries { Id = 1, Name = "Test Series", Author = author };
-            var capabilities = new ModelCapabilities { Id = 1, SupportsChat = true, MaxTokens = 4096 };
 
             var models = new List<Model>
             {
@@ -52,8 +51,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
                     Name = "test-model-1",
                     ModelSeriesId = 1,
                     Series = series,
-                    ModelCapabilitiesId = 1,
-                    Capabilities = capabilities,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
@@ -64,8 +61,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
                     Name = "test-model-2",
                     ModelSeriesId = 1,
                     Series = series,
-                    ModelCapabilitiesId = 1,
-                    Capabilities = capabilities,
                     IsActive = false,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
@@ -155,7 +150,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var modelId = 1;
             var author = new ModelAuthor { Id = 1, Name = "Test Author" };
             var series = new ModelSeries { Id = 1, Name = "Test Series", Author = author };
-            var capabilities = new ModelCapabilities { Id = 1, SupportsChat = true, MaxTokens = 4096 };
 
             var model = new Model
             {
@@ -163,8 +157,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 Name = "test-model",
                 ModelSeriesId = 1,
                 Series = series,
-                ModelCapabilitiesId = 1,
-                Capabilities = capabilities,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -249,7 +241,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var modelId = 1;
             var author = new ModelAuthor { Id = 1, Name = "Test Author" };
             var series = new ModelSeries { Id = 1, Name = "Test Series", Author = author };
-            var capabilities = new ModelCapabilities { Id = 1, SupportsChat = true };
 
             var model = new Model
             {
@@ -257,8 +248,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 Name = "gpt-oss-120b",
                 ModelSeriesId = 1,
                 Series = series,
-                ModelCapabilitiesId = 1,
-                Capabilities = capabilities,
                 IsActive = true,
                 Identifiers = new List<ModelProviderTypeAssociation>
                 {
@@ -328,7 +317,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var modelId = 1;
             var author = new ModelAuthor { Id = 1, Name = "Test Author" };
             var series = new ModelSeries { Id = 1, Name = "Test Series", Author = author };
-            var capabilities = new ModelCapabilities { Id = 1, SupportsChat = true };
 
             var model = new Model
             {
@@ -336,8 +324,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 Name = "test-model",
                 ModelSeriesId = 1,
                 Series = series,
-                ModelCapabilitiesId = 1,
-                Capabilities = capabilities,
                 IsActive = true,
                 Identifiers = new List<ModelProviderTypeAssociation>() // Empty identifiers
             };

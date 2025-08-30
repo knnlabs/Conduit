@@ -20,19 +20,16 @@ namespace ConduitLLM.Tests.Admin.Models.Models
                 Id = 42,
                 Name = "gpt-4-turbo",
                 ModelSeriesId = 1,
-                ModelCapabilitiesId = 5,
+                
                 IsActive = true,
                 CreatedAt = new DateTime(2024, 1, 15, 10, 30, 0, DateTimeKind.Utc),
                 UpdatedAt = new DateTime(2024, 1, 20, 14, 45, 0, DateTimeKind.Utc),
-                Capabilities = new ModelCapabilitiesDto
-                {
-                    Id = 5,
-                    SupportsChat = true,
-                    SupportsVision = true,
-                    MaxTokens = 128000,
-                    MinTokens = 1,
-                    TokenizerType = TokenizerType.Cl100KBase
-                }
+                // Capability fields directly in ModelDto
+                SupportsChat = true,
+                SupportsVision = true,
+                MaxInputTokens = 100000,
+                MaxOutputTokens = 28000,
+                TokenizerType = TokenizerType.Cl100KBase
             };
 
             // Act
@@ -44,12 +41,11 @@ namespace ConduitLLM.Tests.Admin.Models.Models
             deserialized!.Id.Should().Be(dto.Id);
             deserialized.Name.Should().Be(dto.Name);
             deserialized.ModelSeriesId.Should().Be(dto.ModelSeriesId);
-            deserialized.ModelCapabilitiesId.Should().Be(dto.ModelCapabilitiesId);
             deserialized.IsActive.Should().Be(dto.IsActive);
             deserialized.CreatedAt.Should().Be(dto.CreatedAt);
             deserialized.UpdatedAt.Should().Be(dto.UpdatedAt);
-            deserialized.Capabilities.Should().NotBeNull();
-            deserialized.Capabilities!.SupportsChat.Should().BeTrue();
+            deserialized.SupportsChat.Should().BeTrue();
+            deserialized.MaxInputTokens.Should().Be(100000);
         }
 
         [Fact]
@@ -61,11 +57,11 @@ namespace ConduitLLM.Tests.Admin.Models.Models
                 Id = 1,
                 Name = "test-model",
                 ModelSeriesId = 1,
-                ModelCapabilitiesId = 1,
+                
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
-                Capabilities = null
+                SupportsChat = false
             };
 
             // Act
@@ -74,7 +70,7 @@ namespace ConduitLLM.Tests.Admin.Models.Models
 
             // Assert
             deserialized.Should().NotBeNull();
-            deserialized!.Capabilities.Should().BeNull();
+            deserialized!.SupportsChat.Should().BeFalse();
         }
 
         [Fact]
@@ -86,7 +82,7 @@ namespace ConduitLLM.Tests.Admin.Models.Models
                 Id = 1,
                 Name = "test",
                 ModelSeriesId = 2,
-                ModelCapabilitiesId = 3,
+                
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -99,7 +95,6 @@ namespace ConduitLLM.Tests.Admin.Models.Models
             json.Should().Contain("\"Id\":");
             json.Should().Contain("\"Name\":");
             json.Should().Contain("\"ModelSeriesId\":");
-            json.Should().Contain("\"ModelCapabilitiesId\":");
             json.Should().Contain("\"IsActive\":");
             json.Should().Contain("\"CreatedAt\":");
             json.Should().Contain("\"UpdatedAt\":");
@@ -128,7 +123,7 @@ namespace ConduitLLM.Tests.Admin.Models.Models
                 Id = 1,
                 Name = "模型-🤖-測試",
                 ModelSeriesId = 1,
-                ModelCapabilitiesId = 1,
+                
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -157,7 +152,7 @@ namespace ConduitLLM.Tests.Admin.Models.Models
                 Id = 1,
                 Name = modelName,
                 ModelSeriesId = 1,
-                ModelCapabilitiesId = 1,
+                
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -204,7 +199,6 @@ namespace ConduitLLM.Tests.Admin.Models.Models
                 ""Id"": 1,
                 ""Name"": ""test"",
                 ""ModelSeriesId"": 2,
-                ""ModelCapabilitiesId"": 3,
                 ""IsActive"": true,
                 ""CreatedAt"": ""2024-01-01T00:00:00Z"",
                 ""UpdatedAt"": ""2024-01-01T00:00:00Z"",

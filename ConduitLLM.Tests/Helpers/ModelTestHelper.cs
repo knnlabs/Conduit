@@ -8,7 +8,6 @@ namespace ConduitLLM.Tests.Helpers
     public static class ModelTestHelper
     {
         private static int _nextModelId = 1000;
-        private static int _nextCapabilityId = 1000;
 
         /// <summary>
         /// Creates a GPT-4 model with chat and vision capabilities
@@ -20,17 +19,13 @@ namespace ConduitLLM.Tests.Helpers
                 Id = modelId ?? _nextModelId++,
                 Name = "gpt-4",
                 ModelSeriesId = 1,
-                ModelCapabilitiesId = _nextCapabilityId,
-                Capabilities = new ModelCapabilities
-                {
-                    Id = _nextCapabilityId++,
-                    SupportsChat = true,
-                    SupportsVision = true,
-                    SupportsFunctionCalling = true,
-                    SupportsStreaming = true,
-                    MaxTokens = 8192,
-                    TokenizerType = TokenizerType.Cl100KBase
-                }
+                SupportsChat = true,
+                SupportsVision = true,
+                SupportsFunctionCalling = true,
+                SupportsStreaming = true,
+                MaxInputTokens = 8192,
+                MaxOutputTokens = 4096,
+                TokenizerType = TokenizerType.Cl100KBase
             };
         }
 
@@ -44,14 +39,10 @@ namespace ConduitLLM.Tests.Helpers
                 Id = modelId ?? _nextModelId++,
                 Name = "text-embedding-ada-002",
                 ModelSeriesId = 1,
-                ModelCapabilitiesId = _nextCapabilityId,
-                Capabilities = new ModelCapabilities
-                {
-                    Id = _nextCapabilityId++,
-                    SupportsEmbeddings = true,
-                    MaxTokens = 8192,
-                    TokenizerType = TokenizerType.Cl100KBase
-                }
+                SupportsEmbeddings = true,
+                MaxInputTokens = 8192,
+                MaxOutputTokens = 0,
+                TokenizerType = TokenizerType.Cl100KBase
             };
         }
 
@@ -65,14 +56,10 @@ namespace ConduitLLM.Tests.Helpers
                 Id = modelId ?? _nextModelId++,
                 Name = "dall-e-3",
                 ModelSeriesId = 2,
-                ModelCapabilitiesId = _nextCapabilityId,
-                Capabilities = new ModelCapabilities
-                {
-                    Id = _nextCapabilityId++,
-                    SupportsImageGeneration = true,
-                    MaxTokens = 4000,
-                    TokenizerType = TokenizerType.Cl100KBase
-                }
+                SupportsImageGeneration = true,
+                MaxInputTokens = 4000,
+                MaxOutputTokens = 0,
+                TokenizerType = TokenizerType.Cl100KBase
             };
         }
 
@@ -86,14 +73,10 @@ namespace ConduitLLM.Tests.Helpers
                 Id = modelId ?? _nextModelId++,
                 Name = "dall-e-2",
                 ModelSeriesId = 2,
-                ModelCapabilitiesId = _nextCapabilityId,
-                Capabilities = new ModelCapabilities
-                {
-                    Id = _nextCapabilityId++,
-                    SupportsImageGeneration = true,
-                    MaxTokens = 1000,
-                    TokenizerType = TokenizerType.Cl100KBase
-                }
+                SupportsImageGeneration = true,
+                MaxInputTokens = 1000,
+                MaxOutputTokens = 0,
+                TokenizerType = TokenizerType.Cl100KBase
             };
         }
 
@@ -107,14 +90,10 @@ namespace ConduitLLM.Tests.Helpers
                 Id = modelId ?? _nextModelId++,
                 Name = "sdxl",
                 ModelSeriesId = 3,
-                ModelCapabilitiesId = _nextCapabilityId,
-                Capabilities = new ModelCapabilities
-                {
-                    Id = _nextCapabilityId++,
-                    SupportsImageGeneration = true,
-                    MaxTokens = 77,
-                    TokenizerType = TokenizerType.Cl100KBase  // Use a valid tokenizer type
-                }
+                SupportsImageGeneration = true,
+                MaxInputTokens = 77,
+                MaxOutputTokens = 0,
+                TokenizerType = TokenizerType.Cl100KBase  // Use a valid tokenizer type
             };
         }
 
@@ -128,14 +107,10 @@ namespace ConduitLLM.Tests.Helpers
                 Id = modelId ?? _nextModelId++,
                 Name = "minimax-image",
                 ModelSeriesId = 4,
-                ModelCapabilitiesId = _nextCapabilityId,
-                Capabilities = new ModelCapabilities
-                {
-                    Id = _nextCapabilityId++,
-                    SupportsImageGeneration = true,
-                    MaxTokens = 1000,
-                    TokenizerType = TokenizerType.Cl100KBase  // Use a valid tokenizer type
-                }
+                SupportsImageGeneration = true,
+                MaxInputTokens = 1000,
+                MaxOutputTokens = 0,
+                TokenizerType = TokenizerType.Cl100KBase  // Use a valid tokenizer type
             };
         }
 
@@ -149,14 +124,10 @@ namespace ConduitLLM.Tests.Helpers
                 Id = modelId ?? _nextModelId++,
                 Name = name ?? "video-generation-model",
                 ModelSeriesId = 5,
-                ModelCapabilitiesId = _nextCapabilityId,
-                Capabilities = new ModelCapabilities
-                {
-                    Id = _nextCapabilityId++,
-                    SupportsVideoGeneration = true,
-                    MaxTokens = 1000,
-                    TokenizerType = TokenizerType.Cl100KBase
-                }
+                SupportsVideoGeneration = true,
+                MaxInputTokens = 1000,
+                MaxOutputTokens = 0,
+                TokenizerType = TokenizerType.Cl100KBase
             };
         }
 
@@ -259,7 +230,6 @@ namespace ConduitLLM.Tests.Helpers
             int maxTokens = 4096)
         {
             var modelId = _nextModelId++;
-            var capabilityId = _nextCapabilityId++;
             var authorId = _nextModelId++;
             var seriesId = _nextModelId++;
 
@@ -268,7 +238,11 @@ namespace ConduitLLM.Tests.Helpers
                 Id = modelId,
                 Name = modelName ?? $"test-model-{modelId}",
                 ModelSeriesId = seriesId,
-                ModelCapabilitiesId = capabilityId,
+                SupportsChat = supportsChat,
+                SupportsVideoGeneration = supportsVideoGeneration,
+                MaxInputTokens = maxTokens,
+                MaxOutputTokens = maxTokens / 4, // Default to 1/4 of input for output
+                TokenizerType = TokenizerType.Cl100KBase,
                 Series = new ModelSeries
                 {
                     Id = seriesId,
@@ -280,14 +254,6 @@ namespace ConduitLLM.Tests.Helpers
                         Name = $"Test Author {authorId}"
                     },
                     TokenizerType = TokenizerType.Cl100KBase
-                },
-                Capabilities = new ModelCapabilities
-                {
-                    Id = capabilityId,
-                    SupportsChat = supportsChat,
-                    SupportsVideoGeneration = supportsVideoGeneration,
-                    MaxTokens = maxTokens,
-                    TokenizerType = TokenizerType.Cl100KBase
                 }
             };
         }
@@ -298,7 +264,6 @@ namespace ConduitLLM.Tests.Helpers
         public static void ResetCounters()
         {
             _nextModelId = 1000;
-            _nextCapabilityId = 1000;
         }
     }
 }

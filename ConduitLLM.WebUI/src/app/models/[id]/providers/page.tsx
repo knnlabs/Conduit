@@ -7,7 +7,8 @@ interface PageProps {
 }
 
 export default async function ModelProvidersPage({ params }: PageProps) {
-  const { id } = await params;
+  // Await params to satisfy Next.js typing
+  await params;
   
   // This page is not implemented yet
   notFound();

@@ -319,8 +319,6 @@ namespace ConduitLLM.Tests.Http.Controllers
         }
 
         #endregion
-
-
         #region Authorization Tests
 
         [Fact]
@@ -333,8 +331,6 @@ namespace ConduitLLM.Tests.Http.Controllers
             // Assert
             Assert.NotNull(authorizeAttribute);
         }
-
-
         #endregion
     }
 }

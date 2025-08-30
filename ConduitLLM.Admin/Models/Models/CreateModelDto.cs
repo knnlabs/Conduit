@@ -46,17 +46,57 @@ namespace ConduitLLM.Admin.Models.Models
         /// <value>The foreign key reference to an existing ModelSeries.</value>
         public int ModelSeriesId { get; set; }
 
+        // Capability fields embedded directly in CreateModelDto
+        
         /// <summary>
-        /// Gets or sets the ID of the capabilities configuration for this model.
+        /// Gets or sets whether the model supports chat/conversation interactions.
         /// </summary>
-        /// <remarks>
-        /// The capabilities define what the model can do (chat, vision, function calling, etc.).
-        /// Multiple models can share the same capabilities configuration. For example,
-        /// all GPT-4 variants might reference the same capabilities. The capabilities
-        /// configuration must exist before creating the model.
-        /// </remarks>
-        /// <value>The foreign key reference to an existing ModelCapabilities.</value>
-        public int ModelCapabilitiesId { get; set; }
+        public bool SupportsChat { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the model supports vision/image understanding.
+        /// </summary>
+        public bool SupportsVision { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the model supports function/tool calling.
+        /// </summary>
+        public bool SupportsFunctionCalling { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the model supports streaming responses.
+        /// </summary>
+        public bool SupportsStreaming { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the model supports image generation.
+        /// </summary>
+        public bool SupportsImageGeneration { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the model supports video generation.
+        /// </summary>
+        public bool SupportsVideoGeneration { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the model supports text embeddings generation.
+        /// </summary>
+        public bool SupportsEmbeddings { get; set; }
+
+        /// <summary>
+        /// Gets or sets the maximum number of input tokens the model can process.
+        /// </summary>
+        public int? MaxInputTokens { get; set; }
+
+        /// <summary>
+        /// Gets or sets the maximum number of output tokens the model can generate.
+        /// </summary>
+        public int? MaxOutputTokens { get; set; }
+
+        /// <summary>
+        /// Gets or sets the tokenizer type used by this model.
+        /// </summary>
+        public TokenizerType TokenizerType { get; set; }
 
         /// <summary>
         /// Gets or sets whether the model should be active upon creation.

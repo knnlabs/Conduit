@@ -83,15 +83,14 @@ namespace ConduitLLM.Tests.Http.Controllers
                 Author = author,
                 Parameters = "{\"temperature\":{\"type\":\"slider\",\"min\":0,\"max\":2,\"default\":1}}"
             };
-            var capabilities = new ModelCapabilities { Id = 1, MaxTokens = 4096 };
             var model = new Model 
             { 
                 Id = 1, 
                 Name = "TestModel",
                 ModelSeriesId = 1,
                 Series = series,
-                ModelCapabilitiesId = 1,
-                Capabilities = capabilities
+                MaxInputTokens = 4096,
+                MaxOutputTokens = 2048
             };
             var provider = new Provider { Id = 1, ProviderType = ProviderType.OpenAI, IsEnabled = true };
             var mapping = new ModelProviderMapping
@@ -108,7 +107,6 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             _context.ModelAuthors.Add(author);
             _context.ModelSeries.Add(series);
-            _context.ModelCapabilities.Add(capabilities);
             _context.Models.Add(model);
             _context.Providers.Add(provider);
             _context.ModelProviderMappings.Add(mapping);
@@ -151,7 +149,6 @@ namespace ConduitLLM.Tests.Http.Controllers
                 Name = "TestModel",
                 ModelSeriesId = 1,
                 Series = series,
-                ModelCapabilitiesId = 1
             };
             var mapping = new ModelProviderMapping
             {

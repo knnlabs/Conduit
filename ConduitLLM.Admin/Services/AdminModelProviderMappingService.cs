@@ -157,7 +157,6 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
             existingMapping.ProviderModelId = mapping.ProviderModelId;
             existingMapping.ProviderId = mapping.ProviderId;
             existingMapping.IsEnabled = mapping.IsEnabled;
-            existingMapping.MaxContextTokensOverride = mapping.MaxContextTokensOverride;
             existingMapping.ProviderVariation = mapping.ProviderVariation;
             existingMapping.QualityScore = mapping.QualityScore;
             existingMapping.IsDefault = mapping.IsDefault;

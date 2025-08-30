@@ -66,8 +66,6 @@ namespace ConduitLLM.Tests.Security
             return section.Object;
         }
 
-
-
     }
 
     // Interfaces and models for testing

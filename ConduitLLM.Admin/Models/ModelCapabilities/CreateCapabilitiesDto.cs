@@ -90,20 +90,35 @@ namespace ConduitLLM.Admin.Models.ModelCapabilities
         public bool SupportsEmbeddings { get; set; }
 
         /// <summary>
-        /// Gets or sets the maximum token context window.
+        /// Gets or sets the maximum number of input tokens the model can process.
         /// </summary>
         /// <remarks>
-        /// Specify the total number of tokens (input + output) the model can handle.
+        /// Specify the maximum context/prompt size the model can handle.
         /// Examples:
-        /// - 4096 for GPT-3.5
-        /// - 8192 or 32768 for GPT-4
+        /// - 3000-15000 for GPT-3.5
+        /// - 7000-127000 for GPT-4
         /// - 200000 for Claude 3
         /// - 1000000+ for some specialized models
         /// 
         /// This limit is critical for request validation and cost estimation.
         /// </remarks>
-        /// <value>The maximum token limit.</value>
-        public int MaxTokens { get; set; }
+        /// <value>The maximum input token limit.</value>
+        public int? MaxInputTokens { get; set; }
+
+        /// <summary>
+        /// Gets or sets the maximum number of output tokens the model can generate.
+        /// </summary>
+        /// <remarks>
+        /// Specify the maximum response size the model can generate.
+        /// Examples:
+        /// - 1000-4096 for GPT-3.5
+        /// - 1000-4096 for GPT-4
+        /// - 4096 for Claude 3
+        /// 
+        /// Output limits are typically smaller than input limits.
+        /// </remarks>
+        /// <value>The maximum output token limit.</value>
+        public int? MaxOutputTokens { get; set; }
 
         /// <summary>
         /// Gets or sets the minimum token requirement.

@@ -3846,8 +3846,186 @@ export interface paths {
       };
     };
     put?: never;
-    post?: never;
+    /** Creates a new model identifier for a specific model */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The model ID */
+          id: number;
+        };
+        cookie?: never;
+      };
+      /** @description The identifier data */
+      requestBody?: {
+        content: {
+          "application/json": components["schemas"]["ConduitLLM.Admin.Models.Models.CreateModelIdentifierDto"];
+          "text/json": components["schemas"]["ConduitLLM.Admin.Models.Models.CreateModelIdentifierDto"];
+          "application/*+json": components["schemas"]["ConduitLLM.Admin.Models.Models.CreateModelIdentifierDto"];
+        };
+      };
+      responses: {
+        /** @description Created */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": unknown;
+            "application/json": unknown;
+            "text/json": unknown;
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          };
+        };
+        /** @description Conflict */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          };
+        };
+      };
+    };
     delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/Model/{id}/identifiers/{identifierId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Updates a model identifier */
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The model ID */
+          id: number;
+          /** @description The identifier ID */
+          identifierId: number;
+        };
+        cookie?: never;
+      };
+      /** @description The updated identifier data */
+      requestBody?: {
+        content: {
+          "application/json": components["schemas"]["ConduitLLM.Admin.Models.Models.UpdateModelIdentifierDto"];
+          "text/json": components["schemas"]["ConduitLLM.Admin.Models.Models.UpdateModelIdentifierDto"];
+          "application/*+json": components["schemas"]["ConduitLLM.Admin.Models.Models.UpdateModelIdentifierDto"];
+        };
+      };
+      responses: {
+        /** @description No Content */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          };
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          };
+        };
+        /** @description Conflict */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          };
+        };
+      };
+    };
+    post?: never;
+    /** Deletes a model identifier */
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description The model ID */
+          id: number;
+          /** @description The identifier ID to delete */
+          identifierId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description No Content */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Not Found */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
+          };
+        };
+      };
+    };
     options?: never;
     head?: never;
     patch?: never;
@@ -4409,323 +4587,6 @@ export interface paths {
             "text/plain": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.SimpleModelSeriesDto"][];
             "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.SimpleModelSeriesDto"][];
             "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelAuthors.SimpleModelSeriesDto"][];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ModelCapabilities": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets all model capabilities */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesDto"][];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    put?: never;
-    /** Creates a new model capabilities */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      /** @description The model capabilities to create */
-      requestBody?: {
-        content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CreateCapabilitiesDto"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CreateCapabilitiesDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CreateCapabilitiesDto"];
-        };
-      };
-      responses: {
-        /** @description Created */
-        201: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesDto"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesDto"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesDto"];
-          };
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ModelCapabilities/{id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets a specific model capabilities by ID */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The capabilities ID */
-          id: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesDto"];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesDto"];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesDto"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    /** Updates an existing model capabilities */
-    put: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The capabilities ID */
-          id: number;
-        };
-        cookie?: never;
-      };
-      /** @description The updated model capabilities data */
-      requestBody?: {
-        content: {
-          "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.UpdateCapabilitiesDto"];
-          "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.UpdateCapabilitiesDto"];
-          "application/*+json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.UpdateCapabilitiesDto"];
-        };
-      };
-      responses: {
-        /** @description No Content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Bad Request */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    post?: never;
-    /** Deletes a model capabilities */
-    delete: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The capabilities ID */
-          id: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description No Content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not Found */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Conflict */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "application/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-            "text/json": components["schemas"]["Microsoft.AspNetCore.Mvc.ProblemDetails"];
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/ModelCapabilities/{id}/models": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets models using specific capabilities */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          /** @description The capabilities ID */
-          id: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description OK */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            "text/plain": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesSimpleModelDto"][];
-            "application/json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesSimpleModelDto"][];
-            "text/json": components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesSimpleModelDto"][];
           };
         };
         /** @description Not Found */
@@ -9844,81 +9705,6 @@ export interface components {
       /** @description Gets or sets the new description. */
       description?: string | null;
     };
-    /** @description Data transfer object representing the capabilities and characteristics of AI models. */
-    "ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesDto": {
-      /**
-       * Format: int32
-       * @description Gets or sets the unique identifier for this capabilities configuration.
-       */
-      id?: number;
-      /** @description Gets or sets whether the model supports chat/conversation interactions. */
-      supportsChat?: boolean;
-      /** @description Gets or sets whether the model supports vision/image understanding. */
-      supportsVision?: boolean;
-      /** @description Gets or sets whether the model supports function/tool calling. */
-      supportsFunctionCalling?: boolean;
-      /** @description Gets or sets whether the model supports streaming responses. */
-      supportsStreaming?: boolean;
-      /** @description Gets or sets whether the model supports image generation. */
-      supportsImageGeneration?: boolean;
-      /** @description Gets or sets whether the model supports video generation. */
-      supportsVideoGeneration?: boolean;
-      /** @description Gets or sets whether the model supports text embeddings generation. */
-      supportsEmbeddings?: boolean;
-      /**
-       * Format: int32
-       * @description Gets or sets the maximum number of tokens the model can process.
-       */
-      maxTokens?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the minimum number of tokens for the model.
-       */
-      minTokens?: number;
-      tokenizerType?: components["schemas"]["TokenizerType"];
-    };
-    /** @description Simplified model information for display within a capabilities context. */
-    "ConduitLLM.Admin.Models.ModelCapabilities.CapabilitiesSimpleModelDto": {
-      /**
-       * Format: int32
-       * @description Gets or sets the unique identifier of the model.
-       */
-      id?: number;
-      /** @description Gets or sets the canonical name of the model. */
-      name?: string | null;
-      /** @description Gets or sets the version identifier of the model. */
-      version?: string | null;
-      /** @description Gets or sets whether the model is currently active. */
-      isActive?: boolean;
-    };
-    /** @description Data transfer object for creating a new model capabilities configuration. */
-    "ConduitLLM.Admin.Models.ModelCapabilities.CreateCapabilitiesDto": {
-      /** @description Gets or sets whether models with these capabilities support chat/conversation. */
-      supportsChat?: boolean;
-      /** @description Gets or sets whether models support vision/image understanding. */
-      supportsVision?: boolean;
-      /** @description Gets or sets whether models support function/tool calling. */
-      supportsFunctionCalling?: boolean;
-      /** @description Gets or sets whether models support streaming responses. */
-      supportsStreaming?: boolean;
-      /** @description Gets or sets whether models support image generation. */
-      supportsImageGeneration?: boolean;
-      /** @description Gets or sets whether models support video generation. */
-      supportsVideoGeneration?: boolean;
-      /** @description Gets or sets whether models support text embeddings. */
-      supportsEmbeddings?: boolean;
-      /**
-       * Format: int32
-       * @description Gets or sets the maximum token context window.
-       */
-      maxTokens?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the minimum token requirement.
-       */
-      minTokens?: number;
-      tokenizerType?: components["schemas"]["TokenizerType"];
-    };
     /** @description Alias for CapabilitiesDto to maintain backward compatibility with ModelController. */
     "ConduitLLM.Admin.Models.ModelCapabilities.ModelCapabilitiesDto": {
       /**
@@ -9950,39 +9736,6 @@ export interface components {
        * @description Gets or sets the minimum number of tokens for the model.
        */
       minTokens?: number;
-      tokenizerType?: components["schemas"]["TokenizerType"];
-    };
-    /** @description Data transfer object for updating an existing model capabilities configuration. */
-    "ConduitLLM.Admin.Models.ModelCapabilities.UpdateCapabilitiesDto": {
-      /**
-       * Format: int32
-       * @description Gets or sets the ID of the capabilities configuration to update.
-       */
-      id?: number;
-      /** @description Gets or sets the new chat support status, or null to keep existing. */
-      supportsChat?: boolean | null;
-      /** @description Gets or sets the new vision support status, or null to keep existing. */
-      supportsVision?: boolean | null;
-      /** @description Gets or sets the new function calling support, or null to keep existing. */
-      supportsFunctionCalling?: boolean | null;
-      /** @description Gets or sets the new streaming support, or null to keep existing. */
-      supportsStreaming?: boolean | null;
-      /** @description Gets or sets the new image generation support, or null to keep existing. */
-      supportsImageGeneration?: boolean | null;
-      /** @description Gets or sets the new video generation support, or null to keep existing. */
-      supportsVideoGeneration?: boolean | null;
-      /** @description Gets or sets the new embeddings support, or null to keep existing. */
-      supportsEmbeddings?: boolean | null;
-      /**
-       * Format: int32
-       * @description Gets or sets the new max token limit, or null to keep existing.
-       */
-      maxTokens?: number | null;
-      /**
-       * Format: int32
-       * @description Gets or sets the new min token requirement, or null to keep existing.
-       */
-      minTokens?: number | null;
       tokenizerType?: components["schemas"]["TokenizerType"];
     };
     /** @description Data transfer object for creating a new model series in the system. */
@@ -10072,6 +9825,17 @@ export interface components {
       isActive?: boolean | null;
       /** @description Gets or sets the model-specific parameter configuration for UI generation. */
       modelParameters?: string | null;
+    };
+    /** @description DTO for creating a model identifier */
+    "ConduitLLM.Admin.Models.Models.CreateModelIdentifierDto": {
+      /** @description The identifier string used by a provider */
+      identifier?: string | null;
+      /** @description The provider type that uses this identifier (e.g., "OpenAI", "Groq") */
+      provider?: string | null;
+      /** @description Whether this is the primary identifier */
+      isPrimary?: boolean | null;
+      /** @description Optional metadata as JSON */
+      metadata?: string | null;
     };
     /** @description Data transfer object representing a canonical AI model in the system. */
     "ConduitLLM.Admin.Models.Models.ModelDto": {
@@ -10173,6 +9937,17 @@ export interface components {
       isActive?: boolean | null;
       /** @description Gets or sets the model-specific parameter configuration for UI generation. */
       modelParameters?: string | null;
+    };
+    /** @description DTO for updating a model identifier */
+    "ConduitLLM.Admin.Models.Models.UpdateModelIdentifierDto": {
+      /** @description The identifier string used by a provider */
+      identifier?: string | null;
+      /** @description The provider type that uses this identifier */
+      provider?: string | null;
+      /** @description Whether this is the primary identifier */
+      isPrimary?: boolean | null;
+      /** @description Optional metadata as JSON */
+      metadata?: string | null;
     };
     "ConduitLLM.Configuration.DTOs.Cache.UpdateCacheConfigDto": {
       /** Format: int32 */

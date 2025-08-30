@@ -173,7 +173,6 @@ _logger.LogWarning("Mapping not found for model alias {ModelAlias}", mapping.Mod
                 existingEntity.ProviderId = credential.Id;
                 existingEntity.IsEnabled = mapping.IsEnabled;
                 existingEntity.ModelId = mapping.ModelId;
-                existingEntity.MaxContextTokensOverride = mapping.MaxContextTokensOverride;
                 existingEntity.ProviderVariation = mapping.ProviderVariation;
                 existingEntity.QualityScore = mapping.QualityScore;
                 existingEntity.IsDefault = mapping.IsDefault;

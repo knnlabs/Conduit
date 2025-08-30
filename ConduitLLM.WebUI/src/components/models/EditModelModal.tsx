@@ -1,17 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Modal, TextInput, Select, Switch, Button, Stack, Group, Textarea, Alert, Text, Tabs, Badge } from '@mantine/core';
+import { Modal, TextInput, Select, Switch, Button, Stack, Group, Textarea, Alert, Text, Tabs, Checkbox, Paper, SimpleGrid } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconAlertCircle, IconSettings, IconLink, IconCheck } from '@tabler/icons-react';
+import { IconAlertCircle, IconSettings, IconLink } from '@tabler/icons-react';
 import { useAdminClient } from '@/lib/client/adminClient';
 import { ParameterPreview } from '@/components/parameters/ParameterPreview';
 import { ProviderTypeList } from './ProviderTypeList';
 import { EditProviderTypeModal } from './EditProviderTypeModal';
 import { DeleteProviderTypeModal } from './DeleteProviderTypeModal';
-import { getModelCapabilityList } from '@/utils/modelHelpers';
-import type { ModelDto, UpdateModelDto, ModelSeriesDto, ModelCapabilitiesDto } from '@knn_labs/conduit-admin-client';
+import type { ModelDto, UpdateModelDto, ModelSeriesDto } from '@knn_labs/conduit-admin-client';
 
 // Provider type association interface
 interface ProviderTypeAssociation {
@@ -21,15 +20,21 @@ interface ProviderTypeAssociation {
   isPrimary: boolean;
 }
 
-// Extend ModelDto to include modelParameters until SDK types are updated
+// Extend ModelDto to include capability fields and modelParameters until SDK types are updated
 interface ExtendedModelDto extends ModelDto {
   modelParameters?: string | null;
+  supportsChat?: boolean;
+  supportsVision?: boolean;
+  supportsFunctionCalling?: boolean;
+  supportsStreaming?: boolean;
+  supportsImageGeneration?: boolean;
+  supportsVideoGeneration?: boolean;
+  supportsEmbeddings?: boolean;
+  maxInputTokens?: number | null;
+  maxOutputTokens?: number | null;
+  tokenizerType?: number;
 }
 
-// Extend UpdateModelDto to include modelParameters until SDK types are updated
-interface ExtendedUpdateModelDto extends UpdateModelDto {
-  modelParameters?: string | null;
-}
 
 
 interface EditModelModalProps {
@@ -43,7 +48,6 @@ interface EditModelModalProps {
 export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelModalProps) {
   const [loading, setLoading] = useState(false);
   const [series, setSeries] = useState<ModelSeriesDto[]>([]);
-  const [capabilities, setCapabilities] = useState<ModelCapabilitiesDto[]>([]);
   const [jsonError, setJsonError] = useState<string | null>(null);
   
   // Provider type association states
@@ -56,13 +60,22 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
   
   const { executeWithAdmin } = useAdminClient();
 
-  const form = useForm<ExtendedUpdateModelDto>({
+  const form = useForm({
     initialValues: {
       name: model?.name ?? '',
       modelSeriesId: model?.modelSeriesId ?? null,
-      modelCapabilitiesId: model?.modelCapabilitiesId ?? null,
       isActive: model?.isActive ?? true,
-      modelParameters: model?.modelParameters ?? ''
+      modelParameters: model?.modelParameters ?? '',
+      // Capability fields from the model directly (flat structure)
+      supportsChat: model?.supportsChat ?? false,
+      supportsVision: model?.supportsVision ?? false,
+      supportsFunctionCalling: model?.supportsFunctionCalling ?? false,
+      supportsStreaming: model?.supportsStreaming ?? false,
+      supportsImageGeneration: model?.supportsImageGeneration ?? false,
+      supportsVideoGeneration: model?.supportsVideoGeneration ?? false,
+      supportsEmbeddings: model?.supportsEmbeddings ?? false,
+      maxInputTokens: model?.maxInputTokens ?? 0,
+      maxOutputTokens: model?.maxOutputTokens ?? 0
     },
     validate: {
       name: (value) => !value ? 'Name is required' : null,
@@ -88,9 +101,18 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       form.setValues({
         name: model.name ?? '',
         modelSeriesId: model.modelSeriesId ?? null,
-        modelCapabilitiesId: model.modelCapabilitiesId ?? null,
         isActive: model.isActive ?? true,
-        modelParameters: model.modelParameters ?? ''
+        modelParameters: model.modelParameters ?? '',
+        // Update capability fields from the model directly (flat structure)
+        supportsChat: model.supportsChat ?? false,
+        supportsVision: model.supportsVision ?? false,
+        supportsFunctionCalling: model.supportsFunctionCalling ?? false,
+        supportsStreaming: model.supportsStreaming ?? false,
+        supportsImageGeneration: model.supportsImageGeneration ?? false,
+        supportsVideoGeneration: model.supportsVideoGeneration ?? false,
+        supportsEmbeddings: model.supportsEmbeddings ?? false,
+        maxInputTokens: model.maxInputTokens ?? 0,
+        maxOutputTokens: model.maxOutputTokens ?? 0
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -108,35 +130,39 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
 
   const loadData = async () => {
     try {
-      const [seriesData, capabilitiesData] = await Promise.all([
-        executeWithAdmin(client => client.modelSeries.list()),
-        executeWithAdmin(client => client.modelCapabilities.list())
-      ]);
+      const seriesData = await executeWithAdmin(client => client.modelSeries.list());
       setSeries(seriesData);
-      // Fix type incompatibility by ensuring correct types
-      setCapabilities(capabilitiesData as ModelCapabilitiesDto[]);
     } catch (error) {
       console.error('Failed to load data:', error);
       notifications.show({
         title: 'Error',
-        message: 'Failed to load series and capabilities',
+        message: 'Failed to load series data',
         color: 'red',
       });
     }
   };
 
-  const handleSubmit = async (values: ExtendedUpdateModelDto) => {
+  const handleSubmit = async (values: typeof form.values) => {
     try {
       setLoading(true);
       const modelId = model.id;
       if (!modelId) throw new Error('Model ID is required');
       
-      const dto: ExtendedUpdateModelDto = {
+      const dto = {
         name: values.name,
         modelSeriesId: values.modelSeriesId,
-        modelCapabilitiesId: values.modelCapabilitiesId,
         isActive: values.isActive,
-        modelParameters: values.modelParameters ?? null
+        modelParameters: values.modelParameters ?? null,
+        // Include capability fields directly in the update
+        supportsChat: values.supportsChat,
+        supportsVision: values.supportsVision,
+        supportsFunctionCalling: values.supportsFunctionCalling,
+        supportsStreaming: values.supportsStreaming,
+        supportsImageGeneration: values.supportsImageGeneration,
+        supportsVideoGeneration: values.supportsVideoGeneration,
+        supportsEmbeddings: values.supportsEmbeddings,
+        maxInputTokens: values.maxInputTokens,
+        maxOutputTokens: values.maxOutputTokens
       };
       
       // Cast to unknown first to bypass type checking until SDK is updated
@@ -180,8 +206,13 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       setLoadingAssociations(true);
       console.warn('Loading associations for model:', model.id);
       
+      const modelId = model.id;
+      if (!modelId) {
+        console.warn('No model ID available');
+        return;
+      }
       const identifiers = await executeWithAdmin(client => 
-        client.models.getIdentifiers(model.id!)
+        client.models.getIdentifiers(modelId)
       );
       
       console.warn('Loaded associations:', identifiers);
@@ -213,8 +244,13 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       setDeletingAssociationLoading(true);
       console.warn('Deleting association:', { modelId: model.id, associationId: deletingAssociation.id });
       
+      const modelId = model.id;
+      if (!modelId) {
+        console.warn('No model ID available for deletion');
+        return;
+      }
       await executeWithAdmin(client =>
-        client.models.deleteIdentifier(model.id!, deletingAssociation.id)
+        client.models.deleteIdentifier(modelId, deletingAssociation.id)
       );
       
       console.warn('Delete successful, reloading associations...');
@@ -250,24 +286,6 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       value: s.id?.toString() ?? '',
       label: `${s.name} (${s.authorName})`
     }));
-
-  const capabilitiesOptions = [
-    { value: '0', label: 'None' },
-    ...capabilities
-      .filter(c => c.id !== undefined)
-      .map(c => {
-        const capList = getModelCapabilityList(c);
-        const summary = capList.length > 0 ? capList.slice(0, 3).join(' • ') : 'No capabilities';
-        return {
-          value: c.id?.toString() ?? '',
-          label: `Capability Set #${c.id} - ${summary}`
-        };
-      })
-  ];
-
-  // Get the currently selected capability details
-  const selectedCapabilityId = form.values.modelCapabilitiesId;
-  const selectedCapability = capabilities.find(c => c.id === selectedCapabilityId);
 
   return (
     <>
@@ -307,44 +325,56 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
             onChange={(value) => form.setFieldValue('modelSeriesId', value ? parseInt(value) : null)}
           />
 
-          <Stack gap="xs">
-            <Select
-              label="Capabilities"
-              data={capabilitiesOptions}
-              placeholder="Select capabilities (optional)"
-              value={form.values.modelCapabilitiesId?.toString() ?? '0'}
-              onChange={(value) => {
-                const id = value ? parseInt(value) : 0;
-                form.setFieldValue('modelCapabilitiesId', id === 0 ? null : id);
-              }}
-            />
-            
-            {selectedCapabilityId && selectedCapabilityId !== 0 && selectedCapability && (
-              <Group gap="xs" wrap="wrap">
-                {selectedCapability.supportsChat && (
-                  <Badge size="sm" color="blue" leftSection={<IconCheck size={12} />}>Text Generation</Badge>
-                )}
-                {selectedCapability.supportsVision && (
-                  <Badge size="sm" color="purple" leftSection={<IconCheck size={12} />}>Vision</Badge>
-                )}
-                {selectedCapability.supportsFunctionCalling && (
-                  <Badge size="sm" color="teal" leftSection={<IconCheck size={12} />}>Function Calling</Badge>
-                )}
-                {selectedCapability.supportsStreaming && (
-                  <Badge size="sm" color="cyan" leftSection={<IconCheck size={12} />}>Streaming</Badge>
-                )}
-                {selectedCapability.supportsImageGeneration && (
-                  <Badge size="sm" color="pink" leftSection={<IconCheck size={12} />}>Image Generation</Badge>
-                )}
-                {selectedCapability.supportsVideoGeneration && (
-                  <Badge size="sm" color="grape" leftSection={<IconCheck size={12} />}>Video Generation</Badge>
-                )}
-                {selectedCapability.supportsEmbeddings && (
-                  <Badge size="sm" color="green" leftSection={<IconCheck size={12} />}>Embeddings</Badge>
-                )}
-              </Group>
-            )}
-          </Stack>
+          <Paper p="md" withBorder>
+            <Stack gap="sm">
+              <Text size="sm" fw={500}>Capabilities</Text>
+              
+              <SimpleGrid cols={2} spacing="sm">
+                <Checkbox
+                  label="Text Generation (Chat)"
+                  {...form.getInputProps('supportsChat', { type: 'checkbox' })}
+                />
+                <Checkbox
+                  label="Vision"
+                  {...form.getInputProps('supportsVision', { type: 'checkbox' })}
+                />
+                <Checkbox
+                  label="Function Calling"
+                  {...form.getInputProps('supportsFunctionCalling', { type: 'checkbox' })}
+                />
+                <Checkbox
+                  label="Streaming"
+                  {...form.getInputProps('supportsStreaming', { type: 'checkbox' })}
+                />
+                <Checkbox
+                  label="Image Generation"
+                  {...form.getInputProps('supportsImageGeneration', { type: 'checkbox' })}
+                />
+                <Checkbox
+                  label="Video Generation"
+                  {...form.getInputProps('supportsVideoGeneration', { type: 'checkbox' })}
+                />
+                <Checkbox
+                  label="Embeddings"
+                  {...form.getInputProps('supportsEmbeddings', { type: 'checkbox' })}
+                />
+                <TextInput
+                  label="Max Input Tokens"
+                  type="number"
+                  placeholder="e.g., 128000"
+                  {...form.getInputProps('maxInputTokens')}
+                  onChange={(e) => form.setFieldValue('maxInputTokens', parseInt(e.currentTarget.value) || 0)}
+                />
+                <TextInput
+                  label="Max Output Tokens"
+                  type="number"
+                  placeholder="e.g., 4096"
+                  {...form.getInputProps('maxOutputTokens')}
+                  onChange={(e) => form.setFieldValue('maxOutputTokens', parseInt(e.currentTarget.value) || 0)}
+                />
+              </SimpleGrid>
+            </Stack>
+          </Paper>
 
 
 
@@ -426,7 +456,7 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
           setShowAddAssociation(false);
           setEditingAssociation(null);
         }}
-        onSave={loadProviderAssociations}
+        onSave={() => { void loadProviderAssociations(); }}
       />
 
       {/* Delete Provider Type Modal */}
@@ -435,7 +465,7 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
         association={deletingAssociation}
         loading={deletingAssociationLoading}
         onClose={() => setDeletingAssociation(null)}
-        onConfirm={handleDeleteAssociation}
+        onConfirm={() => { void handleDeleteAssociation(); }}
       />
     </>
   );

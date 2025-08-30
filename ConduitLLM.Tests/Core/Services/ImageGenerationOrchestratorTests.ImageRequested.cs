@@ -31,14 +31,10 @@ namespace ConduitLLM.Tests.Core.Services
                 Id = 1,
                 Name = request.Request.Model,
                 ModelSeriesId = 1,
-                ModelCapabilitiesId = 1,
-                Capabilities = new ConduitLLM.Configuration.Entities.ModelCapabilities
-                {
-                    Id = 1,
-                    SupportsImageGeneration = true,
-                    MaxTokens = 4000,
-                    TokenizerType = TokenizerType.Cl100KBase
-                }
+                SupportsImageGeneration = true,
+                MaxInputTokens = 4000,
+                MaxOutputTokens = 0,
+                TokenizerType = TokenizerType.Cl100KBase
             };
 
             // Setup model mapping

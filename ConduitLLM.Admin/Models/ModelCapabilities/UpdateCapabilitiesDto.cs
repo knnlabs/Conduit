@@ -52,9 +52,14 @@ namespace ConduitLLM.Admin.Models.ModelCapabilities
         public bool? SupportsEmbeddings { get; set; }
 
         /// <summary>
-        /// Gets or sets the new max token limit, or null to keep existing.
+        /// Gets or sets the new max input token limit, or null to keep existing.
         /// </summary>
-        public int? MaxTokens { get; set; }
+        public int? MaxInputTokens { get; set; }
+
+        /// <summary>
+        /// Gets or sets the new max output token limit, or null to keep existing.
+        /// </summary>
+        public int? MaxOutputTokens { get; set; }
 
         /// <summary>
         /// Gets or sets the new min token requirement, or null to keep existing.

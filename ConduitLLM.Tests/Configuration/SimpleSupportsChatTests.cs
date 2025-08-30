@@ -17,10 +17,7 @@ namespace ConduitLLM.Tests.Configuration
             {
                 Id = 1,
                 Name = "test-model",
-                Capabilities = new ModelCapabilities
-                {
-                    SupportsChat = true
-                }
+                SupportsChat = true
             };
             
             var mapping = new ModelProviderMapping
@@ -65,14 +62,11 @@ namespace ConduitLLM.Tests.Configuration
             {
                 Id = 1,
                 Name = "test-model",
-                Capabilities = new ModelCapabilities
-                {
-                    SupportsChat = true,
-                    SupportsVision = true,
-                    SupportsFunctionCalling = true,
-                    SupportsStreaming = false,
-                    SupportsEmbeddings = false
-                }
+                SupportsChat = true,
+                SupportsVision = true,
+                SupportsFunctionCalling = true,
+                SupportsStreaming = false,
+                SupportsEmbeddings = false
             };
             
             var mapping = new ModelProviderMapping
@@ -90,67 +84,60 @@ namespace ConduitLLM.Tests.Configuration
         }
 
         [Fact]
-        public void ModelProviderMapping_MaxContextTokens_UsesOverrideWhenSet()
+        public void ModelProviderMapping_MaxTokens_ComesFromModel()
         {
             // Arrange
             var model = new Model
             {
                 Id = 1,
                 Name = "test-model",
-                Capabilities = new ModelCapabilities
-                {
-                    MaxTokens = 4096
-                }
+                MaxInputTokens = 8192,
+                MaxOutputTokens = 4096
             };
             
             var mapping = new ModelProviderMapping
             {
                 ModelId = 1,
-                Model = model,
-                MaxContextTokensOverride = 8192
+                Model = model
             };
 
-            // Assert - override takes precedence
-            mapping.MaxContextTokens.Should().Be(8192);
+            // Assert
+            mapping.Model.MaxInputTokens.Should().Be(8192);
+            mapping.Model.MaxOutputTokens.Should().Be(4096);
         }
 
         [Fact]
-        public void ModelProviderMapping_MaxContextTokens_UsesModelCapabilitiesWhenNoOverride()
+        public void ModelProviderMapping_TokenLimits_UsesModelValues()
         {
             // Arrange
             var model = new Model
             {
                 Id = 1,
                 Name = "test-model",
-                Capabilities = new ModelCapabilities
-                {
-                    MaxTokens = 4096
-                }
+                MaxInputTokens = 4096,
+                MaxOutputTokens = 2048
             };
             
             var mapping = new ModelProviderMapping
             {
                 ModelId = 1,
-                Model = model,
-                MaxContextTokensOverride = null
+                Model = model
             };
 
-            // Assert - uses Model's capabilities
-            mapping.MaxContextTokens.Should().Be(4096);
+            // Assert - uses Model's token limits
+            mapping.Model.MaxInputTokens.Should().Be(4096);
+            mapping.Model.MaxOutputTokens.Should().Be(2048);
         }
 
         [Fact]
-        public void ModelProviderMapping_TokenizerType_ComesFromModelCapabilities()
+        public void ModelProviderMapping_TokenizerType_ComesFromModel()
         {
             // Arrange
             var model = new Model
             {
                 Id = 1,
                 Name = "test-model",
-                Capabilities = new ModelCapabilities
-                {
-                    TokenizerType = TokenizerType.Cl100KBase
-                }
+                TokenizerType = TokenizerType.Cl100KBase
             };
             
             var mapping = new ModelProviderMapping

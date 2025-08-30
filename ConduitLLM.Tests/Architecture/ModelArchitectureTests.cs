@@ -24,7 +24,7 @@ namespace ConduitLLM.Tests.Architecture
             {
                 // Skip properties that have legitimate setters
                 if (property.Name == "MaxContextTokensOverride")
-                    continue;
+                    continue; // This property has been removed
 
                 Assert.False(property.CanWrite, 
                     $"Property {property.Name} should be read-only as it derives from Model.Capabilities");
@@ -47,28 +47,28 @@ namespace ConduitLLM.Tests.Architecture
         }
 
         [Fact]
-        public void Model_ShouldHaveCapabilitiesRelationship()
+        public void Model_ShouldHaveCapabilityProperties()
         {
             // Arrange
             var modelType = typeof(Model);
             
-            // Act
-            var capabilitiesProperty = modelType.GetProperty("Capabilities");
-            var capabilitiesIdProperty = modelType.GetProperty("ModelCapabilitiesId");
+            // Act & Assert - Check that capability properties exist directly on Model
+            var supportsChatProperty = modelType.GetProperty("SupportsChat");
+            var supportsVisionProperty = modelType.GetProperty("SupportsVision");
+            var maxInputTokensProperty = modelType.GetProperty("MaxInputTokens");
+            var maxOutputTokensProperty = modelType.GetProperty("MaxOutputTokens");
 
-            // Assert
-            Assert.NotNull(capabilitiesProperty);
-            Assert.Equal(typeof(ModelCapabilities), capabilitiesProperty.PropertyType);
-            
-            Assert.NotNull(capabilitiesIdProperty);
-            Assert.Equal(typeof(int), capabilitiesIdProperty.PropertyType);
+            Assert.NotNull(supportsChatProperty);
+            Assert.NotNull(supportsVisionProperty);
+            Assert.NotNull(maxInputTokensProperty);
+            Assert.NotNull(maxOutputTokensProperty);
         }
 
         [Fact]
-        public void ModelCapabilities_ShouldHaveAllExpectedProperties()
+        public void Model_ShouldHaveAllExpectedCapabilityProperties()
         {
             // Arrange
-            var capabilitiesType = typeof(ModelCapabilities);
+            var modelType = typeof(Model);
             var expectedProperties = new[]
             {
                 "SupportsChat",
@@ -78,22 +78,23 @@ namespace ConduitLLM.Tests.Architecture
                 "SupportsEmbeddings",
                 "SupportsFunctionCalling",
                 "SupportsStreaming",
-                "MaxTokens",
+                "MaxInputTokens",
+                "MaxOutputTokens",
                 "TokenizerType"
             };
 
             // Act & Assert
             foreach (var propertyName in expectedProperties)
             {
-                var property = capabilitiesType.GetProperty(propertyName);
+                var property = modelType.GetProperty(propertyName);
                 Assert.NotNull(property);
                 Assert.True(property.CanRead && property.CanWrite,
-                    $"Property {propertyName} should be read-write in ModelCapabilities");
+                    $"Property {propertyName} should be read-write in Model");
             }
         }
 
         [Fact]
-        public void ModelProviderMapping_MaxContextTokens_ShouldRespectOverride()
+        public void ModelProviderMapping_ShouldUseModelTokenLimits()
         {
             // Arrange
             var mapping = new ModelProviderMapping
@@ -103,23 +104,14 @@ namespace ConduitLLM.Tests.Architecture
                 {
                     Id = 1,
                     Name = "test-model",
-                    Capabilities = new ModelCapabilities
-                    {
-                        MaxTokens = 4096
-                    }
+                    MaxInputTokens = 4096,
+                    MaxOutputTokens = 2048
                 }
             };
 
-            // Act & Assert - Without override
-            Assert.Equal(4096, mapping.MaxContextTokens);
-
-            // Act & Assert - With override
-            mapping.MaxContextTokensOverride = 8192;
-            Assert.Equal(8192, mapping.MaxContextTokens);
-
-            // Act & Assert - Remove override
-            mapping.MaxContextTokensOverride = null;
-            Assert.Equal(4096, mapping.MaxContextTokens);
+            // Act & Assert
+            Assert.Equal(4096, mapping.Model.MaxInputTokens);
+            Assert.Equal(2048, mapping.Model.MaxOutputTokens);
         }
 
         [Fact]
@@ -155,18 +147,16 @@ namespace ConduitLLM.Tests.Architecture
             {
                 Id = 1,
                 Name = "test-model",
-                Capabilities = new ModelCapabilities
-                {
-                    SupportsChat = true,
-                    SupportsVision = true,
-                    SupportsEmbeddings = false,
-                    SupportsFunctionCalling = true,
-                    SupportsStreaming = true,
-                    SupportsImageGeneration = false,
-                    SupportsVideoGeneration = false,
-                    MaxTokens = 8192,
-                    TokenizerType = TokenizerType.Cl100KBase
-                }
+                SupportsChat = true,
+                SupportsVision = true,
+                SupportsEmbeddings = false,
+                SupportsFunctionCalling = true,
+                SupportsStreaming = true,
+                SupportsImageGeneration = false,
+                SupportsVideoGeneration = false,
+                MaxInputTokens = 8192,
+                MaxOutputTokens = 4096,
+                TokenizerType = TokenizerType.Cl100KBase
             };
 
             var mapping = new ModelProviderMapping
@@ -176,15 +166,15 @@ namespace ConduitLLM.Tests.Architecture
             };
 
             // Act & Assert
-            Assert.Equal(model.Capabilities.SupportsChat, mapping.SupportsChat);
-            Assert.Equal(model.Capabilities.SupportsVision, mapping.SupportsVision);
-            Assert.Equal(model.Capabilities.SupportsEmbeddings, mapping.SupportsEmbeddings);
-            Assert.Equal(model.Capabilities.SupportsFunctionCalling, mapping.SupportsFunctionCalling);
-            Assert.Equal(model.Capabilities.SupportsStreaming, mapping.SupportsStreaming);
-            Assert.Equal(model.Capabilities.SupportsImageGeneration, mapping.SupportsImageGeneration);
-            Assert.Equal(model.Capabilities.SupportsVideoGeneration, mapping.SupportsVideoGeneration);
-            Assert.Equal(model.Capabilities.MaxTokens, mapping.MaxContextTokens);
-            Assert.Equal(model.Capabilities.TokenizerType, mapping.TokenizerType);
+            Assert.Equal(model.SupportsChat, mapping.SupportsChat);
+            Assert.Equal(model.SupportsVision, mapping.SupportsVision);
+            Assert.Equal(model.SupportsEmbeddings, mapping.SupportsEmbeddings);
+            Assert.Equal(model.SupportsFunctionCalling, mapping.SupportsFunctionCalling);
+            Assert.Equal(model.SupportsStreaming, mapping.SupportsStreaming);
+            Assert.Equal(model.SupportsImageGeneration, mapping.SupportsImageGeneration);
+            Assert.Equal(model.SupportsVideoGeneration, mapping.SupportsVideoGeneration);
+            Assert.Equal(model.MaxInputTokens, mapping.Model.MaxInputTokens);
+            Assert.Equal(model.TokenizerType, mapping.TokenizerType);
         }
 
         [Fact]
@@ -201,8 +191,6 @@ namespace ConduitLLM.Tests.Architecture
             Assert.False(mapping.SupportsChat);
             Assert.False(mapping.SupportsVision);
             Assert.False(mapping.SupportsEmbeddings);
-            // MaxContextTokens has a default of 4096 when Model is null
-            Assert.Equal(4096, mapping.MaxContextTokens);
             Assert.Null(mapping.TokenizerType);
         }
 

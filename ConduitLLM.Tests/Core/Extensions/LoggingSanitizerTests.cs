@@ -87,8 +87,6 @@ namespace ConduitLLM.Tests.Core.Extensions
             // Assert
             result.Should().Be(input);
         }
-
-
         [Theory]
         [InlineData("<script>alert('XSS')</script>", "<script>alert('XSS')</script>")]
         [InlineData("javascript:alert('XSS')", "javascript:alert('XSS')")]

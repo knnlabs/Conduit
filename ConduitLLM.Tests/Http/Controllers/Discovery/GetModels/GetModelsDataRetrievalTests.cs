@@ -73,34 +73,6 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
         }
 
         [Fact]
-        public async Task GetModels_SkipsModelsWithNullCapabilities_ReturnsOnlyValid()
-        {
-            // Arrange
-            SetupValidVirtualKey("valid-key");
-
-            var mappings = new List<ModelProviderMapping>
-            {
-                new ModelProviderMappingBuilder()
-                    .WithModelAlias("gpt-4")
-                    .WithCapabilities(null) // Capabilities is null
-                    .Build(),
-                new ModelProviderMappingBuilder()
-                    .WithModelAlias("claude-3")
-                    .Build()
-            };
-
-            SetupModelProviderMappings(mappings);
-
-            // Act
-            var result = await Controller.GetModels();
-
-            // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            dynamic response = okResult.Value!;
-            Assert.Equal(1, response.count);
-        }
-
-        [Fact]
         public async Task GetModels_RespectsProviderIsEnabledFlag_ReturnsOnlyEnabledProviders()
         {
             // Arrange

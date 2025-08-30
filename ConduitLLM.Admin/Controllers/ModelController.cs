@@ -1,6 +1,6 @@
 using ConduitLLM.Admin.Models.Models;
-using ConduitLLM.Admin.Models.ModelCapabilities;
 using ConduitLLM.Admin.Models.ModelSeries;
+using ConduitLLM.Admin.Models.ModelCapabilities;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Configuration.DTOs;
@@ -144,17 +144,30 @@ namespace ConduitLLM.Admin.Controllers
                         string.Equals(i.Provider, provider, StringComparison.OrdinalIgnoreCase))?.Identifier 
                         ?? m.Name; // Fallback to model name if no specific identifier
 
+                    // Use MapToDto to get base DTO, then create extended DTO
+                    var baseDto = MapToDto(m);
                     return new ModelWithProviderIdDto
                     {
-                        Id = m.Id,
-                        Name = m.Name,
+                        Id = baseDto.Id,
+                        Name = baseDto.Name,
                         ProviderModelId = providerIdentifier,
-                        ModelSeriesId = m.ModelSeriesId,
-                        ModelCapabilitiesId = m.ModelCapabilitiesId,
-                        Capabilities = m.Capabilities != null ? MapCapabilitiesToDto(m.Capabilities) : null,
-                        IsActive = m.IsActive,
-                        CreatedAt = m.CreatedAt,
-                        UpdatedAt = m.UpdatedAt
+                        ModelSeriesId = baseDto.ModelSeriesId,
+                        IsActive = baseDto.IsActive,
+                        CreatedAt = baseDto.CreatedAt,
+                        UpdatedAt = baseDto.UpdatedAt,
+                        Series = baseDto.Series,
+                        ModelParameters = baseDto.ModelParameters,
+                        // Copy capability fields
+                        SupportsChat = baseDto.SupportsChat,
+                        SupportsVision = baseDto.SupportsVision,
+                        SupportsFunctionCalling = baseDto.SupportsFunctionCalling,
+                        SupportsStreaming = baseDto.SupportsStreaming,
+                        SupportsImageGeneration = baseDto.SupportsImageGeneration,
+                        SupportsVideoGeneration = baseDto.SupportsVideoGeneration,
+                        SupportsEmbeddings = baseDto.SupportsEmbeddings,
+                        MaxInputTokens = baseDto.MaxInputTokens,
+                        MaxOutputTokens = baseDto.MaxOutputTokens,
+                        TokenizerType = baseDto.TokenizerType
                     };
                 });
                 return Ok(dtos);
@@ -388,9 +401,19 @@ namespace ConduitLLM.Admin.Controllers
                 {
                     Name = dto.Name,
                     ModelSeriesId = dto.ModelSeriesId,
-                    ModelCapabilitiesId = dto.ModelCapabilitiesId,
                     ModelParameters = dto.ModelParameters,
                     IsActive = dto.IsActive ?? true,
+                    // Set capability fields directly
+                    SupportsChat = dto.SupportsChat,
+                    SupportsVision = dto.SupportsVision,
+                    SupportsFunctionCalling = dto.SupportsFunctionCalling,
+                    SupportsStreaming = dto.SupportsStreaming,
+                    SupportsImageGeneration = dto.SupportsImageGeneration,
+                    SupportsVideoGeneration = dto.SupportsVideoGeneration,
+                    SupportsEmbeddings = dto.SupportsEmbeddings,
+                    MaxInputTokens = dto.MaxInputTokens,
+                    MaxOutputTokens = dto.MaxOutputTokens,
+                    TokenizerType = dto.TokenizerType,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
@@ -461,12 +484,30 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (dto.ModelSeriesId.HasValue)
                     model.ModelSeriesId = dto.ModelSeriesId.Value;
-                if (dto.ModelCapabilitiesId.HasValue)
-                    model.ModelCapabilitiesId = dto.ModelCapabilitiesId.Value;
                 if (dto.IsActive.HasValue)
                     model.IsActive = dto.IsActive.Value;
                 if (dto.ModelParameters != null)
                     model.ModelParameters = string.IsNullOrWhiteSpace(dto.ModelParameters) ? null : dto.ModelParameters;
+
+                // Update capability fields
+                if (dto.SupportsChat.HasValue)
+                    model.SupportsChat = dto.SupportsChat.Value;
+                if (dto.SupportsVision.HasValue)
+                    model.SupportsVision = dto.SupportsVision.Value;
+                if (dto.SupportsFunctionCalling.HasValue)
+                    model.SupportsFunctionCalling = dto.SupportsFunctionCalling.Value;
+                if (dto.SupportsStreaming.HasValue)
+                    model.SupportsStreaming = dto.SupportsStreaming.Value;
+                if (dto.SupportsImageGeneration.HasValue)
+                    model.SupportsImageGeneration = dto.SupportsImageGeneration.Value;
+                if (dto.SupportsVideoGeneration.HasValue)
+                    model.SupportsVideoGeneration = dto.SupportsVideoGeneration.Value;
+                if (dto.SupportsEmbeddings.HasValue)
+                    model.SupportsEmbeddings = dto.SupportsEmbeddings.Value;
+                if (dto.MaxInputTokens.HasValue)
+                    model.MaxInputTokens = dto.MaxInputTokens.Value;
+                if (dto.MaxOutputTokens.HasValue)
+                    model.MaxOutputTokens = dto.MaxOutputTokens.Value;
 
                 model.UpdatedAt = DateTime.UtcNow;
 
@@ -521,18 +562,28 @@ namespace ConduitLLM.Admin.Controllers
 
         private static ModelDto MapToDto(Model model)
         {
+            // Map model with embedded capabilities
             return new ModelDto
             {
                 Id = model.Id,
                 Name = model.Name,
                 ModelSeriesId = model.ModelSeriesId,
-                ModelCapabilitiesId = model.ModelCapabilitiesId,
-                Capabilities = model.Capabilities != null ? MapCapabilitiesToDto(model.Capabilities) : null,
                 IsActive = model.IsActive,
                 CreatedAt = model.CreatedAt,
                 UpdatedAt = model.UpdatedAt,
                 Series = model.Series != null ? MapSeriesToDto(model.Series) : null,
-                ModelParameters = model.ModelParameters
+                ModelParameters = model.ModelParameters,
+                // Capability fields embedded directly
+                SupportsChat = model.SupportsChat,
+                SupportsVision = model.SupportsVision,
+                SupportsImageGeneration = model.SupportsImageGeneration,
+                SupportsVideoGeneration = model.SupportsVideoGeneration,
+                SupportsEmbeddings = model.SupportsEmbeddings,
+                SupportsFunctionCalling = model.SupportsFunctionCalling,
+                SupportsStreaming = model.SupportsStreaming,
+                MaxInputTokens = model.MaxInputTokens,
+                MaxOutputTokens = model.MaxOutputTokens,
+                TokenizerType = model.TokenizerType
             };
         }
 
@@ -550,22 +601,6 @@ namespace ConduitLLM.Admin.Controllers
             };
         }
 
-        private static ModelCapabilitiesDto MapCapabilitiesToDto(ModelCapabilities capabilities)
-        {
-            return new ModelCapabilitiesDto
-            {
-                Id = capabilities.Id,
-                SupportsChat = capabilities.SupportsChat,
-                SupportsVision = capabilities.SupportsVision,
-                SupportsFunctionCalling = capabilities.SupportsFunctionCalling,
-                SupportsStreaming = capabilities.SupportsStreaming,
-                SupportsImageGeneration = capabilities.SupportsImageGeneration,
-                SupportsVideoGeneration = capabilities.SupportsVideoGeneration,
-                SupportsEmbeddings = capabilities.SupportsEmbeddings,
-                MaxTokens = capabilities.MaxTokens,
-                TokenizerType = capabilities.TokenizerType,
-            };
-        }
 
         /// <summary>
         /// Gets all provider mappings for a specific model

@@ -19,7 +19,6 @@ namespace ConduitLLM.Tests.Admin.Models.Models
             // Assert
             dto.Name.Should().Be(string.Empty);
             dto.ModelSeriesId.Should().Be(0);
-            dto.ModelCapabilitiesId.Should().Be(0);
             dto.IsActive.Should().BeNull();
         }
 
@@ -31,14 +30,13 @@ namespace ConduitLLM.Tests.Admin.Models.Models
             {
                 Name = "gpt-4-turbo",
                 ModelSeriesId = 1,
-                ModelCapabilitiesId = 5,
+                
                 IsActive = true
             };
 
             // Assert
             dto.Name.Should().Be("gpt-4-turbo");
             dto.ModelSeriesId.Should().Be(1);
-            dto.ModelCapabilitiesId.Should().Be(5);
             dto.IsActive.Should().BeTrue();
         }
 
@@ -71,7 +69,7 @@ namespace ConduitLLM.Tests.Admin.Models.Models
                 Id = 42,
                 Name = null,  // Don't update name
                 ModelSeriesId = 5,  // Update series
-                ModelCapabilitiesId = null,  // Don't update capabilities
+                  // Don't update capabilities
                 IsActive = false  // Update status
             };
 
@@ -79,7 +77,6 @@ namespace ConduitLLM.Tests.Admin.Models.Models
             dto.Id.Should().Be(42);
             dto.Name.Should().BeNull();
             dto.ModelSeriesId.Should().Be(5);
-            dto.ModelCapabilitiesId.Should().BeNull();
             dto.IsActive.Should().BeFalse();
         }
 
@@ -92,7 +89,7 @@ namespace ConduitLLM.Tests.Admin.Models.Models
                 Id = 1,
                 Name = null,
                 ModelSeriesId = null,
-                ModelCapabilitiesId = null,
+                
                 IsActive = null
             };
 
@@ -100,7 +97,6 @@ namespace ConduitLLM.Tests.Admin.Models.Models
             dto.Id.Should().Be(1);
             dto.Name.Should().BeNull();
             dto.ModelSeriesId.Should().BeNull();
-            dto.ModelCapabilitiesId.Should().BeNull();
             dto.IsActive.Should().BeNull();
         }
 
@@ -144,7 +140,7 @@ namespace ConduitLLM.Tests.Admin.Models.Models
                     Id = 1,
                     Name = "test",
                     ModelSeriesId = 1,
-                    ModelCapabilitiesId = 1,
+                    
                     IsActive = true,
                     CreatedAt = testDate,
                     UpdatedAt = testDate
@@ -165,10 +161,10 @@ namespace ConduitLLM.Tests.Admin.Models.Models
                 Id = 1,
                 Name = "test",
                 ModelSeriesId = 5,
-                ModelCapabilitiesId = 10,
+                
                 Capabilities = new ModelCapabilitiesDto
                 {
-                    Id = 99, // Different from ModelCapabilitiesId!
+                    Id = 99, // Set a different ID to test consistency validation
                     SupportsChat = true
                 },
                 IsActive = true,
@@ -178,12 +174,10 @@ namespace ConduitLLM.Tests.Admin.Models.Models
 
             // Act & Assert
             // DTO allows this, but business logic should validate consistency
-            dto.ModelCapabilitiesId.Should().Be(10);
             dto.Capabilities!.Id.Should().Be(99);
             
             // Business validation
-            var isInconsistent = dto.Capabilities != null && 
-                                  dto.Capabilities.Id != dto.ModelCapabilitiesId;
+            var isInconsistent = dto.Capabilities != null && dto.Capabilities.Id != dto.Id;
             isInconsistent.Should().BeTrue("Controller should validate ID consistency");
         }
 
@@ -196,7 +190,7 @@ namespace ConduitLLM.Tests.Admin.Models.Models
                 Id = 42,
                 Name = "gpt-4",
                 ModelSeriesId = 1,
-                ModelCapabilitiesId = 5,
+                
                 IsActive = true,
                 CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 UpdatedAt = new DateTime(2024, 1, 2, 0, 0, 0, DateTimeKind.Utc),
@@ -228,7 +222,7 @@ namespace ConduitLLM.Tests.Admin.Models.Models
                 Id = 1,
                 Name = "base-model",
                 ModelSeriesId = 1,
-                ModelCapabilitiesId = 1,
+                
                 ProviderModelId = providerId,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
@@ -247,7 +241,7 @@ namespace ConduitLLM.Tests.Admin.Models.Models
             {
                 Name = "test-model",
                 ModelSeriesId = 1,
-                ModelCapabilitiesId = 1,
+                
                 IsActive = null  // Not specified
             };
 

@@ -37,7 +37,6 @@ namespace ConduitLLM.Configuration.Extensions
                 Provider = mapping.Provider?.ToReferenceDto(),
                 Priority = 0, // Entity doesn't have Priority
                 IsEnabled = mapping.IsEnabled,
-                MaxContextTokensOverride = mapping.MaxContextTokensOverride,
                 ProviderVariation = mapping.ProviderVariation,
                 QualityScore = mapping.QualityScore,
                 IsDefault = mapping.IsDefault,
@@ -58,7 +57,6 @@ namespace ConduitLLM.Configuration.Extensions
             mapping.ProviderModelId = dto.ProviderModelId;
             mapping.ProviderId = dto.ProviderId;
             mapping.IsEnabled = dto.IsEnabled;
-            mapping.MaxContextTokensOverride = dto.MaxContextTokensOverride;
             mapping.ProviderVariation = dto.ProviderVariation;
             mapping.QualityScore = dto.QualityScore;
             mapping.IsDefault = dto.IsDefault;

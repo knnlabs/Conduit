@@ -108,8 +108,6 @@ namespace ConduitLLM.Tests.Core.Services
                 .ReturnsAsync(virtualKey);
 
             // Model capabilities are now accessed through ModelProviderMapping
-
-
             // Setup client factory to return null (will cause NotSupportedException)
             _mockClientFactory.Setup(x => x.GetClient("test-model"))
                 .Returns((ILLMClient)null);
@@ -334,8 +332,6 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Model capabilities are now accessed through ModelProviderMapping
             // The mapping doesn't support video generation
-
-
             // Act
             await _orchestrator.Consume(context.Object);
 
@@ -425,8 +421,6 @@ namespace ConduitLLM.Tests.Core.Services
                 .ReturnsAsync(virtualKey);
 
             // Model capabilities are now accessed through ModelProviderMapping
-
-
             // Setup client factory to throw a retryable exception
             _mockClientFactory.Setup(x => x.GetClient("test-model"))
                 .Throws(new TimeoutException("Request timeout"));

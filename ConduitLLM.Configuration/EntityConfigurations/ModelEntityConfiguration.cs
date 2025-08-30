@@ -15,10 +15,6 @@ namespace ConduitLLM.Configuration.EntityConfigurations
             // Index for querying models by series
             builder.HasIndex(e => e.ModelSeriesId)
                 .HasDatabaseName("IX_Model_ModelSeriesId");
-
-            // Index for querying models by capabilities
-            builder.HasIndex(e => e.ModelCapabilitiesId)
-                .HasDatabaseName("IX_Model_ModelCapabilitiesId");
         }
     }
 
@@ -66,37 +62,6 @@ namespace ConduitLLM.Configuration.EntityConfigurations
             builder.HasIndex(e => new { e.AuthorId, e.Name })
                 .IsUnique()
                 .HasDatabaseName("IX_ModelSeries_AuthorId_Name_Unique");
-        }
-    }
-
-    public class ModelCapabilitiesEntityConfiguration : IEntityTypeConfiguration<ModelCapabilities>
-    {
-        public void Configure(EntityTypeBuilder<ModelCapabilities> builder)
-        {
-            // Index for finding models with specific capabilities
-            builder.HasIndex(e => e.SupportsChat)
-                .HasDatabaseName("IX_ModelCapabilities_SupportsChat")
-                .HasFilter("\"SupportsChat\" = true");
-
-            builder.HasIndex(e => e.SupportsVision)
-                .HasDatabaseName("IX_ModelCapabilities_SupportsVision")
-                .HasFilter("\"SupportsVision\" = true");
-
-            builder.HasIndex(e => e.SupportsFunctionCalling)
-                .HasDatabaseName("IX_ModelCapabilities_SupportsFunctionCalling")
-                .HasFilter("\"SupportsFunctionCalling\" = true");
-
-            builder.HasIndex(e => e.SupportsImageGeneration)
-                .HasDatabaseName("IX_ModelCapabilities_SupportsImageGeneration")
-                .HasFilter("\"SupportsImageGeneration\" = true");
-
-            builder.HasIndex(e => e.SupportsVideoGeneration)
-                .HasDatabaseName("IX_ModelCapabilities_SupportsVideoGeneration")
-                .HasFilter("\"SupportsVideoGeneration\" = true");
-
-            // Composite index for common capability queries
-            builder.HasIndex(e => new { e.SupportsChat, e.SupportsFunctionCalling, e.SupportsStreaming })
-                .HasDatabaseName("IX_ModelCapabilities_Chat_Function_Streaming");
         }
     }
 

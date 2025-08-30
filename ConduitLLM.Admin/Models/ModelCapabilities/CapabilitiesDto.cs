@@ -104,21 +104,35 @@ namespace ConduitLLM.Admin.Models.ModelCapabilities
         public bool SupportsEmbeddings { get; set; }
 
         /// <summary>
-        /// Gets or sets the maximum number of tokens the model can process.
+        /// Gets or sets the maximum number of input tokens the model can process.
         /// </summary>
         /// <remarks>
-        /// This represents the model's context window - the total number of tokens it can handle
-        /// in a single request (input + output). Different models have different limits:
-        /// - GPT-3.5: 4,096 or 16,385 tokens
-        /// - GPT-4: 8,192 or 32,768 tokens  
+        /// This represents the maximum context/prompt size the model can handle.
+        /// Different models have different input limits:
+        /// - GPT-3.5: 3,000-15,000 tokens
+        /// - GPT-4: 7,000-127,000 tokens  
         /// - Claude 3: 200,000 tokens
         /// - Some models: 1,000,000+ tokens
         /// 
-        /// This limit is crucial for determining how much context can be provided and
-        /// how long the responses can be.
+        /// This limit determines how much context, history, and instructions can be provided.
         /// </remarks>
-        /// <value>The maximum token limit for the model.</value>
-        public int MaxTokens { get; set; }
+        /// <value>The maximum input token limit for the model.</value>
+        public int? MaxInputTokens { get; set; }
+
+        /// <summary>
+        /// Gets or sets the maximum number of output tokens the model can generate.
+        /// </summary>
+        /// <remarks>
+        /// This represents the maximum response size the model can generate.
+        /// Output limits are typically smaller than input limits:
+        /// - GPT-3.5: 1,000-4,096 tokens
+        /// - GPT-4: 1,000-4,096 tokens
+        /// - Claude 3: 4,096 tokens
+        /// 
+        /// This limit determines how long the model's responses can be.
+        /// </remarks>
+        /// <value>The maximum output token limit for the model.</value>
+        public int? MaxOutputTokens { get; set; }
 
         /// <summary>
         /// Gets or sets the minimum number of tokens for the model.

@@ -59,9 +59,9 @@ export function EditProviderTypeModal({
   useEffect(() => {
     if (association) {
       form.setValues({
-        identifier: association.identifier || '',
-        provider: association.provider || '',
-        isPrimary: association.isPrimary || false
+        identifier: association.identifier ?? '',
+        provider: association.provider ?? '',
+        isPrimary: association.isPrimary ?? false
       });
     } else {
       form.reset();
@@ -75,8 +75,12 @@ export function EditProviderTypeModal({
       
       if (association?.id) {
         // Update existing
+        const associationId = association.id;
+        if (!associationId) {
+          throw new Error('Association ID is required for update');
+        }
         await executeWithAdmin(client => 
-          client.models.updateIdentifier(modelId, association.id!, {
+          client.models.updateIdentifier(modelId, associationId, {
             identifier: values.identifier,
             provider: values.provider,
             isPrimary: values.isPrimary

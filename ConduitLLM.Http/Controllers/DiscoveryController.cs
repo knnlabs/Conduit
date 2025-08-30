@@ -86,8 +86,6 @@ namespace ConduitLLM.Http.Controllers
                     .Include(m => m.Provider)
                     .Include(m => m.Model)
                         .ThenInclude(m => m.Series)
-                    .Include(m => m.Model)
-                        .ThenInclude(m => m.Capabilities)
                     .Where(m => m.IsEnabled && m.Provider != null && m.Provider.IsEnabled)
                     .ToListAsync();
 
@@ -95,14 +93,14 @@ namespace ConduitLLM.Http.Controllers
 
                 foreach (var mapping in modelMappings)
                 {
-                    // Skip if model or capabilities are missing
-                    if (mapping.Model?.Capabilities == null)
+                    // Skip if model is missing
+                    if (mapping.Model == null)
                     {
-                        _logger.LogWarning("Model mapping {ModelAlias} has no model or capabilities data", mapping.ModelAlias);
+                        _logger.LogWarning("Model mapping {ModelAlias} has no model data", mapping.ModelAlias);
                         continue;
                     }
 
-                    var caps = mapping.Model.Capabilities;
+                    var caps = mapping.Model;
 
                     // Apply capability filter if specified
                     if (!string.IsNullOrEmpty(capability))
@@ -157,7 +155,9 @@ namespace ConduitLLM.Http.Controllers
                         // Metadata
                         description = mapping.Model?.Description ?? string.Empty,
                         model_card_url = mapping.Model?.ModelCardUrl ?? string.Empty,
-                        max_tokens = caps.MaxTokens,
+                        max_tokens = (caps.MaxInputTokens ?? 0) + (caps.MaxOutputTokens ?? 0), // Combined for backward compatibility
+                        max_input_tokens = caps.MaxInputTokens ?? 0,
+                        max_output_tokens = caps.MaxOutputTokens ?? 0,
                         tokenizer_type = caps.TokenizerType.ToString().ToLowerInvariant(),
                         
                         // Configuration

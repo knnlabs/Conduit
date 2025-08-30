@@ -26,7 +26,6 @@ namespace ConduitLLM.Configuration.Repositories
         {
             using var context = await _dbContextFactory.CreateDbContextAsync();
             return await context.Set<Model>()
-                .Include(m => m.Capabilities)
                 .Include(m => m.Series)
                     .ThenInclude(s => s.Author)
                 .Include(m => m.Identifiers)
@@ -45,7 +44,6 @@ namespace ConduitLLM.Configuration.Repositories
         {
             using var context = await _dbContextFactory.CreateDbContextAsync();
             return await context.Set<Model>()
-                .Include(m => m.Capabilities)
                 .Include(m => m.Series)
                     .ThenInclude(s => s.Author)
                 .OrderBy(m => m.Name)
@@ -58,8 +56,6 @@ namespace ConduitLLM.Configuration.Repositories
             // First check ModelIdentifiers table
             var modelIdentifier = await context.Set<ModelProviderTypeAssociation>()
                 .Include(mi => mi.Model)
-                    .ThenInclude(m => m.Capabilities)
-                .Include(mi => mi.Model)
                     .ThenInclude(m => m.Series)
                 .Where(mi => mi.Identifier == identifier)
                 .OrderBy(mi => mi.IsPrimary ? 0 : 1) // Prefer primary identifier
@@ -70,7 +66,6 @@ namespace ConduitLLM.Configuration.Repositories
 
             // Fallback: Check by model name
             return await context.Set<Model>()
-                .Include(m => m.Capabilities)
                 .Include(m => m.Series)
                 .FirstOrDefaultAsync(m => m.Name == identifier);
         }
@@ -79,7 +74,6 @@ namespace ConduitLLM.Configuration.Repositories
         {
             using var context = await _dbContextFactory.CreateDbContextAsync();
             return await context.Set<Model>()
-                .Include(m => m.Capabilities)
                 .Where(m => m.ModelSeriesId == seriesId)
                 .OrderBy(m => m.Name)
                 .ToListAsync();
@@ -112,7 +106,6 @@ namespace ConduitLLM.Configuration.Repositories
         {
             using var context = await _dbContextFactory.CreateDbContextAsync();
             return await context.Set<Model>()
-                .Include(m => m.Capabilities)
                 .FirstOrDefaultAsync(m => m.Name == name);
         }
 
@@ -121,7 +114,6 @@ namespace ConduitLLM.Configuration.Repositories
             using var context = await _dbContextFactory.CreateDbContextAsync();
             var lowerQuery = query.ToLower();
             return await context.Set<Model>()
-                .Include(m => m.Capabilities)
                 .Where(m => m.Name.ToLower().Contains(lowerQuery) && m.IsActive)
                 .OrderBy(m => m.Name)
                 .ToListAsync();
@@ -159,7 +151,6 @@ namespace ConduitLLM.Configuration.Repositories
 
             // Return models with those IDs, including capabilities and identifiers
             return await context.Set<Model>()
-                .Include(m => m.Capabilities)
                 .Include(m => m.Series)
                     .ThenInclude(s => s.Author)
                 .Include(m => m.Identifiers)

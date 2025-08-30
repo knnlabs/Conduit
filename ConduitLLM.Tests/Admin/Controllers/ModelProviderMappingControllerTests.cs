@@ -39,8 +39,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
             Assert.Throws<ArgumentNullException>(() => 
                 new ModelProviderMappingController(null!, _mockCredentialService.Object, _mockLogger.Object));
         }
-
-
         [Fact]
         public void Constructor_WithNullCredentialService_ShouldThrowArgumentNullException()
         {

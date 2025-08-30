@@ -88,11 +88,6 @@ namespace ConduitLLM.Configuration
         public virtual DbSet<ModelSeries> ModelSeries { get; set; } = null!;
         
         /// <summary>
-        /// Database set for model capabilities
-        /// </summary>
-        public virtual DbSet<ModelCapabilities> ModelCapabilities { get; set; } = null!;
-        
-        /// <summary>
         /// Database set for model authors
         /// </summary>
         public virtual DbSet<ModelAuthor> ModelAuthors { get; set; } = null!;

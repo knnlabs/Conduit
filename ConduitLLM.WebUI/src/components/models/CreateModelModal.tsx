@@ -17,7 +17,7 @@ interface CreateModelModalProps {
 export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModalProps) {
   const [loading, setLoading] = useState(false);
   const [series, setSeries] = useState<ModelSeriesDto[]>([]);
-  const [capabilities, setCapabilities] = useState<ModelCapabilitiesDto[]>([]);
+  const [capabilities] = useState<ModelCapabilitiesDto[]>([]);
   const { executeWithAdmin } = useAdminClient();
 
   const form = useForm({
@@ -41,17 +41,14 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
 
   const loadData = async () => {
     try {
-      const [seriesData, capabilitiesData] = await Promise.all([
-        executeWithAdmin(client => client.modelSeries.list()),
-        executeWithAdmin(client => client.modelCapabilities.list())
-      ]);
+      const seriesData = await executeWithAdmin(client => client.modelSeries.list());
       setSeries(seriesData);
-      setCapabilities(capabilitiesData as ModelCapabilitiesDto[]);
+      // Capabilities are now embedded in the Model, no need to load separately
     } catch (error) {
       console.error('Failed to load data:', error);
       notifications.show({
         title: 'Error',
-        message: 'Failed to load series and capabilities',
+        message: 'Failed to load series data',
         color: 'red',
       });
     }

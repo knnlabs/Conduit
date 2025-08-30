@@ -349,7 +349,5 @@ namespace ConduitLLM.Tests.Core.Services
             var avgOperationTime = stopwatch.ElapsedMilliseconds / (double)(iterations * 2); // Set + Get
             Assert.True(avgOperationTime < 1.0, $"Average operation time {avgOperationTime}ms exceeds 1ms threshold");
         }
-
-
     }
 }

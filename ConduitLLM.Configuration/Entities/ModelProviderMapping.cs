@@ -54,19 +54,6 @@ namespace ConduitLLM.Configuration.Entities
         public bool IsEnabled { get; set; } = true;
 
         /// <summary>
-        /// Provider-specific override for maximum context tokens.
-        /// If null, uses Model.Capabilities.MaxTokens.
-        /// Some providers may have different limits than the base model.
-        /// </summary>
-        public int? MaxContextTokensOverride { get; set; }
-
-        /// <summary>
-        /// Gets the effective maximum context tokens for this provider mapping.
-        /// </summary>
-        [NotMapped]
-        public int MaxContextTokens => MaxContextTokensOverride ?? Model?.Capabilities?.MaxTokens ?? 4096;
-
-        /// <summary>
         /// The UTC timestamp when this mapping was created.
         /// </summary>
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -90,28 +77,28 @@ namespace ConduitLLM.Configuration.Entities
         /// </summary>
         [NotMapped]
         public bool SupportsVision => GetCapability(nameof(SupportsVision), 
-            () => Model?.Capabilities?.SupportsVision ?? false);
+            () => Model?.SupportsVision ?? false);
 
         /// <summary>
         /// Gets whether this model supports chat, checking overrides first.
         /// </summary>
         [NotMapped]
         public bool SupportsChat => GetCapability(nameof(SupportsChat), 
-            () => Model?.Capabilities?.SupportsChat ?? false);
+            () => Model?.SupportsChat ?? false);
 
         /// <summary>
         /// Gets whether this model supports function calling, checking overrides first.
         /// </summary>
         [NotMapped]
         public bool SupportsFunctionCalling => GetCapability(nameof(SupportsFunctionCalling), 
-            () => Model?.Capabilities?.SupportsFunctionCalling ?? false);
+            () => Model?.SupportsFunctionCalling ?? false);
 
         /// <summary>
         /// Gets whether this model supports streaming, checking overrides first.
         /// </summary>
         [NotMapped]
         public bool SupportsStreaming => GetCapability(nameof(SupportsStreaming), 
-            () => Model?.Capabilities?.SupportsStreaming ?? false);
+            () => Model?.SupportsStreaming ?? false);
 
 
         /// <summary>
@@ -119,27 +106,27 @@ namespace ConduitLLM.Configuration.Entities
         /// </summary>
         [NotMapped]
         public bool SupportsImageGeneration => GetCapability(nameof(SupportsImageGeneration),
-            () => Model?.Capabilities?.SupportsImageGeneration ?? false);
+            () => Model?.SupportsImageGeneration ?? false);
 
         /// <summary>
         /// Gets whether this model supports video generation, checking overrides first.
         /// </summary>
         [NotMapped]
         public bool SupportsVideoGeneration => GetCapability(nameof(SupportsVideoGeneration),
-            () => Model?.Capabilities?.SupportsVideoGeneration ?? false);
+            () => Model?.SupportsVideoGeneration ?? false);
 
         /// <summary>
         /// Gets whether this model supports embeddings, checking overrides first.
         /// </summary>
         [NotMapped]
         public bool SupportsEmbeddings => GetCapability(nameof(SupportsEmbeddings),
-            () => Model?.Capabilities?.SupportsEmbeddings ?? false);
+            () => Model?.SupportsEmbeddings ?? false);
 
         /// <summary>
         /// Gets the tokenizer type from Model.Capabilities.
         /// </summary>
         [NotMapped]
-        public TokenizerType? TokenizerType => Model?.Capabilities?.TokenizerType;
+        public TokenizerType? TokenizerType => Model?.TokenizerType;
 
 
         /// <summary>

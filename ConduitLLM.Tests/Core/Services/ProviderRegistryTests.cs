@@ -169,8 +169,6 @@ namespace ConduitLLM.Tests.Core.Services
             Assert.Contains(imageProviders, p => p.ProviderType == ProviderType.OpenAI);
             Assert.Contains(imageProviders, p => p.ProviderType == ProviderType.Replicate);
         }
-
-
         [Fact]
         public void GetProvidersByFeature_WithNullPredicate_ThrowsArgumentNullException()
         {

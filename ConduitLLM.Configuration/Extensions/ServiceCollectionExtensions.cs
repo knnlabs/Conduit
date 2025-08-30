@@ -37,7 +37,6 @@ namespace ConduitLLM.Configuration.Extensions
             services.AddScoped<IModelRepository, ModelRepository>();
             services.AddScoped<IModelSeriesRepository, ModelSeriesRepository>();
             services.AddScoped<IModelAuthorRepository, ModelAuthorRepository>();
-            services.AddScoped<IModelCapabilitiesRepository, ModelCapabilitiesRepository>();
             services.AddScoped<IRequestLogRepository, RequestLogRepository>();
             
             // Register validator

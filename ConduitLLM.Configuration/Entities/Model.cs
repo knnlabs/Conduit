@@ -44,18 +44,61 @@ namespace ConduitLLM.Configuration.Entities
         /// </summary>
         [ForeignKey("ModelSeriesId")]
         public ModelSeries Series { get; set; } = new ModelSeries();
-
-        /// <summary>
-        /// Foreign key for the shared model capabilities.
-        /// </summary>
-        public int ModelCapabilitiesId { get; set; }
         
         /// <summary>
-        /// Navigation property to the model capabilities.
-        /// Multiple models can share the same capabilities instance.
+        /// Indicates whether this model supports vision/image inputs.
         /// </summary>
-        [ForeignKey("ModelCapabilitiesId")]
-        public ModelCapabilities Capabilities { get; set; } = new ModelCapabilities();
+        public bool SupportsVision { get; set; } = false;
+
+        /// <summary>
+        /// Indicates whether this model supports image generation.
+        /// </summary>
+        public bool SupportsImageGeneration { get; set; } = false;
+
+        /// <summary>
+        /// Indicates whether this model supports video generation.
+        /// </summary>
+        public bool SupportsVideoGeneration { get; set; } = false;
+
+        /// <summary>
+        /// Indicates whether this model supports embedding generation.
+        /// </summary>
+        public bool SupportsEmbeddings { get; set; } = false;
+
+        /// <summary>
+        /// Indicates whether this model supports chat completions.
+        /// </summary>
+        public bool SupportsChat { get; set; } = false;
+
+        /// <summary>
+        /// Indicates whether this model supports function calling.
+        /// </summary>
+        public bool SupportsFunctionCalling { get; set; } = false;
+
+        /// <summary>
+        /// Indicates whether this model supports streaming responses.
+        /// </summary>
+        public bool SupportsStreaming { get; set; } = false;
+
+        /// <summary>
+        /// The tokenizer type used by this model (e.g., "cl100k_base", "p50k_base", "claude").
+        /// </summary>
+        public TokenizerType TokenizerType { get; set; }
+
+        /// <summary>
+        /// Maximum input tokens of the model
+        /// Some providers may have different limits than the base model, and can override this.
+        /// This only applies to chat and embedding models.
+        /// </summary>
+        public int? MaxInputTokens { get; set; }
+
+        /// <summary>
+        /// Maximum output tokens of the model
+        /// Some providers may have different limits than the base model, and can override this.
+        /// This only applies to chat and embedding models.
+        /// </summary>
+        public int? MaxOutputTokens { get; set; }
+
 
         /// <summary>
         /// Navigation property for all identifiers associated with this model.

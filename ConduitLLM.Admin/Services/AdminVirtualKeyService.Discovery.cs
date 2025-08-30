@@ -30,8 +30,6 @@ namespace ConduitLLM.Admin.Services
                 .Include(m => m.Provider)
                 .Include(m => m.Model)
                     .ThenInclude(m => m.Series)
-                .Include(m => m.Model)
-                    .ThenInclude(m => m.Capabilities)
                 .Where(m => m.IsEnabled && m.Provider != null && m.Provider.IsEnabled)
                 .ToListAsync();
 
@@ -39,14 +37,14 @@ namespace ConduitLLM.Admin.Services
 
             foreach (var mapping in modelMappings)
             {
-                // Skip if model or capabilities are missing
-                if (mapping.Model?.Capabilities == null)
+                // Skip if model is missing
+                if (mapping.Model == null)
                 {
-                    _logger.LogWarning("Model mapping {ModelAlias} has no model or capabilities data", mapping.ModelAlias);
+                    _logger.LogWarning("Model mapping {ModelAlias} has no model data", mapping.ModelAlias);
                     continue;
                 }
 
-                var caps = mapping.Model.Capabilities;
+                var caps = mapping.Model;
 
                 // Apply capability filter if specified
                 if (!string.IsNullOrEmpty(capability))
@@ -85,8 +83,8 @@ namespace ConduitLLM.Admin.Services
                 // Add metadata
                 capabilities["description"] = mapping.Model.Description ?? "";
                 capabilities["model_card_url"] = mapping.Model.ModelCardUrl ?? "";
-                capabilities["max_tokens"] = caps.MaxTokens;
-                capabilities["tokenizer_type"] = caps.TokenizerType.ToString().ToLowerInvariant();
+                capabilities["max_tokens"] = mapping.Model.MaxOutputTokens; // TODO: Think about provider-specific overrides. Also, should we break down input and output token counts?
+                capabilities["tokenizer_type"] = mapping.Model.TokenizerType.ToString().ToLowerInvariant();
 
                 var model = new DiscoveredModelDto
                 {

@@ -35,9 +35,6 @@ export {
   CreateModelAuthorDto,
   UpdateModelAuthorDto,
   ModelCapabilitiesDto,
-  CreateCapabilitiesDto,
-  UpdateCapabilitiesDto,
-  CapabilitiesSimpleModelDto,
   Model,
   ModelSeries,
   ModelAuthor
@@ -181,7 +178,7 @@ export { FetchModelCostService as ModelCostService } from './services/FetchModel
 export { FetchModelService } from './services/FetchModelService';
 export { FetchModelSeriesService } from './services/FetchModelSeriesService';
 export { FetchModelAuthorService } from './services/FetchModelAuthorService';
-export { FetchModelCapabilitiesService } from './services/FetchModelCapabilitiesService';
+// export { FetchModelCapabilitiesService } from './services/FetchModelCapabilitiesService'; // Disabled - capabilities now embedded in Model
 export { AnalyticsService } from './services/AnalyticsService';
 export { SystemService } from './services/SystemService';
 // DiscoveryService removed - use ModelMappingService.discoverProviderModels() instead

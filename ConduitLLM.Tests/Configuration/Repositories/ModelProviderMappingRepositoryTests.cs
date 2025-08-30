@@ -45,10 +45,9 @@ namespace ConduitLLM.Tests.Configuration.Repositories
                     supportsChat: false,
                     maxTokens: 4096);
                 
-                // Add the author, series, capabilities and model to the context
+                // Add the author, series and model to the context
                 context.ModelAuthors.Add(model.Series.Author);
                 context.ModelSeries.Add(model.Series);
-                context.ModelCapabilities.Add(model.Capabilities);
                 context.Models.Add(model);
                 context.SaveChanges();
                 
@@ -75,9 +74,8 @@ namespace ConduitLLM.Tests.Configuration.Repositories
             // Assert
             Assert.NotNull(mapping);
             Assert.NotNull(mapping.Model);
-            Assert.NotNull(mapping.Model.Capabilities);
-            Assert.False(mapping.SupportsChat);
-            Assert.Equal(4096, mapping.MaxContextTokens);
+            Assert.False(mapping.Model.SupportsChat);
+            Assert.Equal(4096, mapping.Model.MaxInputTokens);
         }
 
         [Fact(Skip = "SQLite constraint issue - test creates duplicate data within single test method")]
@@ -109,30 +107,16 @@ namespace ConduitLLM.Tests.Configuration.Repositories
                 context.ModelSeries.Add(series);
                 context.SaveChanges();
                 
-                // Add capabilities for both models
-                var capabilitiesNoChat = new ModelCapabilities
-                {
-                    SupportsChat = false,
-                    MaxTokens = 4096
-                };
-                context.ModelCapabilities.Add(capabilitiesNoChat);
-                
-                var capabilitiesWithChat = new ModelCapabilities
-                {
-                    SupportsChat = true,
-                    SupportsVision = true,
-                    SupportsStreaming = true,
-                    MaxTokens = 8192
-                };
-                context.ModelCapabilities.Add(capabilitiesWithChat);
-                context.SaveChanges();
+                // Create models with different capabilities
                 
                 // Add models with FK references
                 var modelNoChat = new Model
                 {
                     Name = $"model-no-chat-{testId}",
                     ModelSeriesId = series.Id,
-                    ModelCapabilitiesId = capabilitiesNoChat.Id
+                    SupportsChat = false,
+                    MaxInputTokens = 4096,
+                    MaxOutputTokens = 2048
                 };
                 context.Models.Add(modelNoChat);
                 
@@ -140,7 +124,11 @@ namespace ConduitLLM.Tests.Configuration.Repositories
                 {
                     Name = $"model-with-chat-{testId}",
                     ModelSeriesId = series.Id,
-                    ModelCapabilitiesId = capabilitiesWithChat.Id
+                    SupportsChat = true,
+                    SupportsVision = true,
+                    SupportsStreaming = true,
+                    MaxInputTokens = 8192,
+                    MaxOutputTokens = 4096
                 };
                 context.Models.Add(modelWithChat);
                 context.SaveChanges();
@@ -179,7 +167,7 @@ namespace ConduitLLM.Tests.Configuration.Repositories
         }
 
         [Fact]
-        public async Task MaxContextTokensOverride_ShouldTakePrecedence()
+        public async Task GetByIdAsync_Should_Return_Mapping_With_Model_Properties()
         {
             // Arrange
             int mappingId = 0;
@@ -203,21 +191,19 @@ namespace ConduitLLM.Tests.Configuration.Repositories
                     supportsChat: false,
                     maxTokens: 4096);
                 
-                // Add the author, series, capabilities and model to the context
+                // Add the author, series and model to the context
                 context.ModelAuthors.Add(model.Series.Author);
                 context.ModelSeries.Add(model.Series);
-                context.ModelCapabilities.Add(model.Capabilities);
                 context.Models.Add(model);
                 context.SaveChanges();
                 
-                // Add mapping with override
+                // Add mapping
                 var mapping = new ModelProviderMapping
                 {
                     ModelAlias = "override-test",
                     ModelId = model.Id,
                     ProviderModelId = "test",
                     ProviderId = provider.Id,
-                    MaxContextTokensOverride = 16384,
                     IsEnabled = true
                 };
                 context.ModelProviderMappings.Add(mapping);
@@ -233,7 +219,8 @@ namespace ConduitLLM.Tests.Configuration.Repositories
 
             // Assert
             Assert.NotNull(mapping);
-            Assert.Equal(16384, mapping.MaxContextTokens); // Override value, not model's 4096
+            Assert.NotNull(mapping.Model);
+            Assert.Equal(4096, mapping.Model.MaxInputTokens);
         }
     }
 }

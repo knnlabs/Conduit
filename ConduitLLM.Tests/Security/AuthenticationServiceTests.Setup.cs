@@ -98,8 +98,6 @@ namespace ConduitLLM.Tests.Security
         public List<Claim> Claims { get; set; } = new();
         public string? FailureReason { get; set; }
     }
-
-
     // Mock implementation
     public class MockAuthenticationService : IAuthenticationService
     {

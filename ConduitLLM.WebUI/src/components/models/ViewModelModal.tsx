@@ -98,32 +98,24 @@ export function ViewModelModal({ isOpen, model, onClose }: ViewModelModalProps) 
           })
         );
         
-        // Load capabilities details if present
-        if (model.modelCapabilitiesId) {
-          promises.push(
-            executeWithAdmin(client => 
-              client.modelCapabilities.get(model.modelCapabilitiesId as number)
-            ).then(capabilities => {
-              // Create a summary of capabilities
-              const capList: string[] = [];
-              if (capabilities.supportsChat) capList.push('Chat');
-              if (capabilities.supportsVision) capList.push('Vision');
-              if (capabilities.supportsImageGeneration) capList.push('Image Gen');
-              if (capabilities.supportsVideoGeneration) capList.push('Video Gen');
-              if (capabilities.supportsEmbeddings) capList.push('Embeddings');
-              if (capabilities.supportsFunctionCalling) capList.push('Functions');
-              
-              const capabilitiesSummary = capList.length > 0 
-                ? capList.join(', ') 
-                : 'Standard';
-                
-              setCapabilitiesName(capabilitiesSummary);
-            }).catch((error) => {
-              const errorMessage = getErrorMessage(error);
-              console.warn('Failed to load capabilities:', errorMessage);
-              setCapabilitiesName(`ID: ${model.modelCapabilitiesId}`);
-            })
-          );
+        // Use embedded capabilities from the model
+        if (model.capabilities) {
+          const capabilities = model.capabilities;
+          const capList: string[] = [];
+          if (capabilities.supportsChat) capList.push('Chat');
+          if (capabilities.supportsVision) capList.push('Vision');
+          if (capabilities.supportsImageGeneration) capList.push('Image Gen');
+          if (capabilities.supportsVideoGeneration) capList.push('Video Gen');
+          if (capabilities.supportsEmbeddings) capList.push('Embeddings');
+          if (capabilities.supportsFunctionCalling) capList.push('Functions');
+          
+          const capabilitiesSummary = capList.length > 0 
+            ? capList.join(', ') 
+            : 'Standard';
+            
+          setCapabilitiesName(capabilitiesSummary);
+        } else {
+          setCapabilitiesName('No capabilities defined');
         }
         
         await Promise.all(promises);

@@ -1,4 +1,3 @@
-using ConduitLLM.Admin.Models.ModelCapabilities;
 using ConduitLLM.Admin.Models.ModelSeries;
 
 namespace ConduitLLM.Admin.Models.Models
@@ -46,26 +45,57 @@ namespace ConduitLLM.Admin.Models.Models
         /// <value>The foreign key reference to the ModelSeries entity.</value>
         public int ModelSeriesId { get; set; }
 
+        // Capability fields embedded directly in ModelDto
+        
         /// <summary>
-        /// Gets or sets the ID of the capabilities configuration for this model.
+        /// Gets or sets whether the model supports chat/conversation interactions.
         /// </summary>
-        /// <remarks>
-        /// Multiple models can share the same capabilities configuration to avoid duplication.
-        /// For example, all GPT-4 variants might share the same capability set.
-        /// </remarks>
-        /// <value>The foreign key reference to the ModelCapabilities entity.</value>
-        public int ModelCapabilitiesId { get; set; }
+        public bool SupportsChat { get; set; }
 
         /// <summary>
-        /// Gets or sets the detailed capabilities of this model.
+        /// Gets or sets whether the model supports vision/image understanding.
         /// </summary>
-        /// <remarks>
-        /// This nested object provides comprehensive information about what the model can do,
-        /// including support for chat, vision, function calling, streaming, and various
-        /// generation capabilities. This is populated when the model is fetched with details.
-        /// </remarks>
-        /// <value>The capabilities object, or null if not loaded.</value>
-        public ModelCapabilitiesDto? Capabilities { get; set; }
+        public bool SupportsVision { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the model supports function/tool calling.
+        /// </summary>
+        public bool SupportsFunctionCalling { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the model supports streaming responses.
+        /// </summary>
+        public bool SupportsStreaming { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the model supports image generation.
+        /// </summary>
+        public bool SupportsImageGeneration { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the model supports video generation.
+        /// </summary>
+        public bool SupportsVideoGeneration { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the model supports text embeddings generation.
+        /// </summary>
+        public bool SupportsEmbeddings { get; set; }
+
+        /// <summary>
+        /// Gets or sets the maximum number of input tokens the model can process.
+        /// </summary>
+        public int? MaxInputTokens { get; set; }
+
+        /// <summary>
+        /// Gets or sets the maximum number of output tokens the model can generate.
+        /// </summary>
+        public int? MaxOutputTokens { get; set; }
+
+        /// <summary>
+        /// Gets or sets the tokenizer type used by this model.
+        /// </summary>
+        public TokenizerType TokenizerType { get; set; }
 
         /// <summary>
         /// Gets or sets whether this model is currently active and available for use.

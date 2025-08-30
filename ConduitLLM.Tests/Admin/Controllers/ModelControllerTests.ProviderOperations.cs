@@ -43,12 +43,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var provider = "groq";
             var author = new ModelAuthor { Id = 1, Name = "Test Author" };
             var series = new ModelSeries { Id = 1, Name = "Test Series", Author = author };
-            var capabilities = new ModelCapabilities 
-            { 
-                Id = 1, 
-                SupportsChat = true,
-                MaxTokens = 4096 
-            };
+            // Remove unnecessary variable declaration
 
             var models = new List<Model>
             {
@@ -58,9 +53,11 @@ namespace ConduitLLM.Tests.Admin.Controllers
                     Name = "llama-3.1-8b",
                     ModelSeriesId = 1,
                     Series = series,
-                    ModelCapabilitiesId = 1,
-                    Capabilities = capabilities,
                     IsActive = true,
+                    SupportsChat = true,
+                    MaxInputTokens = 4096,
+                    MaxOutputTokens = 2048,
+                    TokenizerType = TokenizerType.Cl100KBase,
                     Identifiers = new List<ModelProviderTypeAssociation>
                     {
                         new ModelProviderTypeAssociation 
@@ -79,9 +76,12 @@ namespace ConduitLLM.Tests.Admin.Controllers
                     Name = "mixtral-8x7b",
                     ModelSeriesId = 1,
                     Series = series,
-                    ModelCapabilitiesId = 1,
-                    Capabilities = capabilities,
                     IsActive = true,
+                    SupportsChat = true,
+                    SupportsStreaming = true,
+                    MaxInputTokens = 32768,
+                    MaxOutputTokens = 8192,
+                    TokenizerType = TokenizerType.Cl100KBase,
                     Identifiers = new List<ModelProviderTypeAssociation>
                     {
                         new ModelProviderTypeAssociation 
@@ -115,7 +115,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             firstDto.Id.Should().Be(1);
             firstDto.Name.Should().Be("llama-3.1-8b");
             firstDto.ProviderModelId.Should().Be("llama-3.1-8b-instant");
-            firstDto.Capabilities.Should().NotBeNull();
+            firstDto.SupportsChat.Should().BeTrue();
 
             var secondDto = dtos!.Last();
             secondDto.Id.Should().Be(2);
@@ -206,7 +206,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var provider = "groq";
             var author = new ModelAuthor { Id = 1, Name = "Test Author" };
             var series = new ModelSeries { Id = 1, Name = "Test Series", Author = author };
-            var capabilities = new ModelCapabilities { Id = 1, SupportsChat = true };
 
             var models = new List<Model>
             {
@@ -216,8 +215,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
                     Name = "test-model",
                     ModelSeriesId = 1,
                     Series = series,
-                    ModelCapabilitiesId = 1,
-                    Capabilities = capabilities,
                     IsActive = true,
                     Identifiers = new List<ModelProviderTypeAssociation>
                     {
@@ -257,7 +254,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var provider = "GROQ"; // Uppercase
             var author = new ModelAuthor { Id = 1, Name = "Test Author" };
             var series = new ModelSeries { Id = 1, Name = "Test Series", Author = author };
-            var capabilities = new ModelCapabilities { Id = 1, SupportsChat = true };
 
             var models = new List<Model>
             {
@@ -267,8 +263,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
                     Name = "test-model",
                     ModelSeriesId = 1,
                     Series = series,
-                    ModelCapabilitiesId = 1,
-                    Capabilities = capabilities,
                     IsActive = true,
                     Identifiers = new List<ModelProviderTypeAssociation>
                     {
@@ -346,8 +340,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
                     Name = "test-model",
                     ModelSeriesId = 1,
                     Series = series,
-                    ModelCapabilitiesId = 1,
-                    Capabilities = null, // Null capabilities
+                     // Null capabilities
                     IsActive = true,
                     Identifiers = new List<ModelProviderTypeAssociation>
                     {
@@ -375,7 +368,12 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var dtos = okResult!.Value as IEnumerable<ModelWithProviderIdDto>;
             var dto = dtos!.First();
             
-            dto.Capabilities.Should().BeNull();
+            // After consolidation, capability fields have default values
+            dto.SupportsChat.Should().BeFalse();
+            dto.SupportsVision.Should().BeFalse();
+            dto.SupportsStreaming.Should().BeFalse();
+            dto.MaxInputTokens.Should().Be(null);
+            dto.MaxOutputTokens.Should().Be(null);
         }
 
         #endregion

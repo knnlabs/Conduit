@@ -160,8 +160,6 @@ namespace ConduitLLM.Http.Services
                     .Include(m => m.Provider)
                     .Include(m => m.Model)
                         .ThenInclude(m => m.Series)
-                    .Include(m => m.Model)
-                        .ThenInclude(m => m.Capabilities)
                     .Where(m => m.IsEnabled && m.Provider != null && m.Provider.IsEnabled)
                     .ToListAsync(cancellationToken);
 
@@ -169,13 +167,13 @@ namespace ConduitLLM.Http.Services
 
                 foreach (var mapping in modelMappings)
                 {
-                    // Skip if model or capabilities are missing
-                    if (mapping.Model?.Capabilities == null)
+                    // Skip if model is missing
+                    if (mapping.Model == null)
                     {
                         continue;
                     }
 
-                    var caps = mapping.Model.Capabilities;
+                    var caps = mapping.Model;
 
                     // Apply capability filter if specified
                     if (!string.IsNullOrEmpty(capability))
@@ -209,7 +207,8 @@ namespace ConduitLLM.Http.Services
                         // Metadata
                         description = mapping.Model?.Description ?? string.Empty,
                         model_card_url = mapping.Model?.ModelCardUrl ?? string.Empty,
-                        max_tokens = caps.MaxTokens,
+                        max_input_tokens = caps.MaxInputTokens,
+                        max_output_tokens = caps.MaxOutputTokens,
                         tokenizer_type = caps.TokenizerType.ToString().ToLowerInvariant(),
                         
                         // UI Parameters from Model or Series

@@ -38,8 +38,6 @@ namespace ConduitLLM.Configuration.Repositories
                 return await dbContext.ModelProviderMappings
                     .Include(m => m.Provider)
                     .Include(m => m.Model)
-                        .ThenInclude(m => m!.Capabilities)
-                    .Include(m => m.Model)
                         .ThenInclude(m => m!.Series)
                     .AsNoTracking()
                     .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
@@ -67,7 +65,6 @@ namespace ConduitLLM.Configuration.Repositories
                 return await dbContext.ModelProviderMappings
                     .Include(m => m.Provider)
                     .Include(m => m.Model)
-                        .ThenInclude(m => m!.Capabilities)
                     .AsNoTracking()
                     .FirstOrDefaultAsync(m => m.ModelAlias == modelName, cancellationToken);
             }
@@ -191,7 +188,6 @@ namespace ConduitLLM.Configuration.Repositories
                 existingEntity.ProviderId = modelProviderMapping.ProviderId;
                 existingEntity.IsEnabled = modelProviderMapping.IsEnabled;
                 existingEntity.ModelId = modelProviderMapping.ModelId;
-                existingEntity.MaxContextTokensOverride = modelProviderMapping.MaxContextTokensOverride;
                 existingEntity.ProviderVariation = modelProviderMapping.ProviderVariation;
                 existingEntity.QualityScore = modelProviderMapping.QualityScore;
                 existingEntity.IsDefault = modelProviderMapping.IsDefault;

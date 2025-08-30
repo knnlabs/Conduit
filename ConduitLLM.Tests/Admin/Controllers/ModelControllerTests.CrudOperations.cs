@@ -44,13 +44,12 @@ namespace ConduitLLM.Tests.Admin.Controllers
             {
                 Name = "new-test-model",
                 ModelSeriesId = 1,
-                ModelCapabilitiesId = 1,
+                
                 IsActive = true
             };
 
             var author = new ModelAuthor { Id = 1, Name = "Test Author" };
             var series = new ModelSeries { Id = 1, Name = "Test Series", Author = author };
-            var capabilities = new ModelCapabilities { Id = 1, SupportsChat = true, MaxTokens = 4096 };
 
             var createdModel = new Model
             {
@@ -58,8 +57,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 Name = createDto.Name,
                 ModelSeriesId = createDto.ModelSeriesId,
                 Series = series,
-                ModelCapabilitiesId = createDto.ModelCapabilitiesId,
-                Capabilities = capabilities,
                 IsActive = createDto.IsActive ?? true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -94,7 +91,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockRepository.Verify(r => r.CreateAsync(It.Is<Model>(m => 
                 m.Name == createDto.Name &&
                 m.ModelSeriesId == createDto.ModelSeriesId &&
-                m.ModelCapabilitiesId == createDto.ModelCapabilitiesId &&
                 m.IsActive == createDto.IsActive)), Times.Once);
         }
 
@@ -106,14 +102,13 @@ namespace ConduitLLM.Tests.Admin.Controllers
             {
                 Name = "model-with-params",
                 ModelSeriesId = 1,
-                ModelCapabilitiesId = 1,
+                
                 ModelParameters = "{\"temperature\": {\"min\": 0, \"max\": 1.5}}",
                 IsActive = true
             };
 
             var author = new ModelAuthor { Id = 1, Name = "Test Author" };
             var series = new ModelSeries { Id = 1, Name = "Test Series", Author = author };
-            var capabilities = new ModelCapabilities { Id = 1, SupportsChat = true, MaxTokens = 4096 };
 
             var createdModel = new Model
             {
@@ -121,8 +116,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 Name = createDto.Name,
                 ModelSeriesId = createDto.ModelSeriesId,
                 Series = series,
-                ModelCapabilitiesId = createDto.ModelCapabilitiesId,
-                Capabilities = capabilities,
                 ModelParameters = createDto.ModelParameters,
                 IsActive = createDto.IsActive ?? true,
                 CreatedAt = DateTime.UtcNow,
@@ -178,7 +171,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             {
                 Name = "",
                 ModelSeriesId = 1,
-                ModelCapabilitiesId = 1,
+                
                 IsActive = true
             };
 
@@ -201,7 +194,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             {
                 Name = "existing-model",
                 ModelSeriesId = 1,
-                ModelCapabilitiesId = 1,
+                
                 IsActive = true
             };
 
@@ -233,7 +226,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             {
                 Name = "test-model",
                 ModelSeriesId = 1,
-                ModelCapabilitiesId = 1,
+                
                 IsActive = true
             };
 
@@ -277,7 +270,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             var author = new ModelAuthor { Id = 1, Name = "Test Author" };
             var series = new ModelSeries { Id = 1, Name = "Test Series", Author = author };
-            var capabilities = new ModelCapabilities { Id = 1, SupportsChat = true, MaxTokens = 4096 };
 
             var existingModel = new Model
             {
@@ -285,8 +277,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 Name = "old-model-name",
                 ModelSeriesId = 1,
                 Series = series,
-                ModelCapabilitiesId = 1,
-                Capabilities = capabilities,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow.AddDays(-1),
                 UpdatedAt = DateTime.UtcNow.AddDays(-1)
@@ -298,8 +288,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 Name = updateDto.Name,
                 ModelSeriesId = 1,
                 Series = series,
-                ModelCapabilitiesId = 1,
-                Capabilities = capabilities,
                 IsActive = updateDto.IsActive ?? existingModel.IsActive,
                 CreatedAt = existingModel.CreatedAt,
                 UpdatedAt = DateTime.UtcNow
@@ -368,7 +356,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             var author = new ModelAuthor { Id = 1, Name = "Test Author" };
             var series = new ModelSeries { Id = 1, Name = "Test Series", Author = author };
-            var capabilities = new ModelCapabilities { Id = 1, SupportsChat = true, MaxTokens = 4096 };
 
             var existingModel = new Model
             {
@@ -376,8 +363,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 Name = "test-model",
                 ModelSeriesId = 1,
                 Series = series,
-                ModelCapabilitiesId = 1,
-                Capabilities = capabilities,
                 ModelParameters = null, // No existing parameters
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow.AddDays(-1),
@@ -390,8 +375,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 Name = existingModel.Name,
                 ModelSeriesId = 1,
                 Series = series,
-                ModelCapabilitiesId = 1,
-                Capabilities = capabilities,
                 ModelParameters = updateDto.ModelParameters,
                 IsActive = existingModel.IsActive,
                 CreatedAt = existingModel.CreatedAt,
@@ -429,7 +412,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             var author = new ModelAuthor { Id = 1, Name = "Test Author" };
             var series = new ModelSeries { Id = 1, Name = "Test Series", Author = author };
-            var capabilities = new ModelCapabilities { Id = 1, SupportsChat = true, MaxTokens = 4096 };
 
             var existingModel = new Model
             {
@@ -437,8 +419,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 Name = "test-model",
                 ModelSeriesId = 1,
                 Series = series,
-                ModelCapabilitiesId = 1,
-                Capabilities = capabilities,
                 ModelParameters = "{\"temperature\": {\"min\": 0, \"max\": 1}}", // Has existing parameters
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow.AddDays(-1),
@@ -451,8 +431,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 Name = existingModel.Name,
                 ModelSeriesId = 1,
                 Series = series,
-                ModelCapabilitiesId = 1,
-                Capabilities = capabilities,
                 ModelParameters = null, // Parameters cleared
                 IsActive = existingModel.IsActive,
                 CreatedAt = existingModel.CreatedAt,
@@ -569,7 +547,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var modelId = 1;
             var author = new ModelAuthor { Id = 1, Name = "Test Author" };
             var series = new ModelSeries { Id = 1, Name = "Test Series", Author = author };
-            var capabilities = new ModelCapabilities { Id = 1, SupportsChat = true };
 
             var existingModel = new Model
             {
@@ -577,8 +554,6 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 Name = "test-model",
                 ModelSeriesId = 1,
                 Series = series,
-                ModelCapabilitiesId = 1,
-                Capabilities = capabilities,
                 IsActive = true
             };
 

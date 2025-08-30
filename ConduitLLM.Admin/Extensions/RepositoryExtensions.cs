@@ -116,7 +116,6 @@ namespace ConduitLLM.Admin.Extensions
                 } : null,
                 Priority = 0, // Default priority if not available in entity
                 IsEnabled = mapping.IsEnabled,
-                MaxContextTokensOverride = mapping.MaxContextTokensOverride,
                 ProviderVariation = mapping.ProviderVariation,
                 QualityScore = mapping.QualityScore,
                 IsDefault = mapping.IsDefault,
@@ -147,7 +146,6 @@ namespace ConduitLLM.Admin.Extensions
                 ProviderModelId = dto.ProviderModelId,
                 ProviderId = dto.ProviderId,
                 IsEnabled = dto.IsEnabled,
-                MaxContextTokensOverride = dto.MaxContextTokensOverride,
                 ProviderVariation = dto.ProviderVariation,
                 QualityScore = dto.QualityScore,
                 IsDefault = dto.IsDefault,
