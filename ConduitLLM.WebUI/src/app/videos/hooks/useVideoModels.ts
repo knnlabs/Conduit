@@ -24,7 +24,7 @@ async function fetchVideoModels(): Promise<VideoModel[]> {
     if (!model) return false;
     
     // Must support video generation capability
-    if (!model.capabilities?.supportsVideoGeneration) return false;
+    if (!model.supportsVideoGeneration) return false;
     
     // Must be active
     if (model.isActive === false) return false;

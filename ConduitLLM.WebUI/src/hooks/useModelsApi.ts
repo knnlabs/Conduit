@@ -35,8 +35,19 @@ export function useModels() {
     return models.find(m => m.id === id);
   };
 
-  const getModelsByCapability = (capability: keyof NonNullable<ModelDto['capabilities']>): ModelDto[] => {
-    return models.filter(m => m.capabilities?.[capability]);
+  const getModelsByCapability = (capability: string): ModelDto[] => {
+    return models.filter(m => {
+      switch (capability) {
+        case 'supportsChat': return m.supportsChat;
+        case 'supportsVision': return m.supportsVision;
+        case 'supportsImageGeneration': return m.supportsImageGeneration;
+        case 'supportsVideoGeneration': return m.supportsVideoGeneration;
+        case 'supportsEmbeddings': return m.supportsEmbeddings;
+        case 'supportsFunctionCalling': return m.supportsFunctionCalling;
+        case 'supportsStreaming': return m.supportsStreaming;
+        default: return false;
+      }
+    });
   };
 
   return {

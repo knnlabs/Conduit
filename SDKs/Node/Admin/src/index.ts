@@ -34,7 +34,6 @@ export {
   ModelAuthorDto,
   CreateModelAuthorDto,
   UpdateModelAuthorDto,
-  ModelCapabilitiesDto,
   Model,
   ModelSeries,
   ModelAuthor

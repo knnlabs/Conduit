@@ -9705,39 +9705,6 @@ export interface components {
       /** @description Gets or sets the new description. */
       description?: string | null;
     };
-    /** @description Alias for CapabilitiesDto to maintain backward compatibility with ModelController. */
-    "ConduitLLM.Admin.Models.ModelCapabilities.ModelCapabilitiesDto": {
-      /**
-       * Format: int32
-       * @description Gets or sets the unique identifier for this capabilities configuration.
-       */
-      id?: number;
-      /** @description Gets or sets whether the model supports chat/conversation interactions. */
-      supportsChat?: boolean;
-      /** @description Gets or sets whether the model supports vision/image understanding. */
-      supportsVision?: boolean;
-      /** @description Gets or sets whether the model supports function/tool calling. */
-      supportsFunctionCalling?: boolean;
-      /** @description Gets or sets whether the model supports streaming responses. */
-      supportsStreaming?: boolean;
-      /** @description Gets or sets whether the model supports image generation. */
-      supportsImageGeneration?: boolean;
-      /** @description Gets or sets whether the model supports video generation. */
-      supportsVideoGeneration?: boolean;
-      /** @description Gets or sets whether the model supports text embeddings generation. */
-      supportsEmbeddings?: boolean;
-      /**
-       * Format: int32
-       * @description Gets or sets the maximum number of tokens the model can process.
-       */
-      maxTokens?: number;
-      /**
-       * Format: int32
-       * @description Gets or sets the minimum number of tokens for the model.
-       */
-      minTokens?: number;
-      tokenizerType?: components["schemas"]["TokenizerType"];
-    };
     /** @description Data transfer object for creating a new model series in the system. */
     "ConduitLLM.Admin.Models.ModelSeries.CreateModelSeriesDto": {
       /**
@@ -9816,11 +9783,31 @@ export interface components {
        * @description Gets or sets the ID of the model series this model will belong to.
        */
       modelSeriesId?: number;
+      /** @description Gets or sets whether the model supports chat/conversation interactions. */
+      supportsChat?: boolean;
+      /** @description Gets or sets whether the model supports vision/image understanding. */
+      supportsVision?: boolean;
+      /** @description Gets or sets whether the model supports function/tool calling. */
+      supportsFunctionCalling?: boolean;
+      /** @description Gets or sets whether the model supports streaming responses. */
+      supportsStreaming?: boolean;
+      /** @description Gets or sets whether the model supports image generation. */
+      supportsImageGeneration?: boolean;
+      /** @description Gets or sets whether the model supports video generation. */
+      supportsVideoGeneration?: boolean;
+      /** @description Gets or sets whether the model supports text embeddings generation. */
+      supportsEmbeddings?: boolean;
       /**
        * Format: int32
-       * @description Gets or sets the ID of the capabilities configuration for this model.
+       * @description Gets or sets the maximum number of input tokens the model can process.
        */
-      modelCapabilitiesId?: number;
+      maxInputTokens?: number | null;
+      /**
+       * Format: int32
+       * @description Gets or sets the maximum number of output tokens the model can generate.
+       */
+      maxOutputTokens?: number | null;
+      tokenizerType?: components["schemas"]["TokenizerType"];
       /** @description Gets or sets whether the model should be active upon creation. */
       isActive?: boolean | null;
       /** @description Gets or sets the model-specific parameter configuration for UI generation. */
@@ -9851,12 +9838,31 @@ export interface components {
        * @description Gets or sets the ID of the model series this model belongs to.
        */
       modelSeriesId?: number;
+      /** @description Gets or sets whether the model supports chat/conversation interactions. */
+      supportsChat?: boolean;
+      /** @description Gets or sets whether the model supports vision/image understanding. */
+      supportsVision?: boolean;
+      /** @description Gets or sets whether the model supports function/tool calling. */
+      supportsFunctionCalling?: boolean;
+      /** @description Gets or sets whether the model supports streaming responses. */
+      supportsStreaming?: boolean;
+      /** @description Gets or sets whether the model supports image generation. */
+      supportsImageGeneration?: boolean;
+      /** @description Gets or sets whether the model supports video generation. */
+      supportsVideoGeneration?: boolean;
+      /** @description Gets or sets whether the model supports text embeddings generation. */
+      supportsEmbeddings?: boolean;
       /**
        * Format: int32
-       * @description Gets or sets the ID of the capabilities configuration for this model.
+       * @description Gets or sets the maximum number of input tokens the model can process.
        */
-      modelCapabilitiesId?: number;
-      capabilities?: components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.ModelCapabilitiesDto"];
+      maxInputTokens?: number | null;
+      /**
+       * Format: int32
+       * @description Gets or sets the maximum number of output tokens the model can generate.
+       */
+      maxOutputTokens?: number | null;
+      tokenizerType?: components["schemas"]["TokenizerType"];
       /** @description Gets or sets whether this model is currently active and available for use. */
       isActive?: boolean;
       /**
@@ -9887,12 +9893,31 @@ export interface components {
        * @description Gets or sets the ID of the model series this model belongs to.
        */
       modelSeriesId?: number;
+      /** @description Gets or sets whether the model supports chat/conversation interactions. */
+      supportsChat?: boolean;
+      /** @description Gets or sets whether the model supports vision/image understanding. */
+      supportsVision?: boolean;
+      /** @description Gets or sets whether the model supports function/tool calling. */
+      supportsFunctionCalling?: boolean;
+      /** @description Gets or sets whether the model supports streaming responses. */
+      supportsStreaming?: boolean;
+      /** @description Gets or sets whether the model supports image generation. */
+      supportsImageGeneration?: boolean;
+      /** @description Gets or sets whether the model supports video generation. */
+      supportsVideoGeneration?: boolean;
+      /** @description Gets or sets whether the model supports text embeddings generation. */
+      supportsEmbeddings?: boolean;
       /**
        * Format: int32
-       * @description Gets or sets the ID of the capabilities configuration for this model.
+       * @description Gets or sets the maximum number of input tokens the model can process.
        */
-      modelCapabilitiesId?: number;
-      capabilities?: components["schemas"]["ConduitLLM.Admin.Models.ModelCapabilities.ModelCapabilitiesDto"];
+      maxInputTokens?: number | null;
+      /**
+       * Format: int32
+       * @description Gets or sets the maximum number of output tokens the model can generate.
+       */
+      maxOutputTokens?: number | null;
+      tokenizerType?: components["schemas"]["TokenizerType"];
       /** @description Gets or sets whether this model is currently active and available for use. */
       isActive?: boolean;
       /**
@@ -9928,11 +9953,30 @@ export interface components {
        * @description Gets or sets the new model series ID.
        */
       modelSeriesId?: number | null;
+      /** @description Gets or sets whether the model supports chat/conversation interactions. */
+      supportsChat?: boolean | null;
+      /** @description Gets or sets whether the model supports vision/image understanding. */
+      supportsVision?: boolean | null;
+      /** @description Gets or sets whether the model supports function/tool calling. */
+      supportsFunctionCalling?: boolean | null;
+      /** @description Gets or sets whether the model supports streaming responses. */
+      supportsStreaming?: boolean | null;
+      /** @description Gets or sets whether the model supports image generation. */
+      supportsImageGeneration?: boolean | null;
+      /** @description Gets or sets whether the model supports video generation. */
+      supportsVideoGeneration?: boolean | null;
+      /** @description Gets or sets whether the model supports text embeddings generation. */
+      supportsEmbeddings?: boolean | null;
       /**
        * Format: int32
-       * @description Gets or sets the new capabilities configuration ID.
+       * @description Gets or sets the maximum number of input tokens the model can process.
        */
-      modelCapabilitiesId?: number | null;
+      maxInputTokens?: number | null;
+      /**
+       * Format: int32
+       * @description Gets or sets the maximum number of output tokens the model can generate.
+       */
+      maxOutputTokens?: number | null;
       /** @description Gets or sets the new activation status for the model. */
       isActive?: boolean | null;
       /** @description Gets or sets the model-specific parameter configuration for UI generation. */

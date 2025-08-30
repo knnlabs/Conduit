@@ -4,31 +4,7 @@
 
 import type { ModelDto } from '@knn_labs/conduit-admin-client';
 
-/**
- * Type guard to check if capabilities is a valid object
- */
-export function isCapabilitiesObject(capabilities: unknown): capabilities is {
-  supportsChat?: boolean;
-  supportsVision?: boolean;
-  supportsImageGeneration?: boolean;
-  supportsVideoGeneration?: boolean;
-  supportsEmbeddings?: boolean;
-  supportsFunctionCalling?: boolean;
-  supportsStreaming?: boolean;
-  maxTokens?: number;
-} {
-  return capabilities !== null && 
-         capabilities !== undefined && 
-         typeof capabilities === 'object' &&
-         !Array.isArray(capabilities);
-}
-
-/**
- * Type guard to check if a model has valid capabilities
- */
-export function hasValidCapabilities(model: ModelDto): boolean {
-  return isCapabilitiesObject(model.capabilities);
-}
+// Removed capabilities-related type guards as capabilities are now embedded directly in ModelDto
 
 /**
  * Type guard for provider mapping
@@ -60,32 +36,19 @@ export function isProviderMapping(obj: unknown): obj is {
 
 /**
  * Safely extract capabilities from a model
+ * Capabilities are now directly embedded in the model entity (flat structure)
  */
 export function extractCapabilities(model: ModelDto) {
-  const capabilities = model.capabilities;
-  
-  if (!isCapabilitiesObject(capabilities)) {
-    return {
-      supportsChat: false,
-      supportsVision: false,
-      supportsImageGeneration: false,
-      supportsVideoGeneration: false,
-      supportsEmbeddings: false,
-      supportsFunctionCalling: false,
-      supportsStreaming: true,
-      maxTokens: undefined,
-    };
-  }
-  
   return {
-    supportsChat: capabilities.supportsChat ?? false,
-    supportsVision: capabilities.supportsVision ?? false,
-    supportsImageGeneration: capabilities.supportsImageGeneration ?? false,
-    supportsVideoGeneration: capabilities.supportsVideoGeneration ?? false,
-    supportsEmbeddings: capabilities.supportsEmbeddings ?? false,
-    supportsFunctionCalling: capabilities.supportsFunctionCalling ?? false,
-    supportsStreaming: capabilities.supportsStreaming ?? true,
-    maxTokens: capabilities.maxTokens,
+    supportsChat: model.supportsChat ?? false,
+    supportsVision: model.supportsVision ?? false,
+    supportsImageGeneration: model.supportsImageGeneration ?? false,
+    supportsVideoGeneration: model.supportsVideoGeneration ?? false,
+    supportsEmbeddings: model.supportsEmbeddings ?? false,
+    supportsFunctionCalling: model.supportsFunctionCalling ?? false,
+    supportsStreaming: model.supportsStreaming ?? true,
+    maxInputTokens: model.maxInputTokens ?? undefined,
+    maxOutputTokens: model.maxOutputTokens ?? undefined,
   };
 }
 

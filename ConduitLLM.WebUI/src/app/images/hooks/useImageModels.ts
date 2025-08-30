@@ -6,7 +6,7 @@ export interface ImageModel {
   providerId: string;
   providerName: string;
   displayName: string;
-  maxContextTokens?: number;
+  maxContextTokens?: number | null;
   supportsImageGeneration: boolean;
 }
 
@@ -35,7 +35,7 @@ export function useImageModels() {
         if (!model) return false;
         
         // Must support image generation capability
-        if (!model.capabilities?.supportsImageGeneration) return false;
+        if (!model.supportsImageGeneration) return false;
         
         // Must be active
         if (model.isActive === false) return false;
@@ -53,7 +53,7 @@ export function useImageModels() {
           providerId: mapping.providerId.toString(),
           providerName: provider?.providerName ?? 'Unknown Provider',
           displayName: mapping.modelAlias, // Use alias as display name
-          maxContextTokens: mapping.maxContextTokensOverride ?? model?.capabilities?.maxTokens,
+          maxContextTokens: mapping.maxContextTokensOverride ?? model?.maxInputTokens,
           supportsImageGeneration: true,
         };
       });

@@ -24,11 +24,7 @@ export type ModelAuthorDto = components['schemas']['ConduitLLM.Admin.Models.Mode
 export type CreateModelAuthorDto = components['schemas']['ConduitLLM.Admin.Models.ModelAuthors.CreateModelAuthorDto'];
 export type UpdateModelAuthorDto = components['schemas']['ConduitLLM.Admin.Models.ModelAuthors.UpdateModelAuthorDto'];
 
-// Model Capabilities DTOs
-export type ModelCapabilitiesDto = components['schemas']['ConduitLLM.Admin.Models.ModelCapabilities.ModelCapabilitiesDto'];
-
 // Simplified type aliases for convenience
 export type Model = ModelDto;
 export type ModelSeries = ModelSeriesDto;
 export type ModelAuthor = ModelAuthorDto;
-export type ModelCapabilities = ModelCapabilitiesDto;

@@ -110,7 +110,7 @@ export function CreateModelMappingModal({
   };
 
   const selectedModel = models.find(m => m.id === form.values.modelId);
-  const modelCapabilities = selectedModel?.capabilities;
+  // Capabilities are now directly on the model object
 
   const providerOptions = providers?.map(p => ({
     value: p.id.toString(),
@@ -166,17 +166,17 @@ export function CreateModelMappingModal({
                 {...form.getInputProps('modelAlias')}
               />
 
-              {modelCapabilities && (
+              {selectedModel && (
                 <Paper p="xs" bg="gray.0">
                   <Text size="xs" fw={500} mb="xs">Model Capabilities:</Text>
                   <Flex gap="xs" wrap="wrap">
-                    {modelCapabilities.supportsChat && <Badge size="sm" leftSection={<IconRobot size={12} />}>Chat</Badge>}
-                    {modelCapabilities.supportsVision && <Badge size="sm" leftSection={<IconEye size={12} />}>Vision</Badge>}
-                    {modelCapabilities.supportsImageGeneration && <Badge size="sm" leftSection={<IconBrush size={12} />}>Images</Badge>}
-                    {modelCapabilities.supportsVideoGeneration && <Badge size="sm" leftSection={<IconVideo size={12} />}>Video</Badge>}
-                    {modelCapabilities.supportsEmbeddings && <Badge size="sm" leftSection={<IconBrain size={12} />}>Embeddings</Badge>}
+                    {selectedModel.supportsChat && <Badge size="sm" leftSection={<IconRobot size={12} />}>Chat</Badge>}
+                    {selectedModel.supportsVision && <Badge size="sm" leftSection={<IconEye size={12} />}>Vision</Badge>}
+                    {selectedModel.supportsImageGeneration && <Badge size="sm" leftSection={<IconBrush size={12} />}>Images</Badge>}
+                    {selectedModel.supportsVideoGeneration && <Badge size="sm" leftSection={<IconVideo size={12} />}>Video</Badge>}
+                    {selectedModel.supportsEmbeddings && <Badge size="sm" leftSection={<IconBrain size={12} />}>Embeddings</Badge>}
                   </Flex>
-                  <Text size="xs" mt="xs">Max Tokens: {modelCapabilities.maxTokens?.toLocaleString()}</Text>
+                  <Text size="xs" mt="xs">Max Input Tokens: {selectedModel.maxInputTokens?.toLocaleString()}</Text>
                 </Paper>
               )}
             </Stack>

@@ -180,18 +180,18 @@ export function useBulkDiscoverModels() {
             hasConflict: model.id ? mappedModelIds.has(model.id) : false,
             existingMapping: null,
             capabilities: {
-              supportsVision: model.capabilities?.supportsVision ?? false,
-              supportsImageGeneration: model.capabilities?.supportsImageGeneration ?? false,
+              supportsVision: model.supportsVision ?? false,
+              supportsImageGeneration: model.supportsImageGeneration ?? false,
               supportsAudioTranscription: false, // Audio capabilities removed from project
               supportsTextToSpeech: false, // Audio capabilities removed from project
               supportsRealtimeAudio: false, // Audio capabilities removed from project
-              supportsFunctionCalling: model.capabilities?.supportsFunctionCalling ?? false,
-              supportsStreaming: model.capabilities?.supportsStreaming ?? true,
-              supportsVideoGeneration: model.capabilities?.supportsVideoGeneration ?? false,
-              supportsEmbeddings: model.capabilities?.supportsEmbeddings ?? false,
-              supportsChat: model.capabilities?.supportsChat ?? true,
-              maxContextLength: model.capabilities?.maxTokens ?? null,
-              maxOutputTokens: null,
+              supportsFunctionCalling: model.supportsFunctionCalling ?? false,
+              supportsStreaming: model.supportsStreaming ?? true,
+              supportsVideoGeneration: model.supportsVideoGeneration ?? false,
+              supportsEmbeddings: model.supportsEmbeddings ?? false,
+              supportsChat: model.supportsChat ?? true,
+              maxContextLength: model.maxInputTokens ?? null,
+              maxOutputTokens: model.maxOutputTokens ?? null,
             },
           };
         }),

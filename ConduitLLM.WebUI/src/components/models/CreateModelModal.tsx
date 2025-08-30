@@ -5,7 +5,7 @@ import { Modal, TextInput, Select, Switch, Button, Stack, Group } from '@mantine
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useAdminClient } from '@/lib/client/adminClient';
-import type { CreateModelDto, ModelSeriesDto, ModelCapabilitiesDto } from '@knn_labs/conduit-admin-client';
+import type { CreateModelDto, ModelSeriesDto } from '@knn_labs/conduit-admin-client';
 
 interface CreateModelModalProps {
   isOpen: boolean;
@@ -17,14 +17,13 @@ interface CreateModelModalProps {
 export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModalProps) {
   const [loading, setLoading] = useState(false);
   const [series, setSeries] = useState<ModelSeriesDto[]>([]);
-  const [capabilities] = useState<ModelCapabilitiesDto[]>([]);
+  // Capabilities are now embedded in the Model, no need for separate capabilities
   const { executeWithAdmin } = useAdminClient();
 
   const form = useForm({
     initialValues: {
       name: '',
       modelSeriesId: '',
-      modelCapabilitiesId: '',
       isActive: true
     },
     validate: {
@@ -60,7 +59,6 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
       const dto: CreateModelDto = {
         name: values.name,
         modelSeriesId: values.modelSeriesId ? parseInt(values.modelSeriesId) : undefined,
-        modelCapabilitiesId: values.modelCapabilitiesId ? parseInt(values.modelCapabilitiesId) : undefined,
         isActive: values.isActive
       };
       await executeWithAdmin(client => client.models.create(dto));
@@ -88,13 +86,7 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
     label: `${s.name ?? 'Unnamed'} ${s.authorName ? `(${s.authorName})` : ''}`
   }));
 
-  const capabilitiesOptions = [
-    { value: '', label: 'None' },
-    ...capabilities.map(c => ({
-      value: c.id?.toString() ?? '',
-      label: `Capabilities ${c.id}`
-    }))
-  ];
+  // Capabilities are now embedded in the Model, no separate selection needed
 
   return (
     <Modal
@@ -119,12 +111,7 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
             {...form.getInputProps('modelSeriesId')}
           />
 
-          <Select
-            label="Capabilities"
-            data={capabilitiesOptions}
-            placeholder="Select capabilities (optional)"
-            {...form.getInputProps('modelCapabilitiesId')}
-          />
+          {/* Capabilities are now embedded directly in the Model entity */}
 
           <Switch
             label="Active"

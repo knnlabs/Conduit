@@ -98,25 +98,20 @@ export function ViewModelModal({ isOpen, model, onClose }: ViewModelModalProps) 
           })
         );
         
-        // Use embedded capabilities from the model
-        if (model.capabilities) {
-          const capabilities = model.capabilities;
-          const capList: string[] = [];
-          if (capabilities.supportsChat) capList.push('Chat');
-          if (capabilities.supportsVision) capList.push('Vision');
-          if (capabilities.supportsImageGeneration) capList.push('Image Gen');
-          if (capabilities.supportsVideoGeneration) capList.push('Video Gen');
-          if (capabilities.supportsEmbeddings) capList.push('Embeddings');
-          if (capabilities.supportsFunctionCalling) capList.push('Functions');
+        // Use capabilities directly from the model (flat structure)
+        const capList: string[] = [];
+        if (model.supportsChat) capList.push('Chat');
+        if (model.supportsVision) capList.push('Vision');
+        if (model.supportsImageGeneration) capList.push('Image Gen');
+        if (model.supportsVideoGeneration) capList.push('Video Gen');
+        if (model.supportsEmbeddings) capList.push('Embeddings');
+        if (model.supportsFunctionCalling) capList.push('Functions');
+        
+        const capabilitiesSummary = capList.length > 0 
+          ? capList.join(', ') 
+          : 'Standard';
           
-          const capabilitiesSummary = capList.length > 0 
-            ? capList.join(', ') 
-            : 'Standard';
-            
-          setCapabilitiesName(capabilitiesSummary);
-        } else {
-          setCapabilitiesName('No capabilities defined');
-        }
+        setCapabilitiesName(capabilitiesSummary);
         
         await Promise.all(promises);
         
@@ -136,7 +131,7 @@ export function ViewModelModal({ isOpen, model, onClose }: ViewModelModalProps) 
 
     void loadModelDetails();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, model.id, model.modelCapabilitiesId]);
+  }, [isOpen, model.id]);
 
   return (
     <Modal
@@ -153,8 +148,8 @@ export function ViewModelModal({ isOpen, model, onClose }: ViewModelModalProps) 
 
         <Group justify="space-between">
           <Text fw={500}>Type:</Text>
-          <Badge color={getModelTypeBadgeColor(getModelPrimaryType(model.capabilities))} variant="light">
-            {getModelPrimaryType(model.capabilities)}
+          <Badge color={getModelTypeBadgeColor(getModelPrimaryType(model))} variant="light">
+            {getModelPrimaryType(model)}
           </Badge>
         </Group>
 
@@ -174,7 +169,7 @@ export function ViewModelModal({ isOpen, model, onClose }: ViewModelModalProps) 
 
         <Group justify="space-between">
           <Text fw={500}>Capabilities:</Text>
-          <Text>{capabilitiesName ?? (model.modelCapabilitiesId ? `Loading...` : '-')}</Text>
+          <Text>{capabilitiesName ?? '-'}</Text>
         </Group>
 
         <Divider />

@@ -11610,59 +11610,6 @@
         "additionalProperties": false,
         "description": "Data transfer object for updating an existing model author/organization."
       },
-      "ConduitLLM.Admin.Models.ModelCapabilities.ModelCapabilitiesDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "description": "Gets or sets the unique identifier for this capabilities configuration.",
-            "format": "int32"
-          },
-          "supportsChat": {
-            "type": "boolean",
-            "description": "Gets or sets whether the model supports chat/conversation interactions."
-          },
-          "supportsVision": {
-            "type": "boolean",
-            "description": "Gets or sets whether the model supports vision/image understanding."
-          },
-          "supportsFunctionCalling": {
-            "type": "boolean",
-            "description": "Gets or sets whether the model supports function/tool calling."
-          },
-          "supportsStreaming": {
-            "type": "boolean",
-            "description": "Gets or sets whether the model supports streaming responses."
-          },
-          "supportsImageGeneration": {
-            "type": "boolean",
-            "description": "Gets or sets whether the model supports image generation."
-          },
-          "supportsVideoGeneration": {
-            "type": "boolean",
-            "description": "Gets or sets whether the model supports video generation."
-          },
-          "supportsEmbeddings": {
-            "type": "boolean",
-            "description": "Gets or sets whether the model supports text embeddings generation."
-          },
-          "maxTokens": {
-            "type": "integer",
-            "description": "Gets or sets the maximum number of tokens the model can process.",
-            "format": "int32"
-          },
-          "minTokens": {
-            "type": "integer",
-            "description": "Gets or sets the minimum number of tokens for the model.",
-            "format": "int32"
-          },
-          "tokenizerType": {
-            "$ref": "#/components/schemas/TokenizerType"
-          }
-        },
-        "additionalProperties": false,
-        "description": "Alias for CapabilitiesDto to maintain backward compatibility with ModelController."
-      },
       "ConduitLLM.Admin.Models.ModelSeries.CreateModelSeriesDto": {
         "type": "object",
         "properties": {
@@ -11803,10 +11750,48 @@
             "description": "Gets or sets the ID of the model series this model will belong to.",
             "format": "int32"
           },
-          "modelCapabilitiesId": {
+          "supportsChat": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports chat/conversation interactions."
+          },
+          "supportsVision": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports vision/image understanding."
+          },
+          "supportsFunctionCalling": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports function/tool calling."
+          },
+          "supportsStreaming": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports streaming responses."
+          },
+          "supportsImageGeneration": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports image generation."
+          },
+          "supportsVideoGeneration": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports video generation."
+          },
+          "supportsEmbeddings": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports text embeddings generation."
+          },
+          "maxInputTokens": {
             "type": "integer",
-            "description": "Gets or sets the ID of the capabilities configuration for this model.",
-            "format": "int32"
+            "description": "Gets or sets the maximum number of input tokens the model can process.",
+            "format": "int32",
+            "nullable": true
+          },
+          "maxOutputTokens": {
+            "type": "integer",
+            "description": "Gets or sets the maximum number of output tokens the model can generate.",
+            "format": "int32",
+            "nullable": true
+          },
+          "tokenizerType": {
+            "$ref": "#/components/schemas/TokenizerType"
           },
           "isActive": {
             "type": "boolean",
@@ -11867,13 +11852,48 @@
             "description": "Gets or sets the ID of the model series this model belongs to.",
             "format": "int32"
           },
-          "modelCapabilitiesId": {
-            "type": "integer",
-            "description": "Gets or sets the ID of the capabilities configuration for this model.",
-            "format": "int32"
+          "supportsChat": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports chat/conversation interactions."
           },
-          "capabilities": {
-            "$ref": "#/components/schemas/ConduitLLM.Admin.Models.ModelCapabilities.ModelCapabilitiesDto"
+          "supportsVision": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports vision/image understanding."
+          },
+          "supportsFunctionCalling": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports function/tool calling."
+          },
+          "supportsStreaming": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports streaming responses."
+          },
+          "supportsImageGeneration": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports image generation."
+          },
+          "supportsVideoGeneration": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports video generation."
+          },
+          "supportsEmbeddings": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports text embeddings generation."
+          },
+          "maxInputTokens": {
+            "type": "integer",
+            "description": "Gets or sets the maximum number of input tokens the model can process.",
+            "format": "int32",
+            "nullable": true
+          },
+          "maxOutputTokens": {
+            "type": "integer",
+            "description": "Gets or sets the maximum number of output tokens the model can generate.",
+            "format": "int32",
+            "nullable": true
+          },
+          "tokenizerType": {
+            "$ref": "#/components/schemas/TokenizerType"
           },
           "isActive": {
             "type": "boolean",
@@ -11919,13 +11939,48 @@
             "description": "Gets or sets the ID of the model series this model belongs to.",
             "format": "int32"
           },
-          "modelCapabilitiesId": {
-            "type": "integer",
-            "description": "Gets or sets the ID of the capabilities configuration for this model.",
-            "format": "int32"
+          "supportsChat": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports chat/conversation interactions."
           },
-          "capabilities": {
-            "$ref": "#/components/schemas/ConduitLLM.Admin.Models.ModelCapabilities.ModelCapabilitiesDto"
+          "supportsVision": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports vision/image understanding."
+          },
+          "supportsFunctionCalling": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports function/tool calling."
+          },
+          "supportsStreaming": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports streaming responses."
+          },
+          "supportsImageGeneration": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports image generation."
+          },
+          "supportsVideoGeneration": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports video generation."
+          },
+          "supportsEmbeddings": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports text embeddings generation."
+          },
+          "maxInputTokens": {
+            "type": "integer",
+            "description": "Gets or sets the maximum number of input tokens the model can process.",
+            "format": "int32",
+            "nullable": true
+          },
+          "maxOutputTokens": {
+            "type": "integer",
+            "description": "Gets or sets the maximum number of output tokens the model can generate.",
+            "format": "int32",
+            "nullable": true
+          },
+          "tokenizerType": {
+            "$ref": "#/components/schemas/TokenizerType"
           },
           "isActive": {
             "type": "boolean",
@@ -11978,9 +12033,50 @@
             "format": "int32",
             "nullable": true
           },
-          "modelCapabilitiesId": {
+          "supportsChat": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports chat/conversation interactions.",
+            "nullable": true
+          },
+          "supportsVision": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports vision/image understanding.",
+            "nullable": true
+          },
+          "supportsFunctionCalling": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports function/tool calling.",
+            "nullable": true
+          },
+          "supportsStreaming": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports streaming responses.",
+            "nullable": true
+          },
+          "supportsImageGeneration": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports image generation.",
+            "nullable": true
+          },
+          "supportsVideoGeneration": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports video generation.",
+            "nullable": true
+          },
+          "supportsEmbeddings": {
+            "type": "boolean",
+            "description": "Gets or sets whether the model supports text embeddings generation.",
+            "nullable": true
+          },
+          "maxInputTokens": {
             "type": "integer",
-            "description": "Gets or sets the new capabilities configuration ID.",
+            "description": "Gets or sets the maximum number of input tokens the model can process.",
+            "format": "int32",
+            "nullable": true
+          },
+          "maxOutputTokens": {
+            "type": "integer",
+            "description": "Gets or sets the maximum number of output tokens the model can generate.",
             "format": "int32",
             "nullable": true
           },

@@ -27,7 +27,7 @@ export function useModels() {
         if (!model) return false;
         
         // Must support chat capability
-        if (!model.capabilities?.supportsChat) return false;
+        if (!model.supportsChat) return false;
         
         return true;
       });
@@ -42,12 +42,12 @@ export function useModels() {
           providerId: mapping.providerId.toString(),
           providerName: provider?.providerName ?? 'Unknown Provider',
           displayName: mapping.modelAlias, // Use alias as display name
-          maxContextTokens: mapping.maxContextTokensOverride ?? model?.capabilities?.maxTokens ?? 128000,
-          supportsVision: model?.capabilities?.supportsVision ?? false,
-          supportsFunctionCalling: model?.capabilities?.supportsFunctionCalling ?? false,
+          maxContextTokens: mapping.maxContextTokensOverride ?? model?.maxInputTokens ?? 128000,
+          supportsVision: model?.supportsVision ?? false,
+          supportsFunctionCalling: model?.supportsFunctionCalling ?? false,
           supportsToolUsage: false, // Not in the new schema
           supportsJsonMode: false, // Not in the new schema
-          supportsStreaming: model?.capabilities?.supportsStreaming ?? true,
+          supportsStreaming: model?.supportsStreaming ?? true,
         };
       });
       

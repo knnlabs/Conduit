@@ -1,16 +1,16 @@
-import type { ModelCapabilitiesDto } from '@knn_labs/conduit-admin-client';
+import type { ModelDto } from '@knn_labs/conduit-admin-client';
 
 /**
  * Determines the primary type of a model based on its capabilities
  */
-export function getModelPrimaryType(capabilities?: ModelCapabilitiesDto): string {
-  if (!capabilities) return 'Unknown';
+export function getModelPrimaryType(model?: ModelDto): string {
+  if (!model) return 'Unknown';
   
   // Priority order for determining primary type
-  if (capabilities.supportsVideoGeneration) return 'Video';
-  if (capabilities.supportsImageGeneration) return 'Image';
-  if (capabilities.supportsEmbeddings) return 'Embedding';
-  if (capabilities.supportsChat || capabilities.supportsVision) return 'Chat';
+  if (model.supportsVideoGeneration) return 'Video';
+  if (model.supportsImageGeneration) return 'Image';
+  if (model.supportsEmbeddings) return 'Embedding';
+  if (model.supportsChat || model.supportsVision) return 'Chat';
   
   return 'Unknown';
 }
@@ -31,18 +31,18 @@ export function getModelTypeBadgeColor(type: string): string {
 /**
  * Gets all capabilities of a model as an array of strings
  */
-export function getModelCapabilityList(capabilities?: ModelCapabilitiesDto): string[] {
-  if (!capabilities) return [];
+export function getModelCapabilityList(model?: ModelDto): string[] {
+  if (!model) return [];
   
   const capabilityList: string[] = [];
   
-  if (capabilities.supportsChat) capabilityList.push('Chat');
-  if (capabilities.supportsVision) capabilityList.push('Vision');
-  if (capabilities.supportsFunctionCalling) capabilityList.push('Functions');
-  if (capabilities.supportsStreaming) capabilityList.push('Streaming');
-  if (capabilities.supportsImageGeneration) capabilityList.push('Image Gen');
-  if (capabilities.supportsVideoGeneration) capabilityList.push('Video Gen');
-  if (capabilities.supportsEmbeddings) capabilityList.push('Embeddings');
+  if (model.supportsChat) capabilityList.push('Chat');
+  if (model.supportsVision) capabilityList.push('Vision');
+  if (model.supportsFunctionCalling) capabilityList.push('Functions');
+  if (model.supportsStreaming) capabilityList.push('Streaming');
+  if (model.supportsImageGeneration) capabilityList.push('Image Gen');
+  if (model.supportsVideoGeneration) capabilityList.push('Video Gen');
+  if (model.supportsEmbeddings) capabilityList.push('Embeddings');
   
   return capabilityList;
 }

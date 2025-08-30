@@ -1,5 +1,4 @@
 using ConduitLLM.Admin.Models.Models;
-using ConduitLLM.Admin.Models.ModelCapabilities;
 using FluentAssertions;
 
 namespace ConduitLLM.Tests.Admin.Models.Models
@@ -153,7 +152,7 @@ namespace ConduitLLM.Tests.Admin.Models.Models
         }
 
         [Fact]
-        public void ModelDto_Should_Validate_Related_Id_Consistency()
+        public void ModelDto_Should_Have_Capability_Fields()
         {
             // Arrange
             var dto = new ModelDto
@@ -161,24 +160,28 @@ namespace ConduitLLM.Tests.Admin.Models.Models
                 Id = 1,
                 Name = "test",
                 ModelSeriesId = 5,
-                
-                Capabilities = new ModelCapabilitiesDto
-                {
-                    Id = 99, // Set a different ID to test consistency validation
-                    SupportsChat = true
-                },
+                SupportsChat = true,
+                SupportsVision = false,
+                SupportsImageGeneration = false,
+                SupportsVideoGeneration = false,
+                SupportsEmbeddings = false,
+                SupportsFunctionCalling = true,
+                SupportsStreaming = true,
+                MaxInputTokens = 4096,
+                MaxOutputTokens = 2048,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
 
             // Act & Assert
-            // DTO allows this, but business logic should validate consistency
-            dto.Capabilities!.Id.Should().Be(99);
-            
-            // Business validation
-            var isInconsistent = dto.Capabilities != null && dto.Capabilities.Id != dto.Id;
-            isInconsistent.Should().BeTrue("Controller should validate ID consistency");
+            // Capabilities are now flat fields on the model
+            dto.SupportsChat.Should().BeTrue();
+            dto.SupportsFunctionCalling.Should().BeTrue();
+            dto.SupportsStreaming.Should().BeTrue();
+            dto.SupportsVision.Should().BeFalse();
+            dto.MaxInputTokens.Should().Be(4096);
+            dto.MaxOutputTokens.Should().Be(2048);
         }
 
         [Fact]
