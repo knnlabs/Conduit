@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ConduitLLM.Configuration.Migrations
 {
     [DbContext(typeof(ConduitDbContext))]
-    [Migration("20250829082745_UpdateSnapshotAfterAudioRemoval")]
-    partial class UpdateSnapshotAfterAudioRemoval
+    [Migration("20250829233531_AddMissingModelIdentifierColumns")]
+    partial class AddMissingModelIdentifierColumns
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -933,51 +933,6 @@ namespace ConduitLLM.Configuration.Migrations
                     b.ToTable("ModelCostMappings");
                 });
 
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelIdentifier", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Identifier")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<bool>("IsPrimary")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Metadata")
-                        .HasColumnType("text");
-
-                    b.Property<int>("ModelId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Provider")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Identifier")
-                        .HasDatabaseName("IX_ModelIdentifier_Identifier");
-
-                    b.HasIndex("IsPrimary")
-                        .HasDatabaseName("IX_ModelIdentifier_IsPrimary")
-                        .HasFilter("\"IsPrimary\" = true");
-
-                    b.HasIndex("ModelId")
-                        .HasDatabaseName("IX_ModelIdentifier_ModelId");
-
-                    b.HasIndex("Provider", "Identifier")
-                        .IsUnique()
-                        .HasDatabaseName("IX_ModelIdentifier_Provider_Identifier_Unique");
-
-                    b.ToTable("ModelIdentifiers");
-                });
-
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelProviderMapping", b =>
                 {
                     b.Property<int>("Id")
@@ -1051,6 +1006,74 @@ namespace ConduitLLM.Configuration.Migrations
                         .HasFilter("\"IsEnabled\" = true");
 
                     b.ToTable("ModelProviderMappings");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelProviderTypeAssociation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Identifier")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("MaxInputTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("MaxOutputTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Metadata")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("ModelCostId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ModelId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Provider")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ProviderVariation")
+                        .HasColumnType("text");
+
+                    b.Property<decimal?>("QualityScore")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal?>("SpeedScore")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Identifier")
+                        .HasDatabaseName("IX_ModelIdentifier_Identifier");
+
+                    b.HasIndex("IsPrimary")
+                        .HasDatabaseName("IX_ModelIdentifier_IsPrimary")
+                        .HasFilter("\"IsPrimary\" = true");
+
+                    b.HasIndex("ModelCostId");
+
+                    b.HasIndex("ModelId")
+                        .HasDatabaseName("IX_ModelIdentifier_ModelId");
+
+                    b.HasIndex("Provider", "Identifier")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ModelIdentifier_Provider_Identifier_Unique");
+
+                    b.ToTable("ModelIdentifiers", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelSeries", b =>
@@ -1569,17 +1592,6 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Navigation("ModelProviderMapping");
                 });
 
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelIdentifier", b =>
-                {
-                    b.HasOne("ConduitLLM.Configuration.Entities.Model", "Model")
-                        .WithMany("Identifiers")
-                        .HasForeignKey("ModelId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Model");
-                });
-
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelProviderMapping", b =>
                 {
                     b.HasOne("ConduitLLM.Configuration.Entities.Model", "Model")
@@ -1597,6 +1609,23 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Navigation("Model");
 
                     b.Navigation("Provider");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelProviderTypeAssociation", b =>
+                {
+                    b.HasOne("ConduitLLM.Configuration.Entities.ModelCost", "ModelCost")
+                        .WithMany()
+                        .HasForeignKey("ModelCostId");
+
+                    b.HasOne("ConduitLLM.Configuration.Entities.Model", "Model")
+                        .WithMany("Identifiers")
+                        .HasForeignKey("ModelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Model");
+
+                    b.Navigation("ModelCost");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelSeries", b =>
