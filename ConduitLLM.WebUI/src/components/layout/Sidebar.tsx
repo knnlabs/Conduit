@@ -38,7 +38,6 @@ const navigationSections = [
       { id: 'models', label: 'Models', href: '/models', icon: IconBrain },
       { id: 'llm-providers', label: 'LLM Providers', href: '/llm-providers', icon: IconServer },
       { id: 'model-mappings', label: 'Model Mappings', href: '/model-mappings', icon: IconRoute },
-      { id: 'routing-settings', label: 'Routing Settings', href: '/routing-settings', icon: IconSettings },
     ]
   },
   {
@@ -46,7 +45,6 @@ const navigationSections = [
     items: [
       { id: 'ip-filtering', label: 'IP Filtering', href: '/ip-filtering', icon: IconShield },
       { id: 'system-info', label: 'System Info', href: '/system-info', icon: IconInfoCircle },
-      { id: 'error-queues', label: 'Error Queues', href: '/error-queues', icon: IconBugOff },
       { id: 'provider-errors', label: 'Provider Errors', href: '/provider-errors', icon: IconBugOff },
     ]
   },
