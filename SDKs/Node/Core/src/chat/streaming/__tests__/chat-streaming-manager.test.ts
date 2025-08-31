@@ -396,10 +396,14 @@ describe('ChatStreamingManager', () => {
       };
 
       // Mock fetch to throw AbortError when signal is aborted
-      mockFetch.mockImplementation(async (url, options) => {
+      mockFetch.mockImplementation(async (_url, options) => {
         return new Promise((resolve, reject) => {
           const signal = options?.signal as AbortSignal;
-          let timeoutId: NodeJS.Timeout | undefined;
+          const timeoutId: NodeJS.Timeout | undefined = setTimeout(() => {
+            if (!signal?.aborted) {
+              resolve(mockResponse);
+            }
+          }, 1000);
           
           if (signal) {
             signal.addEventListener('abort', () => {
@@ -411,13 +415,6 @@ describe('ChatStreamingManager', () => {
               reject(abortError);
             });
           }
-          
-          // Simulate hanging request with cleanup
-          timeoutId = setTimeout(() => {
-            if (!signal?.aborted) {
-              resolve(mockResponse);
-            }
-          }, 1000);
         });
       });
 

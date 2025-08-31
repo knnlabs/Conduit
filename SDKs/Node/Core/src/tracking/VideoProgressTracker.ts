@@ -132,7 +132,7 @@ export class VideoProgressTracker {
         this.videoHubClient.onVideoGenerationFailed = undefined;
       });
 
-    } catch (error) {
+    } catch {
       // SignalR connection failed, fall back to polling
       // This is expected in some environments (e.g., testing)
       this.isSignalRConnected = false;
@@ -253,7 +253,7 @@ export class VideoProgressTracker {
         if (this.options.useExponentialBackoff && !this.isSignalRConnected) {
           currentInterval = Math.min(currentInterval * 2, this.options.maxPollIntervalMs);
         }
-      } catch (error) {
+      } catch {
         // Polling error occurred, will retry on next interval
         // Errors are expected during network issues
       }

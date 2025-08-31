@@ -13,7 +13,7 @@ export class AudioService extends BaseService {
   /**
    * Placeholder for future audio transcription functionality
    */
-  async transcribe(file: File | Blob, options?: {
+  async transcribe(_file: File | Blob, _options?: {
     model?: string;
     language?: string;
     prompt?: string;
@@ -25,7 +25,7 @@ export class AudioService extends BaseService {
   /**
    * Placeholder for future text-to-speech functionality
    */
-  async speak(text: string, options?: {
+  async speak(_text: string, _options?: {
     model?: string;
     voice?: string;
     speed?: number;
