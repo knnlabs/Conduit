@@ -55,7 +55,7 @@ jobs:
           cd SDKs/Node
           npm ci
           npm run build
-          npm test -- --silent
+          npm run test:ci
       
       - name: WebUI Type Check
         run: |

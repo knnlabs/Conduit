@@ -93,6 +93,8 @@ export class ChatStreamingManager {
     this.state.totalContent = '';
     this.state.startTime = Date.now();
     this.state.metrics = {};
+    
+    let timeoutId: NodeJS.Timeout | undefined;
 
     try {
       // Create abort controller for this request
@@ -100,7 +102,7 @@ export class ChatStreamingManager {
       this.state.abortController = controller;
 
       // Set timeout
-      const timeoutId = setTimeout(() => {
+      timeoutId = setTimeout(() => {
         controller.abort();
         this.log('Request timed out after', this.config.timeoutMs, 'ms');
       }, this.config.timeoutMs);
@@ -119,6 +121,7 @@ export class ChatStreamingManager {
       
       // Clear timeout once we get a response
       clearTimeout(timeoutId);
+      timeoutId = undefined;
 
       if (!response.ok) {
         throw this.createStreamingError(`HTTP ${response.status}: ${response.statusText}`, response.status);
@@ -136,6 +139,10 @@ export class ChatStreamingManager {
       callbacks.onError?.(streamingError);
       throw streamingError;
     } finally {
+      // Always clear timeout if it's still active
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
       this.state.isStreaming = false;
       this.state.abortController = null;
     }

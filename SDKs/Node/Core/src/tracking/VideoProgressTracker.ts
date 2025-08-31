@@ -133,7 +133,8 @@ export class VideoProgressTracker {
       });
 
     } catch (error) {
-      console.error('Failed to setup SignalR connection:', error);
+      // SignalR connection failed, fall back to polling
+      // This is expected in some environments (e.g., testing)
       this.isSignalRConnected = false;
       // Continue with polling fallback
     }
@@ -253,7 +254,8 @@ export class VideoProgressTracker {
           currentInterval = Math.min(currentInterval * 2, this.options.maxPollIntervalMs);
         }
       } catch (error) {
-        console.error('Polling error:', error);
+        // Polling error occurred, will retry on next interval
+        // Errors are expected during network issues
       }
 
       // Schedule next poll if not completed
@@ -405,8 +407,9 @@ export class VideoProgressTracker {
 
     // Unsubscribe from SignalR
     if (this.isSignalRConnected) {
-      this.videoHubClient.unsubscribeFromTask(this.taskId).catch(error => {
-        console.warn('Failed to unsubscribe from task:', error);
+      this.videoHubClient.unsubscribeFromTask(this.taskId).catch(() => {
+        // Silently ignore unsubscribe errors as they're not critical
+        // The connection will be cleaned up regardless
       });
     }
 

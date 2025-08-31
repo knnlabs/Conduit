@@ -21,6 +21,7 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "jest",
+    "test:ci": "jest --silent --forceExit --maxWorkers=2",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "lint": "eslint src --ext .ts",

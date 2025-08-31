@@ -399,16 +399,21 @@ describe('ChatStreamingManager', () => {
       mockFetch.mockImplementation(async (url, options) => {
         return new Promise((resolve, reject) => {
           const signal = options?.signal as AbortSignal;
+          let timeoutId: NodeJS.Timeout | undefined;
+          
           if (signal) {
             signal.addEventListener('abort', () => {
+              if (timeoutId) {
+                clearTimeout(timeoutId);
+              }
               const abortError = new Error('The operation was aborted');
               abortError.name = 'AbortError';
               reject(abortError);
             });
           }
           
-          // Never resolve to simulate hanging request
-          setTimeout(() => {
+          // Simulate hanging request with cleanup
+          timeoutId = setTimeout(() => {
             if (!signal?.aborted) {
               resolve(mockResponse);
             }
