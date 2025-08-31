@@ -37,7 +37,7 @@ else
         local db="${2:-$DB_NAME}"
         
         if [ "$USE_DOCKER" = true ]; then
-            docker exec -i "$POSTGRES_CONTAINER" psql -U "$DB_USER" -d "$db" -t -c "$sql" 2>/dev/null
+            docker exec "$POSTGRES_CONTAINER" psql -U "$DB_USER" -d "$db" -t -c "$sql" 2>/dev/null
         else
             PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$db" -t -c "$sql" 2>/dev/null
         fi
@@ -48,7 +48,7 @@ else
         local db="${2:-$DB_NAME}"
         
         if [ "$USE_DOCKER" = true ]; then
-            docker exec -i "$POSTGRES_CONTAINER" psql -U "$DB_USER" -d "$db" -t -A -c "$sql" 2>/dev/null
+            docker exec "$POSTGRES_CONTAINER" psql -U "$DB_USER" -d "$db" -t -A -c "$sql" 2>/dev/null
         else
             PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$db" -t -A -c "$sql" 2>/dev/null
         fi
