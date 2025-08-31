@@ -12544,7 +12544,7 @@
             "type": "string",
             "nullable": true
           },
-          "modelProviderMappingIds": {
+          "modelProviderTypeAssociationIds": {
             "type": "array",
             "items": {
               "type": "integer",
@@ -13149,6 +13149,11 @@
           "provider": {
             "$ref": "#/components/schemas/ConduitLLM.Configuration.DTOs.ProviderReferenceDto"
           },
+          "modelProviderTypeAssociationId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
           "priority": {
             "type": "integer",
             "format": "int32"
@@ -13159,22 +13164,6 @@
           "maxContextTokensOverride": {
             "type": "integer",
             "format": "int32",
-            "nullable": true
-          },
-          "providerVariation": {
-            "type": "string",
-            "nullable": true
-          },
-          "qualityScore": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "isDefault": {
-            "type": "boolean"
-          },
-          "defaultCapabilityType": {
-            "type": "string",
             "nullable": true
           },
           "createdAt": {
@@ -13607,7 +13596,7 @@
             "type": "string",
             "nullable": true
           },
-          "modelProviderMappingIds": {
+          "modelProviderTypeAssociationIds": {
             "type": "array",
             "items": {
               "type": "integer",

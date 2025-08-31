@@ -43,7 +43,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var mapping = await GetMappingByModelNameAsync(model);
-                var result = mapping?.SupportsVision ?? false;
+                var result = mapping?.ModelProviderTypeAssociation?.Model?.SupportsVision ?? false;
                 _cache.Set(cacheKey, result, _cacheExpiration);
                 return result;
             }
@@ -67,7 +67,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var mapping = await GetMappingByModelNameAsync(model);
-                var result = mapping?.SupportsVideoGeneration ?? false;
+                var result = mapping?.ModelProviderTypeAssociation?.Model?.SupportsVideoGeneration ?? false;
                 _cache.Set(cacheKey, result, _cacheExpiration);
                 return result;
             }
@@ -90,7 +90,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var mapping = await GetMappingByModelNameAsync(model);
-                var tokenizerType = mapping?.TokenizerType;
+                var tokenizerType = mapping?.ModelProviderTypeAssociation?.Model?.TokenizerType;
 
                 // Default to cl100k_base if not specified
                 string result = tokenizerType?.ToString() ?? "Cl100KBase";
@@ -117,18 +117,10 @@ namespace ConduitLLM.Core.Services
 
             try
             {
-                var allMappings = await _repository.GetAllAsync(default);
-                var defaultMapping = allMappings.FirstOrDefault(m =>
-                    m.IsDefault &&
-                    m.Provider?.ProviderType.ToString().Equals(provider, StringComparison.OrdinalIgnoreCase) == true &&
-                    m.DefaultCapabilityType?.Equals(capabilityType, StringComparison.OrdinalIgnoreCase) == true);
-
-                var result = defaultMapping?.ModelAlias;
-                if (result != null)
-                {
-                    _cache.Set(cacheKey, result, _cacheExpiration);
-                }
-                return result;
+                // Default model selection is now deprecated - return null
+                // This functionality should be replaced with priority-based routing
+                _logger.LogWarning("GetDefaultModelAsync is deprecated. Use priority-based routing instead.");
+                return null;
             }
             catch (Exception ex)
             {

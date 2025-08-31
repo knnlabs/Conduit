@@ -20,7 +20,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         public async Task DeleteMapping_WithExistingId_ShouldReturnNoContent()
         {
             // Arrange
-            var existingMapping = new ModelProviderMapping { Id = 1, ModelAlias = "test-model", ModelId = 1 };
+            var existingMapping = new ModelProviderMapping { Id = 1, ModelAlias = "test-model", ModelProviderTypeAssociationId = 1 };
             _mockService.Setup(x => x.GetMappingByIdAsync(1))
                 .ReturnsAsync(existingMapping);
             _mockService.Setup(x => x.DeleteMappingAsync(1))

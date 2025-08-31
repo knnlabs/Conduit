@@ -34,7 +34,7 @@ namespace ConduitLLM.Core.Services
             }
             
             // Verify model supports image generation
-            if (!mapping.SupportsImageGeneration)
+            if (mapping.ModelProviderTypeAssociation?.Model == null || !mapping.ModelProviderTypeAssociation.Model.SupportsImageGeneration)
             {
                 _logger.LogWarning("Model {Model} does not support image generation", requestedModel);
                 return null;

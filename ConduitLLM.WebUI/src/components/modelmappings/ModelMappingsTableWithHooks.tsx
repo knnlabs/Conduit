@@ -73,36 +73,17 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
   };
 
   const getCapabilityBadges = (mapping: ExtendedModelProviderMappingDto) => {
-    // Note: Capabilities have been moved to the Model entity
-    // This mapping now only shows basic mapping information
+    // Note: Capabilities are now stored in the Model entity
+    // This shows basic mapping information
     const badges = [];
     
-    if (mapping.isDefault) {
-      badges.push({ label: '⭐ Default', color: 'yellow' });
+    // Add badges based on available mapping properties
+    if (mapping.maxContextTokensOverride) {
+      badges.push({ label: `Override: ${mapping.maxContextTokensOverride} tokens`, color: 'blue' });
     }
     
-    if (mapping.providerVariation) {
-      badges.push({ label: mapping.providerVariation, color: 'blue' });
-    }
-    
-    if (mapping.qualityScore !== undefined && mapping.qualityScore !== null) {
-      let qualityLabel: string;
-      let qualityColor: string;
-      if (mapping.qualityScore >= 0.9) {
-        qualityLabel = 'High Quality';
-        qualityColor = 'green';
-      } else if (mapping.qualityScore >= 0.7) {
-        qualityLabel = 'Good Quality';
-        qualityColor = 'yellow';
-      } else {
-        qualityLabel = 'Lower Quality';
-        qualityColor = 'orange';
-      }
-      badges.push({ label: qualityLabel, color: qualityColor });
-    }
-    
-    if (mapping.defaultCapabilityType) {
-      badges.push({ label: `Default: ${mapping.defaultCapabilityType}`, color: 'violet' });
+    if (mapping.notes) {
+      badges.push({ label: 'Has Notes', color: 'gray' });
     }
     
     return badges.slice(0, 5).map((badge) => (

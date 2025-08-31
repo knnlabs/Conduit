@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { Container, Title, Paper, TextInput, Select, NumberInput, Switch, Button, Group, Stack, LoadingOverlay, Alert, Textarea } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
@@ -10,11 +10,9 @@ import type { ModelProviderMappingDto, UpdateModelProviderMappingDto, ProviderDt
 
 export default function EditModelMappingPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
-  const [mappingId, setMappingId] = useState<string>('');
-  
-  useEffect(() => {
-    void params.then(p => setMappingId(p.id));
-  }, [params]);
+  const resolvedParams = use(params);
+  const mappingId = parseInt(resolvedParams.id, 10);
+  const isValidId = !isNaN(mappingId);
   
   // Form state
   const [modelAlias, setModelAlias] = useState<string>('');
@@ -23,11 +21,7 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
   const [providerModelId, setProviderModelId] = useState<string>('');
   const [priority, setPriority] = useState<number>(100);
   const [isEnabled, setIsEnabled] = useState<boolean>(true);
-  const [isDefault, setIsDefault] = useState<boolean>(false);
   const [maxContextTokensOverride, setMaxContextTokensOverride] = useState<number | undefined>();
-  const [providerVariation, setProviderVariation] = useState<string>('');
-  const [qualityScore, setQualityScore] = useState<number | undefined>();
-  const [defaultCapabilityType, setDefaultCapabilityType] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   
   // UI state
@@ -39,9 +33,11 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
   const [modelAliasError, setModelAliasError] = useState<string>('');
 
   useEffect(() => {
-    void fetchData();
+    if (isValidId) {
+      void fetchData();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mappingId]);
+  }, []);
 
   const fetchData = async () => {
     try {
@@ -50,7 +46,7 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
 
       // Fetch the mapping, providers, and existing mappings in parallel
       const mappingData = await withAdminClient(client => 
-        client.modelMappings.getById(parseInt(mappingId, 10))
+        client.modelMappings.getById(mappingId)
       );
       
       const providersResponse = await withAdminClient(client => 
@@ -76,11 +72,7 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
         setProviderId(mappingData.providerId.toString());
       }
       setIsEnabled(mappingData.isEnabled);
-      setIsDefault(mappingData.isDefault ?? false);
       setMaxContextTokensOverride(mappingData.maxContextTokensOverride);
-      setProviderVariation(mappingData.providerVariation ?? '');
-      setQualityScore(mappingData.qualityScore);
-      setDefaultCapabilityType(mappingData.defaultCapabilityType ?? '');
       setNotes(mappingData.notes ?? '');
 
       setProviders(providersData);
@@ -101,7 +93,7 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
     }
     
     const duplicate = existingMappings.find(m => 
-      m.modelAlias === value && m.id !== parseInt(mappingId)
+      m.modelAlias === value && m.id !== mappingId
     );
     
     if (duplicate) {
@@ -141,23 +133,19 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
       }
 
       const updateData: UpdateModelProviderMappingDto = {
-        id: parseInt(mappingId, 10),
+        id: mappingId,
         modelAlias,
         modelId,
         providerId: parseInt(providerId, 10),
         providerModelId,
         priority,
         isEnabled,
-        isDefault,
         maxContextTokensOverride,
-        providerVariation: providerVariation || undefined,
-        qualityScore,
-        defaultCapabilityType: defaultCapabilityType || undefined,
         notes: notes || undefined,
       };
 
       await withAdminClient(client => 
-        client.modelMappings.update(parseInt(mappingId, 10), updateData)
+        client.modelMappings.update(mappingId, updateData)
       );
 
       notifications.show({
@@ -178,6 +166,17 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
       setIsSaving(false);
     }
   };
+
+  // Handle invalid ID case
+  if (!isValidId) {
+    return (
+      <Container size="md" py="xl">
+        <Alert icon={<IconAlertCircle size={16} />} color="red">
+          Invalid model mapping ID
+        </Alert>
+      </Container>
+    );
+  }
 
   return (
     <Container size="md" py="xl">
@@ -253,33 +252,6 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
               onChange={(val) => setMaxContextTokensOverride(val === '' ? undefined : Number(val))}
             />
 
-            <TextInput
-              label="Provider Variation"
-              description="Specific model variation (e.g., Q4_K_M, GGUF, instruct)"
-              placeholder="Optional"
-              value={providerVariation}
-              onChange={(e) => setProviderVariation(e.currentTarget.value)}
-            />
-
-            <NumberInput
-              label="Quality Score"
-              description="Model quality relative to original (0.0-1.0)"
-              min={0}
-              max={1}
-              step={0.1}
-              decimalScale={2}
-              value={qualityScore}
-              onChange={(val) => setQualityScore(val === '' ? undefined : Number(val))}
-            />
-
-            <TextInput
-              label="Default Capability Type"
-              description="Default capability for routing (optional)"
-              placeholder="e.g., chat, completion"
-              value={defaultCapabilityType}
-              onChange={(e) => setDefaultCapabilityType(e.currentTarget.value)}
-            />
-
             <Textarea
               label="Notes"
               description="Additional notes about this mapping"
@@ -289,19 +261,11 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
               rows={3}
             />
 
-            <Group>
-              <Switch
-                label="Enabled"
-                checked={isEnabled}
-                onChange={(e) => setIsEnabled(e.currentTarget.checked)}
-              />
-              
-              <Switch
-                label="Is Default"
-                checked={isDefault}
-                onChange={(e) => setIsDefault(e.currentTarget.checked)}
-              />
-            </Group>
+            <Switch
+              label="Enabled"
+              checked={isEnabled}
+              onChange={(e) => setIsEnabled(e.currentTarget.checked)}
+            />
 
             <Group justify="flex-end" mt="md">
               <Button variant="subtle" onClick={() => router.push('/model-mappings')}>

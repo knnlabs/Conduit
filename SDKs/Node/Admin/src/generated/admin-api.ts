@@ -10172,7 +10172,7 @@ export interface components {
       costName: string;
       pricingModel: components["schemas"]["ConduitLLM.Configuration.PricingModel"];
       pricingConfiguration?: string | null;
-      modelProviderMappingIds?: number[] | null;
+      modelProviderTypeAssociationIds?: number[] | null;
       modelType: string;
       /** Format: int32 */
       priority?: number;
@@ -10368,15 +10368,12 @@ export interface components {
       providerId: number;
       provider?: components["schemas"]["ConduitLLM.Configuration.DTOs.ProviderReferenceDto"];
       /** Format: int32 */
+      modelProviderTypeAssociationId?: number | null;
+      /** Format: int32 */
       priority?: number;
       isEnabled?: boolean;
       /** Format: int32 */
       maxContextTokensOverride?: number | null;
-      providerVariation?: string | null;
-      /** Format: double */
-      qualityScore?: number | null;
-      isDefault?: boolean;
-      defaultCapabilityType?: string | null;
       /** Format: date-time */
       createdAt?: string;
       /** Format: date-time */
@@ -10532,7 +10529,7 @@ export interface components {
       costName: string;
       pricingModel: components["schemas"]["ConduitLLM.Configuration.PricingModel"];
       pricingConfiguration?: string | null;
-      modelProviderMappingIds?: number[] | null;
+      modelProviderTypeAssociationIds?: number[] | null;
       modelType: string;
       /** Format: int32 */
       priority?: number;

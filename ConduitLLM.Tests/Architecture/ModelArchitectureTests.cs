@@ -32,18 +32,18 @@ namespace ConduitLLM.Tests.Architecture
         }
 
         [Fact]
-        public void ModelProviderMapping_ShouldHaveModelIdRequired()
+        public void ModelProviderMapping_ShouldHaveModelProviderTypeAssociationIdRequired()
         {
             // Arrange
             var mappingType = typeof(ModelProviderMapping);
-            var modelIdProperty = mappingType.GetProperty("ModelId");
+            var associationIdProperty = mappingType.GetProperty("ModelProviderTypeAssociationId");
 
             // Assert
-            Assert.NotNull(modelIdProperty);
-            Assert.Equal(typeof(int), modelIdProperty.PropertyType);
-            // ModelId should not be nullable
-            Assert.False(Nullable.GetUnderlyingType(modelIdProperty.PropertyType) != null,
-                "ModelId should not be nullable");
+            Assert.NotNull(associationIdProperty);
+            Assert.Equal(typeof(int), associationIdProperty.PropertyType);
+            // ModelProviderTypeAssociationId should not be nullable
+            Assert.False(Nullable.GetUnderlyingType(associationIdProperty.PropertyType) != null,
+                "ModelProviderTypeAssociationId should not be nullable");
         }
 
         [Fact]
@@ -97,21 +97,29 @@ namespace ConduitLLM.Tests.Architecture
         public void ModelProviderMapping_ShouldUseModelTokenLimits()
         {
             // Arrange
-            var mapping = new ModelProviderMapping
+            var model = new Model
+            {
+                Id = 1,
+                Name = "test-model",
+                MaxInputTokens = 4096,
+                MaxOutputTokens = 2048
+            };
+            
+            var association = new ModelProviderTypeAssociation
             {
                 ModelId = 1,
-                Model = new Model
-                {
-                    Id = 1,
-                    Name = "test-model",
-                    MaxInputTokens = 4096,
-                    MaxOutputTokens = 2048
-                }
+                Model = model
+            };
+            
+            var mapping = new ModelProviderMapping
+            {
+                ModelProviderTypeAssociationId = 1,
+                ModelProviderTypeAssociation = association
             };
 
             // Act & Assert
-            Assert.Equal(4096, mapping.Model.MaxInputTokens);
-            Assert.Equal(2048, mapping.Model.MaxOutputTokens);
+            Assert.Equal(4096, mapping.ModelProviderTypeAssociation?.Model?.MaxInputTokens);
+            Assert.Equal(2048, mapping.ModelProviderTypeAssociation?.Model?.MaxOutputTokens);
         }
 
         [Fact]
@@ -158,40 +166,47 @@ namespace ConduitLLM.Tests.Architecture
                 MaxOutputTokens = 4096,
                 TokenizerType = TokenizerType.Cl100KBase
             };
-
-            var mapping = new ModelProviderMapping
+            
+            var association = new ModelProviderTypeAssociation
             {
                 ModelId = 1,
                 Model = model
             };
 
+            var mapping = new ModelProviderMapping
+            {
+                ModelProviderTypeAssociationId = 1,
+                ModelProviderTypeAssociation = association
+            };
+
             // Act & Assert
-            Assert.Equal(model.SupportsChat, mapping.SupportsChat);
-            Assert.Equal(model.SupportsVision, mapping.SupportsVision);
-            Assert.Equal(model.SupportsEmbeddings, mapping.SupportsEmbeddings);
-            Assert.Equal(model.SupportsFunctionCalling, mapping.SupportsFunctionCalling);
-            Assert.Equal(model.SupportsStreaming, mapping.SupportsStreaming);
-            Assert.Equal(model.SupportsImageGeneration, mapping.SupportsImageGeneration);
-            Assert.Equal(model.SupportsVideoGeneration, mapping.SupportsVideoGeneration);
-            Assert.Equal(model.MaxInputTokens, mapping.Model.MaxInputTokens);
-            Assert.Equal(model.TokenizerType, mapping.TokenizerType);
+            Assert.Equal(model.SupportsChat, mapping.ModelProviderTypeAssociation?.Model?.SupportsChat);
+            Assert.Equal(model.SupportsVision, mapping.ModelProviderTypeAssociation?.Model?.SupportsVision);
+            Assert.Equal(model.SupportsEmbeddings, mapping.ModelProviderTypeAssociation?.Model?.SupportsEmbeddings);
+            Assert.Equal(model.SupportsFunctionCalling, mapping.ModelProviderTypeAssociation?.Model?.SupportsFunctionCalling);
+            Assert.Equal(model.SupportsStreaming, mapping.ModelProviderTypeAssociation?.Model?.SupportsStreaming);
+            Assert.Equal(model.SupportsImageGeneration, mapping.ModelProviderTypeAssociation?.Model?.SupportsImageGeneration);
+            Assert.Equal(model.SupportsVideoGeneration, mapping.ModelProviderTypeAssociation?.Model?.SupportsVideoGeneration);
+            Assert.Equal(model.MaxInputTokens, mapping.ModelProviderTypeAssociation?.Model?.MaxInputTokens);
+            Assert.Equal(model.TokenizerType, mapping.ModelProviderTypeAssociation?.Model?.TokenizerType);
         }
 
         [Fact]
-        public void ModelProviderMapping_WithNullModel_ShouldReturnDefaultCapabilities()
+        public void ModelProviderMapping_WithNullAssociation_ShouldReturnDefaultCapabilities()
         {
             // Arrange
             var mapping = new ModelProviderMapping
             {
-                ModelId = 1,
-                Model = null // Simulating lazy loading not yet loaded
+                ModelProviderTypeAssociationId = 1,
+                ModelProviderTypeAssociation = null // Simulating lazy loading not yet loaded
             };
 
-            // Act & Assert - Should return false/default values when Model is null
-            Assert.False(mapping.SupportsChat);
-            Assert.False(mapping.SupportsVision);
-            Assert.False(mapping.SupportsEmbeddings);
-            Assert.Null(mapping.TokenizerType);
+            // Act & Assert - Should return null when ModelProviderTypeAssociation is null
+            Assert.Null(mapping.ModelProviderTypeAssociation);
+            Assert.False(mapping.ModelProviderTypeAssociation?.Model?.SupportsChat ?? false);
+            Assert.False(mapping.ModelProviderTypeAssociation?.Model?.SupportsVision ?? false);
+            Assert.False(mapping.ModelProviderTypeAssociation?.Model?.SupportsEmbeddings ?? false);
+            Assert.Null(mapping.ModelProviderTypeAssociation?.Model?.TokenizerType);
         }
 
         [Fact]

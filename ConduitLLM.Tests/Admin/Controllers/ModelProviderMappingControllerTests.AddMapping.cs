@@ -25,33 +25,31 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var mapping = new ModelProviderMapping
             {
                 ModelAlias = "new-model",
-                ModelId = 1,
+                ModelProviderTypeAssociationId = 1,
                 ProviderId = 1,
-                ProviderModelId = "gpt-4-new",
-                // SupportsStreaming = true
+                ProviderModelId = "gpt-4-new"
             };
 
             var createdMapping = new ModelProviderMapping
             {
                 Id = 123,
                 ModelAlias = "new-model",
-                ModelId = 1,
+                ModelProviderTypeAssociationId = 1,
                 ProviderId = 1,
-                ProviderModelId = "gpt-4-new",
-                // SupportsStreaming = true
+                ProviderModelId = "gpt-4-new"
             };
 
-            // First call should return null (no existing mapping)
-            _mockService.Setup(x => x.GetMappingByModelIdAsync(1))
-                .ReturnsAsync((ModelProviderMapping?)null);
-            
-            _mockService.Setup(x => x.AddMappingAsync(It.IsAny<ModelProviderMapping>()))
-                .ReturnsAsync(true);
+            // Setup GetAllMappingsAsync to return empty list (no duplicates)
+            _mockService.Setup(x => x.GetAllMappingsAsync())
+                .ReturnsAsync(new List<ModelProviderMapping>());
 
-            // Second call should return the created mapping
-            _mockService.SetupSequence(x => x.GetMappingByModelIdAsync(1))
-                .ReturnsAsync((ModelProviderMapping?)null)  // First call (check existence)
-                .ReturnsAsync(createdMapping);              // Second call (get created)
+            // Setup AddMappingAsync to set the ID and return true
+            _mockService.Setup(x => x.AddMappingAsync(It.IsAny<ModelProviderMapping>()))
+                .Callback<ModelProviderMapping>(m => m.Id = 123)
+                .ReturnsAsync(true);
+            
+            _mockService.Setup(x => x.GetMappingByIdAsync(It.IsAny<int>()))
+                .ReturnsAsync(createdMapping);
 
             // Act
             var actionResult = await _controller.CreateMapping(mapping.ToDto());
@@ -69,14 +67,23 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var mapping = new ModelProviderMapping
             {
                 ModelAlias = "existing-model",
-                ModelId = 1,
+                ModelProviderTypeAssociationId = 1,
                 ProviderId = 1,
                 ProviderModelId = "gpt-4"
             };
 
-            // Mock that a mapping already exists for this model ID
-            _mockService.Setup(x => x.GetMappingByModelIdAsync(1))
-                .ReturnsAsync(new ModelProviderMapping { Id = 999, ModelAlias = "existing-model", ModelId = 1 });
+            var existingMapping = new ModelProviderMapping
+            {
+                Id = 100,
+                ModelAlias = "existing-model",
+                ModelProviderTypeAssociationId = 2,
+                ProviderId = 2,
+                ProviderModelId = "gpt-4-old"
+            };
+
+            // Mock GetAllMappingsAsync to return existing mapping with same alias
+            _mockService.Setup(x => x.GetAllMappingsAsync())
+                .ReturnsAsync(new List<ModelProviderMapping> { existingMapping });
 
             // Act
             var actionResult = await _controller.CreateMapping(mapping.ToDto());
@@ -84,7 +91,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Assert
             var conflictResult = Assert.IsType<ConflictObjectResult>(actionResult);
             var errorResponse = Assert.IsType<ErrorResponseDto>(conflictResult.Value);
-            errorResponse.error.ToString().Should().Contain("already exists");
+            errorResponse.error.ToString().Should().Contain("A mapping for model alias 'existing-model' already exists");
         }
 
         [Fact]
@@ -94,14 +101,14 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var mapping = new ModelProviderMapping
             {
                 ModelAlias = "new-model",
-                ModelId = 1,
+                ModelProviderTypeAssociationId = 1,
                 ProviderId = 999, // Invalid provider
                 ProviderModelId = "gpt-4"
             };
 
-            // No existing mapping
-            _mockService.Setup(x => x.GetMappingByModelIdAsync(1))
-                .ReturnsAsync((ModelProviderMapping?)null);
+            // Setup GetAllMappingsAsync to return empty list (no duplicates)
+            _mockService.Setup(x => x.GetAllMappingsAsync())
+                .ReturnsAsync(new List<ModelProviderMapping>());
 
             // Add fails (e.g., invalid provider ID)
             _mockService.Setup(x => x.AddMappingAsync(It.IsAny<ModelProviderMapping>()))

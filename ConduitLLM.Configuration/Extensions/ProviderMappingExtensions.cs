@@ -31,16 +31,12 @@ namespace ConduitLLM.Configuration.Extensions
             {
                 Id = mapping.Id,
                 ModelAlias = mapping.ModelAlias,
-                ModelId = mapping.ModelId,
                 ProviderModelId = mapping.ProviderModelId,
                 ProviderId = mapping.ProviderId,
                 Provider = mapping.Provider?.ToReferenceDto(),
+                ModelProviderTypeAssociationId = mapping.ModelProviderTypeAssociationId,
                 Priority = 0, // Entity doesn't have Priority
                 IsEnabled = mapping.IsEnabled,
-                ProviderVariation = mapping.ProviderVariation,
-                QualityScore = mapping.QualityScore,
-                IsDefault = mapping.IsDefault,
-                DefaultCapabilityType = mapping.DefaultCapabilityType,
                 CreatedAt = mapping.CreatedAt,
                 UpdatedAt = mapping.UpdatedAt,
                 Notes = null // Entity doesn't have Notes
@@ -53,14 +49,10 @@ namespace ConduitLLM.Configuration.Extensions
         public static void UpdateFromDto(this ModelProviderMapping mapping, ModelProviderMappingDto dto)
         {
             mapping.ModelAlias = dto.ModelAlias;
-            mapping.ModelId = dto.ModelId;
             mapping.ProviderModelId = dto.ProviderModelId;
             mapping.ProviderId = dto.ProviderId;
+            mapping.ModelProviderTypeAssociationId = dto.ModelProviderTypeAssociationId;
             mapping.IsEnabled = dto.IsEnabled;
-            mapping.ProviderVariation = dto.ProviderVariation;
-            mapping.QualityScore = dto.QualityScore;
-            mapping.IsDefault = dto.IsDefault;
-            mapping.DefaultCapabilityType = dto.DefaultCapabilityType;
             mapping.UpdatedAt = System.DateTime.UtcNow;
             // Note: Priority and Notes are DTO-only properties
         }

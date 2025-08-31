@@ -37,8 +37,9 @@ namespace ConduitLLM.Configuration.Repositories
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ModelProviderMappings
                     .Include(m => m.Provider)
-                    .Include(m => m.Model)
-                        .ThenInclude(m => m!.Series)
+                    .Include(m => m.ModelProviderTypeAssociation)
+                        .ThenInclude(a => a.Model)
+                            .ThenInclude(m => m.Series)
                     .AsNoTracking()
                     .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
             }
@@ -64,7 +65,8 @@ namespace ConduitLLM.Configuration.Repositories
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ModelProviderMappings
                     .Include(m => m.Provider)
-                    .Include(m => m.Model)
+                    .Include(m => m.ModelProviderTypeAssociation)
+                        .ThenInclude(a => a.Model)
                     .AsNoTracking()
                     .FirstOrDefaultAsync(m => m.ModelAlias == modelName, cancellationToken);
             }
@@ -187,18 +189,14 @@ namespace ConduitLLM.Configuration.Repositories
                 existingEntity.ProviderModelId = modelProviderMapping.ProviderModelId;
                 existingEntity.ProviderId = modelProviderMapping.ProviderId;
                 existingEntity.IsEnabled = modelProviderMapping.IsEnabled;
-                existingEntity.ModelId = modelProviderMapping.ModelId;
-                existingEntity.ProviderVariation = modelProviderMapping.ProviderVariation;
-                existingEntity.QualityScore = modelProviderMapping.QualityScore;
-                existingEntity.IsDefault = modelProviderMapping.IsDefault;
-                existingEntity.DefaultCapabilityType = modelProviderMapping.DefaultCapabilityType;
+                existingEntity.ModelProviderTypeAssociationId = modelProviderMapping.ModelProviderTypeAssociationId;
                 
                 existingEntity.UpdatedAt = DateTime.UtcNow;
 
                 _logger.LogInformation(
-                    "Updating model mapping {ModelAlias} with ModelId={ModelId}",
+                    "Updating model mapping {ModelAlias} with AssociationId={AssociationId}",
                     existingEntity.ModelAlias,
-                    existingEntity.ModelId);
+                    existingEntity.ModelProviderTypeAssociationId);
 
                 await dbContext.SaveChangesAsync(cancellationToken);
                 return true;

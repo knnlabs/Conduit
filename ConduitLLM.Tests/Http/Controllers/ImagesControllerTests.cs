@@ -99,9 +99,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var mapping = new ModelProviderMapping
             {
                 ModelAlias = "gpt-4",
-                    ModelId = 1,
+                ModelProviderTypeAssociationId = 1,
                 ProviderModelId = "gpt-4",
-                // SupportsImageGeneration = false,
                 Provider = new Provider { ProviderType = ProviderType.OpenAI }
             };
 
@@ -182,9 +181,8 @@ namespace ConduitLLM.Tests.Http.Controllers
             var mapping = new ModelProviderMapping
             {
                 ModelAlias = "gpt-4",
-                    ModelId = 1,
+                ModelProviderTypeAssociationId = 1,
                 ProviderModelId = "gpt-4",
-                // SupportsImageGeneration = false,
                 Provider = new Provider { ProviderType = ProviderType.OpenAI }
             };
 

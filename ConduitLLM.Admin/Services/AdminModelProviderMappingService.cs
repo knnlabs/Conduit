@@ -64,7 +64,7 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
     {
         _logger.LogInformation("Getting model provider mapping for model ID: {ModelId}", modelId);
         var mappings = await _mappingRepository.GetAllAsync();
-        return mappings.FirstOrDefault(m => m.ModelId == modelId);
+        return mappings.FirstOrDefault(m => m.ModelProviderTypeAssociation?.ModelId == modelId);
     }
 
     /// <inheritdoc />
@@ -72,7 +72,7 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
     {
         _logger.LogInformation("Getting all model provider mappings for model ID: {ModelId}", modelId);
         var mappings = await _mappingRepository.GetAllAsync();
-        return mappings.Where(m => m.ModelId == modelId).ToList();
+        return mappings.Where(m => m.ModelProviderTypeAssociation?.ModelId == modelId).ToList();
     }
 
     /// <inheritdoc />
@@ -153,14 +153,10 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
 
             // Update properties that can be modified
             existingMapping.ModelAlias = mapping.ModelAlias;
-            existingMapping.ModelId = mapping.ModelId;
             existingMapping.ProviderModelId = mapping.ProviderModelId;
             existingMapping.ProviderId = mapping.ProviderId;
+            existingMapping.ModelProviderTypeAssociationId = mapping.ModelProviderTypeAssociationId;
             existingMapping.IsEnabled = mapping.IsEnabled;
-            existingMapping.ProviderVariation = mapping.ProviderVariation;
-            existingMapping.QualityScore = mapping.QualityScore;
-            existingMapping.IsDefault = mapping.IsDefault;
-            existingMapping.DefaultCapabilityType = mapping.DefaultCapabilityType;
             
             existingMapping.UpdatedAt = DateTime.UtcNow;
 

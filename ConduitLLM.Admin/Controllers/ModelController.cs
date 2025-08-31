@@ -673,11 +673,8 @@ namespace ConduitLLM.Admin.Controllers
         {
             try
             {
-                // Validate model ID consistency
-                if (mappingDto.ModelId != id)
-                {
-                    return BadRequest("Model ID in URL does not match Model ID in request body");
-                }
+                // Skip ModelId validation since it's no longer on the DTO
+                // The ModelProviderTypeAssociationId provides the model relationship
 
                 // Check if model exists
                 var model = await _modelRepository.GetByIdAsync(id);
@@ -735,11 +732,8 @@ namespace ConduitLLM.Admin.Controllers
         {
             try
             {
-                // Validate IDs
-                if (mappingDto.ModelId != id)
-                {
-                    return BadRequest("Model ID in URL does not match Model ID in request body");
-                }
+                // Skip ModelId validation since it's no longer on the DTO
+                // The ModelProviderTypeAssociationId provides the model relationship
 
                 if (mappingDto.Id != mappingId)
                 {
@@ -760,7 +754,7 @@ namespace ConduitLLM.Admin.Controllers
                     return NotFound($"Provider mapping with ID {mappingId} not found");
                 }
 
-                if (existingMapping.ModelId != id)
+                if (existingMapping.ModelProviderTypeAssociation?.ModelId != id)
                 {
                     return BadRequest($"Mapping with ID {mappingId} does not belong to model with ID {id}");
                 }
@@ -810,7 +804,7 @@ namespace ConduitLLM.Admin.Controllers
                     return NotFound($"Provider mapping with ID {mappingId} not found");
                 }
 
-                if (existingMapping.ModelId != id)
+                if (existingMapping.ModelProviderTypeAssociation?.ModelId != id)
                 {
                     return BadRequest($"Mapping with ID {mappingId} does not belong to model with ID {id}");
                 }

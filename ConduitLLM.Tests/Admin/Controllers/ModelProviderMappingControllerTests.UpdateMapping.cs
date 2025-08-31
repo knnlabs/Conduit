@@ -25,10 +25,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             {
                 Id = 1,
                 ModelAlias = "gpt-4",
-                ModelId = 1,
+                ModelProviderTypeAssociationId = 1,
                 ProviderId = 1,
-                ProviderModelId = "gpt-4-turbo-updated",
-                // SupportsVision = true
+                ProviderModelId = "gpt-4-turbo-updated"
             };
 
             // Mock that the mapping exists
@@ -53,7 +52,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             {
                 Id = 999,
                 ModelAlias = "gpt-4",
-                ModelId = 1,
+                ModelProviderTypeAssociationId = 1,
                 ProviderId = 1,
                 ProviderModelId = "gpt-4"
             };

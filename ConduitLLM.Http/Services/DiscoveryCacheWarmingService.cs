@@ -158,8 +158,9 @@ namespace ConduitLLM.Http.Services
                 // Get all enabled model mappings with their related data
                 var modelMappings = await context.ModelProviderMappings
                     .Include(m => m.Provider)
-                    .Include(m => m.Model)
-                        .ThenInclude(m => m.Series)
+                    .Include(m => m.ModelProviderTypeAssociation)
+                        .ThenInclude(mpta => mpta.Model)
+                            .ThenInclude(m => m.Series)
                     .Where(m => m.IsEnabled && m.Provider != null && m.Provider.IsEnabled)
                     .ToListAsync(cancellationToken);
 
@@ -168,12 +169,12 @@ namespace ConduitLLM.Http.Services
                 foreach (var mapping in modelMappings)
                 {
                     // Skip if model is missing
-                    if (mapping.Model == null)
+                    if (mapping.ModelProviderTypeAssociation?.Model == null)
                     {
                         continue;
                     }
 
-                    var caps = mapping.Model;
+                    var caps = mapping.ModelProviderTypeAssociation.Model;
 
                     // Apply capability filter if specified
                     if (!string.IsNullOrEmpty(capability))
@@ -205,14 +206,14 @@ namespace ConduitLLM.Http.Services
                         display_name = mapping.ModelAlias,
                         
                         // Metadata
-                        description = mapping.Model?.Description ?? string.Empty,
-                        model_card_url = mapping.Model?.ModelCardUrl ?? string.Empty,
+                        description = mapping.ModelProviderTypeAssociation?.Model?.Description ?? string.Empty,
+                        model_card_url = mapping.ModelProviderTypeAssociation?.Model?.ModelCardUrl ?? string.Empty,
                         max_input_tokens = caps.MaxInputTokens,
                         max_output_tokens = caps.MaxOutputTokens,
                         tokenizer_type = caps.TokenizerType.ToString().ToLowerInvariant(),
                         
                         // UI Parameters from Model or Series
-                        parameters = mapping.Model?.ModelParameters ?? mapping.Model?.Series?.Parameters ?? "{}",
+                        parameters = mapping.ModelProviderTypeAssociation?.Model?.ModelParameters ?? mapping.ModelProviderTypeAssociation?.Model?.Series?.Parameters ?? "{}",
                         
                         // Capabilities (flat boolean flags)
                         supports_chat = caps.SupportsChat,

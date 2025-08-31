@@ -172,11 +172,7 @@ _logger.LogWarning("Mapping not found for model alias {ModelAlias}", mapping.Mod
                 existingEntity.ProviderModelId = mapping.ProviderModelId;
                 existingEntity.ProviderId = credential.Id;
                 existingEntity.IsEnabled = mapping.IsEnabled;
-                existingEntity.ModelId = mapping.ModelId;
-                existingEntity.ProviderVariation = mapping.ProviderVariation;
-                existingEntity.QualityScore = mapping.QualityScore;
-                existingEntity.IsDefault = mapping.IsDefault;
-                existingEntity.DefaultCapabilityType = mapping.DefaultCapabilityType;
+                existingEntity.ModelProviderTypeAssociationId = mapping.ModelProviderTypeAssociationId;
 
                 await _repository.UpdateAsync(existingEntity);
             }

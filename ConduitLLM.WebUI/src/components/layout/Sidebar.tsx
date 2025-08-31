@@ -3,8 +3,7 @@
 import { ScrollArea, NavLink, Stack, ThemeIcon, Text, Divider } from '@mantine/core';
 import { 
   IconDashboard, 
-  IconKey, 
-  IconSettings,
+  IconKey,
   IconChartBar,
   IconRoute,
   IconServer,

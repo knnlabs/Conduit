@@ -20,14 +20,20 @@ namespace ConduitLLM.Tests.Configuration
                 SupportsChat = true
             };
             
-            var mapping = new ModelProviderMapping
+            var modelProviderTypeAssociation = new ModelProviderTypeAssociation
             {
                 ModelId = 1,
                 Model = model
             };
+            
+            var mapping = new ModelProviderMapping
+            {
+                ModelProviderTypeAssociationId = 1,
+                ModelProviderTypeAssociation = modelProviderTypeAssociation
+            };
 
             // Assert
-            mapping.SupportsChat.Should().BeTrue();
+            mapping.ModelProviderTypeAssociation?.Model?.SupportsChat.Should().BeTrue();
         }
 
         [Fact]
@@ -36,8 +42,8 @@ namespace ConduitLLM.Tests.Configuration
             // Arrange & Act
             var mapping = new ModelProviderMapping();
 
-            // Assert - returns false when Model is null
-            mapping.SupportsChat.Should().BeFalse();
+            // Assert - ModelProviderTypeAssociation is null
+            mapping.ModelProviderTypeAssociation.Should().BeNull();
         }
 
         [Fact]
@@ -46,12 +52,8 @@ namespace ConduitLLM.Tests.Configuration
             // Arrange & Act
             var mapping = new ModelProviderMapping();
 
-            // Assert - all return false when Model is null
-            mapping.SupportsChat.Should().BeFalse();
-            mapping.SupportsEmbeddings.Should().BeFalse();
-            mapping.SupportsVision.Should().BeFalse();
-            mapping.SupportsImageGeneration.Should().BeFalse();
-            mapping.SupportsFunctionCalling.Should().BeFalse();
+            // Assert - ModelProviderTypeAssociation is null so capabilities cannot be accessed
+            mapping.ModelProviderTypeAssociation.Should().BeNull();
         }
 
         [Fact]
@@ -69,18 +71,24 @@ namespace ConduitLLM.Tests.Configuration
                 SupportsEmbeddings = false
             };
             
-            var mapping = new ModelProviderMapping
+            var modelProviderTypeAssociation = new ModelProviderTypeAssociation
             {
                 ModelId = 1,
                 Model = model
             };
+            
+            var mapping = new ModelProviderMapping
+            {
+                ModelProviderTypeAssociationId = 1,
+                ModelProviderTypeAssociation = modelProviderTypeAssociation
+            };
 
             // Assert - capabilities come from the Model
-            mapping.SupportsChat.Should().BeTrue();
-            mapping.SupportsVision.Should().BeTrue();
-            mapping.SupportsFunctionCalling.Should().BeTrue();
-            mapping.SupportsStreaming.Should().BeFalse();
-            mapping.SupportsEmbeddings.Should().BeFalse();
+            mapping.ModelProviderTypeAssociation?.Model?.SupportsChat.Should().BeTrue();
+            mapping.ModelProviderTypeAssociation?.Model?.SupportsVision.Should().BeTrue();
+            mapping.ModelProviderTypeAssociation?.Model?.SupportsFunctionCalling.Should().BeTrue();
+            mapping.ModelProviderTypeAssociation?.Model?.SupportsStreaming.Should().BeFalse();
+            mapping.ModelProviderTypeAssociation?.Model?.SupportsEmbeddings.Should().BeFalse();
         }
 
         [Fact]
@@ -95,15 +103,21 @@ namespace ConduitLLM.Tests.Configuration
                 MaxOutputTokens = 4096
             };
             
-            var mapping = new ModelProviderMapping
+            var modelProviderTypeAssociation = new ModelProviderTypeAssociation
             {
                 ModelId = 1,
                 Model = model
             };
+            
+            var mapping = new ModelProviderMapping
+            {
+                ModelProviderTypeAssociationId = 1,
+                ModelProviderTypeAssociation = modelProviderTypeAssociation
+            };
 
             // Assert
-            mapping.Model.MaxInputTokens.Should().Be(8192);
-            mapping.Model.MaxOutputTokens.Should().Be(4096);
+            mapping.ModelProviderTypeAssociation?.Model?.MaxInputTokens.Should().Be(8192);
+            mapping.ModelProviderTypeAssociation?.Model?.MaxOutputTokens.Should().Be(4096);
         }
 
         [Fact]
@@ -118,15 +132,21 @@ namespace ConduitLLM.Tests.Configuration
                 MaxOutputTokens = 2048
             };
             
-            var mapping = new ModelProviderMapping
+            var modelProviderTypeAssociation = new ModelProviderTypeAssociation
             {
                 ModelId = 1,
                 Model = model
             };
+            
+            var mapping = new ModelProviderMapping
+            {
+                ModelProviderTypeAssociationId = 1,
+                ModelProviderTypeAssociation = modelProviderTypeAssociation
+            };
 
             // Assert - uses Model's token limits
-            mapping.Model.MaxInputTokens.Should().Be(4096);
-            mapping.Model.MaxOutputTokens.Should().Be(2048);
+            mapping.ModelProviderTypeAssociation?.Model?.MaxInputTokens.Should().Be(4096);
+            mapping.ModelProviderTypeAssociation?.Model?.MaxOutputTokens.Should().Be(2048);
         }
 
         [Fact]
@@ -140,14 +160,20 @@ namespace ConduitLLM.Tests.Configuration
                 TokenizerType = TokenizerType.Cl100KBase
             };
             
-            var mapping = new ModelProviderMapping
+            var modelProviderTypeAssociation = new ModelProviderTypeAssociation
             {
                 ModelId = 1,
                 Model = model
             };
+            
+            var mapping = new ModelProviderMapping
+            {
+                ModelProviderTypeAssociationId = 1,
+                ModelProviderTypeAssociation = modelProviderTypeAssociation
+            };
 
             // Assert
-            mapping.TokenizerType.Should().Be(TokenizerType.Cl100KBase);
+            mapping.ModelProviderTypeAssociation?.Model?.TokenizerType.Should().Be(TokenizerType.Cl100KBase);
         }
     }
 }

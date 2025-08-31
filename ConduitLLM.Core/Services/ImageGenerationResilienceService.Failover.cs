@@ -142,7 +142,7 @@ namespace ConduitLLM.Core.Services
                 
                 // Find image generation mappings not from the failed provider
                 var imageProviders = allMappings
-                    .Where(m => m.SupportsImageGeneration && m.IsEnabled && m.ProviderId != failedProviderId)
+                    .Where(m => m.ModelProviderTypeAssociation?.Model?.SupportsImageGeneration == true && m.IsEnabled && m.ProviderId != failedProviderId)
                     .GroupBy(m => m.ProviderId)
                     .ToList();
                 

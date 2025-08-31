@@ -123,7 +123,8 @@ namespace ConduitLLM.Configuration.Repositories
         {
             using var context = await _dbContextFactory.CreateDbContextAsync();
             return await context.Set<ModelProviderMapping>()
-                .AnyAsync(m => m.ModelId == modelId);
+                .Include(m => m.ModelProviderTypeAssociation)
+                .AnyAsync(m => m.ModelProviderTypeAssociation != null && m.ModelProviderTypeAssociation.ModelId == modelId);
         }
 
         public async Task<bool> DeleteAsync(int id)

@@ -48,6 +48,12 @@ namespace ConduitLLM.Configuration.DTOs
         public int ProviderId { get; set; }
 
         /// <summary>
+        /// The ID of the ModelProviderTypeAssociation entity.
+        /// Links this mapping to provider-specific model metadata including variations, quality scores, and costs.
+        /// </summary>
+        public int? ModelProviderTypeAssociationId { get; set; }
+
+        /// <summary>
         /// The priority of this mapping (lower values have higher priority)
         /// </summary>
         public int Priority { get; set; } = 1;
@@ -122,16 +128,6 @@ namespace ConduitLLM.Configuration.DTOs
         /// JSON array of supported audio formats for this model
         /// </summary>
         public string? SupportedFormats { get; set; }
-
-        /// <summary>
-        /// Whether this model is the default for its capability type
-        /// </summary>
-        public bool IsDefault { get; set; } = false;
-
-        /// <summary>
-        /// The capability type this model is default for (if IsDefault is true)
-        /// </summary>
-        public string? DefaultCapabilityType { get; set; }
 
         /// <summary>
         /// Optional notes or description for this mapping

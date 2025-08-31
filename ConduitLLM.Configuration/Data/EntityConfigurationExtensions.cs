@@ -19,18 +19,19 @@ namespace ConduitLLM.Configuration.Data
             {
                 entity.HasKey(e => e.Id);
                 entity.HasIndex(e => new { e.ModelAlias, e.ProviderId }).IsUnique();
-                
-                // Configure relationship with Model
-                entity.HasOne(e => e.Model)
-                    .WithMany(e => e.ProviderMappings)
-                    .HasForeignKey(e => e.ModelId)
-                    .OnDelete(DeleteBehavior.Restrict);
                     
                 // Configure relationship with Provider
                 entity.HasOne(e => e.Provider)
                     .WithMany()
                     .HasForeignKey(e => e.ProviderId)
                     .OnDelete(DeleteBehavior.Restrict);
+                    
+                // Configure relationship with ModelProviderTypeAssociation
+                entity.HasOne(e => e.ModelProviderTypeAssociation)
+                    .WithMany()
+                    .HasForeignKey(e => e.ModelProviderTypeAssociationId)
+                    .OnDelete(DeleteBehavior.Restrict)
+                    .IsRequired(false); // Nullable during transition
             });
 
             // Configure Provider entity

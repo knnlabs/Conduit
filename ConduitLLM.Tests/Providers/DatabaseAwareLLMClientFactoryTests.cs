@@ -65,7 +65,7 @@ namespace ConduitLLM.Tests.Providers
             {
                 Id = 1,
                 ModelAlias = modelName,
-                    ModelId = 1,
+                ModelProviderTypeAssociationId = 1,
                 ProviderId = 1,
                 ProviderModelId = "gpt-4"
             };
@@ -102,7 +102,7 @@ namespace ConduitLLM.Tests.Providers
             {
                 Id = 1,
                 ModelAlias = modelName,
-                    ModelId = 1,
+                ModelProviderTypeAssociationId = 1,
                 ProviderId = 1,
                 ProviderModelId = "gpt-4"
             };

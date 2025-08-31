@@ -104,7 +104,6 @@ namespace ConduitLLM.Admin.Extensions
             {
                 Id = mapping.Id,
                 ModelAlias = mapping.ModelAlias,
-                ModelId = mapping.ModelId,
                 ProviderModelId = mapping.ProviderModelId,
                 ProviderId = mapping.ProviderId,
                 Provider = mapping.Provider != null ? new ProviderReferenceDto
@@ -114,12 +113,9 @@ namespace ConduitLLM.Admin.Extensions
                     DisplayName = mapping.Provider.ProviderName,
                     IsEnabled = mapping.Provider.IsEnabled
                 } : null,
+                ModelProviderTypeAssociationId = mapping.ModelProviderTypeAssociationId,
                 Priority = 0, // Default priority if not available in entity
                 IsEnabled = mapping.IsEnabled,
-                ProviderVariation = mapping.ProviderVariation,
-                QualityScore = mapping.QualityScore,
-                IsDefault = mapping.IsDefault,
-                DefaultCapabilityType = mapping.DefaultCapabilityType,
                 CreatedAt = mapping.CreatedAt,
                 UpdatedAt = mapping.UpdatedAt,
                 Notes = null // Not available in entity
@@ -142,14 +138,10 @@ namespace ConduitLLM.Admin.Extensions
             {
                 Id = dto.Id,
                 ModelAlias = dto.ModelAlias,
-                ModelId = dto.ModelId,
                 ProviderModelId = dto.ProviderModelId,
                 ProviderId = dto.ProviderId,
+                ModelProviderTypeAssociationId = dto.ModelProviderTypeAssociationId,
                 IsEnabled = dto.IsEnabled,
-                ProviderVariation = dto.ProviderVariation,
-                QualityScore = dto.QualityScore,
-                IsDefault = dto.IsDefault,
-                DefaultCapabilityType = dto.DefaultCapabilityType,
                 CreatedAt = dto.CreatedAt,
                 UpdatedAt = dto.UpdatedAt
             };

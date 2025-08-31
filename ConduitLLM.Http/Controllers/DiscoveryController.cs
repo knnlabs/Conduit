@@ -84,8 +84,9 @@ namespace ConduitLLM.Http.Controllers
                 // Get all enabled model mappings with their related data
                 var modelMappings = await context.ModelProviderMappings
                     .Include(m => m.Provider)
-                    .Include(m => m.Model)
-                        .ThenInclude(m => m.Series)
+                    .Include(m => m.ModelProviderTypeAssociation)
+                        .ThenInclude(mpta => mpta.Model)
+                            .ThenInclude(m => m.Series)
                     .Where(m => m.IsEnabled && m.Provider != null && m.Provider.IsEnabled)
                     .ToListAsync();
 
@@ -94,13 +95,13 @@ namespace ConduitLLM.Http.Controllers
                 foreach (var mapping in modelMappings)
                 {
                     // Skip if model is missing
-                    if (mapping.Model == null)
+                    if (mapping.ModelProviderTypeAssociation?.Model == null)
                     {
                         _logger.LogWarning("Model mapping {ModelAlias} has no model data", mapping.ModelAlias);
                         continue;
                     }
 
-                    var caps = mapping.Model;
+                    var caps = mapping.ModelProviderTypeAssociation.Model;
 
                     // Apply capability filter if specified
                     if (!string.IsNullOrEmpty(capability))
@@ -131,7 +132,7 @@ namespace ConduitLLM.Http.Controllers
                     /*
                     // Parse parameters from mapping (priority) or series (fallback)
                     string[]? supportedParameters = null;
-                    var parametersJson = mapping.ApiParameters ?? mapping.Model?.Series?.Parameters;
+                    var parametersJson = mapping.ApiParameters ?? mapping.ModelProviderTypeAssociation?.Model?.Series?.Parameters;
                     if (!string.IsNullOrEmpty(parametersJson))
                     {
                         try
@@ -153,8 +154,8 @@ namespace ConduitLLM.Http.Controllers
                         display_name = mapping.ModelAlias,
                         
                         // Metadata
-                        description = mapping.Model?.Description ?? string.Empty,
-                        model_card_url = mapping.Model?.ModelCardUrl ?? string.Empty,
+                        description = mapping.ModelProviderTypeAssociation?.Model?.Description ?? string.Empty,
+                        model_card_url = mapping.ModelProviderTypeAssociation?.Model?.ModelCardUrl ?? string.Empty,
                         max_tokens = (caps.MaxInputTokens ?? 0) + (caps.MaxOutputTokens ?? 0), // Combined for backward compatibility
                         max_input_tokens = caps.MaxInputTokens ?? 0,
                         max_output_tokens = caps.MaxOutputTokens ?? 0,
@@ -164,7 +165,7 @@ namespace ConduitLLM.Http.Controllers
                         // supported_parameters = supportedParameters ?? Array.Empty<string>(), // TODO: Re-implement based on Parameters field
                         
                         // UI Parameters from Model or Series
-                        parameters = mapping.Model?.ModelParameters ?? mapping.Model?.Series?.Parameters ?? "{}",
+                        parameters = mapping.ModelProviderTypeAssociation?.Model?.ModelParameters ?? mapping.ModelProviderTypeAssociation?.Model?.Series?.Parameters ?? "{}",
                         
                         // Capabilities (flat boolean flags)
                         supports_chat = caps.SupportsChat,
@@ -278,8 +279,9 @@ namespace ConduitLLM.Http.Controllers
                 
                 // Find the model mapping by alias
                 var modelMapping = await context.ModelProviderMappings
-                    .Include(m => m.Model)
-                        .ThenInclude(m => m!.Series)
+                    .Include(m => m.ModelProviderTypeAssociation)
+                        .ThenInclude(mpta => mpta.Model)
+                            .ThenInclude(m => m!.Series)
                     .Where(m => m.ModelAlias == model && m.IsEnabled)
                     .FirstOrDefaultAsync();
 
@@ -289,26 +291,27 @@ namespace ConduitLLM.Http.Controllers
                     if (int.TryParse(model, out var modelId))
                     {
                         modelMapping = await context.ModelProviderMappings
-                            .Include(m => m.Model)
-                                .ThenInclude(m => m!.Series)
-                            .Where(m => m.ModelId == modelId && m.IsEnabled)
+                            .Include(m => m.ModelProviderTypeAssociation)
+                                .ThenInclude(mpta => mpta.Model)
+                                    .ThenInclude(m => m!.Series)
+                            .Where(m => m.ModelProviderTypeAssociation != null && m.ModelProviderTypeAssociation.ModelId == modelId && m.IsEnabled)
                             .FirstOrDefaultAsync();
                     }
                 }
 
-                if (modelMapping?.Model?.Series == null)
+                if (modelMapping?.ModelProviderTypeAssociation?.Model?.Series == null)
                 {
                     return NotFound(new ErrorResponseDto($"Model '{model}' not found or has no parameter information"));
                 }
 
                 // Parse the Parameters JSON
                 object? parameters = null;
-                if (!string.IsNullOrEmpty(modelMapping.Model.Series.Parameters))
+                if (!string.IsNullOrEmpty(modelMapping.ModelProviderTypeAssociation.Model.Series.Parameters))
                 {
                     try
                     {
                         parameters = System.Text.Json.JsonSerializer.Deserialize<object>(
-                            modelMapping.Model.Series.Parameters);
+                            modelMapping.ModelProviderTypeAssociation.Model.Series.Parameters);
                     }
                     catch (Exception ex)
                     {
@@ -319,9 +322,9 @@ namespace ConduitLLM.Http.Controllers
 
                 return Ok(new
                 {
-                    model_id = modelMapping.ModelId,
+                    model_id = modelMapping.ModelProviderTypeAssociation.ModelId,
                     model_alias = modelMapping.ModelAlias,
-                    series_name = modelMapping.Model.Series.Name,
+                    series_name = modelMapping.ModelProviderTypeAssociation.Model.Series.Name,
                     parameters = parameters ?? new { }
                 });
             }

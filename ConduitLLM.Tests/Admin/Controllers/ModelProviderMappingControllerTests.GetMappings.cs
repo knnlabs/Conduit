@@ -29,10 +29,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 { 
                     Id = 1,
                     ModelAlias = "gpt-4",
-                    ModelId = 1,
+                    ModelProviderTypeAssociationId = 1,
                     ProviderId = 1,
                     ProviderModelId = "gpt-4-turbo",
-                    // SupportsVision = true,
                     IsEnabled = true
                 },
                 new() 
@@ -56,7 +55,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var okResult = Assert.IsType<OkObjectResult>(result);
             var returnedMappings = Assert.IsAssignableFrom<IEnumerable<ModelProviderMappingDto>>(okResult.Value);
             returnedMappings.Should().HaveCount(2);
-            returnedMappings.First().ModelId.Should().Be(1);
+            returnedMappings.First().ModelProviderTypeAssociationId.Should().Be(1);
         }
 
         [Fact]
@@ -88,7 +87,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             {
                 Id = 1,
                 ModelAlias = "gpt-4",
-                ModelId = 1,
+                ModelProviderTypeAssociationId = 1,
                 ProviderId = 1,
                 ProviderModelId = "gpt-4-turbo"
             };
@@ -102,7 +101,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
             var returnedMapping = Assert.IsType<ModelProviderMappingDto>(okResult.Value);
-            returnedMapping.ModelId.Should().Be(1);
+            returnedMapping.ModelProviderTypeAssociationId.Should().Be(1);
         }
 
         [Fact]

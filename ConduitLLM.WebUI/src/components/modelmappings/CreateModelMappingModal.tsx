@@ -37,10 +37,6 @@ interface FormValues {
   priority: number;
   isEnabled: boolean;
   maxContextTokensOverride?: number;
-  providerVariation?: string;
-  qualityScore?: number;
-  isDefault: boolean;
-  defaultCapabilityType?: string;
   notes?: string;
 }
 
@@ -62,10 +58,6 @@ export function CreateModelMappingModal({
       priority: 100,
       isEnabled: true,
       maxContextTokensOverride: undefined,
-      providerVariation: undefined,
-      qualityScore: undefined,
-      isDefault: false,
-      defaultCapabilityType: undefined,
       notes: undefined,
     },
     validate: {
@@ -74,10 +66,6 @@ export function CreateModelMappingModal({
       providerId: (value) => !value?.trim() ? 'Provider is required' : null,
       providerModelId: (value) => !value?.trim() ? 'Provider model ID is required' : null,
       priority: (value) => value < 0 || value > 1000 ? 'Priority must be between 0 and 1000' : null,
-      qualityScore: (value) => {
-        if (value === undefined || value === null) return null;
-        return value < 0 || value > 1 ? 'Quality score must be between 0 and 1' : null;
-      }
     },
   });
 
@@ -92,10 +80,6 @@ export function CreateModelMappingModal({
       priority: values.priority,
       isEnabled: values.isEnabled,
       maxContextTokensOverride: values.maxContextTokensOverride,
-      providerVariation: values.providerVariation,
-      qualityScore: values.qualityScore,
-      isDefault: values.isDefault,
-      defaultCapabilityType: values.defaultCapabilityType,
       notes: values.notes,
     };
 
@@ -228,10 +212,10 @@ export function CreateModelMappingModal({
             </Stack>
           </Paper>
 
-          {/* Provider Overrides Section */}
+          {/* Optional Settings */}
           <Paper p="md" withBorder>
             <Stack gap="sm">
-              <Text fw={600} size="sm">Provider-Specific Overrides (Optional)</Text>
+              <Text fw={600} size="sm">Optional Settings</Text>
               
               <NumberInput
                 label="Max Context Tokens Override"
@@ -240,55 +224,6 @@ export function CreateModelMappingModal({
                 min={1}
                 {...form.getInputProps('maxContextTokensOverride')}
               />
-
-              <TextInput
-                label="Provider Variation"
-                placeholder="e.g., Q4_K_M, GGUF, instruct"
-                description="Specific variation or quantization of the model"
-                {...form.getInputProps('providerVariation')}
-              />
-
-              <NumberInput
-                label="Quality Score"
-                placeholder="1.0 = identical to original"
-                description="Quality relative to the original model (0-1)"
-                min={0}
-                max={1}
-                step={0.05}
-                decimalScale={2}
-                {...form.getInputProps('qualityScore')}
-              />
-            </Stack>
-          </Paper>
-
-          {/* Advanced Settings */}
-          <Paper p="md" withBorder>
-            <Stack gap="sm">
-              <Text fw={600} size="sm">Advanced Settings</Text>
-              
-              <Group>
-                <Switch
-                  label="Set as Default"
-                  checked={form.values.isDefault}
-                  {...form.getInputProps('isDefault')}
-                />
-                
-                {form.values.isDefault && (
-                  <Select
-                    label="Default for Capability"
-                    placeholder="Select capability type"
-                    data={[
-                      { value: 'chat', label: 'Chat' },
-                      { value: 'vision', label: 'Vision' },
-                      { value: 'embedding', label: 'Embeddings' },
-                      { value: 'image-generation', label: 'Image Generation' },
-                      { value: 'audio-transcription', label: 'Audio Transcription' },
-                      { value: 'text-to-speech', label: 'Text to Speech' },
-                    ]}
-                    {...form.getInputProps('defaultCapabilityType')}
-                  />
-                )}
-              </Group>
 
               <TextInput
                 label="Notes"

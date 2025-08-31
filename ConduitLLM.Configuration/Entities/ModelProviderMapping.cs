@@ -63,151 +63,24 @@ namespace ConduitLLM.Configuration.Entities
         /// </summary>
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-        /// <summary>
-        /// JSON object containing provider-specific capability overrides.
-        /// Use this when a provider has different capabilities than the base model.
-        /// Example: {"supportsFunctionCalling": false} if provider disabled this feature.
-        /// </summary>
-        public string? CapabilityOverrides { get; set; }
-
-        // Helper properties that read from Model.Capabilities with optional overrides
 
         /// <summary>
-        /// Gets whether this model supports vision, checking overrides first.
-        /// </summary>
-        [NotMapped]
-        public bool SupportsVision => GetCapability(nameof(SupportsVision), 
-            () => Model?.SupportsVision ?? false);
-
-        /// <summary>
-        /// Gets whether this model supports chat, checking overrides first.
-        /// </summary>
-        [NotMapped]
-        public bool SupportsChat => GetCapability(nameof(SupportsChat), 
-            () => Model?.SupportsChat ?? false);
-
-        /// <summary>
-        /// Gets whether this model supports function calling, checking overrides first.
-        /// </summary>
-        [NotMapped]
-        public bool SupportsFunctionCalling => GetCapability(nameof(SupportsFunctionCalling), 
-            () => Model?.SupportsFunctionCalling ?? false);
-
-        /// <summary>
-        /// Gets whether this model supports streaming, checking overrides first.
-        /// </summary>
-        [NotMapped]
-        public bool SupportsStreaming => GetCapability(nameof(SupportsStreaming), 
-            () => Model?.SupportsStreaming ?? false);
-
-
-        /// <summary>
-        /// Gets whether this model supports image generation, checking overrides first.
-        /// </summary>
-        [NotMapped]
-        public bool SupportsImageGeneration => GetCapability(nameof(SupportsImageGeneration),
-            () => Model?.SupportsImageGeneration ?? false);
-
-        /// <summary>
-        /// Gets whether this model supports video generation, checking overrides first.
-        /// </summary>
-        [NotMapped]
-        public bool SupportsVideoGeneration => GetCapability(nameof(SupportsVideoGeneration),
-            () => Model?.SupportsVideoGeneration ?? false);
-
-        /// <summary>
-        /// Gets whether this model supports embeddings, checking overrides first.
-        /// </summary>
-        [NotMapped]
-        public bool SupportsEmbeddings => GetCapability(nameof(SupportsEmbeddings),
-            () => Model?.SupportsEmbeddings ?? false);
-
-        /// <summary>
-        /// Gets the tokenizer type from Model.Capabilities.
-        /// </summary>
-        [NotMapped]
-        public TokenizerType? TokenizerType => Model?.TokenizerType;
-
-
-        /// <summary>
-        /// Indicates whether this is the default model for its provider and capability type.
-        /// </summary>
-        public bool IsDefault { get; set; } = false;
-
-        /// <summary>
-        /// The capability type this model is default for (e.g., "chat", "transcription", "tts", "realtime").
-        /// Only relevant when IsDefault is true.
-        /// </summary>
-        [MaxLength(50)]
-        public string? DefaultCapabilityType { get; set; }
-
-        /// <summary>
-        /// Required foreign key to the associated Model entity.
-        /// Every provider mapping must reference a canonical model.
+        /// Required foreign key to the ModelProviderTypeAssociation entity.
+        /// Links this mapping to provider-specific model metadata including variations, quality scores, and costs.
+        /// This association also provides the link to the canonical Model entity.
         /// </summary>
         [Required]
-        public int ModelId { get; set; }
+        public int ModelProviderTypeAssociationId { get; set; }
 
         /// <summary>
-        /// Navigation property to the associated Model.
-        /// Contains metadata, capabilities, and configuration for the model.
+        /// Navigation property to the associated ModelProviderTypeAssociation.
+        /// Contains provider-specific model metadata, variations, and cost information.
+        /// Access the Model through ModelProviderTypeAssociation.Model.
         /// </summary>
-        [ForeignKey("ModelId")]
-        public virtual Model Model { get; set; } = null!;
+        [ForeignKey("ModelProviderTypeAssociationId")]
+        public virtual ModelProviderTypeAssociation ModelProviderTypeAssociation { get; set; } = null!;
 
 
-        /// <summary>
-        /// Represents the variation of the model provided by the provider.
-        /// Examples: "Q4_K_M", "GGUF", "4bit-128g", "fine-tuned-medical", "instruct"
-        /// </summary>
-        public string? ProviderVariation { get; set; } // // "4-bit-quantized", "fine-tuned-v2"
 
-        /// <summary>
-        /// Represents the quality score of the model provided by the provider.
-        /// 1.0 = identical to original
-        /// 0.95 = 5% quality loss (typical for good quantization)
-        /// 0.8 = 20% quality loss (aggressive quantization)
-        /// </summary>
-
-        public decimal? QualityScore { get; set; } // Provider's quality vs original
-
-        /// <summary>
-        /// Gets or sets the collection of cost configurations applied to this model mapping.
-        /// </summary>
-        /// <remarks>
-        /// This navigation property is obsolete. Model costs are now associated directly with ModelProviderTypeAssociation.
-        /// </remarks>
-        [Obsolete("Model costs are now associated directly with ModelProviderTypeAssociation via the ModelCostId foreign key.")]
-        public virtual ICollection<ModelCostMapping> ModelCostMappings { get; set; } = new List<ModelCostMapping>();
-
-        /// <summary>
-        /// Helper method to get capability value, checking overrides first.
-        /// </summary>
-        /// <param name="capabilityName">The name of the capability to check.</param>
-        /// <param name="defaultValue">Function to get the default value from Model.Capabilities.</param>
-        /// <returns>The capability value, considering overrides.</returns>
-        private bool GetCapability(string capabilityName, Func<bool> defaultValue)
-        {
-            if (string.IsNullOrEmpty(CapabilityOverrides))
-                return defaultValue();
-
-            try
-            {
-                var overrides = JsonDocument.Parse(CapabilityOverrides);
-                var propertyName = char.ToLower(capabilityName[0]) + capabilityName.Substring(1);
-                
-                if (overrides.RootElement.TryGetProperty(propertyName, out var element) &&
-                    (element.ValueKind == JsonValueKind.True || element.ValueKind == JsonValueKind.False))
-                {
-                    return element.GetBoolean();
-                }
-            }
-            catch
-            {
-                // Invalid JSON or parsing error, fall back to default
-            }
-
-            return defaultValue();
-        }
     }
 }

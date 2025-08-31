@@ -28,8 +28,9 @@ namespace ConduitLLM.Admin.Services
             
             var modelMappings = await context.ModelProviderMappings
                 .Include(m => m.Provider)
-                .Include(m => m.Model)
-                    .ThenInclude(m => m.Series)
+                .Include(m => m.ModelProviderTypeAssociation)
+                    .ThenInclude(mpta => mpta.Model)
+                        .ThenInclude(m => m.Series)
                 .Where(m => m.IsEnabled && m.Provider != null && m.Provider.IsEnabled)
                 .ToListAsync();
 
@@ -38,13 +39,13 @@ namespace ConduitLLM.Admin.Services
             foreach (var mapping in modelMappings)
             {
                 // Skip if model is missing
-                if (mapping.Model == null)
+                if (mapping.ModelProviderTypeAssociation?.Model == null)
                 {
                     _logger.LogWarning("Model mapping {ModelAlias} has no model data", mapping.ModelAlias);
                     continue;
                 }
 
-                var caps = mapping.Model;
+                var caps = mapping.ModelProviderTypeAssociation.Model;
 
                 // Apply capability filter if specified
                 if (!string.IsNullOrEmpty(capability))
@@ -81,11 +82,11 @@ namespace ConduitLLM.Admin.Services
                 };
 
                 // Add metadata
-                capabilities["description"] = mapping.Model.Description ?? "";
-                capabilities["model_card_url"] = mapping.Model.ModelCardUrl ?? "";
-                capabilities["input_tokens"] = mapping.Model.MaxInputTokens ?? 0;
-                capabilities["output_tokens"] = mapping.Model.MaxOutputTokens ?? 0;
-                capabilities["tokenizer_type"] = mapping.Model.TokenizerType.ToString().ToLowerInvariant();
+                capabilities["description"] = mapping.ModelProviderTypeAssociation.Model.Description ?? "";
+                capabilities["model_card_url"] = mapping.ModelProviderTypeAssociation.Model.ModelCardUrl ?? "";
+                capabilities["input_tokens"] = mapping.ModelProviderTypeAssociation.Model.MaxInputTokens ?? 0;
+                capabilities["output_tokens"] = mapping.ModelProviderTypeAssociation.Model.MaxOutputTokens ?? 0;
+                capabilities["tokenizer_type"] = mapping.ModelProviderTypeAssociation.Model.TokenizerType.ToString().ToLowerInvariant();
 
                 var model = new DiscoveredModelDto
                 {

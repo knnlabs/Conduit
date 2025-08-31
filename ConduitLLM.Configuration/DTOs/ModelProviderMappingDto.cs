@@ -17,12 +17,6 @@ namespace ConduitLLM.Configuration.DTOs
         /// </summary>
         [Required(ErrorMessage = "Model Alias is required")]
         public string ModelAlias { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// The ID of the canonical Model entity
-        /// </summary>
-        [Required(ErrorMessage = "Model ID is required")]
-        public int ModelId { get; set; }
 
         /// <summary>
         /// The provider-specific model identifier
@@ -42,6 +36,14 @@ namespace ConduitLLM.Configuration.DTOs
         public ProviderReferenceDto? Provider { get; set; }
 
         /// <summary>
+        /// The ID of the ModelProviderTypeAssociation entity.
+        /// Links this mapping to provider-specific model metadata including variations, quality scores, and costs.
+        /// This association provides the link to the canonical Model entity.
+        /// </summary>
+        [Required(ErrorMessage = "Model Provider Type Association is required")]
+        public int ModelProviderTypeAssociationId { get; set; }
+
+        /// <summary>
         /// The priority of this mapping (lower values have higher priority)
         /// </summary>
         public int Priority { get; set; }
@@ -56,28 +58,6 @@ namespace ConduitLLM.Configuration.DTOs
         /// If null, uses Model.Capabilities.MaxTokens.
         /// </summary>
         public int? MaxContextTokensOverride { get; set; }
-
-
-        /// <summary>
-        /// Provider variation of the model (e.g., "Q4_K_M", "GGUF", "4bit-128g", "instruct")
-        /// </summary>
-        public string? ProviderVariation { get; set; }
-
-        /// <summary>
-        /// Quality score of the provider's model version.
-        /// 1.0 = identical to original, 0.95 = 5% quality loss, etc.
-        /// </summary>
-        public decimal? QualityScore { get; set; }
-
-        /// <summary>
-        /// Whether this model is the default for its capability type
-        /// </summary>
-        public bool IsDefault { get; set; } = false;
-
-        /// <summary>
-        /// The capability type this model is default for (if IsDefault is true)
-        /// </summary>
-        public string? DefaultCapabilityType { get; set; }
 
         /// <summary>
         /// Date when the mapping was created

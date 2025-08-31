@@ -108,11 +108,12 @@ public class ModelProviderMappingController : ControllerBase
                 return BadRequest(ModelState);
             }
 
-            // Check if a mapping with the same model ID already exists
-            var existingMapping = await _mappingService.GetMappingByModelIdAsync(mappingDto.ModelId);
+            // Check if a mapping with the same model alias already exists
+            var existingMappings = await _mappingService.GetAllMappingsAsync();
+            var existingMapping = existingMappings.FirstOrDefault(m => m.ModelAlias.Equals(mappingDto.ModelAlias, StringComparison.OrdinalIgnoreCase));
             if (existingMapping != null)
             {
-                return Conflict(new ErrorResponseDto($"A mapping for model ID '{mappingDto.ModelId}' already exists"));
+                return Conflict(new ErrorResponseDto($"A mapping for model alias '{mappingDto.ModelAlias}' already exists"));
             }
 
             var mapping = mappingDto.ToEntity();
@@ -123,7 +124,7 @@ public class ModelProviderMappingController : ControllerBase
                 return BadRequest(new ErrorResponseDto("Failed to create model provider mapping. Please check the provider ID."));
             }
 
-            var createdMapping = await _mappingService.GetMappingByModelIdAsync(mappingDto.ModelId);
+            var createdMapping = await _mappingService.GetMappingByIdAsync(mapping.Id);
             return CreatedAtAction(nameof(GetMappingById), new { id = createdMapping?.Id }, createdMapping?.ToDto());
         }
         catch (Exception ex)

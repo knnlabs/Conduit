@@ -52,6 +52,18 @@ namespace ConduitLLM.Tests.Http.Builders
                 BaseUrl = "https://api.openai.com"
             };
 
+            // Create a ModelProviderTypeAssociation for the mapping
+            var association = new ModelProviderTypeAssociation
+            {
+                Id = baseId * 10 + 6,
+                ModelId = _model.Id,
+                Model = _model,
+                Identifier = "test-model-id",
+                Provider = "test-provider",
+                IsEnabled = true,
+                IsPrimary = true
+            };
+
             _mapping = new ModelProviderMapping
             {
                 Id = baseId * 10 + 5,
@@ -60,8 +72,8 @@ namespace ConduitLLM.Tests.Http.Builders
                 ProviderId = _provider.Id,
                 Provider = _provider,
                 IsEnabled = true,
-                ModelId = _model.Id,
-                Model = _model,
+                ModelProviderTypeAssociationId = association.Id,
+                ModelProviderTypeAssociation = association,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -110,10 +122,13 @@ namespace ConduitLLM.Tests.Http.Builders
 
         public ModelProviderMappingBuilder WithModelId(int id)
         {
-            _mapping.ModelId = id;
             if (_model != null)
             {
                 _model.Id = id;
+            }
+            if (_mapping.ModelProviderTypeAssociation != null)
+            {
+                _mapping.ModelProviderTypeAssociation.ModelId = id;
             }
             return this;
         }
@@ -121,10 +136,19 @@ namespace ConduitLLM.Tests.Http.Builders
         public ModelProviderMappingBuilder WithModel(Model? model)
         {
             _model = model;
-            _mapping.Model = model!;
-            if (model != null)
+            if (_mapping.ModelProviderTypeAssociation != null)
             {
-                _mapping.ModelId = model.Id;
+                if (model != null)
+                {
+                    _mapping.ModelProviderTypeAssociation.Model = model;
+                    _mapping.ModelProviderTypeAssociation.ModelId = model.Id;
+                }
+                else
+                {
+                    // When model is null, clear the association's model reference
+                    _mapping.ModelProviderTypeAssociation.Model = null;
+                    _mapping.ModelProviderTypeAssociation.ModelId = 0;
+                }
             }
             return this;
         }
@@ -220,6 +244,48 @@ namespace ConduitLLM.Tests.Http.Builders
 
         public ModelProviderMapping Build()
         {
+            // Create a new association to prevent mutation of shared objects
+            ModelProviderTypeAssociation? newAssociation = null;
+            if (_mapping.ModelProviderTypeAssociation != null)
+            {
+                newAssociation = new ModelProviderTypeAssociation
+                {
+                    Id = _mapping.ModelProviderTypeAssociation.Id,
+                    ModelId = _model?.Id ?? 0,
+                    Model = _model != null ? new Model
+                    {
+                        Id = _model.Id,
+                        Name = _model.Name,
+                        Version = _model.Version,
+                        Description = _model.Description,
+                        ModelCardUrl = _model.ModelCardUrl,
+                        ModelSeriesId = _model.ModelSeriesId,
+                        Series = _series!,
+                        
+                        // Copy capability properties
+                        SupportsChat = _model.SupportsChat,
+                        SupportsStreaming = _model.SupportsStreaming,
+                        SupportsVision = _model.SupportsVision,
+                        SupportsFunctionCalling = _model.SupportsFunctionCalling,
+                        SupportsVideoGeneration = _model.SupportsVideoGeneration,
+                        SupportsImageGeneration = _model.SupportsImageGeneration,
+                        SupportsEmbeddings = _model.SupportsEmbeddings,
+                        MaxInputTokens = _model.MaxInputTokens,
+                        MaxOutputTokens = _model.MaxOutputTokens,
+                        TokenizerType = _model.TokenizerType,
+                        
+                        IsActive = _model.IsActive,
+                        ModelParameters = _model.ModelParameters,
+                        CreatedAt = _model.CreatedAt,
+                        UpdatedAt = _model.UpdatedAt
+                    } : null,
+                    Identifier = _mapping.ModelProviderTypeAssociation.Identifier,
+                    Provider = _mapping.ModelProviderTypeAssociation.Provider,
+                    IsEnabled = _mapping.ModelProviderTypeAssociation.IsEnabled,
+                    IsPrimary = _mapping.ModelProviderTypeAssociation.IsPrimary
+                };
+            }
+
             // Return a new instance to prevent mutation
             var mapping = new ModelProviderMapping
             {
@@ -229,49 +295,11 @@ namespace ConduitLLM.Tests.Http.Builders
                 ProviderId = _mapping.ProviderId,
                 Provider = _provider!,
                 IsEnabled = _mapping.IsEnabled,
-                ModelId = _mapping.ModelId,
-                Model = _model!,
+                ModelProviderTypeAssociationId = _mapping.ModelProviderTypeAssociationId,
+                ModelProviderTypeAssociation = newAssociation,
                 CreatedAt = _mapping.CreatedAt,
-                UpdatedAt = _mapping.UpdatedAt,
-                
-                CapabilityOverrides = _mapping.CapabilityOverrides,
-                IsDefault = _mapping.IsDefault,
-                DefaultCapabilityType = _mapping.DefaultCapabilityType,
-                ProviderVariation = _mapping.ProviderVariation,
-                QualityScore = _mapping.QualityScore
+                UpdatedAt = _mapping.UpdatedAt
             };
-
-            // Ensure the Model has the correct references
-            if (_model != null)
-            {
-                mapping.Model = new Model
-                {
-                    Id = _model.Id,
-                    Name = _model.Name,
-                    Version = _model.Version,
-                    Description = _model.Description,
-                    ModelCardUrl = _model.ModelCardUrl,
-                    ModelSeriesId = _model.ModelSeriesId,
-                    Series = _series!,
-                    
-                    // Copy capability properties
-                    SupportsChat = _model.SupportsChat,
-                    SupportsStreaming = _model.SupportsStreaming,
-                    SupportsVision = _model.SupportsVision,
-                    SupportsFunctionCalling = _model.SupportsFunctionCalling,
-                    SupportsVideoGeneration = _model.SupportsVideoGeneration,
-                    SupportsImageGeneration = _model.SupportsImageGeneration,
-                    SupportsEmbeddings = _model.SupportsEmbeddings,
-                    MaxInputTokens = _model.MaxInputTokens,
-                    MaxOutputTokens = _model.MaxOutputTokens,
-                    TokenizerType = _model.TokenizerType,
-                    
-                    IsActive = _model.IsActive,
-                    ModelParameters = _model.ModelParameters,
-                    CreatedAt = _model.CreatedAt,
-                    UpdatedAt = _model.UpdatedAt
-                };
-            }
 
             return mapping;
         }

@@ -93,6 +93,16 @@ namespace ConduitLLM.Tests.Http.Controllers
                 MaxOutputTokens = 2048
             };
             var provider = new Provider { Id = 1, ProviderType = ProviderType.OpenAI, IsEnabled = true };
+            var association = new ModelProviderTypeAssociation
+            {
+                Id = 1,
+                ModelId = 1,
+                Model = model,
+                Identifier = "test-model-v1",
+                Provider = "openai",
+                IsEnabled = true,
+                IsPrimary = true
+            };
             var mapping = new ModelProviderMapping
             {
                 Id = 1,
@@ -100,8 +110,8 @@ namespace ConduitLLM.Tests.Http.Controllers
                 ProviderModelId = "test-model-v1",
                 ProviderId = 1,
                 Provider = provider,
-                ModelId = 1,
-                Model = model,
+                ModelProviderTypeAssociationId = 1,
+                ModelProviderTypeAssociation = association,
                 IsEnabled = true
             };
 
@@ -109,6 +119,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             _context.ModelSeries.Add(series);
             _context.Models.Add(model);
             _context.Providers.Add(provider);
+            _context.ModelProviderTypeAssociations.Add(association);
             _context.ModelProviderMappings.Add(mapping);
             await _context.SaveChangesAsync(default(CancellationToken));
 
@@ -150,19 +161,30 @@ namespace ConduitLLM.Tests.Http.Controllers
                 ModelSeriesId = 1,
                 Series = series,
             };
+            var association = new ModelProviderTypeAssociation
+            {
+                Id = 1,
+                ModelId = 42,
+                Model = model,
+                Identifier = "test-model-v1",
+                Provider = "openai",
+                IsEnabled = true,
+                IsPrimary = true
+            };
             var mapping = new ModelProviderMapping
             {
                 Id = 1,
                 ModelAlias = "test-model-42",
                 ProviderModelId = "test-model-v1",
                 ProviderId = 1,
-                ModelId = 42,
-                Model = model,
+                ModelProviderTypeAssociationId = 1,
+                ModelProviderTypeAssociation = association,
                 IsEnabled = true
             };
 
             _context.ModelSeries.Add(series);
             _context.Models.Add(model);
+            _context.ModelProviderTypeAssociations.Add(association);
             _context.ModelProviderMappings.Add(mapping);
             await _context.SaveChangesAsync(default(CancellationToken));
 
@@ -249,18 +271,29 @@ namespace ConduitLLM.Tests.Http.Controllers
                 ModelSeriesId = 1,
                 Series = series
             };
+            var association = new ModelProviderTypeAssociation
+            {
+                Id = 1,
+                ModelId = 1,
+                Model = model,
+                Identifier = "test-model-v1",
+                Provider = "openai",
+                IsEnabled = true,
+                IsPrimary = true
+            };
             var mapping = new ModelProviderMapping
             {
                 Id = 1,
                 ModelAlias = "test-model",
                 ProviderModelId = "test-model-v1",
-                ModelId = 1,
-                Model = model,
+                ModelProviderTypeAssociationId = 1,
+                ModelProviderTypeAssociation = association,
                 IsEnabled = true
             };
 
             _context.ModelSeries.Add(series);
             _context.Models.Add(model);
+            _context.ModelProviderTypeAssociations.Add(association);
             _context.ModelProviderMappings.Add(mapping);
             await _context.SaveChangesAsync(default(CancellationToken));
 
@@ -303,18 +336,29 @@ namespace ConduitLLM.Tests.Http.Controllers
                 ModelSeriesId = 1,
                 Series = series
             };
+            var association = new ModelProviderTypeAssociation
+            {
+                Id = 1,
+                ModelId = 1,
+                Model = model,
+                Identifier = "test-model-v1",
+                Provider = "openai",
+                IsEnabled = true,
+                IsPrimary = true
+            };
             var mapping = new ModelProviderMapping
             {
                 Id = 1,
                 ModelAlias = "test-model",
                 ProviderModelId = "test-model-v1",
-                ModelId = 1,
-                Model = model,
+                ModelProviderTypeAssociationId = 1,
+                ModelProviderTypeAssociation = association,
                 IsEnabled = true
             };
 
             _context.ModelSeries.Add(series);
             _context.Models.Add(model);
+            _context.ModelProviderTypeAssociations.Add(association);
             _context.ModelProviderMappings.Add(mapping);
             await _context.SaveChangesAsync(default(CancellationToken));
 
@@ -346,18 +390,29 @@ namespace ConduitLLM.Tests.Http.Controllers
 
             var series = new ModelSeries { Id = 1, Name = "Test Series" };
             var model = new Model { Id = 1, Name = "TestModel", ModelSeriesId = 1, Series = series };
+            var association = new ModelProviderTypeAssociation
+            {
+                Id = 1,
+                ModelId = 1,
+                Model = model,
+                Identifier = "test-model-v1",
+                Provider = "openai",
+                IsEnabled = true,
+                IsPrimary = true
+            };
             var mapping = new ModelProviderMapping
             {
                 Id = 1,
                 ModelAlias = "disabled-model",
                 ProviderModelId = "test-model-v1",
-                ModelId = 1,
-                Model = model,
+                ModelProviderTypeAssociationId = 1,
+                ModelProviderTypeAssociation = association,
                 IsEnabled = false // Disabled mapping
             };
 
             _context.ModelSeries.Add(series);
             _context.Models.Add(model);
+            _context.ModelProviderTypeAssociations.Add(association);
             _context.ModelProviderMappings.Add(mapping);
             await _context.SaveChangesAsync(default(CancellationToken));
 

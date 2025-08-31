@@ -60,11 +60,22 @@ namespace ConduitLLM.Tests.Core.Services
                 
                 supportsVideoGeneration: true);
             
+            var modelProviderTypeAssociation = new ModelProviderTypeAssociation
+            {
+                Id = 1,
+                ModelId = model.Id,
+                Model = model,
+                Identifier = "test-provider-model",
+                Provider = "replicate",
+                IsEnabled = true,
+                IsPrimary = true
+            };
+
             var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = "test-model",
-                ModelId = model.Id,
-                Model = model,
+                ModelProviderTypeAssociationId = 1,
+                ModelProviderTypeAssociation = modelProviderTypeAssociation,
                 ProviderId = 1,
                 ProviderModelId = "test-provider-model",
                 Provider = new Provider { ProviderType = ProviderType.Replicate }
@@ -187,7 +198,16 @@ namespace ConduitLLM.Tests.Core.Services
             var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = request.Model,
+                ModelProviderTypeAssociationId = 1,
+                ModelProviderTypeAssociation = new ModelProviderTypeAssociation
+                {
+                    Id = 1,
                     ModelId = 1,
+                    Identifier = "test-provider-model",
+                    Provider = "replicate",
+                    IsEnabled = true,
+                    IsPrimary = true
+                },
                 ProviderId = 1,
                 ProviderModelId = "test-provider-model",
                 Provider = new Provider { ProviderType = ProviderType.Replicate }

@@ -38,11 +38,22 @@ namespace ConduitLLM.Tests.Core.Services
             };
 
             // Setup model mapping
+            var association = new ModelProviderTypeAssociation
+            {
+                Id = 1,
+                ModelId = 1,
+                Model = modelEntity,
+                Identifier = request.Request.Model,
+                Provider = "openai",
+                IsEnabled = true,
+                IsPrimary = true
+            };
+            
             var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = request.Request.Model,
-                ModelId = 1,
-                Model = modelEntity,
+                ModelProviderTypeAssociationId = association.Id,
+                ModelProviderTypeAssociation = association,
                 ProviderId = 1,
                 ProviderModelId = request.Request.Model,
                 Provider = new Provider { ProviderType = ProviderType.OpenAI }

@@ -141,10 +141,21 @@ namespace ConduitLLM.Tests.Core.Services
                 .ReturnsAsync(virtualKey);
 
             // Setup model mapping for a text model
+            var association = new ModelProviderTypeAssociation
+            {
+                Id = 1,
+                ModelId = 1,
+                Identifier = "gpt-4",
+                Provider = "openai",
+                IsEnabled = true,
+                IsPrimary = true
+            };
+            
             var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = "gpt-4",
-                    ModelId = 1,
+                ModelProviderTypeAssociationId = association.Id,
+                ModelProviderTypeAssociation = association,
                 ProviderId = 1,
                 ProviderModelId = "gpt-4"
             };

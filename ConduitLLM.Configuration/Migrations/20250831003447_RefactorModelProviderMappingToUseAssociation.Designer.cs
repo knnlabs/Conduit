@@ -3,6 +3,7 @@ using System;
 using ConduitLLM.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ConduitLLM.Configuration.Migrations
 {
     [DbContext(typeof(ConduitDbContext))]
-    partial class ConduitDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250831003447_RefactorModelProviderMappingToUseAssociation")]
+    partial class RefactorModelProviderMappingToUseAssociation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -877,10 +880,10 @@ namespace ConduitLLM.Configuration.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<int?>("ModelId")
+                    b.Property<int>("ModelId")
                         .HasColumnType("integer");
 
-                    b.Property<int>("ModelProviderTypeAssociationId")
+                    b.Property<int?>("ModelProviderTypeAssociationId")
                         .HasColumnType("integer");
 
                     b.Property<int>("ProviderId")
@@ -896,7 +899,8 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ModelId");
+                    b.HasIndex("ModelId")
+                        .HasDatabaseName("IX_ModelProviderMapping_ModelId");
 
                     b.HasIndex("ModelProviderTypeAssociationId")
                         .HasDatabaseName("IX_ModelProviderMapping_ModelProviderTypeAssociationId");
@@ -1473,9 +1477,11 @@ namespace ConduitLLM.Configuration.Migrations
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelProviderMapping", b =>
                 {
-                    b.HasOne("ConduitLLM.Configuration.Entities.Model", null)
+                    b.HasOne("ConduitLLM.Configuration.Entities.Model", "Model")
                         .WithMany("ProviderMappings")
-                        .HasForeignKey("ModelId");
+                        .HasForeignKey("ModelId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("ConduitLLM.Configuration.Entities.ModelProviderTypeAssociation", "ModelProviderTypeAssociation")
                         .WithMany()
@@ -1487,6 +1493,8 @@ namespace ConduitLLM.Configuration.Migrations
                         .HasForeignKey("ProviderId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Model");
 
                     b.Navigation("ModelProviderTypeAssociation");
 

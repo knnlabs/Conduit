@@ -41,12 +41,24 @@ namespace ConduitLLM.Tests.Core.Services
                 TokenizerType = TokenizerType.Cl100KBase
             };
 
+            // Setup model provider type association
+            var modelProviderTypeAssociation = new ModelProviderTypeAssociation
+            {
+                Id = 1,
+                ModelId = 1,
+                Model = modelEntity,
+                Identifier = model,
+                Provider = provider,
+                IsEnabled = true,
+                IsPrimary = true
+            };
+
             // Setup model mapping
             var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = request.Request.Model,
-                ModelId = 1,
-                Model = modelEntity,
+                ModelProviderTypeAssociationId = 1,
+                ModelProviderTypeAssociation = modelProviderTypeAssociation,
                 ProviderId = 1,
                 Provider = new Provider { ProviderType = provider switch
                 {
@@ -185,12 +197,24 @@ namespace ConduitLLM.Tests.Core.Services
                 TokenizerType = TokenizerType.Cl100KBase
             };
 
+            // Setup model provider type association
+            var modelProviderTypeAssociation = new ModelProviderTypeAssociation
+            {
+                Id = 1,
+                ModelId = 1,
+                Model = modelEntity,
+                Identifier = model,
+                Provider = provider,
+                IsEnabled = true,
+                IsPrimary = true
+            };
+
             // Setup model mapping
             var modelMapping = new ModelProviderMapping
             {
                 ModelAlias = request.Request.Model,
-                ModelId = 1,
-                Model = modelEntity,
+                ModelProviderTypeAssociationId = 1,
+                ModelProviderTypeAssociation = modelProviderTypeAssociation,
                 ProviderId = 1,
                 Provider = new Provider { ProviderType = provider switch
                 {

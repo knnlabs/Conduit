@@ -209,7 +209,7 @@ namespace ConduitLLM.Core.Services
                 
                 // Check if model supports video generation
                 var mapping = await _modelMappingService.GetMappingByModelAliasAsync(request.Model);
-                if (mapping?.SupportsVideoGeneration != true)
+                if (mapping?.ModelProviderTypeAssociation?.Model?.SupportsVideoGeneration != true)
                 {
                     throw new NotSupportedException($"Model {request.Model} does not support video generation");
                 }

@@ -8,6 +8,7 @@ export interface ModelProviderMappingDto {
   providerId: number;
   provider?: ProviderReferenceDto;
   providerModelId: string;
+  modelProviderTypeAssociationId?: number | null;  // Links to provider-specific model metadata
   isEnabled: boolean;
   priority: number;
   createdAt: string;
@@ -16,14 +17,6 @@ export interface ModelProviderMappingDto {
   
   // Provider-specific overrides
   maxContextTokensOverride?: number;
-  
-  // Provider metadata
-  providerVariation?: string;  // e.g., "Q4_K_M", "GGUF", "instruct"
-  qualityScore?: number;        // 1.0 = identical to original
-  
-  // Advanced Routing Fields
-  isDefault: boolean;
-  defaultCapabilityType?: string;
 }
 
 export interface CreateModelProviderMappingDto {
@@ -31,19 +24,12 @@ export interface CreateModelProviderMappingDto {
   modelId: number;      // Reference to canonical Model entity (required)
   providerId: number;
   providerModelId: string;
+  modelProviderTypeAssociationId?: number | null;  // Links to provider-specific model metadata
   isEnabled?: boolean;
   priority?: number;
   
   // Provider-specific overrides
   maxContextTokensOverride?: number;
-  
-  // Provider metadata
-  providerVariation?: string;
-  qualityScore?: number;
-  
-  // Advanced Routing Fields
-  isDefault?: boolean;
-  defaultCapabilityType?: string;
   
   notes?: string;
 }
@@ -58,19 +44,12 @@ export interface UpdateModelProviderMappingDto {
   modelId?: number;
   providerId?: number;
   providerModelId?: string;
+  modelProviderTypeAssociationId?: number | null;  // Links to provider-specific model metadata
   isEnabled?: boolean;
   priority?: number;
   
   // Provider-specific overrides
   maxContextTokensOverride?: number;
-  
-  // Provider metadata
-  providerVariation?: string;
-  qualityScore?: number;
-  
-  // Advanced Routing Fields
-  isDefault?: boolean;
-  defaultCapabilityType?: string;
   
   notes?: string;
 }
@@ -140,16 +119,6 @@ export interface ModelMappingFilterOptions extends FilterOptions {
    * Filter by enabled status
    */
   isEnabled?: boolean;
-  
-  /**
-   * Filter by default status
-   */
-  isDefault?: boolean;
-  
-  /**
-   * Filter by capability type
-   */
-  capabilityType?: string;
   
   /**
    * Filter by minimum priority

@@ -208,11 +208,23 @@ namespace ConduitLLM.Tests.Helpers
         /// </summary>
         public static ModelProviderMapping CreateMapping(Model model, int providerId, string? modelAlias = null)
         {
-            return new ModelProviderMapping
+            // Create a ModelProviderTypeAssociation that links the model
+            var association = new ModelProviderTypeAssociation
             {
                 Id = _nextModelId++,
                 ModelId = model.Id,
                 Model = model,
+                Identifier = model.Name,
+                Provider = "test-provider",
+                IsEnabled = true,
+                IsPrimary = true
+            };
+
+            return new ModelProviderMapping
+            {
+                Id = _nextModelId++,
+                ModelProviderTypeAssociationId = association.Id,
+                ModelProviderTypeAssociation = association,
                 ModelAlias = modelAlias ?? model.Name,
                 ProviderModelId = model.Name,
                 ProviderId = providerId,

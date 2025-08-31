@@ -59,7 +59,7 @@ namespace ConduitLLM.Http.Controllers
                 
                 if (mapping != null)
                 {
-                    supportsImageGen = mapping.SupportsImageGeneration;
+                    supportsImageGen = mapping.ModelProviderTypeAssociation?.Model?.SupportsImageGeneration ?? false;
                     _logger.LogInformation("Model {Model} mapping found, supports image generation: {Supports}", 
                         modelName, supportsImageGen);
                 }

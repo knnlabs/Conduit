@@ -55,24 +55,23 @@ namespace ConduitLLM.Tests.Admin.Controllers
                 new() 
                 { 
                     ModelAlias = "model1", 
-                    ModelId = 1,
+                    ModelProviderTypeAssociationId = 1,
                     ProviderId = 1, 
                     ProviderModelId = "gpt-4"
                 },
                 new() 
                 { 
                     ModelAlias = "model2", 
-                    ModelId = 2,
+                    ModelProviderTypeAssociationId = 2,
                     ProviderId = 2, 
                     ProviderModelId = "claude-3"
-                    // SupportsVision = true 
                 }
             };
 
             var created = new List<ModelProviderMapping>
             {
-                new() { Id = 1, ModelAlias = "model1", ProviderId = 1, ProviderModelId = "gpt-4", ModelId = 1 },
-                new() { Id = 2, ModelAlias = "model2", ProviderId = 2, ProviderModelId = "claude-3", ModelId = 2 }
+                new() { Id = 1, ModelAlias = "model1", ProviderId = 1, ProviderModelId = "gpt-4", ModelProviderTypeAssociationId = 1 },
+                new() { Id = 2, ModelAlias = "model2", ProviderId = 2, ProviderModelId = "claude-3", ModelProviderTypeAssociationId = 2 }
             };
             var errors = new List<string>();
 
@@ -96,18 +95,18 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Arrange
             var mappings = new List<ModelProviderMapping>
             {
-                new() { ModelAlias = "model1", ProviderId = 1, ProviderModelId = "gpt-4", ModelId = 1 },
-                new() { ModelAlias = "duplicate", ProviderId = 1, ProviderModelId = "gpt-4", ModelId = 1 },
-                new() { ModelAlias = "model3", ProviderId = 1, ProviderModelId = "model", ModelId = 1 }
+                new() { ModelAlias = "model1", ProviderId = 1, ProviderModelId = "gpt-4", ModelProviderTypeAssociationId = 1 },
+                new() { ModelAlias = "duplicate", ProviderId = 1, ProviderModelId = "gpt-4", ModelProviderTypeAssociationId = 1 },
+                new() { ModelAlias = "model3", ProviderId = 1, ProviderModelId = "model", ModelProviderTypeAssociationId = 1 }
             };
 
             var created = new List<ModelProviderMapping>
             {
-                new() { Id = 1, ModelAlias = "model1", ProviderId = 1, ModelId = 1 }
+                new() { Id = 1, ModelAlias = "model1", ProviderId = 1, ModelProviderTypeAssociationId = 1 }
             };
             var errors = new List<string>
             {
-                "Model ID already exists",
+                "Model Provider Type Association ID already exists",
                 "Provider not found"
             };
 
@@ -145,7 +144,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Arrange
             var mappings = new List<ModelProviderMapping>
             {
-                new() { ModelAlias = "existing", ProviderId = 1, ProviderModelId = "gpt-4-updated", ModelId = 1 }
+                new() { ModelAlias = "existing", ProviderId = 1, ProviderModelId = "gpt-4-updated", ModelProviderTypeAssociationId = 1 }
             };
 
             var created = new List<ModelProviderMapping>();

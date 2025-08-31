@@ -69,24 +69,18 @@ namespace ConduitLLM.Configuration.EntityConfigurations
     {
         public void Configure(EntityTypeBuilder<ModelProviderMapping> builder)
         {
-            // Index for querying mappings by model (now required, no filter needed)
-            builder.HasIndex(e => e.ModelId)
-                .HasDatabaseName("IX_ModelProviderMapping_ModelId");
+            // Index for querying mappings by model provider type association
+            builder.HasIndex(e => e.ModelProviderTypeAssociationId)
+                .HasDatabaseName("IX_ModelProviderMapping_ModelProviderTypeAssociationId");
 
             // Index for finding enabled mappings
             builder.HasIndex(e => new { e.ProviderId, e.IsEnabled })
                 .HasDatabaseName("IX_ModelProviderMapping_ProviderId_IsEnabled")
                 .HasFilter("\"IsEnabled\" = true");
-
-            // Index for quality score queries (for finding best quality providers)
-            builder.HasIndex(e => new { e.ModelId, e.QualityScore })
-                .HasDatabaseName("IX_ModelProviderMapping_ModelId_QualityScore")
-                .HasFilter("\"QualityScore\" IS NOT NULL");
-
-            // Index for capability overrides (to find mappings with custom capabilities)
-            builder.HasIndex(e => e.CapabilityOverrides)
-                .HasDatabaseName("IX_ModelProviderMapping_CapabilityOverrides")
-                .HasFilter("\"CapabilityOverrides\" IS NOT NULL");
+                
+            // Index for ModelProviderTypeAssociationId for performance
+            builder.HasIndex(e => e.ModelProviderTypeAssociationId)
+                .HasDatabaseName("IX_ModelProviderMapping_ModelProviderTypeAssociationId");
         }
     }
 
