@@ -337,7 +337,7 @@ print(result if result is not None else '$default')
 }
 
 # Process each provider
-extract_json_array "$INPUT_FILE" '.providers' | while IFS= read -r provider; do
+while IFS= read -r provider; do
     PROVIDER_ID=$(parse_json_object_field "$provider" 'Id')
     PROVIDER_TYPE=$(parse_json_object_field "$provider" 'ProviderType')
     PROVIDER_NAME=$(parse_json_object_field "$provider" 'ProviderName')
@@ -365,7 +365,7 @@ extract_json_array "$INPUT_FILE" '.providers' | while IFS= read -r provider; do
                 SQL="UPDATE \"Providers\" SET 
                     \"ProviderType\" = $PROVIDER_TYPE,
                     \"ProviderName\" = '$PROVIDER_NAME',
-                    \"BaseUrl\" = $([ "$BASE_URL" = "null" ] && echo "NULL" || echo "'$BASE_URL'"),
+                    \"BaseUrl\" = $([ -z "$BASE_URL" -o "$BASE_URL" = "null" ] && echo "NULL" || echo "'$BASE_URL'"),
                     \"IsEnabled\" = $IS_ENABLED,
                     \"UpdatedAt\" = NOW()
                     WHERE \"Id\" = $PROVIDER_ID;"
@@ -388,7 +388,7 @@ extract_json_array "$INPUT_FILE" '.providers' | while IFS= read -r provider; do
                 \"IsEnabled\", \"CreatedAt\", \"UpdatedAt\"
             ) VALUES (
                 $PROVIDER_ID, $PROVIDER_TYPE, '$PROVIDER_NAME', 
-                $([ "$BASE_URL" = "null" ] && echo "NULL" || echo "'$BASE_URL'"),
+                $([ -z "$BASE_URL" -o "$BASE_URL" = "null" ] && echo "NULL" || echo "'$BASE_URL'"),
                 $IS_ENABLED, '$CREATED_AT', '$UPDATED_AT'
             ) ON CONFLICT (\"Id\") DO NOTHING;"
             
@@ -397,7 +397,7 @@ extract_json_array "$INPUT_FILE" '.providers' | while IFS= read -r provider; do
             ((PROVIDERS_IMPORTED++))
         fi
     fi
-done
+done < <(extract_json_array "$INPUT_FILE" '.providers')
 
 # Reset sequence for Providers table
 if [ "$DRY_RUN" != true ]; then
@@ -410,7 +410,7 @@ echo ""
 # Import Provider Key Credentials
 echo "Importing API keys..."
 
-extract_json_array "$INPUT_FILE" '.provider_keys' | while IFS= read -r key; do
+while IFS= read -r key; do
     KEY_ID=$(parse_json_object_field "$key" 'Id')
     PROVIDER_ID=$(parse_json_object_field "$key" 'ProviderId')
     ACCOUNT_GROUP=$(parse_json_object_field "$key" 'ProviderAccountGroup')
@@ -455,10 +455,10 @@ extract_json_array "$INPUT_FILE" '.provider_keys' | while IFS= read -r key; do
                 \"IsEnabled\", \"CreatedAt\", \"UpdatedAt\"
             ) VALUES (
                 $KEY_ID, $PROVIDER_ID, $ACCOUNT_GROUP, 
-                $([ "$API_KEY" = "null" ] && echo "NULL" || echo "'$API_KEY'"),
-                $([ "$BASE_URL" = "null" ] && echo "NULL" || echo "'$BASE_URL'"),
-                $([ "$ORGANIZATION" = "null" ] && echo "NULL" || echo "'$ORGANIZATION'"),
-                $([ "$KEY_NAME" = "null" ] && echo "NULL" || echo "'$KEY_NAME'"),
+                $([ -z "$API_KEY" -o "$API_KEY" = "null" ] && echo "NULL" || echo "'$API_KEY'"),
+                $([ -z "$BASE_URL" -o "$BASE_URL" = "null" ] && echo "NULL" || echo "'$BASE_URL'"),
+                $([ -z "$ORGANIZATION" -o "$ORGANIZATION" = "null" ] && echo "NULL" || echo "'$ORGANIZATION'"),
+                $([ -z "$KEY_NAME" -o "$KEY_NAME" = "null" ] && echo "NULL" || echo "'$KEY_NAME'"),
                 $IS_PRIMARY, $IS_ENABLED, '$CREATED_AT', '$UPDATED_AT'
             ) ON CONFLICT (\"Id\") DO NOTHING;"
             
@@ -467,7 +467,7 @@ extract_json_array "$INPUT_FILE" '.provider_keys' | while IFS= read -r key; do
             ((KEYS_IMPORTED++))
         fi
     fi
-done
+done < <(extract_json_array "$INPUT_FILE" '.provider_keys')
 
 # Reset sequence for ProviderKeyCredentials table
 if [ "$DRY_RUN" != true ]; then
@@ -483,7 +483,7 @@ HAS_MAPPINGS=$(parse_json_field "$INPUT_FILE" '.model_mappings' 'null')
 if [ "$HAS_MAPPINGS" != "null" ] && [ "$HAS_MAPPINGS" != "[]" ]; then
     echo "Importing model mappings..."
     
-    extract_json_array "$INPUT_FILE" '.model_mappings' | while IFS= read -r mapping; do
+    while IFS= read -r mapping; do
         MAPPING_ID=$(parse_json_object_field "$mapping" 'Id')
         MODEL_ALIAS=$(parse_json_object_field "$mapping" 'ModelAlias')
         PROVIDER_MODEL_ID=$(parse_json_object_field "$mapping" 'ProviderModelId')
@@ -538,7 +538,7 @@ if [ "$HAS_MAPPINGS" != "null" ] && [ "$HAS_MAPPINGS" != "[]" ]; then
                 ((MAPPINGS_IMPORTED++))
             fi
         fi
-    done
+    done < <(extract_json_array "$INPUT_FILE" '.model_mappings')
     
     # Reset sequence for ModelProviderMappings table
     if [ "$DRY_RUN" != true ]; then
