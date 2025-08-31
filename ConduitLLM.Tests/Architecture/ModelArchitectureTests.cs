@@ -132,19 +132,17 @@ namespace ConduitLLM.Tests.Architecture
             var seriesProperty = modelType.GetProperty("Series");
             var seriesIdProperty = modelType.GetProperty("ModelSeriesId");
             var identifiersProperty = modelType.GetProperty("Identifiers");
-            var mappingsProperty = modelType.GetProperty("ProviderMappings");
+            // Note: ProviderMappings navigation was removed - mappings now go through ModelProviderTypeAssociation
 
             // Assert - Model Series relationship
             Assert.NotNull(seriesProperty);
             Assert.Equal(typeof(ModelSeries), seriesProperty.PropertyType);
             Assert.NotNull(seriesIdProperty);
 
-            // Assert - Collections
+            // Assert - Identifiers collection (ModelProviderTypeAssociations)
             Assert.NotNull(identifiersProperty);
             Assert.True(identifiersProperty.PropertyType.IsGenericType);
-            
-            Assert.NotNull(mappingsProperty);
-            Assert.True(mappingsProperty.PropertyType.IsGenericType);
+            Assert.Equal(typeof(ICollection<ModelProviderTypeAssociation>), identifiersProperty.PropertyType);
         }
 
         [Fact]

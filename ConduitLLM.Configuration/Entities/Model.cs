@@ -108,11 +108,6 @@ namespace ConduitLLM.Configuration.Entities
         public virtual ICollection<ModelProviderTypeAssociation> Identifiers { get; set; } = new List<ModelProviderTypeAssociation>();
 
         /// <summary>
-        /// Navigation property for all provider mappings using this model.
-        /// </summary>
-        public virtual ICollection<ModelProviderMapping> ProviderMappings { get; set; } = new List<ModelProviderMapping>();
-
-        /// <summary>
         /// Whether the model is active and available for use.
         /// </summary>
         public bool IsActive { get; set; } = true;
