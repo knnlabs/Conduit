@@ -2,11 +2,52 @@
 
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
-import { Container, Title, Paper, TextInput, Select, NumberInput, Switch, Button, Group, Stack, LoadingOverlay, Alert, Textarea } from '@mantine/core';
-import { IconAlertCircle } from '@tabler/icons-react';
+import { 
+  Container, 
+  Title, 
+  Paper, 
+  TextInput, 
+  Select, 
+  NumberInput, 
+  Switch, 
+  Button, 
+  Group, 
+  Stack, 
+  LoadingOverlay, 
+  Alert, 
+  Textarea,
+  Badge,
+  Text,
+  Card,
+  Divider
+} from '@mantine/core';
+import { IconAlertCircle, IconRobot, IconBolt, IconStar } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
-import type { ModelProviderMappingDto, UpdateModelProviderMappingDto, ProviderDto } from '@knn_labs/conduit-admin-client';
+import type { 
+  ModelProviderMappingDto, 
+  UpdateModelProviderMappingDto,
+  ConduitAdminClient 
+} from '@knn_labs/conduit-admin-client';
+
+interface AssociationDetails {
+  associationId: number;
+  identifier: string;
+  provider: string | null;
+  providerVariation: string | null;
+  maxInputTokens: number | null;
+  maxOutputTokens: number | null;
+  speedScore: number | null;
+  qualityScore: number | null;
+  isPrimary: boolean;
+  modelId: number;
+  modelName: string;
+  availableProviders: Array<{
+    providerId: number;
+    providerName: string;
+    providerType: string;
+  }>;
+}
 
 export default function EditModelMappingPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -16,20 +57,20 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
   
   // Form state
   const [modelAlias, setModelAlias] = useState<string>('');
-  const [modelId, setModelId] = useState<number | undefined>();
   const [providerId, setProviderId] = useState<string>('');
-  const [providerModelId, setProviderModelId] = useState<string>('');
   const [priority, setPriority] = useState<number>(100);
   const [isEnabled, setIsEnabled] = useState<boolean>(true);
-  const [maxContextTokensOverride, setMaxContextTokensOverride] = useState<number | undefined>();
   const [notes, setNotes] = useState<string>('');
+  
+  // Data state
+  const [currentMapping, setCurrentMapping] = useState<ModelProviderMappingDto | null>(null);
+  const [associationDetails, setAssociationDetails] = useState<AssociationDetails | null>(null);
+  const [existingMappings, setExistingMappings] = useState<ModelProviderMappingDto[]>([]);
   
   // UI state
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
-  const [providers, setProviders] = useState<ProviderDto[]>([]);
-  const [existingMappings, setExistingMappings] = useState<ModelProviderMappingDto[]>([]);
   const [modelAliasError, setModelAliasError] = useState<string>('');
 
   useEffect(() => {
@@ -44,39 +85,61 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
       setIsLoading(true);
       setError('');
 
-      // Fetch the mapping, providers, and existing mappings in parallel
-      const mappingData = await withAdminClient(client => 
+      // Fetch the current mapping
+      const mappingData = await withAdminClient((client: ConduitAdminClient) => 
         client.modelMappings.getById(mappingId)
       );
+      setCurrentMapping(mappingData);
       
-      const providersResponse = await withAdminClient(client => 
-        client.providers.list()
-      );
-      interface ProvidersResponse {
-        items: ProviderDto[];
-      }
-      const providersData = (providersResponse as ProvidersResponse).items;
-      
-      const mappingsData = await withAdminClient(client => 
+      // Fetch all mappings for validation
+      const mappingsData = await withAdminClient((client: ConduitAdminClient) => 
         client.modelMappings.list()
       );
+      setExistingMappings(mappingsData);
+
+      // Get the model ID from the association
+      // First, we need to get all models and find which one has this association
+      const models = await withAdminClient((client: ConduitAdminClient) => 
+        client.models.list()
+      );
+      
+      // Find the model that contains this association
+      let foundAssociation: AssociationDetails | null = null;
+      
+      for (const model of models) {
+        const modelId = model.id;
+        if (modelId === undefined) continue;
+        
+        const availableProviders = await withAdminClient((client: ConduitAdminClient) => 
+          client.models.getAvailableProviders(modelId)
+        );
+        
+        const association = availableProviders.find(
+          (a: any) => a.associationId === mappingData.modelProviderTypeAssociationId
+        );
+        
+        if (association) {
+          foundAssociation = {
+            ...association,
+            modelId: modelId,
+            modelName: model.name ?? 'Unknown Model'
+          };
+          break;
+        }
+      }
+      
+      if (!foundAssociation) {
+        setError('Could not find the ModelProviderTypeAssociation for this mapping. The association may have been deleted.');
+      } else {
+        setAssociationDetails(foundAssociation);
+      }
 
       // Set form values
       setModelAlias(mappingData.modelAlias);
-      setModelId(mappingData.modelId);
-      setProviderModelId(mappingData.providerModelId);
+      setProviderId(mappingData.providerId.toString());
       setPriority(mappingData.priority ?? 100);
-      
-      // Set provider ID directly if it exists
-      if (mappingData.providerId) {
-        setProviderId(mappingData.providerId.toString());
-      }
       setIsEnabled(mappingData.isEnabled);
-      setMaxContextTokensOverride(mappingData.maxContextTokensOverride);
       setNotes(mappingData.notes ?? '');
-
-      setProviders(providersData);
-      setExistingMappings(mappingsData);
 
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -119,32 +182,36 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
       return;
     }
     
-    try {
-      setIsSaving(true);
+    // Validate that the selected provider is valid for this association
+    if (associationDetails) {
+      const validProvider = associationDetails.availableProviders.find(
+        p => p.providerId.toString() === providerId
+      );
       
-      if (!providerModelId?.trim()) {
+      if (!validProvider) {
         notifications.show({
-          title: 'Validation Error',
-          message: 'Provider Model ID is required',
+          title: 'Invalid Provider',
+          message: 'The selected provider is not valid for this model association',
           color: 'red',
         });
-        setIsSaving(false);
         return;
       }
+    }
+    
+    try {
+      setIsSaving(true);
 
       const updateData: UpdateModelProviderMappingDto = {
-        id: mappingId,
         modelAlias,
-        modelId,
         providerId: parseInt(providerId, 10),
-        providerModelId,
+        providerModelId: associationDetails?.identifier ?? currentMapping?.providerModelId ?? '',
+        modelProviderTypeAssociationId: currentMapping?.modelProviderTypeAssociationId,
         priority,
         isEnabled,
-        maxContextTokensOverride,
         notes: notes || undefined,
       };
 
-      await withAdminClient(client => 
+      await withAdminClient((client: ConduitAdminClient) => 
         client.modelMappings.update(mappingId, updateData)
       );
 
@@ -165,6 +232,29 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const formatTokenLimit = (tokens: number | null) => {
+    if (!tokens) return 'Default';
+    if (tokens >= 1000000) return `${(tokens / 1000000).toFixed(1)}M`;
+    if (tokens >= 1000) return `${(tokens / 1000).toFixed(0)}K`;
+    return tokens.toString();
+  };
+
+  const formatScore = (score: number | null, type: 'speed' | 'quality') => {
+    if (!score) return null;
+    
+    if (type === 'speed') {
+      if (score >= 2) return `${score.toFixed(1)}x faster`;
+      if (score === 1) return 'Standard speed';
+      return `${(1 / score).toFixed(1)}x slower`;
+    }
+    
+    // Quality score
+    const percentage = (score * 100).toFixed(0);
+    if (score >= 0.95) return `${percentage}% quality`;
+    if (score >= 0.9) return `${percentage}% quality`;
+    return `${percentage}% quality (degraded)`;
   };
 
   // Handle invalid ID case
@@ -191,6 +281,79 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
       <Paper shadow="xs" p="md" pos="relative">
         <LoadingOverlay visible={isLoading} />
         
+        {associationDetails && (
+          <Card mb="lg" withBorder>
+            <Stack gap="sm">
+              <Group justify="space-between">
+                <Text fw={600}>Model Configuration</Text>
+                <Badge variant="filled">{associationDetails.modelName}</Badge>
+              </Group>
+              
+              <Divider />
+              
+              <Group justify="space-between">
+                <Text size="sm" c="dimmed">Provider Model ID:</Text>
+                <Text size="sm" fw={500}>{associationDetails.identifier}</Text>
+              </Group>
+              
+              {associationDetails.provider && (
+                <Group justify="space-between">
+                  <Text size="sm" c="dimmed">Provider Type:</Text>
+                  <Badge variant="outline">{associationDetails.provider}</Badge>
+                </Group>
+              )}
+              
+              {associationDetails.providerVariation && (
+                <Group justify="space-between">
+                  <Text size="sm" c="dimmed">Variation:</Text>
+                  <Badge variant="outline">{associationDetails.providerVariation}</Badge>
+                </Group>
+              )}
+              
+              <Group gap="xs" mt="xs">
+                {associationDetails.maxInputTokens && (
+                  <Badge
+                    leftSection={<IconRobot size={12} />}
+                    variant="light"
+                    size="sm"
+                  >
+                    Input: {formatTokenLimit(associationDetails.maxInputTokens)}
+                  </Badge>
+                )}
+                {associationDetails.maxOutputTokens && (
+                  <Badge
+                    leftSection={<IconRobot size={12} />}
+                    variant="light"
+                    size="sm"
+                  >
+                    Output: {formatTokenLimit(associationDetails.maxOutputTokens)}
+                  </Badge>
+                )}
+                {associationDetails.speedScore && (
+                  <Badge
+                    leftSection={<IconBolt size={12} />}
+                    variant="light"
+                    color="green"
+                    size="sm"
+                  >
+                    {formatScore(associationDetails.speedScore, 'speed')}
+                  </Badge>
+                )}
+                {associationDetails.qualityScore && (
+                  <Badge
+                    leftSection={<IconStar size={12} />}
+                    variant="light"
+                    color={associationDetails.qualityScore >= 0.9 ? 'blue' : 'orange'}
+                    size="sm"
+                  >
+                    {formatScore(associationDetails.qualityScore, 'quality')}
+                  </Badge>
+                )}
+              </Group>
+            </Stack>
+          </Card>
+        )}
+        
         <form onSubmit={(e) => void handleSubmit(e)}>
           <Stack>
             <TextInput
@@ -206,50 +369,29 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
               required
             />
 
-            <NumberInput
-              label="Model ID"
-              description="Reference to the canonical Model entity (optional)"
-              placeholder="e.g., 1"
-              value={modelId}
-              onChange={(val) => setModelId(val === '' ? undefined : Number(val))}
-            />
-
             <Select
               label="Provider"
               placeholder="Select a provider"
+              description={associationDetails ? "Only providers that support this model configuration are shown" : "Loading available providers..."}
               value={providerId}
               onChange={(value) => setProviderId(value ?? '')}
-              data={providers.map(p => ({
-                value: p.id?.toString() ?? '',
-                label: p.providerName ?? 'Unnamed Provider'
-              }))}
-              required
-            />
-
-            <TextInput
-              label="Provider Model ID"
-              description="The model ID as known by the provider"
-              placeholder="e.g., gpt-4-1106-preview"
-              value={providerModelId}
-              onChange={(e) => setProviderModelId(e.currentTarget.value)}
+              data={
+                associationDetails?.availableProviders.map(p => ({
+                  value: p.providerId.toString(),
+                  label: `${p.providerName} (${p.providerType})`
+                })) ?? []
+              }
+              disabled={!associationDetails}
               required
             />
 
             <NumberInput
               label="Priority"
-              description="Higher priority mappings are preferred (0-1000)"
+              description="Lower values have higher priority (0-1000)"
               min={0}
               max={1000}
               value={priority}
               onChange={(val) => setPriority(Number(val) || 100)}
-            />
-
-            <NumberInput
-              label="Max Context Tokens Override"
-              description="Override the default context window size (optional)"
-              placeholder="e.g., 128000"
-              value={maxContextTokensOverride}
-              onChange={(val) => setMaxContextTokensOverride(val === '' ? undefined : Number(val))}
             />
 
             <Textarea
@@ -271,7 +413,7 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
               <Button variant="subtle" onClick={() => router.push('/model-mappings')}>
                 Cancel
               </Button>
-              <Button type="submit" loading={isSaving}>
+              <Button type="submit" loading={isSaving} disabled={!associationDetails}>
                 Save Changes
               </Button>
             </Group>

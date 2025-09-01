@@ -93,8 +93,8 @@ namespace ConduitLLM.Providers.OpenAICompatible
             // If we get here, we have a response to stream
             if (response != null)
             {
-                // Stream chunks progressively using StreamHelper
-                await foreach (var chunk in CoreUtils.StreamHelper.ProcessSseStreamAsync<OpenAIChatCompletionChunk>(
+                // Stream chunks progressively using StreamHelper - use JsonElement for raw passthrough
+                await foreach (var chunk in CoreUtils.StreamHelper.ProcessSseStreamAsync<System.Text.Json.JsonElement>(
                     response, Logger, DefaultJsonOptions, cancellationToken))
                 {
                     if (cancellationToken.IsCancellationRequested)
@@ -104,7 +104,22 @@ namespace ConduitLLM.Providers.OpenAICompatible
                         yield break;
                     }
 
-                    yield return MapFromOpenAIChunk(chunk, request.Model);
+                    // Deserialize the raw JSON directly to our chunk type, preserving ALL fields
+                    var chunkJson = chunk.GetRawText();
+                    var mappedChunk = System.Text.Json.JsonSerializer.Deserialize<CoreModels.ChatCompletionChunk>(
+                        chunkJson, DefaultJsonOptions);
+                    
+                    if (mappedChunk != null)
+                    {
+                        // Preserve the original model alias if provided
+                        if (!string.IsNullOrEmpty(request.Model))
+                        {
+                            mappedChunk.Model = request.Model;
+                            mappedChunk.OriginalModelAlias = request.Model;
+                        }
+                        
+                        yield return mappedChunk;
+                    }
                 }
                 
                 // Clean up after successful streaming

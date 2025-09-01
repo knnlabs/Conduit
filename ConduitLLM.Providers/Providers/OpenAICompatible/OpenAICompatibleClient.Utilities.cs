@@ -328,21 +328,86 @@ namespace ConduitLLM.Providers.OpenAICompatible
         /// <returns>A strongly-typed StreamingChoice object.</returns>
         private CoreModels.StreamingChoice MapSingleStreamingChoice(dynamic choice)
         {
+            string? deltaContent = null;
+            string? deltaRole = null;
+            
+            // Debug logging to understand what's in the choice
+            if (choice.Delta != null)
+            {
+                try
+                {
+                    // Convert dynamic to object to avoid dynamic dispatch issues
+                    object deltaObj = choice.Delta;
+                    var deltaJson = System.Text.Json.JsonSerializer.Serialize(deltaObj);
+                    Logger.LogDebug("Delta content from provider: {Delta}", deltaJson);
+                    
+                    // Parse the JSON to handle various delta formats
+                    using var doc = JsonDocument.Parse(deltaJson);
+                    var root = doc.RootElement;
+                    
+                    // Try to get content - standard OpenAI format
+                    if (root.TryGetProperty("content", out var contentElement))
+                    {
+                        deltaContent = contentElement.GetString();
+                    }
+                    // INCLUDE reasoning chunks from Groq's gpt-oss-120b model
+                    // These contain the model's thinking process which we WANT to display
+                    else if (root.TryGetProperty("reasoning", out var reasoningElement) && 
+                             root.TryGetProperty("channel", out var channelElement) &&
+                             channelElement.GetString() == "analysis")
+                    {
+                        // This is a reasoning chunk - treat it as content!
+                        deltaContent = reasoningElement.GetString();
+                        Logger.LogDebug("Processing reasoning chunk as content: {Reasoning}", deltaContent);
+                    }
+                    
+                    // Try to get role
+                    if (root.TryGetProperty("role", out var roleElement))
+                    {
+                        deltaRole = roleElement.GetString();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogDebug("Could not parse delta JSON: {Error}", ex.Message);
+                    // Fall back to direct property access
+                    try
+                    {
+                        deltaContent = choice.Delta?.Content;
+                        deltaRole = choice.Delta?.Role;
+                    }
+                    catch
+                    {
+                        // Ignore if direct access fails
+                    }
+                }
+            }
+            
             var streamingChoice = new CoreModels.StreamingChoice
             {
                 Index = choice.Index,
                 FinishReason = choice.FinishReason,
                 Delta = new CoreModels.DeltaContent
                 {
-                    Role = choice.Delta?.Role,
-                    Content = choice.Delta?.Content
+                    Role = deltaRole,
+                    Content = deltaContent
                 }
             };
 
             // Handle tool calls if present
-            if (choice.Delta != null && choice.Delta.ToolCalls != null)
+            if (choice.Delta != null)
             {
-                streamingChoice.Delta.ToolCalls = MapToolCalls(choice.Delta.ToolCalls);
+                try
+                {
+                    if (choice.Delta.ToolCalls != null)
+                    {
+                        streamingChoice.Delta.ToolCalls = MapToolCalls(choice.Delta.ToolCalls);
+                    }
+                }
+                catch
+                {
+                    // Tool calls might not be present or accessible
+                }
             }
 
             return streamingChoice;

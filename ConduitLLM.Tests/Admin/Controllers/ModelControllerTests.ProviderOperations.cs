@@ -2,6 +2,7 @@ using ConduitLLM.Admin.Controllers;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Models.Models;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
 
 using FluentAssertions;
@@ -23,6 +24,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
     {
         private readonly Mock<IModelRepository> _mockRepository;
         private readonly Mock<IAdminModelProviderMappingService> _mockMappingService;
+        private readonly Mock<IProviderRepository> _mockProviderRepository;
         private readonly Mock<ILogger<ModelController>> _mockLogger;
         private readonly ModelController _controller;
 
@@ -30,8 +32,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
         {
             _mockRepository = new Mock<IModelRepository>();
             _mockMappingService = new Mock<IAdminModelProviderMappingService>();
+            _mockProviderRepository = new Mock<IProviderRepository>();
             _mockLogger = new Mock<ILogger<ModelController>>();
-            _controller = new ModelController(_mockRepository.Object, _mockMappingService.Object, _mockLogger.Object);
+            _controller = new ModelController(_mockRepository.Object, _mockMappingService.Object, _mockProviderRepository.Object, _mockLogger.Object);
         }
 
         #region GetModelsByProvider Tests

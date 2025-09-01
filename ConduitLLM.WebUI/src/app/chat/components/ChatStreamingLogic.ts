@@ -20,6 +20,7 @@ interface ChatStreamingLogicParams {
   isLoading: boolean;
   setIsLoading: (value: boolean) => void;
   setStreamingContent: (value: string | ((prev: string) => string)) => void;
+  setStreamingChannel?: (value: string | null) => void;
   setTokensPerSecond: (value: number | null) => void;
   setError: (error: Error | null) => void;
   getActiveSession: () => { parameters?: Partial<ChatParameters> } | null;
@@ -38,6 +39,7 @@ export function useChatStreamingLogic({
   isLoading,
   setIsLoading,
   setStreamingContent,
+  setStreamingChannel,
   setTokensPerSecond,
   setError,
   getActiveSession,
@@ -124,6 +126,13 @@ export function useChatStreamingLogic({
             console.warn('Chat streaming started');
           }
         },
+        onChunk: (chunk) => {
+          // Track the channel for visual treatment
+          const channel = chunk.choices?.[0]?.delta?.channel;
+          if (setStreamingChannel && channel !== undefined) {
+            setStreamingChannel(channel);
+          }
+        },
         onContent: (content, totalContent) => {
           setStreamingContent(totalContent);
         },
@@ -131,27 +140,48 @@ export function useChatStreamingLogic({
           setTokensPerSecond(tps);
         } : undefined,
         onComplete: ({ content, metadata }) => {
+          // Note: For models like gpt-oss-120b, we may only receive reasoning content
+          // which is still valid content that should be displayed
+          let finalContent = content;
+          if (!finalContent || finalContent.length === 0) {
+            // Still create a message even if empty to show something happened
+            finalContent = '[No response received]';
+          }
+          
           const assistantMessage: ChatMessage = {
             id: uuidv4(),
             role: 'assistant',
-            content,
+            content: finalContent,
             timestamp: new Date(),
             metadata: metadata as ChatMessage['metadata'] // Convert SDK metadata to WebUI format
           };
 
           setMessages(prev => [...prev, assistantMessage]);
+          // Clear streaming state after message is added
           setStreamingContent('');
+          setStreamingChannel?.(null);
           setTokensPerSecond(null);
+          setIsLoading(false);
         },
         onError: (error) => {
           console.error('Streaming error:', error);
           handleError(error, 'chat streaming');
           setError(error);
+          // Clean up on error
+          setStreamingContent('');
+          setStreamingChannel?.(null);
+          setTokensPerSecond(null);
+          setIsLoading(false);
         },
         onAbort: () => {
           if (process.env.NODE_ENV === 'development') {
             console.warn('Chat streaming aborted');
           }
+          // Clean up state when aborted
+          setStreamingContent('');
+          setStreamingChannel?.(null);
+          setTokensPerSecond(null);
+          setIsLoading(false);
         }
       };
 
@@ -163,11 +193,10 @@ export function useChatStreamingLogic({
       handleError(err, 'chat');
       setError(err as Error);
     } finally {
-      setIsLoading(false);
-      setStreamingContent('');
+      // Cleanup handled in callbacks
       setTokensPerSecond(null);
     }
-  }, [selectedModel, messages, isLoading, getActiveSession, performanceSettings, handleError, setMessages, setIsLoading, setStreamingContent, setTokensPerSecond, setError, dynamicParameters, streamingManager]);
+  }, [selectedModel, messages, isLoading, getActiveSession, performanceSettings, handleError, setMessages, setIsLoading, setStreamingContent, setStreamingChannel, setTokensPerSecond, setError, dynamicParameters, streamingManager]);
 
   const abortMessage = useCallback(() => {
     if (streamingManager.isStreaming()) {

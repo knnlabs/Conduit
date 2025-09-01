@@ -4,33 +4,24 @@ import { ProviderReferenceDto } from './provider';
 export interface ModelProviderMappingDto {
   id: number;
   modelAlias: string;  // The alias used by clients
-  modelId: number;     // Reference to canonical Model entity
   providerId: number;
   provider?: ProviderReferenceDto;
   providerModelId: string;
-  modelProviderTypeAssociationId?: number | null;  // Links to provider-specific model metadata
+  modelProviderTypeAssociationId: number;  // REQUIRED: Links to provider-specific model metadata
   isEnabled: boolean;
   priority: number;
   createdAt: string;
   updatedAt: string;
   notes?: string;
-  
-  // Provider-specific overrides
-  maxContextTokensOverride?: number;
 }
 
 export interface CreateModelProviderMappingDto {
   modelAlias: string;   // The alias used by clients
-  modelId: number;      // Reference to canonical Model entity (required)
   providerId: number;
   providerModelId: string;
-  modelProviderTypeAssociationId?: number | null;  // Links to provider-specific model metadata
+  modelProviderTypeAssociationId: number;  // REQUIRED: Links to provider-specific model metadata
   isEnabled?: boolean;
   priority?: number;
-  
-  // Provider-specific overrides
-  maxContextTokensOverride?: number;
-  
   notes?: string;
 }
 
@@ -41,16 +32,11 @@ export interface UpdateModelProviderMappingDto {
    */
   id?: number;
   modelAlias?: string;
-  modelId?: number;
   providerId?: number;
   providerModelId?: string;
-  modelProviderTypeAssociationId?: number | null;  // Links to provider-specific model metadata
+  modelProviderTypeAssociationId?: number;  // Links to provider-specific model metadata
   isEnabled?: boolean;
   priority?: number;
-  
-  // Provider-specific overrides
-  maxContextTokensOverride?: number;
-  
   notes?: string;
 }
 

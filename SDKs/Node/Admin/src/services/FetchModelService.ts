@@ -68,6 +68,50 @@ export class FetchModelService {
   }
 
   /**
+   * Get available providers for a model - returns associations with matching providers
+   */
+  async getAvailableProviders(id: number, config?: RequestConfig): Promise<Array<{
+    associationId: number;
+    identifier: string;
+    provider: string | null;
+    providerVariation: string | null;
+    maxInputTokens: number | null;
+    maxOutputTokens: number | null;
+    speedScore: number | null;
+    qualityScore: number | null;
+    isPrimary: boolean;
+    availableProviders: Array<{
+      providerId: number;
+      providerName: string;
+      providerType: string;
+    }>;
+  }>> {
+    return this.client['get']<Array<{
+      associationId: number;
+      identifier: string;
+      provider: string | null;
+      providerVariation: string | null;
+      maxInputTokens: number | null;
+      maxOutputTokens: number | null;
+      speedScore: number | null;
+      qualityScore: number | null;
+      isPrimary: boolean;
+      availableProviders: Array<{
+        providerId: number;
+        providerName: string;
+        providerType: string;
+      }>;
+    }>>(
+      `${ENDPOINTS.MODELS.BY_ID(id)}/available-providers`,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
    * Get models by type
    */
   async getByType(type: string, config?: RequestConfig): Promise<ModelDto[]> {

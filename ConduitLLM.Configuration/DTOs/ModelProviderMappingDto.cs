@@ -54,12 +54,6 @@ namespace ConduitLLM.Configuration.DTOs
         public bool IsEnabled { get; set; } = true;
 
         /// <summary>
-        /// Provider-specific override for maximum context tokens.
-        /// If null, uses Model.Capabilities.MaxTokens.
-        /// </summary>
-        public int? MaxContextTokensOverride { get; set; }
-
-        /// <summary>
         /// Date when the mapping was created
         /// </summary>
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

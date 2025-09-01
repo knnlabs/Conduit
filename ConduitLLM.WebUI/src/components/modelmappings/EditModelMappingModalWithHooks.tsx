@@ -9,7 +9,6 @@ import {
   NumberInput,
   Button,
   Select,
-  Divider,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useEffect, useState, useCallback } from 'react';
@@ -27,18 +26,11 @@ interface EditModelMappingModalProps {
 
 interface FormValues {
   modelAlias: string;
-  modelId?: number;
   providerId: string;
   providerModelId: string;
+  modelProviderTypeAssociationId?: number;
   priority: number;
   isEnabled: boolean;
-  // Provider-specific overrides
-  maxContextTokensOverride?: number;
-  providerVariation?: string;
-  qualityScore?: number;
-  // Advanced routing
-  isDefault: boolean;
-  defaultCapabilityType?: string;
   notes?: string;
 }
 
@@ -54,16 +46,11 @@ export function EditModelMappingModal({
 
   const [initialFormValues, setInitialFormValues] = useState<FormValues>(() => ({
     modelAlias: '',
-    modelId: undefined,
     providerId: '',
     providerModelId: '',
+    modelProviderTypeAssociationId: undefined,
     priority: 100,
     isEnabled: true,
-    maxContextTokensOverride: undefined,
-    providerVariation: undefined,
-    qualityScore: undefined,
-    isDefault: false,
-    defaultCapabilityType: undefined,
     notes: undefined,
   }));
 
@@ -104,16 +91,11 @@ export function EditModelMappingModal({
       
       const newFormValues: FormValues = {
         modelAlias: mapping.modelAlias,
-        modelId: mapping.modelId,
         providerId: providerIdForForm, // Use the numeric ID for the form
         providerModelId: mapping.providerModelId,
+        modelProviderTypeAssociationId: mapping.modelProviderTypeAssociationId,
         priority: mapping.priority ?? 100,
         isEnabled: mapping.isEnabled,
-        maxContextTokensOverride: mapping.maxContextTokensOverride,
-        providerVariation: mapping.providerVariation,
-        qualityScore: mapping.qualityScore,
-        isDefault: mapping.isDefault ?? false,
-        defaultCapabilityType: mapping.defaultCapabilityType,
         notes: mapping.notes,
       };
       
@@ -126,16 +108,11 @@ export function EditModelMappingModal({
 
     const updateData: UpdateModelProviderMappingDto = {
       modelAlias: values.modelAlias,
-      modelId: values.modelId,
       providerId: parseInt(values.providerId, 10), // Send numeric ID directly
       providerModelId: values.providerModelId,
+      modelProviderTypeAssociationId: values.modelProviderTypeAssociationId,
       priority: values.priority,
       isEnabled: values.isEnabled,
-      maxContextTokensOverride: values.maxContextTokensOverride,
-      providerVariation: values.providerVariation,
-      qualityScore: values.qualityScore,
-      isDefault: values.isDefault,
-      defaultCapabilityType: values.defaultCapabilityType,
       notes: values.notes,
     };
 
@@ -184,12 +161,6 @@ export function EditModelMappingModal({
             {...form.getInputProps('modelAlias')}
           />
 
-          <NumberInput
-            label="Model ID"
-            placeholder="Optional"
-            description="Reference to the canonical Model entity"
-            {...form.getInputProps('modelId')}
-          />
 
           <Select
             label="Provider"
@@ -220,47 +191,6 @@ export function EditModelMappingModal({
             {...form.getInputProps('isEnabled', { type: 'checkbox' })}
           />
 
-          <Divider label="Provider Overrides" labelPosition="center" />
-
-          <NumberInput
-            label="Max Context Tokens Override"
-            placeholder="e.g., 128000"
-            description="Override the model's default context window"
-            min={0}
-            {...form.getInputProps('maxContextTokensOverride')}
-          />
-
-          <TextInput
-            label="Provider Variation"
-            placeholder="e.g., Q4_K_M, GGUF, instruct"
-            description="Specific model variation or quantization"
-            {...form.getInputProps('providerVariation')}
-          />
-
-          <NumberInput
-            label="Quality Score"
-            placeholder="1.0"
-            description="Quality relative to original (0-1)"
-            min={0}
-            max={1}
-            step={0.05}
-            {...form.getInputProps('qualityScore')}
-          />
-
-          <Divider label="Advanced Settings" labelPosition="center" />
-
-          <Switch
-            label="Is Default"
-            description="Use as default mapping for its capability"
-            {...form.getInputProps('isDefault', { type: 'checkbox' })}
-          />
-
-          <TextInput
-            label="Default Capability Type"
-            placeholder="e.g., chat, vision"
-            description="The capability this mapping is default for"
-            {...form.getInputProps('defaultCapabilityType')}
-          />
 
           <TextInput
             label="Notes"

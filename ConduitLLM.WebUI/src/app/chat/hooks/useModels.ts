@@ -6,35 +6,25 @@ export function useModels() {
   return useQuery({
     queryKey: ['chat-models'],
     queryFn: async () => {
-      // Fetch model mappings and models in parallel
-      const [mappings, models, providersResponse] = await Promise.all([
+      // Fetch model mappings, providers, and model provider associations
+      const [mappings, providersResponse] = await Promise.all([
         withAdminClient(client => client.modelMappings.list()),
-        withAdminClient(client => client.models.list()),
         withAdminClient(client => client.providers.list(1, 100)) // Get up to 100 providers
       ]);
       
-      // Create lookup maps for efficient access
-      const modelsMap = new Map(models.map(m => [m.id, m]));
+      // Create lookup map for providers
       const providersMap = new Map(providersResponse.items.map(p => [p.id, p]));
       
-      // Filter mappings to only include enabled chat-capable models
+      // For now, return all enabled mappings as chat models
+      // We can't filter by capability without the Model data
+      // This needs a proper backend endpoint that returns enriched data
       const chatMappings = mappings.filter(mapping => {
         // Must be enabled
-        if (!mapping.isEnabled) return false;
-        
-        // Get the associated model
-        const model = modelsMap.get(mapping.modelId);
-        if (!model) return false;
-        
-        // Must support chat capability
-        if (!model.supportsChat) return false;
-        
-        return true;
+        return mapping.isEnabled;
       });
       
       // Map to the expected format
       const mappedModels: ModelWithCapabilities[] = chatMappings.map(mapping => {
-        const model = modelsMap.get(mapping.modelId);
         const provider = providersMap.get(mapping.providerId);
         
         return {
@@ -42,12 +32,12 @@ export function useModels() {
           providerId: mapping.providerId.toString(),
           providerName: provider?.providerName ?? 'Unknown Provider',
           displayName: mapping.modelAlias, // Use alias as display name
-          maxContextTokens: mapping.maxContextTokensOverride ?? model?.maxInputTokens ?? 128000,
-          supportsVision: model?.supportsVision ?? false,
-          supportsFunctionCalling: model?.supportsFunctionCalling ?? false,
+          maxContextTokens: 128000, // Default since we don't have model data
+          supportsVision: false, // We don't have this data without the Model
+          supportsFunctionCalling: false, // We don't have this data
           supportsToolUsage: false, // Not in the new schema
           supportsJsonMode: false, // Not in the new schema
-          supportsStreaming: model?.supportsStreaming ?? true,
+          supportsStreaming: true, // Default to true
         };
       });
       

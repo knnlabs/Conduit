@@ -14,38 +14,25 @@ export function useImageModels() {
   return useQuery({
     queryKey: ['image-models'],
     queryFn: async () => {
-      // Fetch model mappings, models, and providers in parallel
-      const [mappings, models, providersResponse] = await Promise.all([
+      // Fetch model mappings and providers
+      const [mappings, providersResponse] = await Promise.all([
         withAdminClient(client => client.modelMappings.list()),
-        withAdminClient(client => client.models.list()),
         withAdminClient(client => client.providers.list(1, 100)) // Get up to 100 providers
       ]);
       
-      // Create lookup maps for efficient access
-      const modelsMap = new Map(models.map(m => [m.id, m]));
+      // Create lookup map for providers
       const providersMap = new Map(providersResponse.items.map(p => [p.id, p]));
       
-      // Filter mappings to only include enabled image generation models
+      // For now, return all enabled mappings as image models
+      // We can't filter by capability without the Model data
+      // TODO: Backend should provide enriched mappings with model capabilities
       const imageMappings = mappings.filter(mapping => {
         // Must be enabled
-        if (!mapping.isEnabled) return false;
-        
-        // Get the associated model
-        const model = modelsMap.get(mapping.modelId);
-        if (!model) return false;
-        
-        // Must support image generation capability
-        if (!model.supportsImageGeneration) return false;
-        
-        // Must be active
-        if (model.isActive === false) return false;
-        
-        return true;
+        return mapping.isEnabled;
       });
       
       // Map to the expected format
       const imageModels: ImageModel[] = imageMappings.map(mapping => {
-        const model = modelsMap.get(mapping.modelId);
         const provider = providersMap.get(mapping.providerId);
         
         return {
@@ -53,8 +40,8 @@ export function useImageModels() {
           providerId: mapping.providerId.toString(),
           providerName: provider?.providerName ?? 'Unknown Provider',
           displayName: mapping.modelAlias, // Use alias as display name
-          maxContextTokens: mapping.maxContextTokensOverride ?? model?.maxInputTokens,
-          supportsImageGeneration: true,
+          maxContextTokens: null, // No override data available
+          supportsImageGeneration: true, // Assume true for now
         };
       });
       

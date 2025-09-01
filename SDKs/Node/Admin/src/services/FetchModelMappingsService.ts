@@ -147,6 +147,6 @@ export class FetchModelMappingsService {
    * Helper method to format mapping display name
    */
   formatMappingName(mapping: ModelProviderMappingDto): string {
-    return `${mapping.modelId} → ${mapping.providerId}:${mapping.providerModelId}`;
+    return `${mapping.modelAlias} → ${mapping.providerId}:${mapping.providerModelId}`;
   }
 }

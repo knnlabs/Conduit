@@ -18,9 +18,9 @@ export async function POST(request: NextRequest) {
         stream: true
       });
 
-      // Create a TransformStream to convert SDK chunks to SSE format
+      // Create a ReadableStream directly instead of using TransformStream (Next.js 15 compatibility)
       const encoder = new TextEncoder();
-      const transformStream = new TransformStream({
+      const readableStream = new ReadableStream({
         async start(controller) {
           try {
             for await (const chunk of stream) {
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
             }
             // Send the final [DONE] message
             controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-            controller.terminate();
+            controller.close();
           } catch (error) {
             // Send error as SSE event
             const errorData = {
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
               }
             };
             controller.enqueue(encoder.encode(`data: ${JSON.stringify(errorData)}\n\n`));
-            controller.terminate();
+            controller.close();
           }
         }
       });
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       headers.set('Cache-Control', 'no-cache');
       headers.set('Connection', 'keep-alive');
       
-      return new Response(transformStream.readable, { headers });
+      return new Response(readableStream, { headers });
     } else {
       // Non-streaming request
       const result = await coreClient.chat.create({

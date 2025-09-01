@@ -75,6 +75,8 @@ export interface ChatMessage {
     completionTokens?: number;
     timeToFirstToken?: number;
     streaming?: boolean;
+    hasReasoning?: boolean;
+    reasoning?: string;
   };
   error?: {
     type: ChatErrorType;

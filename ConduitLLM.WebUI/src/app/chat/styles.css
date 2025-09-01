@@ -309,3 +309,51 @@
 .mantine-ActionIcon-root:active {
   transform: scale(0.95);
 }
+
+/* Reasoning content styling */
+.reasoning-content {
+  position: relative;
+  font-style: italic;
+  opacity: 0.85;
+  color: var(--mantine-color-gray-6);
+}
+
+.reasoning-content::before {
+  content: "🤔 Reasoning: ";
+  font-style: normal;
+  font-weight: 600;
+  color: var(--mantine-color-blue-6);
+  display: inline-block;
+  margin-right: 0.5em;
+  font-size: 0.9em;
+}
+
+[data-mantine-color-scheme="dark"] .reasoning-content {
+  color: var(--conduit-text-tertiary);
+  opacity: 0.9;
+}
+
+[data-mantine-color-scheme="dark"] .reasoning-content::before {
+  color: var(--conduit-accent-blue);
+}
+
+/* Add subtle background for reasoning blocks */
+.markdown-content.reasoning-content {
+  background: linear-gradient(
+    90deg,
+    var(--mantine-color-blue-0) 0%,
+    transparent 10%
+  );
+  padding-left: 1em;
+  border-left: 3px solid var(--mantine-color-blue-3);
+  margin-left: -0.5em;
+}
+
+[data-mantine-color-scheme="dark"] .markdown-content.reasoning-content {
+  background: linear-gradient(
+    90deg,
+    rgba(33, 150, 243, 0.05) 0%,
+    transparent 10%
+  );
+  border-left-color: var(--conduit-accent-blue-subtle);
+}

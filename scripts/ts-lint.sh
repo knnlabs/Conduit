@@ -48,35 +48,53 @@ TOTAL_ERRORS=0
 
 # WebUI lint check
 log_task "Checking WebUI lint..."
-if cd ConduitLLM.WebUI && npm run lint --silent 2>/dev/null; then
-    log_info "WebUI: No lint errors"
-    cd - > /dev/null
+if [[ -d "ConduitLLM.WebUI" ]]; then
+    if cd ConduitLLM.WebUI && npm run lint --silent 2>/dev/null; then
+        log_info "WebUI: No lint errors"
+        cd - > /dev/null
+    else
+        cd ConduitLLM.WebUI
+        WEBUI_ERRORS=$(npm run lint 2>&1 | grep -c "error" || echo "0")
+        log_error "WebUI: $WEBUI_ERRORS lint errors"
+        cd - > /dev/null
+    fi
 else
-    WEBUI_ERRORS=$(cd ConduitLLM.WebUI && npm run lint 2>&1 | grep -c "error" || echo "0")
-    log_error "WebUI: $WEBUI_ERRORS lint errors"
-    cd - > /dev/null
+    log_error "WebUI directory not found"
+    WEBUI_ERRORS=0
 fi
 
 # Admin SDK lint check
 log_task "Checking Admin SDK lint..."
-if cd SDKs/Node/Admin && npm run lint --silent 2>/dev/null; then
-    log_info "Admin SDK: No lint errors"
-    cd - > /dev/null
+if [[ -d "SDKs/Node/Admin" ]]; then
+    if cd SDKs/Node/Admin && npm run lint --silent 2>/dev/null; then
+        log_info "Admin SDK: No lint errors"
+        cd - > /dev/null
+    else
+        cd SDKs/Node/Admin
+        ADMIN_SDK_ERRORS=$(npm run lint 2>&1 | grep -c "error" || echo "0")
+        log_error "Admin SDK: $ADMIN_SDK_ERRORS lint errors"
+        cd - > /dev/null
+    fi
 else
-    ADMIN_SDK_ERRORS=$(cd SDKs/Node/Admin && npm run lint 2>&1 | grep -c "error" || echo "0")
-    log_error "Admin SDK: $ADMIN_SDK_ERRORS lint errors"
-    cd - > /dev/null
+    log_error "Admin SDK directory not found"
+    ADMIN_SDK_ERRORS=0
 fi
 
 # Core SDK lint check
 log_task "Checking Core SDK lint..."
-if cd SDKs/Node/Core && npm run lint --silent 2>/dev/null; then
-    log_info "Core SDK: No lint errors"
-    cd - > /dev/null
+if [[ -d "SDKs/Node/Core" ]]; then
+    if cd SDKs/Node/Core && npm run lint --silent 2>/dev/null; then
+        log_info "Core SDK: No lint errors"
+        cd - > /dev/null
+    else
+        cd SDKs/Node/Core
+        CORE_SDK_ERRORS=$(npm run lint 2>&1 | grep -c "error" || echo "0")
+        log_error "Core SDK: $CORE_SDK_ERRORS lint errors"
+        cd - > /dev/null
+    fi
 else
-    CORE_SDK_ERRORS=$(cd SDKs/Node/Core && npm run lint 2>&1 | grep -c "error" || echo "0")
-    log_error "Core SDK: $CORE_SDK_ERRORS lint errors"
-    cd - > /dev/null
+    log_error "Core SDK directory not found"
+    CORE_SDK_ERRORS=0
 fi
 
 # Summary

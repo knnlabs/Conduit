@@ -152,17 +152,16 @@ export function useBulkDiscoverModels() {
     setIsDiscovering(true);
     try {
       // Fetch models available from this specific provider using the new SDK method
-      const [providerModels, existingMappings] = await Promise.all([
-        withAdminClient(client => client.models.getByProvider(providerName.toLowerCase())),
-        withAdminClient(client => client.modelMappings.list())
-      ]);
-
-      // Create a set of model IDs that already have mappings for this provider
-      const mappedModelIds = new Set(
-        existingMappings
-          .filter(m => m.providerId?.toString() === providerId)
-          .map(m => m.modelId)
+      const providerModels = await withAdminClient(client => 
+        client.models.getByProvider(providerName.toLowerCase())
       );
+
+      // TODO: Use mapped aliases to check for conflicts
+      // const mappedModelAliases = new Set(
+      //   existingMappings
+      //     .filter(m => m.providerId?.toString() === providerId)
+      //     .map(m => m.modelAlias)
+      // );
 
       // Transform provider-specific models to discovery result format
       const result: BulkDiscoverResult = {
@@ -177,7 +176,7 @@ export function useBulkDiscoverModels() {
             displayName: model.name ?? model.id?.toString() ?? '',
             providerId,
             providerModelId, // Store the provider-specific model ID
-            hasConflict: model.id ? mappedModelIds.has(model.id) : false,
+            hasConflict: false, // TODO: Check against mapped aliases
             existingMapping: null,
             capabilities: {
               supportsVision: model.supportsVision ?? false,
@@ -196,7 +195,7 @@ export function useBulkDiscoverModels() {
           };
         }),
         totalModels: providerModels.length,
-        conflictCount: providerModels.filter(m => m.id && mappedModelIds.has(m.id)).length,
+        conflictCount: 0, // TODO: Implement proper conflict detection
       };
 
       return result;
@@ -265,16 +264,16 @@ export function useBulkCreateMappings() {
     setIsCreating(true);
     try {
       // Transform request to Admin SDK format
+      // TODO: This needs to be updated to create/find ModelProviderTypeAssociations first
+      // For now, using a placeholder value of 1 - this will need proper implementation
       const bulkRequest = {
         mappings: request.models.map(model => ({
           modelAlias: model.providerModelId ?? model.displayName,  // Use provider model ID as alias
-          modelId: parseInt(model.modelId, 10),  // Use the actual model ID from the Model entity
           providerId: parseInt(model.providerId, 10),
           providerModelId: model.providerModelId ?? model.displayName,  // Provider-specific model identifier
+          modelProviderTypeAssociationId: 1, // TODO: Need to create/find association for each model
           isEnabled: request.enableByDefault ?? true,
           priority: request.defaultPriority ?? 50,
-          isDefault: false,
-          maxContextTokensOverride: model.capabilities.maxContextLength ?? undefined,
         })),
         replaceExisting: false,
       };

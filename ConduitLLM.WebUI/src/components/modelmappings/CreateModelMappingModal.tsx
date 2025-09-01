@@ -14,13 +14,15 @@ import {
   Paper,
   Badge,
   Flex,
+  Divider,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconInfoCircle, IconRobot, IconEye, IconBrush, IconVideo, IconBrain } from '@tabler/icons-react';
-import { useCreateModelMapping } from '@/hooks/useModelMappingsApi';
-import { useProviders } from '@/hooks/useProviderApi';
+import { IconRobot, IconEye, IconBrush, IconVideo, IconBrain, IconAlertCircle } from '@tabler/icons-react';
+import { useCreateModelMapping, useModelMappings } from '@/hooks/useModelMappingsApi';
 import { useModels } from '@/hooks/useModelsApi';
-import { ProviderModelSelect } from './ProviderModelSelect';
+import { useModelAssociations } from '@/hooks/useModelAssociations';
+import { AssociationProviderSelect } from './AssociationProviderSelect';
+import { notifications } from '@mantine/notifications';
 import type { CreateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 
 interface CreateModelMappingModalProps {
@@ -32,11 +34,9 @@ interface CreateModelMappingModalProps {
 interface FormValues {
   modelAlias: string;
   modelId: number | null;
-  providerId: string;
-  providerModelId: string;
+  associationProviderId: string | null; // Format: "associationId:providerId"
   priority: number;
   isEnabled: boolean;
-  maxContextTokensOverride?: number;
   notes?: string;
 }
 
@@ -46,60 +46,103 @@ export function CreateModelMappingModal({
   onSuccess 
 }: CreateModelMappingModalProps) {
   const createMapping = useCreateModelMapping();
-  const { providers, isLoading: providersLoading } = useProviders();
   const { models, isLoading: modelsLoading } = useModels();
+  const { mappings } = useModelMappings();
 
   const form = useForm<FormValues>({
     initialValues: {
       modelAlias: '',
       modelId: null,
-      providerId: '',
-      providerModelId: '',
+      associationProviderId: null,
       priority: 100,
       isEnabled: true,
-      maxContextTokensOverride: undefined,
       notes: undefined,
     },
     validate: {
-      modelAlias: (value) => !value?.trim() ? 'Model alias is required' : null,
+      modelAlias: (value) => {
+        if (!value?.trim()) return 'Model alias is required';
+        
+        // Check for duplicate aliases
+        const duplicate = mappings.find(m => 
+          m.modelAlias.toLowerCase() === value.trim().toLowerCase()
+        );
+        
+        if (duplicate) {
+          return `Model alias '${value}' already exists`;
+        }
+        
+        return null;
+      },
       modelId: (value) => !value ? 'Model selection is required' : null,
-      providerId: (value) => !value?.trim() ? 'Provider is required' : null,
-      providerModelId: (value) => !value?.trim() ? 'Provider model ID is required' : null,
+      associationProviderId: (value) => !value ? 'Provider configuration is required' : null,
       priority: (value) => value < 0 || value > 1000 ? 'Priority must be between 0 and 1000' : null,
     },
   });
 
-  const handleSubmit = async (values: FormValues) => {
-    if (!values.modelId) return;
+  const { data: associations, isLoading: associationsLoading } = useModelAssociations(form.values.modelId);
 
-    const createData: CreateModelProviderMappingDto = {
-      modelAlias: values.modelAlias,
-      modelId: values.modelId,
-      providerId: parseInt(values.providerId, 10),
-      providerModelId: values.providerModelId,
-      priority: values.priority,
-      isEnabled: values.isEnabled,
-      maxContextTokensOverride: values.maxContextTokensOverride,
-      notes: values.notes,
-    };
+  const handleSubmit = async (values: FormValues) => {
+    if (!values.modelId || !values.associationProviderId) return;
 
     try {
+      // Parse the association and provider IDs
+      const [associationId, providerId] = values.associationProviderId.split(':').map(Number);
+      
+      if (!associationId || !providerId) {
+        notifications.show({
+          title: 'Configuration Error',
+          message: 'Invalid provider configuration selected',
+          color: 'red',
+        });
+        return;
+      }
+
+      // Find the selected association to get the identifier
+      const selectedAssociation = associations?.find(a => a.associationId === associationId);
+      if (!selectedAssociation) {
+        notifications.show({
+          title: 'Configuration Error',
+          message: 'Selected configuration not found',
+          color: 'red',
+        });
+        return;
+      }
+      
+      // Validate that the same association+provider combo isn't already mapped
+      const duplicateMapping = mappings.find(m => 
+        m.modelProviderTypeAssociationId === associationId &&
+        m.providerId === providerId
+      );
+      
+      if (duplicateMapping) {
+        notifications.show({
+          title: 'Duplicate Mapping',
+          message: `This provider configuration is already mapped as '${duplicateMapping.modelAlias}'`,
+          color: 'red',
+        });
+        return;
+      }
+
+      const createData: CreateModelProviderMappingDto = {
+        modelAlias: values.modelAlias,
+        providerId: providerId,
+        providerModelId: selectedAssociation.identifier, // Use the identifier from the association
+        modelProviderTypeAssociationId: associationId,
+        priority: values.priority,
+        isEnabled: values.isEnabled,
+        notes: values.notes,
+      };
+
       await createMapping.mutateAsync(createData);
       form.reset();
       onSuccess?.();
       onClose();
-    } catch (error) {
-      console.error('Failed to create model mapping:', error);
+    } catch {
+      // Error handling done by mutation
     }
   };
 
   const selectedModel = models.find(m => m.id === form.values.modelId);
-  // Capabilities are now directly on the model object
-
-  const providerOptions = providers?.map(p => ({
-    value: p.id.toString(),
-    label: `${p.providerName} (${p.providerType})`,
-  })) || [];
 
   const modelOptions = models
     .filter(m => m.id !== undefined)
@@ -167,63 +210,52 @@ export function CreateModelMappingModal({
           </Paper>
 
           {/* Provider Configuration Section */}
-          <Paper p="md" withBorder>
-            <Stack gap="sm">
-              <Text fw={600} size="sm">Provider Configuration</Text>
-              
-              <Select
-                label="Provider"
-                placeholder="Select a provider"
-                data={providerOptions}
-                searchable
-                required
-                disabled={providersLoading}
-                {...form.getInputProps('providerId')}
-              />
+          {form.values.modelId && (
+            <Paper p="md" withBorder>
+              <Stack gap="sm">
+                <Text fw={600} size="sm">Provider Configuration</Text>
+                <Text size="xs" c="dimmed">
+                  Select from available provider configurations for this model.
+                  Only providers with configured ModelProviderTypeAssociations are shown.
+                </Text>
+                
+                {associationsLoading ? (
+                  <Text size="sm" c="dimmed">Loading available configurations...</Text>
+                ) : (
+                  <AssociationProviderSelect
+                    associations={associations ?? []}
+                    value={form.values.associationProviderId}
+                    onChange={(value) => form.setFieldValue('associationProviderId', value)}
+                  />
+                )}
 
-              {form.values.providerId && (
-                <ProviderModelSelect
-                  providerId={form.values.providerId}
-                  value={form.values.providerModelId}
-                  onChange={(value) => form.setFieldValue('providerModelId', value || '')}
-                  label="Provider Model ID"
-                  placeholder="Enter or select provider's model ID"
-                  description="The model identifier used by the provider's API"
-                  required
-                />
-              )}
+                <Divider my="xs" />
 
-              <Group grow>
-                <NumberInput
-                  label="Priority"
-                  description="Lower values have higher priority"
-                  min={0}
-                  max={1000}
-                  {...form.getInputProps('priority')}
-                />
+                <Group grow>
+                  <NumberInput
+                    label="Priority"
+                    description="Lower values have higher priority"
+                    min={0}
+                    max={1000}
+                    {...form.getInputProps('priority')}
+                  />
 
-                <Switch
-                  label="Enabled"
-                  description="Whether this mapping is active"
-                  checked={form.values.isEnabled}
-                  {...form.getInputProps('isEnabled')}
-                />
-              </Group>
-            </Stack>
-          </Paper>
+                  <Switch
+                    label="Enabled"
+                    description="Whether this mapping is active"
+                    checked={form.values.isEnabled}
+                    {...form.getInputProps('isEnabled')}
+                  />
+                </Group>
+              </Stack>
+            </Paper>
+          )}
 
           {/* Optional Settings */}
           <Paper p="md" withBorder>
             <Stack gap="sm">
               <Text fw={600} size="sm">Optional Settings</Text>
               
-              <NumberInput
-                label="Max Context Tokens Override"
-                placeholder="Leave empty to use model default"
-                description="Override the model's default max tokens for this provider"
-                min={1}
-                {...form.getInputProps('maxContextTokensOverride')}
-              />
 
               <TextInput
                 label="Notes"
@@ -233,9 +265,20 @@ export function CreateModelMappingModal({
             </Stack>
           </Paper>
 
-          <Alert icon={<IconInfoCircle size={16} />} color="blue">
-            Model capabilities are defined by the selected model. Provider-specific variations
-            or limitations should be documented in the notes field.
+          <Alert icon={<IconAlertCircle size={16} />} color="blue">
+            <Text size="sm" fw={500} mb="xs">Three-Layer Architecture:</Text>
+            <Text size="xs">
+              1. <strong>Model</strong>: The canonical model definition with capabilities
+            </Text>
+            <Text size="xs">
+              2. <strong>ModelProviderTypeAssociation</strong>: Defines how a model runs on different provider types
+            </Text>
+            <Text size="xs">
+              3. <strong>Provider</strong>: Actual configured instance with credentials
+            </Text>
+            <Text size="xs" mt="xs">
+              All three must exist before a mapping can be created.
+            </Text>
           </Alert>
 
           <Group justify="flex-end">
@@ -245,7 +288,7 @@ export function CreateModelMappingModal({
             <Button 
               type="submit" 
               loading={createMapping.isPending}
-              disabled={modelsLoading || providersLoading}
+              disabled={modelsLoading || associationsLoading}
             >
               Create Mapping
             </Button>

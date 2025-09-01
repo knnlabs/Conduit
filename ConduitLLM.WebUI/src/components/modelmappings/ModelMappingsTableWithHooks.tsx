@@ -78,10 +78,6 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
     const badges = [];
     
     // Add badges based on available mapping properties
-    if (mapping.maxContextTokensOverride) {
-      badges.push({ label: `Override: ${mapping.maxContextTokensOverride} tokens`, color: 'blue' });
-    }
-    
     if (mapping.notes) {
       badges.push({ label: 'Has Notes', color: 'gray' });
     }

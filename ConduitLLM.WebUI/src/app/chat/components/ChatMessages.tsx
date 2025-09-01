@@ -11,6 +11,7 @@ import { processStructuredContent, getBlockQuoteMetadata, cleanBlockQuoteContent
 interface ChatMessagesProps {
   messages: ChatMessage[];
   streamingContent?: string;
+  streamingChannel?: string | null;
   tokensPerSecond?: number | null;
 }
 
@@ -31,7 +32,7 @@ function getErrorTypeConfig(type: ChatErrorType) {
   }
 }
 
-export function ChatMessages({ messages, streamingContent, tokensPerSecond }: ChatMessagesProps) {
+export function ChatMessages({ messages, streamingContent, streamingChannel, tokensPerSecond }: ChatMessagesProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
   const [expandedErrors, setExpandedErrors] = useState<Set<string>>(new Set());
@@ -101,10 +102,14 @@ export function ChatMessages({ messages, streamingContent, tokensPerSecond }: Ch
 
   const renderMessage = (message: ChatMessage, isStreaming = false) => {
     const isUser = message.role === 'user';
-    const content = isStreaming ? streamingContent : message.content;
+    const content = message.content;  // Just use the content from the message
     const hasError = message.error && !isUser;
     const errorConfig = hasError && message.error ? getErrorTypeConfig(message.error.type) : null;
     const isExpanded = expandedErrors.has(message.id);
+    
+    // Check if this message has reasoning in metadata
+    const hasReasoning = !isUser && message.metadata?.hasReasoning && message.metadata?.reasoning;
+    const reasoningText = hasReasoning ? message.metadata?.reasoning : null;
 
     // For error messages, render special error UI
     if (hasError && errorConfig && message.error) {
@@ -323,7 +328,18 @@ export function ChatMessages({ messages, streamingContent, tokensPerSecond }: Ch
             </Stack>
           )}
           
-          <div className="markdown-content">
+          {/* Show reasoning if present */}
+          {reasoningText && (
+            <div className="reasoning-content markdown-content" style={{ marginBottom: '0.75rem' }}>
+              <ReactMarkdown>{reasoningText}</ReactMarkdown>
+            </div>
+          )}
+          
+          <div className={`markdown-content ${isStreaming && streamingChannel === 'analysis' ? 'reasoning-content' : ''}`}>
+            {/* JUST SHOW THE RAW CONTENT */}
+            {isStreaming ? (
+              <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>{content}</pre>
+            ) : (
             <ReactMarkdown
               components={{
                 code({ className, children, ...props }) {
@@ -432,6 +448,7 @@ export function ChatMessages({ messages, streamingContent, tokensPerSecond }: Ch
             >
               {processStructuredContent(content ?? '')}
             </ReactMarkdown>
+            )}
           </div>
           
           {/* Copy button */}
@@ -468,14 +485,26 @@ export function ChatMessages({ messages, streamingContent, tokensPerSecond }: Ch
     >
       <Stack gap="md" p="xs">
         {messages.map((message) => renderMessage(message))}
-        {streamingContent && renderMessage(
-          {
-            id: 'streaming',
-            role: 'assistant',
-            content: '',
-            timestamp: new Date(),
-          },
-          true
+        {streamingContent && (
+          <Paper
+            p="md"
+            radius="md"
+            className="chat-message-assistant"
+            style={{
+              alignSelf: 'flex-start',
+              maxWidth: '80%',
+            }}
+          >
+            <Stack gap="xs">
+              <Group gap="xs">
+                <IconRobot size={16} />
+                <Text fw={600} size="sm">Streaming...</Text>
+              </Group>
+              <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>
+                {streamingContent}
+              </pre>
+            </Stack>
+          </Paper>
         )}
         <div ref={lastMessageRef} />
       </Stack>

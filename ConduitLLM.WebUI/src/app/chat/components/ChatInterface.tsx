@@ -40,6 +40,7 @@ export function ChatInterface() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [streamingContent, setStreamingContent] = useState('');
+  const [streamingChannel, setStreamingChannel] = useState<string | null>(null);
   const [tokensPerSecond, setTokensPerSecond] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showParameters] = useState(false);
@@ -83,6 +84,7 @@ export function ChatInterface() {
     isLoading,
     setIsLoading,
     setStreamingContent,
+    setStreamingChannel,
     setTokensPerSecond,
     setError,
     getActiveSession,
@@ -98,7 +100,8 @@ export function ChatInterface() {
         abortControllerRef.current = null;
       }
     };
-  }, [abortControllerRef]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array - only run on unmount
 
   if (modelsLoading) {
     return (
@@ -217,6 +220,7 @@ export function ChatInterface() {
           <ChatMessages 
             messages={messages}
             streamingContent={isLoading ? streamingContent : undefined}
+            streamingChannel={isLoading ? streamingChannel : null}
             tokensPerSecond={performanceSettings.showTokensPerSecond ? tokensPerSecond : null}
           />
         </Paper>

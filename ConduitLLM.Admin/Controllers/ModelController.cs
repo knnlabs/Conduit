@@ -24,6 +24,7 @@ namespace ConduitLLM.Admin.Controllers
     {
         private readonly IModelRepository _modelRepository;
         private readonly IAdminModelProviderMappingService _mappingService;
+        private readonly IProviderRepository _providerRepository;
         private readonly ILogger<ModelController> _logger;
 
         /// <summary>
@@ -32,10 +33,12 @@ namespace ConduitLLM.Admin.Controllers
         public ModelController(
             IModelRepository modelRepository,
             IAdminModelProviderMappingService mappingService,
+            IProviderRepository providerRepository,
             ILogger<ModelController> logger)
         {
             _modelRepository = modelRepository ?? throw new ArgumentNullException(nameof(modelRepository));
             _mappingService = mappingService ?? throw new ArgumentNullException(nameof(mappingService));
+            _providerRepository = providerRepository ?? throw new ArgumentNullException(nameof(providerRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -218,6 +221,77 @@ namespace ConduitLLM.Admin.Controllers
             {
                 _logger.LogError(ex, "Error getting identifiers for model with ID {Id}", id);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving model identifiers");
+            }
+        }
+
+        /// <summary>
+        /// Gets model associations with available providers
+        /// Returns only associations where matching providers are configured
+        /// </summary>
+        /// <param name="id">The model ID</param>
+        /// <returns>List of associations with their available providers</returns>
+        [HttpGet("{id}/available-providers")]
+        [ProducesResponseType(typeof(IEnumerable<object>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetAvailableProviders(int id)
+        {
+            try
+            {
+                var model = await _modelRepository.GetByIdWithDetailsAsync(id);
+                if (model == null)
+                {
+                    return NotFound($"Model with ID {id} not found");
+                }
+
+                var providers = await _providerRepository.GetAllAsync();
+                var enabledProviders = providers.Where(p => p.IsEnabled).ToList();
+
+                var result = new List<object>();
+
+                foreach (var association in model.Identifiers)
+                {
+                    // Find matching providers for this association
+                    var matchingProviders = enabledProviders.Where(p =>
+                    {
+                        // If association has no provider specified, it's universal
+                        if (string.IsNullOrEmpty(association.Provider))
+                            return true;
+
+                        // Match provider type string (e.g., "groq") with ProviderType enum
+                        var providerTypeName = p.ProviderType.ToString().ToLowerInvariant();
+                        return providerTypeName == association.Provider?.ToLowerInvariant();
+                    }).ToList();
+
+                    if (matchingProviders.Any())
+                    {
+                        result.Add(new
+                        {
+                            associationId = association.Id,
+                            identifier = association.Identifier,
+                            provider = association.Provider,
+                            providerVariation = association.ProviderVariation,
+                            maxInputTokens = association.MaxInputTokens,
+                            maxOutputTokens = association.MaxOutputTokens,
+                            speedScore = association.SpeedScore,
+                            qualityScore = association.QualityScore,
+                            isPrimary = association.IsPrimary,
+                            availableProviders = matchingProviders.Select(p => new
+                            {
+                                providerId = p.Id,
+                                providerName = p.ProviderName,
+                                providerType = p.ProviderType.ToString()
+                            })
+                        });
+                    }
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting available providers for model with ID {Id}", id);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving available providers");
             }
         }
 

@@ -3,39 +3,26 @@ import type { VideoModel } from '../types';
 import { withAdminClient } from '@/lib/client/adminClient';
 
 async function fetchVideoModels(): Promise<VideoModel[]> {
-  // Fetch model mappings, models, and providers in parallel
-  const [mappings, models, providersResponse] = await Promise.all([
+  // Fetch model mappings and providers
+  const [mappings, providersResponse] = await Promise.all([
     withAdminClient(client => client.modelMappings.list()),
-    withAdminClient(client => client.models.list()),
     withAdminClient(client => client.providers.list(1, 100)) // Get up to 100 providers
   ]);
   
-  // Create lookup maps for efficient access
-  const modelsMap = new Map(models.map(m => [m.id, m]));
+  // Create lookup map for providers
   const providersMap = new Map(providersResponse.items.map(p => [p.id, p]));
   
-  // Filter mappings to only include enabled video generation models
+  // For now, return all enabled mappings as video models
+  // We can't filter by capability without the Model data
+  // TODO: Backend should provide enriched mappings with model capabilities
   const videoMappings = mappings.filter(mapping => {
     // Must be enabled
-    if (!mapping.isEnabled) return false;
-    
-    // Get the associated model
-    const model = modelsMap.get(mapping.modelId);
-    if (!model) return false;
-    
-    // Must support video generation capability
-    if (!model.supportsVideoGeneration) return false;
-    
-    // Must be active
-    if (model.isActive === false) return false;
-    
-    return true;
+    return mapping.isEnabled;
   });
   
   // Map to the expected format
   const videoModels: VideoModel[] = videoMappings.map(mapping => {
     const provider = providersMap.get(mapping.providerId);
-    const model = modelsMap.get(mapping.modelId);
     
     return {
       id: mapping.modelAlias, // Use the alias as the ID for API calls
@@ -51,7 +38,7 @@ async function fetchVideoModels(): Promise<VideoModel[]> {
         supportsSeed: true,
         maxVideos: 1,
       },
-      parameters: (model?.series as { parameters?: string })?.parameters, // Get parameters from model series
+      parameters: undefined, // TODO: Need backend to provide model parameters
     };
   });
   

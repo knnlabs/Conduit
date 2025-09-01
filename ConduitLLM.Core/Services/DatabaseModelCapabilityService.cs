@@ -107,12 +107,12 @@ namespace ConduitLLM.Core.Services
 
 
         /// <inheritdoc/>
-        public async Task<string?> GetDefaultModelAsync(string provider, string capabilityType)
+        public Task<string?> GetDefaultModelAsync(string provider, string capabilityType)
         {
             var cacheKey = $"{CacheKeyPrefix}Default:{provider}:{capabilityType}";
             if (_cache.TryGetValue<string?>(cacheKey, out var cached))
             {
-                return cached;
+                return Task.FromResult(cached);
             }
 
             try
@@ -120,13 +120,13 @@ namespace ConduitLLM.Core.Services
                 // Default model selection is now deprecated - return null
                 // This functionality should be replaced with priority-based routing
                 _logger.LogWarning("GetDefaultModelAsync is deprecated. Use priority-based routing instead.");
-                return null;
+                return Task.FromResult<string?>(null);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting default model for provider {Provider} and capability {Capability}",
                     provider, capabilityType);
-                return null;
+                return Task.FromResult<string?>(null);
             }
         }
 

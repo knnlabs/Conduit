@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Streaming</title>
+</head>
+<body>
+    <h1>Test gpt-oss-120b Streaming</h1>
+    <button onclick="testStreaming()">Test Streaming</button>
+    <pre id="output"></pre>
+    
+    <script>
+        async function testStreaming() {
+            const output = document.getElementById('output');
+            output.textContent = 'Starting test...\n';
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-oss-120b',
+                        messages: [{role: 'user', content: 'What is 2+2?'}],
+                        stream: true
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                let totalContent = '';
+                let totalReasoning = '';
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+                    
+                    for (const line of lines) {
+                        if (line.trim() === '') continue;
+                        if (line.startsWith('data: ')) {
+                            const data = line.slice(6);
+                            if (data === '[DONE]') {
+                                output.textContent += '\n[DONE] received\n';
+                                output.textContent += `Total content: "${totalContent}"\n`;
+                                output.textContent += `Total reasoning: "${totalReasoning}"\n`;
+                                continue;
+                            }
+                            
+                            try {
+                                const chunk = JSON.parse(data);
+                                const delta = chunk.choices?.[0]?.delta;
+                                if (delta) {
+                                    if (delta.content !== undefined) {
+                                        totalContent += delta.content;
+                                        output.textContent += `Content: "${delta.content}"\n`;
+                                    }
+                                    if (delta.reasoning !== undefined) {
+                                        totalReasoning += delta.reasoning;
+                                        output.textContent += `Reasoning: "${delta.reasoning}" (channel: ${delta.channel})\n`;
+                                    }
+                                }
+                            } catch (e) {
+                                output.textContent += `Parse error: ${e.message}\n`;
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                output.textContent += `Error: ${error.message}\n`;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Core.Models;
@@ -27,4 +28,25 @@ public class DeltaContent
     [JsonPropertyName("tool_calls")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<ToolCallChunk>? ToolCalls { get; set; }
+    
+    /// <summary>
+    /// Reasoning content for models that support reasoning (e.g., gpt-oss-120b on Groq).
+    /// </summary>
+    [JsonPropertyName("reasoning")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Reasoning { get; set; }
+    
+    /// <summary>
+    /// Channel indicator for reasoning models (e.g., "analysis" for reasoning chunks).
+    /// </summary>
+    [JsonPropertyName("channel")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Channel { get; set; }
+    
+    /// <summary>
+    /// Extension data to capture any additional fields not explicitly mapped.
+    /// This allows us to be a true proxy and pass through provider-specific fields.
+    /// </summary>
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 }
