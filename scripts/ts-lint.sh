@@ -51,8 +51,8 @@ log_task "Checking WebUI lint..."
 if [[ -d "ConduitLLM.WebUI" ]]; then
     cd ConduitLLM.WebUI
     LINT_OUTPUT=$(npm run lint 2>&1 || true)
-    # Count both "error" and "Error:" patterns
-    WEBUI_ERRORS=$(echo "$LINT_OUTPUT" | grep -E "(Error:|error)" | grep -c -E "(Error:|error)" || true)
+    # Count actual ESLint errors (line:col format followed by Error:)
+    WEBUI_ERRORS=$(echo "$LINT_OUTPUT" | grep -E "^[[:space:]]*[0-9]+:[0-9]+[[:space:]]+Error:" | wc -l || true)
     WEBUI_ERRORS=${WEBUI_ERRORS:-0}
     
     if [ "$WEBUI_ERRORS" -eq 0 ]; then
@@ -71,7 +71,8 @@ log_task "Checking Admin SDK lint..."
 if [[ -d "SDKs/Node/Admin" ]]; then
     cd SDKs/Node/Admin
     LINT_OUTPUT=$(npm run lint 2>&1 || true)
-    ADMIN_SDK_ERRORS=$(echo "$LINT_OUTPUT" | grep -E "(Error:|error)" | grep -c -E "(Error:|error)" || true)
+    # Count actual ESLint errors (line:col format followed by error)
+    ADMIN_SDK_ERRORS=$(echo "$LINT_OUTPUT" | grep -E "^[[:space:]]*[0-9]+:[0-9]+[[:space:]]+error" | wc -l || true)
     ADMIN_SDK_ERRORS=${ADMIN_SDK_ERRORS:-0}
     
     if [ "$ADMIN_SDK_ERRORS" -eq 0 ]; then
@@ -90,7 +91,8 @@ log_task "Checking Core SDK lint..."
 if [[ -d "SDKs/Node/Core" ]]; then
     cd SDKs/Node/Core
     LINT_OUTPUT=$(npm run lint 2>&1 || true)
-    CORE_SDK_ERRORS=$(echo "$LINT_OUTPUT" | grep -E "(Error:|error)" | grep -c -E "(Error:|error)" || true)
+    # Count actual ESLint errors (line:col format followed by error)
+    CORE_SDK_ERRORS=$(echo "$LINT_OUTPUT" | grep -E "^[[:space:]]*[0-9]+:[0-9]+[[:space:]]+error" | wc -l || true)
     CORE_SDK_ERRORS=${CORE_SDK_ERRORS:-0}
     
     if [ "$CORE_SDK_ERRORS" -eq 0 ]; then
