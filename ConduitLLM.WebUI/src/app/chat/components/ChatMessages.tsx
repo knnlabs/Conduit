@@ -3,6 +3,7 @@ import { IconUser, IconRobot, IconClock, IconBolt, IconAlertCircle, IconNetwork,
 import { ChatMessage, ChatErrorType } from '../types';
 import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { ImagePreview } from './ImagePreview';
@@ -96,7 +97,7 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
         </Group>
         <Collapse in={isOpen}>
           <div style={{ marginTop: '0.5rem', paddingLeft: '1.5rem' }}>
-            <ReactMarkdown>{content}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
           </div>
         </Collapse>
       </Paper>
@@ -391,7 +392,7 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
                 return isExpanded;
               })()}>
                 <div className="reasoning-content markdown-content" style={{ marginTop: '0.5rem', paddingLeft: '1.5rem' }}>
-                  <ReactMarkdown>{reasoningText}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{reasoningText}</ReactMarkdown>
                 </div>
               </Collapse>
             </Paper>
@@ -403,6 +404,7 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
               <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>{content}</pre>
             ) : (
             <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
               components={{
                 code({ className, children, ...props }) {
                   const match = /language-(\w+)/.exec(className ?? '');
@@ -476,7 +478,7 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
                         variant="light"
                         radius="md"
                       >
-                        <ReactMarkdown>{cleanedContent}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{cleanedContent}</ReactMarkdown>
                       </Alert>
                     );
                   }
@@ -498,7 +500,7 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
                         <Text size="sm" fw={600} mb="xs">
                           {metadata.icon} {metadata.title}
                         </Text>
-                        <ReactMarkdown>{cleanedContent}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{cleanedContent}</ReactMarkdown>
                       </Paper>
                     );
                   }
@@ -566,9 +568,43 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
                 </Text>
               </Group>
               {streamingContent ? (
-                <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>
-                  {streamingContent}
-                </pre>
+                <div className="markdown-content">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      code({ className, children, ...props }) {
+                        const match = /language-(\w+)/.exec(className ?? '');
+                        const inline = !className;
+                        
+                        const getChildrenText = (node: React.ReactNode): string => {
+                          if (typeof node === 'string') return node;
+                          if (typeof node === 'number') return node.toString();
+                          if (Array.isArray(node)) return node.map(getChildrenText).join('');
+                          return '';
+                        };
+                        
+                        const childText = getChildrenText(children);
+                        
+                        return !inline && match ? (
+                          <SyntaxHighlighter
+                            style={vscDarkPlus}
+                            language={match[1]}
+                            PreTag="div"
+                            {...(props as Record<string, unknown>)}
+                          >
+                            {childText.replace(/\n$/, '')}
+                          </SyntaxHighlighter>
+                        ) : (
+                          <code className={className} {...props}>
+                            {childText}
+                          </code>
+                        );
+                      },
+                    }}
+                  >
+                    {streamingContent}
+                  </ReactMarkdown>
+                </div>
               ) : (
                 <Group gap={4}>
                   <span className="loading-dots">
