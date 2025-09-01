@@ -16,7 +16,12 @@ import { useChatStore } from '../hooks/useChatStore';
 import { CHAT_PRESETS, findMatchingPreset, getPresetIcon } from '../utils/presets';
 import { ChatParameters } from '../types';
 
-export function ChatSettings() {
+interface ChatSettingsProps {
+  reasoningExpanded?: boolean;
+  onReasoningExpandedChange?: (expanded: boolean) => void;
+}
+
+export function ChatSettings({ reasoningExpanded = true, onReasoningExpandedChange }: ChatSettingsProps = {}) {
   const { getActiveSession, updateSessionParameters } = useChatStore();
   const activeSession = getActiveSession();
   
@@ -197,6 +202,13 @@ export function ChatSettings() {
             checked={parameters.stream ?? true}
             onChange={(event) => handleParameterChange({ stream: event.currentTarget.checked })}
             description="Stream responses as they are generated"
+          />
+          
+          <Switch
+            label="Expand Reasoning"
+            checked={reasoningExpanded}
+            onChange={(event) => onReasoningExpandedChange?.(event.currentTarget.checked)}
+            description="Show reasoning content expanded by default"
           />
           
           <NumberInput

@@ -30,6 +30,23 @@ import type {
   ConduitAdminClient 
 } from '@knn_labs/conduit-admin-client';
 
+interface AvailableProvider {
+  associationId: number;
+  identifier: string;
+  provider: string | null;
+  providerVariation: string | null;
+  maxInputTokens: number | null;
+  maxOutputTokens: number | null;
+  speedScore: number | null;
+  qualityScore: number | null;
+  isPrimary: boolean;
+  availableProviders: Array<{
+    providerId: number;
+    providerName: string;
+    providerType: string;
+  }>;
+}
+
 interface AssociationDetails {
   associationId: number;
   identifier: string;
@@ -115,7 +132,7 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
         );
         
         const association = availableProviders.find(
-          (a: any) => a.associationId === mappingData.modelProviderTypeAssociationId
+          (a: AvailableProvider) => a.associationId === mappingData.modelProviderTypeAssociationId
         );
         
         if (association) {

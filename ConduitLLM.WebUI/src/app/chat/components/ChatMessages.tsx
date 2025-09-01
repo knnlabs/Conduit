@@ -10,9 +10,11 @@ import { processStructuredContent, getBlockQuoteMetadata, cleanBlockQuoteContent
 
 interface ChatMessagesProps {
   messages: ChatMessage[];
+  isLoading?: boolean;
   streamingContent?: string;
   streamingChannel?: string | null;
   tokensPerSecond?: number | null;
+  reasoningExpanded?: boolean;
 }
 
 // Helper function to get error type styling
@@ -32,10 +34,11 @@ function getErrorTypeConfig(type: ChatErrorType) {
   }
 }
 
-export function ChatMessages({ messages, streamingContent, streamingChannel, tokensPerSecond }: ChatMessagesProps) {
+export function ChatMessages({ messages, isLoading, streamingContent, streamingChannel, tokensPerSecond, reasoningExpanded = true }: ChatMessagesProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
   const [expandedErrors, setExpandedErrors] = useState<Set<string>>(new Set());
+  const [expandedReasoning, setExpandedReasoning] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (lastMessageRef.current) {
@@ -328,11 +331,70 @@ export function ChatMessages({ messages, streamingContent, streamingChannel, tok
             </Stack>
           )}
           
-          {/* Show reasoning if present */}
+          {/* Show reasoning if present - collapsible */}
           {reasoningText && (
-            <div className="reasoning-content markdown-content" style={{ marginBottom: '0.75rem' }}>
-              <ReactMarkdown>{reasoningText}</ReactMarkdown>
-            </div>
+            <Paper 
+              p="sm" 
+              radius="md" 
+              withBorder 
+              style={{ 
+                backgroundColor: 'var(--mantine-color-gray-light)',
+                marginBottom: '0.75rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                userSelect: 'none'
+              }}
+              className="reasoning-block"
+              onClick={() => {
+                const newExpanded = new Set(expandedReasoning);
+                if (newExpanded.has(message.id)) {
+                  newExpanded.delete(message.id);
+                } else {
+                  newExpanded.add(message.id);
+                }
+                setExpandedReasoning(newExpanded);
+              }}
+            >
+              <Group 
+                gap="xs" 
+                wrap="nowrap"
+              >
+                <ActionIcon 
+                  variant="subtle" 
+                  size="sm"
+                  style={{ pointerEvents: 'none' }}
+                >
+                  {/* Check if this message's reasoning is expanded */}
+                  {(() => {
+                    const isExpanded = expandedReasoning.has(message.id) 
+                      ? !reasoningExpanded  // If in set, opposite of default
+                      : reasoningExpanded;  // Otherwise, use default
+                    return isExpanded ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />;
+                  })()}
+                </ActionIcon>
+                <Text size="sm" fw={500} style={{ flex: 1 }}>
+                  🧠 Reasoning
+                </Text>
+                <Text size="xs" c="dimmed">
+                  {(() => {
+                    const isExpanded = expandedReasoning.has(message.id) 
+                      ? !reasoningExpanded  // If in set, opposite of default
+                      : reasoningExpanded;  // Otherwise, use default
+                    return isExpanded ? 'Click to collapse' : 'Click to expand';
+                  })()}
+                </Text>
+              </Group>
+              <Collapse in={(() => {
+                const isExpanded = expandedReasoning.has(message.id) 
+                  ? !reasoningExpanded  // If in set, opposite of default
+                  : reasoningExpanded;  // Otherwise, use default
+                return isExpanded;
+              })()}>
+                <div className="reasoning-content markdown-content" style={{ marginTop: '0.5rem', paddingLeft: '1.5rem' }}>
+                  <ReactMarkdown>{reasoningText}</ReactMarkdown>
+                </div>
+              </Collapse>
+            </Paper>
           )}
           
           <div className={`markdown-content ${isStreaming && streamingChannel === 'analysis' ? 'reasoning-content' : ''}`}>
@@ -485,7 +547,8 @@ export function ChatMessages({ messages, streamingContent, streamingChannel, tok
     >
       <Stack gap="md" p="xs">
         {messages.map((message) => renderMessage(message))}
-        {streamingContent && (
+        {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
+        {(isLoading || streamingContent) && (
           <Paper
             p="md"
             radius="md"
@@ -498,11 +561,23 @@ export function ChatMessages({ messages, streamingContent, streamingChannel, tok
             <Stack gap="xs">
               <Group gap="xs">
                 <IconRobot size={16} />
-                <Text fw={600} size="sm">Streaming...</Text>
+                <Text fw={600} size="sm">
+                  {streamingContent ? 'Streaming...' : 'Assistant'}
+                </Text>
               </Group>
-              <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>
-                {streamingContent}
-              </pre>
+              {streamingContent ? (
+                <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>
+                  {streamingContent}
+                </pre>
+              ) : (
+                <Group gap={4}>
+                  <span className="loading-dots">
+                    <span>.</span>
+                    <span>.</span>
+                    <span>.</span>
+                  </span>
+                </Group>
+              )}
             </Stack>
           </Paper>
         )}

@@ -44,6 +44,7 @@ export function ChatInterface() {
   const [tokensPerSecond, setTokensPerSecond] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showParameters] = useState(false);
+  const [reasoningExpanded, setReasoningExpanded] = useState(true); // Default to expanded
   
   const performanceSettings = usePerformanceSettings();
   const { 
@@ -186,7 +187,10 @@ export function ChatInterface() {
             
             <Collapse in={showSettings}>
               <Stack gap="md">
-                <ChatSettings />
+                <ChatSettings 
+                  reasoningExpanded={reasoningExpanded}
+                  onReasoningExpandedChange={setReasoningExpanded}
+                />
                 
                 {/* Token Counter */}
                 {currentModel && (
@@ -219,9 +223,11 @@ export function ChatInterface() {
         <Paper p="md" withBorder style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <ChatMessages 
             messages={messages}
+            isLoading={isLoading}
             streamingContent={isLoading ? streamingContent : undefined}
             streamingChannel={isLoading ? streamingChannel : null}
             tokensPerSecond={performanceSettings.showTokensPerSecond ? tokensPerSecond : null}
+            reasoningExpanded={reasoningExpanded}
           />
         </Paper>
 
