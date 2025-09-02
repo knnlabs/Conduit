@@ -139,13 +139,13 @@ namespace ConduitLLM.Configuration.Repositories
             return true;
         }
 
-        public async Task<List<Model>> GetByProviderAsync(string providerName)
+        public async Task<List<Model>> GetByProviderAsync(ProviderType providerType)
         {
             using var context = await _dbContextFactory.CreateDbContextAsync();
             
             // Get model IDs that have identifiers for this provider
             var modelIds = await context.Set<ModelProviderTypeAssociation>()
-                .Where(mi => mi.Provider == providerName.ToLower())
+                .Where(mi => mi.Provider == providerType)
                 .Select(mi => mi.ModelId)
                 .Distinct()
                 .ToListAsync();

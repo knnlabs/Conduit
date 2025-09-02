@@ -1,11 +1,11 @@
 'use client';
 
 import { Modal, Text, Button, Group, Stack } from '@mantine/core';
-import type { ProviderTypeAssociation } from '@/types/models';
+import type { NormalizedProviderTypeAssociation } from '@knn_labs/conduit-admin-client';
 
 interface DeleteProviderTypeModalProps {
   isOpen: boolean;
-  association: ProviderTypeAssociation | null;
+  association: NormalizedProviderTypeAssociation | null;
   loading: boolean;
   onClose: () => void;
   onConfirm: () => void;
@@ -36,7 +36,7 @@ export function DeleteProviderTypeModal({
           </Text>{' '}
           with provider{' '}
           <Text component="span" fw={600}>
-            {association.provider}
+            {association.providerName ?? 'Unknown'}
           </Text>
           ?
         </Text>

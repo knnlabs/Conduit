@@ -1,6 +1,7 @@
 using ConduitLLM.Admin.Models.Models;
 using ConduitLLM.Admin.Models.ModelSeries;
 using ConduitLLM.Admin.Models.ModelCapabilities;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Configuration.DTOs;
@@ -139,12 +140,20 @@ namespace ConduitLLM.Admin.Controllers
                     return BadRequest("Provider name is required");
                 }
 
-                var models = await _modelRepository.GetByProviderAsync(provider);
+                // Parse provider string to enum
+                if (!Enum.TryParse<ProviderType>(provider, ignoreCase: true, out var providerType))
+                {
+                    var validProviders = Enum.GetNames<ProviderType>()
+                        .Select(p => p.ToLowerInvariant());
+                    return BadRequest($"Invalid provider '{provider}'. Valid providers: {string.Join(", ", validProviders)}");
+                }
+
+                var models = await _modelRepository.GetByProviderAsync(providerType);
                 var dtos = models.Select(m => 
                 {
-                    // Find the identifier for this specific provider
-                    var providerIdentifier = m.Identifiers?.FirstOrDefault(i => 
-                        string.Equals(i.Provider, provider, StringComparison.OrdinalIgnoreCase))?.Identifier 
+                    // Repository already handles the provider string to enum conversion
+                    // Just get the first identifier for this model (they're already filtered by provider)
+                    var providerIdentifier = m.Identifiers?.FirstOrDefault()?.Identifier 
                         ?? m.Name; // Fallback to model name if no specific identifier
 
                     // Use MapToDto to get base DTO, then create extended DTO
@@ -205,7 +214,7 @@ namespace ConduitLLM.Admin.Controllers
                 {
                     id = i.Id,
                     identifier = i.Identifier,
-                    provider = i.Provider,
+                    provider = (int?)i.Provider,
                     isPrimary = i.IsPrimary,
                     maxInputTokens = i.MaxInputTokens,
                     maxOutputTokens = i.MaxOutputTokens,
@@ -255,12 +264,11 @@ namespace ConduitLLM.Admin.Controllers
                     var matchingProviders = enabledProviders.Where(p =>
                     {
                         // If association has no provider specified, it's universal
-                        if (string.IsNullOrEmpty(association.Provider))
+                        if (association.Provider == null)
                             return true;
 
-                        // Match provider type string (e.g., "groq") with ProviderType enum
-                        var providerTypeName = p.ProviderType.ToString().ToLowerInvariant();
-                        return providerTypeName == association.Provider?.ToLowerInvariant();
+                        // Match provider type enum values
+                        return p.ProviderType == association.Provider;
                     }).ToList();
 
                     if (matchingProviders.Any())
@@ -269,7 +277,7 @@ namespace ConduitLLM.Admin.Controllers
                         {
                             associationId = association.Id,
                             identifier = association.Identifier,
-                            provider = association.Provider,
+                            provider = (int?)association.Provider,
                             providerVariation = association.ProviderVariation,
                             maxInputTokens = association.MaxInputTokens,
                             maxOutputTokens = association.MaxOutputTokens,
@@ -316,10 +324,13 @@ namespace ConduitLLM.Admin.Controllers
                     return NotFound($"Model with ID {id} not found");
                 }
 
+                // Parse provider if provided as integer
+                ProviderType? providerType = dto.Provider.HasValue ? (ProviderType)dto.Provider.Value : null;
+                
                 // Check if identifier already exists for this provider
                 var existing = model.Identifiers.FirstOrDefault(i => 
                     i.Identifier == dto.Identifier && 
-                    i.Provider == dto.Provider);
+                    i.Provider == providerType);
                     
                 if (existing != null)
                 {
@@ -330,7 +341,7 @@ namespace ConduitLLM.Admin.Controllers
                 {
                     ModelId = id,
                     Identifier = dto.Identifier,
-                    Provider = dto.Provider,
+                    Provider = providerType,
                     IsPrimary = dto.IsPrimary ?? false,
                     Metadata = dto.Metadata,
                     MaxInputTokens = dto.MaxInputTokens,
@@ -347,7 +358,7 @@ namespace ConduitLLM.Admin.Controllers
                 {
                     id = identifier.Id,
                     identifier = identifier.Identifier,
-                    provider = identifier.Provider,
+                    provider = (int?)identifier.Provider,
                     isPrimary = identifier.IsPrimary,
                     maxInputTokens = identifier.MaxInputTokens,
                     maxOutputTokens = identifier.MaxOutputTokens,
@@ -391,13 +402,16 @@ namespace ConduitLLM.Admin.Controllers
                     return NotFound($"Identifier with ID {identifierId} not found for model {id}");
                 }
 
+                // Parse provider if provided as integer
+                ProviderType? providerType = dto.Provider.HasValue ? (ProviderType)dto.Provider.Value : null;
+                
                 // Check if the new identifier/provider combo already exists (if changed)
-                if (identifier.Identifier != dto.Identifier || identifier.Provider != dto.Provider)
+                if (identifier.Identifier != dto.Identifier || identifier.Provider != providerType)
                 {
                     var existing = model.Identifiers.FirstOrDefault(i => 
                         i.Id != identifierId &&
                         i.Identifier == dto.Identifier && 
-                        i.Provider == dto.Provider);
+                        i.Provider == providerType);
                         
                     if (existing != null)
                     {
@@ -406,7 +420,7 @@ namespace ConduitLLM.Admin.Controllers
                 }
 
                 identifier.Identifier = dto.Identifier;
-                identifier.Provider = dto.Provider;
+                identifier.Provider = providerType;
                 identifier.IsPrimary = dto.IsPrimary ?? identifier.IsPrimary;
                 identifier.Metadata = dto.Metadata;
                 identifier.MaxInputTokens = dto.MaxInputTokens;

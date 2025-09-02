@@ -56,7 +56,7 @@ namespace ConduitLLM.Tests.Configuration.Repositories
                 {
                     ModelId = model.Id,
                     Identifier = "gpt-3.5",
-                    Provider = "openai",
+                    Provider = ProviderType.OpenAI,
                     IsEnabled = true,
                     IsPrimary = true
                 };
@@ -151,7 +151,7 @@ namespace ConduitLLM.Tests.Configuration.Repositories
                 {
                     ModelId = modelNoChat.Id,
                     Identifier = "gpt-3.5",
-                    Provider = "openai",
+                    Provider = ProviderType.OpenAI,
                     IsEnabled = true,
                     IsPrimary = true
                 };
@@ -227,7 +227,7 @@ namespace ConduitLLM.Tests.Configuration.Repositories
                 {
                     ModelId = model.Id,
                     Identifier = "test",
-                    Provider = "openai",
+                    Provider = ProviderType.OpenAI,
                     IsEnabled = true,
                     IsPrimary = true
                 };

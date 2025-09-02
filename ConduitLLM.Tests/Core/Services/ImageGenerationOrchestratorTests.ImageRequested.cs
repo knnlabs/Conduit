@@ -44,7 +44,7 @@ namespace ConduitLLM.Tests.Core.Services
                 ModelId = 1,
                 Model = modelEntity,
                 Identifier = request.Request.Model,
-                Provider = "openai",
+                Provider = ProviderType.OpenAI,
                 IsEnabled = true,
                 IsPrimary = true
             };

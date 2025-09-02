@@ -11,9 +11,10 @@ namespace ConduitLLM.Admin.Models.Models
         public string Identifier { get; set; } = string.Empty;
 
         /// <summary>
-        /// The provider type that uses this identifier (e.g., "OpenAI", "Groq")
+        /// The provider type that uses this identifier as an enum value
+        /// (OpenAI = 1, Groq = 2, Replicate = 3, etc.)
         /// </summary>
-        public string? Provider { get; set; }
+        public int? Provider { get; set; }
 
         /// <summary>
         /// Whether this is the primary identifier
@@ -62,9 +63,10 @@ namespace ConduitLLM.Admin.Models.Models
         public string Identifier { get; set; } = string.Empty;
 
         /// <summary>
-        /// The provider type that uses this identifier
+        /// The provider type that uses this identifier as an enum value
+        /// (OpenAI = 1, Groq = 2, Replicate = 3, etc.)
         /// </summary>
-        public string? Provider { get; set; }
+        public int? Provider { get; set; }
 
         /// <summary>
         /// Whether this is the primary identifier

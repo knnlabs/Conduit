@@ -78,7 +78,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// Filters based on ModelIdentifier entries with matching provider.
         /// </summary>
         /// <param name="providerName">The provider name (e.g., "groq", "openai", "anthropic")</param>
-        Task<List<Model>> GetByProviderAsync(string providerName);
+        Task<List<Model>> GetByProviderAsync(ProviderType providerType);
 
         /// <summary>
         /// Deletes a model identifier by ID.

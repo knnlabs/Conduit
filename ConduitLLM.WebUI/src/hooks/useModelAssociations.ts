@@ -32,8 +32,8 @@ export function useModelAssociations(modelId: number | null) {
     queryFn: async () => {
       if (!modelId) return [];
 
-      const response = await withAdminClient((client: ConduitAdminClient) => 
-        client.models.getAvailableProviders(modelId)
+      const response = await withAdminClient(async (client: ConduitAdminClient) => 
+        client.models.getModelProviders(modelId)
       );
       
       return response as AssociationWithProvider[];

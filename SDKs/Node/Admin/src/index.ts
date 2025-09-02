@@ -10,6 +10,12 @@ export * from './client/types';
 export { HttpMethod } from './client/HttpMethod';
 export type { RequestOptions, ApiResponse } from './client/HttpMethod';
 export * from './models/common';
+
+// Provider types and validation
+export * from './types/providers';
+export * from './types/models';
+export * from './validation/modelValidation';
+export * from './errors/modelErrors';
 // discovery models removed - discovery types are in modelMapping
 export * from './models/virtualKey';
 export * from './models/provider';

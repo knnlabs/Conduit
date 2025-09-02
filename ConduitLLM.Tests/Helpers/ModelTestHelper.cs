@@ -215,7 +215,7 @@ namespace ConduitLLM.Tests.Helpers
                 ModelId = model.Id,
                 Model = model,
                 Identifier = model.Name,
-                Provider = "test-provider",
+                Provider = null, // Provider type not set in test helper
                 IsEnabled = true,
                 IsPrimary = true
             };

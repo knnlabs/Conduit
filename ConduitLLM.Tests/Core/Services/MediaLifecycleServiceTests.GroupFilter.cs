@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Services;
@@ -40,7 +41,7 @@ namespace ConduitLLM.Tests.Core.Services
                     VirtualKeyId = 1, 
                     MediaType = "image", 
                     SizeBytes = 1000,
-                    Provider = "replicate"
+                    Provider = ProviderType.Replicate.ToString()
                 },
                 new MediaRecord 
                 { 
@@ -48,7 +49,7 @@ namespace ConduitLLM.Tests.Core.Services
                     VirtualKeyId = 2, 
                     MediaType = "video", 
                     SizeBytes = 5000,
-                    Provider = "openai"
+                    Provider = ProviderType.OpenAI.ToString()
                 },
                 new MediaRecord 
                 { 
@@ -56,14 +57,14 @@ namespace ConduitLLM.Tests.Core.Services
                     VirtualKeyId = 1, 
                     MediaType = "image", 
                     SizeBytes = 2000,
-                    Provider = "replicate"
+                    Provider = ProviderType.Replicate.ToString()
                 }
             };
 
             var providerStats = new Dictionary<string, long>
             {
-                { "replicate", 3000 },
-                { "openai", 5000 }
+                { "Replicate", 3000 },
+                { "OpenAI", 5000 }
             };
 
             _mockMediaRepository.Setup(x => x.GetMediaOlderThanAsync(It.IsAny<DateTime>()))
@@ -110,7 +111,7 @@ namespace ConduitLLM.Tests.Core.Services
                     VirtualKeyId = 1, 
                     MediaType = "image", 
                     SizeBytes = 1000,
-                    Provider = "replicate"
+                    Provider = ProviderType.Replicate.ToString()
                 }
             };
 
@@ -122,7 +123,7 @@ namespace ConduitLLM.Tests.Core.Services
                     VirtualKeyId = 3, 
                     MediaType = "video", 
                     SizeBytes = 2000,
-                    Provider = "openai"
+                    Provider = ProviderType.OpenAI.ToString()
                 }
             };
 
@@ -142,8 +143,8 @@ namespace ConduitLLM.Tests.Core.Services
             Assert.Equal(2, result.TotalFiles);
             Assert.Equal(0, result.OrphanedFiles); // No orphaned files when filtering by group
             Assert.Equal(2, result.ByProvider.Count);
-            Assert.Equal(1000L, result.ByProvider["replicate"]);
-            Assert.Equal(2000L, result.ByProvider["openai"]);
+            Assert.Equal(1000L, result.ByProvider["Replicate"]);
+            Assert.Equal(2000L, result.ByProvider["OpenAI"]);
             Assert.Equal(2, result.StorageByVirtualKey.Count);
         }
 

@@ -82,12 +82,11 @@ namespace ConduitLLM.Configuration.Entities
         public string Identifier { get; set; } = string.Empty;
 
         /// <summary>
-        /// The provider or source that uses this identifier.
-        /// Examples: "openai", "azure", "anthropic", "openrouter", "deepinfra"
+        /// The provider type that uses this identifier.
+        /// Maps to the ProviderType enum (OpenAI = 1, Groq = 2, etc.)
         /// Null indicates a universal identifier.
         /// </summary>
-        [MaxLength(100)]
-        public string? Provider { get; set; }
+        public ProviderType? Provider { get; set; }
 
 
         /// <summary>

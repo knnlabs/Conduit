@@ -77,8 +77,8 @@ export function ViewModelModal({ isOpen, model, onClose }: ViewModelModalProps) 
               isEnabled: true,
               provider: {
                 id: index,
-                providerType: 0,
-                providerName: identifier.provider.charAt(0).toUpperCase() + identifier.provider.slice(1)
+                providerType: identifier.provider ?? 0,
+                providerName: identifier.providerName ?? 'Unknown'
               }
             }));
             
@@ -117,7 +117,7 @@ export function ViewModelModal({ isOpen, model, onClose }: ViewModelModalProps) 
         
       } catch (error) {
         const errorMessage = getErrorMessage(error);
-        console.error('Failed to load model details:', errorMessage);
+        console.warn('Failed to load model details:', errorMessage);
         
         notifications.show({
           title: 'Error',

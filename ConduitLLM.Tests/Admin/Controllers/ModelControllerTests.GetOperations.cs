@@ -1,6 +1,7 @@
 using ConduitLLM.Admin.Controllers;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Models.Models;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
@@ -261,7 +262,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
                         Id = 1, 
                         ModelId = modelId, 
                         Identifier = "openai/gpt-oss-120b", 
-                        Provider = "groq",
+                        Provider = ProviderType.Groq,
                         IsPrimary = true
                     },
                     new ModelProviderTypeAssociation 
@@ -269,7 +270,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
                         Id = 2, 
                         ModelId = modelId, 
                         Identifier = "gpt-oss-120b", 
-                        Provider = "fireworks",
+                        Provider = ProviderType.Fireworks,
                         IsPrimary = true
                     },
                     new ModelProviderTypeAssociation 
@@ -277,7 +278,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
                         Id = 3, 
                         ModelId = modelId, 
                         Identifier = "gpt-oss-120b", 
-                        Provider = "cerebras",
+                        Provider = ProviderType.Cerebras,
                         IsPrimary = false
                     }
                 }
@@ -305,11 +306,11 @@ namespace ConduitLLM.Tests.Admin.Controllers
             
             deserializedIdentifiers[0].GetProperty("id").GetInt32().Should().Be(1);
             deserializedIdentifiers[0].GetProperty("identifier").GetString().Should().Be("openai/gpt-oss-120b");
-            deserializedIdentifiers[0].GetProperty("provider").GetString().Should().Be("groq");
+            deserializedIdentifiers[0].GetProperty("provider").GetInt32().Should().Be((int)ProviderType.Groq);
             deserializedIdentifiers[0].GetProperty("isPrimary").GetBoolean().Should().Be(true);
 
-            deserializedIdentifiers[1].GetProperty("provider").GetString().Should().Be("fireworks");
-            deserializedIdentifiers[2].GetProperty("provider").GetString().Should().Be("cerebras");
+            deserializedIdentifiers[1].GetProperty("provider").GetInt32().Should().Be((int)ProviderType.Fireworks);
+            deserializedIdentifiers[2].GetProperty("provider").GetInt32().Should().Be((int)ProviderType.Cerebras);
             deserializedIdentifiers[2].GetProperty("isPrimary").GetBoolean().Should().Be(false);
 
             _mockRepository.Verify(r => r.GetByIdWithDetailsAsync(modelId), Times.Once);

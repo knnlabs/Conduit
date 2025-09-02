@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 
@@ -21,7 +22,7 @@ namespace ConduitLLM.Tests.Core.Services
                 ContentType = "image/jpeg",
                 SizeBytes = 1024,
                 ContentHash = "test-hash",
-                Provider = "openai",
+                Provider = ProviderType.OpenAI.ToString(),
                 Model = "dall-e-3",
                 Prompt = "A beautiful landscape",
                 StorageUrl = "https://storage.example.com/image.jpg",

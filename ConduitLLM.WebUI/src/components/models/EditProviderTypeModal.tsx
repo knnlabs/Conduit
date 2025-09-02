@@ -5,28 +5,15 @@ import { Modal, TextInput, Select, Switch, Button, Group, Stack, NumberInput } f
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useAdminClient } from '@/lib/client/adminClient';
-import type { ProviderTypeAssociationInput } from '@/types/models';
+import type { ProviderTypeAssociationInput } from '@knn_labs/conduit-admin-client';
 
 interface EditProviderTypeModalProps {
   isOpen: boolean;
   modelId: number;
-  association: ProviderTypeAssociationInput | null;
+  association: (ProviderTypeAssociationInput & { id?: number }) | null;
   onClose: () => void;
   onSave: () => void;
 }
-
-// Available provider types from the enum
-const PROVIDER_TYPES = [
-  { value: 'OpenAI', label: 'OpenAI' },
-  { value: 'Groq', label: 'Groq' },
-  { value: 'Replicate', label: 'Replicate' },
-  { value: 'Fireworks', label: 'Fireworks' },
-  { value: 'OpenAICompatible', label: 'OpenAI Compatible' },
-  { value: 'MiniMax', label: 'MiniMax' },
-  { value: 'Cerebras', label: 'Cerebras' },
-  { value: 'SambaNova', label: 'SambaNova' },
-  { value: 'DeepInfra', label: 'DeepInfra' }
-];
 
 export function EditProviderTypeModal({ 
   isOpen, 
@@ -36,6 +23,7 @@ export function EditProviderTypeModal({
   onSave 
 }: EditProviderTypeModalProps) {
   const [loading, setLoading] = useState(false);
+  const [providerTypes, setProviderTypes] = useState<Array<{ value: string; label: string }>>([]);
   const { executeWithAdmin } = useAdminClient();
 
   const form = useForm({
@@ -48,46 +36,33 @@ export function EditProviderTypeModal({
       speedScore: null as number | null,
       qualityScore: null as number | null,
       providerVariation: ''
-    },
-    validate: {
-      identifier: (value) => !value ? 'Identifier is required' : null,
-      provider: (value) => !value ? 'Provider type is required' : null,
-      speedScore: (value) => {
-        if (value !== null && value !== undefined) {
-          if (value < 0.01 || value > 100) {
-            return 'Speed score must be between 0.01 and 100';
-          }
-        }
-        return null;
-      },
-      qualityScore: (value) => {
-        if (value !== null && value !== undefined) {
-          if (value < 0 || value > 1) {
-            return 'Quality score must be between 0 and 1';
-          }
-        }
-        return null;
-      }
     }
   });
 
+  // Load provider types from SDK
+  useEffect(() => {
+    const loadProviderTypes = async () => {
+      const providers = await executeWithAdmin(async client => {
+        const metadata = client.models.getAvailableProviders();
+        return metadata.map(m => ({
+          value: String(m.value),  // Convert numeric enum to string for Select component
+          label: m.label
+        }));
+      });
+      setProviderTypes(providers);
+    };
+    
+    void loadProviderTypes();
+  }, [executeWithAdmin]);
+
   useEffect(() => {
     if (association) {
-      // Map provider value to match PROVIDER_TYPES options
-      let providerValue = association.provider ?? '';
-      
-      // Find matching provider type (case-insensitive)
-      const matchingProvider = PROVIDER_TYPES.find(
-        pt => pt.value.toLowerCase() === providerValue.toLowerCase()
-      );
-      
-      if (matchingProvider) {
-        providerValue = matchingProvider.value;
-      }
-      
       form.setValues({
         identifier: association.identifier ?? '',
-        provider: providerValue,
+        // Provider is now a number from the API, convert to string for the Select component
+        provider: association.provider !== null && association.provider !== undefined 
+          ? String(association.provider) 
+          : '',
         isPrimary: association.isPrimary ?? false,
         maxInputTokens: association.maxInputTokens ?? null,
         maxOutputTokens: association.maxOutputTokens ?? null,
@@ -99,11 +74,22 @@ export function EditProviderTypeModal({
       form.reset();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [association]);
+  }, [association, providerTypes]);
 
   const handleSubmit = async (values: typeof form.values) => {
     try {
       setLoading(true);
+      
+      const data: ProviderTypeAssociationInput = {
+        identifier: values.identifier,
+        provider: values.provider ? Number(values.provider) : undefined,
+        isPrimary: values.isPrimary,
+        maxInputTokens: values.maxInputTokens,
+        maxOutputTokens: values.maxOutputTokens,
+        speedScore: values.speedScore,
+        qualityScore: values.qualityScore,
+        providerVariation: values.providerVariation || undefined
+      };
       
       if (association?.id) {
         // Update existing
@@ -111,18 +97,28 @@ export function EditProviderTypeModal({
         if (!associationId) {
           throw new Error('Association ID is required for update');
         }
-        await executeWithAdmin(client => 
-          client.models.updateIdentifier(modelId, associationId, {
-            identifier: values.identifier,
-            provider: values.provider,
-            isPrimary: values.isPrimary,
-            maxInputTokens: values.maxInputTokens,
-            maxOutputTokens: values.maxOutputTokens,
-            speedScore: values.speedScore,
-            qualityScore: values.qualityScore,
-            providerVariation: values.providerVariation || undefined
-          })
+        
+        // Validate before sending
+        const validation = await executeWithAdmin(async client => 
+          client.models.validateIdentifier(data)
         );
+        
+        if (!validation.valid) {
+          // Show validation errors
+          if (validation.errors) {
+            Object.entries(validation.errors).forEach(([field, error]) => {
+              const errorMsg = Array.isArray(error) ? error.join(', ') : error;
+              form.setFieldError(field, errorMsg);
+            });
+          }
+          setLoading(false);
+          return;
+        }
+        
+        await executeWithAdmin(client => 
+          client.models.updateIdentifier(modelId, associationId, data)
+        );
+        
         notifications.show({
           title: 'Success',
           message: 'Provider type association updated',
@@ -130,18 +126,28 @@ export function EditProviderTypeModal({
         });
       } else {
         // Create new
-        await executeWithAdmin(client => 
-          client.models.createIdentifier(modelId, {
-            identifier: values.identifier,
-            provider: values.provider,
-            isPrimary: values.isPrimary,
-            maxInputTokens: values.maxInputTokens,
-            maxOutputTokens: values.maxOutputTokens,
-            speedScore: values.speedScore,
-            qualityScore: values.qualityScore,
-            providerVariation: values.providerVariation || undefined
-          })
+        
+        // Validate before sending
+        const validation = await executeWithAdmin(async client => 
+          client.models.validateIdentifier(data)
         );
+        
+        if (!validation.valid) {
+          // Show validation errors
+          if (validation.errors) {
+            Object.entries(validation.errors).forEach(([field, error]) => {
+              const errorMsg = Array.isArray(error) ? error.join(', ') : error;
+              form.setFieldError(field, errorMsg);
+            });
+          }
+          setLoading(false);
+          return;
+        }
+        
+        await executeWithAdmin(client => 
+          client.models.createIdentifier(modelId, data)
+        );
+        
         notifications.show({
           title: 'Success',
           message: 'Provider type association created',
@@ -153,11 +159,24 @@ export function EditProviderTypeModal({
       onClose();
     } catch (error) {
       console.warn('Failed to save provider type association:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to save provider type association',
-        color: 'red',
-      });
+      
+      // Handle specific error types from SDK
+      if (error && typeof error === 'object' && 'name' in error && 'fields' in error) {
+        const validationError = error as { name: string; fields: Record<string, string | string[]> };
+        if (validationError.name === 'ModelValidationError') {
+          Object.entries(validationError.fields).forEach(([field, errorMsg]) => {
+            const msg = Array.isArray(errorMsg) ? errorMsg.join(', ') : errorMsg;
+            form.setFieldError(field, msg);
+          });
+        }
+      } else {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to save provider type association';
+        notifications.show({
+          title: 'Error',
+          message: errorMessage,
+          color: 'red',
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -183,7 +202,7 @@ export function EditProviderTypeModal({
             label="Provider Type"
             placeholder="Select provider type"
             required
-            data={PROVIDER_TYPES}
+            data={providerTypes}
             {...form.getInputProps('provider')}
           />
 

@@ -48,7 +48,7 @@ namespace ConduitLLM.Tests.Core.Services
                 ModelId = 1,
                 Model = modelEntity,
                 Identifier = model,
-                Provider = provider,
+                Provider = null, // Provider type not used in test
                 IsEnabled = true,
                 IsPrimary = true
             };
@@ -204,7 +204,7 @@ namespace ConduitLLM.Tests.Core.Services
                 ModelId = 1,
                 Model = modelEntity,
                 Identifier = model,
-                Provider = provider,
+                Provider = null, // Provider type not used in test
                 IsEnabled = true,
                 IsPrimary = true
             };

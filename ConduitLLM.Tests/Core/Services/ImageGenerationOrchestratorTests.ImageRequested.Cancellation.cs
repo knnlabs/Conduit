@@ -65,7 +65,7 @@ namespace ConduitLLM.Tests.Core.Services
                 ModelId = 1,
                 Model = modelEntity,
                 Identifier = "dall-e-3",
-                Provider = "openai",
+                Provider = ProviderType.OpenAI,
                 IsEnabled = true,
                 IsPrimary = true
             };

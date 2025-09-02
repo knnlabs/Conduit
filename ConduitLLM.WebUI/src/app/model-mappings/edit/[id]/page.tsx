@@ -127,8 +127,8 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
         const modelId = model.id;
         if (modelId === undefined) continue;
         
-        const availableProviders = await withAdminClient((client: ConduitAdminClient) => 
-          client.models.getAvailableProviders(modelId)
+        const availableProviders = await withAdminClient(async (client: ConduitAdminClient) => 
+          client.models.getModelProviders(modelId)
         );
         
         const association = availableProviders.find(

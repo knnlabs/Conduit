@@ -10,8 +10,12 @@ import { ParameterPreview } from '@/components/parameters/ParameterPreview';
 import { ProviderTypeList } from './ProviderTypeList';
 import { EditProviderTypeModal } from './EditProviderTypeModal';
 import { DeleteProviderTypeModal } from './DeleteProviderTypeModal';
-import type { ModelDto, UpdateModelDto, ModelSeriesDto } from '@knn_labs/conduit-admin-client';
-import type { ProviderTypeAssociation } from '@/types/models';
+import type { 
+  ModelDto, 
+  UpdateModelDto, 
+  ModelSeriesDto,
+  NormalizedProviderTypeAssociation 
+} from '@knn_labs/conduit-admin-client';
 
 // Extend ModelDto to include capability fields and modelParameters until SDK types are updated
 interface ExtendedModelDto extends ModelDto {
@@ -44,10 +48,10 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
   const [jsonError, setJsonError] = useState<string | null>(null);
   
   // Provider type association states
-  const [associations, setAssociations] = useState<ProviderTypeAssociation[]>([]);
+  const [associations, setAssociations] = useState<NormalizedProviderTypeAssociation[]>([]);
   const [loadingAssociations, setLoadingAssociations] = useState(false);
-  const [editingAssociation, setEditingAssociation] = useState<ProviderTypeAssociation | null>(null);
-  const [deletingAssociation, setDeletingAssociation] = useState<ProviderTypeAssociation | null>(null);
+  const [editingAssociation, setEditingAssociation] = useState<NormalizedProviderTypeAssociation | null>(null);
+  const [deletingAssociation, setDeletingAssociation] = useState<NormalizedProviderTypeAssociation | null>(null);
   const [showAddAssociation, setShowAddAssociation] = useState(false);
   const [deletingAssociationLoading, setDeletingAssociationLoading] = useState(false);
   
@@ -152,7 +156,7 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       const seriesData = await executeWithAdmin(client => client.modelSeries.list());
       setSeries(seriesData);
     } catch (error) {
-      console.error('Failed to load data:', error);
+      console.warn('Failed to load data:', error);
       notifications.show({
         title: 'Error',
         message: 'Failed to load series data',
@@ -247,9 +251,9 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       );
       
       console.warn('Loaded associations:', identifiers);
-      setAssociations(identifiers as ProviderTypeAssociation[]);
+      setAssociations(identifiers);
     } catch (error) {
-      console.error('Failed to load provider associations:', error);
+      console.warn('Failed to load provider associations:', error);
       // Don't show error notification for 404s - just means no associations exist yet
       if (error && typeof error === 'object' && 'status' in error && error.status !== 404) {
         notifications.show({
@@ -486,7 +490,17 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       <EditProviderTypeModal
         isOpen={showAddAssociation || !!editingAssociation}
         modelId={model?.id ?? 0}
-        association={editingAssociation}
+        association={editingAssociation ? {
+          id: editingAssociation.id,
+          identifier: editingAssociation.identifier,
+          provider: editingAssociation.provider ?? undefined,
+          isPrimary: editingAssociation.isPrimary,
+          maxInputTokens: editingAssociation.maxInputTokens,
+          maxOutputTokens: editingAssociation.maxOutputTokens,
+          speedScore: editingAssociation.speedScore,
+          qualityScore: editingAssociation.qualityScore,
+          providerVariation: editingAssociation.providerVariation ?? undefined
+        } : null}
         onClose={() => {
           setShowAddAssociation(false);
           setEditingAssociation(null);

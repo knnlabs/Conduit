@@ -88,7 +88,7 @@ namespace ConduitLLM.Tests.Core.Services
                 ModelId = model.Id,
                 Model = model,
                 Identifier = "test-provider-model",
-                Provider = "replicate",
+                Provider = ProviderType.Replicate,
                 IsEnabled = true,
                 IsPrimary = true
             };
@@ -250,7 +250,7 @@ namespace ConduitLLM.Tests.Core.Services
                 ModelId = model.Id,
                 Model = model,
                 Identifier = "test-provider-model",
-                Provider = "replicate",
+                Provider = ProviderType.Replicate,
                 IsEnabled = true,
                 IsPrimary = true
             };
@@ -333,7 +333,7 @@ namespace ConduitLLM.Tests.Core.Services
                 Id = 2,
                 ModelId = 1,
                 Identifier = "test-provider-model",
-                Provider = "replicate",
+                Provider = ProviderType.Replicate,
                 IsEnabled = true,
                 IsPrimary = true
             };
@@ -434,7 +434,7 @@ namespace ConduitLLM.Tests.Core.Services
                 ModelId = model.Id,
                 Model = model,
                 Identifier = "test-provider-model",
-                Provider = "replicate",
+                Provider = ProviderType.Replicate,
                 IsEnabled = true,
                 IsPrimary = true
             };

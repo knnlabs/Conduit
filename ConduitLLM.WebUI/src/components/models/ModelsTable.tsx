@@ -26,8 +26,10 @@ type ModelWithMappingStatus = ModelDto & {
   providers: Array<{
     id: number;
     identifier: string;
-    provider: string;
+    provider: number | null;
     isPrimary: boolean;
+    normalizedProvider?: number | null;
+    providerName?: string | null;
   }>;
 };
 
@@ -59,7 +61,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
       setFilteredModels(data);
     } catch (error) {
       const errorMessage = getErrorMessage(error);
-      console.error('Failed to load models:', errorMessage);
+      console.warn('Failed to load models:', errorMessage);
       notifications.show({
         title: 'Error',
         message: `Failed to load models: ${errorMessage}`,
@@ -178,7 +180,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
                   color={provider.isPrimary ? 'green' : 'gray'} 
                   variant="light"
                 >
-                  {provider.provider.toUpperCase()}
+                  {provider.providerName ?? 'Unknown'}
                 </Badge>
                 <Text size="xs" c="dimmed" style={{ flex: 1 }}>
                   {provider.identifier}

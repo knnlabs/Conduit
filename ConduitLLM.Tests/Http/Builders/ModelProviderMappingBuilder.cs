@@ -59,7 +59,7 @@ namespace ConduitLLM.Tests.Http.Builders
                 ModelId = _model.Id,
                 Model = _model,
                 Identifier = "test-model-id",
-                Provider = "test-provider",
+                Provider = null, // Provider type not set in builder
                 IsEnabled = true,
                 IsPrimary = true
             };

@@ -99,7 +99,7 @@ namespace ConduitLLM.Tests.Http.Controllers
                 ModelId = 1,
                 Model = model,
                 Identifier = "test-model-v1",
-                Provider = "openai",
+                Provider = ProviderType.OpenAI,
                 IsEnabled = true,
                 IsPrimary = true
             };
@@ -167,7 +167,7 @@ namespace ConduitLLM.Tests.Http.Controllers
                 ModelId = 42,
                 Model = model,
                 Identifier = "test-model-v1",
-                Provider = "openai",
+                Provider = ProviderType.OpenAI,
                 IsEnabled = true,
                 IsPrimary = true
             };
@@ -277,7 +277,7 @@ namespace ConduitLLM.Tests.Http.Controllers
                 ModelId = 1,
                 Model = model,
                 Identifier = "test-model-v1",
-                Provider = "openai",
+                Provider = ProviderType.OpenAI,
                 IsEnabled = true,
                 IsPrimary = true
             };
@@ -342,7 +342,7 @@ namespace ConduitLLM.Tests.Http.Controllers
                 ModelId = 1,
                 Model = model,
                 Identifier = "test-model-v1",
-                Provider = "openai",
+                Provider = ProviderType.OpenAI,
                 IsEnabled = true,
                 IsPrimary = true
             };
@@ -396,7 +396,7 @@ namespace ConduitLLM.Tests.Http.Controllers
                 ModelId = 1,
                 Model = model,
                 Identifier = "test-model-v1",
-                Provider = "openai",
+                Provider = ProviderType.OpenAI,
                 IsEnabled = true,
                 IsPrimary = true
             };

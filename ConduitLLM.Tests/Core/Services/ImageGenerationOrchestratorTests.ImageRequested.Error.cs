@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Configuration.Entities;
@@ -146,7 +147,7 @@ namespace ConduitLLM.Tests.Core.Services
                 Id = 1,
                 ModelId = 1,
                 Identifier = "gpt-4",
-                Provider = "openai",
+                Provider = ProviderType.OpenAI,
                 IsEnabled = true,
                 IsPrimary = true
             };

@@ -1,6 +1,7 @@
 using ConduitLLM.Admin.Controllers;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Models.Models;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
@@ -68,7 +69,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
                             Id = 1, 
                             ModelId = 1, 
                             Identifier = "llama-3.1-8b-instant", 
-                            Provider = "groq",
+                            Provider = ProviderType.Groq,
                             IsPrimary = true
                         }
                     }
@@ -92,14 +93,14 @@ namespace ConduitLLM.Tests.Admin.Controllers
                             Id = 2, 
                             ModelId = 2, 
                             Identifier = "mixtral-8x7b-32768", 
-                            Provider = "groq",
+                            Provider = ProviderType.Groq,
                             IsPrimary = true
                         }
                     }
                 }
             };
 
-            _mockRepository.Setup(r => r.GetByProviderAsync(provider))
+            _mockRepository.Setup(r => r.GetByProviderAsync(ProviderType.Groq))
                 .ReturnsAsync(models);
 
             // Act
@@ -125,7 +126,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             secondDto.Name.Should().Be("mixtral-8x7b");
             secondDto.ProviderModelId.Should().Be("mixtral-8x7b-32768");
 
-            _mockRepository.Verify(r => r.GetByProviderAsync(provider), Times.Once);
+            _mockRepository.Verify(r => r.GetByProviderAsync(ProviderType.Groq), Times.Once);
         }
 
         [Fact]
@@ -142,7 +143,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var badRequestResult = result as BadRequestObjectResult;
             badRequestResult!.Value.Should().Be("Provider name is required");
 
-            _mockRepository.Verify(r => r.GetByProviderAsync(It.IsAny<string>()), Times.Never);
+            _mockRepository.Verify(r => r.GetByProviderAsync(It.IsAny<ProviderType>()), Times.Never);
         }
 
         [Fact]
@@ -159,7 +160,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var badRequestResult = result as BadRequestObjectResult;
             badRequestResult!.Value.Should().Be("Provider name is required");
 
-            _mockRepository.Verify(r => r.GetByProviderAsync(It.IsAny<string>()), Times.Never);
+            _mockRepository.Verify(r => r.GetByProviderAsync(It.IsAny<ProviderType>()), Times.Never);
         }
 
         [Fact]
@@ -176,34 +177,30 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var badRequestResult = result as BadRequestObjectResult;
             badRequestResult!.Value.Should().Be("Provider name is required");
 
-            _mockRepository.Verify(r => r.GetByProviderAsync(It.IsAny<string>()), Times.Never);
+            _mockRepository.Verify(r => r.GetByProviderAsync(It.IsAny<ProviderType>()), Times.Never);
         }
 
         [Fact]
-        public async Task GetModelsByProvider_WithNoModels_ShouldReturnOkWithEmptyList()
+        public async Task GetModelsByProvider_WithInvalidProvider_ShouldReturnBadRequest()
         {
             // Arrange
             var provider = "nonexistent";
-            _mockRepository.Setup(r => r.GetByProviderAsync(provider))
-                .ReturnsAsync(new List<Model>());
 
             // Act
             var result = await _controller.GetModelsByProvider(provider);
 
             // Assert
-            result.Should().BeOfType<OkObjectResult>();
-            var okResult = result as OkObjectResult;
-            okResult.Should().NotBeNull();
-            
-            var dtos = okResult!.Value as IEnumerable<ModelWithProviderIdDto>;
-            dtos.Should().NotBeNull();
-            dtos.Should().BeEmpty();
+            result.Should().BeOfType<BadRequestObjectResult>();
+            var badResult = result as BadRequestObjectResult;
+            badResult!.Value.Should().NotBeNull();
+            badResult.Value.ToString().Should().Contain("Invalid provider");
+            badResult.Value.ToString().Should().Contain("nonexistent");
 
-            _mockRepository.Verify(r => r.GetByProviderAsync(provider), Times.Once);
+            _mockRepository.Verify(r => r.GetByProviderAsync(It.IsAny<ProviderType>()), Times.Never);
         }
 
         [Fact]
-        public async Task GetModelsByProvider_WithModelMissingIdentifier_ShouldUseFallbackName()
+        public async Task GetModelsByProvider_WithModelHavingProviderIdentifier_ShouldReturnCorrectIdentifier()
         {
             // Arrange
             var provider = "groq";
@@ -221,20 +218,20 @@ namespace ConduitLLM.Tests.Admin.Controllers
                     IsActive = true,
                     Identifiers = new List<ModelProviderTypeAssociation>
                     {
-                        // Identifier for different provider
+                        // Identifier for groq provider
                         new ModelProviderTypeAssociation 
                         { 
                             Id = 1, 
                             ModelId = 1, 
-                            Identifier = "test-model-openai", 
-                            Provider = "openai",
+                            Identifier = "test-model-groq", 
+                            Provider = ProviderType.Groq,
                             IsPrimary = true
                         }
                     }
                 }
             };
 
-            _mockRepository.Setup(r => r.GetByProviderAsync(provider))
+            _mockRepository.Setup(r => r.GetByProviderAsync(ProviderType.Groq))
                 .ReturnsAsync(models);
 
             // Act
@@ -246,8 +243,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var dtos = okResult!.Value as IEnumerable<ModelWithProviderIdDto>;
             var dto = dtos!.First();
             
-            // Should fallback to model name when no matching provider identifier
-            dto.ProviderModelId.Should().Be("test-model");
+            // Should use the groq-specific identifier
+            dto.ProviderModelId.Should().Be("test-model-groq");
         }
 
         [Fact]
@@ -274,14 +271,14 @@ namespace ConduitLLM.Tests.Admin.Controllers
                             Id = 1, 
                             ModelId = 1, 
                             Identifier = "test-model-groq", 
-                            Provider = "groq", // Lowercase in DB
+                            Provider = ProviderType.Groq, // Lowercase in DB
                             IsPrimary = true
                         }
                     }
                 }
             };
 
-            _mockRepository.Setup(r => r.GetByProviderAsync(provider))
+            _mockRepository.Setup(r => r.GetByProviderAsync(ProviderType.Groq))
                 .ReturnsAsync(models);
 
             // Act
@@ -304,7 +301,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var provider = "groq";
             var exception = new Exception("Database connection failed");
             
-            _mockRepository.Setup(r => r.GetByProviderAsync(provider))
+            _mockRepository.Setup(r => r.GetByProviderAsync(ProviderType.Groq))
                 .ThrowsAsync(exception);
 
             // Act
@@ -352,14 +349,14 @@ namespace ConduitLLM.Tests.Admin.Controllers
                             Id = 1, 
                             ModelId = 1, 
                             Identifier = "test-model", 
-                            Provider = "groq",
+                            Provider = ProviderType.Groq,
                             IsPrimary = true
                         }
                     }
                 }
             };
 
-            _mockRepository.Setup(r => r.GetByProviderAsync(provider))
+            _mockRepository.Setup(r => r.GetByProviderAsync(ProviderType.Groq))
                 .ReturnsAsync(models);
 
             // Act

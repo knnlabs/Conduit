@@ -3,14 +3,14 @@
 import { Table, Badge, ActionIcon, Group, Button, Text, Loader, Stack, Anchor } from '@mantine/core';
 import { IconEdit, IconTrash, IconPlus, IconCoin } from '@tabler/icons-react';
 import Link from 'next/link';
-import type { ProviderTypeAssociation } from '@/types/models';
+import type { NormalizedProviderTypeAssociation } from '@knn_labs/conduit-admin-client';
 
 interface ProviderTypeListProps {
-  associations: ProviderTypeAssociation[];
+  associations: NormalizedProviderTypeAssociation[];
   loading: boolean;
   onAdd: () => void;
-  onEdit: (association: ProviderTypeAssociation) => void;
-  onDelete: (association: ProviderTypeAssociation) => void;
+  onEdit: (association: NormalizedProviderTypeAssociation) => void;
+  onDelete: (association: NormalizedProviderTypeAssociation) => void;
 }
 
 export function ProviderTypeList({ 
@@ -70,7 +70,7 @@ export function ProviderTypeList({
                 </Table.Td>
                 <Table.Td>
                   <Badge variant="light">
-                    {association.provider}
+                    {association.providerName ?? 'Unknown'}
                   </Badge>
                 </Table.Td>
                 <Table.Td>

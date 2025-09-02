@@ -101,15 +101,15 @@ namespace ConduitLLM.Http.Controllers
                 // Prefer identifiers that match the provider type if available
                 var modelIdentifiers = new List<string>();
                 
-                // Map provider type to common provider strings
-                var providerName = provider.ProviderType.ToString().ToLowerInvariant();
+                // Map provider type to enum for comparison
+                var providerType = provider.ProviderType;
                 
                 foreach (var model in models)
                 {
                     // First, check if there's a provider-specific identifier
                     var providerSpecificId = model.Identifiers
-                        .FirstOrDefault(i => !string.IsNullOrEmpty(i.Provider) && 
-                                           i.Provider.Equals(providerName, StringComparison.OrdinalIgnoreCase));
+                        .FirstOrDefault(i => i.Provider.HasValue && 
+                                           i.Provider.Value == providerType);
                     
                     if (providerSpecificId != null)
                     {
