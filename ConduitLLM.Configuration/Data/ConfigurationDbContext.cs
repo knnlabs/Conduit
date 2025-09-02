@@ -227,22 +227,8 @@ namespace ConduitLLM.Configuration
                       .OnDelete(DeleteBehavior.SetNull);
             });
 
-            // Configure ModelProviderTypeAssociation entity
-            modelBuilder.Entity<ModelProviderTypeAssociation>(entity =>
-            {
-                entity.HasIndex(e => new { e.ModelId, e.Identifier, e.Provider })
-                      .IsUnique(); // Each model-identifier-provider combination should be unique
-                
-                entity.HasOne(e => e.ModelCost)
-                      .WithMany(e => e.ModelProviderTypeAssociations)
-                      .HasForeignKey(e => e.ModelCostId)
-                      .OnDelete(DeleteBehavior.SetNull);
-                
-                entity.HasOne(e => e.Model)
-                      .WithMany(e => e.Identifiers)
-                      .HasForeignKey(e => e.ModelId)
-                      .OnDelete(DeleteBehavior.Cascade);
-            });
+            // ModelProviderTypeAssociation configuration is handled by ModelProviderTypeAssociationEntityConfiguration
+            // in EntityConfigurations/ModelEntityConfiguration.cs via ApplyModelConfigurations()
 
             // Configure VirtualKeySpendHistory entity
             modelBuilder.Entity<VirtualKeySpendHistory>(entity =>

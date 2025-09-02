@@ -3,6 +3,7 @@ using System;
 using ConduitLLM.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ConduitLLM.Configuration.Migrations
 {
     [DbContext(typeof(ConduitDbContext))]
-    partial class ConduitDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250902225859_FixModelProviderTypeAssociationMapping")]
+    partial class FixModelProviderTypeAssociationMapping
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -969,6 +972,9 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("Provider", "Identifier")
                         .IsUnique()
                         .HasDatabaseName("IX_ModelIdentifier_Provider_Identifier_Unique");
+
+                    b.HasIndex("ModelId", "Identifier", "Provider")
+                        .IsUnique();
 
                     b.ToTable("ModelIdentifiers", (string)null);
                 });
