@@ -115,12 +115,11 @@ export function EditProviderTypeModal({
             identifier: values.identifier,
             provider: values.provider,
             isPrimary: values.isPrimary,
-            // TODO: Add these fields once SDK is regenerated
-            // maxInputTokens: values.maxInputTokens,
-            // maxOutputTokens: values.maxOutputTokens,
-            // speedScore: values.speedScore,
-            // qualityScore: values.qualityScore,
-            // providerVariation: values.providerVariation || undefined
+            maxInputTokens: values.maxInputTokens,
+            maxOutputTokens: values.maxOutputTokens,
+            speedScore: values.speedScore,
+            qualityScore: values.qualityScore,
+            providerVariation: values.providerVariation || undefined
           })
         );
         notifications.show({
@@ -135,12 +134,11 @@ export function EditProviderTypeModal({
             identifier: values.identifier,
             provider: values.provider,
             isPrimary: values.isPrimary,
-            // TODO: Add these fields once SDK is regenerated
-            // maxInputTokens: values.maxInputTokens,
-            // maxOutputTokens: values.maxOutputTokens,
-            // speedScore: values.speedScore,
-            // qualityScore: values.qualityScore,
-            // providerVariation: values.providerVariation || undefined
+            maxInputTokens: values.maxInputTokens,
+            maxOutputTokens: values.maxOutputTokens,
+            speedScore: values.speedScore,
+            qualityScore: values.qualityScore,
+            providerVariation: values.providerVariation || undefined
           })
         );
         notifications.show({

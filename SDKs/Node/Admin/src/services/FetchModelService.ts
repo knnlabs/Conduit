@@ -338,6 +338,11 @@ export class FetchModelService {
       provider?: string;
       isPrimary?: boolean;
       metadata?: string;
+      maxInputTokens?: number | null;
+      maxOutputTokens?: number | null;
+      speedScore?: number | null;
+      qualityScore?: number | null;
+      providerVariation?: string | null;
     },
     config?: RequestConfig
   ): Promise<{
@@ -345,12 +350,22 @@ export class FetchModelService {
     identifier: string;
     provider: string;
     isPrimary: boolean;
+    maxInputTokens?: number | null;
+    maxOutputTokens?: number | null;
+    speedScore?: number | null;
+    qualityScore?: number | null;
+    providerVariation?: string | null;
   }> {
     return this.client['post']<{
       id: number;
       identifier: string;
       provider: string;
       isPrimary: boolean;
+      maxInputTokens?: number | null;
+      maxOutputTokens?: number | null;
+      speedScore?: number | null;
+      qualityScore?: number | null;
+      providerVariation?: string | null;
     }, typeof data>(
       `${ENDPOINTS.MODELS.BY_ID(id)}/identifiers`,
       data,
@@ -373,6 +388,11 @@ export class FetchModelService {
       provider?: string;
       isPrimary?: boolean;
       metadata?: string;
+      maxInputTokens?: number | null;
+      maxOutputTokens?: number | null;
+      speedScore?: number | null;
+      qualityScore?: number | null;
+      providerVariation?: string | null;
     },
     config?: RequestConfig
   ): Promise<void> {
