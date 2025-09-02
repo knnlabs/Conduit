@@ -11,15 +11,7 @@ import { ProviderTypeList } from './ProviderTypeList';
 import { EditProviderTypeModal } from './EditProviderTypeModal';
 import { DeleteProviderTypeModal } from './DeleteProviderTypeModal';
 import type { ModelDto, UpdateModelDto, ModelSeriesDto } from '@knn_labs/conduit-admin-client';
-
-// Provider type association interface
-interface ProviderTypeAssociation {
-  id: number;
-  identifier: string;
-  provider: string;
-  isPrimary: boolean;
-  modelCostId?: number | null;
-}
+import type { ProviderTypeAssociation } from '@/types/models';
 
 // Extend ModelDto to include capability fields and modelParameters until SDK types are updated
 interface ExtendedModelDto extends ModelDto {

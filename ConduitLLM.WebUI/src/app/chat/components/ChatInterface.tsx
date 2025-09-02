@@ -70,6 +70,9 @@ export function ChatInterface() {
   const currentModel = modelData?.find(m => m.id === selectedModel);
   const currentDiscoveryModel = discoveryData?.data?.find(m => m.id === selectedModel);
   
+  // Use max_tokens from discovery API if available, otherwise fall back to hardcoded value
+  const maxContextTokens = (currentDiscoveryModel?.max_tokens ?? currentModel?.maxContextTokens ?? 128000) as number;
+  
   // Use parameters from discovery model
   const modelParameters = currentDiscoveryModel?.parameters ?? '{}';
   const parameterState = useParameterState({
@@ -168,7 +171,7 @@ export function ChatInterface() {
                 {currentModel && messages.length > 0 && (
                   <TokenCounter
                     messages={messages}
-                    maxTokens={currentModel.maxContextTokens}
+                    maxTokens={maxContextTokens}
                     modelName={currentModel.displayName}
                     compact={true}
                     showCost={false}
@@ -196,7 +199,7 @@ export function ChatInterface() {
                 {currentModel && (
                   <TokenCounter
                     messages={messages}
-                    maxTokens={currentModel.maxContextTokens}
+                    maxTokens={maxContextTokens}
                     modelName={currentModel.displayName}
                     compact={false}
                     showCost={false}

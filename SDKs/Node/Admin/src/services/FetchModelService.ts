@@ -51,12 +51,24 @@ export class FetchModelService {
     identifier: string;
     provider: string;
     isPrimary: boolean;
+    maxInputTokens?: number | null;
+    maxOutputTokens?: number | null;
+    speedScore?: number | null;
+    qualityScore?: number | null;
+    providerVariation?: string | null;
+    modelCostId?: number | null;
   }>> {
     return this.client['get']<Array<{
       id: number;
       identifier: string;
       provider: string;
       isPrimary: boolean;
+      maxInputTokens?: number | null;
+      maxOutputTokens?: number | null;
+      speedScore?: number | null;
+      qualityScore?: number | null;
+      providerVariation?: string | null;
+      modelCostId?: number | null;
     }>>(
       `${ENDPOINTS.MODELS.BY_ID(id)}/identifiers`,
       {

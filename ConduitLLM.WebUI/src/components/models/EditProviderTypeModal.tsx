@@ -5,23 +5,12 @@ import { Modal, TextInput, Select, Switch, Button, Group, Stack, NumberInput } f
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useAdminClient } from '@/lib/client/adminClient';
-
-interface ProviderTypeAssociation {
-  id?: number;
-  identifier: string;
-  provider?: string;
-  isPrimary?: boolean;
-  maxInputTokens?: number | null;
-  maxOutputTokens?: number | null;
-  speedScore?: number | null;
-  qualityScore?: number | null;
-  providerVariation?: string | null;
-}
+import type { ProviderTypeAssociationInput } from '@/types/models';
 
 interface EditProviderTypeModalProps {
   isOpen: boolean;
   modelId: number;
-  association: ProviderTypeAssociation | null;
+  association: ProviderTypeAssociationInput | null;
   onClose: () => void;
   onSave: () => void;
 }
@@ -84,9 +73,21 @@ export function EditProviderTypeModal({
 
   useEffect(() => {
     if (association) {
+      // Map provider value to match PROVIDER_TYPES options
+      let providerValue = association.provider ?? '';
+      
+      // Find matching provider type (case-insensitive)
+      const matchingProvider = PROVIDER_TYPES.find(
+        pt => pt.value.toLowerCase() === providerValue.toLowerCase()
+      );
+      
+      if (matchingProvider) {
+        providerValue = matchingProvider.value;
+      }
+      
       form.setValues({
         identifier: association.identifier ?? '',
-        provider: association.provider ?? '',
+        provider: providerValue,
         isPrimary: association.isPrimary ?? false,
         maxInputTokens: association.maxInputTokens ?? null,
         maxOutputTokens: association.maxOutputTokens ?? null,
@@ -151,7 +152,7 @@ export function EditProviderTypeModal({
       onSave();
       onClose();
     } catch (error) {
-      console.error('Failed to save provider type association:', error);
+      console.warn('Failed to save provider type association:', error);
       notifications.show({
         title: 'Error',
         message: 'Failed to save provider type association',

@@ -6,6 +6,10 @@ export interface DiscoveryModel {
   display_name: string;
   capabilities: Record<string, unknown>;
   parameters?: string | null;
+  // Token limits
+  max_tokens?: number;
+  max_input_tokens?: number;
+  max_output_tokens?: number;
 }
 
 export interface DiscoveryResponse {

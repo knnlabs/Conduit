@@ -1,13 +1,7 @@
 'use client';
 
 import { Modal, Text, Button, Group, Stack } from '@mantine/core';
-
-interface ProviderTypeAssociation {
-  id: number;
-  identifier: string;
-  provider: string;
-  isPrimary: boolean;
-}
+import type { ProviderTypeAssociation } from '@/types/models';
 
 interface DeleteProviderTypeModalProps {
   isOpen: boolean;

@@ -6,6 +6,10 @@ export interface DiscoveryModel {
   display_name: string;
   capabilities: Record<string, unknown>;
   parameters?: string;
+  // Token limits
+  max_tokens?: number;
+  max_input_tokens?: number;
+  max_output_tokens?: number;
   // Add all capability flags
   supports_chat?: boolean;
   supports_streaming?: boolean;

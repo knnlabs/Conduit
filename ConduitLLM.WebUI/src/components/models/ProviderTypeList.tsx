@@ -3,14 +3,7 @@
 import { Table, Badge, ActionIcon, Group, Button, Text, Loader, Stack, Anchor } from '@mantine/core';
 import { IconEdit, IconTrash, IconPlus, IconCoin } from '@tabler/icons-react';
 import Link from 'next/link';
-
-interface ProviderTypeAssociation {
-  id: number;
-  identifier: string;
-  provider: string;
-  isPrimary: boolean;
-  modelCostId?: number | null;
-}
+import type { ProviderTypeAssociation } from '@/types/models';
 
 interface ProviderTypeListProps {
   associations: ProviderTypeAssociation[];

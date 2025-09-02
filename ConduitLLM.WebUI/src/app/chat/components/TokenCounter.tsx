@@ -22,6 +22,7 @@ interface TokenCounterProps {
 
 interface TokenCounterStats extends TokenStats {
   estimatedCost?: number;
+  isEstimated?: boolean;
 }
 
 function convertToEstimatorMessage(message: ChatMessage): EstimatorMessage {
@@ -51,12 +52,46 @@ export function TokenCounter({
   });
 
   useEffect(() => {
-    // Convert ChatMessage to EstimatorMessage format
-    const estimatorMessages: EstimatorMessage[] = messages.map(convertToEstimatorMessage);
-    
-    // Use TokenEstimator for accurate token calculation
-    const modelFamily = modelName ? TokenEstimator.getModelFamily(modelName) : ModelFamily.Generic;
-    const tokenStats = TokenEstimator.estimateConversationTokens(estimatorMessages, modelFamily);
+    // First, try to use actual token counts from metadata
+    let promptTokens = 0;
+    let completionTokens = 0;
+    let hasActualTokenCounts = false;
+
+    // Calculate actual tokens from metadata
+    messages.forEach(message => {
+      if (message.metadata?.promptTokens) {
+        promptTokens += message.metadata.promptTokens;
+        hasActualTokenCounts = true;
+      }
+      if (message.metadata?.completionTokens) {
+        completionTokens += message.metadata.completionTokens;
+        hasActualTokenCounts = true;
+      }
+      // Also check tokensUsed for backward compatibility
+      if (message.metadata?.tokensUsed && message.role === 'assistant') {
+        // tokensUsed typically represents completion tokens for assistant messages
+        if (!message.metadata.completionTokens) {
+          completionTokens += message.metadata.tokensUsed;
+          hasActualTokenCounts = true;
+        }
+      }
+    });
+
+    let tokenStats: TokenStats;
+
+    if (hasActualTokenCounts) {
+      // Use actual token counts when available
+      tokenStats = {
+        prompt: promptTokens,
+        completion: completionTokens,
+        total: promptTokens + completionTokens,
+      };
+    } else {
+      // Fall back to estimation only when no actual data is available
+      const estimatorMessages: EstimatorMessage[] = messages.map(convertToEstimatorMessage);
+      const modelFamily = modelName ? TokenEstimator.getModelFamily(modelName) : ModelFamily.Generic;
+      tokenStats = TokenEstimator.estimateConversationTokens(estimatorMessages, modelFamily);
+    }
 
     // Calculate estimated cost
     let estimatedCost;
@@ -71,6 +106,7 @@ export function TokenCounter({
     setStats({
       ...tokenStats,
       estimatedCost,
+      isEstimated: !hasActualTokenCounts,
     });
   }, [messages, modelName, showCost]);
 
@@ -85,6 +121,11 @@ export function TokenCounter({
       <Tooltip
         label={
           <Stack gap={4}>
+            {stats.isEstimated && (
+              <Text size="xs" c="yellow" fw={500}>
+                ⚠️ Estimated values (actual counts unavailable)
+              </Text>
+            )}
             <Text size="xs">Prompt: {TokenUtils.formatTokenCount(stats.prompt)} tokens</Text>
             <Text size="xs">Completion: {TokenUtils.formatTokenCount(stats.completion)} tokens</Text>
             <Text size="xs">Remaining: {TokenUtils.formatTokenCount(analysis.remaining)} tokens</Text>
@@ -110,7 +151,7 @@ export function TokenCounter({
           })()}
           leftSection={isCritical ? <IconAlertTriangle size={14} /> : <IconCoin size={14} />}
         >
-          {TokenUtils.formatTokenCount(stats.total)} / {TokenUtils.formatTokenCount(maxTokens)} ({Math.round(percentage)}%)
+          {stats.isEstimated && '~'}{TokenUtils.formatTokenCount(stats.total)} / {TokenUtils.formatTokenCount(maxTokens)} ({Math.round(percentage)}%)
         </Badge>
       </Tooltip>
     );
@@ -122,7 +163,7 @@ export function TokenCounter({
         <Group justify="space-between">
           <Group gap="xs">
             {isCritical ? <IconAlertTriangle size={18} color="var(--mantine-color-red-6)" /> : <IconCoin size={18} />}
-            <Text size="sm" fw={500}>Context Window</Text>
+            <Text size="sm" fw={500}>Context Window {stats.isEstimated && '(Estimated)'}</Text>
           </Group>
           <Group gap="xs">
             <Text size="sm" c={(() => {
@@ -150,10 +191,10 @@ export function TokenCounter({
         <Group justify="space-between" gap="xs">
           <Stack gap={2}>
             <Text size="xs" c="dimmed">
-              Prompt: {TokenUtils.formatTokenCount(stats.prompt)} tokens
+              {stats.isEstimated && '~'}Prompt: {TokenUtils.formatTokenCount(stats.prompt)} tokens
             </Text>
             <Text size="xs" c="dimmed">
-              Completion: {TokenUtils.formatTokenCount(stats.completion)} tokens
+              {stats.isEstimated && '~'}Completion: {TokenUtils.formatTokenCount(stats.completion)} tokens
             </Text>
             <Text size="xs" c="dimmed" fw={500}>
               Remaining: {TokenUtils.formatTokenCount(analysis.remaining)} tokens
