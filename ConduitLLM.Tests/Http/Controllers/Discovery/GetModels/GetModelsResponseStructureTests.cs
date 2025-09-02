@@ -110,5 +110,38 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             Assert.Equal(string.Empty, model.description);
             Assert.Equal(string.Empty, model.model_card_url);
         }
+
+        [Fact]
+        public async Task GetModels_UsesAssociationTokenOverrides_WhenPresent()
+        {
+            // Arrange
+            SetupValidVirtualKey("valid-key");
+
+            // Create a mapping with default model token values
+            var mapping = new ModelProviderMappingBuilder()
+                .WithModelAlias("gpt-oss-120b")
+                .WithMaxTokens(8192) // This sets Model.MaxInputTokens = 4096, MaxOutputTokens = 4096
+                .Build();
+
+            // Override token limits at the association level (like the real gpt-oss-120b)
+            mapping.ModelProviderTypeAssociation.MaxInputTokens = 642111;
+            mapping.ModelProviderTypeAssociation.MaxOutputTokens = null; // Explicitly test null override
+
+            var mappings = new List<ModelProviderMapping> { mapping };
+            SetupModelProviderMappings(mappings);
+
+            // Act
+            var result = await Controller.GetModels();
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            dynamic response = okResult.Value!;
+            dynamic model = ((IEnumerable<dynamic>)response.data).First();
+            
+            // Verify that association overrides are used, not model defaults
+            Assert.Equal(642111, (int)model.max_input_tokens); // Association override
+            Assert.Equal(4096, (int)model.max_output_tokens);  // Falls back to Model default since association is null
+            Assert.Equal(642111 + 4096, (int)model.max_tokens); // Combined total
+        }
     }
 }

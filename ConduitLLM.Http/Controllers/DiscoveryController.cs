@@ -146,6 +146,10 @@ namespace ConduitLLM.Http.Controllers
                     }
                     */
 
+                    // Use overrides from association first, then fall back to model defaults
+                    var maxInputTokens = mapping.ModelProviderTypeAssociation.MaxInputTokens ?? caps.MaxInputTokens ?? 0;
+                    var maxOutputTokens = mapping.ModelProviderTypeAssociation.MaxOutputTokens ?? caps.MaxOutputTokens ?? 0;
+
                     models.Add(new
                     {
                         // Identity
@@ -156,9 +160,9 @@ namespace ConduitLLM.Http.Controllers
                         // Metadata
                         description = mapping.ModelProviderTypeAssociation?.Model?.Description ?? string.Empty,
                         model_card_url = mapping.ModelProviderTypeAssociation?.Model?.ModelCardUrl ?? string.Empty,
-                        max_tokens = (caps.MaxInputTokens ?? 0) + (caps.MaxOutputTokens ?? 0), // Combined for backward compatibility
-                        max_input_tokens = caps.MaxInputTokens ?? 0,
-                        max_output_tokens = caps.MaxOutputTokens ?? 0,
+                        max_tokens = maxInputTokens + maxOutputTokens, // Combined for backward compatibility
+                        max_input_tokens = maxInputTokens,
+                        max_output_tokens = maxOutputTokens,
                         tokenizer_type = caps.TokenizerType.ToString().ToLowerInvariant(),
                         
                         // Configuration
@@ -299,19 +303,21 @@ namespace ConduitLLM.Http.Controllers
                     }
                 }
 
-                if (modelMapping?.ModelProviderTypeAssociation?.Model?.Series == null)
+                if (modelMapping?.ModelProviderTypeAssociation?.Model == null)
                 {
                     return NotFound(new ErrorResponseDto($"Model '{model}' not found or has no parameter information"));
                 }
 
-                // Parse the Parameters JSON
+                // Parse the Parameters JSON - check model-specific parameters first, then fall back to series
                 object? parameters = null;
-                if (!string.IsNullOrEmpty(modelMapping.ModelProviderTypeAssociation.Model.Series.Parameters))
+                var parametersJson = modelMapping.ModelProviderTypeAssociation.Model.ModelParameters 
+                    ?? modelMapping.ModelProviderTypeAssociation.Model.Series?.Parameters;
+                    
+                if (!string.IsNullOrEmpty(parametersJson))
                 {
                     try
                     {
-                        parameters = System.Text.Json.JsonSerializer.Deserialize<object>(
-                            modelMapping.ModelProviderTypeAssociation.Model.Series.Parameters);
+                        parameters = System.Text.Json.JsonSerializer.Deserialize<object>(parametersJson);
                     }
                     catch (Exception ex)
                     {
@@ -324,7 +330,7 @@ namespace ConduitLLM.Http.Controllers
                 {
                     model_id = modelMapping.ModelProviderTypeAssociation.ModelId,
                     model_alias = modelMapping.ModelAlias,
-                    series_name = modelMapping.ModelProviderTypeAssociation.Model.Series.Name,
+                    series_name = modelMapping.ModelProviderTypeAssociation.Model.Series?.Name ?? string.Empty,
                     parameters = parameters ?? new { }
                 });
             }
