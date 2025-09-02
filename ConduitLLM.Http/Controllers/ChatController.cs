@@ -107,32 +107,21 @@ namespace ConduitLLM.Http.Controllers
                     var response = HttpContext.Response;
                     var sseWriter = response.CreateEnhancedSSEWriter(_jsonSerializerOptions);
                     
-                    // Create metrics collector if performance tracking is enabled
-                    StreamingMetricsCollector? metricsCollector = null;
+                    // Always create metrics collector for token usage tracking
+                    // Token usage is critical for billing and UI display, not just performance metrics
+                    var requestId = Guid.NewGuid().ToString();
+                    response.Headers["X-Request-ID"] = requestId;
                     
-                    if (_settings.Value.PerformanceTracking?.Enabled == true && _settings.Value.PerformanceTracking.TrackStreamingMetrics)
-                    {
-                        _logger.LogInformation("Performance tracking enabled for streaming request");
-                        var requestId = Guid.NewGuid().ToString();
-                        response.Headers["X-Request-ID"] = requestId;
-                        
-                        // Get provider info for metrics from model mapping service
-                        var modelMapping = await _modelMappingService.GetMappingByModelAliasAsync(request.Model);
-                        // Use provider ID for metrics since it's the stable identifier
-                        var providerId = modelMapping?.ProviderId.ToString() ?? "unknown";
-                        
-                        _logger.LogInformation("Creating StreamingMetricsCollector for model {Model}, provider {Provider}", request.Model, providerId);
-                        metricsCollector = new StreamingMetricsCollector(
-                            requestId,
-                            request.Model,
-                            providerId);
-                    }
-                    else
-                    {
-                        _logger.LogInformation("Performance tracking disabled for streaming request. Enabled: {Enabled}, TrackStreaming: {TrackStreaming}", 
-                            _settings.Value.PerformanceTracking?.Enabled, 
-                            _settings.Value.PerformanceTracking?.TrackStreamingMetrics);
-                    }
+                    // Get provider info for metrics from model mapping service
+                    var modelMapping = await _modelMappingService.GetMappingByModelAliasAsync(request.Model);
+                    // Use provider ID for metrics since it's the stable identifier
+                    var providerId = modelMapping?.ProviderId.ToString() ?? "unknown";
+                    
+                    _logger.LogInformation("Creating StreamingMetricsCollector for model {Model}, provider {Provider}", request.Model, providerId);
+                    var metricsCollector = new StreamingMetricsCollector(
+                        requestId,
+                        request.Model,
+                        providerId);
 
                     try
                     {
@@ -176,8 +165,8 @@ namespace ConduitLLM.Http.Controllers
                             // Write content event
                             await sseWriter.WriteContentEventAsync(chunk);
                             
-                            // Track metrics if enabled
-                            if (metricsCollector != null && chunk?.Choices?.Count > 0)
+                            // Track metrics for token counting
+                            if (chunk?.Choices?.Count > 0)
                             {
                                 var hasContent = chunk.Choices.Any(c => !string.IsNullOrEmpty(c.Delta?.Content));
                                 if (hasContent)
@@ -241,12 +230,19 @@ namespace ConduitLLM.Http.Controllers
                             _logger.LogWarning("No content accumulated from streaming response, cannot estimate usage");
                         }
 
-                        // Write final metrics if tracking is enabled
-                        if (metricsCollector != null)
-                        {
-                            var finalMetrics = metricsCollector.GetFinalMetrics();
-                            await sseWriter.WriteFinalMetricsEventAsync(finalMetrics);
-                        }
+                        // Always write final metrics with token usage data
+                        _logger.LogInformation("StreamingUsage before GetFinalMetrics: {Usage}", 
+                            streamingUsage != null ? 
+                            $"Prompt={streamingUsage.PromptTokens}, Completion={streamingUsage.CompletionTokens}, Total={streamingUsage.TotalTokens}" : 
+                            "null");
+                        
+                        // Pass usage data to GetFinalMetrics which will include it in the metrics
+                        var finalMetrics = metricsCollector.GetFinalMetrics(streamingUsage);
+                        
+                        _logger.LogInformation("FinalMetrics after GetFinalMetrics: PromptTokens={Prompt}, CompletionTokens={Completion}, TotalTokens={Total}",
+                            finalMetrics.PromptTokens, finalMetrics.CompletionTokens, finalMetrics.TotalTokens);
+                        
+                        await sseWriter.WriteFinalMetricsEventAsync(finalMetrics);
 
                         // Write [DONE] to signal the end of the stream
                         await sseWriter.WriteDoneEventAsync();

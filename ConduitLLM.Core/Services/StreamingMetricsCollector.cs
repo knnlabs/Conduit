@@ -171,6 +171,14 @@ namespace ConduitLLM.Core.Services
                 metrics.AvgInterTokenLatencyMs = latencies.Average();
             }
 
+            // Add token usage data if available
+            if (usage != null)
+            {
+                metrics.PromptTokens = usage.PromptTokens;
+                metrics.CompletionTokens = usage.CompletionTokens;
+                metrics.TotalTokens = usage.TotalTokens;
+            }
+
             return metrics;
         }
     }
@@ -209,5 +217,20 @@ namespace ConduitLLM.Core.Services
         /// Average inter-token latency in milliseconds.
         /// </summary>
         public double? AvgInterTokenLatencyMs { get; set; }
+
+        /// <summary>
+        /// Number of tokens in the prompt (from provider usage data).
+        /// </summary>
+        public int? PromptTokens { get; set; }
+
+        /// <summary>
+        /// Number of tokens in the completion (from provider usage data).
+        /// </summary>
+        public int? CompletionTokens { get; set; }
+
+        /// <summary>
+        /// Total number of tokens used (from provider usage data).
+        /// </summary>
+        public int? TotalTokens { get; set; }
     }
 }

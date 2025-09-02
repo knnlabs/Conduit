@@ -330,7 +330,7 @@ export class ChatStreamingManager {
               object: 'chat.completion.chunk',
               created: Math.floor(Date.now() / 1000),
               model: 'unknown',
-              choices: [{ index: 0, delta, finish_reason: null }]
+              choices: [{ index: 0, delta, finish_reason: undefined }]
             };
             callbacks.onChunk?.(chunk);
           }

@@ -41,6 +41,9 @@ export interface MetricsEventData {
   tokens_per_second?: number;
   provider?: string;
   model?: string;
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
 }
 
 

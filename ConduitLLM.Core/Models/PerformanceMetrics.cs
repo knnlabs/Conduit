@@ -72,5 +72,26 @@ namespace ConduitLLM.Core.Models
         [JsonPropertyName("avg_inter_token_latency_ms")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public double? AvgInterTokenLatencyMs { get; set; }
+
+        /// <summary>
+        /// Number of tokens in the prompt.
+        /// </summary>
+        [JsonPropertyName("prompt_tokens")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? PromptTokens { get; set; }
+
+        /// <summary>
+        /// Number of tokens in the completion.
+        /// </summary>
+        [JsonPropertyName("completion_tokens")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? CompletionTokens { get; set; }
+
+        /// <summary>
+        /// Total number of tokens used.
+        /// </summary>
+        [JsonPropertyName("total_tokens")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? TotalTokens { get; set; }
     }
 }
