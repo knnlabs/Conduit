@@ -3,7 +3,6 @@
 import { useEffect } from 'react';
 import { Stack, Paper, LoadingOverlay, Text } from '@mantine/core';
 import { useVideoStore } from '../hooks/useVideoStore';
-import { useVideoModels } from '../hooks/useVideoModels';
 import { ErrorDisplay } from '@/components/common/ErrorDisplay';
 import { createEnhancedError } from '@/lib/utils/error-enhancement';
 import { DynamicParameters } from '@/components/parameters/DynamicParameters';
@@ -25,27 +24,24 @@ export default function VideoInterface() {
     currentTask,
   } = useVideoStore();
 
-  const { data: models, isLoading: modelsLoading, error: modelsError } = useVideoModels();
-  
-  // Fetch models with parameters from discovery endpoint
-  const { data: discoveryData } = useDiscoveryModels('video_generation');
+  // Fetch models with video generation capability from discovery endpoint
+  const { data: discoveryData, isLoading: modelsLoading, error: modelsError } = useDiscoveryModels('video_generation');
   
   // Find the currently selected model to get its parameters
-  const selectedModel = models?.find(m => m.id === settings.model);
   const selectedDiscoveryModel = discoveryData?.data?.find(m => m.id === settings.model);
   
-  // Initialize parameter state with the model's parameters (prefer discovery data)
+  // Initialize parameter state with the model's parameters
   const parameterState = useParameterState({
-    parameters: selectedDiscoveryModel?.parameters ?? selectedModel?.parameters ?? '{}',
+    parameters: selectedDiscoveryModel?.parameters ?? '{}',
     persistKey: `video-params-${settings.model}`,
   });
 
   // Auto-select first available model
   useEffect(() => {
-    if (models && Array.isArray(models) && models.length > 0 && !settings.model) {
-      updateSettings({ model: models[0].id });
+    if (discoveryData?.data && discoveryData.data.length > 0 && !settings.model) {
+      updateSettings({ model: discoveryData.data[0].id });
     }
-  }, [models, settings.model, updateSettings]);
+  }, [discoveryData, settings.model, updateSettings]);
 
   // Handle models loading error
   useEffect(() => {
@@ -65,7 +61,7 @@ export default function VideoInterface() {
     );
   }
 
-  if (modelsError || !models || !Array.isArray(models) || models.length === 0) {
+  if (modelsError || !discoveryData?.data || discoveryData.data.length === 0) {
     const errorInstance = modelsError 
       ? new Error(`Error loading models: ${modelsError.message}`)
       : new Error('No video generation models available. Please configure providers and add video generation models.');
@@ -163,9 +159,9 @@ export default function VideoInterface() {
             }}
           >
             <option value="">Select a model...</option>
-            {models?.map((model) => (
+            {discoveryData?.data?.map((model) => (
               <option key={model.id} value={model.id}>
-                {model.displayName} ({model.provider})
+                {model.display_name} ({model.provider})
               </option>
             ))}
           </select>
@@ -174,14 +170,14 @@ export default function VideoInterface() {
 
       {/* Settings Panel */}
       {settingsVisible && (
-        <VideoSettings models={models || []} />
+        <VideoSettings models={discoveryData?.data || []} />
       )}
 
       {/* Dynamic Parameters from Model */}
-      {(selectedDiscoveryModel?.parameters ?? selectedModel?.parameters) && 
-       (selectedDiscoveryModel?.parameters ?? selectedModel?.parameters) !== '{}' && (
+      {selectedDiscoveryModel?.parameters && 
+       selectedDiscoveryModel.parameters !== '{}' && (
         <DynamicParameters
-          parameters={selectedDiscoveryModel?.parameters ?? selectedModel?.parameters ?? '{}'}
+          parameters={selectedDiscoveryModel.parameters}
           values={parameterState.values}
           onChange={parameterState.updateValues}
           context="video"
@@ -198,7 +194,7 @@ export default function VideoInterface() {
 
       {/* Prompt Input */}
       <EnhancedVideoPromptInput 
-        models={models || []} 
+        models={discoveryData?.data || []} 
         dynamicParameters={parameterState.getSubmitValues()}
       />
 

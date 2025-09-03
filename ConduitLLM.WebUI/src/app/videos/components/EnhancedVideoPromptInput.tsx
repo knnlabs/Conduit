@@ -3,10 +3,10 @@
 import { useState, useCallback } from 'react';
 import { useVideoStore } from '../hooks/useVideoStore';
 import { useEnhancedVideoGeneration } from '../hooks/useEnhancedVideoGeneration';
-import type { VideoModel } from '../types';
+import type { DiscoveryModel } from '@/app/chat/hooks/useDiscoveryModels';
 
 interface VideoPromptInputProps {
-  models: VideoModel[];
+  models: DiscoveryModel[];
   dynamicParameters?: Record<string, unknown>;
 }
 

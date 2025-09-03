@@ -2,8 +2,8 @@
 
 import { Select, NumberInput, Grid, Text } from '@mantine/core';
 import { useImageStore } from '../hooks/useImageStore';
-import { ImageModel } from '../hooks/useImageModels';
 import { useModelMetadata } from '../hooks/useModelMetadata';
+import type { DiscoveryModel } from '@/app/chat/hooks/useDiscoveryModels';
 
 interface ImageMetadata {
   sizes?: string[];
@@ -13,7 +13,7 @@ interface ImageMetadata {
 }
 
 interface ImageSettingsProps {
-  models: ImageModel[];
+  models: DiscoveryModel[];
 }
 
 export default function ImageSettings({ models }: ImageSettingsProps) {
@@ -79,7 +79,7 @@ export default function ImageSettings({ models }: ImageSettingsProps) {
 
   const modelOptions = models.map((model) => ({
     value: model.id,
-    label: model.displayName,
+    label: model.display_name,
   }));
 
   const sizeSelectOptions = sizeOptions.map((size) => ({

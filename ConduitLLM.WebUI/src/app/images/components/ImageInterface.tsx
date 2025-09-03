@@ -13,7 +13,6 @@ import {
 } from '@mantine/core';
 import { IconSettings } from '@tabler/icons-react';
 import { useImageStore } from '../hooks/useImageStore';
-import { useImageModels } from '../hooks/useImageModels';
 import { ErrorDisplay } from '@/components/common/ErrorDisplay';
 import { createEnhancedError } from '@/lib/utils/error-enhancement';
 import { DynamicParameters } from '@/components/parameters/DynamicParameters';
@@ -34,10 +33,8 @@ export default function ImageInterface() {
     setError,
   } = useImageStore();
 
-  const { data: models, isLoading: modelsLoading, error: modelsError } = useImageModels();
-  
-  // Fetch models with parameters from discovery endpoint
-  const { data: discoveryData } = useDiscoveryModels('image_generation');
+  // Fetch models with image generation capability from discovery endpoint
+  const { data: discoveryData, isLoading: modelsLoading, error: modelsError } = useDiscoveryModels('image_generation');
   
   // Find the selected model with parameters
   const selectedDiscoveryModel = discoveryData?.data?.find(m => m.id === settings.model);
@@ -50,10 +47,10 @@ export default function ImageInterface() {
 
   // Auto-select first available model
   useEffect(() => {
-    if (models && models.length > 0 && !settings.model) {
-      updateSettings({ model: models[0].id });
+    if (discoveryData?.data && discoveryData.data.length > 0 && !settings.model) {
+      updateSettings({ model: discoveryData.data[0].id });
     }
-  }, [models, settings.model, updateSettings]);
+  }, [discoveryData, settings.model, updateSettings]);
 
   // Handle models loading error
   useEffect(() => {
@@ -73,7 +70,7 @@ export default function ImageInterface() {
     );
   }
 
-  if (modelsError || !models || models.length === 0) {
+  if (modelsError || !discoveryData?.data || discoveryData.data.length === 0) {
     const errorInstance = modelsError 
       ? new Error(`Error loading models: ${modelsError.message}`)
       : new Error('No image generation models available. Please configure providers and add image generation models.');
@@ -176,7 +173,7 @@ export default function ImageInterface() {
       {/* Settings Panel */}
       {settingsVisible && (
         <Paper p="md" withBorder>
-          <ImageSettings models={models} />
+          <ImageSettings models={discoveryData?.data || []} />
         </Paper>
       )}
 
