@@ -31,13 +31,24 @@ import {
 import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
 import { BulkActionsBar } from './BulkActionsBar';
 
-// Extend the DTO type to ensure provider property is available
+// Extend the DTO type to ensure provider and capabilities properties are available
 interface ExtendedModelProviderMappingDto extends ModelProviderMappingDto {
   provider?: {
     id: number;
     providerType: number;
     displayName: string;
     isEnabled: boolean;
+  };
+  capabilities?: {
+    supportsVision: boolean;
+    supportsImageGeneration: boolean;
+    supportsVideoGeneration: boolean;
+    supportsEmbeddings: boolean;
+    supportsChat: boolean;
+    supportsFunctionCalling: boolean;
+    supportsStreaming: boolean;
+    maxInputTokens?: number | null;
+    maxOutputTokens?: number | null;
   };
 }
 
@@ -141,17 +152,39 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
   };
 
   const getCapabilityBadges = (mapping: ExtendedModelProviderMappingDto) => {
-    // Note: Capabilities are now stored in the Model entity
-    // This shows basic mapping information
     const badges = [];
+    const capabilities = mapping.capabilities;
     
-    // Add badges based on available mapping properties
-    if (mapping.notes) {
-      badges.push({ label: 'Has Notes', color: 'gray' });
+    if (!capabilities) {
+      return null;
     }
     
+    // Add badges based on model capabilities
+    if (capabilities.supportsChat) {
+      badges.push({ label: 'Chat', color: 'blue' });
+    }
+    if (capabilities.supportsVision) {
+      badges.push({ label: 'Vision', color: 'green' });
+    }
+    if (capabilities.supportsImageGeneration) {
+      badges.push({ label: 'Image Gen', color: 'violet' });
+    }
+    if (capabilities.supportsVideoGeneration) {
+      badges.push({ label: 'Video Gen', color: 'purple' });
+    }
+    if (capabilities.supportsEmbeddings) {
+      badges.push({ label: 'Embeddings', color: 'teal' });
+    }
+    if (capabilities.supportsFunctionCalling) {
+      badges.push({ label: 'Functions', color: 'orange' });
+    }
+    if (capabilities.supportsStreaming) {
+      badges.push({ label: 'Streaming', color: 'cyan' });
+    }
+    
+    // Show max 5 badges to avoid overcrowding
     return badges.slice(0, 5).map((badge) => (
-      <Badge key={`${badge.label}-${badge.color}`} size="xs" variant="dot" color={badge.color}>
+      <Badge key={badge.label} size="xs" variant="dot" color={badge.color}>
         {badge.label}
       </Badge>
     ));

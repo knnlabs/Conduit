@@ -27,10 +27,28 @@ export class DiscoveryService {
 
   /**
    * Gets all discovered models and their capabilities.
+   * @param options - Optional request options
    */
   async getModels(options?: RequestOptions): Promise<ModelsDiscoveryResponse> {
     const response = await this.clientAdapter.get<ModelsDiscoveryResponse>(
       `${this.baseEndpoint}/models`,
+      options
+    );
+    return response;
+  }
+
+  /**
+   * Gets discovered models filtered by a specific capability.
+   * @param capability - The capability to filter by (e.g., 'image_generation', 'video_generation', 'chat')
+   * @param options - Optional request options
+   */
+  async getModelsByCapability(capability: string, options?: RequestOptions): Promise<ModelsDiscoveryResponse> {
+    if (!capability?.trim()) {
+      throw new Error('Capability is required');
+    }
+
+    const response = await this.clientAdapter.get<ModelsDiscoveryResponse>(
+      `${this.baseEndpoint}/models?capability=${encodeURIComponent(capability)}`,
       options
     );
     return response;
@@ -120,6 +138,42 @@ export class DiscoveryService {
       undefined,
       options
     );
+  }
+
+  /**
+   * Static helper to filter models by capability in memory.
+   * Note: The backend currently returns capabilities as flat properties (e.g., supports_image_generation)
+   * rather than nested under a capabilities object.
+   * 
+   * @param models - Array of discovered models
+   * @param capability - The capability to filter by (e.g., 'image_generation', 'video_generation')
+   * @returns Filtered array of models that have the specified capability
+   */
+  static filterByCapability(models: any[], capability: string): any[] {
+    if (!models || !Array.isArray(models)) {
+      return [];
+    }
+    if (!capability?.trim()) {
+      return models;
+    }
+
+    // Convert capability to the flat property name used by the backend
+    const capabilityKey = `supports_${capability.replace(/-/g, '_').toLowerCase()}`;
+    
+    return models.filter(model => {
+      // Check for flat property format (current backend format)
+      if (capabilityKey in model && model[capabilityKey] === true) {
+        return true;
+      }
+      
+      // Also check for nested capabilities object (future-proof)
+      if (model.capabilities && typeof model.capabilities === 'object') {
+        const nestedKey = capability.replace(/-/g, '_').toLowerCase();
+        return model.capabilities[nestedKey] === true;
+      }
+      
+      return false;
+    });
   }
 
   /**

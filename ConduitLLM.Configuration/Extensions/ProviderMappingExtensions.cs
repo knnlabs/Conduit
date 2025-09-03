@@ -39,7 +39,19 @@ namespace ConduitLLM.Configuration.Extensions
                 IsEnabled = mapping.IsEnabled,
                 CreatedAt = mapping.CreatedAt,
                 UpdatedAt = mapping.UpdatedAt,
-                Notes = null // Entity doesn't have Notes
+                Notes = null, // Entity doesn't have Notes
+                Capabilities = mapping.ModelProviderTypeAssociation?.Model != null ? new ModelCapabilitiesDto
+                {
+                    SupportsVision = mapping.ModelProviderTypeAssociation.Model.SupportsVision,
+                    SupportsImageGeneration = mapping.ModelProviderTypeAssociation.Model.SupportsImageGeneration,
+                    SupportsVideoGeneration = mapping.ModelProviderTypeAssociation.Model.SupportsVideoGeneration,
+                    SupportsEmbeddings = mapping.ModelProviderTypeAssociation.Model.SupportsEmbeddings,
+                    SupportsChat = mapping.ModelProviderTypeAssociation.Model.SupportsChat,
+                    SupportsFunctionCalling = mapping.ModelProviderTypeAssociation.Model.SupportsFunctionCalling,
+                    SupportsStreaming = mapping.ModelProviderTypeAssociation.Model.SupportsStreaming,
+                    MaxInputTokens = mapping.ModelProviderTypeAssociation.Model.MaxInputTokens,
+                    MaxOutputTokens = mapping.ModelProviderTypeAssociation.Model.MaxOutputTokens
+                } : null
             };
         }
 

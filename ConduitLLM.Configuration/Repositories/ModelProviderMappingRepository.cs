@@ -86,6 +86,8 @@ namespace ConduitLLM.Configuration.Repositories
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 return await dbContext.ModelProviderMappings
                     .Include(m => m.Provider)
+                    .Include(m => m.ModelProviderTypeAssociation)
+                        .ThenInclude(a => a.Model)
                     .AsNoTracking()
                     .OrderBy(m => m.ModelAlias)
                     .ToListAsync(cancellationToken);

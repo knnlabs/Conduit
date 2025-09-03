@@ -13,6 +13,19 @@ export interface ModelProviderMappingDto {
   createdAt: string;
   updatedAt: string;
   notes?: string;
+  capabilities?: ModelCapabilitiesDto;
+}
+
+export interface ModelCapabilitiesDto {
+  supportsVision: boolean;
+  supportsImageGeneration: boolean;
+  supportsVideoGeneration: boolean;
+  supportsEmbeddings: boolean;
+  supportsChat: boolean;
+  supportsFunctionCalling: boolean;
+  supportsStreaming: boolean;
+  maxInputTokens?: number | null;
+  maxOutputTokens?: number | null;
 }
 
 export interface CreateModelProviderMappingDto {

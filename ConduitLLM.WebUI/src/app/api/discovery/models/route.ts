@@ -16,13 +16,10 @@ export async function GET(request: NextRequest) {
     let models = response.data;
     if (capability) {
       models = models.filter(model => {
-        const capabilityKey = capability.replace('-', '_').toLowerCase();
-        const capabilities = model.capabilities;
-        if (!capabilities) return false;
-        
-        // Type-safe capability checking
-        return capabilityKey in capabilities && 
-               capabilities[capabilityKey as keyof typeof capabilities] === true;
+        // The backend returns flat properties like supports_image_generation
+        // not nested under capabilities object
+        const capabilityKey = `supports_${capability.replace('-', '_').toLowerCase()}`;
+        return model[capabilityKey] === true;
       });
     }
     
