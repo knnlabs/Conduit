@@ -3,7 +3,7 @@
 # Quick lint checker for WebUI and SDKs
 # Usage: ./scripts/quick-lint-check.sh
 
-set -e
+# Don't use set -e - we want to continue even if lint finds errors
 
 # Color codes
 readonly GREEN='\033[0;32m'
@@ -50,7 +50,7 @@ TOTAL_ERRORS=0
 log_task "Checking WebUI lint..."
 if [[ -d "ConduitLLM.WebUI" ]]; then
     cd ConduitLLM.WebUI
-    LINT_OUTPUT=$(npm run lint 2>&1)
+    LINT_OUTPUT=$(npm run lint 2>&1 || true)
     
     # Extract actual ESLint errors - filter out npm noise
     ACTUAL_ERRORS=$(echo "$LINT_OUTPUT" | grep -E "^\./" || echo "$LINT_OUTPUT" | grep -E "^[[:space:]]*[0-9]+:[0-9]+[[:space:]]+[eE]rror" || true)
@@ -77,7 +77,7 @@ fi
 log_task "Checking Admin SDK lint..."
 if [[ -d "SDKs/Node/Admin" ]]; then
     cd SDKs/Node/Admin
-    LINT_OUTPUT=$(npm run lint 2>&1)
+    LINT_OUTPUT=$(npm run lint 2>&1 || true)
     
     # Extract actual ESLint errors - from filepath line through error line
     ACTUAL_ERRORS=$(echo "$LINT_OUTPUT" | sed -n '/^\/.*\.ts$/,/^[[:space:]]*[0-9]\+:[0-9]\+[[:space:]]\+error/p' || true)
@@ -104,7 +104,7 @@ fi
 log_task "Checking Core SDK lint..."
 if [[ -d "SDKs/Node/Core" ]]; then
     cd SDKs/Node/Core
-    LINT_OUTPUT=$(npm run lint 2>&1)
+    LINT_OUTPUT=$(npm run lint 2>&1 || true)
     
     # Extract actual ESLint errors - filter out npm noise
     ACTUAL_ERRORS=$(echo "$LINT_OUTPUT" | grep -B1 -A1 -E "^[[:space:]]*[0-9]+:[0-9]+[[:space:]]+error" || true)
