@@ -133,37 +133,44 @@ namespace ConduitLLM.Core
 
             try
             {
-                // Get model context window limit
-                int? maxContextTokens = null;
+                // Get model context window limit (MaxInputTokens) from database entities only
+                int? maxInputTokens = null;
 
-                // First try to get model-specific context limit
+                // Try to get model-specific context limit from database
                 var mapping = await _modelProviderMappingService.GetMappingByModelAliasAsync(request.Model);
 
-                // Handle the MaxContextTokens property which may or may not exist yet
-                // depending on whether the migration has been applied
-                var maxContextTokensProperty = mapping?.GetType().GetProperty("MaxContextTokens");
-                if (mapping != null && maxContextTokensProperty != null)
+                if (mapping != null)
                 {
-                    maxContextTokens = maxContextTokensProperty.GetValue(mapping) as int?;
-                    if (maxContextTokens.HasValue)
+                    // Check for provider-specific override first (ModelProviderTypeAssociation.MaxInputTokens)
+                    if (mapping.ModelProviderTypeAssociation?.MaxInputTokens.HasValue == true)
                     {
-                        _logger.LogDebug("Using model-specific context window limit of {Tokens} tokens for {Model}",
-                            maxContextTokens, request.Model);
+                        maxInputTokens = mapping.ModelProviderTypeAssociation.MaxInputTokens.Value;
+                        _logger.LogDebug("Using provider-specific MaxInputTokens of {Tokens} tokens for {Model} from {Provider}",
+                            maxInputTokens, request.Model, mapping.Provider?.ProviderName ?? "Unknown");
+                    }
+                    // Fall back to base model's MaxInputTokens
+                    else if (mapping.ModelProviderTypeAssociation?.Model?.MaxInputTokens.HasValue == true)
+                    {
+                        maxInputTokens = mapping.ModelProviderTypeAssociation.Model.MaxInputTokens.Value;
+                        _logger.LogDebug("Using model's MaxInputTokens of {Tokens} tokens for {Model}",
+                            maxInputTokens, request.Model);
+                    }
+                    else
+                    {
+                        _logger.LogDebug("No MaxInputTokens configured for {Model} - context management will not be applied",
+                            request.Model);
                     }
                 }
-
-                // Fall back to default limit if configured
-                if (!maxContextTokens.HasValue && _contextOptions.Value.DefaultMaxContextTokens.HasValue)
+                else
                 {
-                    maxContextTokens = _contextOptions.Value.DefaultMaxContextTokens;
-                    _logger.LogDebug("Using default context window limit of {Tokens} tokens for {Model}",
-                        maxContextTokens, request.Model);
+                    _logger.LogWarning("No model mapping found for {Model} - context management cannot be applied",
+                        request.Model);
                 }
 
-                // Apply context management if we have a limit
-                if (maxContextTokens.HasValue && _contextManager != null)
+                // Apply context management only if we have a limit from the database
+                if (maxInputTokens.HasValue && _contextManager != null)
                 {
-                    return await _contextManager.ManageContextAsync(request, maxContextTokens.Value);
+                    return await _contextManager.ManageContextAsync(request, maxInputTokens.Value);
                 }
             }
             catch (Exception ex)

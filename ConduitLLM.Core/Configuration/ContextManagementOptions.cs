@@ -10,11 +10,5 @@ namespace ConduitLLM.Core.Configuration
         /// When enabled, the system will automatically trim conversation history to fit within model context limits.
         /// </summary>
         public bool EnableAutomaticContextManagement { get; set; } = true;
-
-        /// <summary>
-        /// Gets or sets the default maximum context window size in tokens.
-        /// This is used as a fallback when a model-specific limit is not configured.
-        /// </summary>
-        public int? DefaultMaxContextTokens { get; set; } = 4000;
     }
 }
