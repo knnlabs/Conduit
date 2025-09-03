@@ -5,6 +5,7 @@ import { Modal, TextInput, Select, Switch, Button, Group, Stack, NumberInput } f
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useAdminClient } from '@/lib/client/adminClient';
+import { getProviderSelectOptions } from '@/lib/utils/providerTypeUtils';
 import type { ProviderTypeAssociationInput } from '@knn_labs/conduit-admin-client';
 
 interface EditProviderTypeModalProps {
@@ -23,8 +24,10 @@ export function EditProviderTypeModal({
   onSave 
 }: EditProviderTypeModalProps) {
   const [loading, setLoading] = useState(false);
-  const [providerTypes, setProviderTypes] = useState<Array<{ value: string; label: string }>>([]);
   const { executeWithAdmin } = useAdminClient();
+
+  // Get provider types from the enum utility
+  const providerTypes = getProviderSelectOptions();
 
   const form = useForm({
     initialValues: {
@@ -38,22 +41,6 @@ export function EditProviderTypeModal({
       providerVariation: ''
     }
   });
-
-  // Load provider types from SDK
-  useEffect(() => {
-    const loadProviderTypes = async () => {
-      const providers = await executeWithAdmin(async client => {
-        const metadata = client.models.getAvailableProviders();
-        return metadata.map(m => ({
-          value: String(m.value),  // Convert numeric enum to string for Select component
-          label: m.label
-        }));
-      });
-      setProviderTypes(providers);
-    };
-    
-    void loadProviderTypes();
-  }, [executeWithAdmin]);
 
   useEffect(() => {
     if (association) {
@@ -74,12 +61,12 @@ export function EditProviderTypeModal({
       form.reset();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [association, providerTypes]);
+  }, [association]);
 
   const handleSubmit = async (values: typeof form.values) => {
+    setLoading(true);
+    
     try {
-      setLoading(true);
-      
       const data: ProviderTypeAssociationInput = {
         identifier: values.identifier,
         provider: values.provider ? Number(values.provider) : undefined,
@@ -98,26 +85,10 @@ export function EditProviderTypeModal({
           throw new Error('Association ID is required for update');
         }
         
-        // Validate before sending
-        const validation = await executeWithAdmin(async client => 
-          client.models.validateIdentifier(data)
-        );
-        
-        if (!validation.valid) {
-          // Show validation errors
-          if (validation.errors) {
-            Object.entries(validation.errors).forEach(([field, error]) => {
-              const errorMsg = Array.isArray(error) ? error.join(', ') : error;
-              form.setFieldError(field, errorMsg);
-            });
-          }
-          setLoading(false);
-          return;
-        }
-        
-        await executeWithAdmin(client => 
-          client.models.updateIdentifier(modelId, associationId, data)
-        );
+        await executeWithAdmin(async (client) => {
+          // The SDK's updateIdentifier validates internally, no need to pre-validate
+          await client.models.updateIdentifier(modelId, associationId, data);
+        });
         
         notifications.show({
           title: 'Success',
@@ -126,27 +97,10 @@ export function EditProviderTypeModal({
         });
       } else {
         // Create new
-        
-        // Validate before sending
-        const validation = await executeWithAdmin(async client => 
-          client.models.validateIdentifier(data)
-        );
-        
-        if (!validation.valid) {
-          // Show validation errors
-          if (validation.errors) {
-            Object.entries(validation.errors).forEach(([field, error]) => {
-              const errorMsg = Array.isArray(error) ? error.join(', ') : error;
-              form.setFieldError(field, errorMsg);
-            });
-          }
-          setLoading(false);
-          return;
-        }
-        
-        await executeWithAdmin(client => 
-          client.models.createIdentifier(modelId, data)
-        );
+        await executeWithAdmin(async (client) => {
+          // The SDK's createIdentifier validates internally, no need to pre-validate
+          await client.models.createIdentifier(modelId, data);
+        });
         
         notifications.show({
           title: 'Success',
@@ -155,8 +109,15 @@ export function EditProviderTypeModal({
         });
       }
       
-      onSave();
+      // Important: Close modal first to prevent UI state issues
       onClose();
+      
+      // Then trigger the save callback which will reload data
+      // Use setTimeout to ensure the modal close completes first
+      setTimeout(() => {
+        onSave();
+      }, 100);
+      
     } catch (error) {
       console.warn('Failed to save provider type association:', error);
       

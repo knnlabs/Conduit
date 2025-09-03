@@ -10,8 +10,7 @@ import {
   normalizeProviderType, 
   isValidProviderType,
   getProviderConstraints,
-  getProviderMetadata,
-  getProviderTypeName
+  getProviderMetadata
 } from '../types/providers';
 
 /**

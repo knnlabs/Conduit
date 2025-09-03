@@ -18,11 +18,14 @@ interface TokenCounterProps {
   modelName?: string;
   compact?: boolean;
   showCost?: boolean;
+  currentInputText?: string;
+  currentInputImages?: number;
 }
 
 interface TokenCounterStats extends TokenStats {
   estimatedCost?: number;
   isEstimated?: boolean;
+  currentInput?: number;
 }
 
 function convertToEstimatorMessage(message: ChatMessage): EstimatorMessage {
@@ -43,12 +46,15 @@ export function TokenCounter({
   maxTokens = 128000, 
   modelName, 
   compact = false,
-  showCost = false 
+  showCost = false,
+  currentInputText,
+  currentInputImages = 0
 }: TokenCounterProps) {
   const [stats, setStats] = useState<TokenCounterStats>({
     prompt: 0,
     completion: 0,
     total: 0,
+    currentInput: 0,
   });
 
   useEffect(() => {
@@ -93,6 +99,23 @@ export function TokenCounter({
       tokenStats = TokenEstimator.estimateConversationTokens(estimatorMessages, modelFamily);
     }
 
+    // Calculate current input token estimation
+    let currentInputTokens = 0;
+    if (currentInputText && currentInputText.trim().length > 0) {
+      const modelFamily = modelName ? TokenEstimator.getModelFamily(modelName) : ModelFamily.Generic;
+      const inputMessage: EstimatorMessage = {
+        role: 'user',
+        content: currentInputText,
+        images: currentInputImages > 0 ? Array(currentInputImages).fill({
+          width: undefined,
+          height: undefined,
+          detail: 'auto' as const
+        }) : undefined
+      };
+      const inputStats = TokenEstimator.estimateConversationTokens([inputMessage], modelFamily);
+      currentInputTokens = inputStats.prompt;
+    }
+
     // Calculate estimated cost
     let estimatedCost;
     if (showCost && modelName) {
@@ -107,10 +130,13 @@ export function TokenCounter({
       ...tokenStats,
       estimatedCost,
       isEstimated: !hasActualTokenCounts,
+      currentInput: currentInputTokens,
     });
-  }, [messages, modelName, showCost]);
+  }, [messages, modelName, showCost, currentInputText, currentInputImages]);
 
-  const analysis = TokenEstimator.analyzeTokenUsage(stats, maxTokens);
+  // Calculate total including current input for analysis
+  const totalWithInput = stats.total + (stats.currentInput ?? 0);
+  const analysis = TokenEstimator.analyzeTokenUsage({ ...stats, total: totalWithInput }, maxTokens);
   const percentage = analysis.percentage;
   const isWarning = analysis.isWarning;
   const isNearLimit = analysis.isNearLimit;
@@ -128,6 +154,9 @@ export function TokenCounter({
             )}
             <Text size="xs">Prompt: {TokenUtils.formatTokenCount(stats.prompt)} tokens</Text>
             <Text size="xs">Completion: {TokenUtils.formatTokenCount(stats.completion)} tokens</Text>
+            {(stats.currentInput ?? 0) > 0 && (
+              <Text size="xs" c="blue" fw={500}>Current input: ~{TokenUtils.formatTokenCount(stats.currentInput ?? 0)} tokens</Text>
+            )}
             <Text size="xs">Remaining: {TokenUtils.formatTokenCount(analysis.remaining)} tokens</Text>
             {stats.estimatedCost !== undefined && (
               <Text size="xs">Est. cost: {TokenUtils.formatCost(stats.estimatedCost)}</Text>
@@ -151,7 +180,7 @@ export function TokenCounter({
           })()}
           leftSection={isCritical ? <IconAlertTriangle size={14} /> : <IconCoin size={14} />}
         >
-          {stats.isEstimated && '~'}{TokenUtils.formatTokenCount(stats.total)} / {TokenUtils.formatTokenCount(maxTokens)} ({Math.round(percentage)}%)
+          {stats.isEstimated && '~'}{TokenUtils.formatTokenCount(totalWithInput)} / {TokenUtils.formatTokenCount(maxTokens)} ({Math.round(percentage)}%)
         </Badge>
       </Tooltip>
     );
@@ -172,7 +201,7 @@ export function TokenCounter({
               if (isWarning) return 'yellow';
               return undefined;
             })()}>
-              {stats.total.toLocaleString()} / {maxTokens.toLocaleString()}
+              {totalWithInput.toLocaleString()} / {maxTokens.toLocaleString()}
             </Text>
             <Badge size="sm" variant="light" color={TokenUtils.getUsageColor(percentage)}>
               {Math.round(percentage)}%
@@ -196,6 +225,11 @@ export function TokenCounter({
             <Text size="xs" c="dimmed">
               {stats.isEstimated && '~'}Completion: {TokenUtils.formatTokenCount(stats.completion)} tokens
             </Text>
+            {(stats.currentInput ?? 0) > 0 && (
+              <Text size="xs" c="blue" fw={500}>
+                Current input: ~{TokenUtils.formatTokenCount(stats.currentInput ?? 0)} tokens
+              </Text>
+            )}
             <Text size="xs" c="dimmed" fw={500}>
               Remaining: {TokenUtils.formatTokenCount(analysis.remaining)} tokens
             </Text>

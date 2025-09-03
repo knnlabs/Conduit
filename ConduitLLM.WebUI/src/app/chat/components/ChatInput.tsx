@@ -22,7 +22,7 @@ import {
   IconMicrophone,
   IconX
 } from '@tabler/icons-react';
-import { useState, useRef, KeyboardEvent } from 'react';
+import { useState, useRef, KeyboardEvent, useEffect } from 'react';
 import { ModelWithCapabilities, FunctionDefinition, ImageAttachment } from '../types';
 import { useDisclosure } from '@mantine/hooks';
 import { ImageUpload } from './ImageUpload';
@@ -33,6 +33,8 @@ interface ChatInputProps {
   onStopStreaming: () => void;
   disabled?: boolean;
   model?: ModelWithCapabilities;
+  onInputChange?: (text: string) => void;
+  onImagesChange?: (count: number) => void;
 }
 
 export function ChatInput({ 
@@ -40,7 +42,9 @@ export function ChatInput({
   isStreaming, 
   onStopStreaming, 
   disabled,
-  model
+  model,
+  onInputChange,
+  onImagesChange
 }: ChatInputProps) {
   const [message, setMessage] = useState('');
   const [images, setImages] = useState<ImageAttachment[]>([]);
@@ -48,6 +52,16 @@ export function ChatInput({
   const [functionsEnabled, setFunctionsEnabled] = useState(false);
   const [functionModalOpened, { open: openFunctionModal, close: closeFunctionModal }] = useDisclosure(false);
   const [newFunctionJson, setNewFunctionJson] = useState('');
+
+  // Notify parent component of input changes
+  useEffect(() => {
+    onInputChange?.(message);
+  }, [message, onInputChange]);
+
+  // Notify parent component of image changes
+  useEffect(() => {
+    onImagesChange?.(images.length);
+  }, [images.length, onImagesChange]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSend = () => {

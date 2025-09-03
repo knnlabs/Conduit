@@ -45,6 +45,8 @@ export function ChatInterface() {
   const [showSettings, setShowSettings] = useState(false);
   const [showParameters] = useState(false);
   const [reasoningExpanded, setReasoningExpanded] = useState(true); // Default to expanded
+  const [currentInputText, setCurrentInputText] = useState('');
+  const [currentInputImages, setCurrentInputImages] = useState(0);
   
   const performanceSettings = usePerformanceSettings();
   const { 
@@ -168,13 +170,15 @@ export function ChatInterface() {
                     Vision Enabled
                   </Badge>
                 )}
-                {currentModel && messages.length > 0 && (
+                {currentModel && (
                   <TokenCounter
                     messages={messages}
                     maxTokens={maxContextTokens}
                     modelName={currentModel.displayName}
                     compact={true}
                     showCost={false}
+                    currentInputText={currentInputText}
+                    currentInputImages={currentInputImages}
                   />
                 )}
               </Group>
@@ -203,6 +207,8 @@ export function ChatInterface() {
                     modelName={currentModel.displayName}
                     compact={false}
                     showCost={false}
+                    currentInputText={currentInputText}
+                    currentInputImages={currentInputImages}
                   />
                 )}
               </Stack>
@@ -236,7 +242,12 @@ export function ChatInterface() {
 
         <Paper p="md" withBorder style={{ flexShrink: 0 }}>
           <ChatInput
-            onSendMessage={(message, images) => void sendMessage(message, images)}
+            onSendMessage={(message, images) => {
+              // Clear input state when message is sent
+              setCurrentInputText('');
+              setCurrentInputImages(0);
+              void sendMessage(message, images);
+            }}
             isStreaming={isLoading}
             onStopStreaming={() => {}}
             disabled={!selectedModel}
@@ -246,6 +257,8 @@ export function ChatInterface() {
               displayName: currentModel.displayName,
               supportsVision: currentModel.supportsVision
             } : undefined}
+            onInputChange={setCurrentInputText}
+            onImagesChange={setCurrentInputImages}
           />
         </Paper>
       </Stack>
