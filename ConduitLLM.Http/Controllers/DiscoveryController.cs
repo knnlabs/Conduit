@@ -160,7 +160,7 @@ namespace ConduitLLM.Http.Controllers
                         // Metadata
                         description = mapping.ModelProviderTypeAssociation?.Model?.Description ?? string.Empty,
                         model_card_url = mapping.ModelProviderTypeAssociation?.Model?.ModelCardUrl ?? string.Empty,
-                        max_tokens = maxInputTokens + maxOutputTokens, // Combined for backward compatibility
+                        max_tokens = maxInputTokens + maxOutputTokens, // Total context window size
                         max_input_tokens = maxInputTokens,
                         max_output_tokens = maxOutputTokens,
                         tokenizer_type = caps.TokenizerType.ToString().ToLowerInvariant(),

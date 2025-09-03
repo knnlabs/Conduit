@@ -198,6 +198,10 @@ namespace ConduitLLM.Http.Services
                         }
                     }
 
+                    // Use overrides from association first, then fall back to model defaults
+                    var maxInputTokens = mapping.ModelProviderTypeAssociation.MaxInputTokens ?? caps.MaxInputTokens ?? 0;
+                    var maxOutputTokens = mapping.ModelProviderTypeAssociation.MaxOutputTokens ?? caps.MaxOutputTokens ?? 0;
+
                     models.Add(new
                     {
                         // Identity
@@ -208,8 +212,9 @@ namespace ConduitLLM.Http.Services
                         // Metadata
                         description = mapping.ModelProviderTypeAssociation?.Model?.Description ?? string.Empty,
                         model_card_url = mapping.ModelProviderTypeAssociation?.Model?.ModelCardUrl ?? string.Empty,
-                        max_input_tokens = caps.MaxInputTokens,
-                        max_output_tokens = caps.MaxOutputTokens,
+                        max_tokens = maxInputTokens, // Context window size
+                        max_input_tokens = maxInputTokens,
+                        max_output_tokens = maxOutputTokens,
                         tokenizer_type = caps.TokenizerType.ToString().ToLowerInvariant(),
                         
                         // UI Parameters from Model or Series
