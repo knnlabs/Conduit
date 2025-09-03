@@ -50,15 +50,22 @@ TOTAL_ERRORS=0
 log_task "Checking WebUI lint..."
 if [[ -d "ConduitLLM.WebUI" ]]; then
     cd ConduitLLM.WebUI
-    LINT_OUTPUT=$(npm run lint 2>&1 || true)
-    # Count actual ESLint errors (line:col format followed by Error:)
-    WEBUI_ERRORS=$(echo "$LINT_OUTPUT" | grep -E "^[[:space:]]*[0-9]+:[0-9]+[[:space:]]+Error:" | wc -l || true)
-    WEBUI_ERRORS=${WEBUI_ERRORS:-0}
+    LINT_OUTPUT=$(npm run lint 2>&1)
     
-    if [ "$WEBUI_ERRORS" -eq 0 ]; then
+    # Extract actual ESLint errors - filter out npm noise
+    ACTUAL_ERRORS=$(echo "$LINT_OUTPUT" | grep -E "^\./" || echo "$LINT_OUTPUT" | grep -E "^[[:space:]]*[0-9]+:[0-9]+[[:space:]]+[eE]rror" || true)
+    ERROR_COUNT=$(echo "$LINT_OUTPUT" | grep -E "^[[:space:]]*[0-9]+:[0-9]+[[:space:]]+[eE]rror" | wc -l)
+    
+    if [[ $ERROR_COUNT -eq 0 ]]; then
         log_info "WebUI: No lint errors"
+        WEBUI_ERRORS=0
     else
-        log_error "WebUI: $WEBUI_ERRORS lint errors"
+        log_error "WebUI: $ERROR_COUNT lint errors"
+        echo ""
+        echo "WebUI Code Defects:"
+        echo "$ACTUAL_ERRORS"
+        echo ""
+        WEBUI_ERRORS=$ERROR_COUNT
     fi
     cd - > /dev/null
 else
@@ -70,15 +77,22 @@ fi
 log_task "Checking Admin SDK lint..."
 if [[ -d "SDKs/Node/Admin" ]]; then
     cd SDKs/Node/Admin
-    LINT_OUTPUT=$(npm run lint 2>&1 || true)
-    # Count actual ESLint errors (line:col format followed by error)
-    ADMIN_SDK_ERRORS=$(echo "$LINT_OUTPUT" | grep -E "^[[:space:]]*[0-9]+:[0-9]+[[:space:]]+error" | wc -l || true)
-    ADMIN_SDK_ERRORS=${ADMIN_SDK_ERRORS:-0}
+    LINT_OUTPUT=$(npm run lint 2>&1)
     
-    if [ "$ADMIN_SDK_ERRORS" -eq 0 ]; then
+    # Extract actual ESLint errors - from filepath line through error line
+    ACTUAL_ERRORS=$(echo "$LINT_OUTPUT" | sed -n '/^\/.*\.ts$/,/^[[:space:]]*[0-9]\+:[0-9]\+[[:space:]]\+error/p' || true)
+    ERROR_COUNT=$(echo "$LINT_OUTPUT" | grep -E "^[[:space:]]*[0-9]+:[0-9]+[[:space:]]+error" | wc -l)
+    
+    if [[ $ERROR_COUNT -eq 0 ]]; then
         log_info "Admin SDK: No lint errors"
+        ADMIN_SDK_ERRORS=0
     else
-        log_error "Admin SDK: $ADMIN_SDK_ERRORS lint errors"
+        log_error "Admin SDK: $ERROR_COUNT lint errors"
+        echo ""
+        echo "Admin SDK Code Defects:"
+        echo "$ACTUAL_ERRORS"
+        echo ""
+        ADMIN_SDK_ERRORS=$ERROR_COUNT
     fi
     cd - > /dev/null
 else
@@ -90,15 +104,22 @@ fi
 log_task "Checking Core SDK lint..."
 if [[ -d "SDKs/Node/Core" ]]; then
     cd SDKs/Node/Core
-    LINT_OUTPUT=$(npm run lint 2>&1 || true)
-    # Count actual ESLint errors (line:col format followed by error)
-    CORE_SDK_ERRORS=$(echo "$LINT_OUTPUT" | grep -E "^[[:space:]]*[0-9]+:[0-9]+[[:space:]]+error" | wc -l || true)
-    CORE_SDK_ERRORS=${CORE_SDK_ERRORS:-0}
+    LINT_OUTPUT=$(npm run lint 2>&1)
     
-    if [ "$CORE_SDK_ERRORS" -eq 0 ]; then
+    # Extract actual ESLint errors - filter out npm noise
+    ACTUAL_ERRORS=$(echo "$LINT_OUTPUT" | grep -B1 -A1 -E "^[[:space:]]*[0-9]+:[0-9]+[[:space:]]+error" || true)
+    ERROR_COUNT=$(echo "$LINT_OUTPUT" | grep -E "^[[:space:]]*[0-9]+:[0-9]+[[:space:]]+error" | wc -l)
+    
+    if [[ $ERROR_COUNT -eq 0 ]]; then
         log_info "Core SDK: No lint errors"
+        CORE_SDK_ERRORS=0
     else
-        log_error "Core SDK: $CORE_SDK_ERRORS lint errors"
+        log_error "Core SDK: $ERROR_COUNT lint errors"
+        echo ""
+        echo "Core SDK Code Defects:"
+        echo "$ACTUAL_ERRORS"
+        echo ""
+        CORE_SDK_ERRORS=$ERROR_COUNT
     fi
     cd - > /dev/null
 else
