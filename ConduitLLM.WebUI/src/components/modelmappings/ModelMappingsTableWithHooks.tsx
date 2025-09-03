@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Table,
   Group,
@@ -10,6 +10,7 @@ import {
   Box,
   LoadingOverlay,
   Alert,
+  Checkbox,
 } from '@mantine/core';
 import {
   IconEdit,
@@ -22,9 +23,13 @@ import { modals } from '@mantine/modals';
 import { useRouter } from 'next/navigation';
 import { 
   useModelMappings, 
-  useDeleteModelMapping
+  useDeleteModelMapping,
+  useBulkDeleteModelMappings,
+  useBulkEnableModelMappings,
+  useBulkDisableModelMappings,
 } from '@/hooks/useModelMappingsApi';
 import type { ModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
+import { BulkActionsBar } from './BulkActionsBar';
 
 // Extend the DTO type to ensure provider property is available
 interface ExtendedModelProviderMappingDto extends ModelProviderMappingDto {
@@ -43,7 +48,70 @@ interface ModelMappingsTableProps {
 export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
   const { mappings, isLoading, error, refetch } = useModelMappings();
   const deleteMapping = useDeleteModelMapping();
+  const bulkDelete = useBulkDeleteModelMappings();
+  const bulkEnable = useBulkEnableModelMappings();
+  const bulkDisable = useBulkDisableModelMappings();
   const router = useRouter();
+  
+  // Selection state
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  
+  // Computed values for selection
+  
+  const isAllSelected = useMemo(() => {
+    if (mappings.length === 0) return false;
+    return mappings.every(m => selectedIds.has(m.id));
+  }, [mappings, selectedIds]);
+  
+  const isIndeterminate = useMemo(() => {
+    if (selectedIds.size === 0) return false;
+    return selectedIds.size > 0 && selectedIds.size < mappings.length;
+  }, [selectedIds, mappings]);
+
+  // Selection handlers
+  const handleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(mappings.map(m => m.id)));
+    }
+  };
+  
+  const handleSelectOne = (id: number) => {
+    const newSelection = new Set(selectedIds);
+    if (newSelection.has(id)) {
+      newSelection.delete(id);
+    } else {
+      newSelection.add(id);
+    }
+    setSelectedIds(newSelection);
+  };
+  
+  const handleClearSelection = () => {
+    setSelectedIds(new Set());
+  };
+  
+  // Bulk action handlers
+  const handleBulkDelete = () => {
+    const ids = Array.from(selectedIds);
+    void bulkDelete.mutateAsync(ids).then(() => {
+      setSelectedIds(new Set());
+    });
+  };
+  
+  const handleBulkEnable = () => {
+    const ids = Array.from(selectedIds);
+    void bulkEnable.mutateAsync(ids).then(() => {
+      setSelectedIds(new Set());
+    });
+  };
+  
+  const handleBulkDisable = () => {
+    const ids = Array.from(selectedIds);
+    void bulkDisable.mutateAsync(ids).then(() => {
+      setSelectedIds(new Set());
+    });
+  };
 
   // Refresh data when onRefresh changes
   useEffect(() => {
@@ -108,7 +176,13 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
   }
 
   const rows = (mappings as ExtendedModelProviderMappingDto[]).map((mapping) => (
-    <Table.Tr key={mapping.id}>
+    <Table.Tr key={mapping.id} bg={selectedIds.has(mapping.id) ? 'blue.0' : undefined}>
+      <Table.Td style={{ width: 60 }}>
+        <Checkbox
+          checked={selectedIds.has(mapping.id)}
+          onChange={() => handleSelectOne(mapping.id)}
+        />
+      </Table.Td>
       <Table.Td>
         <Group gap="xs">
           <Text size="sm" fw={500}>{mapping.modelAlias}</Text>
@@ -174,23 +248,43 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
   ));
 
   return (
-    <Box pos="relative">
-      <LoadingOverlay visible={isLoading} />
-      <Table.ScrollContainer minWidth={800}>
-        <Table>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Model Mapping</Table.Th>
-              <Table.Th>Provider</Table.Th>
-              <Table.Th>Capabilities</Table.Th>
-              <Table.Th>Priority</Table.Th>
-              <Table.Th>Status</Table.Th>
-              <Table.Th />
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>{rows}</Table.Tbody>
-        </Table>
-      </Table.ScrollContainer>
-    </Box>
+    <>
+      <Box pos="relative">
+        <LoadingOverlay visible={isLoading} />
+        <Table.ScrollContainer minWidth={800}>
+          <Table>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th style={{ width: 60 }}>
+                  <Checkbox
+                    checked={isAllSelected}
+                    indeterminate={isIndeterminate}
+                    onChange={handleSelectAll}
+                  />
+                </Table.Th>
+                <Table.Th>Model Mapping</Table.Th>
+                <Table.Th>Provider</Table.Th>
+                <Table.Th>Capabilities</Table.Th>
+                <Table.Th>Priority</Table.Th>
+                <Table.Th>Status</Table.Th>
+                <Table.Th />
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>{rows}</Table.Tbody>
+          </Table>
+        </Table.ScrollContainer>
+      </Box>
+      
+      <BulkActionsBar
+        selectedCount={selectedIds.size}
+        onDelete={handleBulkDelete}
+        onEnable={handleBulkEnable}
+        onDisable={handleBulkDisable}
+        onClearSelection={handleClearSelection}
+        isDeleting={bulkDelete.isPending}
+        isEnabling={bulkEnable.isPending}
+        isDisabling={bulkDisable.isPending}
+      />
+    </>
   );
 }

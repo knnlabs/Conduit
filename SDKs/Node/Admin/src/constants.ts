@@ -66,6 +66,9 @@ export const ENDPOINTS = {
     BY_ID: (id: number) => `/api/ModelProviderMapping/${id}`,
     PROVIDERS: '/api/ModelProviderMapping/providers',
     BULK: '/api/ModelProviderMapping/bulk',
+    BULK_DELETE: '/api/ModelProviderMapping/bulk/delete',
+    BULK_ENABLE: '/api/ModelProviderMapping/bulk/enable',
+    BULK_DISABLE: '/api/ModelProviderMapping/bulk/disable',
   },
 
   // IP Filters

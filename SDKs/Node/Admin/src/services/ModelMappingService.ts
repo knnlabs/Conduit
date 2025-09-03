@@ -8,6 +8,8 @@ import {
   ModelRoutingInfo,
   BulkMappingRequest,
   BulkMappingResponse,
+  BulkDeleteResult,
+  BulkUpdateResult,
   ModelMappingSuggestion,
   CapabilityTestResult,
 } from '../models/modelMapping';
@@ -174,6 +176,63 @@ export class ModelMappingService extends FetchBaseApiClient {
     const response = await this.post<BulkMappingResponse>(
       ENDPOINTS.MODEL_MAPPINGS.BULK,
       request
+    );
+
+    await this.invalidateCache();
+    return response;
+  }
+
+  // Bulk Delete Operation
+  async bulkDelete(ids: number[]): Promise<BulkDeleteResult> {
+    if (!ids || ids.length === 0) {
+      throw new ValidationError('At least one ID must be provided');
+    }
+
+    if (ids.length > 100) {
+      throw new ValidationError('Cannot delete more than 100 mappings in a single request');
+    }
+
+    const response = await this.post<BulkDeleteResult>(
+      ENDPOINTS.MODEL_MAPPINGS.BULK_DELETE,
+      ids
+    );
+
+    await this.invalidateCache();
+    return response;
+  }
+
+  // Bulk Enable Operation
+  async bulkEnable(ids: number[]): Promise<BulkUpdateResult> {
+    if (!ids || ids.length === 0) {
+      throw new ValidationError('At least one ID must be provided');
+    }
+
+    if (ids.length > 100) {
+      throw new ValidationError('Cannot enable more than 100 mappings in a single request');
+    }
+
+    const response = await this.post<BulkUpdateResult>(
+      ENDPOINTS.MODEL_MAPPINGS.BULK_ENABLE,
+      ids
+    );
+
+    await this.invalidateCache();
+    return response;
+  }
+
+  // Bulk Disable Operation
+  async bulkDisable(ids: number[]): Promise<BulkUpdateResult> {
+    if (!ids || ids.length === 0) {
+      throw new ValidationError('At least one ID must be provided');
+    }
+
+    if (ids.length > 100) {
+      throw new ValidationError('Cannot disable more than 100 mappings in a single request');
+    }
+
+    const response = await this.post<BulkUpdateResult>(
+      ENDPOINTS.MODEL_MAPPINGS.BULK_DISABLE,
+      ids
     );
 
     await this.invalidateCache();

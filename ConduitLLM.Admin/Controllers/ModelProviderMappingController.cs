@@ -282,6 +282,161 @@ public class ModelProviderMappingController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Deletes multiple model provider mappings in a single operation
+    /// </summary>
+    /// <param name="ids">The IDs of the mappings to delete</param>
+    /// <returns>The bulk delete response with results</returns>
+    [HttpPost("bulk/delete")]
+    [ProducesResponseType(typeof(BulkDeleteResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> DeleteBulkMappings([FromBody] List<int> ids)
+    {
+        try
+        {
+            if (ids == null || ids.Count == 0)
+            {
+                return BadRequest(new ErrorResponseDto("No mapping IDs provided"));
+            }
+
+            var deleted = new List<int>();
+            var errors = new List<string>();
+
+            foreach (var id in ids)
+            {
+                try
+                {
+                    var existingMapping = await _mappingService.GetMappingByIdAsync(id);
+                    if (existingMapping == null)
+                    {
+                        errors.Add($"Mapping with ID {id} not found");
+                        continue;
+                    }
+
+                    var success = await _mappingService.DeleteMappingAsync(id);
+                    if (success)
+                    {
+                        deleted.Add(id);
+                    }
+                    else
+                    {
+                        errors.Add($"Failed to delete mapping with ID {id}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error deleting mapping with ID {Id}", id);
+                    errors.Add($"Error deleting mapping with ID {id}: {ex.Message}");
+                }
+            }
+
+            var result = new BulkDeleteResult
+            {
+                DeletedIds = deleted,
+                Errors = errors,
+                TotalProcessed = ids.Count,
+                SuccessCount = deleted.Count,
+                FailureCount = errors.Count
+            };
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting bulk model provider mappings");
+            return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while deleting bulk model provider mappings");
+        }
+    }
+
+    /// <summary>
+    /// Enables multiple model provider mappings in a single operation
+    /// </summary>
+    /// <param name="ids">The IDs of the mappings to enable</param>
+    /// <returns>The bulk update response with results</returns>
+    [HttpPost("bulk/enable")]
+    [ProducesResponseType(typeof(BulkUpdateResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> EnableBulkMappings([FromBody] List<int> ids)
+    {
+        return await UpdateBulkMappingsStatus(ids, true);
+    }
+
+    /// <summary>
+    /// Disables multiple model provider mappings in a single operation
+    /// </summary>
+    /// <param name="ids">The IDs of the mappings to disable</param>
+    /// <returns>The bulk update response with results</returns>
+    [HttpPost("bulk/disable")]
+    [ProducesResponseType(typeof(BulkUpdateResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> DisableBulkMappings([FromBody] List<int> ids)
+    {
+        return await UpdateBulkMappingsStatus(ids, false);
+    }
+
+    private async Task<IActionResult> UpdateBulkMappingsStatus(List<int> ids, bool isEnabled)
+    {
+        try
+        {
+            if (ids == null || ids.Count == 0)
+            {
+                return BadRequest(new ErrorResponseDto("No mapping IDs provided"));
+            }
+
+            var updated = new List<ModelProviderMappingDto>();
+            var errors = new List<string>();
+
+            foreach (var id in ids)
+            {
+                try
+                {
+                    var existingMapping = await _mappingService.GetMappingByIdAsync(id);
+                    if (existingMapping == null)
+                    {
+                        errors.Add($"Mapping with ID {id} not found");
+                        continue;
+                    }
+
+                    existingMapping.IsEnabled = isEnabled;
+                    var success = await _mappingService.UpdateMappingAsync(existingMapping);
+                    
+                    if (success)
+                    {
+                        updated.Add(existingMapping.ToDto());
+                    }
+                    else
+                    {
+                        errors.Add($"Failed to update mapping with ID {id}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error updating mapping with ID {Id}", id);
+                    errors.Add($"Error updating mapping with ID {id}: {ex.Message}");
+                }
+            }
+
+            var result = new BulkUpdateResult
+            {
+                Updated = updated,
+                Errors = errors,
+                TotalProcessed = ids.Count,
+                SuccessCount = updated.Count,
+                FailureCount = errors.Count
+            };
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating bulk model provider mappings status");
+            return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while updating bulk model provider mappings");
+        }
+    }
+
 }
 
 /// <summary>
@@ -311,6 +466,68 @@ public class BulkMappingResult
 
     /// <summary>
     /// Number of failed mappings
+    /// </summary>
+    public int FailureCount { get; set; }
+}
+
+/// <summary>
+/// Result of a bulk delete operation
+/// </summary>
+public class BulkDeleteResult
+{
+    /// <summary>
+    /// IDs of successfully deleted mappings
+    /// </summary>
+    public List<int> DeletedIds { get; set; } = new();
+
+    /// <summary>
+    /// Error messages for failed deletions
+    /// </summary>
+    public List<string> Errors { get; set; } = new();
+
+    /// <summary>
+    /// Total number of mappings processed
+    /// </summary>
+    public int TotalProcessed { get; set; }
+
+    /// <summary>
+    /// Number of successful deletions
+    /// </summary>
+    public int SuccessCount { get; set; }
+
+    /// <summary>
+    /// Number of failed deletions
+    /// </summary>
+    public int FailureCount { get; set; }
+}
+
+/// <summary>
+/// Result of a bulk update operation
+/// </summary>
+public class BulkUpdateResult
+{
+    /// <summary>
+    /// Successfully updated mappings
+    /// </summary>
+    public List<ModelProviderMappingDto> Updated { get; set; } = new();
+
+    /// <summary>
+    /// Error messages for failed updates
+    /// </summary>
+    public List<string> Errors { get; set; } = new();
+
+    /// <summary>
+    /// Total number of mappings processed
+    /// </summary>
+    public int TotalProcessed { get; set; }
+
+    /// <summary>
+    /// Number of successful updates
+    /// </summary>
+    public int SuccessCount { get; set; }
+
+    /// <summary>
+    /// Number of failed updates
     /// </summary>
     public int FailureCount { get; set; }
 }

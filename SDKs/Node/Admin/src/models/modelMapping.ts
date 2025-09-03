@@ -57,6 +57,24 @@ export interface BulkMappingRequest {
 // For bulk mapping responses
 export type BulkMappingResponse = BulkMappingResult;
 
+// For bulk delete operations
+export interface BulkDeleteResult {
+  deletedIds: number[];
+  errors: string[];
+  totalProcessed: number;
+  successCount: number;
+  failureCount: number;
+}
+
+// For bulk update operations
+export interface BulkUpdateResult {
+  updated: ModelProviderMappingDto[];
+  errors: string[];
+  totalProcessed: number;
+  successCount: number;
+  failureCount: number;
+}
+
 // For discovered models
 export interface DiscoveredModel {
   id: string;
