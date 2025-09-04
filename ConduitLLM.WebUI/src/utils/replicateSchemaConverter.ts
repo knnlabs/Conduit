@@ -1,5 +1,38 @@
 import type { ParametersSchema, ParameterDefinition } from '@/types/parameters';
 
+/**
+ * List of parameter names that should be excluded from conversion
+ * because they're already handled by the standard interface
+ */
+const EXCLUDED_PARAMETERS = new Set([
+  // Prompt variations
+  'prompt',
+  'text_prompt',
+  'input_text',
+  // Seed (handled separately for reproducibility)
+  'seed',
+]);
+
+/**
+ * Check if a parameter key should be excluded
+ */
+function shouldExcludeParameter(key: string): boolean {
+  // Direct match
+  if (EXCLUDED_PARAMETERS.has(key)) {
+    return true;
+  }
+  
+  // Case-insensitive match for safety
+  const lowerKey = key.toLowerCase();
+  for (const excluded of EXCLUDED_PARAMETERS) {
+    if (lowerKey === excluded.toLowerCase()) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
 interface ReplicateProperty {
   type: string;
   title?: string;
@@ -57,6 +90,11 @@ export function convertReplicateSchemaToParameters(replicateSchema: string | obj
   });
 
   for (const [key, prop] of sortedEntries) {
+    // Skip excluded parameters
+    if (shouldExcludeParameter(key)) {
+      continue;
+    }
+    
     const parameter = convertProperty(key, prop, requiredFields.has(key));
     if (parameter) {
       parameters[key] = parameter;

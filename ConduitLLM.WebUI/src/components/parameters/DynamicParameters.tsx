@@ -7,6 +7,39 @@ import { useDisclosure } from '@mantine/hooks';
 import { ParameterRenderer } from './ParameterRenderer';
 import type { DynamicParameter, ParameterValues, ParameterContext } from './types/parameters';
 
+/**
+ * List of parameter names that should be excluded from rendering
+ * because they're already handled by the standard interface
+ */
+const EXCLUDED_PARAMETER_NAMES = new Set([
+  // Prompt variations
+  'prompt',
+  'text_prompt', 
+  'input_text',
+  // Seed (handled separately for reproducibility)
+  'seed',
+]);
+
+/**
+ * Check if a parameter key should be excluded from rendering
+ */
+function shouldExcludeParameter(key: string): boolean {
+  // Direct match
+  if (EXCLUDED_PARAMETER_NAMES.has(key)) {
+    return true;
+  }
+  
+  // Case-insensitive match for safety
+  const lowerKey = key.toLowerCase();
+  for (const excluded of EXCLUDED_PARAMETER_NAMES) {
+    if (lowerKey === excluded.toLowerCase()) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
 interface DynamicParametersProps {
   context: ParameterContext;
   parameters: Record<string, DynamicParameter> | string;
@@ -49,9 +82,12 @@ export function DynamicParameters({
     return parameters;
   }, [parameters]);
 
-  // Get visible parameters based on dependencies
+  // Get visible parameters based on dependencies and exclusions
   const visibleParameters = useMemo(() => {
-    return Object.entries(parsedParameters).filter(([, param]) => {
+    return Object.entries(parsedParameters).filter(([key, param]) => {
+      // Filter out excluded parameters (prompt, seed, etc.)
+      if (shouldExcludeParameter(key)) return false;
+      
       if (param.visible === false) return false;
       
       if (param.dependsOn) {
@@ -76,7 +112,8 @@ export function DynamicParameters({
   const handleReset = useCallback(() => {
     const defaultValues: ParameterValues = {};
     Object.entries(parsedParameters).forEach(([key, param]) => {
-      if (param.default !== undefined) {
+      // Skip excluded parameters
+      if (!shouldExcludeParameter(key) && param.default !== undefined) {
         defaultValues[key] = param.default as unknown;
       }
     });
@@ -87,6 +124,8 @@ export function DynamicParameters({
   // Count of active (non-default) parameters
   const activeCount = useMemo(() => {
     return Object.entries(values).filter(([key, value]) => {
+      // Skip excluded parameters in count
+      if (shouldExcludeParameter(key)) return false;
       const param = parsedParameters[key];
       return param && value !== param.default;
     }).length;
