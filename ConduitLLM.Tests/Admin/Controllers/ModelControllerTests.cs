@@ -3,6 +3,7 @@ using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
 
+using MassTransit;
 using Microsoft.Extensions.Logging;
 
 using Moq;
@@ -21,6 +22,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         private readonly Mock<IModelRepository> _mockRepository;
         private readonly Mock<IAdminModelProviderMappingService> _mockMappingService;
         private readonly Mock<IProviderRepository> _mockProviderRepository;
+        private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
         private readonly Mock<ILogger<ModelController>> _mockLogger;
 
         public ModelControllerTests()
@@ -28,6 +30,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockRepository = new Mock<IModelRepository>();
             _mockMappingService = new Mock<IAdminModelProviderMappingService>();
             _mockProviderRepository = new Mock<IProviderRepository>();
+            _mockPublishEndpoint = new Mock<IPublishEndpoint>();
             _mockLogger = new Mock<ILogger<ModelController>>();
         }
 
@@ -37,7 +40,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         public void Constructor_WithValidDependencies_ShouldCreateController()
         {
             // Act & Assert
-            var controller = new ModelController(_mockRepository.Object, _mockMappingService.Object, _mockProviderRepository.Object, _mockLogger.Object);
+            var controller = new ModelController(_mockRepository.Object, _mockMappingService.Object, _mockProviderRepository.Object, _mockPublishEndpoint.Object, _mockLogger.Object);
             Assert.NotNull(controller);
         }
 
@@ -46,7 +49,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         {
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new ModelController(null!, _mockMappingService.Object, _mockProviderRepository.Object, _mockLogger.Object));
+                new ModelController(null!, _mockMappingService.Object, _mockProviderRepository.Object, _mockPublishEndpoint.Object, _mockLogger.Object));
         }
 
         [Fact]
@@ -54,7 +57,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         {
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new ModelController(_mockRepository.Object, null!, _mockProviderRepository.Object, _mockLogger.Object));
+                new ModelController(_mockRepository.Object, null!, _mockProviderRepository.Object, _mockPublishEndpoint.Object, _mockLogger.Object));
         }
 
         [Fact]
@@ -62,7 +65,15 @@ namespace ConduitLLM.Tests.Admin.Controllers
         {
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new ModelController(_mockRepository.Object, _mockMappingService.Object, null!, _mockLogger.Object));
+                new ModelController(_mockRepository.Object, _mockMappingService.Object, null!, _mockPublishEndpoint.Object, _mockLogger.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullPublishEndpoint_ShouldThrowArgumentNullException()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => 
+                new ModelController(_mockRepository.Object, _mockMappingService.Object, _mockProviderRepository.Object, null!, _mockLogger.Object));
         }
 
         [Fact]
@@ -70,7 +81,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         {
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new ModelController(_mockRepository.Object, _mockMappingService.Object, _mockProviderRepository.Object, null!));
+                new ModelController(_mockRepository.Object, _mockMappingService.Object, _mockProviderRepository.Object, _mockPublishEndpoint.Object, null!));
         }
 
         #endregion

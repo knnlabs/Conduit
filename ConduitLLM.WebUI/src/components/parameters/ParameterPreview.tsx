@@ -57,6 +57,7 @@ export function ParameterPreview({
                 initialValues[key] = false;
                 break;
               case 'text':
+              case 'input':  // Handle 'input' type the same as 'text'
               case 'textarea':
               case 'color':
                 initialValues[key] = '';

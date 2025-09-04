@@ -52,6 +52,7 @@ public partial class Program
             
             // Add settings refresh consumers for runtime configuration updates
             x.AddConsumer<ConduitLLM.Http.EventHandlers.ModelMappingCacheInvalidationHandler>();
+            x.AddConsumer<ConduitLLM.Http.EventHandlers.ModelCacheInvalidationHandler>();
             x.AddConsumer<ConduitLLM.Http.EventHandlers.ProviderCacheInvalidationHandler>();
             
             // Add media lifecycle handler for tracking generated media

@@ -5,7 +5,8 @@
 export type ParameterType = 
   | 'slider' 
   | 'select' 
-  | 'text' 
+  | 'text'
+  | 'input'  // Added to support Replicate schema conversion
   | 'number' 
   | 'toggle' 
   | 'color' 
@@ -48,6 +49,14 @@ export interface SelectParameter extends BaseParameter {
 
 export interface TextParameter extends BaseParameter {
   type: 'text';
+  placeholder?: string;
+  maxLength?: number;
+  pattern?: string;
+  default?: string;
+}
+
+export interface InputParameter extends BaseParameter {
+  type: 'input';
   placeholder?: string;
   maxLength?: number;
   pattern?: string;
@@ -102,6 +111,7 @@ export type DynamicParameter =
   | SliderParameter
   | SelectParameter
   | TextParameter
+  | InputParameter
   | TextareaParameter
   | NumberParameter
   | ToggleParameter
@@ -132,6 +142,9 @@ export const isSelectParameter = (param: DynamicParameter): param is SelectParam
 
 export const isTextParameter = (param: DynamicParameter): param is TextParameter => 
   param.type === 'text';
+
+export const isInputParameter = (param: DynamicParameter): param is InputParameter => 
+  param.type === 'input';
 
 export const isTextareaParameter = (param: DynamicParameter): param is TextareaParameter => 
   param.type === 'textarea';

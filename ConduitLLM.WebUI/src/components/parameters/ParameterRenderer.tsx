@@ -48,6 +48,7 @@ const ParameterRendererComponent = ({
       );
     
     case 'text':
+    case 'input':  // Handle 'input' type the same as 'text'
       return (
         <TextControl
           parameter={parameter}
