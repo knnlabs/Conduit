@@ -128,6 +128,13 @@ namespace ConduitLLM.Providers.Replicate
                 input["num_outputs"] = request.N;
             }
 
+            // Log parameters being sent (excluding prompt content)
+            var logParams = new Dictionary<string, object>(input);
+            logParams["prompt"] = $"[REDACTED: {request.Prompt.Length} chars]";
+            
+            Logger.LogInformation("Image generation parameters for Replicate: Model={Model}, Parameters={@Parameters}", 
+                ProviderModelId, logParams);
+
             return new ReplicatePredictionRequest
             {
                 Version = ProviderModelId,
@@ -181,6 +188,13 @@ namespace ConduitLLM.Providers.Replicate
             {
                 input["num_outputs"] = request.N;
             }
+
+            // Log parameters being sent (excluding prompt content)
+            var logParams = new Dictionary<string, object>(input);
+            logParams["prompt"] = $"[REDACTED: {request.Prompt.Length} chars]";
+            
+            Logger.LogInformation("Video generation parameters for Replicate: Model={Model}, Parameters={@Parameters}", 
+                ProviderModelId, logParams);
 
             return new ReplicatePredictionRequest
             {

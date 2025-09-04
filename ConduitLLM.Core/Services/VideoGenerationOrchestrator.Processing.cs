@@ -108,6 +108,16 @@ namespace ConduitLLM.Core.Services
                 // Validate parameters (minimal, provider-agnostic)
                 _parameterValidator.ValidateVideoParameters(videoRequest);
 
+                // Log the parameters being sent to the provider (excluding prompt)
+                _logger.LogInformation("Video generation request prepared: TaskId={TaskId}, Model={Model}, Provider={Provider}, Duration={Duration}, Resolution={Resolution}, FPS={FPS}, PromptLength={PromptLength}",
+                    request.RequestId,
+                    originalModelAlias,
+                    modelInfo.Provider,
+                    videoRequest.Duration,
+                    videoRequest.Size,
+                    videoRequest.Fps,
+                    request.Prompt?.Length ?? 0);
+
                 // Get the appropriate client for the model using the alias
                 var client = _clientFactory.GetClient(originalModelAlias);
                 if (client == null)

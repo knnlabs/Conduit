@@ -53,7 +53,7 @@ public partial class CostCalculationService
             throw new InvalidOperationException($"No pricing available for {usage.VideoResolution} {duration}s video on model {modelId}");
         }
 
-        _logger.LogDebug("Per-video cost for model {ModelId}: {Resolution} {Duration}s = ${Cost}",
+        _logger.LogInformation("Video generation cost calculated: Model={ModelId}, Resolution={Resolution}, Duration={Duration}s, Cost=${Cost:F4}",
             modelId, usage.VideoResolution, duration, flatRate);
 
         return Task.FromResult(flatRate);
@@ -99,8 +99,8 @@ public partial class CostCalculationService
             _logger.LogDebug("Applied video resolution multiplier {Multiplier} for {Resolution}", multiplier, usage.VideoResolution);
         }
 
-        _logger.LogDebug("Per-second video cost for model {ModelId}: {Duration}s × ${BaseRate} = ${Cost}",
-            modelId, usage.VideoDurationSeconds.Value, config.BaseRate, baseCost);
+        _logger.LogInformation("Video generation cost calculated (per-second): Model={ModelId}, Duration={Duration}s, BaseRate=${BaseRate:F4}, Resolution={Resolution}, TotalCost=${Cost:F4}",
+            modelId, usage.VideoDurationSeconds.Value, config.BaseRate, usage.VideoResolution ?? "default", baseCost);
 
         return Task.FromResult(baseCost);
     }
@@ -247,8 +247,8 @@ public partial class CostCalculationService
             _logger.LogDebug("Applied image resolution multiplier {Multiplier} for {Resolution}", resolutionMultiplier, usage.ImageResolution);
         }
 
-        _logger.LogDebug("Per-image cost for model {ModelId}: {Count} images × ${BaseRate} = ${Cost}",
-            modelId, usage.ImageCount.Value, config.BaseRate, cost);
+        _logger.LogInformation("Image generation cost calculated: Model={ModelId}, Count={Count}, BaseRate=${BaseRate:F4}, Quality={Quality}, Resolution={Resolution}, TotalCost=${Cost:F4}",
+            modelId, usage.ImageCount.Value, config.BaseRate, usage.ImageQuality ?? "standard", usage.ImageResolution ?? "default", cost);
 
         return Task.FromResult(cost);
     }

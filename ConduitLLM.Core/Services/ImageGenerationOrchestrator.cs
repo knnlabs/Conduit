@@ -115,8 +115,16 @@ namespace ConduitLLM.Core.Services
                 // Validate parameters (minimal, provider-agnostic)
                 _parameterValidator.ValidateImageParameters(generationRequest);
                 
-                _logger.LogInformation("Generating {Count} images with {Provider} using model {Model}", 
-                    generationRequest.N, modelInfo.Provider, modelInfo.ModelId);
+                // Log the parameters being sent to the provider (excluding prompt)
+                _logger.LogInformation("Image generation request prepared: TaskId={TaskId}, Model={Model}, Provider={Provider}, Count={Count}, Size={Size}, Quality={Quality}, Style={Style}, PromptLength={PromptLength}",
+                    request.TaskId,
+                    request.Request.Model,
+                    modelInfo.Provider,
+                    generationRequest.N,
+                    generationRequest.Size,
+                    generationRequest.Quality,
+                    generationRequest.Style,
+                    request.Request.Prompt?.Length ?? 0);
                 
                 // Generate images with cancellation support
                 var response = await client.CreateImageAsync(generationRequest, cancellationToken: taskCts.Token);
