@@ -57,7 +57,7 @@ export default function EnhancedVideoPromptInput({ models, dynamicParameters }: 
   };
 
 
-  const isDisabled = isGenerating || !!currentTask;
+  const isDisabled = isGenerating || !!(currentTask && (currentTask.status === 'pending' || currentTask.status === 'running'));
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); void handleSubmit(e); }} className="video-prompt-section">
