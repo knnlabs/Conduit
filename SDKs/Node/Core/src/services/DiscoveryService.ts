@@ -10,7 +10,8 @@ import type {
   BulkModelDiscoveryRequest,
   BulkModelDiscoveryResponse,
   ModelCapability,
-  CapabilityTest
+  CapabilityTest,
+  DiscoveredModel
 } from '../models/discovery';
 
 
@@ -39,10 +40,10 @@ export class DiscoveryService {
 
   /**
    * Gets discovered models filtered by a specific capability.
-   * @param capability - The capability to filter by (e.g., 'image_generation', 'video_generation', 'chat')
+   * @param capability - The capability to filter by (use ModelCapability enum)
    * @param options - Optional request options
    */
-  async getModelsByCapability(capability: string, options?: RequestOptions): Promise<ModelsDiscoveryResponse> {
+  async getModelsByCapability(capability: ModelCapability | string, options?: RequestOptions): Promise<ModelsDiscoveryResponse> {
     if (!capability?.trim()) {
       throw new Error('Capability is required');
     }
@@ -129,6 +130,23 @@ export class DiscoveryService {
   }
 
   /**
+   * Gets UI parameters for a specific model to enable dynamic UI generation.
+   * @param model - The model alias or identifier to get parameters for
+   * @param options - Optional request options
+   */
+  async getModelParameters(model: string, options?: RequestOptions): Promise<{ model_id: number; model_alias: string; series_name: string; parameters: Record<string, unknown> }> {
+    if (!model?.trim()) {
+      throw new Error('Model is required');
+    }
+
+    const response = await this.clientAdapter.get<{ model_id: number; model_alias: string; series_name: string; parameters: Record<string, unknown> }>(
+      `${this.baseEndpoint}/models/${encodeURIComponent(model)}/parameters`,
+      options
+    );
+    return response;
+  }
+
+  /**
    * Refreshes the capability cache for all providers.
    * Requires admin/master key access.
    */
@@ -149,7 +167,7 @@ export class DiscoveryService {
    * @param capability - The capability to filter by (e.g., 'image_generation', 'video_generation')
    * @returns Filtered array of models that have the specified capability
    */
-  static filterByCapability(models: any[], capability: string): any[] {
+  static filterByCapability(models: DiscoveredModel[], capability: string): DiscoveredModel[] {
     if (!models || !Array.isArray(models)) {
       return [];
     }
@@ -162,14 +180,16 @@ export class DiscoveryService {
     
     return models.filter(model => {
       // Check for flat property format (current backend format)
-      if (capabilityKey in model && model[capabilityKey] === true) {
+      const modelAsAny = model as unknown as Record<string, unknown>;
+      if (capabilityKey in modelAsAny && modelAsAny[capabilityKey] === true) {
         return true;
       }
       
       // Also check for nested capabilities object (future-proof)
       if (model.capabilities && typeof model.capabilities === 'object') {
         const nestedKey = capability.replace(/-/g, '_').toLowerCase();
-        return model.capabilities[nestedKey] === true;
+        const capabilities = model.capabilities as unknown as Record<string, unknown>;
+        return capabilities[nestedKey] === true;
       }
       
       return false;

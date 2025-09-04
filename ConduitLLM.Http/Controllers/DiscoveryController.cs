@@ -14,7 +14,7 @@ namespace ConduitLLM.Http.Controllers
     /// </summary>
     [ApiController]
     [Route("v1/discovery")]
-    [Authorize]
+    [Authorize(AuthenticationSchemes = "VirtualKey,EphemeralKey")]
     public class DiscoveryController : ControllerBase
     {
         private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
@@ -89,6 +89,8 @@ namespace ConduitLLM.Http.Controllers
                             .ThenInclude(m => m.Series)
                     .Where(m => m.IsEnabled && m.Provider != null && m.Provider.IsEnabled)
                     .ToListAsync();
+                
+                _logger.LogInformation($"Found {modelMappings.Count} enabled model mappings");
 
                 var models = new List<object>();
 

@@ -38,13 +38,14 @@ namespace ConduitLLM.Tests.Http.Controllers.Discovery.GetModels
             dynamic response = okResult.Value!;
             dynamic model = ((IEnumerable<dynamic>)response.data).First();
             
-            Assert.True(model.supports_chat);
-            Assert.True(model.supports_streaming);
-            Assert.True(model.supports_vision);
-            Assert.True(model.supports_function_calling);
-            Assert.True(model.supports_video_generation);
-            Assert.True(model.supports_image_generation);
-            Assert.True(model.supports_embeddings);
+            // Capabilities are now nested under a 'capabilities' object
+            Assert.True(model.capabilities.chat);
+            Assert.True(model.capabilities.chat_stream);
+            Assert.True(model.capabilities.vision);
+            Assert.True(model.capabilities.function_calling);
+            Assert.True(model.capabilities.video_generation);
+            Assert.True(model.capabilities.image_generation);
+            Assert.True(model.capabilities.embeddings);
         }
 
         [Fact]

@@ -1,14 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
+import { getBrowserCoreClient } from '@/lib/client/browserCoreClient';
+import { ModelCapability, type DiscoveredModel as SDKDiscoveredModel } from '@knn_labs/conduit-core-client';
 
-export interface DiscoveryModel {
-  id: string;
-  provider: string;
-  display_name: string;
-  capabilities: Record<string, unknown>;
-  parameters?: string | null;
-  // Token limits
+// Extend the SDK type to include backend fields not in the generated types
+export interface DiscoveryModel extends SDKDiscoveredModel {
+  parameters?: string;
   max_tokens?: number;
-  max_input_tokens?: number;
   max_output_tokens?: number;
 }
 
@@ -17,18 +14,32 @@ export interface DiscoveryResponse {
   count: number;
 }
 
-export function useDiscoveryModels(capability?: string) {
+export function useDiscoveryModels(capability?: ModelCapability | string) {
   return useQuery<DiscoveryResponse>({
     queryKey: ['discovery-models', capability],
     queryFn: async () => {
-      // Use fetch directly for discovery endpoint
-      const response = await fetch(`/api/discovery/models${capability ? `?capability=${capability}` : ''}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch discovery models');
+      try {
+        // Get the browser client with ephemeral key
+        const client = await getBrowserCoreClient();
+        
+        // Use the SDK directly - let the backend handle filtering
+        const response = capability 
+          ? await client.discovery.getModelsByCapability(capability)
+          : await client.discovery.getModels();
+        
+        // The SDK response matches our interface, just return it
+        return response as DiscoveryResponse;
+      } catch (error) {
+        console.error('Discovery API error:', error);
+        // Pass through the original error message instead of wrapping it
+        if (error instanceof Error) {
+          throw error;
+        }
+        throw new Error('An error occurred while fetching models');
       }
-      const data = await response.json() as DiscoveryResponse;
-      return data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 }

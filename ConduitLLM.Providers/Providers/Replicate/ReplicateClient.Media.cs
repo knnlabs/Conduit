@@ -55,28 +55,41 @@ namespace ConduitLLM.Providers.Replicate
         {
             ValidateRequest(request, "CreateVideoAsync");
 
-            Logger.LogInformation("Creating video with Replicate for model '{ModelId}'", ProviderModelId);
+            Logger.LogInformation("Creating video with Replicate for model '{ModelId}' with prompt: '{Prompt}'", 
+                ProviderModelId, request.Prompt);
 
             try
             {
                 // Map the request to Replicate format and start prediction
                 var predictionRequest = MapToVideoGenerationRequest(request);
+                
+                Logger.LogDebug("Video generation request mapped. Input parameters: {@InputParams}", predictionRequest.Input);
+                
                 var predictionResponse = await StartPredictionAsync(predictionRequest, apiKey, cancellationToken);
+                
+                Logger.LogInformation("Video generation prediction started with ID: {PredictionId}, Status: {Status}", 
+                    predictionResponse.Id, predictionResponse.Status);
 
                 // Poll until prediction completes or fails
                 var finalPrediction = await PollPredictionUntilCompletedAsync(predictionResponse.Id, apiKey, cancellationToken);
 
+                Logger.LogInformation("Video generation completed for prediction {PredictionId}. Final status: {Status}, Output: {@Output}", 
+                    finalPrediction.Id, finalPrediction.Status, finalPrediction.Output);
+
                 // Process the final result
                 return MapToVideoGenerationResponse(finalPrediction, request.Model);
             }
-            catch (LLMCommunicationException)
+            catch (LLMCommunicationException ex)
             {
+                Logger.LogError(ex, "Video generation failed with LLMCommunicationException for model {ModelId}, prompt: '{Prompt}'", 
+                    ProviderModelId, request.Prompt);
                 // Re-throw LLMCommunicationException directly
                 throw;
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "An unexpected error occurred while processing Replicate video generation");
+                Logger.LogError(ex, "An unexpected error occurred while processing Replicate video generation for model {ModelId}, prompt: '{Prompt}'", 
+                    ProviderModelId, request.Prompt);
                 throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
             }
         }
@@ -193,10 +206,20 @@ namespace ConduitLLM.Providers.Replicate
 
         private VideoGenerationResponse MapToVideoGenerationResponse(ReplicatePredictionResponse prediction, string originalModelAlias)
         {
+            Logger.LogDebug("Mapping prediction response to VideoGenerationResponse. Prediction ID: {Id}, Status: {Status}", 
+                prediction.Id, prediction.Status);
+            
             // Extract video URLs from the prediction output
             var videoUrls = ExtractVideoUrlsFromPredictionOutput(prediction.Output);
+            
+            if (videoUrls.Count == 0)
+            {
+                Logger.LogError("Failed to extract any video URLs from prediction {Id} with status {Status}. Output: {@Output}", 
+                    prediction.Id, prediction.Status, prediction.Output);
+                throw new LLMCommunicationException($"No video URLs found in Replicate prediction output for prediction {prediction.Id}");
+            }
 
-            return new VideoGenerationResponse
+            var response = new VideoGenerationResponse
             {
                 Created = ((DateTimeOffset)prediction.CreatedAt).ToUnixTimeSeconds(),
                 Data = videoUrls.Select(url => new VideoData
@@ -204,6 +227,11 @@ namespace ConduitLLM.Providers.Replicate
                     Url = url
                 }).ToList()
             };
+            
+            Logger.LogInformation("Successfully mapped video generation response with {Count} video(s) for prediction {Id}", 
+                response.Data.Count, prediction.Id);
+            
+            return response;
         }
     }
 }

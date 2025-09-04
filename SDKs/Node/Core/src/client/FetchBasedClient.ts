@@ -179,10 +179,22 @@ export abstract class FetchBasedClient {
   }
 
   private buildHeaders(additionalHeaders?: Record<string, string>): Record<string, string> {
-    return {
-      [HTTP_HEADERS.AUTHORIZATION]: `Bearer ${this.config.apiKey}`,
+    const headers: Record<string, string> = {
       [HTTP_HEADERS.CONTENT_TYPE]: CONTENT_TYPES.JSON,
       [HTTP_HEADERS.USER_AGENT]: CLIENT_INFO.USER_AGENT,
+    };
+
+    // Check if the API key is an ephemeral key (starts with 'ek_')
+    if (this.config.apiKey.startsWith('ek_')) {
+      // Use X-Ephemeral-Key header for ephemeral keys
+      headers['X-Ephemeral-Key'] = this.config.apiKey;
+    } else {
+      // Use Authorization Bearer for regular virtual keys
+      headers[HTTP_HEADERS.AUTHORIZATION] = `Bearer ${this.config.apiKey}`;
+    }
+
+    return {
+      ...headers,
       ...this.config.headers,
       ...additionalHeaders,
     };

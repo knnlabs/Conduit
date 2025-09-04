@@ -111,7 +111,40 @@ namespace ConduitLLM.Providers.Replicate
         {
             // Video models typically return URLs in the same format as image models
             // This method is separate in case we need video-specific handling in the future
-            return ExtractImageUrlsFromPredictionOutput(output);
+            
+            Logger.LogDebug("Extracting video URLs from prediction output. Output type: {OutputType}", 
+                output?.GetType().Name ?? "null");
+            
+            if (output != null)
+            {
+                // Log the raw output for debugging
+                try
+                {
+                    var outputJson = JsonSerializer.Serialize(output);
+                    Logger.LogDebug("Raw prediction output for video: {Output}", outputJson);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "Could not serialize prediction output for logging");
+                }
+            }
+            
+            var urls = ExtractImageUrlsFromPredictionOutput(output);
+            
+            if (urls.Count == 0)
+            {
+                Logger.LogWarning("No video URLs found in prediction output. Output was: {@Output}", output);
+            }
+            else
+            {
+                Logger.LogInformation("Extracted {Count} video URL(s) from prediction output", urls.Count);
+                foreach (var url in urls)
+                {
+                    Logger.LogDebug("Extracted video URL: {Url}", url);
+                }
+            }
+            
+            return urls;
         }
 
         private int EstimateTokenCount(string text)

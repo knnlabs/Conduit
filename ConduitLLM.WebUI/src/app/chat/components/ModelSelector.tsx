@@ -1,18 +1,13 @@
 import { Select } from '@mantine/core';
 import { useMemo } from 'react';
-
-interface Model {
-  id: string;
-  displayName: string;
-  supportsVision?: boolean;
-}
+import type { DiscoveryModel } from '@/app/chat/hooks/useDiscoveryModels';
 
 interface ModelSelectorProps {
   label?: string;
   placeholder?: string;
   value: string | null;
   onChange: (value: string | null) => void;
-  modelData?: Model[];
+  modelData?: DiscoveryModel[];
   style?: React.CSSProperties;
   disabled?: boolean;
 }
@@ -30,7 +25,7 @@ export function ModelSelector({
   const models = useMemo(() => 
     modelData?.map(m => ({
       value: m.id,
-      label: m.displayName
+      label: m.display_name ?? m.id
     })) ?? []
   , [modelData]);
 

@@ -25,16 +25,15 @@ import {
 } from '../types';
 import { usePerformanceSettings } from '../hooks/usePerformanceSettings';
 import { useChatStore } from '../hooks/useChatStore';
-import { useModels } from '../hooks/useModels';
 import { useDiscoveryModels } from '../hooks/useDiscoveryModels';
+import { ModelCapability } from '@knn_labs/conduit-core-client';
 import { useChatStreamingLogic } from './ChatStreamingLogic';
 import { DynamicParameters } from '@/components/parameters/DynamicParameters';
 import { useParameterState } from '@/components/parameters/hooks/useParameterState';
 import Link from 'next/link';
 
 export function ChatInterface() {
-  const { data: modelData, isLoading: modelsLoading } = useModels();
-  const { data: discoveryData } = useDiscoveryModels(); // Remove 'chat' filter since SupportsChat is false in DB
+  const { data: discoveryData, isLoading: modelsLoading } = useDiscoveryModels(ModelCapability.Chat); // Filter for chat-capable models only
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -57,10 +56,10 @@ export function ChatInterface() {
 
   // Set initial model when data loads
   useEffect(() => {
-    if (modelData && modelData.length > 0 && !selectedModel) {
-      setSelectedModel(modelData[0].id);
+    if (discoveryData?.data && discoveryData.data.length > 0 && !selectedModel) {
+      setSelectedModel(discoveryData.data[0].id);
     }
-  }, [modelData, selectedModel]);
+  }, [discoveryData, selectedModel]);
 
   // Ensure we have an active session
   useEffect(() => {
@@ -69,11 +68,10 @@ export function ChatInterface() {
     }
   }, [selectedModel, activeSessionId, createSession]);
 
-  const currentModel = modelData?.find(m => m.id === selectedModel);
   const currentDiscoveryModel = discoveryData?.data?.find(m => m.id === selectedModel);
   
-  // Use max_tokens from discovery API if available, otherwise fall back to hardcoded value
-  const maxContextTokens = currentDiscoveryModel?.max_tokens ?? currentModel?.maxContextTokens ?? 128000;
+  // Use max_tokens from discovery API
+  const maxContextTokens = currentDiscoveryModel?.max_tokens ?? 128000;
   
   // Use parameters from discovery model
   const modelParameters = currentDiscoveryModel?.parameters ?? '{}';
@@ -141,7 +139,7 @@ export function ChatInterface() {
     );
   }
 
-  if (!modelData || modelData.length === 0) {
+  if (!discoveryData?.data || discoveryData.data.length === 0) {
     return (
       <Container size="sm" mt="xl">
         <Alert icon={<IconAlertCircle size={16} />} color="yellow" title="No models available">
@@ -162,19 +160,19 @@ export function ChatInterface() {
                 <ModelSelector
                   value={selectedModel}
                   onChange={setSelectedModel}
-                  modelData={modelData}
+                  modelData={discoveryData?.data ?? []}
                   style={{ flex: 1, maxWidth: 400 }}
                 />
-                {currentModel?.supportsVision && (
+                {currentDiscoveryModel?.capabilities?.vision && (
                   <Badge variant="light" color="blue">
                     Vision Enabled
                   </Badge>
                 )}
-                {currentModel && (
+                {currentDiscoveryModel && (
                   <TokenCounter
                     messages={messages}
                     maxTokens={maxContextTokens}
-                    modelName={currentModel.displayName}
+                    modelName={currentDiscoveryModel.display_name ?? currentDiscoveryModel.id}
                     compact={true}
                     showCost={false}
                     currentInputText={currentInputText}
@@ -200,11 +198,11 @@ export function ChatInterface() {
                 />
                 
                 {/* Token Counter */}
-                {currentModel && (
+                {currentDiscoveryModel && (
                   <TokenCounter
                     messages={messages}
                     maxTokens={maxContextTokens}
-                    modelName={currentModel.displayName}
+                    modelName={currentDiscoveryModel.display_name ?? currentDiscoveryModel.id}
                     compact={false}
                     showCost={false}
                     currentInputText={currentInputText}
@@ -251,11 +249,11 @@ export function ChatInterface() {
             isStreaming={isLoading}
             onStopStreaming={() => {}}
             disabled={!selectedModel}
-            model={currentModel ? {
-              id: currentModel.id,
-              providerId: currentModel.providerId || '',
-              displayName: currentModel.displayName,
-              supportsVision: currentModel.supportsVision
+            model={currentDiscoveryModel ? {
+              id: currentDiscoveryModel.id,
+              providerId: '',
+              displayName: currentDiscoveryModel.display_name ?? currentDiscoveryModel.id,
+              supportsVision: currentDiscoveryModel.capabilities?.vision === true
             } : undefined}
             onInputChange={setCurrentInputText}
             onImagesChange={setCurrentInputImages}

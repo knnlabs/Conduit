@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { getBrowserCoreClient } from '@/lib/client/browserCoreClient';
 
 interface ModelParametersResponse {
   model_id: number;
@@ -21,18 +22,11 @@ export function useModelParameters(modelAlias: string | null) {
       }
 
       try {
-        // Use the discovery endpoint via the Next.js API route
-        const response = await fetch(`/api/discovery/models/${encodeURIComponent(modelAlias)}/parameters`);
+        // Get the browser client with ephemeral key
+        const client = await getBrowserCoreClient();
         
-        if (!response.ok) {
-          if (response.status === 404) {
-            // Model not found or has no parameters
-            return null;
-          }
-          throw new Error(`Failed to fetch model parameters: ${response.statusText}`);
-        }
-
-        const data = await response.json() as ModelParametersResponse;
+        // Use the SDK directly
+        const data = await client.discovery.getModelParameters(modelAlias);
         return data;
       } catch (error) {
         console.warn(`Failed to fetch parameters for model ${modelAlias}:`, error);
