@@ -206,7 +206,7 @@ export function CreateModelMappingModal({
               />
 
               {selectedModel && (
-                <Paper p="xs" bg="gray.0">
+                <Paper p="xs" withBorder>
                   <Text size="xs" fw={500} mb="xs">Model Capabilities:</Text>
                   <Flex gap="xs" wrap="wrap">
                     {selectedModel.supportsChat && <Badge size="sm" leftSection={<IconRobot size={12} />}>Chat</Badge>}

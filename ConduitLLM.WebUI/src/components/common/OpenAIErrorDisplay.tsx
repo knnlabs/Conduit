@@ -178,7 +178,7 @@ export function OpenAIErrorDisplay({
               </Button>
               
               <Collapse in={detailsOpen}>
-                <Paper withBorder p="sm" bg="gray.0" radius="sm">
+                <Paper withBorder p="sm" radius="sm">
                   <Stack gap="xs">
                     {error.originalError && (
                       <>

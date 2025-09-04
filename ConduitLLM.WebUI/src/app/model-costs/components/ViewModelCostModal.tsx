@@ -289,7 +289,7 @@ export function ViewModelCostModal({ isOpen, modelCost, onClose }: ViewModelCost
         </Card>
 
         {modelCost.description && (
-          <Card withBorder bg="gray.0">
+          <Card withBorder>
             <Stack gap="xs">
               <Text size="sm" fw={600}>Description</Text>
               <Text size="sm">{modelCost.description}</Text>
