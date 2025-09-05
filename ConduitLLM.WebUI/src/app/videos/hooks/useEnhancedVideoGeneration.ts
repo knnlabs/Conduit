@@ -1,16 +1,16 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useVideoStore } from './useVideoStore';
 import { videoSignalRClient } from '@/lib/client/videoSignalRClient';
+import { getBrowserCoreClient } from '@/lib/client/browserCoreClient';
 import type { 
   VideoSettings, 
   VideoTask, 
-  AsyncVideoGenerationResponse,
   VideoGenerationResult
 } from '../types';
 import { 
   createToastErrorHandler, 
   shouldShowBalanceWarning,
-  handleApiError
+  type VideoProgressCallbacks
 } from '@knn_labs/conduit-core-client';
 import { notifications } from '@mantine/notifications';
 
@@ -38,7 +38,7 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRetrying] = useState(false);
-  const [signalRConnected, setSignalRConnected] = useState(false);
+  const [signalRConnected] = useState(false);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { addTask, updateTask, setError } = useVideoStore();
 
@@ -50,10 +50,14 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
   const handleError = createToastErrorHandler(notifications.show);
 
   useEffect(() => {
+    // Store ref in closure to avoid stale closure warning
+    const intervalRef = pollingIntervalRef;
+    
     // Cleanup on unmount
     return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
+      const intervalId = intervalRef.current;
+      if (intervalId) {
+        clearInterval(intervalId);
       }
       void videoSignalRClient.disconnect();
     };
@@ -64,202 +68,110 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
     setError(null);
 
     try {
-      // Call the API to start video generation and get task ID + token
-      const response = await fetch('/api/videos/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt,
-          model: settings.model,
-          duration: settings.duration,
-          size: settings.size,
-          fps: settings.fps,
-          style: settings.style,
-          response_format: settings.responseFormat,
-          // Include dynamic parameters from the UI
-          ...dynamicParameters,
-        }),
-      });
-
-      if (!response.ok) {
-        let errorData: unknown;
-        try {
-          errorData = await response.json() as unknown;
-        } catch {
-          errorData = { error: response.statusText };
-        }
-        
-        // Create a mock HTTP error that the SDK can handle properly
-        const httpError = {
-          response: {
-            status: response.status,
-            data: errorData,
-            headers: Object.fromEntries(response.headers.entries())
-          },
-          message: response.statusText,
-          request: { url: '/api/videos/generate', method: 'POST' }
-        };
-        
-        // This will automatically throw the appropriate ConduitError subclass
-        handleApiError(httpError, '/api/videos/generate', 'POST');
-      }
-
-      const data = await response.json() as AsyncVideoGenerationResponse;
+      // Get the SDK client with ephemeral key
+      const client = await getBrowserCoreClient();
       
-      // Create task in store
-      const newTask: VideoTask = {
-        id: data.task_id,
+      // Prepare the video generation request
+      const request = {
         prompt,
-        status: 'pending',
-        progress: 0,
-        message: data.message ?? 'Initializing video generation...',
-        estimatedTimeToCompletion: data.estimated_time_to_completion,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        settings,
-        retryCount: 0,
-        retryHistory: [],
+        model: settings.model,
+        duration: settings.duration,
+        size: settings.size,
+        fps: settings.fps,
+        style: settings.style,
+        response_format: settings.responseFormat,
+        // Include dynamic parameters from the UI (e.g., start_image for Kling)
+        ...dynamicParameters,
       };
+
+      // Track the task ID for use in callbacks
+      let currentTaskId = '';
       
-      addTask(newTask);
+      // Define progress callbacks for the SDK
+      const progressCallbacks: VideoProgressCallbacks = {
+        onStarted: (taskId, estimatedSeconds) => {
+          console.warn(`Video generation started: ${taskId}, estimated time: ${estimatedSeconds}s`);
+          currentTaskId = taskId;
+          
+          const task: VideoTask = {
+            id: taskId,
+            prompt,
+            status: 'pending',
+            progress: 0,
+            estimatedTimeToCompletion: estimatedSeconds,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            settings,
+            retryCount: 0,
+            retryHistory: [],
+          };
+          addTask(task);
+        },
+        onProgress: (progress) => {
+          console.warn(`Video generation progress: ${progress.percentage}%`);
+          // Map SDK status to VideoTask status
+          let taskStatus: VideoTask['status'] = 'running';
+          if (progress.status === 'completed') taskStatus = 'completed';
+          else if (progress.status === 'failed') taskStatus = 'failed';
+          else if (progress.status === 'cancelled') taskStatus = 'cancelled';
+          
+          updateTask(currentTaskId, {
+            progress: progress.percentage,
+            status: taskStatus,
+            message: progress.message,
+            updatedAt: new Date().toISOString(),
+          });
+        },
+        onCompleted: (result) => {
+          console.warn('Video generation completed:', result);
+          
+          // The SDK returns VideoGenerationResponse, convert to local VideoGenerationResult
+          updateTask(currentTaskId, {
+            status: 'completed',
+            progress: 100,
+            result: result as VideoGenerationResult,
+            updatedAt: new Date().toISOString(),
+          });
+          
+          // Show success notification
+          notifications.show({
+            title: 'Video Generated',
+            message: 'Your video has been generated successfully!',
+            color: 'green',
+          });
+        },
+        onFailed: (error) => {
+          console.error('Video generation failed:', error);
+          
+          const errorMessage = typeof error === 'string' ? error : 'Video generation failed';
+          setError(errorMessage);
+          
+          // Update task status
+          updateTask(currentTaskId, {
+            status: 'failed',
+            error: errorMessage,
+            updatedAt: new Date().toISOString(),
+          });
+          
+          notifications.show({
+            title: 'Video Generation Failed',
+            message: errorMessage,
+            color: 'red',
+          });
+        },
+      };
 
-      // Try to use SignalR with ephemeral key
-      // The client will get its own ephemeral key internally
-      try {
-        await videoSignalRClient.connect(
-          data.task_id,
-          undefined, // Let the client get its own ephemeral key
-          {
-            onProgress: (update) => {
-              updateTask(data.task_id, {
-                status: update.status === 'Processing' ? 'running' : update.status.toLowerCase() as VideoTask['status'],
-                progress: update.progress ?? 0,
-                message: update.message,
-                updatedAt: new Date().toISOString(),
-              });
-            },
-            onCompleted: (videoUrl) => {
-              updateTask(data.task_id, {
-                status: 'completed',
-                progress: 100,
-                result: {
-                  created: Date.now(),
-                  data: [{ url: videoUrl }]
-                },
-                updatedAt: new Date().toISOString(),
-              });
-              setIsGenerating(false);
-            },
-            onFailed: (error) => {
-              updateTask(data.task_id, {
-                status: 'failed',
-                error,
-                message: 'Video generation failed',
-                updatedAt: new Date().toISOString(),
-              });
-              setError(error);
-              setIsGenerating(false);
-            },
-          }
-        );
-        setSignalRConnected(true);
-        signalRErrorCount.current = 0;
-        return; // SignalR will handle updates
-      } catch (signalRError) {
-        console.warn('Failed to connect to SignalR, falling back to polling:', signalRError);
-        signalRErrorCount.current++;
-        setSignalRConnected(false);
-        // Continue with polling fallback
-      }
+      // Use SDK's generateWithProgress method which handles SignalR + polling
+      const { taskId, result } = await client.videos.generateWithProgress(
+        request,
+        progressCallbacks
+      );
 
-      // Start legacy polling
-      pollingIntervalRef.current = setInterval(() => {
-        void (async () => {
-          try {
-            const statusResponse = await fetch(`/api/videos/tasks/${data.task_id}`);
-            if (!statusResponse.ok) {
-              throw new Error('Failed to get task status');
-            }
-            
-            const status = await statusResponse.json() as AsyncVideoGenerationResponse;
-            
-            updateTask(data.task_id, {
-              status: status.status === 'Processing' ? 'running' : status.status.toLowerCase() as VideoTask['status'],
-              progress: status.progress,
-              message: status.message,
-              updatedAt: status.updated_at,
-            });
-
-            // Check for both uppercase and lowercase status values
-            const normalizedStatus = status.status.toLowerCase();
-            if (['completed', 'failed', 'cancelled', 'timedout'].includes(normalizedStatus)) {
-              if (pollingIntervalRef.current) {
-                clearInterval(pollingIntervalRef.current);
-                pollingIntervalRef.current = null;
-              }
-              setIsGenerating(false);
-              
-              if (normalizedStatus === 'completed' && status.result) {
-                // Parse the result JSON string
-                interface VideoResultData {
-                  VideoUrl?: string;
-                  videoUrl?: string;
-                  Duration?: number;
-                  Resolution?: string;
-                  FileSize?: number;
-                  Model?: string;
-                }
-                
-                let parsedResult: VideoResultData;
-                try {
-                  parsedResult = typeof status.result === 'string' 
-                    ? JSON.parse(status.result) as VideoResultData
-                    : status.result as VideoResultData;
-                } catch (e) {
-                  console.error('Failed to parse video result:', e);
-                  parsedResult = status.result as VideoResultData;
-                }
-                
-                console.warn('Parsed video result:', parsedResult);
-                
-                // Transform to expected VideoGenerationResult format
-                const videoResult: VideoGenerationResult = {
-                  created: Date.now() / 1000,
-                  data: [{
-                    url: parsedResult.VideoUrl ?? parsedResult.videoUrl ?? '',
-                    metadata: {
-                      duration: parsedResult.Duration ?? 0,
-                      resolution: parsedResult.Resolution ?? '',
-                      file_size_bytes: parsedResult.FileSize ?? 0,
-                    }
-                  }],
-                  model: parsedResult.Model ?? '',
-                };
-                
-                console.warn('Transformed video result:', videoResult);
-                
-                updateTask(data.task_id, {
-                  status: 'completed',
-                  result: videoResult,
-                });
-              } else if (normalizedStatus === 'failed') {
-                setError(status.error ?? 'Video generation failed');
-              }
-            }
-          } catch (error) {
-            const errorMessage = handleError(error, 'check task status');
-            if (pollingIntervalRef.current) {
-              clearInterval(pollingIntervalRef.current);
-              pollingIntervalRef.current = null;
-            }
-            setIsGenerating(false);
-            setError(errorMessage);
-          }
-        })();
-      }, 2000);
-
+      console.warn('Video generation initiated with task ID:', taskId);
+      
+      // Wait for the result (this promise is already being tracked by callbacks)
+      await result;
+      
     } catch (error) {
       // Use enhanced error handler with toast notifications
       const errorMessage = handleError(error, 'generate video');
@@ -270,6 +182,8 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
       if (shouldShowBalanceWarning(error)) {
         setError('Please add credits to your account to generate videos.');
       }
+    } finally {
+      setIsGenerating(false);
     }
   }, [
     addTask,
@@ -280,22 +194,18 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
 
   const cancelGeneration = useCallback(async (taskId: string) => {
     try {
-      const response = await fetch(`/api/videos/tasks/${taskId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to cancel task: ${response.statusText}`);
-      }
+      // Get the SDK client with ephemeral key
+      const client = await getBrowserCoreClient();
+      
+      // Use SDK to cancel the task
+      await client.videos.cancelTask(taskId);
 
       updateTask(taskId, { status: 'cancelled' });
       
-      // Stop polling if active
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-        setIsGenerating(false);
-      }
+      // Disconnect SignalR if connected
+      await videoSignalRClient.disconnect();
+      
+      setIsGenerating(false);
     } catch (error) {
       console.error('Error cancelling task:', error);
       setError(error instanceof Error ? error.message : 'Failed to cancel task');

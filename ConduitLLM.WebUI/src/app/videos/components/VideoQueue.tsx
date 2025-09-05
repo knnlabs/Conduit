@@ -161,12 +161,20 @@ function getStatusText(status: string): string {
   }
 }
 
-function formatTime(seconds: number): string {
-  if (seconds < 60) {
-    return `${Math.round(seconds)}s`;
+function formatTime(seconds: number | undefined): string {
+  // Handle undefined, null, or NaN values
+  if (seconds === undefined || seconds === null || isNaN(seconds)) {
+    return 'calculating...';
+  }
+  
+  // Ensure we have a valid positive number
+  const validSeconds = Math.max(0, seconds);
+  
+  if (validSeconds < 60) {
+    return `${Math.round(validSeconds)}s`;
   } else {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = Math.round(seconds % 60);
+    const minutes = Math.floor(validSeconds / 60);
+    const remainingSeconds = Math.round(validSeconds % 60);
     return `${minutes}m ${remainingSeconds}s`;
   }
 }

@@ -74,6 +74,52 @@ namespace ConduitLLM.Core.Events
     }
 
     // ===============================
+    // Model Domain Events
+    // ===============================
+
+    /// <summary>
+    /// Raised when a model is created, updated, or deleted
+    /// Critical for discovery cache invalidation
+    /// </summary>
+    public record ModelUpdated : DomainEvent
+    {
+        /// <summary>
+        /// Model database ID
+        /// </summary>
+        public int ModelId { get; init; }
+        
+        /// <summary>
+        /// Model name
+        /// </summary>
+        public string ModelName { get; init; } = string.Empty;
+        
+        /// <summary>
+        /// Model series ID
+        /// </summary>
+        public int ModelSeriesId { get; init; }
+        
+        /// <summary>
+        /// Type of change (Created, Updated, Deleted)
+        /// </summary>
+        public string ChangeType { get; init; } = string.Empty;
+        
+        /// <summary>
+        /// Properties that were changed (for selective invalidation)
+        /// </summary>
+        public string[] ChangedProperties { get; init; } = Array.Empty<string>();
+        
+        /// <summary>
+        /// Whether parameters were updated
+        /// </summary>
+        public bool ParametersChanged { get; init; }
+        
+        /// <summary>
+        /// Partition key for ordered processing per model
+        /// </summary>
+        public string PartitionKey => ModelId.ToString();
+    }
+
+    // ===============================
     // Model Mapping Domain Events
     // ===============================
 

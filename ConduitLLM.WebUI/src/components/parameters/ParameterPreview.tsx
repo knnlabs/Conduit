@@ -57,6 +57,7 @@ export function ParameterPreview({
                 initialValues[key] = false;
                 break;
               case 'text':
+              case 'input':  // Handle 'input' type the same as 'text'
               case 'textarea':
               case 'color':
                 initialValues[key] = '';
@@ -155,7 +156,7 @@ export function ParameterPreview({
               <Divider />
               <Box>
                 <Text size="xs" c="dimmed" mb="xs">Current Values:</Text>
-                <Paper p="xs" withBorder bg="gray.0">
+                <Paper p="xs" withBorder>
                   <Text size="xs" style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
                     {JSON.stringify(values, null, 2)}
                   </Text>

@@ -9,6 +9,7 @@ using Xunit.Abstractions;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Http.Authentication;
+using ConduitLLM.Http.Services;
 
 namespace ConduitLLM.Tests.Http.Authentication
 {
@@ -18,6 +19,7 @@ namespace ConduitLLM.Tests.Http.Authentication
     public class VirtualKeyAuthenticationHandlerTests : TestBase
     {
         private readonly Mock<IVirtualKeyService> _virtualKeyServiceMock;
+        private readonly Mock<IEphemeralKeyService> _ephemeralKeyServiceMock;
         private readonly Mock<IOptionsMonitor<AuthenticationSchemeOptions>> _optionsMock;
         private readonly Mock<ILoggerFactory> _loggerFactoryMock;
         private readonly Mock<ILogger<VirtualKeyAuthenticationHandler>> _loggerMock;
@@ -27,6 +29,7 @@ namespace ConduitLLM.Tests.Http.Authentication
         public VirtualKeyAuthenticationHandlerTests(ITestOutputHelper output) : base(output)
         {
             _virtualKeyServiceMock = new Mock<IVirtualKeyService>();
+            _ephemeralKeyServiceMock = new Mock<IEphemeralKeyService>();
             _optionsMock = new Mock<IOptionsMonitor<AuthenticationSchemeOptions>>();
             _loggerFactoryMock = new Mock<ILoggerFactory>();
             _loggerMock = CreateLogger<VirtualKeyAuthenticationHandler>();
@@ -41,7 +44,8 @@ namespace ConduitLLM.Tests.Http.Authentication
                 _optionsMock.Object,
                 _loggerFactoryMock.Object,
                 UrlEncoder.Default,
-                _virtualKeyServiceMock.Object);
+                _virtualKeyServiceMock.Object,
+                _ephemeralKeyServiceMock.Object);
 
             _httpContext = new DefaultHttpContext();
         }
@@ -107,7 +111,7 @@ namespace ConduitLLM.Tests.Http.Authentication
         }
 
         [Fact]
-        public async Task HandleAuthenticateAsync_WithMissingVirtualKey_ReturnsFailure()
+        public async Task HandleAuthenticateAsync_WithMissingVirtualKey_ReturnsNoResult()
         {
             // Arrange
             _httpContext.Request.Path = "/v1/chat/completions";
@@ -120,7 +124,7 @@ namespace ConduitLLM.Tests.Http.Authentication
 
             // Assert
             Assert.False(result.Succeeded);
-            Assert.Equal("Missing Virtual Key", result.Failure.Message);
+            Assert.True(result.None); // Returns NoResult to allow other auth schemes
             
             _virtualKeyServiceMock.Verify(s => s.ValidateVirtualKeyForAuthenticationAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         }
@@ -266,6 +270,87 @@ namespace ConduitLLM.Tests.Http.Authentication
             Assert.Equal("Authentication error", result.Failure.Message);
             
             _virtualKeyServiceMock.Verify(s => s.ValidateVirtualKeyForAuthenticationAsync(keyValue, null), Times.Once);
+        }
+
+        [Fact]
+        public async Task HandleAuthenticateAsync_WithValidEphemeralKey_ReturnsSuccessResult()
+        {
+            // Arrange
+            var ephemeralKey = "ek_test123";
+            var actualVirtualKey = "condt_actual456";
+            var virtualKeyEntity = CreateValidVirtualKey();
+            
+            _httpContext.Request.Headers["Authorization"] = $"Bearer {ephemeralKey}";
+            _httpContext.Request.Path = "/v1/media/upload";
+            
+            var keyData = new ConduitLLM.Http.Models.EphemeralKeyData
+            {
+                VirtualKeyId = 1,
+                ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(5),
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+            
+            _ephemeralKeyServiceMock.Setup(s => s.GetKeyDataAsync(ephemeralKey))
+                .ReturnsAsync(keyData);
+            
+            _ephemeralKeyServiceMock.Setup(s => s.GetVirtualKeyAsync(ephemeralKey))
+                .ReturnsAsync(actualVirtualKey);
+            
+            _virtualKeyServiceMock.Setup(s => s.ValidateVirtualKeyForAuthenticationAsync(actualVirtualKey, null))
+                .ReturnsAsync(virtualKeyEntity);
+
+            await InitializeHandler();
+
+            // Act
+            var result = await _handler.AuthenticateAsync();
+
+            // Assert
+            Assert.True(result.Succeeded);
+            Assert.NotNull(result.Principal);
+            Assert.Equal("VirtualKey", result.Principal.Identity.AuthenticationType);
+            
+            // Verify context items are set
+            Assert.Equal(1, _httpContext.Items["VirtualKeyId"]);
+            Assert.Equal(actualVirtualKey, _httpContext.Items["VirtualKey"]);
+            Assert.True((bool)_httpContext.Items["IsEphemeralKey"]);
+            Assert.Equal("EphemeralKey", _httpContext.Items["AuthType"]);
+            
+            _ephemeralKeyServiceMock.Verify(s => s.GetKeyDataAsync(ephemeralKey), Times.Once);
+            _ephemeralKeyServiceMock.Verify(s => s.GetVirtualKeyAsync(ephemeralKey), Times.Once);
+            _virtualKeyServiceMock.Verify(s => s.ValidateVirtualKeyForAuthenticationAsync(actualVirtualKey, null), Times.Once);
+        }
+
+        [Fact]
+        public async Task HandleAuthenticateAsync_WithExpiredEphemeralKey_ReturnsFailure()
+        {
+            // Arrange
+            var ephemeralKey = "ek_expired";
+            
+            _httpContext.Request.Headers["Authorization"] = $"Bearer {ephemeralKey}";
+            _httpContext.Request.Path = "/v1/media/upload";
+            
+            var keyData = new ConduitLLM.Http.Models.EphemeralKeyData
+            {
+                VirtualKeyId = 1,
+                ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-5), // Expired
+                CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-10)
+            };
+            
+            _ephemeralKeyServiceMock.Setup(s => s.GetKeyDataAsync(ephemeralKey))
+                .ReturnsAsync(keyData);
+
+            await InitializeHandler();
+
+            // Act
+            var result = await _handler.AuthenticateAsync();
+
+            // Assert
+            Assert.False(result.Succeeded);
+            Assert.Equal("Ephemeral key expired", result.Failure.Message);
+            
+            _ephemeralKeyServiceMock.Verify(s => s.GetKeyDataAsync(ephemeralKey), Times.Once);
+            _ephemeralKeyServiceMock.Verify(s => s.GetVirtualKeyAsync(It.IsAny<string>()), Times.Never);
+            _virtualKeyServiceMock.Verify(s => s.ValidateVirtualKeyForAuthenticationAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         }
 
         /// <summary>

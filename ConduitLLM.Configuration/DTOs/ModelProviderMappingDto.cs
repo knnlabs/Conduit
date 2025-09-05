@@ -67,5 +67,61 @@ namespace ConduitLLM.Configuration.DTOs
         /// Optional notes or description for this mapping
         /// </summary>
         public string? Notes { get; set; }
+
+        /// <summary>
+        /// Model capability flags (populated from Model entity)
+        /// </summary>
+        public ModelCapabilitiesDto? Capabilities { get; set; }
+    }
+
+    /// <summary>
+    /// Data transfer object for model capabilities
+    /// </summary>
+    public class ModelCapabilitiesDto
+    {
+        /// <summary>
+        /// Indicates whether this model supports vision/image inputs
+        /// </summary>
+        public bool SupportsVision { get; set; }
+
+        /// <summary>
+        /// Indicates whether this model supports image generation
+        /// </summary>
+        public bool SupportsImageGeneration { get; set; }
+
+        /// <summary>
+        /// Indicates whether this model supports video generation
+        /// </summary>
+        public bool SupportsVideoGeneration { get; set; }
+
+        /// <summary>
+        /// Indicates whether this model supports embedding generation
+        /// </summary>
+        public bool SupportsEmbeddings { get; set; }
+
+        /// <summary>
+        /// Indicates whether this model supports chat completions
+        /// </summary>
+        public bool SupportsChat { get; set; }
+
+        /// <summary>
+        /// Indicates whether this model supports function calling
+        /// </summary>
+        public bool SupportsFunctionCalling { get; set; }
+
+        /// <summary>
+        /// Indicates whether this model supports streaming responses
+        /// </summary>
+        public bool SupportsStreaming { get; set; }
+
+        /// <summary>
+        /// Maximum input tokens of the model
+        /// </summary>
+        public int? MaxInputTokens { get; set; }
+
+        /// <summary>
+        /// Maximum output tokens of the model
+        /// </summary>
+        public int? MaxOutputTokens { get; set; }
     }
 }

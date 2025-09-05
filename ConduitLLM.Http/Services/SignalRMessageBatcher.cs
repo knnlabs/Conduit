@@ -1,9 +1,11 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
 
+using ConduitLLM.Configuration.Services;
 using ConduitLLM.Http.Models;
 
 using Microsoft.AspNetCore.SignalR;
+using StackExchange.Redis;
 
 namespace ConduitLLM.Http.Services
 {
@@ -63,10 +65,18 @@ namespace ConduitLLM.Http.Services
         private readonly ILogger<SignalRMessageBatcher> _logger;
         private readonly IConfiguration _configuration;
         private readonly IServiceProvider _serviceProvider;
+        private readonly RedisConnectionFactory _redisConnectionFactory;
         
-        // Batching data structures
-        private readonly ConcurrentDictionary<string, MessageBatch> _activeBatches = new();
-        private readonly ConcurrentQueue<BatchKey> _batchQueue = new();
+        // Redis connection
+        private IDatabase? _redis;
+        
+        // Redis keys
+        private readonly string _activeBatchesKey;
+        private readonly string _batchQueueKey;
+        private readonly string _messagesByMethodKey;
+        private readonly string _statisticsKey;
+        
+        // Synchronization
         private readonly SemaphoreSlim _batchProcessingLock;
         
         // Timers
@@ -79,13 +89,6 @@ namespace ConduitLLM.Http.Services
         private readonly long _maxBatchSizeBytes;
         private readonly bool _groupByMethod;
         
-        // Statistics
-        private long _totalMessagesBatched;
-        private long _totalBatchesSent;
-        private long _totalBatchLatency;
-        private DateTime _lastBatchSentAt = DateTime.UtcNow;
-        private readonly ConcurrentDictionary<string, long> _messagesByMethod = new();
-        
         // State
         private bool _isBatchingEnabled = true;
         private readonly object _stateLock = new();
@@ -93,11 +96,19 @@ namespace ConduitLLM.Http.Services
         public SignalRMessageBatcher(
             ILogger<SignalRMessageBatcher> logger,
             IConfiguration configuration,
-            IServiceProvider serviceProvider)
+            IServiceProvider serviceProvider,
+            RedisConnectionFactory redisConnectionFactory)
         {
             _logger = logger;
             _configuration = configuration;
             _serviceProvider = serviceProvider;
+            _redisConnectionFactory = redisConnectionFactory;
+
+            // Redis keys
+            _activeBatchesKey = "signalr:batches:active";
+            _batchQueueKey = "signalr:batches:queue";
+            _messagesByMethodKey = "signalr:batches:stats:methods";
+            _statisticsKey = "signalr:batches:stats:global";
 
             // Load configuration
             _batchWindow = TimeSpan.FromMilliseconds(configuration.GetValue<int>("SignalR:Batching:WindowMs", 100));
@@ -108,22 +119,62 @@ namespace ConduitLLM.Http.Services
             _batchProcessingLock = new SemaphoreSlim(1, 1);
         }
 
-        public Task StartAsync(CancellationToken cancellationToken)
+        public async Task StartAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation(
                 "SignalR Message Batcher starting with window: {Window}ms, max size: {MaxSize}",
                 _batchWindow.TotalMilliseconds, _maxBatchSize);
 
-            _batchTimer = new Timer(
-                ProcessBatches,
-                null,
-                _batchWindow,
-                _batchWindow);
+            try
+            {
+                var connection = await _redisConnectionFactory.GetConnectionAsync();
+                _redis = connection.GetDatabase();
 
-            return Task.CompletedTask;
+                // Initialize statistics in Redis if they don't exist
+                await InitializeStatisticsAsync();
+
+                _batchTimer = new Timer(
+                    ProcessBatches,
+                    null,
+                    _batchWindow,
+                    _batchWindow);
+
+                _logger.LogInformation("SignalR Message Batcher started with Redis backend");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to start SignalR Message Batcher");
+                throw;
+            }
         }
 
-        public Task StopAsync(CancellationToken cancellationToken)
+        private async Task InitializeStatisticsAsync()
+        {
+            if (_redis == null) return;
+
+            try
+            {
+                var exists = await _redis.HashExistsAsync(_statisticsKey, "totalMessagesBatched");
+                if (!exists)
+                {
+                    var stats = new Dictionary<string, string>
+                    {
+                        ["totalMessagesBatched"] = "0",
+                        ["totalBatchesSent"] = "0",
+                        ["totalBatchLatency"] = "0",
+                        ["lastBatchSentAt"] = DateTime.UtcNow.ToBinary().ToString()
+                    };
+
+                    await _redis.HashSetAsync(_statisticsKey, stats.Select(kvp => new HashEntry(kvp.Key, kvp.Value)).ToArray());
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to initialize statistics in Redis");
+            }
+        }
+
+        public async Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation("SignalR Message Batcher stopping");
 
@@ -133,9 +184,18 @@ namespace ConduitLLM.Http.Services
             }
 
             // Flush remaining batches
-            FlushAllBatchesAsync().Wait(TimeSpan.FromSeconds(5));
-
-            return Task.CompletedTask;
+            try
+            {
+                await FlushAllBatchesAsync().WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("Batch flush operation timed out during shutdown");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error flushing batches during shutdown");
+            }
         }
 
         public async Task AddMessageAsync(
@@ -156,34 +216,37 @@ namespace ConduitLLM.Http.Services
             var batchKey = new BatchKey(hubName, methodName, connectionId, groupName);
             var messageSize = EstimateMessageSize(message);
 
-            var batch = _activeBatches.AddOrUpdate(
-                batchKey.ToString(),
-                key => CreateNewBatch(batchKey),
-                (key, existingBatch) => existingBatch);
-
-            lock (batch.SyncRoot)
+            if (_redis == null)
             {
+                _logger.LogWarning("Redis not available, sending message directly");
+                await SendMessageDirectlyAsync(hubName, methodName, message, connectionId, groupName);
+                return;
+            }
+
+            try
+            {
+                var batchKeyString = batchKey.ToString();
+                var batch = await GetOrCreateBatchAsync(batchKeyString, batchKey);
+
                 // Check if adding this message would exceed limits
-                if (batch.Messages.Count() >= _maxBatchSize || 
+                if (batch.Messages.Count >= _maxBatchSize || 
                     batch.TotalSizeBytes + messageSize > _maxBatchSizeBytes)
                 {
                     // Queue this batch for immediate sending
                     if (!batch.IsQueued)
                     {
                         batch.IsQueued = true;
-                        _batchQueue.Enqueue(batchKey);
+                        await _redis.ListRightPushAsync(_batchQueueKey, batchKeyString);
                         
                         // Trigger immediate processing
                         _ = Task.Run(async () => await ProcessBatchesAsync());
                     }
 
                     // Create a new batch for this message
-                    batch = _activeBatches.AddOrUpdate(
-                        batchKey.ToString(),
-                        key => CreateNewBatch(batchKey),
-                        (key, _) => CreateNewBatch(batchKey));
+                    batch = CreateNewBatch(batchKey);
                 }
 
+                // Add message to batch
                 batch.Messages.Add(message);
                 batch.TotalSizeBytes += messageSize;
                 batch.Priority = Math.Max(batch.Priority, priority);
@@ -193,50 +256,164 @@ namespace ConduitLLM.Http.Services
                     batch.ContainsCriticalMessages = true;
                 }
 
-                Interlocked.Increment(ref _totalMessagesBatched);
-                _messagesByMethod.AddOrUpdate(methodName, 1, (_, count) => count + 1);
-            }
+                // Save updated batch to Redis
+                var batchData = JsonSerializer.Serialize(batch);
+                await _redis.HashSetAsync(_activeBatchesKey, batchKeyString, batchData);
 
-            _logger.LogTrace(
-                "Added message to batch for {HubName}.{MethodName}, batch size: {Size}",
-                hubName, methodName, batch.Messages.Count());
+                // Update statistics
+                await _redis.HashIncrementAsync(_statisticsKey, "totalMessagesBatched");
+                await _redis.HashIncrementAsync(_messagesByMethodKey, methodName);
+
+                _logger.LogTrace(
+                    "Added message to batch for {HubName}.{MethodName}, batch size: {Size}",
+                    hubName, methodName, batch.Messages.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to add message to batch, sending directly");
+                await SendMessageDirectlyAsync(hubName, methodName, message, connectionId, groupName);
+            }
         }
 
         public BatchingStatistics GetStatistics()
         {
-            var stats = new BatchingStatistics
-            {
-                TotalMessagesBatched = _totalMessagesBatched,
-                TotalBatchesSent = _totalBatchesSent,
-                CurrentPendingMessages = _activeBatches.Sum(b => b.Value.Messages.Count()),
-                LastBatchSentAt = _lastBatchSentAt,
-                IsBatchingEnabled = _isBatchingEnabled,
-                MessagesByMethod = _messagesByMethod.ToDictionary(kvp => kvp.Key, kvp => kvp.Value)
-            };
+            // Synchronous wrapper for backward compatibility
+            return GetStatisticsAsync().GetAwaiter().GetResult();
+        }
 
-            if (_totalBatchesSent > 0)
+        public async Task<BatchingStatistics> GetStatisticsAsync()
+        {
+            if (_redis == null)
             {
-                stats.AverageMessagesPerBatch = (double)_totalMessagesBatched / _totalBatchesSent;
-                stats.AverageBatchLatency = TimeSpan.FromMilliseconds(_totalBatchLatency / _totalBatchesSent);
-                stats.NetworkCallsSaved = _totalMessagesBatched - _totalBatchesSent;
-                stats.BatchEfficiencyPercentage = (1.0 - ((double)_totalBatchesSent / _totalMessagesBatched)) * 100;
+                return new BatchingStatistics { IsBatchingEnabled = _isBatchingEnabled };
             }
 
-            return stats;
+            try
+            {
+                var globalStats = await _redis.HashGetAllAsync(_statisticsKey);
+                var methodStats = await _redis.HashGetAllAsync(_messagesByMethodKey);
+                var pendingMessages = await GetCurrentPendingMessagesAsync();
+
+                var stats = new BatchingStatistics
+                {
+                    TotalMessagesBatched = GetLongValue(globalStats, "totalMessagesBatched"),
+                    TotalBatchesSent = GetLongValue(globalStats, "totalBatchesSent"),
+                    CurrentPendingMessages = pendingMessages,
+                    LastBatchSentAt = GetDateTimeValue(globalStats, "lastBatchSentAt"),
+                    IsBatchingEnabled = _isBatchingEnabled,
+                    MessagesByMethod = methodStats.ToDictionary(kvp => kvp.Name.ToString(), kvp => (long)kvp.Value)
+                };
+
+                if (stats.TotalBatchesSent > 0)
+                {
+                    stats.AverageMessagesPerBatch = (double)stats.TotalMessagesBatched / stats.TotalBatchesSent;
+                    var totalBatchLatency = GetLongValue(globalStats, "totalBatchLatency");
+                    stats.AverageBatchLatency = TimeSpan.FromMilliseconds(totalBatchLatency / stats.TotalBatchesSent);
+                    stats.NetworkCallsSaved = stats.TotalMessagesBatched - stats.TotalBatchesSent;
+                    stats.BatchEfficiencyPercentage = (1.0 - ((double)stats.TotalBatchesSent / stats.TotalMessagesBatched)) * 100;
+                }
+
+                return stats;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get statistics from Redis");
+                return new BatchingStatistics { IsBatchingEnabled = _isBatchingEnabled };
+            }
+        }
+
+        private long GetLongValue(HashEntry[] hashEntries, string key)
+        {
+            var entry = hashEntries.FirstOrDefault(h => h.Name == key);
+            return entry.Value.HasValue && long.TryParse(entry.Value, out var value) ? value : 0;
+        }
+
+        private DateTime GetDateTimeValue(HashEntry[] hashEntries, string key)
+        {
+            var entry = hashEntries.FirstOrDefault(h => h.Name == key);
+            if (entry.Value.HasValue && long.TryParse(entry.Value, out var binary))
+            {
+                try
+                {
+                    return DateTime.FromBinary(binary);
+                }
+                catch
+                {
+                    return DateTime.UtcNow;
+                }
+            }
+            return DateTime.UtcNow;
+        }
+
+        private async Task<long> GetCurrentPendingMessagesAsync()
+        {
+            try
+            {
+                var activeBatches = await _redis!.HashGetAllAsync(_activeBatchesKey);
+                long totalPending = 0;
+
+                foreach (var batchData in activeBatches)
+                {
+                    try
+                    {
+                        var batch = JsonSerializer.Deserialize<MessageBatch>(batchData.Value!);
+                        if (batch != null)
+                        {
+                            totalPending += batch.Messages.Count;
+                        }
+                    }
+                    catch (JsonException ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to deserialize batch data for pending message count");
+                    }
+                }
+
+                return totalPending;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get pending messages count");
+                return 0;
+            }
         }
 
         public async Task FlushAllBatchesAsync()
         {
+            if (_redis == null)
+            {
+                _logger.LogWarning("Redis not available, cannot flush batches");
+                return;
+            }
+
             _logger.LogInformation("Flushing all pending batches");
 
-            var allBatchKeys = _activeBatches.Keys.ToList();
-            foreach (var key in allBatchKeys)
+            try
             {
-                if (_activeBatches.TryGetValue(key, out var batch))
+                var activeBatches = await _redis.HashGetAllAsync(_activeBatchesKey);
+                var flushTasks = new List<Task>();
+
+                foreach (var batchEntry in activeBatches)
                 {
-                    var batchKey = new BatchKey(batch.HubName, batch.MethodName, batch.ConnectionId, batch.GroupName);
-                    await SendBatchAsync(batchKey, batch);
+                    try
+                    {
+                        var batch = JsonSerializer.Deserialize<MessageBatch>(batchEntry.Value!);
+                        if (batch != null)
+                        {
+                            var batchKey = new BatchKey(batch.HubName, batch.MethodName, batch.ConnectionId, batch.GroupName);
+                            flushTasks.Add(SendBatchAsync(batchKey, batch, batchEntry.Name!));
+                        }
+                    }
+                    catch (JsonException ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to deserialize batch data during flush for key {Key}", batchEntry.Name);
+                    }
                 }
+
+                await Task.WhenAll(flushTasks);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error flushing all batches");
             }
         }
 
@@ -277,36 +454,57 @@ namespace ConduitLLM.Http.Services
             try
             {
                 var now = DateTime.UtcNow;
-                var batchesToSend = new List<(BatchKey Key, MessageBatch Batch)>();
+                if (_redis == null)
+                {
+                    return;
+                }
+
+                var batchesToSend = new List<(BatchKey Key, MessageBatch Batch, string KeyString)>();
 
                 // Check all active batches
-                foreach (var kvp in _activeBatches)
+                var activeBatches = await _redis.HashGetAllAsync(_activeBatchesKey);
+                foreach (var batchEntry in activeBatches)
                 {
-                    var batch = kvp.Value;
-                    
-                    lock (batch.SyncRoot)
+                    try
                     {
-                        if (batch.Messages.Count() > 0 && 
+                        var batch = JsonSerializer.Deserialize<MessageBatch>(batchEntry.Value!);
+                        if (batch != null && batch.Messages.Count > 0 && 
                             (now - batch.CreatedAt >= _batchWindow || batch.IsQueued))
                         {
                             var batchKey = new BatchKey(batch.HubName, batch.MethodName, batch.ConnectionId, batch.GroupName);
-                            batchesToSend.Add((batchKey, batch));
+                            batchesToSend.Add((batchKey, batch, batchEntry.Name!));
                         }
+                    }
+                    catch (JsonException ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to deserialize batch data for key {Key}", batchEntry.Name);
                     }
                 }
 
                 // Send all ready batches
-                foreach (var (key, batch) in batchesToSend)
-                {
-                    await SendBatchAsync(key, batch);
-                }
+                var sendTasks = batchesToSend.Select(item => SendBatchAsync(item.Key, item.Batch, item.KeyString));
+                await Task.WhenAll(sendTasks);
 
                 // Process explicitly queued batches
-                while (_batchQueue.TryDequeue(out var batchKey))
+                string? queuedBatchKey;
+                while ((queuedBatchKey = await _redis.ListLeftPopAsync(_batchQueueKey)) != null)
                 {
-                    if (_activeBatches.TryGetValue(batchKey.ToString(), out var batch))
+                    var batchData = await _redis.HashGetAsync(_activeBatchesKey, queuedBatchKey);
+                    if (batchData.HasValue)
                     {
-                        await SendBatchAsync(batchKey, batch);
+                        try
+                        {
+                            var batch = JsonSerializer.Deserialize<MessageBatch>(batchData!);
+                            if (batch != null)
+                            {
+                                var batchKey = new BatchKey(batch.HubName, batch.MethodName, batch.ConnectionId, batch.GroupName);
+                                await SendBatchAsync(batchKey, batch, queuedBatchKey);
+                            }
+                        }
+                        catch (JsonException ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to deserialize queued batch data for key {Key}", queuedBatchKey);
+                        }
                     }
                 }
             }
@@ -320,25 +518,31 @@ namespace ConduitLLM.Http.Services
             }
         }
 
-        private async Task SendBatchAsync(BatchKey batchKey, MessageBatch batch)
+        private async Task SendBatchAsync(BatchKey batchKey, MessageBatch batch, string batchKeyString)
         {
-            if (_activeBatches.TryRemove(batchKey.ToString(), out _))
+            if (_redis == null)
             {
-                List<object> messagesToSend;
-                int messageCount;
+                return;
+            }
+
+            try
+            {
+                // Remove batch from active batches
+                var removed = await _redis.HashDeleteAsync(_activeBatchesKey, batchKeyString);
+                if (!removed)
+                {
+                    return; // Batch already processed
+                }
+
                 var batchLatency = DateTime.UtcNow - batch.CreatedAt;
 
-                lock (batch.SyncRoot)
+                if (batch.Messages.Count == 0)
                 {
-                    if (batch.Messages.Count() == 0)
-                    {
-                        return;
-                    }
-
-                    messagesToSend = new List<object>(batch.Messages);
-                    messageCount = messagesToSend.Count();
-                    batch.Messages.Clear();
+                    return;
                 }
+
+                var messagesToSend = new List<object>(batch.Messages);
+                var messageCount = messagesToSend.Count;
 
                 try
                 {
@@ -381,9 +585,12 @@ namespace ConduitLLM.Http.Services
                             .SendAsync($"{batch.MethodName}Batch", batchedMessage);
                     }
 
-                    Interlocked.Increment(ref _totalBatchesSent);
-                    Interlocked.Add(ref _totalBatchLatency, (long)batchLatency.TotalMilliseconds);
-                    _lastBatchSentAt = DateTime.UtcNow;
+                    // Update statistics in Redis
+                    await Task.WhenAll(
+                        _redis.HashIncrementAsync(_statisticsKey, "totalBatchesSent"),
+                        _redis.HashIncrementAsync(_statisticsKey, "totalBatchLatency", (long)batchLatency.TotalMilliseconds),
+                        _redis.HashSetAsync(_statisticsKey, "lastBatchSentAt", DateTime.UtcNow.ToBinary().ToString())
+                    );
 
                     _logger.LogDebug(
                         "Sent batch of {Count} messages for {HubName}.{MethodName}, latency: {Latency}ms",
@@ -396,6 +603,34 @@ namespace ConduitLLM.Http.Services
                         batch.HubName, batch.MethodName);
                 }
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in SendBatchAsync for key {Key}", batchKeyString);
+            }
+        }
+
+        private async Task<MessageBatch> GetOrCreateBatchAsync(string batchKeyString, BatchKey batchKey)
+        {
+            var batchData = await _redis!.HashGetAsync(_activeBatchesKey, batchKeyString);
+            
+            if (batchData.HasValue)
+            {
+                try
+                {
+                    var existingBatch = JsonSerializer.Deserialize<MessageBatch>(batchData!);
+                    if (existingBatch != null)
+                    {
+                        return existingBatch;
+                    }
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning(ex, "Failed to deserialize existing batch for key {Key}, creating new batch", batchKeyString);
+                }
+            }
+
+            // Create new batch if not found or deserialization failed
+            return CreateNewBatch(batchKey);
         }
 
         private async Task SendMessageDirectlyAsync(
@@ -512,7 +747,7 @@ namespace ConduitLLM.Http.Services
         /// </summary>
         private class MessageBatch
         {
-            public List<object> Messages { get; } = new();
+            public List<object> Messages { get; set; } = new();
             public string HubName { get; set; } = null!;
             public string MethodName { get; set; } = null!;
             public string? ConnectionId { get; set; }
@@ -522,7 +757,6 @@ namespace ConduitLLM.Http.Services
             public int Priority { get; set; }
             public bool ContainsCriticalMessages { get; set; }
             public bool IsQueued { get; set; }
-            public object SyncRoot { get; } = new();
         }
     }
 }

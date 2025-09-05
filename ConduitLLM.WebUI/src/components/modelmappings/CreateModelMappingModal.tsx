@@ -82,6 +82,18 @@ export function CreateModelMappingModal({
   const { data: associations, isLoading: associationsLoading } = useModelAssociations(form.values.modelId);
 
   const handleSubmit = async (values: FormValues) => {
+    // Validate all fields before submission
+    const validationErrors = form.validate();
+    if (validationErrors.hasErrors) {
+      // Show notification about validation errors
+      notifications.show({
+        title: 'Validation Error',
+        message: 'Please fill in all required fields correctly',
+        color: 'red',
+      });
+      return;
+    }
+
     if (!values.modelId || !values.associationProviderId) return;
 
     try {
@@ -194,7 +206,7 @@ export function CreateModelMappingModal({
               />
 
               {selectedModel && (
-                <Paper p="xs" bg="gray.0">
+                <Paper p="xs" withBorder>
                   <Text size="xs" fw={500} mb="xs">Model Capabilities:</Text>
                   <Flex gap="xs" wrap="wrap">
                     {selectedModel.supportsChat && <Badge size="sm" leftSection={<IconRobot size={12} />}>Chat</Badge>}
@@ -289,6 +301,10 @@ export function CreateModelMappingModal({
               type="submit" 
               loading={createMapping.isPending}
               disabled={modelsLoading || associationsLoading}
+              onClick={() => {
+                // Trigger validation to show errors on all fields
+                form.validate();
+              }}
             >
               Create Mapping
             </Button>

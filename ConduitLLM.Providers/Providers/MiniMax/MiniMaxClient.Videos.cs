@@ -60,9 +60,19 @@ namespace ConduitLLM.Providers.MiniMax
 
                 var endpoint = $"{_baseUrl}/v1/video_generation";
                 
-                // Log the request for debugging
+                // Create log-safe version of the request (excluding prompt content)
+                var logSafeRequest = new Dictionary<string, object?>(miniMaxRequest);
+                if (logSafeRequest.ContainsKey("prompt"))
+                {
+                    var promptLength = (miniMaxRequest["prompt"]?.ToString() ?? "").Length;
+                    logSafeRequest["prompt"] = $"[REDACTED: {promptLength} chars]";
+                }
+                
+                Logger.LogInformation("MiniMax video generation parameters: Model={Model}, Parameters={@Parameters}", 
+                    miniMaxRequest["model"], logSafeRequest);
+                
+                // Serialize the actual request
                 var requestJson = JsonSerializer.Serialize(miniMaxRequest);
-                Logger.LogInformation("MiniMax video request: {Request}", requestJson);
                 
                 // Submit the video generation request
                 var httpRequest = new HttpRequestMessage(HttpMethod.Post, endpoint);

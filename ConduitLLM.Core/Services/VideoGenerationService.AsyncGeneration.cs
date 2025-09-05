@@ -54,6 +54,18 @@ namespace ConduitLLM.Core.Services
 
             _logger.LogInformation("Created task {TaskId}, now publishing VideoGenerationRequested event", taskId);
 
+            // Convert ExtensionData to Dictionary<string, object> for ProviderOptions
+            Dictionary<string, object>? providerOptions = null;
+            if (request.ExtensionData != null && request.ExtensionData.Count > 0)
+            {
+                providerOptions = new Dictionary<string, object>();
+                foreach (var kvp in request.ExtensionData)
+                {
+                    // Convert JsonElement to appropriate type
+                    providerOptions[kvp.Key] = kvp.Value.ToString();
+                }
+            }
+
             // Publish VideoGenerationRequested event for async processing
             await PublishEventAsync(
                 new VideoGenerationRequested
@@ -73,7 +85,8 @@ namespace ConduitLLM.Core.Services
                         Duration = request.Duration,
                         Fps = request.Fps,
                         Style = request.Style,
-                        ResponseFormat = request.ResponseFormat
+                        ResponseFormat = request.ResponseFormat,
+                        ProviderOptions = providerOptions
                     }
                 },
                 "async video generation request",

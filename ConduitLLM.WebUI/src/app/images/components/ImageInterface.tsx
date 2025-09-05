@@ -18,6 +18,7 @@ import { createEnhancedError } from '@/lib/utils/error-enhancement';
 import { DynamicParameters } from '@/components/parameters/DynamicParameters';
 import { useParameterState } from '@/components/parameters/hooks/useParameterState';
 import { useDiscoveryModels } from '@/app/chat/hooks/useDiscoveryModels';
+import { ModelCapability } from '@knn_labs/conduit-core-client';
 import ImageSettings from './ImageSettings';
 import ImagePromptInput from './ImagePromptInput';
 import ImageGallery from './ImageGallery';
@@ -34,7 +35,7 @@ export default function ImageInterface() {
   } = useImageStore();
 
   // Fetch models with image generation capability from discovery endpoint
-  const { data: discoveryData, isLoading: modelsLoading, error: modelsError } = useDiscoveryModels('image_generation');
+  const { data: discoveryData, isLoading: modelsLoading, error: modelsError } = useDiscoveryModels(ModelCapability.ImageGeneration);
   
   // Find the selected model with parameters
   const selectedDiscoveryModel = discoveryData?.data?.find(m => m.id === settings.model);

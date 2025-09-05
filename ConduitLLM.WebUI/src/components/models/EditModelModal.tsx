@@ -1,15 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Modal, TextInput, Select, Switch, Button, Stack, Group, Textarea, Alert, Text, Tabs, Checkbox, Paper, SimpleGrid } from '@mantine/core';
+import { Modal, TextInput, Select, Switch, Button, Stack, Group, Textarea, Alert, Text, Tabs, Checkbox, Paper, SimpleGrid, Tooltip, ActionIcon } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconAlertCircle, IconSettings, IconLink } from '@tabler/icons-react';
+import { IconAlertCircle, IconSettings, IconLink, IconTransform } from '@tabler/icons-react';
 import { useAdminClient } from '@/lib/client/adminClient';
 import { ParameterPreview } from '@/components/parameters/ParameterPreview';
 import { ProviderTypeList } from './ProviderTypeList';
 import { EditProviderTypeModal } from './EditProviderTypeModal';
 import { DeleteProviderTypeModal } from './DeleteProviderTypeModal';
+import { tryConvertReplicateSchema, isValidReplicateSchema } from '@/utils/replicateSchemaConverter';
 import type { 
   ModelDto, 
   UpdateModelDto, 
@@ -421,13 +422,52 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
 
 
           <Stack gap="xs">
-            <Text size="sm" fw={500}>
-              Model Parameters (JSON)
-            </Text>
-            
-            <Text size="xs" c="dimmed">
-              Optional: Override series-level parameters for this specific model
-            </Text>
+            <Group justify="space-between">
+              <div>
+                <Text size="sm" fw={500}>
+                  Model Parameters (JSON)
+                </Text>
+                <Text size="xs" c="dimmed">
+                  Optional: Override series-level parameters for this specific model
+                </Text>
+              </div>
+              <Tooltip label="Convert Replicate schema to Conduit parameters format">
+                <ActionIcon
+                  variant="light"
+                  color="blue"
+                  onClick={() => {
+                    const currentValue = form.values.modelParameters;
+                    if (!currentValue.trim()) {
+                      notifications.show({
+                        title: 'No content',
+                        message: 'Paste a Replicate schema in the parameters field first',
+                        color: 'yellow',
+                      });
+                      return;
+                    }
+                    
+                    if (isValidReplicateSchema(currentValue)) {
+                      const converted = tryConvertReplicateSchema(currentValue);
+                      form.setFieldValue('modelParameters', converted);
+                      validateJson(converted);
+                      notifications.show({
+                        title: 'Success',
+                        message: 'Replicate schema converted successfully',
+                        color: 'green',
+                      });
+                    } else {
+                      notifications.show({
+                        title: 'Not a Replicate schema',
+                        message: 'The content doesn\'t appear to be a valid Replicate schema',
+                        color: 'yellow',
+                      });
+                    }
+                  }}
+                >
+                  <IconTransform size={16} />
+                </ActionIcon>
+              </Tooltip>
+            </Group>
             
             <ParameterPreview 
               parametersJson={form.values.modelParameters ?? ''}
@@ -437,7 +477,7 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
             />
             
             <Textarea
-              placeholder="JSON parameters for UI generation (leave empty to use series defaults)..."
+              placeholder="JSON parameters for UI generation (leave empty to use series defaults) or paste Replicate schema and click convert..."
               rows={8}
               style={{ fontFamily: 'monospace' }}
               {...form.getInputProps('modelParameters')}

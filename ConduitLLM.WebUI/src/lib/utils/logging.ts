@@ -65,7 +65,7 @@ export function safeLog(message: string, ...args: unknown[]) {
     return; // Don't log in production unless explicitly enabled
   }
   
-  const sanitizedArgs = args.map(arg => sanitizeObject(arg));
+  const sanitizedArgs = args ? args.map(arg => sanitizeObject(arg)) : [];
   console.warn(`[Conduit DEBUG] ${message}`, ...sanitizedArgs);
 }
 
@@ -73,7 +73,7 @@ export function safeLog(message: string, ...args: unknown[]) {
  * Safe console.warn that automatically sanitizes sensitive data
  */
 export function safeWarn(message: string, ...args: unknown[]) {
-  const sanitizedArgs = args.map(arg => sanitizeObject(arg));
+  const sanitizedArgs = args ? args.map(arg => sanitizeObject(arg)) : [];
   console.warn(`[Conduit] ${message}`, ...sanitizedArgs);
 }
 
@@ -81,7 +81,7 @@ export function safeWarn(message: string, ...args: unknown[]) {
  * Safe console.error that automatically sanitizes sensitive data
  */
 export function safeError(message: string, ...args: unknown[]) {
-  const sanitizedArgs = args.map(arg => sanitizeObject(arg));
+  const sanitizedArgs = args ? args.map(arg => sanitizeObject(arg)) : [];
   console.error(`[Conduit] ${message}`, ...sanitizedArgs);
 }
 

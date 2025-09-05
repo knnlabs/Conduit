@@ -12,7 +12,8 @@ import {
   type AsyncVideoGenerationRequest,
   type AsyncVideoGenerationResponse,
   type VideoTaskPollingOptions,
-  type VideoModelCapabilities
+  type VideoModelCapabilities,
+  type VideoTaskStatus
 } from '../models/videos';
 import { ConduitError } from '../utils/errors';
 import type { VideoWebhookMetadata } from '../models/metadata';
@@ -71,13 +72,50 @@ export class VideosService {
       // Convert to API request format
       const apiRequest = this.convertToAsyncApiRequest(request);
 
-      const response = await this.clientAdapter.post<AsyncVideoGenerationResponse, AsyncVideoApiRequest>(
+      // The API returns PascalCase properties, so we need to handle the raw response
+      // Define the shape of the raw API response with PascalCase properties
+      interface RawApiResponse {
+        TaskId?: string;
+        taskId?: string;
+        task_id?: string;
+        Status?: string;
+        status?: string;
+        Progress?: number;
+        progress?: number;
+        Message?: string;
+        message?: string;
+        EstimatedCompletionTime?: string;
+        EstimatedTimeToCompletion?: number;
+        estimated_time_to_completion?: number;
+        CreatedAt?: string;
+        created_at?: string;
+        UpdatedAt?: string;
+        updated_at?: string;
+        CheckStatusUrl?: string;
+        check_status_url?: string;
+      }
+
+      const response = await this.clientAdapter.post<RawApiResponse, AsyncVideoApiRequest>(
         VideosService.ASYNC_GENERATIONS_ENDPOINT,
         apiRequest,
         options
       );
 
-      return response;
+      // Map the PascalCase response to snake_case for SDK consistency
+      const mappedResponse: AsyncVideoGenerationResponse = {
+        task_id: response.TaskId ?? response.taskId ?? response.task_id ?? '',
+        status: (response.Status ?? response.status ?? 'pending') as VideoTaskStatus,
+        progress: response.Progress ?? response.progress ?? 0,
+        message: response.Message ?? response.message,
+        estimated_time_to_completion: response.EstimatedCompletionTime 
+          ? Math.floor((new Date(response.EstimatedCompletionTime).getTime() - Date.now()) / 1000)
+          : response.EstimatedTimeToCompletion ?? response.estimated_time_to_completion ?? 60,
+        created_at: response.CreatedAt ?? response.created_at ?? new Date().toISOString(),
+        updated_at: response.UpdatedAt ?? response.updated_at ?? new Date().toISOString(),
+        check_status_url: response.CheckStatusUrl ?? response.check_status_url
+      };
+
+      return mappedResponse;
     } catch (error) {
       if (error instanceof ConduitError) {
         throw error;
@@ -234,17 +272,34 @@ export class VideosService {
    * Converts a VideoGenerationRequest to the API request format
    */
   private convertToApiRequest(request: VideoGenerationRequest): VideoApiRequest {
+    // Extract known fields and preserve all others as dynamic parameters
+    const { 
+      prompt, 
+      model, 
+      duration, 
+      size, 
+      fps, 
+      style, 
+      response_format,
+      user,
+      seed,
+      n,
+      ...dynamicParameters 
+    } = request;
+    
     return {
-      prompt: request.prompt,
-      model: request.model ?? VideoModels.DEFAULT,
-      duration: request.duration,
-      size: request.size,
-      fps: request.fps,
-      style: request.style,
-      response_format: request.response_format ?? VideoResponseFormats.URL,
-      user: request.user,
-      seed: request.seed,
-      n: request.n ?? 1,
+      prompt,
+      model: model ?? VideoModels.DEFAULT,
+      duration,
+      size,
+      fps,
+      style,
+      response_format: response_format ?? VideoResponseFormats.URL,
+      user,
+      seed,
+      n: n ?? 1,
+      // Spread any additional dynamic parameters
+      ...dynamicParameters
     };
   }
 

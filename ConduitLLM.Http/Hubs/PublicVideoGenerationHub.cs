@@ -40,23 +40,35 @@ namespace ConduitLLM.Http.Hubs
                 throw new HubException("Ephemeral key is required");
             }
 
-            // Validate the ephemeral key
-            var virtualKeyId = await _ephemeralKeyService.ValidateAndConsumeKeyAsync(ephemeralKey);
-            if (!virtualKeyId.HasValue)
+            // IMPORTANT: This hub is intentionally public (no connection-level auth) to allow browser clients
+            // to connect without authentication. Each method validates ephemeral keys individually.
+            // We use GetKeyDataAsync instead of ValidateAndConsumeKeyAsync because SignalR connections
+            // are long-lived and the key needs to remain valid for the duration of the subscription.
+            var keyData = await _ephemeralKeyService.GetKeyDataAsync(ephemeralKey);
+            if (keyData == null)
             {
                 _logger.LogWarning("Invalid ephemeral key provided for task {TaskId}", taskId);
                 throw new HubException("Invalid or expired ephemeral key");
             }
+            
+            // Check if key is expired
+            if (keyData.ExpiresAt < DateTimeOffset.UtcNow)
+            {
+                _logger.LogWarning("Expired ephemeral key provided for task {TaskId}", taskId);
+                throw new HubException("Ephemeral key has expired");
+            }
+            
+            var virtualKeyId = keyData.VirtualKeyId;
 
             // Add to task-specific group
             await Groups.AddToGroupAsync(Context.ConnectionId, SignalRConstants.Groups.VideoTask(taskId));
             
             // Store task association for this connection
             Context.Items["TaskId"] = taskId;
-            Context.Items["VirtualKeyId"] = virtualKeyId.Value;
+            Context.Items["VirtualKeyId"] = virtualKeyId;
             
             _logger.LogDebug("Client {ConnectionId} subscribed to video task {TaskId} (VirtualKey: {VirtualKeyId})", 
-                Context.ConnectionId, taskId, virtualKeyId.Value);
+                Context.ConnectionId, taskId, virtualKeyId);
 
             // Send initial status update
             await Clients.Caller.SendAsync("taskSubscribed", new { taskId, message = "Successfully subscribed to task updates" });

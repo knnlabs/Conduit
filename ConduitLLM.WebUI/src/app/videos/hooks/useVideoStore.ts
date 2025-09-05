@@ -47,9 +47,14 @@ export const useVideoStore = create<VideoStoreState>()(
             task.id === taskId ? { ...task, ...updates, updatedAt: new Date().toISOString() } : task
           );
           
-          const updatedCurrent = state.currentTask?.id === taskId
+          let updatedCurrent = state.currentTask?.id === taskId
             ? { ...state.currentTask, ...updates, updatedAt: new Date().toISOString() }
             : state.currentTask;
+          
+          // Clear currentTask if it's completed or failed
+          if (updatedCurrent && (updatedCurrent.status === 'completed' || updatedCurrent.status === 'failed' || updatedCurrent.status === 'cancelled')) {
+            updatedCurrent = null;
+          }
 
           return {
             currentTask: updatedCurrent,

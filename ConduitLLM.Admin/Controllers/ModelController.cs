@@ -8,6 +8,8 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Core.Events;
+using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -26,6 +28,7 @@ namespace ConduitLLM.Admin.Controllers
         private readonly IModelRepository _modelRepository;
         private readonly IAdminModelProviderMappingService _mappingService;
         private readonly IProviderRepository _providerRepository;
+        private readonly IPublishEndpoint _publishEndpoint;
         private readonly ILogger<ModelController> _logger;
 
         /// <summary>
@@ -35,11 +38,13 @@ namespace ConduitLLM.Admin.Controllers
             IModelRepository modelRepository,
             IAdminModelProviderMappingService mappingService,
             IProviderRepository providerRepository,
+            IPublishEndpoint publishEndpoint,
             ILogger<ModelController> logger)
         {
             _modelRepository = modelRepository ?? throw new ArgumentNullException(nameof(modelRepository));
             _mappingService = mappingService ?? throw new ArgumentNullException(nameof(mappingService));
             _providerRepository = providerRepository ?? throw new ArgumentNullException(nameof(providerRepository));
+            _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -621,7 +626,24 @@ namespace ConduitLLM.Admin.Controllers
 
                 model.UpdatedAt = DateTime.UtcNow;
 
+                // Track if parameters were changed
+                bool parametersChanged = dto.ModelParameters != null;
+                
                 var updatedModel = await _modelRepository.UpdateAsync(model);
+
+                // Publish ModelUpdated event for cache invalidation
+                await _publishEndpoint.Publish(new ModelUpdated
+                {
+                    ModelId = updatedModel.Id,
+                    ModelName = updatedModel.Name,
+                    ModelSeriesId = updatedModel.ModelSeriesId,
+                    ChangeType = "Updated",
+                    ParametersChanged = parametersChanged,
+                    ChangedProperties = GetChangedProperties(dto)
+                });
+                
+                _logger.LogInformation("Published ModelUpdated event for model {ModelId} ({ModelName})", 
+                    updatedModel.Id, updatedModel.Name);
 
                 return Ok(MapToDto(updatedModel));
             }
@@ -911,6 +933,30 @@ namespace ConduitLLM.Admin.Controllers
                 _logger.LogError(ex, "Error deleting provider mapping {MappingId} for model {ModelId}", mappingId, id);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while deleting the provider mapping");
             }
+        }
+        
+        /// <summary>
+        /// Helper method to get list of changed properties from DTO
+        /// </summary>
+        private static string[] GetChangedProperties(UpdateModelDto dto)
+        {
+            var changedProps = new List<string>();
+            
+            if (dto.Name != null) changedProps.Add("Name");
+            if (dto.ModelSeriesId.HasValue) changedProps.Add("ModelSeriesId");
+            if (dto.IsActive.HasValue) changedProps.Add("IsActive");
+            if (dto.ModelParameters != null) changedProps.Add("ModelParameters");
+            if (dto.SupportsChat.HasValue) changedProps.Add("SupportsChat");
+            if (dto.SupportsVision.HasValue) changedProps.Add("SupportsVision");
+            if (dto.SupportsFunctionCalling.HasValue) changedProps.Add("SupportsFunctionCalling");
+            if (dto.SupportsStreaming.HasValue) changedProps.Add("SupportsStreaming");
+            if (dto.SupportsImageGeneration.HasValue) changedProps.Add("SupportsImageGeneration");
+            if (dto.SupportsVideoGeneration.HasValue) changedProps.Add("SupportsVideoGeneration");
+            if (dto.SupportsEmbeddings.HasValue) changedProps.Add("SupportsEmbeddings");
+            if (dto.MaxInputTokens.HasValue) changedProps.Add("MaxInputTokens");
+            if (dto.MaxOutputTokens.HasValue) changedProps.Add("MaxOutputTokens");
+            
+            return changedProps.ToArray();
         }
     }
 }

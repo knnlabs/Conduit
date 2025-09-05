@@ -79,7 +79,7 @@ export default function ImageSettings({ models }: ImageSettingsProps) {
 
   const modelOptions = models.map((model) => ({
     value: model.id,
-    label: model.display_name,
+    label: model.display_name ?? model.id,
   }));
 
   const sizeSelectOptions = sizeOptions.map((size) => ({

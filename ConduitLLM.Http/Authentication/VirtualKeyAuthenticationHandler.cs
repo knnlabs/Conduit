@@ -3,6 +3,7 @@ using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Http.Services;
 
 namespace ConduitLLM.Http.Authentication
 {
@@ -12,6 +13,7 @@ namespace ConduitLLM.Http.Authentication
     public class VirtualKeyAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
     {
         private readonly IVirtualKeyService _virtualKeyService;
+        private readonly IEphemeralKeyService _ephemeralKeyService;
 
         /// <summary>
         /// Initializes a new instance of the VirtualKeyAuthenticationHandler
@@ -20,10 +22,12 @@ namespace ConduitLLM.Http.Authentication
             IOptionsMonitor<AuthenticationSchemeOptions> options,
             ILoggerFactory logger,
             UrlEncoder encoder,
-            IVirtualKeyService virtualKeyService)
+            IVirtualKeyService virtualKeyService,
+            IEphemeralKeyService ephemeralKeyService)
             : base(options, logger, encoder)
         {
             _virtualKeyService = virtualKeyService;
+            _ephemeralKeyService = ephemeralKeyService;
         }
 
         /// <summary>
@@ -44,17 +48,60 @@ namespace ConduitLLM.Http.Authentication
                 }
 
                 // Extract Virtual Key from request
-                var virtualKey = ExtractVirtualKey(Context);
+                var providedKey = ExtractVirtualKey(Context);
                 
-                if (string.IsNullOrEmpty(virtualKey))
+                if (string.IsNullOrEmpty(providedKey))
                 {
-                    Logger.LogWarning("Missing Virtual Key in request to {Path} from IP {IP}", 
+                    // Return NoResult to allow other authentication schemes to be tried
+                    // Only log at Debug level since this is expected when using other auth schemes
+                    Logger.LogDebug("No Virtual Key found in request to {Path} from IP {IP}", 
                         Context.Request.Path, GetClientIpAddress(Context));
-                    return AuthenticateResult.Fail("Missing Virtual Key");
+                    return AuthenticateResult.NoResult();
                 }
 
-                // Validate the Virtual Key for authentication only (no balance check)
-                var keyEntity = await _virtualKeyService.ValidateVirtualKeyForAuthenticationAsync(virtualKey);
+                // Check if this is an ephemeral key (starts with "ek_")
+                string? virtualKey;
+                bool isEphemeralKey = false;
+                
+                if (providedKey.StartsWith("ek_", StringComparison.Ordinal))
+                {
+                    isEphemeralKey = true;
+                    Logger.LogDebug("Processing ephemeral key authentication");
+                    
+                    // Get the virtual key data without consuming
+                    var keyData = await _ephemeralKeyService.GetKeyDataAsync(providedKey);
+                    if (keyData == null)
+                    {
+                        Logger.LogWarning("Ephemeral key not found: {Key}", SanitizeKeyForLogging(providedKey));
+                        return AuthenticateResult.Fail("Invalid ephemeral key");
+                    }
+                    
+                    // Check if expired
+                    if (keyData.ExpiresAt < DateTimeOffset.UtcNow)
+                    {
+                        Logger.LogWarning("Ephemeral key expired: {Key}", SanitizeKeyForLogging(providedKey));
+                        return AuthenticateResult.Fail("Ephemeral key expired");
+                    }
+                    
+                    // Get the actual virtual key
+                    virtualKey = await _ephemeralKeyService.GetVirtualKeyAsync(providedKey);
+                    if (string.IsNullOrEmpty(virtualKey))
+                    {
+                        Logger.LogWarning("Could not retrieve virtual key from ephemeral key: {Key}", SanitizeKeyForLogging(providedKey));
+                        return AuthenticateResult.Fail("Invalid ephemeral key");
+                    }
+                    
+                    Logger.LogInformation("Ephemeral key validated, using virtual key ID {VirtualKeyId}", keyData.VirtualKeyId);
+                }
+                else
+                {
+                    // Regular virtual key
+                    virtualKey = providedKey;
+                }
+
+                // Validate the Virtual Key for authentication only (no balance check)  
+                // virtualKey is guaranteed to be non-null at this point due to earlier validation
+                var keyEntity = await _virtualKeyService.ValidateVirtualKeyForAuthenticationAsync(virtualKey!);
                 if (keyEntity == null)
                 {
                     Logger.LogWarning("Invalid Virtual Key in request to {Path} from IP {IP}", 
@@ -78,6 +125,17 @@ namespace ConduitLLM.Http.Authentication
                 Context.Items["VirtualKeyId"] = keyEntity.Id;
                 Context.Items["VirtualKey"] = virtualKey;
                 Context.Items["RequestStartTime"] = DateTime.UtcNow;
+                
+                // Store ephemeral key status for logging/auditing
+                if (isEphemeralKey)
+                {
+                    Context.Items["IsEphemeralKey"] = true;
+                    Context.Items["AuthType"] = "EphemeralKey";
+                }
+                else
+                {
+                    Context.Items["AuthType"] = "VirtualKey";
+                }
 
                 Logger.LogDebug("Successfully authenticated Virtual Key {KeyName} for {Path}", 
                     keyEntity.KeyName, Context.Request.Path);
@@ -145,6 +203,16 @@ namespace ConduitLLM.Http.Authentication
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Sanitizes a key for logging by showing only first few characters
+        /// </summary>
+        private static string SanitizeKeyForLogging(string key)
+        {
+            if (key.Length <= 10)
+                return key;
+            return $"{key.Substring(0, 10)}...";
         }
 
         /// <summary>

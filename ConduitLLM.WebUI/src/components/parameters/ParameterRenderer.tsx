@@ -9,6 +9,7 @@ import { NumberControl } from './controls/NumberControl';
 import { ToggleControl } from './controls/ToggleControl';
 import { ColorControl } from './controls/ColorControl';
 import { ResolutionControl } from './controls/ResolutionControl';
+import { MediaUploadControl } from './controls/MediaUploadControl';
 import type { DynamicParameter, ParameterContext } from './types/parameters';
 
 interface ParameterRendererProps {
@@ -26,6 +27,43 @@ const ParameterRendererComponent = ({
   context,
   disabled = false,
 }: ParameterRendererProps) => {
+  // Check if this is a media URL field based on the parameter name
+  const isMediaUrlField = (param: DynamicParameter): boolean => {
+    const name = param.name ? param.name.toLowerCase() : '';
+    const label = param.label ? param.label.toLowerCase() : '';
+    const description = param.description ? param.description.toLowerCase() : '';
+    
+    // Check for common media URL field patterns
+    const mediaPatterns = [
+      'image_url', 'imageurl', 'image url',
+      'video_url', 'videourl', 'video url',
+      'audio_url', 'audiourl', 'audio url',
+      'media_url', 'mediaurl', 'media url',
+      'file_url', 'fileurl', 'file url',
+      'start_image', 'startimage', 'start image',
+      'end_image', 'endimage', 'end image',
+      'init_image', 'initimage', 'init image',
+    ];
+    
+    return mediaPatterns.some(pattern => 
+      (name.includes(pattern)) || 
+      (label.includes(pattern)) ||
+      (description.includes(pattern))
+    );
+  };
+
+  // If it's a text/input field that looks like a media URL field, use MediaUploadControl
+  if ((parameter.type === 'text' || parameter.type === 'input') && isMediaUrlField(parameter)) {
+    return (
+      <MediaUploadControl
+        parameter={parameter}
+        value={value as string}
+        onChange={onChange}
+        disabled={disabled}
+      />
+    );
+  }
+
   switch (parameter.type) {
     case 'slider':
       return (
@@ -48,6 +86,7 @@ const ParameterRendererComponent = ({
       );
     
     case 'text':
+    case 'input':  // Handle 'input' type the same as 'text'
       return (
         <TextControl
           parameter={parameter}
@@ -105,6 +144,19 @@ const ParameterRendererComponent = ({
           onChange={onChange}
           disabled={disabled}
           context={context}
+        />
+      );
+    
+    case 'media-upload':
+    case 'media_upload':
+    case 'file-upload':
+    case 'file_upload':
+      return (
+        <MediaUploadControl
+          parameter={parameter}
+          value={value as string}
+          onChange={onChange}
+          disabled={disabled}
         />
       );
     

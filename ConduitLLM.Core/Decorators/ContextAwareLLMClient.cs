@@ -182,6 +182,49 @@ namespace ConduitLLM.Core.Decorators
             }
         }
 
+        public async Task<VideoGenerationResponse> CreateVideoAsync(
+            VideoGenerationRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            using (ProviderKeyContext.Set(_keyId, _providerId))
+            {
+                try
+                {
+                    // Check if inner client supports video generation
+                    var innerClientType = _innerClient.GetType();
+                    var createVideoMethod = innerClientType.GetMethod("CreateVideoAsync",
+                        new[] { typeof(VideoGenerationRequest), typeof(string), typeof(CancellationToken) });
+                    
+                    if (createVideoMethod == null)
+                    {
+                        throw new NotSupportedException($"The underlying client {innerClientType.Name} does not support video generation");
+                    }
+                    
+                    // Invoke the method on the inner client
+                    var task = createVideoMethod.Invoke(_innerClient, new object?[] { request, apiKey, cancellationToken }) as Task<VideoGenerationResponse>;
+                    if (task != null)
+                    {
+                        return await task;
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"CreateVideoAsync method on {innerClientType.Name} did not return expected Task<VideoGenerationResponse>");
+                    }
+                }
+                catch (LLMCommunicationException ex)
+                {
+                    await TrackErrorAsync(ex);
+                    throw;
+                }
+                catch (Exception ex) when (!(ex is NotSupportedException || ex is InvalidOperationException))
+                {
+                    _logger?.LogError(ex, "Error in CreateVideoAsync");
+                    throw;
+                }
+            }
+        }
+
         public async Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
         {
             using (ProviderKeyContext.Set(_keyId, _providerId))

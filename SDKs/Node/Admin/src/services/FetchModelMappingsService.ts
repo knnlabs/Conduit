@@ -7,6 +7,8 @@ import type {
   UpdateModelProviderMappingDto,
   BulkMappingRequest,
   BulkMappingResponse,
+  BulkDeleteResult,
+  BulkUpdateResult,
 } from '../models/modelMapping';
 
 
@@ -124,7 +126,61 @@ export class FetchModelMappingsService {
   }
 
   /**
-   * Bulk update model mappings
+   * Bulk delete model mappings
+   */
+  async bulkDelete(
+    ids: number[],
+    config?: RequestConfig
+  ): Promise<BulkDeleteResult> {
+    return this.client['post']<BulkDeleteResult, number[]>(
+      ENDPOINTS.MODEL_MAPPINGS.BULK_DELETE,
+      ids,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Bulk enable model mappings
+   */
+  async bulkEnable(
+    ids: number[],
+    config?: RequestConfig
+  ): Promise<BulkUpdateResult> {
+    return this.client['post']<BulkUpdateResult, number[]>(
+      ENDPOINTS.MODEL_MAPPINGS.BULK_ENABLE,
+      ids,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Bulk disable model mappings
+   */
+  async bulkDisable(
+    ids: number[],
+    config?: RequestConfig
+  ): Promise<BulkUpdateResult> {
+    return this.client['post']<BulkUpdateResult, number[]>(
+      ENDPOINTS.MODEL_MAPPINGS.BULK_DISABLE,
+      ids,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Bulk update model mappings (legacy method for individual updates)
    */
   async bulkUpdate(
     updates: { id: number; data: UpdateModelProviderMappingDto }[],

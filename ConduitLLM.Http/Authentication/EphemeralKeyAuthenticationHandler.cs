@@ -29,6 +29,12 @@ namespace ConduitLLM.Http.Authentication
 
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
         {
+            // Skip authentication for OPTIONS requests (CORS preflight)
+            if (Request.Method == "OPTIONS")
+            {
+                return AuthenticateResult.NoResult();
+            }
+
             // Check for ephemeral key in X-Ephemeral-Key header
             if (!Request.Headers.ContainsKey("X-Ephemeral-Key"))
             {
@@ -46,7 +52,7 @@ namespace ConduitLLM.Http.Authentication
             // Check if this is a streaming request
             bool isStreaming = IsStreamingRequest();
             
-            // First, get the virtual key BEFORE consuming/deleting
+            // First, get the virtual key WITHOUT consuming/deleting
             var actualVirtualKey = await _ephemeralKeyService.GetVirtualKeyAsync(ephemeralKey);
             if (string.IsNullOrEmpty(actualVirtualKey))
             {
@@ -54,48 +60,23 @@ namespace ConduitLLM.Http.Authentication
                 return AuthenticateResult.Fail("Ephemeral key not found");
             }
             
-            int? virtualKeyId;
+            // Get the virtual key ID from the ephemeral key data without consuming it
+            // The key will naturally expire via Redis TTL
+            var keyData = await _ephemeralKeyService.GetKeyDataAsync(ephemeralKey);
+            if (keyData == null)
+            {
+                Logger.LogWarning("Ephemeral key not found: {Key}", SanitizeKeyForLogging(ephemeralKey));
+                return AuthenticateResult.Fail("Ephemeral key not found");
+            }
             
-            if (isStreaming)
+            // Check if expired
+            if (keyData.ExpiresAt < DateTimeOffset.UtcNow)
             {
-                // For streaming, consume and delete immediately (after we've already retrieved the virtual key)
-                virtualKeyId = await _ephemeralKeyService.ConsumeKeyAsync(ephemeralKey);
-                
-                if (!virtualKeyId.HasValue)
-                {
-                    var keyExists = await _ephemeralKeyService.KeyExistsAsync(ephemeralKey);
-                    if (!keyExists)
-                    {
-                        Logger.LogWarning("Ephemeral key not found: {Key}", SanitizeKeyForLogging(ephemeralKey));
-                        return AuthenticateResult.Fail("Ephemeral key not found");
-                    }
-                    
-                    Logger.LogWarning("Ephemeral key already used or expired: {Key}", SanitizeKeyForLogging(ephemeralKey));
-                    return AuthenticateResult.Fail("Ephemeral key already used");
-                }
+                Logger.LogWarning("Ephemeral key expired: {Key}", SanitizeKeyForLogging(ephemeralKey));
+                return AuthenticateResult.Fail("Ephemeral key expired");
             }
-            else
-            {
-                // For non-streaming, validate and mark as consumed (delete happens in middleware)
-                virtualKeyId = await _ephemeralKeyService.ValidateAndConsumeKeyAsync(ephemeralKey);
-                
-                if (!virtualKeyId.HasValue)
-                {
-                    var keyExists = await _ephemeralKeyService.KeyExistsAsync(ephemeralKey);
-                    if (!keyExists)
-                    {
-                        Logger.LogWarning("Ephemeral key not found: {Key}", SanitizeKeyForLogging(ephemeralKey));
-                        return AuthenticateResult.Fail("Ephemeral key not found");
-                    }
-                    
-                    Logger.LogWarning("Ephemeral key validation failed: {Key}", SanitizeKeyForLogging(ephemeralKey));
-                    return AuthenticateResult.Fail("Ephemeral key expired");
-                }
-                
-                // Store for cleanup after request
-                Context.Items["EphemeralKey"] = ephemeralKey;
-                Context.Items["DeleteEphemeralKey"] = true;
-            }
+            
+            int? virtualKeyId = keyData.VirtualKeyId;
 
             // We already have the actual virtual key from above
 

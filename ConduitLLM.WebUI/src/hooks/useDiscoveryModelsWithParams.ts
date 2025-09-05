@@ -1,23 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
+import { getBrowserCoreClient } from '@/lib/client/browserCoreClient';
+import type { DiscoveredModel as SDKDiscoveredModel } from '@knn_labs/conduit-core-client';
 
-export interface DiscoveryModel {
-  id: string;
-  provider: string;
-  display_name: string;
-  capabilities: Record<string, unknown>;
+// Extend the SDK type to include backend fields not in the generated types
+export interface DiscoveryModel extends SDKDiscoveredModel {
   parameters?: string;
-  // Token limits
   max_tokens?: number;
-  max_input_tokens?: number;
   max_output_tokens?: number;
-  // Add all capability flags
-  supports_chat?: boolean;
-  supports_streaming?: boolean;
-  supports_vision?: boolean;
-  supports_function_calling?: boolean;
-  supports_video_generation?: boolean;
-  supports_image_generation?: boolean;
-  supports_embeddings?: boolean;
 }
 
 export interface DiscoveryResponse {
@@ -35,63 +24,17 @@ export function useDiscoveryModelsWithParams(capability?: string) {
     queryKey: ['discovery-models-with-params', capability],
     queryFn: async () => {
       try {
-        // First fetch the models via the Next.js API route
-        const modelsUrl = capability 
-          ? `/api/discovery/models?capability=${capability}`
-          : '/api/discovery/models';
+        // Get the browser client with ephemeral key
+        const client = await getBrowserCoreClient();
         
-        const res = await fetch(modelsUrl);
-        
-        if (!res.ok) {
-          throw new Error(`Failed to fetch discovery models: ${res.statusText}`);
-        }
+        // Use the SDK directly - let the backend handle filtering
+        const modelsResponse = capability 
+          ? await client.discovery.getModelsByCapability(capability)
+          : await client.discovery.getModels();
 
-        const modelsResponse = await res.json() as DiscoveryResponse;
-
-        // Then fetch parameters for each model in parallel
-        const modelsWithParams = await Promise.all(
-          modelsResponse.data.map(async (model) => {
-            try {
-              const paramRes = await fetch(
-                `/api/discovery/models/${encodeURIComponent(model.id)}/parameters`
-              );
-
-              if (!paramRes.ok) {
-                // If parameters not found, return empty
-                if (paramRes.status === 404) {
-                  return {
-                    ...model,
-                    parameters: '{}',
-                  };
-                }
-                console.warn(`Failed to fetch parameters for model ${model.id}`);
-                return {
-                  ...model,
-                  parameters: '{}',
-                };
-              }
-
-              const data = await paramRes.json() as { parameters?: Record<string, unknown> };
-              const paramsString = data.parameters ? JSON.stringify(data.parameters) : '{}';
-              
-              return {
-                ...model,
-                parameters: paramsString,
-              };
-            } catch (error) {
-              console.warn(`Failed to fetch parameters for model ${model.id}:`, error);
-              return {
-                ...model,
-                parameters: '{}',
-              };
-            }
-          })
-        );
-
-        return {
-          data: modelsWithParams,
-          count: modelsWithParams.length,
-        };
+        // Parameters are already included in the discovery response from backend
+        // The backend includes the parameters field for each model
+        return modelsResponse as DiscoveryResponse;
       } catch (error) {
         console.error('Failed to fetch discovery models:', error);
         throw error;

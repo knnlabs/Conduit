@@ -8,6 +8,7 @@ import { createEnhancedError } from '@/lib/utils/error-enhancement';
 import { DynamicParameters } from '@/components/parameters/DynamicParameters';
 import { useParameterState } from '@/components/parameters/hooks/useParameterState';
 import { useDiscoveryModels } from '@/app/chat/hooks/useDiscoveryModels';
+import { ModelCapability } from '@knn_labs/conduit-core-client';
 import VideoSettings from './VideoSettings';
 import EnhancedVideoPromptInput from './EnhancedVideoPromptInput';
 import VideoGallery from './VideoGallery';
@@ -25,7 +26,7 @@ export default function VideoInterface() {
   } = useVideoStore();
 
   // Fetch models with video generation capability from discovery endpoint
-  const { data: discoveryData, isLoading: modelsLoading, error: modelsError } = useDiscoveryModels('video_generation');
+  const { data: discoveryData, isLoading: modelsLoading, error: modelsError } = useDiscoveryModels(ModelCapability.VideoGeneration);
   
   // Find the currently selected model to get its parameters
   const selectedDiscoveryModel = discoveryData?.data?.find(m => m.id === settings.model);
@@ -62,13 +63,12 @@ export default function VideoInterface() {
   }
 
   if (modelsError || !discoveryData?.data || discoveryData.data.length === 0) {
-    const errorInstance = modelsError 
-      ? new Error(`Error loading models: ${modelsError.message}`)
-      : new Error('No video generation models available. Please configure providers and add video generation models.');
+    let errorInstance: Error;
     
     if (modelsError) {
-      errorInstance.name = 'ModelLoadError';
+      errorInstance = modelsError instanceof Error ? modelsError : new Error(String(modelsError));
     } else {
+      errorInstance = new Error('No video generation models available. Please configure providers and add video generation models.');
       errorInstance.name = 'ConfigurationError';
     }
 

@@ -1,11 +1,13 @@
-using System.Collections.Concurrent;
-
+using ConduitLLM.Configuration.Services;
 using ConduitLLM.Http.Models;
 
 using Microsoft.AspNetCore.SignalR;
 
 using Polly;
 using Polly.CircuitBreaker;
+
+using StackExchange.Redis;
+using System.Text.Json;
 
 namespace ConduitLLM.Http.Services
 {
@@ -50,7 +52,7 @@ namespace ConduitLLM.Http.Services
     }
 
     /// <summary>
-    /// Implementation of SignalR message queue service
+    /// Implementation of SignalR message queue service using Redis Streams
     /// </summary>
     public class SignalRMessageQueueService : ISignalRMessageQueueService, IHostedService, IDisposable
     {
@@ -58,15 +60,21 @@ namespace ConduitLLM.Http.Services
         private readonly IConfiguration _configuration;
         private readonly IServiceProvider _serviceProvider;
         private readonly ISignalRAcknowledgmentService _acknowledgmentService;
+        private readonly RedisConnectionFactory _redisConnectionFactory;
         
-        private readonly ConcurrentQueue<QueuedMessage> _messageQueue = new();
-        private readonly ConcurrentBag<QueuedMessage> _deadLetterQueue = new();
         private readonly SemaphoreSlim _processingLock;
+        private IDatabase? _redis;
         
         private Timer? _processingTimer;
         private readonly IAsyncPolicy<bool> _retryPolicy;
         private readonly IAsyncPolicy<bool> _circuitBreaker;
         private CircuitState _currentCircuitState = CircuitState.Closed;
+        
+        // Redis keys
+        private readonly string _messageStreamKey;
+        private readonly string _deadLetterStreamKey;
+        private readonly string _consumerGroup;
+        private readonly string _consumerName;
         
         // Configuration
         private readonly int _maxRetryAttempts;
@@ -87,12 +95,21 @@ namespace ConduitLLM.Http.Services
             ILogger<SignalRMessageQueueService> logger,
             IConfiguration configuration,
             IServiceProvider serviceProvider,
-            ISignalRAcknowledgmentService acknowledgmentService)
+            ISignalRAcknowledgmentService acknowledgmentService,
+            RedisConnectionFactory redisConnectionFactory)
         {
             _logger = logger;
             _configuration = configuration;
             _serviceProvider = serviceProvider;
             _acknowledgmentService = acknowledgmentService;
+            _redisConnectionFactory = redisConnectionFactory;
+            
+            // Redis keys
+            var instanceId = Environment.MachineName;
+            _messageStreamKey = "signalr:messages";
+            _deadLetterStreamKey = "signalr:deadletter";
+            _consumerGroup = "signalr-processors";
+            _consumerName = $"processor-{instanceId}-{Environment.ProcessId}";
 
             // Load configuration
             _maxRetryAttempts = configuration.GetValue<int>("SignalR:MessageQueue:MaxRetryAttempts", 5);
@@ -147,17 +164,48 @@ namespace ConduitLLM.Http.Services
                     });
         }
 
-        public Task StartAsync(CancellationToken cancellationToken)
+        public async Task StartAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation("SignalR Message Queue Service starting");
             
-            _processingTimer = new Timer(
-                ProcessMessages,
-                null,
-                _processingInterval,
-                _processingInterval);
-
-            return Task.CompletedTask;
+            try
+            {
+                var connection = await _redisConnectionFactory.GetConnectionAsync();
+                _redis = connection.GetDatabase();
+                
+                // Create consumer group if it doesn't exist
+                try
+                {
+                    await _redis.StreamCreateConsumerGroupAsync(_messageStreamKey, _consumerGroup, "0-0", true);
+                }
+                catch (RedisServerException ex) when (ex.Message.Contains("BUSYGROUP"))
+                {
+                    // Consumer group already exists, continue
+                }
+                
+                // Create dead letter stream consumer group
+                try
+                {
+                    await _redis.StreamCreateConsumerGroupAsync(_deadLetterStreamKey, _consumerGroup, "0-0", true);
+                }
+                catch (RedisServerException ex) when (ex.Message.Contains("BUSYGROUP"))
+                {
+                    // Consumer group already exists, continue
+                }
+                
+                _processingTimer = new Timer(
+                    ProcessMessages,
+                    null,
+                    _processingInterval,
+                    _processingInterval);
+                    
+                _logger.LogInformation("SignalR Message Queue Service started with consumer: {ConsumerName}", _consumerName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to start SignalR Message Queue Service");
+                throw;
+            }
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
@@ -179,127 +227,305 @@ namespace ConduitLLM.Http.Services
             return Task.CompletedTask;
         }
 
-        public Task EnqueueMessageAsync(QueuedMessage message)
+        public async Task EnqueueMessageAsync(QueuedMessage message)
         {
+            if (_redis == null)
+            {
+                _logger.LogWarning("Redis not available, message will be lost: {MessageId}", message.Message.MessageId);
+                return;
+            }
+            
             if (message.Message.IsExpired)
             {
                 _logger.LogWarning("Attempted to enqueue expired message {MessageId}", message.Message.MessageId);
-                return Task.CompletedTask;
+                return;
             }
 
-            _messageQueue.Enqueue(message);
-            _logger.LogDebug(
-                "Enqueued message {MessageId} for {HubName}.{MethodName}",
-                message.Message.MessageId, message.HubName, message.MethodName);
-
-            return Task.CompletedTask;
+            try
+            {
+                var messageData = JsonSerializer.Serialize(message);
+                var streamFields = new NameValueEntry[]
+                {
+                    new("data", messageData),
+                    new("messageId", message.Message.MessageId),
+                    new("hubName", message.HubName),
+                    new("methodName", message.MethodName),
+                    new("priority", message.Message.Priority.ToString()),
+                    new("createdAt", message.Message.Timestamp.ToString("O")),
+                    new("nextDeliveryAt", message.NextDeliveryAt.ToString("O"))
+                };
+                
+                await _redis.StreamAddAsync(_messageStreamKey, streamFields);
+                
+                _logger.LogDebug(
+                    "Enqueued message {MessageId} for {HubName}.{MethodName} to Redis stream",
+                    message.Message.MessageId, message.HubName, message.MethodName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to enqueue message {MessageId} to Redis stream", message.Message.MessageId);
+                throw;
+            }
         }
 
         public QueueStatistics GetStatistics()
         {
-            return new QueueStatistics
+            if (_redis == null)
             {
-                PendingMessages = _messageQueue.Count(),
-                DeadLetterMessages = _deadLetterQueue.Count(),
-                ProcessedMessages = _processedMessages,
-                FailedMessages = _failedMessages,
-                LastProcessedAt = _lastProcessedAt,
-                CircuitBreakerState = _currentCircuitState,
-                ConsecutiveFailures = _consecutiveFailures
-            };
+                return new QueueStatistics
+                {
+                    ProcessedMessages = _processedMessages,
+                    FailedMessages = _failedMessages,
+                    LastProcessedAt = _lastProcessedAt,
+                    CircuitBreakerState = _currentCircuitState,
+                    ConsecutiveFailures = _consecutiveFailures
+                };
+            }
+
+            try
+            {
+                var pendingMessages = _redis.StreamLength(_messageStreamKey);
+                var deadLetterMessages = _redis.StreamLength(_deadLetterStreamKey);
+
+                return new QueueStatistics
+                {
+                    PendingMessages = (int)pendingMessages,
+                    DeadLetterMessages = (int)deadLetterMessages,
+                    ProcessedMessages = _processedMessages,
+                    FailedMessages = _failedMessages,
+                    LastProcessedAt = _lastProcessedAt,
+                    CircuitBreakerState = _currentCircuitState,
+                    ConsecutiveFailures = _consecutiveFailures
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get queue statistics from Redis");
+                return new QueueStatistics
+                {
+                    ProcessedMessages = _processedMessages,
+                    FailedMessages = _failedMessages,
+                    LastProcessedAt = _lastProcessedAt,
+                    CircuitBreakerState = _currentCircuitState,
+                    ConsecutiveFailures = _consecutiveFailures
+                };
+            }
         }
 
         public IEnumerable<QueuedMessage> GetDeadLetterMessages()
         {
-            return _deadLetterQueue.ToList();
-        }
-
-        public Task RequeueDeadLetterAsync(string messageId)
-        {
-            var message = _deadLetterQueue.FirstOrDefault(m => m.Message.MessageId == messageId);
-            if (message != null)
+            if (_redis == null)
             {
-                message.IsDeadLetter = false;
-                message.DeadLetterReason = null;
-                message.DeliveryAttempts = 0;
-                message.LastError = null;
-                message.NextDeliveryAt = DateTime.UtcNow;
-                
-                _messageQueue.Enqueue(message);
-                _logger.LogInformation("Requeued dead letter message {MessageId}", messageId);
+                return Enumerable.Empty<QueuedMessage>();
             }
-            
-            return Task.CompletedTask;
+
+            try
+            {
+                var streamEntries = _redis.StreamRange(_deadLetterStreamKey, "-", "+", count: 100);
+                var messages = new List<QueuedMessage>();
+
+                foreach (var entry in streamEntries)
+                {
+                    try
+                    {
+                        var dataField = entry.Values.FirstOrDefault(v => v.Name == "data");
+                        if (dataField.Value.HasValue)
+                        {
+                            var message = JsonSerializer.Deserialize<QueuedMessage>(dataField.Value!);
+                            if (message != null)
+                            {
+                                messages.Add(message);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to deserialize dead letter message from Redis stream entry {EntryId}", entry.Id);
+                    }
+                }
+
+                return messages;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get dead letter messages from Redis");
+                return Enumerable.Empty<QueuedMessage>();
+            }
         }
 
-        private async void ProcessMessages(object? state)
+        public async Task RequeueDeadLetterAsync(string messageId)
         {
-            if (_currentCircuitState == CircuitState.Open)
+            if (_redis == null)
             {
-                _logger.LogDebug("Circuit breaker is open, skipping message processing");
+                _logger.LogWarning("Redis not available, cannot requeue dead letter message: {MessageId}", messageId);
                 return;
             }
 
-            var messagesToProcess = new List<QueuedMessage>();
-            var now = DateTime.UtcNow;
-
-            // Dequeue messages that are ready for delivery
-            while (messagesToProcess.Count() < _processingBatchSize && _messageQueue.TryPeek(out var peekedMessage))
+            try
             {
-                if (peekedMessage.NextDeliveryAt <= now)
+                // Find the message in dead letter stream
+                var streamEntries = _redis.StreamRange(_deadLetterStreamKey, "-", "+");
+                StreamEntry? targetEntry = null;
+
+                foreach (var entry in streamEntries)
                 {
-                    if (_messageQueue.TryDequeue(out var message))
+                    var messageIdField = entry.Values.FirstOrDefault(v => v.Name == "messageId");
+                    if (messageIdField.Value == messageId)
                     {
-                        if (!message.Message.IsExpired)
+                        targetEntry = entry;
+                        break;
+                    }
+                }
+
+                if (targetEntry.HasValue)
+                {
+                    // Deserialize and modify the message
+                    var dataField = targetEntry.Value.Values.FirstOrDefault(v => v.Name == "data");
+                    if (dataField.Value.HasValue)
+                    {
+                        var message = JsonSerializer.Deserialize<QueuedMessage>(dataField.Value!);
+                        if (message != null)
                         {
-                            messagesToProcess.Add(message);
-                        }
-                        else
-                        {
-                            _logger.LogWarning("Message {MessageId} expired, moving to dead letter", message.Message.MessageId);
-                            MoveToDeadLetter(message, "Message expired");
+                            message.IsDeadLetter = false;
+                            message.DeadLetterReason = null;
+                            message.DeliveryAttempts = 0;
+                            message.LastError = null;
+                            message.NextDeliveryAt = DateTime.UtcNow;
+
+                            // Re-enqueue to main stream
+                            await EnqueueMessageAsync(message);
+
+                            // Remove from dead letter stream
+                            await _redis.StreamDeleteAsync(_deadLetterStreamKey, new RedisValue[] { targetEntry.Value.Id });
+
+                            _logger.LogInformation("Requeued dead letter message {MessageId}", messageId);
                         }
                     }
                 }
                 else
                 {
-                    break; // No more messages ready for delivery
+                    _logger.LogWarning("Dead letter message {MessageId} not found for requeue", messageId);
                 }
             }
-
-            if (messagesToProcess.Count() == 0)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Failed to requeue dead letter message {MessageId}", messageId);
+                throw;
+            }
+        }
+
+        private async void ProcessMessages(object? state)
+        {
+            if (_redis == null || _currentCircuitState == CircuitState.Open)
+            {
+                if (_currentCircuitState == CircuitState.Open)
+                {
+                    _logger.LogDebug("Circuit breaker is open, skipping message processing");
+                }
                 return;
             }
 
-            _logger.LogDebug("Processing batch of {Count} messages", messagesToProcess.Count());
-
-            // Process messages in parallel with limited concurrency
-            var tasks = messagesToProcess.Select(async message =>
+            try
             {
-                await _processingLock.WaitAsync();
-                try
-                {
-                    var success = await ProcessSingleMessageAsync(message);
-                    if (!success && message.DeliveryAttempts >= _maxRetryAttempts)
-                    {
-                        MoveToDeadLetter(message, $"Failed after {_maxRetryAttempts} attempts");
-                    }
-                    else if (!success)
-                    {
-                        // Re-enqueue for retry
-                        message.NextDeliveryAt = CalculateNextDeliveryTime(message.DeliveryAttempts);
-                        _messageQueue.Enqueue(message);
-                    }
-                }
-                finally
-                {
-                    _processingLock.Release();
-                }
-            });
+                // Read pending messages from the consumer group
+                var streamEntries = await _redis.StreamReadGroupAsync(
+                    _messageStreamKey,
+                    _consumerGroup,
+                    _consumerName,
+                    ">",
+                    count: _processingBatchSize);
 
-            await Task.WhenAll(tasks);
-            _lastProcessedAt = DateTime.UtcNow;
+                // TODO: Add pending message recovery in future iteration
+                // For now, focus on basic streaming functionality
+
+                if (streamEntries.Length == 0)
+                {
+                    return;
+                }
+
+                _logger.LogDebug("Processing batch of {Count} messages from Redis stream", streamEntries.Length);
+
+                // Process messages in parallel with limited concurrency
+                var tasks = streamEntries.Select(async entry =>
+                {
+                    await _processingLock.WaitAsync();
+                    try
+                    {
+                        await ProcessStreamEntry(entry);
+                    }
+                    finally
+                    {
+                        _processingLock.Release();
+                    }
+                });
+
+                await Task.WhenAll(tasks);
+                _lastProcessedAt = DateTime.UtcNow;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing messages from Redis stream");
+            }
+        }
+        
+        private async Task ProcessStreamEntry(StreamEntry entry)
+        {
+            try
+            {
+                var dataField = entry.Values.FirstOrDefault(v => v.Name == "data");
+                if (!dataField.Value.HasValue)
+                {
+                    _logger.LogWarning("Stream entry {EntryId} missing data field", entry.Id);
+                    await _redis!.StreamAcknowledgeAsync(_messageStreamKey, _consumerGroup, entry.Id);
+                    return;
+                }
+
+                var message = JsonSerializer.Deserialize<QueuedMessage>(dataField.Value!);
+                if (message == null)
+                {
+                    _logger.LogWarning("Failed to deserialize message from stream entry {EntryId}", entry.Id);
+                    await _redis!.StreamAcknowledgeAsync(_messageStreamKey, _consumerGroup, entry.Id);
+                    return;
+                }
+
+                // Check if message is ready for delivery
+                if (message.NextDeliveryAt > DateTime.UtcNow)
+                {
+                    _logger.LogDebug("Message {MessageId} not ready for delivery, skipping", message.Message.MessageId);
+                    return; // Don't acknowledge yet, will be picked up later
+                }
+
+                // Check if message has expired
+                if (message.Message.IsExpired)
+                {
+                    _logger.LogWarning("Message {MessageId} expired, moving to dead letter", message.Message.MessageId);
+                    await MoveToDeadLetterAsync(message, "Message expired", entry.Id);
+                    return;
+                }
+
+                var success = await ProcessSingleMessageAsync(message);
+                if (!success && message.DeliveryAttempts >= _maxRetryAttempts)
+                {
+                    await MoveToDeadLetterAsync(message, $"Failed after {_maxRetryAttempts} attempts", entry.Id);
+                }
+                else if (!success)
+                {
+                    // Re-enqueue for retry with delay
+                    message.NextDeliveryAt = CalculateNextDeliveryTime(message.DeliveryAttempts);
+                    await EnqueueMessageAsync(message);
+                    await _redis!.StreamAcknowledgeAsync(_messageStreamKey, _consumerGroup, entry.Id);
+                }
+                else
+                {
+                    // Success - acknowledge the message
+                    await _redis!.StreamAcknowledgeAsync(_messageStreamKey, _consumerGroup, entry.Id);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing stream entry {EntryId}", entry.Id);
+                // Don't acknowledge on error - message will be retried
+            }
         }
 
         private async Task<bool> ProcessSingleMessageAsync(QueuedMessage queuedMessage)
@@ -444,15 +670,47 @@ namespace ConduitLLM.Http.Services
             return DateTime.UtcNow.Add(delay);
         }
 
-        private void MoveToDeadLetter(QueuedMessage message, string reason)
+        private async Task MoveToDeadLetterAsync(QueuedMessage message, string reason, RedisValue? originalEntryId = null)
         {
-            message.IsDeadLetter = true;
-            message.DeadLetterReason = reason;
-            _deadLetterQueue.Add(message);
-            
-            _logger.LogWarning(
-                "Message {MessageId} moved to dead letter queue: {Reason}",
-                message.Message.MessageId, reason);
+            if (_redis == null)
+            {
+                _logger.LogWarning("Redis not available, cannot move message {MessageId} to dead letter", message.Message.MessageId);
+                return;
+            }
+
+            try
+            {
+                message.IsDeadLetter = true;
+                message.DeadLetterReason = reason;
+
+                var messageData = JsonSerializer.Serialize(message);
+                var streamFields = new NameValueEntry[]
+                {
+                    new("data", messageData),
+                    new("messageId", message.Message.MessageId),
+                    new("hubName", message.HubName),
+                    new("methodName", message.MethodName),
+                    new("reason", reason),
+                    new("deadLetteredAt", DateTime.UtcNow.ToString("O"))
+                };
+
+                await _redis.StreamAddAsync(_deadLetterStreamKey, streamFields);
+
+                // If we have the original entry ID, acknowledge it from the main stream
+                if (originalEntryId.HasValue)
+                {
+                    await _redis.StreamAcknowledgeAsync(_messageStreamKey, _consumerGroup, originalEntryId.Value);
+                }
+
+                _logger.LogWarning(
+                    "Message {MessageId} moved to dead letter queue: {Reason}",
+                    message.Message.MessageId, reason);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to move message {MessageId} to dead letter queue", message.Message.MessageId);
+                throw;
+            }
         }
 
         public void Dispose()

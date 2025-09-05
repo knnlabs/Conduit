@@ -8,7 +8,7 @@ using Microsoft.Net.Http.Headers;
 namespace ConduitLLM.Http.Controllers
 {
     /// <summary>
-    /// Handles media file retrieval and serving.
+    /// Handles media file upload, retrieval and serving.
     /// </summary>
     [ApiController]
     [Route("v1/media")]
@@ -24,6 +24,142 @@ namespace ConduitLLM.Http.Controllers
         {
             _storageService = storageService;
             _logger = logger;
+        }
+
+        /// <summary>
+        /// Uploads a media file and returns the storage URL.
+        /// </summary>
+        /// <param name="file">The file to upload.</param>
+        /// <param name="mediaType">Optional media type (image/video/audio).</param>
+        /// <returns>The storage result with URL.</returns>
+        [HttpPost("upload")]
+        [Authorize]
+        [Consumes("multipart/form-data")]
+        [RequestSizeLimit(524288000)] // 500MB limit
+        public async Task<IActionResult> UploadMedia(
+            [FromForm] IFormFile file,
+            [FromForm] string? mediaType = null)
+        {
+            try
+            {
+                // Validate file
+                if (file == null || file.Length == 0)
+                {
+                    return BadRequest(new { error = "No file provided or file is empty" });
+                }
+
+                // Validate file extension
+                var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+                var allowedImageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg" };
+                var allowedVideoExtensions = new[] { ".mp4", ".webm", ".mov", ".avi", ".mkv", ".flv", ".wmv", ".m4v" };
+                var allowedAudioExtensions = new[] { ".mp3", ".wav", ".ogg", ".m4a", ".flac", ".aac" };
+
+                // Determine media type from extension if not provided
+                MediaType determinedMediaType;
+                if (!string.IsNullOrEmpty(mediaType))
+                {
+                    if (!Enum.TryParse<MediaType>(mediaType, true, out determinedMediaType))
+                    {
+                        return BadRequest(new { error = "Invalid media type. Must be Image, Video, or Audio" });
+                    }
+                }
+                else if (allowedImageExtensions.Contains(extension))
+                {
+                    determinedMediaType = MediaType.Image;
+                }
+                else if (allowedVideoExtensions.Contains(extension))
+                {
+                    determinedMediaType = MediaType.Video;
+                }
+                else if (allowedAudioExtensions.Contains(extension))
+                {
+                    determinedMediaType = MediaType.Audio;
+                }
+                else
+                {
+                    return BadRequest(new { error = $"Unsupported file extension: {extension}" });
+                }
+
+                // Validate file size based on type
+                var maxSizeBytes = determinedMediaType switch
+                {
+                    MediaType.Image => 104857600L, // 100MB for images
+                    MediaType.Video => 524288000L, // 500MB for videos
+                    MediaType.Audio => 209715200L, // 200MB for audio
+                    _ => 104857600L // Default 100MB
+                };
+
+                if (file.Length > maxSizeBytes)
+                {
+                    var maxSizeMB = maxSizeBytes / (1024 * 1024);
+                    return BadRequest(new { error = $"File size exceeds maximum allowed size of {maxSizeMB}MB for {determinedMediaType}" });
+                }
+
+                // Create metadata
+                var metadata = new MediaMetadata
+                {
+                    MediaType = determinedMediaType,
+                    ContentType = file.ContentType ?? GetContentTypeFromExtension(extension),
+                    FileName = file.FileName
+                };
+
+                // Upload file using storage service
+                using var stream = file.OpenReadStream();
+                var result = await _storageService.StoreAsync(stream, metadata);
+
+                _logger.LogInformation("Media uploaded successfully. Type: {MediaType}, Size: {Size} bytes, Key: {StorageKey}",
+                    determinedMediaType, file.Length, result.StorageKey);
+
+                // Return result with full URL
+                var baseUrl = $"{Request.Scheme}://{Request.Host}";
+                return Ok(new
+                {
+                    success = true,
+                    storageKey = result.StorageKey,
+                    url = result.Url,
+                    directUrl = $"{baseUrl}/v1/media/{result.StorageKey}",
+                    contentType = metadata.ContentType,
+                    mediaType = determinedMediaType.ToString(),
+                    fileName = file.FileName,
+                    sizeBytes = file.Length
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error uploading media file");
+                return StatusCode(500, new { error = "An error occurred while uploading the media file" });
+            }
+        }
+
+        /// <summary>
+        /// Gets content type from file extension.
+        /// </summary>
+        private string GetContentTypeFromExtension(string extension)
+        {
+            return extension.ToLowerInvariant() switch
+            {
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".png" => "image/png",
+                ".gif" => "image/gif",
+                ".webp" => "image/webp",
+                ".bmp" => "image/bmp",
+                ".svg" => "image/svg+xml",
+                ".mp4" => "video/mp4",
+                ".webm" => "video/webm",
+                ".mov" => "video/quicktime",
+                ".avi" => "video/x-msvideo",
+                ".mkv" => "video/x-matroska",
+                ".flv" => "video/x-flv",
+                ".wmv" => "video/x-ms-wmv",
+                ".m4v" => "video/x-m4v",
+                ".mp3" => "audio/mpeg",
+                ".wav" => "audio/wav",
+                ".ogg" => "audio/ogg",
+                ".m4a" => "audio/mp4",
+                ".flac" => "audio/flac",
+                ".aac" => "audio/aac",
+                _ => "application/octet-stream"
+            };
         }
 
         /// <summary>

@@ -86,6 +86,19 @@ namespace ConduitLLM.Core.Services
                                 Fps = request.Parameters?.Fps,
                                 N = 1
                             };
+                            
+                            // Add provider-specific options as ExtensionData
+                            if (request.Parameters?.ProviderOptions != null && request.Parameters.ProviderOptions.Count > 0)
+                            {
+                                videoRequest.ExtensionData = new Dictionary<string, System.Text.Json.JsonElement>();
+                                foreach (var kvp in request.Parameters.ProviderOptions)
+                                {
+                                    // Convert object to JsonElement
+                                    var jsonString = System.Text.Json.JsonSerializer.Serialize(kvp.Value);
+                                    var jsonElement = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(jsonString);
+                                    videoRequest.ExtensionData[kvp.Key] = jsonElement;
+                                }
+                            }
                         }
                     }
                     else
@@ -107,6 +120,16 @@ namespace ConduitLLM.Core.Services
 
                 // Validate parameters (minimal, provider-agnostic)
                 _parameterValidator.ValidateVideoParameters(videoRequest);
+
+                // Log the parameters being sent to the provider (excluding prompt)
+                _logger.LogInformation("Video generation request prepared: TaskId={TaskId}, Model={Model}, Provider={Provider}, Duration={Duration}, Resolution={Resolution}, FPS={FPS}, PromptLength={PromptLength}",
+                    request.RequestId,
+                    originalModelAlias,
+                    modelInfo.Provider,
+                    videoRequest.Duration,
+                    videoRequest.Size,
+                    videoRequest.Fps,
+                    request.Prompt?.Length ?? 0);
 
                 // Get the appropriate client for the model using the alias
                 var client = _clientFactory.GetClient(originalModelAlias);

@@ -55,28 +55,41 @@ namespace ConduitLLM.Providers.Replicate
         {
             ValidateRequest(request, "CreateVideoAsync");
 
-            Logger.LogInformation("Creating video with Replicate for model '{ModelId}'", ProviderModelId);
+            Logger.LogInformation("Creating video with Replicate for model '{ModelId}' with prompt: '{Prompt}'", 
+                ProviderModelId, request.Prompt);
 
             try
             {
                 // Map the request to Replicate format and start prediction
                 var predictionRequest = MapToVideoGenerationRequest(request);
+                
+                Logger.LogDebug("Video generation request mapped. Input parameters: {@InputParams}", predictionRequest.Input);
+                
                 var predictionResponse = await StartPredictionAsync(predictionRequest, apiKey, cancellationToken);
+                
+                Logger.LogInformation("Video generation prediction started with ID: {PredictionId}, Status: {Status}", 
+                    predictionResponse.Id, predictionResponse.Status);
 
                 // Poll until prediction completes or fails
                 var finalPrediction = await PollPredictionUntilCompletedAsync(predictionResponse.Id, apiKey, cancellationToken);
 
+                Logger.LogInformation("Video generation completed for prediction {PredictionId}. Final status: {Status}, Output: {@Output}", 
+                    finalPrediction.Id, finalPrediction.Status, finalPrediction.Output);
+
                 // Process the final result
                 return MapToVideoGenerationResponse(finalPrediction, request.Model);
             }
-            catch (LLMCommunicationException)
+            catch (LLMCommunicationException ex)
             {
+                Logger.LogError(ex, "Video generation failed with LLMCommunicationException for model {ModelId}, prompt: '{Prompt}'", 
+                    ProviderModelId, request.Prompt);
                 // Re-throw LLMCommunicationException directly
                 throw;
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "An unexpected error occurred while processing Replicate video generation");
+                Logger.LogError(ex, "An unexpected error occurred while processing Replicate video generation for model {ModelId}, prompt: '{Prompt}'", 
+                    ProviderModelId, request.Prompt);
                 throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
             }
         }
@@ -114,6 +127,75 @@ namespace ConduitLLM.Providers.Replicate
             {
                 input["num_outputs"] = request.N;
             }
+
+            // Add any additional model-specific parameters from ExtensionData
+            if (request.ExtensionData != null)
+            {
+                foreach (var kvp in request.ExtensionData)
+                {
+                    // Convert JsonElement to appropriate type
+                    object value;
+                    switch (kvp.Value.ValueKind)
+                    {
+                        case System.Text.Json.JsonValueKind.String:
+                            value = kvp.Value.GetString()!;
+                            break;
+                        case System.Text.Json.JsonValueKind.Number:
+                            if (kvp.Value.TryGetInt32(out var intValue))
+                                value = intValue;
+                            else if (kvp.Value.TryGetDouble(out var doubleValue))
+                                value = doubleValue;
+                            else
+                                value = kvp.Value.GetDecimal();
+                            break;
+                        case System.Text.Json.JsonValueKind.True:
+                            value = true;
+                            break;
+                        case System.Text.Json.JsonValueKind.False:
+                            value = false;
+                            break;
+                        case System.Text.Json.JsonValueKind.Null:
+                            continue; // Skip null values
+                        default:
+                            // For arrays and objects, use the raw JSON string
+                            value = kvp.Value.ToString();
+                            break;
+                    }
+                    
+                    // Don't override values that were already set from explicit properties
+                    if (!input.ContainsKey(kvp.Key))
+                    {
+                        input[kvp.Key] = value;
+                    }
+                }
+            }
+
+            // Also handle the Image and Mask properties for image-to-image generation
+            if (!string.IsNullOrEmpty(request.Image))
+            {
+                input["image"] = request.Image;
+            }
+            
+            if (!string.IsNullOrEmpty(request.Mask))
+            {
+                input["mask"] = request.Mask;
+            }
+
+            // Log parameters being sent (excluding prompt content and sensitive data)
+            var logParams = new Dictionary<string, object>(input);
+            logParams["prompt"] = $"[REDACTED: {request.Prompt.Length} chars]";
+            // Redact image data if present
+            if (logParams.ContainsKey("image") && logParams["image"] is string image && image.Length > 100)
+            {
+                logParams["image"] = $"[REDACTED: {image.Length} chars]";
+            }
+            if (logParams.ContainsKey("mask") && logParams["mask"] is string mask && mask.Length > 100)
+            {
+                logParams["mask"] = $"[REDACTED: {mask.Length} chars]";
+            }
+            
+            Logger.LogInformation("Image generation parameters for Replicate: Model={Model}, Parameters={@Parameters}", 
+                ProviderModelId, logParams);
 
             return new ReplicatePredictionRequest
             {
@@ -169,6 +251,64 @@ namespace ConduitLLM.Providers.Replicate
                 input["num_outputs"] = request.N;
             }
 
+            // Add any additional model-specific parameters from ExtensionData
+            if (request.ExtensionData != null)
+            {
+                foreach (var kvp in request.ExtensionData)
+                {
+                    // Convert JsonElement to appropriate type
+                    object value;
+                    switch (kvp.Value.ValueKind)
+                    {
+                        case System.Text.Json.JsonValueKind.String:
+                            value = kvp.Value.GetString()!;
+                            break;
+                        case System.Text.Json.JsonValueKind.Number:
+                            if (kvp.Value.TryGetInt32(out var intValue))
+                                value = intValue;
+                            else if (kvp.Value.TryGetDouble(out var doubleValue))
+                                value = doubleValue;
+                            else
+                                value = kvp.Value.GetDecimal();
+                            break;
+                        case System.Text.Json.JsonValueKind.True:
+                            value = true;
+                            break;
+                        case System.Text.Json.JsonValueKind.False:
+                            value = false;
+                            break;
+                        case System.Text.Json.JsonValueKind.Null:
+                            continue; // Skip null values
+                        default:
+                            // For arrays and objects, use the raw JSON string
+                            value = kvp.Value.ToString();
+                            break;
+                    }
+                    
+                    // Don't override values that were already set from explicit properties
+                    if (!input.ContainsKey(kvp.Key))
+                    {
+                        input[kvp.Key] = value;
+                    }
+                }
+            }
+
+            // Log parameters being sent (excluding prompt content and sensitive data)
+            var logParams = new Dictionary<string, object>(input);
+            logParams["prompt"] = $"[REDACTED: {request.Prompt.Length} chars]";
+            // Also redact any image data parameters
+            if (logParams.ContainsKey("start_image") && logParams["start_image"] is string startImage && startImage.Length > 100)
+            {
+                logParams["start_image"] = $"[REDACTED: {startImage.Length} chars]";
+            }
+            if (logParams.ContainsKey("end_image") && logParams["end_image"] is string endImage && endImage.Length > 100)
+            {
+                logParams["end_image"] = $"[REDACTED: {endImage.Length} chars]";
+            }
+            
+            Logger.LogInformation("Video generation parameters for Replicate: Model={Model}, Parameters={@Parameters}", 
+                ProviderModelId, logParams);
+
             return new ReplicatePredictionRequest
             {
                 Version = ProviderModelId,
@@ -193,10 +333,20 @@ namespace ConduitLLM.Providers.Replicate
 
         private VideoGenerationResponse MapToVideoGenerationResponse(ReplicatePredictionResponse prediction, string originalModelAlias)
         {
+            Logger.LogDebug("Mapping prediction response to VideoGenerationResponse. Prediction ID: {Id}, Status: {Status}", 
+                prediction.Id, prediction.Status);
+            
             // Extract video URLs from the prediction output
             var videoUrls = ExtractVideoUrlsFromPredictionOutput(prediction.Output);
+            
+            if (videoUrls.Count == 0)
+            {
+                Logger.LogError("Failed to extract any video URLs from prediction {Id} with status {Status}. Output: {@Output}", 
+                    prediction.Id, prediction.Status, prediction.Output);
+                throw new LLMCommunicationException($"No video URLs found in Replicate prediction output for prediction {prediction.Id}");
+            }
 
-            return new VideoGenerationResponse
+            var response = new VideoGenerationResponse
             {
                 Created = ((DateTimeOffset)prediction.CreatedAt).ToUnixTimeSeconds(),
                 Data = videoUrls.Select(url => new VideoData
@@ -204,6 +354,11 @@ namespace ConduitLLM.Providers.Replicate
                     Url = url
                 }).ToList()
             };
+            
+            Logger.LogInformation("Successfully mapped video generation response with {Count} video(s) for prediction {Id}", 
+                response.Data.Count, prediction.Id);
+            
+            return response;
         }
     }
 }

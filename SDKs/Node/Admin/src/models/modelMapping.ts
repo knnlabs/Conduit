@@ -13,6 +13,19 @@ export interface ModelProviderMappingDto {
   createdAt: string;
   updatedAt: string;
   notes?: string;
+  capabilities?: ModelCapabilitiesDto;
+}
+
+export interface ModelCapabilitiesDto {
+  supportsVision: boolean;
+  supportsImageGeneration: boolean;
+  supportsVideoGeneration: boolean;
+  supportsEmbeddings: boolean;
+  supportsChat: boolean;
+  supportsFunctionCalling: boolean;
+  supportsStreaming: boolean;
+  maxInputTokens?: number | null;
+  maxOutputTokens?: number | null;
 }
 
 export interface CreateModelProviderMappingDto {
@@ -56,6 +69,24 @@ export interface BulkMappingRequest {
 
 // For bulk mapping responses
 export type BulkMappingResponse = BulkMappingResult;
+
+// For bulk delete operations
+export interface BulkDeleteResult {
+  deletedIds: number[];
+  errors: string[];
+  totalProcessed: number;
+  successCount: number;
+  failureCount: number;
+}
+
+// For bulk update operations
+export interface BulkUpdateResult {
+  updated: ModelProviderMappingDto[];
+  errors: string[];
+  totalProcessed: number;
+  successCount: number;
+  failureCount: number;
+}
 
 // For discovered models
 export interface DiscoveredModel {

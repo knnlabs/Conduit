@@ -106,7 +106,8 @@ class EphemeralKeyClient {
     const { key, coreApiUrl } = await this.getKey();
     
     const headers = new Headers(options.headers);
-    headers.set('X-Ephemeral-Key', key);
+    // Use Authorization Bearer header for ephemeral keys (unified with regular keys)
+    headers.set('Authorization', `Bearer ${key}`);
     
     const requestOptions: RequestInit = {
       ...options,
@@ -122,7 +123,7 @@ class EphemeralKeyClient {
       
       const { key: newKey, coreApiUrl: newCoreApiUrl } = await this.getKey();
       const newHeaders = new Headers(requestOptions.headers);
-      newHeaders.set('X-Ephemeral-Key', newKey);
+      newHeaders.set('Authorization', `Bearer ${newKey}`);
       requestOptions.headers = newHeaders;
       
       return fetch(`${newCoreApiUrl}${endpoint}`, requestOptions);

@@ -1,10 +1,10 @@
 'use client';
 
 import { TextInput, Text, Stack } from '@mantine/core';
-import type { TextParameter } from '../types/parameters';
+import type { TextParameter, InputParameter } from '../types/parameters';
 
 interface TextControlProps {
-  parameter: TextParameter;
+  parameter: TextParameter | InputParameter;
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;

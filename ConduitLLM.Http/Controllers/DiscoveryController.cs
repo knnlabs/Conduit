@@ -89,6 +89,8 @@ namespace ConduitLLM.Http.Controllers
                             .ThenInclude(m => m.Series)
                     .Where(m => m.IsEnabled && m.Provider != null && m.Provider.IsEnabled)
                     .ToListAsync();
+                
+                _logger.LogInformation($"Found {modelMappings.Count} enabled model mappings");
 
                 var models = new List<object>();
 
@@ -171,14 +173,22 @@ namespace ConduitLLM.Http.Controllers
                         // UI Parameters from Model or Series
                         parameters = mapping.ModelProviderTypeAssociation?.Model?.ModelParameters ?? mapping.ModelProviderTypeAssociation?.Model?.Series?.Parameters ?? "{}",
                         
-                        // Capabilities (flat boolean flags)
-                        supports_chat = caps.SupportsChat,
-                        supports_streaming = caps.SupportsStreaming,
-                        supports_vision = caps.SupportsVision,
-                        supports_function_calling = caps.SupportsFunctionCalling,
-                        supports_video_generation = caps.SupportsVideoGeneration,
-                        supports_image_generation = caps.SupportsImageGeneration,
-                        supports_embeddings = caps.SupportsEmbeddings
+                        // Capabilities (nested object as expected by SDK)
+                        capabilities = new
+                        {
+                            chat = caps.SupportsChat,
+                            chat_stream = caps.SupportsStreaming,
+                            embeddings = caps.SupportsEmbeddings,
+                            image_generation = caps.SupportsImageGeneration,
+                            vision = caps.SupportsVision,
+                            video_generation = caps.SupportsVideoGeneration,
+                            video_understanding = false, // Not yet supported
+                            function_calling = caps.SupportsFunctionCalling,
+                            tool_use = caps.SupportsFunctionCalling, // Same as function calling for now
+                            json_mode = false, // Not yet tracked
+                            max_tokens = maxInputTokens + maxOutputTokens,
+                            max_output_tokens = maxOutputTokens
+                        }
                         
                         // TODO: Future additions to consider:
                         // - context_window (from capabilities or series metadata)

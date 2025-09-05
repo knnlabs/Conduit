@@ -114,6 +114,105 @@ export function useDeleteModelMapping() {
   });
 }
 
+export function useBulkDeleteModelMappings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (ids: number[]) => 
+      withAdminClient(client => client.modelMappings.bulkDelete(ids)),
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+      
+      if (result.failureCount > 0) {
+        notifications.show({
+          title: 'Partial Success',
+          message: `Deleted ${result.successCount} mappings. ${result.failureCount} failed.`,
+          color: 'yellow',
+        });
+      } else {
+        notifications.show({
+          title: 'Success',
+          message: `Successfully deleted ${result.successCount} mappings`,
+          color: 'green',
+        });
+      }
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: 'Error',
+        message: error.message,
+        color: 'red',
+      });
+    },
+  });
+}
+
+export function useBulkEnableModelMappings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (ids: number[]) => 
+      withAdminClient(client => client.modelMappings.bulkEnable(ids)),
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+      
+      if (result.failureCount > 0) {
+        notifications.show({
+          title: 'Partial Success',
+          message: `Enabled ${result.successCount} mappings. ${result.failureCount} failed.`,
+          color: 'yellow',
+        });
+      } else {
+        notifications.show({
+          title: 'Success',
+          message: `Successfully enabled ${result.successCount} mappings`,
+          color: 'green',
+        });
+      }
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: 'Error',
+        message: error.message,
+        color: 'red',
+      });
+    },
+  });
+}
+
+export function useBulkDisableModelMappings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (ids: number[]) => 
+      withAdminClient(client => client.modelMappings.bulkDisable(ids)),
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+      
+      if (result.failureCount > 0) {
+        notifications.show({
+          title: 'Partial Success',
+          message: `Disabled ${result.successCount} mappings. ${result.failureCount} failed.`,
+          color: 'yellow',
+        });
+      } else {
+        notifications.show({
+          title: 'Success', 
+          message: `Successfully disabled ${result.successCount} mappings`,
+          color: 'green',
+        });
+      }
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: 'Error',
+        message: error.message,
+        color: 'red',
+      });
+    },
+  });
+}
+
 
 
 interface BulkDiscoverResult {

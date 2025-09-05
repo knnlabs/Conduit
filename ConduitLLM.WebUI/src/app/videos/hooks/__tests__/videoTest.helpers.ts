@@ -1,5 +1,5 @@
 import { useVideoStore } from '../useVideoStore';
-import * as clientCore from '@/lib/client/coreClient';
+import * as clientCore from '@/lib/client/browserCoreClient';
 import type { VideoStoreState } from '../../types';
 
 // Local VideoProgress interface to avoid broken SDK imports
@@ -11,10 +11,9 @@ export interface VideoProgress {
 
 // Mock dependencies
 jest.mock('../useVideoStore');
-jest.mock('@/lib/client/coreClient');
+jest.mock('@/lib/client/browserCoreClient');
 
 export const mockUseVideoStore = jest.mocked(useVideoStore);
-export const mockGenerateVideoWithProgress = jest.mocked(clientCore.generateVideoWithProgress);
 
 export const createMockStore = () => {
   const mockAddTask = jest.fn();
@@ -87,9 +86,19 @@ export const setupMocks = () => {
     })
   );
   
-  // Mock the SDK method (although it's not actually used in current implementation)
-  mockGenerateVideoWithProgress.mockResolvedValue({
-    taskId: 'mock_task_id',
+  // Mock the SDK getBrowserCoreClient
+  (clientCore.getBrowserCoreClient as jest.Mock).mockResolvedValue({
+    videos: {
+      generateWithProgress: jest.fn().mockResolvedValue({
+        taskId: 'mock_task_id',
+        result: Promise.resolve({
+          created: Date.now(),
+          data: [{ url: 'https://example.com/video.mp4' }],
+          model: 'test-model',
+        }),
+      }),
+      cancelTask: jest.fn().mockResolvedValue(undefined),
+    },
   });
 
   // Mock the video SignalR client to always fail connection so it falls back to polling

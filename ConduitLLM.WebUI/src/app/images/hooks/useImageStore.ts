@@ -1,14 +1,11 @@
 import { create } from 'zustand';
 import { 
   ImageGenerationState, 
-  ImageGenerationActions,
-  type ImageGenerationResponse,
-  type ErrorResponse
+  ImageGenerationActions
 } from '../types';
 import { 
   createToastErrorHandler, 
-  shouldShowBalanceWarning,
-  handleApiError
+  shouldShowBalanceWarning
 } from '@knn_labs/conduit-core-client';
 import { notifications } from '@mantine/notifications';
 
@@ -57,49 +54,22 @@ export const useImageStore = create<ImageStore>((set, get) => ({
     const handleError = createToastErrorHandler(notifications.show);
 
     try {
-      // Use the SDK through our API route (similar to video generation pattern)
-      const response = await fetch('/api/images/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt,
-          model: settings.model,
-          size: settings.size,
-          quality: settings.quality,
-          style: settings.style,
-          n: settings.n,
-          response_format: settings.responseFormat,
-          // Include dynamic parameters if provided
-          ...(dynamicParameters && Object.keys(dynamicParameters).length > 0 ? { parameters: dynamicParameters } : {}),
-        }),
+      // Get SDK client and use it directly
+      const { getBrowserCoreClient } = await import('@/lib/client/browserCoreClient');
+      const client = await getBrowserCoreClient();
+      
+      // Use SDK to generate image
+      const result = await client.images.generate({
+        prompt,
+        model: settings.model,
+        size: settings.size,
+        quality: settings.quality,
+        style: settings.style,
+        n: settings.n,
+        response_format: settings.responseFormat,
+        // Include dynamic parameters if provided
+        ...dynamicParameters,
       });
-
-      if (!response.ok) {
-        let errorData: ErrorResponse | { error: string };
-        try {
-          errorData = await response.json() as ErrorResponse;
-        } catch {
-          errorData = { error: response.statusText };
-        }
-        
-        // Create a mock HTTP error that the SDK can handle properly
-        const httpError = {
-          response: {
-            status: response.status,
-            data: errorData,
-            headers: Object.fromEntries(response.headers.entries())
-          },
-          message: response.statusText,
-          request: { url: '/api/images/generate', method: 'POST' }
-        };
-        
-        // This will automatically throw the appropriate ConduitError subclass
-        handleApiError(httpError, '/api/images/generate', 'POST');
-      }
-
-      const result = await response.json() as ImageGenerationResponse;
       set({ 
         status: 'completed', 
         results: result.data,

@@ -5,20 +5,27 @@
 export type ParameterType = 
   | 'slider' 
   | 'select' 
-  | 'text' 
+  | 'text'
+  | 'input'  // Added to support Replicate schema conversion
   | 'number' 
   | 'toggle' 
   | 'color' 
   | 'resolution'
-  | 'textarea';
+  | 'textarea'
+  | 'media-upload'
+  | 'media_upload'
+  | 'file-upload'
+  | 'file_upload';
 
 export interface BaseParameter {
   type: ParameterType;
+  name?: string;  // Parameter field name (e.g., "image_url")
   label: string;
   description?: string;
   default?: unknown;
   required?: boolean;
   visible?: boolean;
+  metadata?: Record<string, unknown>; // Additional metadata for special handling
   dependsOn?: {
     parameter: string;
     value: unknown;
@@ -48,6 +55,14 @@ export interface SelectParameter extends BaseParameter {
 
 export interface TextParameter extends BaseParameter {
   type: 'text';
+  placeholder?: string;
+  maxLength?: number;
+  pattern?: string;
+  default?: string;
+}
+
+export interface InputParameter extends BaseParameter {
+  type: 'input';
   placeholder?: string;
   maxLength?: number;
   pattern?: string;
@@ -98,15 +113,24 @@ export interface ResolutionParameter extends BaseParameter {
   allowCustom?: boolean;
 }
 
+export interface MediaUploadParameter extends BaseParameter {
+  type: 'media-upload' | 'media_upload' | 'file-upload' | 'file_upload';
+  accept?: string;  // MIME types or extensions
+  maxSize?: number; // Max file size in bytes
+  default?: string; // Default URL
+}
+
 export type DynamicParameter = 
   | SliderParameter
   | SelectParameter
   | TextParameter
+  | InputParameter
   | TextareaParameter
   | NumberParameter
   | ToggleParameter
   | ColorParameter
-  | ResolutionParameter;
+  | ResolutionParameter
+  | MediaUploadParameter;
 
 export type ParameterValues = Record<string, unknown>;
 
@@ -132,6 +156,9 @@ export const isSelectParameter = (param: DynamicParameter): param is SelectParam
 
 export const isTextParameter = (param: DynamicParameter): param is TextParameter => 
   param.type === 'text';
+
+export const isInputParameter = (param: DynamicParameter): param is InputParameter => 
+  param.type === 'input';
 
 export const isTextareaParameter = (param: DynamicParameter): param is TextareaParameter => 
   param.type === 'textarea';
