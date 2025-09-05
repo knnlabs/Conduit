@@ -2,11 +2,11 @@ import { useCallback, useRef, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { 
   createToastErrorHandler,
-  ChatStreamingManager,
   type ImageAttachment,
   type StreamingCallbacks,
   type StreamMessageOptions
 } from '@knn_labs/conduit-core-client';
+import { SDKChatStreamingAdapter } from '@/lib/client/sdkChatStreamingAdapter';
 import { 
   ChatParameters, 
   ChatMessage
@@ -46,15 +46,14 @@ export function useChatStreamingLogic({
   performanceSettings,
   dynamicParameters = {},
 }: ChatStreamingLogicParams) {
-  const streamingManagerRef = useRef<ChatStreamingManager | null>(null);
+  const streamingAdapterRef = useRef<SDKChatStreamingAdapter | null>(null);
   
   // Create error handler with toast notifications
   const handleError = createToastErrorHandler(notifications.show);
 
-  // Create streaming manager instance
-  const streamingManager = useMemo(() => {
-    return new ChatStreamingManager({
-      apiEndpoint: '/api/chat/completions',
+  // Create streaming adapter that uses SDK directly
+  const streamingAdapter = useMemo(() => {
+    return new SDKChatStreamingAdapter({
       timeoutMs: 300000, // 5 minutes
       trackPerformanceMetrics: performanceSettings.trackPerformanceMetrics,
       showTokensPerSecond: performanceSettings.showTokensPerSecond,
@@ -64,8 +63,12 @@ export function useChatStreamingLogic({
   }, [performanceSettings]);
 
   // Store reference for cleanup
-  if (streamingManagerRef.current !== streamingManager) {
-    streamingManagerRef.current = streamingManager;
+  if (streamingAdapterRef.current !== streamingAdapter) {
+    // Dispose old adapter
+    if (streamingAdapterRef.current) {
+      streamingAdapterRef.current.dispose();
+    }
+    streamingAdapterRef.current = streamingAdapter;
   }
 
   const sendMessage = useCallback(async (inputMessage: string, images?: ImageAttachment[]) => {
@@ -185,8 +188,8 @@ export function useChatStreamingLogic({
         }
       };
 
-      // Use the streaming manager
-      await streamingManager.streamMessage(inputMessage.trim(), streamingOptions, callbacks);
+      // Use the streaming adapter
+      await streamingAdapter.streamMessage(inputMessage.trim(), streamingOptions, callbacks);
       
     } catch (err) {
       console.error('Chat error:', err);
@@ -196,20 +199,20 @@ export function useChatStreamingLogic({
       // Cleanup handled in callbacks
       setTokensPerSecond(null);
     }
-  }, [selectedModel, messages, isLoading, getActiveSession, performanceSettings, handleError, setMessages, setIsLoading, setStreamingContent, setStreamingChannel, setTokensPerSecond, setError, dynamicParameters, streamingManager]);
+  }, [selectedModel, messages, isLoading, getActiveSession, performanceSettings, handleError, setMessages, setIsLoading, setStreamingContent, setStreamingChannel, setTokensPerSecond, setError, dynamicParameters, streamingAdapter]);
 
   const abortMessage = useCallback(() => {
-    if (streamingManager.isStreaming()) {
-      streamingManager.abort();
+    if (streamingAdapterRef.current) {
+      streamingAdapterRef.current.abort();
     }
-  }, [streamingManager]);
+  }, []);
 
   return {
     sendMessage,
     abortMessage,
     // Provide a ref-like interface for compatibility
     abortControllerRef: {
-      current: streamingManager.isStreaming() ? { abort: abortMessage } : null
+      current: streamingAdapterRef.current ? { abort: abortMessage } : null
     }
   };
 }

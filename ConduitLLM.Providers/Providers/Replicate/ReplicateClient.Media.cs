@@ -128,9 +128,71 @@ namespace ConduitLLM.Providers.Replicate
                 input["num_outputs"] = request.N;
             }
 
-            // Log parameters being sent (excluding prompt content)
+            // Add any additional model-specific parameters from ExtensionData
+            if (request.ExtensionData != null)
+            {
+                foreach (var kvp in request.ExtensionData)
+                {
+                    // Convert JsonElement to appropriate type
+                    object value;
+                    switch (kvp.Value.ValueKind)
+                    {
+                        case System.Text.Json.JsonValueKind.String:
+                            value = kvp.Value.GetString()!;
+                            break;
+                        case System.Text.Json.JsonValueKind.Number:
+                            if (kvp.Value.TryGetInt32(out var intValue))
+                                value = intValue;
+                            else if (kvp.Value.TryGetDouble(out var doubleValue))
+                                value = doubleValue;
+                            else
+                                value = kvp.Value.GetDecimal();
+                            break;
+                        case System.Text.Json.JsonValueKind.True:
+                            value = true;
+                            break;
+                        case System.Text.Json.JsonValueKind.False:
+                            value = false;
+                            break;
+                        case System.Text.Json.JsonValueKind.Null:
+                            continue; // Skip null values
+                        default:
+                            // For arrays and objects, use the raw JSON string
+                            value = kvp.Value.ToString();
+                            break;
+                    }
+                    
+                    // Don't override values that were already set from explicit properties
+                    if (!input.ContainsKey(kvp.Key))
+                    {
+                        input[kvp.Key] = value;
+                    }
+                }
+            }
+
+            // Also handle the Image and Mask properties for image-to-image generation
+            if (!string.IsNullOrEmpty(request.Image))
+            {
+                input["image"] = request.Image;
+            }
+            
+            if (!string.IsNullOrEmpty(request.Mask))
+            {
+                input["mask"] = request.Mask;
+            }
+
+            // Log parameters being sent (excluding prompt content and sensitive data)
             var logParams = new Dictionary<string, object>(input);
             logParams["prompt"] = $"[REDACTED: {request.Prompt.Length} chars]";
+            // Redact image data if present
+            if (logParams.ContainsKey("image") && logParams["image"] is string image && image.Length > 100)
+            {
+                logParams["image"] = $"[REDACTED: {image.Length} chars]";
+            }
+            if (logParams.ContainsKey("mask") && logParams["mask"] is string mask && mask.Length > 100)
+            {
+                logParams["mask"] = $"[REDACTED: {mask.Length} chars]";
+            }
             
             Logger.LogInformation("Image generation parameters for Replicate: Model={Model}, Parameters={@Parameters}", 
                 ProviderModelId, logParams);
@@ -189,9 +251,60 @@ namespace ConduitLLM.Providers.Replicate
                 input["num_outputs"] = request.N;
             }
 
-            // Log parameters being sent (excluding prompt content)
+            // Add any additional model-specific parameters from ExtensionData
+            if (request.ExtensionData != null)
+            {
+                foreach (var kvp in request.ExtensionData)
+                {
+                    // Convert JsonElement to appropriate type
+                    object value;
+                    switch (kvp.Value.ValueKind)
+                    {
+                        case System.Text.Json.JsonValueKind.String:
+                            value = kvp.Value.GetString()!;
+                            break;
+                        case System.Text.Json.JsonValueKind.Number:
+                            if (kvp.Value.TryGetInt32(out var intValue))
+                                value = intValue;
+                            else if (kvp.Value.TryGetDouble(out var doubleValue))
+                                value = doubleValue;
+                            else
+                                value = kvp.Value.GetDecimal();
+                            break;
+                        case System.Text.Json.JsonValueKind.True:
+                            value = true;
+                            break;
+                        case System.Text.Json.JsonValueKind.False:
+                            value = false;
+                            break;
+                        case System.Text.Json.JsonValueKind.Null:
+                            continue; // Skip null values
+                        default:
+                            // For arrays and objects, use the raw JSON string
+                            value = kvp.Value.ToString();
+                            break;
+                    }
+                    
+                    // Don't override values that were already set from explicit properties
+                    if (!input.ContainsKey(kvp.Key))
+                    {
+                        input[kvp.Key] = value;
+                    }
+                }
+            }
+
+            // Log parameters being sent (excluding prompt content and sensitive data)
             var logParams = new Dictionary<string, object>(input);
             logParams["prompt"] = $"[REDACTED: {request.Prompt.Length} chars]";
+            // Also redact any image data parameters
+            if (logParams.ContainsKey("start_image") && logParams["start_image"] is string startImage && startImage.Length > 100)
+            {
+                logParams["start_image"] = $"[REDACTED: {startImage.Length} chars]";
+            }
+            if (logParams.ContainsKey("end_image") && logParams["end_image"] is string endImage && endImage.Length > 100)
+            {
+                logParams["end_image"] = $"[REDACTED: {endImage.Length} chars]";
+            }
             
             Logger.LogInformation("Video generation parameters for Replicate: Model={Model}, Parameters={@Parameters}", 
                 ProviderModelId, logParams);

@@ -131,7 +131,11 @@ namespace ConduitLLM.Http.Controllers
                         Quality = request.Quality,
                         Style = request.Style,
                         ResponseFormat = request.ResponseFormat,
-                        User = request.User
+                        User = request.User,
+                        Image = request.Image,
+                        Mask = request.Mask,
+                        Operation = request.Operation,
+                        ExtensionData = request.ExtensionData
                     },
                     UserId = HttpContext.User.FindFirst("sub")?.Value ?? "anonymous",
                     Priority = 0, // Normal priority

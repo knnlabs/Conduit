@@ -13,7 +13,7 @@ namespace ConduitLLM.Http.Controllers
     /// </summary>
     [ApiController]
     [Route("v1/images")]
-    [Authorize(AuthenticationSchemes = "VirtualKey,EphemeralKey")]
+    [Authorize]
     [RequireBalance]
     [Tags("Images")]
     public partial class ImagesController : EventPublishingControllerBase

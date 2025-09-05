@@ -42,6 +42,13 @@ export type {
   ModelsResponse,
 } from './models/models';
 
+// Media Service exports
+export type {
+  MediaUploadResponse,
+  MediaUploadOptions,
+} from './services/MediaService';
+export { MediaService } from './services/MediaService';
+
 export type {
   ImageGenerationRequest,
   ImageGenerationResponse,

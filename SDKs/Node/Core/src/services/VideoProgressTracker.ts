@@ -255,7 +255,8 @@ export class VideoProgressTracker {
           throw new ConduitError('Task timed out');
 
         case VideoTaskStatus.Pending:
-        case VideoTaskStatus.Running:
+        case VideoTaskStatus.Processing:
+        case VideoTaskStatus.Queued:
           // Continue polling
           break;
 

@@ -11,15 +11,21 @@ export type ParameterType =
   | 'toggle' 
   | 'color' 
   | 'resolution'
-  | 'textarea';
+  | 'textarea'
+  | 'media-upload'
+  | 'media_upload'
+  | 'file-upload'
+  | 'file_upload';
 
 export interface BaseParameter {
   type: ParameterType;
+  name?: string;  // Parameter field name (e.g., "image_url")
   label: string;
   description?: string;
   default?: unknown;
   required?: boolean;
   visible?: boolean;
+  metadata?: Record<string, unknown>; // Additional metadata for special handling
   dependsOn?: {
     parameter: string;
     value: unknown;
@@ -107,6 +113,13 @@ export interface ResolutionParameter extends BaseParameter {
   allowCustom?: boolean;
 }
 
+export interface MediaUploadParameter extends BaseParameter {
+  type: 'media-upload' | 'media_upload' | 'file-upload' | 'file_upload';
+  accept?: string;  // MIME types or extensions
+  maxSize?: number; // Max file size in bytes
+  default?: string; // Default URL
+}
+
 export type DynamicParameter = 
   | SliderParameter
   | SelectParameter
@@ -116,7 +129,8 @@ export type DynamicParameter =
   | NumberParameter
   | ToggleParameter
   | ColorParameter
-  | ResolutionParameter;
+  | ResolutionParameter
+  | MediaUploadParameter;
 
 export type ParameterValues = Record<string, unknown>;
 

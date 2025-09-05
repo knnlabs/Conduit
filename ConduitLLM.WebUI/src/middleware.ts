@@ -4,11 +4,8 @@ import { NextResponse } from 'next/server';
 // Public routes that don't require authentication
 const isPublicRoute = createRouteMatcher([
   '/access-denied',
-  '/api/health',
   '/api/model-mappings(.*)',  // Allow all model-mappings API routes including PUT
-  '/api/discovery/models',
-  '/api/videos/generate',
-  '/api/videos/tasks/(.*)'
+  '/api/discovery/models'
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

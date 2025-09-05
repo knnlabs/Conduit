@@ -55,7 +55,7 @@ interface VideoCardProps {
 }
 
 function VideoCard({ task, onRemove }: VideoCardProps) {
-  const video: VideoData | undefined = task.result?.data[0];
+  const video: VideoData | undefined = task.result?.data?.[0];
   
   if (!video) {
     return null;

@@ -14,7 +14,7 @@ namespace ConduitLLM.Http.Controllers
     /// </summary>
     [ApiController]
     [Route("v1/discovery")]
-    [Authorize(AuthenticationSchemes = "VirtualKey,EphemeralKey")]
+    [Authorize]
     public class DiscoveryController : ControllerBase
     {
         private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;

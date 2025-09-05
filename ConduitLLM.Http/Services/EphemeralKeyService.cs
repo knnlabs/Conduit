@@ -53,6 +53,20 @@ namespace ConduitLLM.Http.Services
         /// <param name="key">The ephemeral key</param>
         /// <returns>The virtual key if found and valid, null otherwise</returns>
         Task<string?> GetVirtualKeyAsync(string key);
+
+        /// <summary>
+        /// Gets the virtual key ID for an ephemeral key without consuming it
+        /// </summary>
+        /// <param name="key">The ephemeral key</param>
+        /// <returns>The virtual key ID if valid, null otherwise</returns>
+        Task<int?> GetVirtualKeyIdAsync(string key);
+
+        /// <summary>
+        /// Gets the full ephemeral key data without consuming it
+        /// </summary>
+        /// <param name="key">The ephemeral key</param>
+        /// <returns>The key data if found, null otherwise</returns>
+        Task<EphemeralKeyData?> GetKeyDataAsync(string key);
     }
 
     public class EphemeralKeyService : IEphemeralKeyService
@@ -320,6 +334,30 @@ namespace ConduitLLM.Http.Services
                 _logger.LogError(ex, "Failed to decrypt virtual key for ephemeral key: {Key}", SanitizeKeyForLogging(key));
                 return null;
             }
+        }
+
+        public async Task<int?> GetVirtualKeyIdAsync(string key)
+        {
+            var keyData = await GetKeyDataAsync(key);
+            return keyData?.VirtualKeyId;
+        }
+
+        public async Task<EphemeralKeyData?> GetKeyDataAsync(string key)
+        {
+            if (string.IsNullOrEmpty(key))
+            {
+                return null;
+            }
+
+            var cacheKey = $"{KeyPrefix}{key}";
+            var serializedData = await _cache.GetStringAsync(cacheKey);
+
+            if (string.IsNullOrEmpty(serializedData))
+            {
+                return null;
+            }
+
+            return JsonSerializer.Deserialize<EphemeralKeyData>(serializedData);
         }
 
         private static string EncryptString(string plainText)
