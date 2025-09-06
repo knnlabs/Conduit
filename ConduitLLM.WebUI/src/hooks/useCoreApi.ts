@@ -104,7 +104,7 @@ export function useCoreApi() {
 
   const streamChatCompletion = useCallback(async function* (
     request: ChatCompletionRequest
-  ): AsyncGenerator<ChatCompletionResponse, void, unknown> {
+  ) {
     setIsLoading(true);
     setError(null);
     

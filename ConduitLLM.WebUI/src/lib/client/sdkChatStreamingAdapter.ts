@@ -1,32 +1,12 @@
 import { getBrowserCoreClient } from './browserCoreClient';
-import type { 
-  StreamingCallbacks, 
-  StreamMessageOptions
+import { 
+  isChatCompletionChunk,
+  isStreamingMetrics,
+  isFinalMetrics,
+  type StreamingCallbacks, 
+  type StreamMessageOptions
 } from '@knn_labs/conduit-core-client';
 
-// Define local types to match SDK expectations
-interface ChatCompletionChunk {
-  id?: string;
-  object?: string;
-  created?: number;
-  model?: string;
-  choices: Array<{
-    index: number;
-    delta: {
-      role?: string;
-      content?: string;
-      reasoning?: string;
-      channel?: string;
-      [key: string]: unknown;
-    };
-    finish_reason?: string;
-  }>;
-  usage?: {
-    prompt_tokens?: number;
-    completion_tokens?: number;
-    total_tokens?: number;
-  };
-}
 
 /**
  * Adapter class that uses the SDK client directly for chat streaming
@@ -97,78 +77,99 @@ export class SDKChatStreamingAdapter {
 
       // Track content and performance
       let totalContent = '';
-      let tokenCount = 0;
       const startTime = Date.now();
       let firstTokenTime: number | null = null;
 
       // Process the stream
-      for await (const chunk of stream) {
-        // Track first token time for performance metrics
-        if (!firstTokenTime && chunk.choices?.[0]?.delta?.content) {
-          firstTokenTime = Date.now();
-        }
-
-        // Handle chunk callback
-        if (callbacks.onChunk) {
-          // Convert SDK chunk to our local type
-          const localChunk: ChatCompletionChunk = {
-            id: chunk.id,
-            object: chunk.object,
-            created: chunk.created,
-            model: chunk.model,
-            choices: chunk.choices?.map(choice => ({
-              index: choice.index,
-              delta: {
-                role: choice.delta?.role,
-                content: choice.delta?.content,
-                reasoning: choice.delta?.reasoning,
-                channel: choice.delta?.channel,
-                ...(choice.delta ?? {})
-              },
-              finish_reason: choice.finish_reason ?? undefined
-            })) ?? [],
-            usage: chunk.usage
-          };
-          callbacks.onChunk(localChunk as unknown as ChatCompletionChunk);
-        }
-
-        // Handle content updates
-        const content = chunk.choices?.[0]?.delta?.content;
-        if (content) {
-          totalContent += content;
-          tokenCount++;
-          
-          if (callbacks.onContent) {
-            callbacks.onContent(content, totalContent);
+      for await (const data of stream) {
+        // Handle different event types from the stream
+        if (isChatCompletionChunk(data)) {
+          // Track first token time for performance metrics
+          if (!firstTokenTime && data.choices?.[0]?.delta?.content) {
+            firstTokenTime = Date.now();
           }
 
-          // Calculate tokens per second if requested
+          // Handle chunk callback
+          if (callbacks.onChunk) {
+            // Transform SDK chunk to match expected callback type
+            // The main difference is finish_reason can be null in SDK but callback expects string | undefined
+            const transformedChunk = {
+              ...data,
+              choices: data.choices?.map(choice => ({
+                ...choice,
+                finish_reason: choice.finish_reason ?? undefined
+              })) ?? []
+            };
+            callbacks.onChunk(transformedChunk as Parameters<typeof callbacks.onChunk>[0]);
+          }
+
+          // Handle content updates
+          const content = data.choices?.[0]?.delta?.content;
+          if (content) {
+            totalContent += content;
+            
+            if (callbacks.onContent) {
+              callbacks.onContent(content, totalContent);
+            }
+          }
+
+          // Check for completion in chunk (some providers send finish_reason in a chunk)
+          const finishReason = data.choices?.[0]?.finish_reason;
+          if (finishReason) {
+            // Some providers send finish_reason without final metrics
+            // We'll handle completion here if needed
+          }
+        } else if (isStreamingMetrics(data)) {
+          // Handle streaming metrics updates
+          // Cast to unknown first, then to expected shape to satisfy ESLint
+          const metrics = data as unknown as {
+            current_tokens_per_second?: number;
+            tokens_per_second?: number;
+            [key: string]: unknown;
+          };
+          
+          // Update tokens per second if available
           if (callbacks.onTokensPerSecond && this.config.showTokensPerSecond) {
-            const elapsedSeconds = (Date.now() - startTime) / 1000;
-            if (elapsedSeconds > 0) {
-              const tokensPerSecond = tokenCount / elapsedSeconds;
+            const tokensPerSecond = metrics.current_tokens_per_second ?? metrics.tokens_per_second;
+            if (tokensPerSecond !== undefined && typeof tokensPerSecond === 'number') {
               callbacks.onTokensPerSecond(tokensPerSecond);
             }
           }
-        }
-
-        // Check for completion
-        const finishReason = chunk.choices?.[0]?.finish_reason;
-        if (finishReason) {
-          // Calculate final performance metrics
+          
+          // Pass metrics to callback if available
+          if (callbacks.onMetrics) {
+            callbacks.onMetrics(data as Parameters<typeof callbacks.onMetrics>[0]);
+          }
+        } else if (isFinalMetrics(data)) {
+          // Handle final metrics - this has the accurate token counts
+          // Cast to unknown first, then to expected shape to satisfy ESLint
+          const finalMetrics = data as unknown as {
+            model?: string;
+            total_tokens?: number;
+            completion_tokens?: number;
+            prompt_tokens?: number;
+            time_to_first_token_ms?: number;
+            tokens_per_second?: number;
+            completion_tokens_per_second?: number;
+            provider?: string;
+          };
+          
+          // Calculate final timings
           const totalTime = Date.now() - startTime;
           const timeToFirstToken = firstTokenTime ? firstTokenTime - startTime : undefined;
           
+          // Build metadata from final metrics (using correct field names)
           const metadata = {
-            model: options.model,
-            finish_reason: finishReason,
-            total_tokens: tokenCount,
-            completion_tokens: tokenCount,
-            prompt_tokens: undefined, // Would need to track separately
-            total_time_ms: totalTime,
-            time_to_first_token_ms: timeToFirstToken,
-            tokens_per_second: tokenCount / (totalTime / 1000),
-            ...(chunk.usage && { usage: chunk.usage })
+            model: finalMetrics.model ?? options.model,
+            finishReason: 'stop' as const, // FinalMetrics indicate completion
+            tokensUsed: finalMetrics.total_tokens ?? undefined,
+            completionTokens: finalMetrics.completion_tokens ?? undefined,
+            promptTokens: finalMetrics.prompt_tokens ?? undefined,
+            latency: totalTime,
+            timeToFirstToken: timeToFirstToken ?? finalMetrics.time_to_first_token_ms ?? undefined,
+            tokensPerSecond: finalMetrics.tokens_per_second ?? finalMetrics.completion_tokens_per_second ?? undefined,
+            streaming: true,
+            provider: finalMetrics.provider ?? undefined
           };
 
           if (callbacks.onComplete) {
@@ -177,7 +178,7 @@ export class SDKChatStreamingAdapter {
               metadata
             });
           }
-          break;
+          break; // Stream is complete
         }
       }
     } catch (error) {
