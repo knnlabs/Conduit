@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Metrics;
 using ConduitLLM.Core.Models;
 using IVirtualKeyService = ConduitLLM.Configuration.Interfaces.IVirtualKeyService;
 using IModelProviderMappingService = ConduitLLM.Configuration.Interfaces.IModelProviderMappingService;
@@ -52,10 +53,11 @@ namespace ConduitLLM.Core.Services
             IWebhookNotificationService webhookService,
             IHttpClientFactory httpClientFactory,
             MinimalParameterValidator parameterValidator,
+            MediaGenerationMetrics metrics,
             ILogger<ImageGenerationOrchestrator> logger)
             : base(clientFactory, taskService, storageService, publishEndpoint,
                    modelMappingService, virtualKeyService, costService, taskRegistry,
-                   webhookService, httpClientFactory, parameterValidator, logger)
+                   webhookService, httpClientFactory, parameterValidator, metrics, logger)
         {
             
             // Initialize processing strategies

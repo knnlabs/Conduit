@@ -79,6 +79,7 @@ public partial class Program
                     .AddRuntimeInstrumentation()
                     .AddProcessInstrumentation()
                     .AddMeter("ConduitLLM.SignalR") // Add SignalR metrics
+                    .AddMeter("ConduitLLM.MediaGeneration") // Add Media Generation metrics
                     .AddPrometheusExporter();
             });
 
@@ -481,6 +482,9 @@ public partial class Program
 
             // Add background service for image generation metrics cleanup
             // ImageGenerationMetricsCleanupService removed - metrics handled differently now
+            
+            // Register media generation metrics
+            builder.Services.AddSingleton<ConduitLLM.Core.Metrics.MediaGenerationMetrics>();
             
             // Register media generation orchestrators
             builder.Services.AddScoped<ImageGenerationOrchestrator>();

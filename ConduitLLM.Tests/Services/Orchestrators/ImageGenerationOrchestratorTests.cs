@@ -43,6 +43,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 WebhookServiceMock.Object,
                 HttpClientFactoryMock.Object,
                 ParameterValidatorMock.Object,
+                Metrics,
                 LoggerMock.Object as ILogger<ImageGenerationOrchestrator> ?? new Mock<ILogger<ImageGenerationOrchestrator>>().Object);
         }
 

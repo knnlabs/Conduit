@@ -10,6 +10,7 @@ using IVirtualKeyService = ConduitLLM.Configuration.Interfaces.IVirtualKeyServic
 using IModelProviderMappingService = ConduitLLM.Configuration.Interfaces.IModelProviderMappingService;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Metrics;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services.Abstractions;
 using ConduitLLM.Core.Services.Strategies;
@@ -57,10 +58,11 @@ namespace ConduitLLM.Core.Services
             IOptions<VideoGenerationRetryConfiguration> retryConfiguration,
             IHttpClientFactory httpClientFactory,
             MinimalParameterValidator parameterValidator,
+            MediaGenerationMetrics metrics,
             ILogger<VideoGenerationOrchestrator> logger)
             : base(clientFactory, taskService, storageService, publishEndpoint,
                    modelMappingService, virtualKeyService, costService, taskRegistry,
-                   webhookService, httpClientFactory, parameterValidator, logger)
+                   webhookService, httpClientFactory, parameterValidator, metrics, logger)
         {
             _retryConfiguration = retryConfiguration?.Value ?? new VideoGenerationRetryConfiguration();
             

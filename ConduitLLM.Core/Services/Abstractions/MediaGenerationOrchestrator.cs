@@ -7,6 +7,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Metrics;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Validation;
 using MassTransit;
@@ -51,6 +52,7 @@ namespace ConduitLLM.Core.Services.Abstractions
         protected readonly IWebhookNotificationService _webhookService;
         protected readonly IHttpClientFactory _httpClientFactory;
         protected readonly MinimalParameterValidator _parameterValidator;
+        protected readonly MediaGenerationMetrics _metrics;
         protected readonly ILogger _logger;
 
         protected MediaGenerationOrchestrator(
@@ -65,6 +67,7 @@ namespace ConduitLLM.Core.Services.Abstractions
             IWebhookNotificationService webhookService,
             IHttpClientFactory httpClientFactory,
             MinimalParameterValidator parameterValidator,
+            MediaGenerationMetrics metrics,
             ILogger logger)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
@@ -78,6 +81,7 @@ namespace ConduitLLM.Core.Services.Abstractions
             _webhookService = webhookService ?? throw new ArgumentNullException(nameof(webhookService));
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _parameterValidator = parameterValidator ?? throw new ArgumentNullException(nameof(parameterValidator));
+            _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -88,6 +92,7 @@ namespace ConduitLLM.Core.Services.Abstractions
         {
             var request = context.Message;
             var stopwatch = Stopwatch.StartNew();
+            GenerationModelInfo? modelInfo = null;
             
             // Check if request should be processed
             if (!ShouldProcessRequest(request))
@@ -119,13 +124,23 @@ namespace ConduitLLM.Core.Services.Abstractions
                 {
                     throw new InvalidOperationException($"Invalid virtual key ID: {virtualKeyIdStr}");
                 }
-                var modelInfo = await GetModelInfoAsync(GetModel(request), virtualKeyId);
+                modelInfo = await GetModelInfoAsync(GetModel(request), virtualKeyId);
                 if (modelInfo == null)
                 {
                     throw new InvalidOperationException($"Model {GetModel(request)} not found or not available");
                 }
                 
                 ValidateModelSupport(modelInfo, request);
+                
+                // Record generation started metrics
+                _metrics.RecordGenerationStarted(
+                    GetMediaType(), 
+                    GetModel(request), 
+                    modelInfo.ProviderName, 
+                    virtualKeyIdStr);
+                    
+                // Update task registry size
+                _metrics.UpdateTaskRegistrySize(1);
                 
                 // 4. Extract and validate virtual key
                 var virtualKey = await ExtractAndValidateVirtualKeyAsync(request);
@@ -171,11 +186,11 @@ namespace ConduitLLM.Core.Services.Abstractions
             }
             catch (OperationCanceledException) when (taskCts.Token.IsCancellationRequested)
             {
-                await HandleCancellationAsync(request, stopwatch);
+                await HandleCancellationAsync(request, stopwatch, modelInfo);
             }
             catch (Exception ex)
             {
-                await HandleFailureAsync(request, ex, stopwatch);
+                await HandleFailureAsync(request, ex, stopwatch, modelInfo);
             }
             finally
             {
@@ -309,6 +324,18 @@ namespace ConduitLLM.Core.Services.Abstractions
                 model = modelInfo.ModelId
             };
             
+            // Record completion metrics
+            _metrics.RecordGenerationCompleted(
+                GetMediaType(),
+                modelInfo.ModelId,
+                modelInfo.ProviderName,
+                GetVirtualKeyId(request),
+                stopwatch.Elapsed.TotalSeconds,
+                (double)cost);
+            
+            // Update task registry size
+            _metrics.UpdateTaskRegistrySize(-1);
+            
             await _taskService.UpdateTaskStatusAsync(
                 GetRequestId(request),
                 TaskState.Completed,
@@ -318,10 +345,36 @@ namespace ConduitLLM.Core.Services.Abstractions
             await PublishCompletedEventAsync(request, media, cost, modelInfo, stopwatch.Elapsed);
         }
 
-        protected virtual async Task HandleCancellationAsync(TEventRequest request, Stopwatch stopwatch)
+        protected virtual async Task HandleCancellationAsync(TEventRequest request, Stopwatch stopwatch, GenerationModelInfo? modelInfo)
         {
             _logger.LogInformation("{MediaType} generation task {RequestId} was cancelled after {Duration}ms",
                 GetMediaType(), GetRequestId(request), stopwatch.ElapsedMilliseconds);
+                
+            // Record cancellation metrics if model info is available
+            if (modelInfo != null)
+            {
+                _metrics.RecordGenerationCancelled(
+                    GetMediaType(),
+                    modelInfo.ModelId,
+                    modelInfo.ProviderName,
+                    GetVirtualKeyId(request),
+                    "user_request",
+                    stopwatch.Elapsed.TotalSeconds);
+            }
+            else
+            {
+                // Record cancellation with minimal info if model info not available
+                _metrics.RecordGenerationCancelled(
+                    GetMediaType(),
+                    GetModel(request),
+                    "unknown",
+                    GetVirtualKeyId(request),
+                    "early_cancellation",
+                    stopwatch.Elapsed.TotalSeconds);
+            }
+            
+            // Update task registry size
+            _metrics.UpdateTaskRegistrySize(-1);
             
             await _taskService.UpdateTaskStatusAsync(
                 GetRequestId(request),
@@ -334,13 +387,46 @@ namespace ConduitLLM.Core.Services.Abstractions
             }
         }
 
-        protected virtual async Task HandleFailureAsync(TEventRequest request, Exception ex, Stopwatch stopwatch)
+        protected virtual async Task HandleFailureAsync(TEventRequest request, Exception ex, Stopwatch stopwatch, GenerationModelInfo? modelInfo)
         {
             _logger.LogError(ex, "{MediaType} generation failed for task {RequestId}", 
                 GetMediaType(), GetRequestId(request));
             
             // Check if error is retryable
             var isRetryable = IsRetryableError(ex);
+            
+            // Categorize error for metrics
+            var (errorType, errorCategory) = CategorizeError(ex);
+            
+            // Record failure metrics
+            if (modelInfo != null)
+            {
+                _metrics.RecordGenerationFailed(
+                    GetMediaType(),
+                    modelInfo.ModelId,
+                    modelInfo.ProviderName,
+                    GetVirtualKeyId(request),
+                    errorType,
+                    errorCategory,
+                    stopwatch.Elapsed.TotalSeconds,
+                    isRetryable);
+            }
+            else
+            {
+                // Record failure with minimal info if model info not available
+                _metrics.RecordGenerationFailed(
+                    GetMediaType(),
+                    GetModel(request),
+                    "unknown",
+                    GetVirtualKeyId(request),
+                    errorType,
+                    errorCategory,
+                    stopwatch.Elapsed.TotalSeconds,
+                    isRetryable);
+            }
+            
+            // Update task registry size
+            _metrics.UpdateTaskRegistrySize(-1);
             
             await _taskService.UpdateTaskStatusAsync(
                 GetRequestId(request),
@@ -391,6 +477,37 @@ namespace ConduitLLM.Core.Services.Abstractions
             
             _logger.LogDebug("Published webhook delivery event for {Status} {MediaType} task {RequestId}",
                 status, GetMediaType(), GetRequestId(request));
+        }
+
+        /// <summary>
+        /// Categorizes exceptions into error types and categories for metrics tracking
+        /// </summary>
+        protected virtual (string ErrorType, string ErrorCategory) CategorizeError(Exception ex)
+        {
+            return ex switch
+            {
+                TaskCanceledException => ("timeout", "task_timeout"),
+                OperationCanceledException => ("timeout", "cancellation"),
+                TimeoutException => ("timeout", "provider_timeout"),
+                HttpRequestException => ("network", "http_error"),
+                ArgumentException => ("validation", "parameter_error"),
+                UnauthorizedAccessException => ("authentication", "auth_error"),
+                InvalidOperationException => ("validation", "operation_error"),
+                NotImplementedException => ("provider", "not_implemented"),
+                System.Net.Sockets.SocketException => ("network", "socket_error"),
+                System.IO.IOException => ("storage", "io_error"),
+                OutOfMemoryException => ("resource", "memory_error"),
+                _ when ex.Message.Contains("rate limit", StringComparison.OrdinalIgnoreCase) => ("rate_limit", "provider_limit"),
+                _ when ex.Message.Contains("quota", StringComparison.OrdinalIgnoreCase) => ("quota", "provider_quota"),
+                _ when ex.Message.Contains("insufficient", StringComparison.OrdinalIgnoreCase) => ("quota", "insufficient_quota"),
+                _ when ex.Message.Contains("unauthorized", StringComparison.OrdinalIgnoreCase) => ("authentication", "invalid_credentials"),
+                _ when ex.Message.Contains("forbidden", StringComparison.OrdinalIgnoreCase) => ("authentication", "access_denied"),
+                _ when ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase) => ("validation", "resource_not_found"),
+                _ when ex.Message.Contains("bad request", StringComparison.OrdinalIgnoreCase) => ("validation", "bad_request"),
+                _ when ex.Message.Contains("service unavailable", StringComparison.OrdinalIgnoreCase) => ("provider", "service_unavailable"),
+                _ when ex.Message.Contains("internal server", StringComparison.OrdinalIgnoreCase) => ("provider", "internal_error"),
+                _ => ("unknown", "unclassified")
+            };
         }
     }
 }

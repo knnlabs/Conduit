@@ -9,6 +9,7 @@ using IModelProviderMappingService = ConduitLLM.Configuration.Interfaces.IModelP
 using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Metrics;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services.Abstractions;
 using ConduitLLM.Core.Validation;
@@ -42,6 +43,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         protected readonly Mock<IWebhookNotificationService> WebhookServiceMock;
         protected readonly Mock<IHttpClientFactory> HttpClientFactoryMock;
         protected readonly Mock<MinimalParameterValidator> ParameterValidatorMock;
+        protected readonly MediaGenerationMetrics Metrics;
         protected readonly Mock<ILogger> LoggerMock;
 
         // System under test
@@ -80,6 +82,10 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             // MinimalParameterValidator requires a logger in its constructor
             var validatorLoggerMock = new Mock<ILogger<MinimalParameterValidator>>();
             ParameterValidatorMock = new Mock<MinimalParameterValidator>(validatorLoggerMock.Object);
+            
+            // Create real metrics instance for tests - MediaGenerationMetrics needs a real IMeterFactory
+            var meterFactory = new TestMeterFactory();
+            Metrics = new MediaGenerationMetrics(meterFactory);
 
             // Setup default behaviors
             SetupDefaultMocks();
@@ -394,6 +400,27 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 .Returns(Task.CompletedTask);
             
             return contextMock;
+        }
+    }
+    
+    /// <summary>
+    /// Test implementation of IMeterFactory for unit tests
+    /// </summary>
+    public class TestMeterFactory : System.Diagnostics.Metrics.IMeterFactory
+    {
+        public System.Diagnostics.Metrics.Meter Create(string name, string? version = null)
+        {
+            return new System.Diagnostics.Metrics.Meter(name, version);
+        }
+
+        public System.Diagnostics.Metrics.Meter Create(System.Diagnostics.Metrics.MeterOptions options)
+        {
+            return new System.Diagnostics.Metrics.Meter(options.Name, options.Version);
+        }
+
+        public void Dispose()
+        {
+            // No-op for tests
         }
     }
 }
