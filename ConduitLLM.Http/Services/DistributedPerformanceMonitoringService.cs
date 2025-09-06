@@ -288,16 +288,17 @@ namespace ConduitLLM.Http.Services
                     $"{windowStart.Ticks}", "+", _options.MaxMetricsRetention);
                 
                 var recentRequests = requestEntries
-                    .Select(entry => JsonSerializer.Deserialize<Dictionary<string, object>>(entry.Values[0].Value))
-                    .Where(r => r != null && long.Parse(r["Timestamp"].ToString()) > windowStart.Ticks)
+                    .Select(entry => JsonSerializer.Deserialize<Dictionary<string, object>>(entry.Values[0].Value.ToString()))
+                    .Where(r => r != null && long.Parse(r.GetValueOrDefault("Timestamp", "0")?.ToString() ?? "0") > windowStart.Ticks)
                     .ToList();
 
                 var requestCount = recentRequests.Count;
-                var successCount = recentRequests.Count(r => bool.Parse(r["IsSuccess"].ToString()));
+                var successCount = recentRequests.Count(r => r != null && bool.Parse(r.GetValueOrDefault("IsSuccess", "false")?.ToString() ?? "false"));
                 var errorRate = requestCount > 0 ? ((double)(requestCount - successCount) / requestCount) * 100 : 0;
                 
                 var responseTimes = recentRequests
-                    .Select(r => double.Parse(r["ResponseTimeMs"].ToString()))
+                    .Where(r => r != null)
+                    .Select(r => double.Parse(r!.GetValueOrDefault("ResponseTimeMs", "0")?.ToString() ?? "0"))
                     .OrderBy(t => t)
                     .ToList();
 
@@ -338,7 +339,7 @@ namespace ConduitLLM.Http.Services
                 
                 var hashDict = hash.ToDictionary(x => x.Name, x => x.Value);
                 
-                var endpoint = hashDict.GetValueOrDefault("endpoint", "");
+                var endpoint = hashDict.GetValueOrDefault("endpoint", "").ToString();
                 var totalRequests = (int)hashDict.GetValueOrDefault("total_requests", 0);
                 var successfulRequests = (int)hashDict.GetValueOrDefault("successful_requests", 0);
                 var totalResponseTime = (double)hashDict.GetValueOrDefault("total_response_time", 0);
@@ -346,9 +347,9 @@ namespace ConduitLLM.Http.Services
                 var minResponseTime = (double)hashDict.GetValueOrDefault("min_response_time", 0);
                 var lastUpdatedTicks = (long)hashDict.GetValueOrDefault("last_updated", 0);
                 
-                endpointMetrics[endpoint] = new ConduitLLM.Configuration.DTOs.HealthMonitoring.EndpointMetrics
+                endpointMetrics[endpoint ?? ""] = new ConduitLLM.Configuration.DTOs.HealthMonitoring.EndpointMetrics
                 {
-                    Endpoint = endpoint,
+                    Endpoint = endpoint ?? "",
                     TotalRequests = totalRequests,
                     SuccessfulRequests = successfulRequests,
                     TotalResponseTime = totalResponseTime,
@@ -476,19 +477,19 @@ namespace ConduitLLM.Http.Services
                 $"{windowStart.Ticks}", "+", _options.MaxMetricsRetention);
 
             var recentQueries = entries
-                .Select(entry => JsonSerializer.Deserialize<Dictionary<string, object>>(entry.Values[0].Value))
-                .Where(q => q != null && long.Parse(q["Timestamp"].ToString()) > windowStart.Ticks)
+                .Select(entry => JsonSerializer.Deserialize<Dictionary<string, object>>(entry.Values[0].Value.ToString()))
+                .Where(q => q != null && long.Parse(q.GetValueOrDefault("Timestamp", "0")?.ToString() ?? "0") > windowStart.Ticks)
                 .ToList();
 
             if (recentQueries.Count == 0) return;
 
             var slowQueries = recentQueries
-                .Where(q => double.Parse(q["ExecutionTimeMs"].ToString()) > _options.DatabaseSlowQueryThresholdMs)
+                .Where(q => q != null && double.Parse(q.GetValueOrDefault("ExecutionTimeMs", "0")?.ToString() ?? "0") > _options.DatabaseSlowQueryThresholdMs)
                 .ToList();
 
             if (slowQueries.Count > _options.DatabaseSlowQueryCountThreshold)
             {
-                var avgSlowQueryTime = slowQueries.Average(q => double.Parse(q["ExecutionTimeMs"].ToString()));
+                var avgSlowQueryTime = slowQueries.Average(q => q != null ? double.Parse(q.GetValueOrDefault("ExecutionTimeMs", "0")?.ToString() ?? "0") : 0);
                 await _alertManagementService.TriggerAlertAsync(new HealthAlert
                 {
                     Severity = AlertSeverity.Warning,
@@ -502,7 +503,7 @@ namespace ConduitLLM.Http.Services
                         ["averageExecutionTime"] = avgSlowQueryTime,
                         ["threshold"] = _options.DatabaseSlowQueryThresholdMs,
                         ["detectedByInstance"] = InstanceId,
-                        ["operations"] = slowQueries.GroupBy(q => q["Operation"].ToString())
+                        ["operations"] = slowQueries.Where(q => q != null).GroupBy(q => q!.GetValueOrDefault("Operation", "")?.ToString() ?? "")
                             .Select(g => new { Operation = g.Key, Count = g.Count() })
                             .OrderByDescending(x => x.Count)
                             .Take(5)

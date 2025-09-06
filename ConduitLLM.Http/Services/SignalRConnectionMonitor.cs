@@ -249,10 +249,10 @@ namespace ConduitLLM.Http.Services
 
                 // Remove from all groups - scan group keys for this connection
                 var groupKeys = await _redis.ExecuteAsync("KEYS", $"{_groupConnectionsKeyPrefix}:*");
-                if (groupKeys.Type == ResultType.MultiBulk)
+                if (groupKeys.Resp2Type == ResultType.Array)
                 {
                     var tasks = new List<Task>();
-                    foreach (var groupKey in (RedisResult[])groupKeys)
+                    foreach (var groupKey in (RedisResult[]?)groupKeys ?? Array.Empty<RedisResult>())
                     {
                         if (groupKey.ToString() is { } keyStr)
                         {
@@ -746,9 +746,9 @@ namespace ConduitLLM.Http.Services
             try
             {
                 var groupKeys = await _redis!.ExecuteAsync("KEYS", $"{_groupConnectionsKeyPrefix}:*");
-                if (groupKeys.Type == ResultType.MultiBulk)
+                if (groupKeys.Resp2Type == ResultType.Array)
                 {
-                    return ((RedisResult[])groupKeys).Length;
+                    return ((RedisResult[]?)groupKeys)?.Length ?? 0;
                 }
             }
             catch (Exception ex)
@@ -806,10 +806,10 @@ namespace ConduitLLM.Http.Services
 
                 // Remove from all groups
                 var groupKeys = await _redis.ExecuteAsync("KEYS", $"{_groupConnectionsKeyPrefix}:*");
-                if (groupKeys.Type == ResultType.MultiBulk)
+                if (groupKeys.Resp2Type == ResultType.Array)
                 {
                     var removalTasks = new List<Task>();
-                    foreach (var groupKey in (RedisResult[])groupKeys)
+                    foreach (var groupKey in (RedisResult[]?)groupKeys ?? Array.Empty<RedisResult>())
                     {
                         if (groupKey.ToString() is { } keyStr)
                         {
@@ -836,10 +836,10 @@ namespace ConduitLLM.Http.Services
             try
             {
                 var groupKeys = await _redis!.ExecuteAsync("KEYS", $"{_groupConnectionsKeyPrefix}:*");
-                if (groupKeys.Type == ResultType.MultiBulk)
+                if (groupKeys.Resp2Type == ResultType.Array)
                 {
                     var emptyGroups = new List<string>();
-                    var checkTasks = ((RedisResult[])groupKeys).Select(async groupKey =>
+                    var checkTasks = ((RedisResult[]?)groupKeys ?? Array.Empty<RedisResult>()).Select(async groupKey =>
                     {
                         if (groupKey.ToString() is { } keyStr)
                         {

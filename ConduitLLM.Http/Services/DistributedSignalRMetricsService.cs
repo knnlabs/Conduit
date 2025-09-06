@@ -195,12 +195,12 @@ namespace ConduitLLM.Http.Services
                 return;
             }
 
-            var connectionInfo = JsonSerializer.Deserialize<Dictionary<string, object>>(connectionData);
+            var connectionInfo = JsonSerializer.Deserialize<Dictionary<string, object>>(connectionData.ToString());
             if (connectionInfo == null) return;
 
-            var hubName = connectionInfo.GetValueOrDefault("HubName", "").ToString();
-            var virtualKeyId = connectionInfo.GetValueOrDefault("VirtualKeyId", "").ToString();
-            var connectedAtTicks = long.Parse(connectionInfo.GetValueOrDefault("ConnectedAt", "0").ToString());
+            var hubName = connectionInfo.GetValueOrDefault("HubName", "")?.ToString() ?? "";
+            var virtualKeyId = connectionInfo.GetValueOrDefault("VirtualKeyId", "")?.ToString() ?? "";
+            var connectedAtTicks = long.Parse(connectionInfo.GetValueOrDefault("ConnectedAt", "0")?.ToString() ?? "0");
             var connectedAt = new DateTime(connectedAtTicks);
 
             var duration = (DateTime.UtcNow - connectedAt).TotalSeconds;
@@ -228,8 +228,8 @@ namespace ConduitLLM.Http.Services
             await _database.StreamAddAsync(ConnectionEventsStreamKey, "disconnected", JsonSerializer.Serialize(disconnectInfo));
 
             // Update Prometheus metrics
-            ConnectionsTotal.WithLabels(hubName, status, InstanceId).Inc();
-            ConnectionDuration.WithLabels(hubName, InstanceId).Observe(duration);
+            ConnectionsTotal.WithLabels(hubName ?? "", status, InstanceId).Inc();
+            ConnectionDuration.WithLabels(hubName ?? "", InstanceId).Observe(duration);
 
             _logger.LogDebug("SignalR connection {ConnectionId} disconnected from hub {HubName} after {Duration:F2}s from instance {InstanceId}",
                 connectionId, hubName, duration, InstanceId);
@@ -242,7 +242,7 @@ namespace ConduitLLM.Http.Services
             
             if (connectionData.HasValue)
             {
-                var connectionInfo = JsonSerializer.Deserialize<Dictionary<string, object>>(connectionData);
+                var connectionInfo = JsonSerializer.Deserialize<Dictionary<string, object>>(connectionData.ToString());
                 if (connectionInfo != null)
                 {
                     connectionInfo["LastActivity"] = DateTime.UtcNow.Ticks;
@@ -494,7 +494,7 @@ namespace ConduitLLM.Http.Services
 
                 try
                 {
-                    var connectionInfo = JsonSerializer.Deserialize<Dictionary<string, object>>(connectionData);
+                    var connectionInfo = JsonSerializer.Deserialize<Dictionary<string, object>>(connectionData.ToString());
                     if (connectionInfo == null) continue;
 
                     var hubName = connectionInfo.GetValueOrDefault("HubName", "").ToString();
@@ -527,7 +527,7 @@ namespace ConduitLLM.Http.Services
             foreach (var entry in events)
             {
                 var eventType = entry.Values[0].Name;
-                var eventData = JsonSerializer.Deserialize<Dictionary<string, object>>(entry.Values[0].Value);
+                var eventData = JsonSerializer.Deserialize<Dictionary<string, object>>(entry.Values[0].Value.ToString());
                 
                 recentEvents.Add(new
                 {
@@ -558,16 +558,19 @@ namespace ConduitLLM.Http.Services
 
                     try
                     {
-                        var connectionInfo = JsonSerializer.Deserialize<Dictionary<string, object>>(connectionData);
+                        var connectionInfo = JsonSerializer.Deserialize<Dictionary<string, object>>(connectionData.ToString());
                         if (connectionInfo == null) continue;
 
-                        var lastActivityTicks = long.Parse(connectionInfo.GetValueOrDefault("LastActivity", "0").ToString());
+                        var lastActivityTicks = long.Parse(connectionInfo.GetValueOrDefault("LastActivity", "0")?.ToString() ?? "0");
                         var lastActivity = new DateTime(lastActivityTicks);
 
                         if (lastActivity < staleThreshold)
                         {
-                            var connectionId = connectionInfo.GetValueOrDefault("ConnectionId", "").ToString();
-                            staleConnections.Add(connectionId);
+                            var connectionId = connectionInfo.GetValueOrDefault("ConnectionId", "")?.ToString();
+                            if (!string.IsNullOrEmpty(connectionId))
+                            {
+                                staleConnections.Add(connectionId);
+                            }
                         }
                     }
                     catch (Exception ex)
@@ -611,14 +614,17 @@ namespace ConduitLLM.Http.Services
 
                     try
                     {
-                        var connectionInfo = JsonSerializer.Deserialize<Dictionary<string, object>>(connectionData);
+                        var connectionInfo = JsonSerializer.Deserialize<Dictionary<string, object>>(connectionData.ToString());
                         if (connectionInfo == null) continue;
 
                         var instanceId = connectionInfo.GetValueOrDefault("InstanceId", "").ToString();
                         if (instanceId == InstanceId)
                         {
-                            var connectionId = connectionInfo.GetValueOrDefault("ConnectionId", "").ToString();
-                            instanceConnections.Add(connectionId);
+                            var connectionId = connectionInfo.GetValueOrDefault("ConnectionId", "")?.ToString();
+                            if (!string.IsNullOrEmpty(connectionId))
+                            {
+                                instanceConnections.Add(connectionId);
+                            }
                         }
                     }
                     catch (Exception ex)

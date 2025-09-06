@@ -124,7 +124,7 @@ namespace ConduitLLM.Http.Services
             {
                 try
                 {
-                    var alert = JsonSerializer.Deserialize<HealthAlert>(item.Value);
+                    var alert = JsonSerializer.Deserialize<HealthAlert>(item.Value.ToString());
                     if (alert?.State == AlertState.Active || alert?.State == AlertState.Acknowledged)
                     {
                         alerts.Add(alert);
@@ -233,7 +233,7 @@ namespace ConduitLLM.Http.Services
             var alertData = await _database.HashGetAsync(ActiveAlertsKey, alertId);
             if (!alertData.HasValue) return false;
 
-            var alert = JsonSerializer.Deserialize<HealthAlert>(alertData);
+            var alert = JsonSerializer.Deserialize<HealthAlert>(alertData.ToString());
             if (alert == null) return false;
 
             alert.State = AlertState.Acknowledged;
@@ -259,7 +259,7 @@ namespace ConduitLLM.Http.Services
             var alertData = await _database.HashGetAsync(ActiveAlertsKey, alertId);
             if (!alertData.HasValue) return false;
 
-            var alert = JsonSerializer.Deserialize<HealthAlert>(alertData);
+            var alert = JsonSerializer.Deserialize<HealthAlert>(alertData.ToString());
             if (alert == null) return false;
 
             alert.State = AlertState.Resolved;
@@ -289,7 +289,7 @@ namespace ConduitLLM.Http.Services
             {
                 try
                 {
-                    var entry = JsonSerializer.Deserialize<AlertHistoryEntry>(item);
+                    var entry = JsonSerializer.Deserialize<AlertHistoryEntry>(item.ToString());
                     if (entry != null) entries.Add(entry);
                 }
                 catch (Exception ex)
@@ -329,7 +329,7 @@ namespace ConduitLLM.Http.Services
             {
                 try
                 {
-                    var rule = JsonSerializer.Deserialize<AlertRule>(item.Value);
+                    var rule = JsonSerializer.Deserialize<AlertRule>(item.Value.ToString());
                     if (rule != null) alertRules.Add(rule);
                 }
                 catch (Exception ex)
@@ -359,7 +359,7 @@ namespace ConduitLLM.Http.Services
             var suppressionData = await _database.HashGetAsync(AlertSuppressionsKey, suppressionId);
             if (!suppressionData.HasValue) return false;
 
-            var suppression = JsonSerializer.Deserialize<AlertSuppression>(suppressionData);
+            var suppression = JsonSerializer.Deserialize<AlertSuppression>(suppressionData.ToString());
             if (suppression == null) return false;
 
             suppression.IsActive = false;
@@ -379,7 +379,7 @@ namespace ConduitLLM.Http.Services
             {
                 try
                 {
-                    var suppression = JsonSerializer.Deserialize<AlertSuppression>(item.Value);
+                    var suppression = JsonSerializer.Deserialize<AlertSuppression>(item.Value.ToString());
                     if (suppression?.IsActive == true && suppression.StartTime <= now && suppression.EndTime > now)
                     {
                         activeSuppressions.Add(suppression);
@@ -440,7 +440,7 @@ namespace ConduitLLM.Http.Services
             {
                 try
                 {
-                    var alert = JsonSerializer.Deserialize<HealthAlert>(item.Value);
+                    var alert = JsonSerializer.Deserialize<HealthAlert>(item.Value.ToString());
                     if (alert?.Fingerprint == fingerprint && 
                         (alert.State == AlertState.Active || alert.State == AlertState.Acknowledged))
                     {
@@ -616,7 +616,7 @@ namespace ConduitLLM.Http.Services
                 {
                     try
                     {
-                        var suppression = JsonSerializer.Deserialize<AlertSuppression>(item.Value);
+                        var suppression = JsonSerializer.Deserialize<AlertSuppression>(item.Value.ToString());
                         if (suppression != null && suppression.EndTime < now)
                         {
                             await _database.HashDeleteAsync(AlertSuppressionsKey, item.Name);
