@@ -84,5 +84,10 @@ namespace ConduitLLM.Configuration.DTOs.HealthMonitoring
         /// Suggested actions to resolve the alert
         /// </summary>
         public List<string> SuggestedActions { get; set; } = new();
+
+        /// <summary>
+        /// Unique fingerprint for alert deduplication
+        /// </summary>
+        public string? Fingerprint { get; set; }
     }
 }

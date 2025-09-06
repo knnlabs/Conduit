@@ -77,10 +77,8 @@ public partial class Program
                     .AddPrometheusExporter();
             });
 
-        // Register monitoring services
-        builder.Services.AddSingleton<ConduitLLM.Http.Services.SignalRMetricsService>();
-        builder.Services.AddHostedService<ConduitLLM.Http.Services.SignalRMetricsService>(provider => 
-            provider.GetRequiredService<ConduitLLM.Http.Services.SignalRMetricsService>());
+        // Distributed monitoring services are registered in HealthMonitoringExtensions
+        // Legacy SignalRMetricsService registration removed - now using DistributedSignalRMetricsService
 
         // Register new SignalR reliability services
         builder.Services.AddSingleton<ConduitLLM.Http.Services.ISignalRAcknowledgmentService, ConduitLLM.Http.Services.SignalRAcknowledgmentService>();
