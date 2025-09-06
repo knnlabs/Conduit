@@ -190,6 +190,9 @@ export enum VideoTaskStatus {
   /** Task is currently being processed */
   Processing = 'processing',
   
+  /** Task is running (alternative status for processing) */
+  Running = 'running',
+  
   /** Task completed successfully */
   Completed = 'completed',
   

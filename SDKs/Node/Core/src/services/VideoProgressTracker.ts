@@ -256,6 +256,7 @@ export class VideoProgressTracker {
 
         case VideoTaskStatus.Pending:
         case VideoTaskStatus.Processing:
+        case VideoTaskStatus.Running:
         case VideoTaskStatus.Queued:
           // Continue polling
           break;

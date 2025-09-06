@@ -464,6 +464,7 @@ describe('ChatStreamingManager', () => {
       expect(state).toEqual({
         isStreaming: false,
         totalContent: '',
+        totalReasoning: '',
         startTime: 0,
         metrics: {},
         abortController: null
