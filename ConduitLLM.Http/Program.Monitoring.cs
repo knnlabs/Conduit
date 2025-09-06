@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Data;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Http.Extensions;
 
 public partial class Program
@@ -108,6 +109,12 @@ public partial class Program
                     "redis_circuit_breaker",
                     failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
                     tags: new[] { "circuit_breaker", "redis", "resilience" });
+                
+                // Add leader election health check
+                healthChecksBuilder.AddCheck<ConduitLLM.Http.HealthChecks.LeaderElectionHealthCheck>(
+                    "leader_election",
+                    failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded,
+                    tags: new[] { "leader_election", "background_services", "distributed" });
             }
 
             // Audio health checks removed per YAGNI principle
@@ -122,12 +129,14 @@ public partial class Program
         // Add database migration services
         builder.Services.AddDatabaseMigration();
 
-        // Add connection pool warmer for better startup performance
-        builder.Services.AddHostedService<ConduitLLM.Core.Services.ConnectionPoolWarmer>(serviceProvider =>
-        {
-            var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.ConnectionPoolWarmer>>();
-            return new ConduitLLM.Core.Services.ConnectionPoolWarmer(serviceProvider, logger, "CoreAPI");
-        });
+        // Add connection pool warmer for better startup performance - with leader election
+        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Core.Services.ConnectionPoolWarmer>(
+            serviceProvider =>
+            {
+                var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.ConnectionPoolWarmer>>();
+                return new ConduitLLM.Core.Services.ConnectionPoolWarmer(serviceProvider, logger, "CoreAPI");
+            },
+            "ConnectionPoolWarmer");
 
         // Add cache statistics registration service
         builder.Services.AddHostedService<ConduitLLM.Http.Services.CacheStatisticsRegistrationService>();

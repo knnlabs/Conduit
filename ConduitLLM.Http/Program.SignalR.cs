@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Http.Services;
 using ConduitLLM.Http.Interfaces;
 using Microsoft.AspNetCore.SignalR;
@@ -28,10 +29,11 @@ public partial class Program
         // Register VirtualKeyHubFilter for SignalR authentication
         builder.Services.AddScoped<ConduitLLM.Http.Authentication.VirtualKeyHubFilter>();
 
-        // Register rate limit cache service for SignalR
+        // Register rate limit cache service for SignalR - with leader election
         builder.Services.AddSingleton<ConduitLLM.Http.Services.VirtualKeyRateLimitCache>();
-        builder.Services.AddHostedService<ConduitLLM.Http.Services.VirtualKeyRateLimitCache>(provider => 
-            provider.GetRequiredService<ConduitLLM.Http.Services.VirtualKeyRateLimitCache>());
+        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Http.Services.VirtualKeyRateLimitCache>(
+            provider => provider.GetRequiredService<ConduitLLM.Http.Services.VirtualKeyRateLimitCache>(),
+            "VirtualKeyRateLimitCache");
 
         // Register SignalR rate limit filter
         builder.Services.AddSingleton<ConduitLLM.Http.Authentication.VirtualKeySignalRRateLimitFilter>();
@@ -49,13 +51,14 @@ public partial class Program
         // Register SignalR authentication service
         builder.Services.AddScoped<ConduitLLM.Http.Authentication.ISignalRAuthenticationService, ConduitLLM.Http.Authentication.SignalRAuthenticationService>();
 
-        // Register Metrics Aggregation Service and Hub
+        // Register Metrics Aggregation Service and Hub - with leader election
         builder.Services.AddSingleton<ConduitLLM.Http.Hubs.IMetricsAggregationService, ConduitLLM.Http.Services.MetricsAggregationService>();
-        builder.Services.AddHostedService<ConduitLLM.Http.Services.MetricsAggregationService>(sp => 
-            (ConduitLLM.Http.Services.MetricsAggregationService)sp.GetRequiredService<ConduitLLM.Http.Hubs.IMetricsAggregationService>());
+        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Http.Services.MetricsAggregationService>(
+            sp => (ConduitLLM.Http.Services.MetricsAggregationService)sp.GetRequiredService<ConduitLLM.Http.Hubs.IMetricsAggregationService>(),
+            "MetricsAggregationService");
 
-        // Register Business Metrics Background Service
-        builder.Services.AddHostedService<ConduitLLM.Http.Services.BusinessMetricsService>();
+        // Register Business Metrics Background Service - with leader election
+        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Http.Services.BusinessMetricsService>("BusinessMetricsService");
 
         // Add SignalR for real-time navigation state updates
         var signalRBuilder = builder.Services.AddSignalR(options =>
@@ -159,7 +162,8 @@ public partial class Program
         });
         builder.Services.AddSingleton<IBatchSpendUpdateService>(serviceProvider =>
             serviceProvider.GetRequiredService<ConduitLLM.Configuration.Services.BatchSpendUpdateService>());
-        builder.Services.AddHostedService<ConduitLLM.Configuration.Services.BatchSpendUpdateService>(serviceProvider =>
-            serviceProvider.GetRequiredService<ConduitLLM.Configuration.Services.BatchSpendUpdateService>());
+        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Configuration.Services.BatchSpendUpdateService>(
+            serviceProvider => serviceProvider.GetRequiredService<ConduitLLM.Configuration.Services.BatchSpendUpdateService>(),
+            "BatchSpendUpdateService");
     }
 }

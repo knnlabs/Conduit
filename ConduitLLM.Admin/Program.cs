@@ -94,6 +94,10 @@ public partial class Program
             });
         });
 
+        // Add leader election service for distributed background service coordination
+        builder.Services.AddLeaderElection();
+        Console.WriteLine("[ConduitLLM.Admin] Leader election service configured for background service coordination");
+
         // Add Core services
         builder.Services.AddCoreServices(builder.Configuration);
 
@@ -245,12 +249,14 @@ public partial class Program
         // Add basic health checks
         builder.Services.AddHealthChecks();
         
-        // Add connection pool warmer for better startup performance
-        builder.Services.AddHostedService<ConduitLLM.Core.Services.ConnectionPoolWarmer>(serviceProvider =>
-        {
-            var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.ConnectionPoolWarmer>>();
-            return new ConduitLLM.Core.Services.ConnectionPoolWarmer(serviceProvider, logger, "AdminAPI");
-        });
+        // Add connection pool warmer for better startup performance - with leader election
+        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Core.Services.ConnectionPoolWarmer>(
+            serviceProvider =>
+            {
+                var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.ConnectionPoolWarmer>>();
+                return new ConduitLLM.Core.Services.ConnectionPoolWarmer(serviceProvider, logger, "AdminAPI");
+            },
+            "ConnectionPoolWarmer");
 
         // Configure OpenTelemetry metrics
         builder.Services.AddOpenTelemetry()
@@ -267,8 +273,8 @@ public partial class Program
                     .AddPrometheusExporter();
             });
 
-        // Add monitoring services
-        builder.Services.AddHostedService<ConduitLLM.Admin.Services.AdminOperationsMetricsService>();
+        // Add monitoring services - with leader election
+        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Admin.Services.AdminOperationsMetricsService>("AdminOperationsMetricsService");
         
         // Add cache infrastructure
         builder.Services.AddCacheInfrastructure(builder.Configuration);
