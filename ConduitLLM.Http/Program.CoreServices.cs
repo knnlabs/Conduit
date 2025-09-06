@@ -213,10 +213,10 @@ public partial class Program
         // Register Webhook Delivery Service
         builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IWebhookDeliveryService, ConduitLLM.Http.Services.WebhookDeliveryService>();
 
-        // Register Spend Notification Service
-        builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.ISpendNotificationService, ConduitLLM.Http.Services.SpendNotificationService>();
-        builder.Services.AddHostedService<ConduitLLM.Http.Services.SpendNotificationService>(sp => 
-            (ConduitLLM.Http.Services.SpendNotificationService)sp.GetRequiredService<ConduitLLM.Core.Interfaces.ISpendNotificationService>());
+        // Register Distributed Spend Notification Service (Redis-based for multi-instance consistency)
+        builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.ISpendNotificationService, ConduitLLM.Http.Services.SpendNotification.DistributedSpendNotificationService>();
+        builder.Services.AddHostedService<ConduitLLM.Http.Services.SpendNotification.DistributedSpendNotificationService>(sp => 
+            (ConduitLLM.Http.Services.SpendNotification.DistributedSpendNotificationService)sp.GetRequiredService<ConduitLLM.Core.Interfaces.ISpendNotificationService>());
 
         // Register Webhook Delivery Notification Service
         builder.Services.AddSingleton<ConduitLLM.Http.Services.IWebhookDeliveryNotificationService, ConduitLLM.Http.Services.WebhookDeliveryNotificationService>();
