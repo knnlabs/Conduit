@@ -7,6 +7,9 @@ namespace ConduitLLM.Core.Services
     /// <summary>
     /// Decorator for IWebhookDeliveryTracker that adds in-memory caching
     /// to reduce Redis calls for deduplication checks
+    /// 
+    /// This implements the hybrid L1/L2 caching pattern described in:
+    /// - Architecture: docs/architecture/webhook-delivery-system.md
     /// </summary>
     public class CachedWebhookDeliveryTracker : IWebhookDeliveryTracker
     {

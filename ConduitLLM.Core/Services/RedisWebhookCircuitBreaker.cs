@@ -7,6 +7,10 @@ namespace ConduitLLM.Core.Services
     /// <summary>
     /// Redis-based distributed circuit breaker for webhook endpoints
     /// Ensures circuit state is shared across all instances
+    /// 
+    /// For detailed architecture and configuration information, see:
+    /// - Architecture: docs/architecture/webhook-delivery-system.md
+    /// - Operations: docs/operations/webhook-monitoring.md
     /// </summary>
     public class RedisWebhookCircuitBreaker : IWebhookCircuitBreaker
     {

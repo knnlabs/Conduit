@@ -2,7 +2,17 @@
 
 ## Overview
 
-Conduit supports webhook notifications for asynchronous video generation tasks. Instead of polling for task status, clients can provide a webhook URL to receive real-time updates when video generation completes, fails, or progresses.
+Conduit supports webhook notifications for asynchronous video generation, image generation, and batch operation tasks. Instead of polling for task status, clients can provide a webhook URL to receive real-time updates when tasks complete, fail, or progress.
+
+The webhook system uses a **distributed architecture** with Redis-based circuit breaking, metrics collection, and delivery tracking to ensure reliable webhook delivery across multiple application instances.
+
+### System Features
+
+- **Distributed Circuit Breaker**: Automatic failure detection and recovery across all instances
+- **Retry Logic**: Up to 3 automatic retries with exponential backoff  
+- **Deduplication**: Prevents duplicate webhook deliveries
+- **Real-time Monitoring**: Live delivery status via SignalR
+- **Comprehensive Metrics**: Success rates, response times, and failure tracking
 
 ## Enabling Webhooks
 
@@ -94,9 +104,35 @@ During video generation, progress updates are sent periodically:
 
 - **Method**: POST
 - **Content-Type**: application/json
-- **Timeout**: 30 seconds
+- **Timeout**: 10 seconds (configurable)
 - **User-Agent**: Conduit-LLM/1.0
 - **Custom Headers**: Any headers specified in `webhook_headers` will be included
+- **Retries**: Up to 3 automatic retries with exponential backoff
+- **Circuit Breaker**: Automatic failure detection blocks requests to consistently failing endpoints
+
+## Reliability and Delivery Guarantees
+
+### Distributed Circuit Breaker
+The webhook system includes automatic failure detection and recovery:
+
+- **Failure Threshold**: 5 consecutive failures trigger circuit breaker (configurable)
+- **Recovery Time**: 5-minute cooldown before retry attempts (configurable)
+- **Cross-Instance**: Circuit breaker state is shared across all application instances via Redis
+- **Graceful Degradation**: System falls back to per-instance protection if Redis unavailable
+
+### Delivery Guarantees
+- **At-Most-Once**: Deduplication prevents duplicate deliveries for the same event
+- **Best-Effort**: System will retry failed deliveries up to 3 times
+- **Circuit Protection**: Consistently failing endpoints are temporarily excluded to prevent resource waste
+- **Monitoring**: Real-time delivery status available via SignalR hub
+
+### Response Expectations
+For optimal webhook reliability, your endpoint should:
+
+- **Respond Quickly**: Target <2 seconds, timeout at 10 seconds
+- **Return 2xx Status**: Any 2xx status code indicates success
+- **Handle Retries**: Be idempotent as webhooks may be retried
+- **Implement Timeouts**: Set appropriate server-side timeouts (recommended: 30 seconds)
 
 ## Best Practices
 
@@ -164,13 +200,80 @@ def handle_video_webhook():
 | Firewall friendly | ❌ Requires public endpoint | ✅ Works everywhere |
 | Reliability | Requires retry logic | Simple retry |
 
-## Limitations
+## Monitoring and Troubleshooting
 
-- Webhook URLs must be publicly accessible
-- No guarantee of delivery order for multiple webhooks
-- Maximum webhook payload size: 1MB
-- Webhook timeout: 30 seconds
-- No webhook authentication validation (client responsibility)
+### Real-time Monitoring
+Connect to the SignalR webhook delivery hub for real-time updates:
+
+```javascript
+const connection = new signalR.HubConnectionBuilder()
+    .withUrl("/webhookdeliveryhub")
+    .build();
+
+// Listen for delivery attempts
+connection.on("DeliveryAttempt", (data) => {
+    console.log(`Webhook attempt: ${data.url} - Attempt ${data.attemptNumber}`);
+});
+
+// Listen for successes
+connection.on("DeliverySuccess", (data) => {
+    console.log(`Webhook success: ${data.url} - ${data.responseTimeMs}ms`);
+});
+
+// Listen for failures
+connection.on("DeliveryFailed", (data) => {
+    console.log(`Webhook failed: ${data.url} - ${data.errorMessage}`);
+});
+
+// Listen for circuit breaker state changes
+connection.on("CircuitBreakerStateChanged", (data) => {
+    console.log(`Circuit breaker ${data.currentState}: ${data.url}`);
+});
+```
+
+### Common Issues and Solutions
+
+#### Webhook Not Receiving Calls
+1. **Check Circuit Breaker Status**: Your endpoint may be temporarily blocked due to failures
+2. **Verify URL Accessibility**: Ensure your webhook URL is publicly accessible
+3. **Check Logs**: Review application logs for delivery attempts and errors
+4. **Test Endpoint**: Manually test your webhook endpoint with curl
+
+#### High Failure Rates  
+1. **Response Time**: Ensure your endpoint responds within 10 seconds
+2. **Status Codes**: Return proper 2xx status codes for successful processing
+3. **Error Handling**: Implement proper error handling to avoid 5xx responses
+4. **Capacity**: Ensure your endpoint can handle the expected webhook volume
+
+#### Circuit Breaker Activated
+When a webhook endpoint consistently fails, the circuit breaker will temporarily stop delivery attempts:
+
+- **Activation**: After 5 consecutive failures
+- **Duration**: 5-minute cooldown period  
+- **Recovery**: Automatic retry after cooldown
+- **Notification**: Circuit state changes are logged and broadcast via SignalR
+
+To recover:
+1. Fix the underlying issue with your webhook endpoint
+2. Wait for automatic recovery (5 minutes)
+3. Contact support for manual circuit reset if needed
+
+## Limitations and Constraints
+
+- **URL Accessibility**: Webhook URLs must be publicly accessible over HTTPS
+- **Payload Size**: Maximum webhook payload size: 1MB
+- **Timeout**: Request timeout: 10 seconds (configurable)
+- **Delivery Order**: No guarantee of delivery order for multiple webhooks to same URL
+- **Authentication**: Client is responsible for webhook authentication validation
+- **Retry Limit**: Maximum 3 retry attempts per webhook
+- **Rate Limiting**: Subject to system-wide webhook delivery rate limits
+
+## Architecture Documentation
+
+For detailed technical information about the webhook system:
+
+- **Architecture**: See [`docs/architecture/webhook-delivery-system.md`](./architecture/webhook-delivery-system.md)
+- **Operations**: See [`docs/operations/webhook-monitoring.md`](./operations/webhook-monitoring.md)
 
 ## Future Enhancements
 

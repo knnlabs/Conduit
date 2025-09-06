@@ -44,6 +44,10 @@ namespace ConduitLLM.Core.Services
     /// <summary>
     /// Redis-based implementation of webhook metrics tracking
     /// Provides distributed metrics aggregation across all instances
+    /// 
+    /// For detailed architecture and monitoring information, see:
+    /// - Architecture: docs/architecture/webhook-delivery-system.md
+    /// - Operations: docs/operations/webhook-monitoring.md
     /// </summary>
     public class RedisWebhookMetricsService : IWebhookMetricsService
     {

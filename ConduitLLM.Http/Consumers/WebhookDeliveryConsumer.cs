@@ -10,6 +10,10 @@ namespace ConduitLLM.Http.Consumers
     /// <summary>
     /// MassTransit consumer for processing webhook delivery requests
     /// Handles deduplication, retry logic, and delivery tracking
+    /// 
+    /// For detailed architecture and troubleshooting information, see:
+    /// - Architecture: docs/architecture/webhook-delivery-system.md
+    /// - Operations: docs/operations/webhook-monitoring.md
     /// </summary>
     public class WebhookDeliveryConsumer : IConsumer<WebhookDeliveryRequested>
     {
