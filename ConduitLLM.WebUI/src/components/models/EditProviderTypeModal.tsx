@@ -29,6 +29,11 @@ export function EditProviderTypeModal({
   // Get provider types from the enum utility
   const providerTypes = getProviderSelectOptions();
 
+  const handleClose = () => {
+    form.reset();
+    onClose();
+  };
+
   const form = useForm({
     initialValues: {
       identifier: '',
@@ -110,7 +115,7 @@ export function EditProviderTypeModal({
       }
       
       // Important: Close modal first to prevent UI state issues
-      onClose();
+      handleClose();
       
       // Then trigger the save callback which will reload data
       // Use setTimeout to ensure the modal close completes first
@@ -146,7 +151,7 @@ export function EditProviderTypeModal({
   return (
     <Modal
       opened={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title={association?.id ? 'Edit Provider Type Association' : 'Add Provider Type Association'}
       size="md"
     >
@@ -218,7 +223,7 @@ export function EditProviderTypeModal({
           />
 
           <Group justify="flex-end">
-            <Button variant="subtle" onClick={onClose}>
+            <Button variant="subtle" onClick={handleClose}>
               Cancel
             </Button>
             <Button type="submit" loading={loading}>

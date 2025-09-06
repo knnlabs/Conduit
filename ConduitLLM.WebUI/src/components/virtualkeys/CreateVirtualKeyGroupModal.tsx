@@ -42,6 +42,11 @@ export function CreateVirtualKeyGroupModal({ opened, onClose, onSuccess }: Creat
     },
   });
 
+  const handleClose = () => {
+    form.reset();
+    onClose();
+  };
+
   const handleSubmit = async (values: CreateVirtualKeyGroupRequestDto) => {
     try {
       setIsSubmitting(true);
@@ -59,8 +64,7 @@ export function CreateVirtualKeyGroupModal({ opened, onClose, onSuccess }: Creat
         color: 'green',
       });
 
-      form.reset();
-      onClose();
+      handleClose();
       onSuccess?.();
     } catch (error) {
       notifications.show({
@@ -76,7 +80,7 @@ export function CreateVirtualKeyGroupModal({ opened, onClose, onSuccess }: Creat
   return (
     <Modal
       opened={opened}
-      onClose={onClose}
+      onClose={handleClose}
       title={
         <Group gap="sm">
           <IconLayersLinked size={20} />
@@ -119,7 +123,7 @@ export function CreateVirtualKeyGroupModal({ opened, onClose, onSuccess }: Creat
           </Alert>
 
           <Group justify="flex-end" mt="md">
-            <Button variant="subtle" onClick={onClose} disabled={isSubmitting}>
+            <Button variant="subtle" onClick={handleClose} disabled={isSubmitting}>
               Cancel
             </Button>
             <Button type="submit" loading={isSubmitting}>

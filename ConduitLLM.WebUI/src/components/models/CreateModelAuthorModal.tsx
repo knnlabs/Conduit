@@ -34,6 +34,11 @@ export function CreateModelAuthorModal({ isOpen, onClose, onSuccess }: CreateMod
     }
   });
 
+  const handleClose = () => {
+    form.reset();
+    onClose();
+  };
+
   const handleSubmit = async (values: CreateModelAuthorDto) => {
     try {
       setLoading(true);
@@ -43,7 +48,7 @@ export function CreateModelAuthorModal({ isOpen, onClose, onSuccess }: CreateMod
         message: 'Author created successfully',
         color: 'green',
       });
-      form.reset();
+      handleClose();
       onSuccess();
     } catch (error) {
       console.error('Failed to create author:', error);
@@ -60,7 +65,7 @@ export function CreateModelAuthorModal({ isOpen, onClose, onSuccess }: CreateMod
   return (
     <Modal
       opened={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title="Create New Author"
       size="md"
     >
@@ -85,7 +90,7 @@ export function CreateModelAuthorModal({ isOpen, onClose, onSuccess }: CreateMod
           />
 
           <Group justify="flex-end">
-            <Button variant="subtle" onClick={onClose}>
+            <Button variant="subtle" onClick={handleClose}>
               Cancel
             </Button>
             <Button type="submit" loading={loading}>

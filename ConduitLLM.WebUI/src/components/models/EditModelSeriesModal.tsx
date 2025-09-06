@@ -60,6 +60,12 @@ export function EditModelSeriesModal({ isOpen, series, onClose, onSuccess }: Edi
   }, [series]);
 
 
+  const handleClose = () => {
+    form.reset();
+    setJsonError(null);
+    onClose();
+  };
+
   const handleSubmit = async (values: typeof form.values) => {
     try {
       setLoading(true);
@@ -76,6 +82,7 @@ export function EditModelSeriesModal({ isOpen, series, onClose, onSuccess }: Edi
         message: 'Model series updated successfully',
         color: 'green',
       });
+      handleClose();
       onSuccess();
     } catch (error) {
       console.error('Failed to update model series:', error);
@@ -105,7 +112,7 @@ export function EditModelSeriesModal({ isOpen, series, onClose, onSuccess }: Edi
   return (
     <Modal
       opened={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title="Edit Model Series"
       size="lg"
     >
@@ -159,7 +166,7 @@ export function EditModelSeriesModal({ isOpen, series, onClose, onSuccess }: Edi
 
 
           <Group justify="flex-end">
-            <Button variant="subtle" onClick={onClose}>
+            <Button variant="subtle" onClick={handleClose}>
               Cancel
             </Button>
             <Button type="submit" loading={loading} disabled={!!jsonError}>

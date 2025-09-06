@@ -103,6 +103,11 @@ export function EditModelMappingModal({
     }
   }, [mapping, providers, updateForm]);
 
+  const handleClose = () => {
+    form.reset();
+    onClose();
+  };
+
   const handleSubmit = async (values: FormValues) => {
     if (!mapping) return;
 
@@ -123,7 +128,7 @@ export function EditModelMappingModal({
       });
 
       onSave?.();
-      onClose();
+      handleClose();
     } catch (error) {
       console.error('[EditModal] Update failed:', error);
     }
@@ -147,7 +152,7 @@ export function EditModelMappingModal({
   return (
     <Modal
       opened={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title="Edit Model Mapping"
       size="lg"
     >
@@ -200,7 +205,7 @@ export function EditModelMappingModal({
           />
 
           <Group justify="flex-end" mt="md">
-            <Button variant="subtle" onClick={onClose}>
+            <Button variant="subtle" onClick={handleClose}>
               Cancel
             </Button>
             <Button 

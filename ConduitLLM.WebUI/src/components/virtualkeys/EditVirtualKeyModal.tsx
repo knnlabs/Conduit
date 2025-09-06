@@ -99,6 +99,11 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
     form.resetDirty();
   }, [virtualKey, form]);
 
+  const handleClose = () => {
+    form.reset();
+    onClose();
+  };
+
   const handleSubmit = async (values: EditVirtualKeyForm) => {
     if (!virtualKey) return;
 
@@ -126,7 +131,7 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
         color: 'green',
       });
       
-      onClose();
+      handleClose();
       if (onSuccess) {
         onSuccess();
       }
@@ -148,7 +153,7 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
   return (
     <Modal
       opened={opened}
-      onClose={onClose}
+      onClose={handleClose}
       title="Edit Virtual Key"
       size="lg"
     >
@@ -197,7 +202,7 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
         </Alert>
         
         <Group justify="flex-end" mt="md">
-          <Button variant="subtle" onClick={onClose}>
+          <Button variant="subtle" onClick={handleClose}>
             Cancel
           </Button>
           <Button type="submit" loading={isSubmitting}>

@@ -53,6 +53,11 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
     }
   };
 
+  const handleClose = () => {
+    form.reset();
+    onClose();
+  };
+
   const handleSubmit = async (values: typeof form.values) => {
     try {
       setLoading(true);
@@ -91,7 +96,7 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
   return (
     <Modal
       opened={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title="Create New Model"
       size="lg"
     >
@@ -119,7 +124,7 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
           />
 
           <Group justify="flex-end">
-            <Button variant="subtle" onClick={onClose}>
+            <Button variant="subtle" onClick={handleClose}>
               Cancel
             </Button>
             <Button type="submit" loading={loading}>

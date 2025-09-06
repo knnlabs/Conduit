@@ -81,6 +81,11 @@ export function CreateModelMappingModal({
 
   const { data: associations, isLoading: associationsLoading } = useModelAssociations(form.values.modelId);
 
+  const handleClose = () => {
+    form.reset();
+    onClose();
+  };
+
   const handleSubmit = async (values: FormValues) => {
     // Validate all fields before submission
     const validationErrors = form.validate();
@@ -148,7 +153,7 @@ export function CreateModelMappingModal({
       await createMapping.mutateAsync(createData);
       form.reset();
       onSuccess?.();
-      onClose();
+      handleClose();
     } catch {
       // Error handling done by mutation
     }
@@ -166,7 +171,7 @@ export function CreateModelMappingModal({
   return (
     <Modal
       opened={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title="Create Model Provider Mapping"
       size="xl"
     >
@@ -294,7 +299,7 @@ export function CreateModelMappingModal({
           </Alert>
 
           <Group justify="flex-end">
-            <Button variant="subtle" onClick={onClose}>
+            <Button variant="subtle" onClick={handleClose}>
               Cancel
             </Button>
             <Button 

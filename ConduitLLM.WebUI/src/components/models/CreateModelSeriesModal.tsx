@@ -87,6 +87,12 @@ export function CreateModelSeriesModal({ isOpen, onClose, onSuccess }: CreateMod
     }
   };
 
+  const handleClose = () => {
+    form.reset();
+    setJsonError(null);
+    onClose();
+  };
+
   const handleSubmit = async (values: CreateModelSeriesDto & { parameters?: string; displayName?: string; isActive?: boolean }) => {
     try {
       setLoading(true);
@@ -103,7 +109,7 @@ export function CreateModelSeriesModal({ isOpen, onClose, onSuccess }: CreateMod
         message: 'Model series created successfully',
         color: 'green',
       });
-      form.reset();
+      handleClose();
       onSuccess();
     } catch (error) {
       console.error('Failed to create model series:', error);
@@ -138,7 +144,7 @@ export function CreateModelSeriesModal({ isOpen, onClose, onSuccess }: CreateMod
   return (
     <Modal
       opened={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title="Create New Model Series"
       size="lg"
     >
@@ -220,7 +226,7 @@ export function CreateModelSeriesModal({ isOpen, onClose, onSuccess }: CreateMod
           />
 
           <Group justify="flex-end">
-            <Button variant="subtle" onClick={onClose}>
+            <Button variant="subtle" onClick={handleClose}>
               Cancel
             </Button>
             <Button type="submit" loading={loading} disabled={!!jsonError}>

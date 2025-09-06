@@ -166,6 +166,11 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
     }
   };
 
+  const handleClose = () => {
+    form.reset();
+    onClose();
+  };
+
   const handleSubmit = async (values: typeof form.values) => {
     try {
       setLoading(true);
@@ -327,7 +332,7 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
     <>
       <Modal
         opened={isOpen}
-        onClose={onClose}
+        onClose={handleClose}
         title="Edit Model"
         size="xl"
       >
@@ -503,7 +508,7 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
           </Group>
 
                 <Group justify="flex-end">
-                  <Button variant="subtle" onClick={onClose}>
+                  <Button variant="subtle" onClick={handleClose}>
                     Cancel
                   </Button>
                   <Button type="submit" loading={loading} disabled={!!jsonError}>

@@ -47,6 +47,11 @@ export function EditModelAuthorModal({ isOpen, author, onClose, onSuccess }: Edi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [author]);
 
+  const handleClose = () => {
+    form.reset();
+    onClose();
+  };
+
   const handleSubmit = async (values: UpdateModelAuthorDto) => {
     try {
       setLoading(true);
@@ -57,6 +62,7 @@ export function EditModelAuthorModal({ isOpen, author, onClose, onSuccess }: Edi
         message: 'Author updated successfully',
         color: 'green',
       });
+      handleClose();
       onSuccess();
     } catch (error) {
       console.error('Failed to update author:', error);
@@ -73,7 +79,7 @@ export function EditModelAuthorModal({ isOpen, author, onClose, onSuccess }: Edi
   return (
     <Modal
       opened={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title="Edit Author"
       size="md"
     >
@@ -95,7 +101,7 @@ export function EditModelAuthorModal({ isOpen, author, onClose, onSuccess }: Edi
           {/* isActive field doesn't exist in ModelAuthorDto */}
 
           <Group justify="flex-end">
-            <Button variant="subtle" onClick={onClose}>
+            <Button variant="subtle" onClick={handleClose}>
               Cancel
             </Button>
             <Button type="submit" loading={loading}>

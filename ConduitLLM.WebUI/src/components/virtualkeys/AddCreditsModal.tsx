@@ -44,6 +44,11 @@ export function AddCreditsModal({ opened, onClose, group, onSuccess }: AddCredit
     },
   });
 
+  const handleClose = () => {
+    form.reset();
+    onClose();
+  };
+
   const handleSubmit = async (values: AdjustBalanceDto) => {
     if (!group) return;
 
@@ -60,8 +65,7 @@ export function AddCreditsModal({ opened, onClose, group, onSuccess }: AddCredit
         color: 'green',
       });
 
-      form.reset();
-      onClose();
+      handleClose();
       onSuccess?.();
     } catch (error) {
       notifications.show({
@@ -86,7 +90,7 @@ export function AddCreditsModal({ opened, onClose, group, onSuccess }: AddCredit
   return (
     <Modal
       opened={opened}
-      onClose={onClose}
+      onClose={handleClose}
       title={
         <Group gap="sm">
           <IconCash size={20} />
@@ -148,7 +152,7 @@ export function AddCreditsModal({ opened, onClose, group, onSuccess }: AddCredit
           )}
 
           <Group justify="flex-end" mt="md">
-            <Button variant="subtle" onClick={onClose} disabled={isSubmitting}>
+            <Button variant="subtle" onClick={handleClose} disabled={isSubmitting}>
               Cancel
             </Button>
             <Button 
