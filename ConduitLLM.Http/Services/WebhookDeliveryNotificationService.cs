@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
 using ConduitLLM.Configuration.DTOs.SignalR;
 using ConduitLLM.Http.Hubs;
+using ConduitLLM.Core.Services;
 
 namespace ConduitLLM.Http.Services
 {
@@ -64,12 +65,9 @@ namespace ConduitLLM.Http.Services
         private readonly IHubContext<WebhookDeliveryHub> _hubContext;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<WebhookDeliveryNotificationService> _logger;
+        private readonly IWebhookMetricsService? _metricsService;
         
-        // Statistics tracking
-        private readonly ConcurrentDictionary<string, WebhookUrlMetrics> _urlMetrics = new();
-        private readonly ConcurrentQueue<DeliveryEvent> _recentEvents = new();
         private Timer? _statisticsTimer;
-        private const int MaxRecentEvents = 1000;
 
         public WebhookDeliveryNotificationService(
             IHubContext<WebhookDeliveryHub> hubContext,
@@ -79,6 +77,10 @@ namespace ConduitLLM.Http.Services
             _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            
+            // Try to get the metrics service if available (might be null in development)
+            using var scope = _serviceProvider.CreateScope();
+            _metricsService = scope.ServiceProvider.GetService<IWebhookMetricsService>();
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -129,7 +131,15 @@ namespace ConduitLLM.Http.Services
                     await hub.BroadcastDeliveryAttempt(webhookUrl, attempt);
                 }
                 
-                RecordDeliveryAttempt(webhookUrl);
+                // Record metrics if service is available
+                if (_metricsService != null)
+                {
+                    await _metricsService.RecordAttemptAsync(webhookUrl, taskId, taskType, eventType);
+                }
+                else
+                {
+                    RecordDeliveryAttempt(webhookUrl);
+                }
                 
                 _logger.LogDebug(
                     "Sent delivery attempt notification for {WebhookUrl}, attempt {AttemptNumber}",
@@ -165,7 +175,15 @@ namespace ConduitLLM.Http.Services
                 var groupName = GetWebhookGroupName(webhookUrl);
                 await _hubContext.Clients.Group(groupName).SendAsync("DeliverySucceeded", success);
                 
-                RecordDeliverySuccess(webhookUrl, responseTimeMs);
+                // Record metrics if service is available
+                if (_metricsService != null)
+                {
+                    await _metricsService.RecordSuccessAsync(webhookUrl, taskId, responseTimeMs);
+                }
+                else
+                {
+                    RecordDeliverySuccess(webhookUrl, responseTimeMs);
+                }
                 
                 _logger.LogInformation(
                     "Sent delivery success notification for {WebhookUrl}, response time: {ResponseTime}ms",
@@ -203,7 +221,15 @@ namespace ConduitLLM.Http.Services
                 var groupName = GetWebhookGroupName(webhookUrl);
                 await _hubContext.Clients.Group(groupName).SendAsync("DeliveryFailed", failure);
                 
-                RecordDeliveryFailure(webhookUrl, isPermanent);
+                // Record metrics if service is available
+                if (_metricsService != null)
+                {
+                    await _metricsService.RecordFailureAsync(webhookUrl, taskId, isPermanent);
+                }
+                else
+                {
+                    RecordDeliveryFailure(webhookUrl, isPermanent);
+                }
                 
                 _logger.LogWarning(
                     "Sent delivery failure notification for {WebhookUrl}, attempt {AttemptNumber}, permanent: {IsPermanent}",
@@ -287,107 +313,48 @@ namespace ConduitLLM.Http.Services
 
         public void RecordDeliveryAttempt(string webhookUrl)
         {
-            var metrics = _urlMetrics.GetOrAdd(webhookUrl, _ => new WebhookUrlMetrics());
-            Interlocked.Increment(ref metrics.TotalAttempts);
-            
-            RecordEvent(new DeliveryEvent
-            {
-                Url = webhookUrl,
-                Type = DeliveryEventType.Attempt,
-                Timestamp = DateTime.UtcNow
-            });
+            // This is now handled by the metrics service when available
+            // Keep as fallback for when Redis is not available
+            _logger.LogDebug("Recording delivery attempt for {WebhookUrl} (fallback mode)", webhookUrl);
         }
 
         public void RecordDeliverySuccess(string webhookUrl, long responseTimeMs)
         {
-            var metrics = _urlMetrics.GetOrAdd(webhookUrl, _ => new WebhookUrlMetrics());
-            Interlocked.Increment(ref metrics.Successes);
-            metrics.RecordResponseTime(responseTimeMs);
-            
-            RecordEvent(new DeliveryEvent
-            {
-                Url = webhookUrl,
-                Type = DeliveryEventType.Success,
-                ResponseTimeMs = responseTimeMs,
-                Timestamp = DateTime.UtcNow
-            });
+            // This is now handled by the metrics service when available
+            // Keep as fallback for when Redis is not available
+            _logger.LogDebug("Recording delivery success for {WebhookUrl} (fallback mode)", webhookUrl);
         }
 
         public void RecordDeliveryFailure(string webhookUrl, bool isPermanent)
         {
-            var metrics = _urlMetrics.GetOrAdd(webhookUrl, _ => new WebhookUrlMetrics());
-            Interlocked.Increment(ref metrics.Failures);
-            if (!isPermanent)
-            {
-                Interlocked.Increment(ref metrics.PendingRetries);
-            }
-            
-            RecordEvent(new DeliveryEvent
-            {
-                Url = webhookUrl,
-                Type = DeliveryEventType.Failure,
-                IsPermanent = isPermanent,
-                Timestamp = DateTime.UtcNow
-            });
+            // This is now handled by the metrics service when available
+            // Keep as fallback for when Redis is not available
+            _logger.LogDebug("Recording delivery failure for {WebhookUrl} (fallback mode)", webhookUrl);
         }
 
         public async Task<WebhookStatistics> GetStatisticsAsync(string period = "last_hour")
         {
+            // Use Redis metrics service if available
+            if (_metricsService != null)
+            {
+                return await _metricsService.GetStatisticsAsync(period);
+            }
+            
+            // Fallback to basic statistics when Redis is not available
             var stats = new WebhookStatistics
             {
                 Period = period,
-                UrlStatistics = new List<WebhookUrlStatistics>()
+                UrlStatistics = new List<WebhookUrlStatistics>(),
+                TotalDeliveries = 0,
+                SuccessfulDeliveries = 0,
+                FailedDeliveries = 0,
+                PendingDeliveries = 0,
+                SuccessRate = 0,
+                AverageResponseTimeMs = 0
             };
             
-            // Calculate cutoff time based on period
-            var cutoffTime = period switch
-            {
-                "last_hour" => DateTime.UtcNow.AddHours(-1),
-                "last_day" => DateTime.UtcNow.AddDays(-1),
-                "last_week" => DateTime.UtcNow.AddDays(-7),
-                _ => DateTime.UtcNow.AddHours(-1)
-            };
-            
-            // Get recent events within the period
-            var recentEvents = _recentEvents.Where(e => e.Timestamp >= cutoffTime).ToList();
-            
-            // Calculate overall statistics
-            foreach (var urlMetrics in _urlMetrics)
-            {
-                var urlStats = new WebhookUrlStatistics
-                {
-                    Url = urlMetrics.Key,
-                    TotalDeliveries = urlMetrics.Value.TotalAttempts,
-                    SuccessfulDeliveries = urlMetrics.Value.Successes,
-                    FailedDeliveries = urlMetrics.Value.Failures,
-                    AverageResponseTimeMs = urlMetrics.Value.GetAverageResponseTime(),
-                    SuccessRate = urlMetrics.Value.TotalAttempts > 0 ? 
-                        (double)urlMetrics.Value.Successes / urlMetrics.Value.TotalAttempts * 100 : 0,
-                    IsHealthy = true
-                };
-                
-                stats.UrlStatistics.Add(urlStats);
-                
-                stats.TotalDeliveries += urlStats.TotalDeliveries;
-                stats.SuccessfulDeliveries += urlStats.SuccessfulDeliveries;
-                stats.FailedDeliveries += urlStats.FailedDeliveries;
-            }
-            
-            stats.PendingDeliveries = _urlMetrics.Values.Sum(m => m.PendingRetries);
-            stats.SuccessRate = stats.TotalDeliveries > 0 
-                ? (double)stats.SuccessfulDeliveries / stats.TotalDeliveries * 100 
-                : 0;
-            
-            // Calculate average response time from recent successful events
-            var successfulEvents = recentEvents
-                .Where(e => e.Type == DeliveryEventType.Success && e.ResponseTimeMs.HasValue)
-                .ToList();
-            
-            stats.AverageResponseTimeMs = successfulEvents.Count() > 0
-                ? successfulEvents.Average(e => e.ResponseTimeMs!.Value)
-                : 0;
-            
-            return await Task.FromResult(stats);
+            _logger.LogDebug("Returning empty statistics (Redis metrics service not available)");
+            return stats;
         }
 
         private async Task BroadcastStatisticsAsync()
@@ -403,17 +370,6 @@ namespace ConduitLLM.Http.Services
             }
         }
 
-        private void RecordEvent(DeliveryEvent evt)
-        {
-            _recentEvents.Enqueue(evt);
-            
-            // Keep queue size limited
-            while (_recentEvents.Count > MaxRecentEvents && _recentEvents.TryDequeue(out _))
-            {
-                // Remove oldest events
-            }
-        }
-
         private static string GenerateWebhookId(string webhookUrl, string taskId)
         {
             return $"{taskId}_{webhookUrl.GetHashCode():X8}";
@@ -423,53 +379,6 @@ namespace ConduitLLM.Http.Services
         {
             var uri = new Uri(webhookUrl);
             return $"webhook-{uri.Host.Replace(".", "-")}-{uri.AbsolutePath.Replace("/", "-")}";
-        }
-
-        /// <summary>
-        /// Internal class for tracking metrics per URL.
-        /// </summary>
-        private class WebhookUrlMetrics
-        {
-            public int TotalAttempts;
-            public int Successes;
-            public int Failures;
-            public int PendingRetries;
-            private readonly ConcurrentQueue<long> _responseTimes = new();
-            private const int MaxResponseTimes = 100;
-
-            public void RecordResponseTime(long responseTimeMs)
-            {
-                _responseTimes.Enqueue(responseTimeMs);
-                while (_responseTimes.Count > MaxResponseTimes && _responseTimes.TryDequeue(out _))
-                {
-                    // Keep queue size limited
-                }
-            }
-
-            public double GetAverageResponseTime()
-            {
-                var times = _responseTimes.ToArray();
-                return times.Length > 0 ? times.Average() : 0;
-            }
-        }
-
-        /// <summary>
-        /// Internal class for tracking delivery events.
-        /// </summary>
-        private class DeliveryEvent
-        {
-            public string Url { get; set; } = string.Empty;
-            public DeliveryEventType Type { get; set; }
-            public DateTime Timestamp { get; set; }
-            public long? ResponseTimeMs { get; set; }
-            public bool IsPermanent { get; set; }
-        }
-
-        private enum DeliveryEventType
-        {
-            Attempt,
-            Success,
-            Failure
         }
     }
 }

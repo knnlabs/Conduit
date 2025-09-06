@@ -218,6 +218,39 @@ public partial class Program
         builder.Services.AddHostedService<ConduitLLM.Http.Services.SpendNotification.DistributedSpendNotificationService>(sp => 
             (ConduitLLM.Http.Services.SpendNotification.DistributedSpendNotificationService)sp.GetRequiredService<ConduitLLM.Core.Interfaces.ISpendNotificationService>());
 
+        // Register Webhook Metrics Service (Redis-based when available)
+        builder.Services.AddSingleton<ConduitLLM.Core.Services.IWebhookMetricsService>(sp =>
+        {
+            var redis = sp.GetService<StackExchange.Redis.IConnectionMultiplexer>();
+            
+            if (redis != null)
+            {
+                var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.RedisWebhookMetricsService>>();
+                return new ConduitLLM.Core.Services.RedisWebhookMetricsService(redis, logger);
+            }
+            
+            // Return null when Redis is not available - the notification service will handle fallback
+            return null!;
+        });
+        
+        // Register Webhook Connection Tracker (Redis-based when available)
+        builder.Services.AddSingleton<ConduitLLM.Core.Services.IWebhookConnectionTracker>(sp =>
+        {
+            var redis = sp.GetService<StackExchange.Redis.IConnectionMultiplexer>();
+            
+            if (redis != null)
+            {
+                var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.RedisWebhookConnectionTracker>>();
+                return new ConduitLLM.Core.Services.RedisWebhookConnectionTracker(redis, logger);
+            }
+            else
+            {
+                // Fall back to in-memory tracker
+                var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.InMemoryWebhookConnectionTracker>>();
+                return new ConduitLLM.Core.Services.InMemoryWebhookConnectionTracker(logger);
+            }
+        });
+        
         // Register Webhook Delivery Notification Service
         builder.Services.AddSingleton<ConduitLLM.Http.Services.IWebhookDeliveryNotificationService, ConduitLLM.Http.Services.WebhookDeliveryNotificationService>();
         builder.Services.AddHostedService<ConduitLLM.Http.Services.WebhookDeliveryNotificationService>(sp => 
@@ -341,16 +374,32 @@ public partial class Program
         builder.Services.AddMemoryCache(); // Ensure memory cache is available
         builder.Services.AddSingleton<ConduitLLM.Core.Services.IWebhookCircuitBreaker>(sp =>
         {
-            var cache = sp.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>();
-            var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.WebhookCircuitBreaker>>();
+            var redis = sp.GetService<StackExchange.Redis.IConnectionMultiplexer>();
             
-            // Configure circuit breaker: open after 5 failures, stay open for 5 minutes
-            return new ConduitLLM.Core.Services.WebhookCircuitBreaker(
-                cache, 
-                logger, 
-                failureThreshold: 5,
-                openDuration: TimeSpan.FromMinutes(5),
-                counterResetDuration: TimeSpan.FromMinutes(15));
+            if (redis != null)
+            {
+                // Use Redis-based distributed circuit breaker when available
+                var redisLogger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.RedisWebhookCircuitBreaker>>();
+                return new ConduitLLM.Core.Services.RedisWebhookCircuitBreaker(
+                    redis,
+                    redisLogger,
+                    failureThreshold: 5,
+                    openDuration: TimeSpan.FromMinutes(5),
+                    halfOpenTestInterval: TimeSpan.FromSeconds(30));
+            }
+            else
+            {
+                // Fall back to in-memory circuit breaker
+                var cache = sp.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>();
+                var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.WebhookCircuitBreaker>>();
+                
+                return new ConduitLLM.Core.Services.WebhookCircuitBreaker(
+                    cache, 
+                    logger, 
+                    failureThreshold: 5,
+                    openDuration: TimeSpan.FromMinutes(5),
+                    counterResetDuration: TimeSpan.FromMinutes(15));
+            }
         });
 
         // Register provider model list service

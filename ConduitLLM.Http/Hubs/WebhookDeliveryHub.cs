@@ -3,6 +3,7 @@ using System.Diagnostics;
 using Microsoft.AspNetCore.SignalR;
 using ConduitLLM.Configuration.DTOs.SignalR;
 using ConduitLLM.Http.Metrics;
+using ConduitLLM.Core.Services;
 
 namespace ConduitLLM.Http.Hubs
 {
@@ -13,8 +14,9 @@ namespace ConduitLLM.Http.Hubs
     {
         private readonly ILogger<WebhookDeliveryHub> _logger;
         private readonly SignalRMetrics _metrics;
+        private readonly IWebhookConnectionTracker? _connectionTracker;
         
-        // Track active delivery tracking sessions per connection
+        // Fallback for when Redis is not available
         private static readonly ConcurrentDictionary<string, HashSet<string>> _connectionWebhooks = new();
 
         /// <summary>
@@ -31,6 +33,10 @@ namespace ConduitLLM.Http.Hubs
         {
             _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            
+            // Try to get the connection tracker if available
+            using var scope = serviceProvider.CreateScope();
+            _connectionTracker = scope.ServiceProvider.GetService<IWebhookConnectionTracker>();
         }
 
         /// <summary>
@@ -47,7 +53,10 @@ namespace ConduitLLM.Http.Hubs
             await base.OnConnectedAsync();
             
             // Initialize webhook tracking for this connection
-            _connectionWebhooks[Context.ConnectionId] = new HashSet<string>();
+            if (_connectionTracker == null)
+            {
+                _connectionWebhooks[Context.ConnectionId] = new HashSet<string>();
+            }
             
             _logger.LogInformation(
                 "Client {ConnectionId} connected to WebhookDeliveryHub",
@@ -61,7 +70,14 @@ namespace ConduitLLM.Http.Hubs
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
             // Clean up webhook tracking
-            _connectionWebhooks.TryRemove(Context.ConnectionId, out _);
+            if (_connectionTracker != null)
+            {
+                await _connectionTracker.RemoveConnectionAsync(Context.ConnectionId);
+            }
+            else
+            {
+                _connectionWebhooks.TryRemove(Context.ConnectionId, out _);
+            }
             
             await base.OnDisconnectedAsync(exception);
             
@@ -90,16 +106,23 @@ namespace ConduitLLM.Http.Hubs
             }
 
             // Add to connection's webhook list
-            if (_connectionWebhooks.TryGetValue(Context.ConnectionId, out var webhooks))
+            if (_connectionTracker != null)
+            {
+                await _connectionTracker.AddWebhooksToConnectionAsync(Context.ConnectionId, webhookUrls);
+            }
+            else if (_connectionWebhooks.TryGetValue(Context.ConnectionId, out var webhooks))
             {
                 foreach (var url in webhookUrls)
                 {
                     webhooks.Add(url);
-                    
-                    // Join a group for this webhook URL
-                    var groupName = GetWebhookGroupName(url);
-                    await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
                 }
+            }
+            
+            // Join groups for these webhook URLs
+            foreach (var url in webhookUrls)
+            {
+                var groupName = GetWebhookGroupName(url);
+                await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
             }
 
             _logger.LogInformation(

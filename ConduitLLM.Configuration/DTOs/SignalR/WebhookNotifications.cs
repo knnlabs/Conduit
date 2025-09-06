@@ -304,6 +304,21 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         /// Gets or sets the average response time for this URL.
         /// </summary>
         public double AverageResponseTimeMs { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the 95th percentile response time for this URL.
+        /// </summary>
+        public double? P95ResponseTimeMs { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the 99th percentile response time for this URL.
+        /// </summary>
+        public double? P99ResponseTimeMs { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the number of pending retries for this URL.
+        /// </summary>
+        public long? PendingRetries { get; set; }
 
         /// <summary>
         /// Gets or sets whether this URL is currently healthy.
