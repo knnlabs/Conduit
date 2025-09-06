@@ -166,7 +166,7 @@ namespace ConduitLLM.Http.Services.SpendNotification
             }
         }
 
-        public async Task<List<int>> GetAllPatternKeysAsync()
+        public Task<List<int>> GetAllPatternKeysAsync()
         {
             var keys = new List<int>();
             try
@@ -187,7 +187,7 @@ namespace ConduitLLM.Http.Services.SpendNotification
             {
                 _logger.LogError(ex, "Error getting all pattern keys");
             }
-            return keys;
+            return Task.FromResult(keys);
         }
 
         public async Task<bool> IsAlertSentAsync(int virtualKeyId, int threshold)
