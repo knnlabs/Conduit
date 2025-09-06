@@ -1,32 +1,44 @@
-using System.Diagnostics;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using IVirtualKeyService = ConduitLLM.Configuration.Interfaces.IVirtualKeyService;
+using IModelProviderMappingService = ConduitLLM.Configuration.Interfaces.IModelProviderMappingService;
+using ConduitLLM.Core.Services.Abstractions;
+using ConduitLLM.Core.Services.Strategies;
 using ConduitLLM.Core.Validation;
 using MassTransit;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
-using ConduitLLM.Configuration.Interfaces;
-using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
-using ConduitLLM.Core.Interfaces;
 namespace ConduitLLM.Core.Services
 {
     /// <summary>
-    /// Orchestrates image generation tasks by consuming events and managing the generation lifecycle.
+    /// Image generation orchestrator using the generic base class.
     /// </summary>
-    public partial class ImageGenerationOrchestrator : IConsumer<ImageGenerationRequested>, IConsumer<ImageGenerationCancelled>
+    public class ImageGenerationOrchestrator : MediaGenerationOrchestrator<
+        ConduitLLM.Core.Models.ImageGenerationRequest,
+        ConduitLLM.Core.Models.ImageGenerationResponse,
+        ImageGenerationRequested>,
+        IConsumer<ImageGenerationRequested>,
+        IConsumer<ImageGenerationCancelled>
     {
-        private readonly ILLMClientFactory _clientFactory;
-        private readonly IAsyncTaskService _taskService;
-        private readonly IMediaStorageService _storageService;
-        private readonly IPublishEndpoint _publishEndpoint;
-        private readonly IModelProviderMappingService _modelMappingService;
-        private readonly IVirtualKeyService _virtualKeyService;
-        private readonly IHttpClientFactory _httpClientFactory;
-        private readonly ICancellableTaskRegistry _taskRegistry;
-        private readonly ICostCalculationService _costCalculationService;
-        private readonly IProviderService _providerService;
-        private readonly MinimalParameterValidator _parameterValidator;
-        private readonly ILogger<ImageGenerationOrchestrator> _logger;
+        private readonly IMediaProcessingStrategy<ConduitLLM.Core.Models.ImageData> _base64Processor;
+        private readonly IMediaProcessingStrategy<ConduitLLM.Core.Models.ImageData> _urlProcessor;
+
+        // Implement abstract property accessors
+        protected override string GetRequestId(ImageGenerationRequested request) => request.TaskId;
+        protected override string GetModel(ImageGenerationRequested request) => request.Request.Model ?? "";
+        protected override string GetPrompt(ImageGenerationRequested request) => request.Request.Prompt;
+        protected override string GetVirtualKeyId(ImageGenerationRequested request) => request.VirtualKeyId.ToString();
+        protected override string? GetWebhookUrl(ImageGenerationRequested request) => request.WebhookUrl;
+        protected override string? GetCorrelationId(ImageGenerationRequested request) => request.CorrelationId;
+        protected override bool GetIsAsync(ImageGenerationRequested request) => true; // Images are always async
 
         public ImageGenerationOrchestrator(
             ILLMClientFactory clientFactory,
@@ -35,380 +47,321 @@ namespace ConduitLLM.Core.Services
             IPublishEndpoint publishEndpoint,
             IModelProviderMappingService modelMappingService,
             IVirtualKeyService virtualKeyService,
-            IHttpClientFactory httpClientFactory,
+            ICostCalculationService costService,
             ICancellableTaskRegistry taskRegistry,
-            ICostCalculationService costCalculationService,
-            IProviderService providerService,
+            IWebhookNotificationService webhookService,
+            IHttpClientFactory httpClientFactory,
             MinimalParameterValidator parameterValidator,
             ILogger<ImageGenerationOrchestrator> logger)
+            : base(clientFactory, taskService, storageService, publishEndpoint,
+                   modelMappingService, virtualKeyService, costService, taskRegistry,
+                   webhookService, httpClientFactory, parameterValidator, logger)
         {
-            _clientFactory = clientFactory;
-            _taskService = taskService;
-            _storageService = storageService;
-            _publishEndpoint = publishEndpoint;
-            _modelMappingService = modelMappingService;
-            _virtualKeyService = virtualKeyService;
-            _httpClientFactory = httpClientFactory;
-            _taskRegistry = taskRegistry;
-            _costCalculationService = costCalculationService;
-            _providerService = providerService;
-            _parameterValidator = parameterValidator;
-            _logger = logger;
+            
+            // Initialize processing strategies
+            _base64Processor = new Base64MediaProcessor(storageService, publishEndpoint, 
+                logger as ILogger<Base64MediaProcessor> ?? new NullLogger<Base64MediaProcessor>());
+            _urlProcessor = new UrlMediaProcessor(httpClientFactory, storageService, publishEndpoint,
+                logger as ILogger<UrlMediaProcessor> ?? new NullLogger<UrlMediaProcessor>());
         }
 
-        public async Task Consume(ConsumeContext<ImageGenerationRequested> context)
+
+        protected override bool ShouldProcessRequest(ImageGenerationRequested request)
         {
-            var request = context.Message;
-            var stopwatch = Stopwatch.StartNew();
-            var downloadStopwatch = new Stopwatch();
-            var storageStopwatch = new Stopwatch();
-            ModelInfo? modelInfo = null;
+            // Images are always processed asynchronously in our system
+            return true;
+        }
+
+        protected override async Task<ConduitLLM.Core.Models.ImageGenerationResponse> ExecuteGenerationAsync(
+            ConduitLLM.Core.Models.ImageGenerationRequest request,
+            GenerationModelInfo modelInfo,
+            VirtualKey virtualKey,
+            CancellationToken cancellationToken)
+        {
+            // Get the client for the model
+            var client = _clientFactory.GetClient(modelInfo.ModelId);
             
-            // Create a linked cancellation token source for this task
-            using var taskCts = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
+            // Generate images
+            return await client.CreateImageAsync(request, cancellationToken: cancellationToken);
+        }
+
+        protected override async Task<ProcessedMedia> ProcessMediaAsync(
+            ImageGenerationResponse response,
+            ImageGenerationRequested request,
+            GenerationModelInfo modelInfo,
+            VirtualKey virtualKey,
+            CancellationToken cancellationToken)
+        {
+            var processedMedia = new ProcessedMedia();
             
-            // Register the task for cancellation support
-            _taskRegistry.RegisterTask(request.TaskId, taskCts);
-            
-            try
+            if (response.Data == null || !response.Data.Any())
             {
-                _logger.LogInformation("Processing image generation task {TaskId} for prompt: {Prompt}", 
-                    request.TaskId, request.Request.Prompt);
-                
-                // Update task status to processing
-                await _taskService.UpdateTaskStatusAsync(request.TaskId, TaskState.Processing, cancellationToken: taskCts.Token);
-                
-                // Publish progress event
-                await _publishEndpoint.Publish(new ImageGenerationProgress
+                return processedMedia;
+            }
+
+            // Process images in parallel
+            var tasks = response.Data.Select(async (imageData, index) =>
+            {
+                var context = new MediaProcessingContext
                 {
-                    TaskId = request.TaskId,
-                    Status = "processing",
-                    ImagesCompleted = 0,
-                    TotalImages = request.Request.N,
-                    CorrelationId = request.CorrelationId
-                });
-                
-                // Get provider and model info
-                modelInfo = await GetModelInfoAsync(request.Request.Model, request.VirtualKeyHash);
-                if (modelInfo == null)
-                {
-                    throw new InvalidOperationException($"Model {request.Request.Model} not found or not available");
-                }
-                
-                // Create LLM client
-                var client = _clientFactory.GetClient(modelInfo.ModelId);
-                
-                // Prepare generation request
-                var generationRequest = new ConduitLLM.Core.Models.ImageGenerationRequest
-                {
+                    MediaType = MediaType.Image,
+                    Index = index,
+                    ModelInfo = modelInfo,
                     Prompt = request.Request.Prompt,
-                    Model = modelInfo.ModelId,
-                    N = request.Request.N,
-                    Size = request.Request.Size,
-                    Quality = request.Request.Quality,
-                    Style = request.Request.Style,
-                    ResponseFormat = request.Request.ResponseFormat ?? "url",
-                    User = request.Request.User,
-                    ExtensionData = request.Request.ExtensionData // Pass through any additional parameters
+                    VirtualKeyId = virtualKey.Id,
+                    RequestId = request.TaskId,
+                    CorrelationId = request.CorrelationId
                 };
-                
-                // Validate parameters (minimal, provider-agnostic)
-                _parameterValidator.ValidateImageParameters(generationRequest);
-                
-                // Log the parameters being sent to the provider (excluding prompt)
-                _logger.LogInformation("Image generation request prepared: TaskId={TaskId}, Model={Model}, Provider={Provider}, Count={Count}, Size={Size}, Quality={Quality}, Style={Style}, PromptLength={PromptLength}",
-                    request.TaskId,
-                    request.Request.Model,
-                    modelInfo.Provider,
-                    generationRequest.N,
-                    generationRequest.Size,
-                    generationRequest.Quality,
-                    generationRequest.Style,
-                    request.Request.Prompt?.Length ?? 0);
-                
-                // Generate images with cancellation support
-                var response = await client.CreateImageAsync(generationRequest, cancellationToken: taskCts.Token);
-                
-                // Process and store images
-                var processedImages = new List<ConduitLLM.Core.Events.ImageData>();
-                var totalImages = response.Data?.Count ?? 0;
-                
-                _logger.LogInformation("Processing {Count} images in parallel", totalImages);
-                
-                // Process images in parallel without artificial limits
-                var imageTasks = new Task<ConduitLLM.Core.Events.ImageData>[totalImages];
-                var progressCounter = 0;
-                var downloadTime = 0L;
-                var storageTime = 0L;
-                
-                for (int i = 0; i < totalImages; i++)
+
+                // Choose appropriate processor based on data format
+                IMediaProcessingStrategy<ConduitLLM.Core.Models.ImageData> processor;
+                if (!string.IsNullOrEmpty(imageData.B64Json))
                 {
-                    var index = i; // Capture for closure
-                    var imageData = response.Data![i];
-                    
-                    imageTasks[i] = ProcessSingleImageAsync(
-                        imageData, 
-                        index, 
-                        request, 
-                        modelInfo, 
-                        taskCts.Token,
-                        () => Interlocked.Increment(ref progressCounter),
-                        (dt, st) => 
-                        {
-                            Interlocked.Add(ref downloadTime, dt);
-                            Interlocked.Add(ref storageTime, st);
-                        });
+                    processor = _base64Processor;
                 }
-                
-                // Start progress reporting task
-                var progressTask = ReportProgressAsync(
-                    request.TaskId, 
-                    request.CorrelationId, 
-                    totalImages, 
-                    () => progressCounter,
-                    request.WebhookUrl,
-                    request.WebhookHeaders,
-                    taskCts.Token);
-                
-                // Wait for all images to complete
-                var results = await Task.WhenAll(imageTasks);
-                processedImages.AddRange(results);
-                
-                // Cancel progress reporting
-                taskCts.Token.ThrowIfCancellationRequested();
-                
-                stopwatch.Stop();
-                
-                // Calculate cost using the centralized cost calculation service
-                var cost = await CalculateImageGenerationCostAsync(modelInfo.ProviderType, modelInfo.ModelId, totalImages, taskCts.Token);
-                
-                // Update task with results
-                await _taskService.UpdateTaskStatusAsync(
-                    request.TaskId, 
-                    TaskState.Completed,
-                    progress: 100,
-                    result: new
-                    {
-                        images = processedImages,
-                        duration = stopwatch.Elapsed.TotalSeconds,
-                        cost = cost,
-                        provider = modelInfo.ProviderName,
-                        model = modelInfo.ModelId
-                    });
-                
-                // Publish completion event
-                await _publishEndpoint.Publish(new ImageGenerationCompleted
+                else if (!string.IsNullOrEmpty(imageData.Url))
                 {
-                    TaskId = request.TaskId,
-                    VirtualKeyId = request.VirtualKeyId,
-                    Images = processedImages,
-                    Duration = stopwatch.Elapsed,
-                    Cost = cost,
-                    Provider = modelInfo.ProviderName,
-                    Model = modelInfo.ModelId,
-                    CorrelationId = request.CorrelationId
-                });
-                
-                // Send webhook notification if configured
-                if (!string.IsNullOrEmpty(request.WebhookUrl))
-                {
-                    var imageUrls = processedImages
-                        .Where(img => !string.IsNullOrEmpty(img.Url))
-                        .Select(img => img.Url!)
-                        .ToList();
-                    
-                    var webhookPayload = new ImageCompletionWebhookPayload
-                    {
-                        TaskId = request.TaskId,
-                        Status = "completed",
-                        ImageUrls = imageUrls,
-                        ImagesGenerated = processedImages.Count,
-                        ImagesRequested = request.Request.N,
-                        GenerationDurationSeconds = stopwatch.Elapsed.TotalSeconds,
-                        Model = request.Request.Model,
-                        Prompt = request.Request.Prompt,
-                        Size = request.Request.Size,
-                        ResponseFormat = request.Request.ResponseFormat ?? "url"
-                    };
-                    
-                    // Publish webhook delivery event for scalable processing
-                    await _publishEndpoint.Publish(new WebhookDeliveryRequested
-                    {
-                        TaskId = request.TaskId,
-                        TaskType = "image",
-                        WebhookUrl = request.WebhookUrl,
-                        EventType = WebhookEventType.TaskCompleted,
-                        PayloadJson = ConduitLLM.Core.Helpers.WebhookPayloadHelper.SerializePayload(webhookPayload),
-                        Headers = request.WebhookHeaders,
-                        CorrelationId = request.CorrelationId ?? Guid.NewGuid().ToString()
-                    });
-                    
-                    _logger.LogDebug("Published webhook delivery event for completed image task {TaskId}", request.TaskId);
+                    processor = _urlProcessor;
                 }
-                
-                // Update spend
-                if (cost > 0)
+                else
                 {
-                    await _publishEndpoint.Publish(new SpendUpdateRequested
-                    {
-                        KeyId = request.VirtualKeyId,
-                        Amount = cost,
-                        RequestId = request.TaskId,
-                        CorrelationId = request.CorrelationId?.ToString() ?? string.Empty
-                    });
+                    _logger.LogWarning("Image data has neither B64Json nor Url for index {Index}", index);
+                    return null;
                 }
-                
-                _logger.LogInformation("Completed image generation task {TaskId} in {Duration}s with {Count} images",
-                    request.TaskId, stopwatch.Elapsed.TotalSeconds, processedImages.Count);
-            }
-            catch (OperationCanceledException) when (taskCts.Token.IsCancellationRequested)
+
+                try
+                {
+                    // Safe cast since we know the processors handle ImageData
+                    var typedProcessor = processor as IMediaProcessingStrategy<object>;
+                    if (typedProcessor != null)
+                    {
+                        return await typedProcessor.ProcessAsync(imageData, context, cancellationToken);
+                    }
+                    return null;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to process image at index {Index}", index);
+                    return null;
+                }
+            });
+
+            var results = await Task.WhenAll(tasks);
+            processedMedia.Items = results.Where(r => r != null).ToList()!;
+            
+            // Set primary URL to first image
+            if (processedMedia.Items.Any())
             {
-                _logger.LogInformation("Image generation task {TaskId} was cancelled", request.TaskId);
-                
-                stopwatch.Stop();
-                
-                // Update task status to cancelled
-                await _taskService.UpdateTaskStatusAsync(
-                    request.TaskId,
-                    TaskState.Cancelled,
-                    error: "Task was cancelled by user request");
-                
-                // Send webhook notification if configured
-                if (!string.IsNullOrEmpty(request.WebhookUrl))
-                {
-                    var webhookPayload = new ImageCompletionWebhookPayload
-                    {
-                        TaskId = request.TaskId,
-                        Status = "cancelled",
-                        Error = "Task was cancelled by user request",
-                        ImagesGenerated = 0,
-                        ImagesRequested = request.Request.N,
-                        GenerationDurationSeconds = stopwatch.Elapsed.TotalSeconds,
-                        Model = request.Request.Model,
-                        Prompt = request.Request.Prompt,
-                        Size = request.Request.Size,
-                        ResponseFormat = request.Request.ResponseFormat ?? "url"
-                    };
-                    
-                    // Publish webhook delivery event for scalable processing
-                    await _publishEndpoint.Publish(new WebhookDeliveryRequested
-                    {
-                        TaskId = request.TaskId,
-                        TaskType = "image",
-                        WebhookUrl = request.WebhookUrl,
-                        EventType = WebhookEventType.TaskCancelled,
-                        PayloadJson = ConduitLLM.Core.Helpers.WebhookPayloadHelper.SerializePayload(webhookPayload),
-                        Headers = request.WebhookHeaders,
-                        CorrelationId = request.CorrelationId ?? Guid.NewGuid().ToString()
-                    });
-                    
-                    _logger.LogDebug("Published webhook delivery event for cancelled image task {TaskId}", request.TaskId);
-                }
-                
-                // Don't re-throw - cancellation is a normal completion path
+                processedMedia.Url = processedMedia.Items.First().Url;
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing image generation task {TaskId}", request.TaskId);
-                
-                stopwatch.Stop();
-                
-                // Update task status
-                await _taskService.UpdateTaskStatusAsync(
-                    request.TaskId,
-                    TaskState.Failed,
-                    error: ex.Message);
-                
-                // Publish failure event
-                await _publishEndpoint.Publish(new ImageGenerationFailed
-                {
-                    TaskId = request.TaskId,
-                    VirtualKeyId = request.VirtualKeyId,
-                    Error = ex.Message,
-                    ErrorCode = ex.GetType().Name,
-                    Provider = request.Request.Model ?? "unknown",
-                    IsRetryable = IsRetryableError(ex),
-                    AttemptCount = 1, // Would need to track this properly
-                    CorrelationId = request.CorrelationId
-                });
-                
-                // Send webhook notification if configured
-                if (!string.IsNullOrEmpty(request.WebhookUrl))
-                {
-                    var webhookPayload = new ImageCompletionWebhookPayload
-                    {
-                        TaskId = request.TaskId,
-                        Status = "failed",
-                        Error = ex.Message,
-                        ImagesGenerated = 0,
-                        ImagesRequested = request.Request.N,
-                        GenerationDurationSeconds = stopwatch.Elapsed.TotalSeconds,
-                        Model = request.Request.Model,
-                        Prompt = request.Request.Prompt,
-                        Size = request.Request.Size,
-                        ResponseFormat = request.Request.ResponseFormat ?? "url"
-                    };
-                    
-                    // Publish webhook delivery event for scalable processing
-                    await _publishEndpoint.Publish(new WebhookDeliveryRequested
-                    {
-                        TaskId = request.TaskId,
-                        TaskType = "image",
-                        WebhookUrl = request.WebhookUrl,
-                        EventType = WebhookEventType.TaskFailed,
-                        PayloadJson = ConduitLLM.Core.Helpers.WebhookPayloadHelper.SerializePayload(webhookPayload),
-                        Headers = request.WebhookHeaders,
-                        CorrelationId = request.CorrelationId ?? Guid.NewGuid().ToString()
-                    });
-                    
-                    _logger.LogDebug("Published webhook delivery event for failed image task {TaskId}", request.TaskId);
-                }
-                
-                // Re-throw to let MassTransit handle retry logic
-                throw;
-            }
-            finally
-            {
-                // Always unregister the task from the cancellation registry
-                _taskRegistry.UnregisterTask(request.TaskId);
-            }
+
+            return processedMedia;
         }
 
+        protected override void ValidateParameters(ConduitLLM.Core.Models.ImageGenerationRequest request)
+        {
+            _parameterValidator.ValidateImageParameters(request);
+        }
+
+        protected override Task<ConduitLLM.Core.Models.ImageGenerationRequest> BuildGenerationRequestAsync(
+            ImageGenerationRequested request,
+            GenerationModelInfo modelInfo)
+        {
+            return Task.FromResult(new ConduitLLM.Core.Models.ImageGenerationRequest
+            {
+                Prompt = request.Request.Prompt,
+                Model = modelInfo.ModelId,
+                N = request.Request.N,
+                Size = request.Request.Size,
+                Quality = request.Request.Quality,
+                Style = request.Request.Style,
+                ResponseFormat = request.Request.ResponseFormat ?? "url",
+                User = request.Request.User,
+                ExtensionData = request.Request.ExtensionData
+            });
+        }
+
+        protected override void ValidateModelSupport(GenerationModelInfo modelInfo, ImageGenerationRequested request)
+        {
+            // Check if model supports image generation
+            // This would typically check model capabilities
+            // For now, we'll assume all models in image requests support images
+        }
+
+        protected override Usage CreateUsageObject(ImageGenerationRequested request, ProcessedMedia media)
+        {
+            return new Usage
+            {
+                ImageCount = media.Count
+            };
+        }
+
+        protected override async Task PublishStartedEventAsync(ImageGenerationRequested request)
+        {
+            await _publishEndpoint.Publish(new ImageGenerationProgress
+            {
+                TaskId = request.TaskId,
+                Status = "processing",
+                ImagesCompleted = 0,
+                TotalImages = request.Request.N,
+                CorrelationId = request.CorrelationId
+            });
+        }
+
+        protected override async Task PublishCompletedEventAsync(
+            ImageGenerationRequested request,
+            ProcessedMedia media,
+            decimal cost,
+            GenerationModelInfo modelInfo,
+            TimeSpan duration)
+        {
+            var imageData = media.Items.Select(item => new ConduitLLM.Core.Models.ImageData
+            {
+                Url = item.Url
+            }).ToList();
+
+            await _publishEndpoint.Publish(new ImageGenerationCompleted
+            {
+                TaskId = request.TaskId,
+                VirtualKeyId = request.VirtualKeyId,
+                Images = imageData.Select(d => new ConduitLLM.Core.Events.ImageData
+                {
+                    Url = d.Url,
+                    Metadata = new System.Collections.Generic.Dictionary<string, object>()
+                }).ToList(),
+                Duration = duration,
+                Cost = cost,
+                Provider = modelInfo.ProviderName,
+                Model = modelInfo.ModelId,
+                CorrelationId = request.CorrelationId
+            });
+        }
+
+        protected override async Task PublishFailedEventAsync(
+            ImageGenerationRequested request,
+            Exception ex,
+            bool isRetryable,
+            int retryCount,
+            int maxRetries)
+        {
+            await _publishEndpoint.Publish(new ImageGenerationFailed
+            {
+                TaskId = request.TaskId,
+                VirtualKeyId = request.VirtualKeyId,
+                Error = ex.Message,
+                ErrorCode = ex.GetType().Name,
+                Provider = request.Request.Model ?? "unknown",
+                IsRetryable = isRetryable,
+                AttemptCount = retryCount + 1,
+                CorrelationId = request.CorrelationId
+            });
+        }
+
+        protected override async Task PublishProgressEventAsync(
+            ImageGenerationRequested request,
+            int current,
+            int total,
+            string status)
+        {
+            await _publishEndpoint.Publish(new ImageGenerationProgress
+            {
+                TaskId = request.TaskId,
+                Status = status,
+                ImagesCompleted = current,
+                TotalImages = total,
+                Message = $"Processed {current} of {total} images",
+                CorrelationId = request.CorrelationId
+            });
+        }
+
+        protected override object CreateWebhookPayload(
+            ImageGenerationRequested request,
+            ProcessedMedia media,
+            TimeSpan duration,
+            string status,
+            string? error = null)
+        {
+            var imageUrls = media.Items
+                .Where(item => !string.IsNullOrEmpty(item.Url))
+                .Select(item => item.Url)
+                .ToList();
+
+            return new ImageCompletionWebhookPayload
+            {
+                TaskId = request.TaskId,
+                Status = status,
+                ImageUrls = imageUrls,
+                ImagesGenerated = media.Count,
+                ImagesRequested = request.Request.N,
+                GenerationDurationSeconds = duration.TotalSeconds,
+                Model = request.Request.Model ?? "",
+                Prompt = request.Request.Prompt,
+                Size = request.Request.Size,
+                ResponseFormat = request.Request.ResponseFormat ?? "url",
+                Error = error
+            };
+        }
+
+        protected override string GetMediaType() => "Image";
+
+        protected override void LogGenerationDetails(
+            ImageGenerationRequested request,
+            GenerationModelInfo modelInfo,
+            ConduitLLM.Core.Models.ImageGenerationRequest generationRequest)
+        {
+            _logger.LogInformation(
+                "Image generation request prepared: TaskId={TaskId}, Model={Model}, Provider={Provider}, " +
+                "Count={Count}, Size={Size}, Quality={Quality}, Style={Style}, PromptLength={PromptLength}",
+                request.TaskId,
+                request.Request.Model ?? modelInfo.ModelId,
+                modelInfo.ProviderName,
+                generationRequest.N,
+                generationRequest.Size,
+                generationRequest.Quality,
+                generationRequest.Style,
+                request.Request.Prompt?.Length ?? 0);
+        }
+
+        /// <summary>
+        /// Handles image generation cancellation events.
+        /// </summary>
         public async Task Consume(ConsumeContext<ImageGenerationCancelled> context)
         {
-            var request = context.Message;
+            var cancellationEvent = context.Message;
+            _logger.LogInformation("Received cancellation request for image generation task {TaskId}", 
+                cancellationEvent.TaskId);
+
+            // Cancel the task using the task registry
+            var cancelled = _taskRegistry.TryCancel(cancellationEvent.TaskId);
             
-            try
+            if (cancelled)
             {
-                _logger.LogInformation("Processing image generation cancellation for task {TaskId}", request.TaskId);
-                
-                // Signal cancellation to the running task if it exists
-                _taskRegistry.TryCancel(request.TaskId);
+                _logger.LogInformation("Successfully cancelled image generation task {TaskId}", 
+                    cancellationEvent.TaskId);
                 
                 // Update task status to cancelled
                 await _taskService.UpdateTaskStatusAsync(
-                    request.TaskId,
+                    cancellationEvent.TaskId,
                     TaskState.Cancelled,
-                    error: request.Reason ?? "Cancelled by user request");
+                    error: "Task cancelled by user request");
                 
-                // Publish cancellation acknowledgement event
+                // Publish cancellation completed event
                 await _publishEndpoint.Publish(new ImageGenerationProgress
                 {
-                    TaskId = request.TaskId,
+                    TaskId = cancellationEvent.TaskId,
                     Status = "cancelled",
+                    Message = "Task cancelled by user request",
                     ImagesCompleted = 0,
                     TotalImages = 0,
-                    Message = "Task cancelled",
-                    CorrelationId = request.CorrelationId
+                    CorrelationId = cancellationEvent.CorrelationId ?? Guid.NewGuid().ToString()
                 });
-                
-                _logger.LogInformation("Successfully processed cancellation for image generation task {TaskId}", request.TaskId);
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogError(ex, "Error processing image generation cancellation for task {TaskId}", request.TaskId);
-                // Don't re-throw - cancellation is best effort
+                _logger.LogWarning("Could not cancel image generation task {TaskId} - task may have already completed or was not found", 
+                    cancellationEvent.TaskId);
             }
         }
     }
+
 }

@@ -425,6 +425,10 @@ public partial class Program
 
             // Add background service for image generation metrics cleanup
             // ImageGenerationMetricsCleanupService removed - metrics handled differently now
+            
+            // Register media generation orchestrators
+            builder.Services.AddScoped<ImageGenerationOrchestrator>();
+            builder.Services.AddScoped<VideoGenerationOrchestrator>();
         }
 
         Console.WriteLine("[Conduit] Image generation configured with database-first architecture");
