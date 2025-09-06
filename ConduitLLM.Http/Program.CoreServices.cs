@@ -4,8 +4,8 @@ using ConduitLLM.Core;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
-using ConduitLLM.Http.Extensions;
 using ConduitLLM.Http.Security;
+using ConduitLLM.Http.Extensions;
 using ConduitLLM.Http.Services;
 using ConduitLLM.Providers.Extensions;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +20,10 @@ public partial class Program
 {
     public static void ConfigureCoreServices(WebApplicationBuilder builder)
     {
+        // Add leader election service for distributed background service coordination
+        builder.Services.AddLeaderElection();
+        Console.WriteLine("[Conduit] Leader election service configured for background service coordination");
+
         // Rate Limiter registration
         builder.Services.AddRateLimiter(options =>
         {
@@ -47,11 +51,12 @@ public partial class Program
         // Virtual key service (Configuration layer - used by RealtimeUsageTracker)
         builder.Services.AddScoped<ConduitLLM.Configuration.Interfaces.IVirtualKeyService, ConduitLLM.Configuration.Services.VirtualKeyService>();
 
-        // Billing audit service for comprehensive billing event tracking
+        // Billing audit service for comprehensive billing event tracking - with leader election
         builder.Services.AddSingleton<ConduitLLM.Configuration.Interfaces.IBillingAuditService, ConduitLLM.Configuration.Services.BillingAuditService>();
-        builder.Services.AddHostedService<ConduitLLM.Configuration.Services.BillingAuditService>(provider => 
-            provider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IBillingAuditService>() as ConduitLLM.Configuration.Services.BillingAuditService 
-            ?? throw new InvalidOperationException("BillingAuditService must implement IHostedService"));
+        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Configuration.Services.BillingAuditService>(
+            provider => provider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IBillingAuditService>() as ConduitLLM.Configuration.Services.BillingAuditService 
+            ?? throw new InvalidOperationException("BillingAuditService must implement IHostedService"),
+            "BillingAuditService");
 
         // Provider error tracking service
         builder.Services.AddSingleton<IRedisErrorStore, RedisErrorStore>();
@@ -213,10 +218,11 @@ public partial class Program
         // Register Webhook Delivery Service
         builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IWebhookDeliveryService, ConduitLLM.Http.Services.WebhookDeliveryService>();
 
-        // Register Distributed Spend Notification Service (Redis-based for multi-instance consistency)
+        // Register Distributed Spend Notification Service (Redis-based for multi-instance consistency) - with leader election
         builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.ISpendNotificationService, ConduitLLM.Http.Services.SpendNotification.DistributedSpendNotificationService>();
-        builder.Services.AddHostedService<ConduitLLM.Http.Services.SpendNotification.DistributedSpendNotificationService>(sp => 
-            (ConduitLLM.Http.Services.SpendNotification.DistributedSpendNotificationService)sp.GetRequiredService<ConduitLLM.Core.Interfaces.ISpendNotificationService>());
+        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Http.Services.SpendNotification.DistributedSpendNotificationService>(
+            sp => (ConduitLLM.Http.Services.SpendNotification.DistributedSpendNotificationService)sp.GetRequiredService<ConduitLLM.Core.Interfaces.ISpendNotificationService>(),
+            "SpendNotificationService");
 
         // Register Webhook Metrics Service (Redis-based when available)
         builder.Services.AddSingleton<ConduitLLM.Core.Services.IWebhookMetricsService>(sp =>
@@ -251,10 +257,11 @@ public partial class Program
             }
         });
         
-        // Register Webhook Delivery Notification Service
+        // Register Webhook Delivery Notification Service - with leader election
         builder.Services.AddSingleton<ConduitLLM.Http.Services.IWebhookDeliveryNotificationService, ConduitLLM.Http.Services.WebhookDeliveryNotificationService>();
-        builder.Services.AddHostedService<ConduitLLM.Http.Services.WebhookDeliveryNotificationService>(sp => 
-            (ConduitLLM.Http.Services.WebhookDeliveryNotificationService)sp.GetRequiredService<ConduitLLM.Http.Services.IWebhookDeliveryNotificationService>());
+        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Http.Services.WebhookDeliveryNotificationService>(
+            sp => (ConduitLLM.Http.Services.WebhookDeliveryNotificationService)sp.GetRequiredService<ConduitLLM.Http.Services.IWebhookDeliveryNotificationService>(),
+            "WebhookDeliveryNotificationService");
 
         // Model Capability Service is registered via ServiceCollectionExtensions
 
@@ -451,7 +458,7 @@ public partial class Program
         builder.Services.AddDiscoveryCache(builder.Configuration);
         
         // Register Discovery Cache warming as a hosted service (runs on startup)
-        builder.Services.AddHostedService<DiscoveryCacheWarmingService>();
+        builder.Services.AddLeaderElectedHostedService<DiscoveryCacheWarmingService>("DiscoveryCacheWarmingService");
 
         // Register Redis batch operations for optimized cache management
         builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IRedisBatchOperations, ConduitLLM.Http.Services.RedisBatchOperations>();
