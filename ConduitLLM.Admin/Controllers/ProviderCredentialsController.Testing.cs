@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Admin.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ConduitLLM.Admin.Controllers
@@ -12,7 +13,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="id">The ID of the provider to test</param>
         /// <returns>The test result</returns>
         [HttpPost("test/{id}")]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(StandardApiKeyTestResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> TestProviderConnection(int id)
@@ -29,32 +30,28 @@ namespace ConduitLLM.Admin.Controllers
                 var client = _clientFactory.GetClientByProviderId(id);
                 
                 // Perform a simple test - list models
+                var startTime = DateTime.UtcNow;
                 try
                 {
                     var models = await client.ListModelsAsync();
-                    return Ok(new
-                    {
-                        Success = true,
-                        ProviderId = id,
-                        ProviderType = provider.ProviderType.ToString(),
-                        ProviderName = provider.ProviderName,
-                        ModelCount = models?.Count() ?? 0,
-                        ResponseTime = DateTime.UtcNow,
-                        Message = "Connection successful"
-                    });
+                    var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                    var modelList = models?.Select(m => m.ToString()).ToArray();
+                    
+                    var response = ApiKeyTestResultService.CreateSuccessResponse(
+                        responseTime,
+                        modelList
+                    );
+                    
+                    return Ok(response);
                 }
                 catch (Exception testEx)
                 {
-                    return Ok(new
-                    {
-                        Success = false,
-                        ProviderId = id,
-                        ProviderType = provider.ProviderType.ToString(),
-                        ProviderName = provider.ProviderName,
-                        ModelCount = 0,
-                        ResponseTime = DateTime.UtcNow,
-                        Message = testEx.Message
-                    });
+                    var response = ApiKeyTestResultService.CreateErrorResponse(
+                        testEx,
+                        provider.ProviderType
+                    );
+                    
+                    return Ok(response);
                 }
             }
             catch (Exception ex)
@@ -69,7 +66,7 @@ namespace ConduitLLM.Admin.Controllers
         /// </summary>
         /// <returns>The test result</returns>
         [HttpPost("test")]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(StandardApiKeyTestResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> TestProviderConnectionWithCredentials([FromBody] TestProviderRequest testRequest)
@@ -117,28 +114,28 @@ namespace ConduitLLM.Admin.Controllers
                 };
                 var client = _clientFactory.CreateTestClient(testProvider, testKey);
                 
+                var startTime = DateTime.UtcNow;
                 try
                 {
                     var models = await client.ListModelsAsync();
-                    return Ok(new
-                    {
-                        Success = true,
-                        ProviderType = testProvider.ProviderType.ToString(),
-                        ModelCount = models?.Count() ?? 0,
-                        ResponseTime = DateTime.UtcNow,
-                        Message = "Connection successful"
-                    });
+                    var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                    var modelList = models?.Select(m => m.ToString()).ToArray();
+                    
+                    var response = ApiKeyTestResultService.CreateSuccessResponse(
+                        responseTime,
+                        modelList
+                    );
+                    
+                    return Ok(response);
                 }
                 catch (Exception testEx)
                 {
-                    return Ok(new
-                    {
-                        Success = false,
-                        ProviderType = testProvider.ProviderType.ToString(),
-                        ModelCount = 0,
-                        ResponseTime = DateTime.UtcNow,
-                        Message = testEx.Message
-                    });
+                    var response = ApiKeyTestResultService.CreateErrorResponse(
+                        testEx,
+                        testProvider.ProviderType
+                    );
+                    
+                    return Ok(response);
                 }
             }
             catch (Exception ex)
@@ -155,7 +152,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="keyId">The ID of the key to test</param>
         /// <returns>The test result</returns>
         [HttpPost("{providerId}/keys/{keyId}/test")]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(StandardApiKeyTestResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> TestProviderKeyCredential(int providerId, int keyId)
@@ -177,36 +174,28 @@ namespace ConduitLLM.Admin.Controllers
                 // Test the connection with this specific key
                 var client = _clientFactory.CreateTestClient(provider, key);
                 
+                var startTime = DateTime.UtcNow;
                 try
                 {
                     var models = await client.ListModelsAsync();
-                    return Ok(new
-                    {
-                        Success = true,
-                        ProviderId = providerId,
-                        KeyId = keyId,
-                        KeyName = key.KeyName,
-                        ProviderType = provider.ProviderType.ToString(),
-                        ProviderName = provider.ProviderName,
-                        ModelCount = models?.Count() ?? 0,
-                        ResponseTime = DateTime.UtcNow,
-                        Message = "Connection successful"
-                    });
+                    var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                    var modelList = models?.Select(m => m.ToString()).ToArray();
+                    
+                    var response = ApiKeyTestResultService.CreateSuccessResponse(
+                        responseTime,
+                        modelList
+                    );
+                    
+                    return Ok(response);
                 }
                 catch (Exception testEx)
                 {
-                    return Ok(new
-                    {
-                        Success = false,
-                        ProviderId = providerId,
-                        KeyId = keyId,
-                        KeyName = key.KeyName,
-                        ProviderType = provider.ProviderType.ToString(),
-                        ProviderName = provider.ProviderName,
-                        ModelCount = 0,
-                        ResponseTime = DateTime.UtcNow,
-                        Message = testEx.Message
-                    });
+                    var response = ApiKeyTestResultService.CreateErrorResponse(
+                        testEx,
+                        provider.ProviderType
+                    );
+                    
+                    return Ok(response);
                 }
             }
             catch (Exception ex)

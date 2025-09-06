@@ -1,5 +1,6 @@
 using ConduitLLM.Admin.Controllers;
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
@@ -98,20 +99,12 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = okResult.Value!;
+            var response = Assert.IsType<StandardApiKeyTestResponse>(okResult.Value!);
             
-            // Use reflection to access anonymous object properties
-            var successProperty = response.GetType().GetProperty("Success");
-            var messageProperty = response.GetType().GetProperty("Message");
-            var modelCountProperty = response.GetType().GetProperty("ModelCount");
-            
-            Assert.NotNull(successProperty);
-            Assert.NotNull(messageProperty);
-            Assert.NotNull(modelCountProperty);
-            
-            Assert.True((bool)successProperty.GetValue(response)!);
-            Assert.Contains("Connection successful", (string)messageProperty.GetValue(response)!);
-            Assert.Equal(2, (int)modelCountProperty.GetValue(response)!);
+            Assert.Equal(ApiKeyTestResult.Success, response.Result);
+            Assert.Contains("authorized", response.Message);
+            Assert.NotNull(response.Details?.ModelsAvailable);
+            Assert.Equal(2, response.Details.ModelsAvailable.Length);
         }
 
         [Fact]
@@ -135,20 +128,12 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = okResult.Value!;
+            var response = Assert.IsType<StandardApiKeyTestResponse>(okResult.Value!);
             
-            // Use reflection to access anonymous object properties
-            var successProperty = response.GetType().GetProperty("Success");
-            var messageProperty = response.GetType().GetProperty("Message");
-            var modelCountProperty = response.GetType().GetProperty("ModelCount");
-            
-            Assert.NotNull(successProperty);
-            Assert.NotNull(messageProperty);
-            Assert.NotNull(modelCountProperty);
-            
-            Assert.False((bool)successProperty.GetValue(response)!);
-            Assert.Contains("Invalid API key", (string)messageProperty.GetValue(response)!);
-            Assert.Equal(0, (int)modelCountProperty.GetValue(response)!);
+            Assert.Equal(ApiKeyTestResult.InvalidKey, response.Result);
+            Assert.Contains("authorization test", response.Message);
+            Assert.NotNull(response.Details);
+            Assert.Contains("Invalid API key provided", response.Details.ProviderMessage);
         }
 
         [Fact]
@@ -172,20 +157,12 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = okResult.Value!;
+            var response = Assert.IsType<StandardApiKeyTestResponse>(okResult.Value!);
             
-            // Use reflection to access anonymous object properties
-            var successProperty = response.GetType().GetProperty("Success");
-            var messageProperty = response.GetType().GetProperty("Message");
-            var modelCountProperty = response.GetType().GetProperty("ModelCount");
-            
-            Assert.NotNull(successProperty);
-            Assert.NotNull(messageProperty);
-            Assert.NotNull(modelCountProperty);
-            
-            Assert.False((bool)successProperty.GetValue(response)!);
-            Assert.Contains("Invalid API key", (string)messageProperty.GetValue(response)!);
-            Assert.Equal(0, (int)modelCountProperty.GetValue(response)!);
+            Assert.Equal(ApiKeyTestResult.InvalidKey, response.Result);
+            Assert.Contains("authorization test", response.Message);
+            Assert.NotNull(response.Details);
+            Assert.Contains("HTTP 401: Unauthorized - Invalid API key provided", response.Details.ProviderMessage);
         }
 
         [Fact]
@@ -211,21 +188,13 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = okResult.Value!;
-            
-            // Use reflection to access anonymous object properties
-            var successProperty = response.GetType().GetProperty("Success");
-            var messageProperty = response.GetType().GetProperty("Message");
-            var modelCountProperty = response.GetType().GetProperty("ModelCount");
-            
-            Assert.NotNull(successProperty);
-            Assert.NotNull(messageProperty);
-            Assert.NotNull(modelCountProperty);
+            var response = Assert.IsType<StandardApiKeyTestResponse>(okResult.Value!);
             
             // Verify the connection test properly fails (no fallback models returned)
-            Assert.False((bool)successProperty.GetValue(response)!);
-            Assert.Contains("Authentication failed", (string)messageProperty.GetValue(response)!);
-            Assert.Equal(0, (int)modelCountProperty.GetValue(response)!);
+            Assert.Equal(ApiKeyTestResult.InvalidKey, response.Result);
+            Assert.Contains("authorization test", response.Message);
+            Assert.NotNull(response.Details);
+            Assert.Contains("Authentication failed - invalid API key", response.Details.ProviderMessage);
             
             // Verify that ListModelsAsync was called (not bypassed by fallback)
             _mockClient.Verify(x => x.ListModelsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
@@ -300,20 +269,12 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = okResult.Value!;
+            var response = Assert.IsType<StandardApiKeyTestResponse>(okResult.Value!);
             
-            // Use reflection to access anonymous object properties
-            var successProperty = response.GetType().GetProperty("Success");
-            var messageProperty = response.GetType().GetProperty("Message");
-            var modelCountProperty = response.GetType().GetProperty("ModelCount");
-            
-            Assert.NotNull(successProperty);
-            Assert.NotNull(messageProperty);
-            Assert.NotNull(modelCountProperty);
-            
-            Assert.False((bool)successProperty.GetValue(response)!);
-            Assert.Contains("Network timeout", (string)messageProperty.GetValue(response)!);
-            Assert.Equal(0, (int)modelCountProperty.GetValue(response)!);
+            Assert.Equal(ApiKeyTestResult.UnknownError, response.Result);
+            Assert.Contains("unexpected error", response.Message);
+            Assert.NotNull(response.Details);
+            Assert.Contains("Network timeout", response.Details.ProviderMessage);
         }
 
         #endregion
