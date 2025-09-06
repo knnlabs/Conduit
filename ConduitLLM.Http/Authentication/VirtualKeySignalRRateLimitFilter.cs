@@ -1,45 +1,35 @@
-using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
 using ConduitLLM.Http.Services;
+using ConduitLLM.Core.Services;
 using MassTransit;
 using ConduitLLM.Core.Events;
 
 namespace ConduitLLM.Http.Authentication
 {
     /// <summary>
-    /// Hub filter that applies rate limiting to SignalR connections based on virtual keys
+    /// Hub filter that applies distributed rate limiting to SignalR connections based on virtual keys
+    /// Uses Redis for distributed tracking across all instances
     /// </summary>
     public class VirtualKeySignalRRateLimitFilter : IHubFilter
     {
         private readonly VirtualKeyRateLimitCache _rateLimitCache;
+        private readonly ISignalRRateLimitService _signalRRateLimitService;
         private readonly ILogger<VirtualKeySignalRRateLimitFilter> _logger;
         private readonly IServiceProvider _serviceProvider;
-        
-        // Track connection counts and request times per virtual key
-        private readonly ConcurrentDictionary<string, ConnectionRateLimitInfo> _connectionInfo;
-        
-        private class ConnectionRateLimitInfo
-        {
-            public int ActiveConnections { get; set; }
-            public DateTime LastMinuteStart { get; set; }
-            public int RequestsThisMinute { get; set; }
-            public DateTime LastDayStart { get; set; }
-            public int RequestsToday { get; set; }
-            public readonly object Lock = new object();
-        }
 
         /// <summary>
         /// Initializes a new instance of VirtualKeySignalRRateLimitFilter
         /// </summary>
         public VirtualKeySignalRRateLimitFilter(
             VirtualKeyRateLimitCache rateLimitCache,
+            ISignalRRateLimitService signalRRateLimitService,
             ILogger<VirtualKeySignalRRateLimitFilter> logger,
             IServiceProvider serviceProvider)
         {
             _rateLimitCache = rateLimitCache;
+            _signalRRateLimitService = signalRRateLimitService ?? throw new ArgumentNullException(nameof(signalRRateLimitService));
             _logger = logger;
             _serviceProvider = serviceProvider;
-            _connectionInfo = new ConcurrentDictionary<string, ConnectionRateLimitInfo>();
         }
 
         /// <summary>
@@ -57,7 +47,7 @@ namespace ConduitLLM.Http.Authentication
                 return await next(invocationContext);
             }
 
-            // Check rate limits
+            // Get rate limits from cache
             var rateLimits = _rateLimitCache.GetRateLimits(virtualKeyHash);
             if (rateLimits == null || (!rateLimits.RateLimitRpm.HasValue && !rateLimits.RateLimitRpd.HasValue))
             {
@@ -65,60 +55,36 @@ namespace ConduitLLM.Http.Authentication
                 return await next(invocationContext);
             }
 
-            // Get or create rate limit info
-            var info = _connectionInfo.GetOrAdd(virtualKeyHash, _ => new ConnectionRateLimitInfo
-            {
-                LastMinuteStart = DateTime.UtcNow,
-                LastDayStart = DateTime.UtcNow.Date
-            });
+            // Check rate limits using Redis service for distributed tracking
+            var result = await _signalRRateLimitService.CheckMethodInvocationAsync(
+                virtualKeyHash, 
+                rateLimits.RateLimitRpm, 
+                rateLimits.RateLimitRpd);
 
-            lock (info.Lock)
+            if (!result.IsAllowed)
             {
-                var now = DateTime.UtcNow;
+                _logger.LogWarning("Virtual Key {KeyHash} exceeded {LimitType} limit for SignalR method {Method}. " +
+                    "Current: {Current}/{Limit}, Connections: {Connections}",
+                    virtualKeyHash, result.LimitType, invocationContext.HubMethodName,
+                    result.Limit - result.RequestsRemaining, result.Limit, result.ActiveConnections);
                 
-                // Reset minute counter if needed
-                if (now - info.LastMinuteStart >= TimeSpan.FromMinutes(1))
+                // Publish rate limit exceeded event
+                var virtualKeyId = 0;
+                if (invocationContext.Context.Items.TryGetValue("VirtualKeyId", out var keyIdObj) && keyIdObj is int keyId)
                 {
-                    info.LastMinuteStart = now;
-                    info.RequestsThisMinute = 0;
+                    virtualKeyId = keyId;
                 }
                 
-                // Reset daily counter if needed
-                if (now.Date != info.LastDayStart)
-                {
-                    info.LastDayStart = now.Date;
-                    info.RequestsToday = 0;
-                }
+                PublishRateLimitExceeded(
+                    virtualKeyHash, 
+                    result.LimitType, 
+                    result.Limit, 
+                    result.Limit - result.RequestsRemaining,
+                    result.LimitType == "RPM" ? "minute" : "day",
+                    result.ResetsAt,
+                    invocationContext);
                 
-                // Check minute limit
-                if (rateLimits.RateLimitRpm.HasValue && info.RequestsThisMinute >= rateLimits.RateLimitRpm.Value)
-                {
-                    _logger.LogWarning("Virtual Key {KeyHash} exceeded RPM limit of {Limit} for SignalR method {Method}",
-                        virtualKeyHash, rateLimits.RateLimitRpm.Value, invocationContext.HubMethodName);
-                    
-                    // Publish rate limit exceeded event
-                    PublishRateLimitExceeded(virtualKeyHash, "RPM", rateLimits.RateLimitRpm.Value, info.RequestsThisMinute, "minute", 
-                        info.LastMinuteStart.AddMinutes(1), invocationContext);
-                    
-                    throw new HubException("Rate limit exceeded. Please try again later.");
-                }
-                
-                // Check daily limit
-                if (rateLimits.RateLimitRpd.HasValue && info.RequestsToday >= rateLimits.RateLimitRpd.Value)
-                {
-                    _logger.LogWarning("Virtual Key {KeyHash} exceeded RPD limit of {Limit} for SignalR method {Method}",
-                        virtualKeyHash, rateLimits.RateLimitRpd.Value, invocationContext.HubMethodName);
-                    
-                    // Publish rate limit exceeded event
-                    PublishRateLimitExceeded(virtualKeyHash, "RPD", rateLimits.RateLimitRpd.Value, info.RequestsToday, "day", 
-                        info.LastDayStart.AddDays(1), invocationContext);
-                    
-                    throw new HubException("Daily rate limit exceeded. Please try again tomorrow.");
-                }
-                
-                // Increment counters
-                info.RequestsThisMinute++;
-                info.RequestsToday++;
+                throw new HubException(result.DenialReason);
             }
 
             return await next(invocationContext);
@@ -133,19 +99,11 @@ namespace ConduitLLM.Http.Authentication
             
             if (!string.IsNullOrEmpty(virtualKeyHash))
             {
-                var info = _connectionInfo.GetOrAdd(virtualKeyHash, _ => new ConnectionRateLimitInfo
-                {
-                    LastMinuteStart = DateTime.UtcNow,
-                    LastDayStart = DateTime.UtcNow.Date
-                });
+                // Use Redis service to track connections across all instances
+                var connectionCount = await _signalRRateLimitService.IncrementConnectionCountAsync(virtualKeyHash);
                 
-                lock (info.Lock)
-                {
-                    info.ActiveConnections++;
-                }
-                
-                _logger.LogDebug("Virtual Key {KeyHash} connected. Active connections: {Count}",
-                    virtualKeyHash, info.ActiveConnections);
+                _logger.LogDebug("Virtual Key {KeyHash} connected. Active connections across all instances: {Count}",
+                    virtualKeyHash, connectionCount);
             }
 
             await next(context);
@@ -163,22 +121,16 @@ namespace ConduitLLM.Http.Authentication
             
             if (!string.IsNullOrEmpty(virtualKeyHash))
             {
-                if (_connectionInfo.TryGetValue(virtualKeyHash, out var info))
+                // Use Redis service to track disconnections across all instances
+                var connectionCount = await _signalRRateLimitService.DecrementConnectionCountAsync(virtualKeyHash);
+                
+                _logger.LogDebug("Virtual Key {KeyHash} disconnected. Active connections across all instances: {Count}",
+                    virtualKeyHash, connectionCount);
+                
+                // Clean up stale connections if needed
+                if (connectionCount == 0)
                 {
-                    lock (info.Lock)
-                    {
-                        info.ActiveConnections = Math.Max(0, info.ActiveConnections - 1);
-                        
-                        // Clean up if no active connections and no recent activity
-                        if (info.ActiveConnections == 0 && 
-                            DateTime.UtcNow - info.LastMinuteStart > TimeSpan.FromMinutes(5))
-                        {
-                            _connectionInfo.TryRemove(virtualKeyHash, out _);
-                        }
-                    }
-                    
-                    _logger.LogDebug("Virtual Key {KeyHash} disconnected. Active connections: {Count}",
-                        virtualKeyHash, info.ActiveConnections);
+                    await _signalRRateLimitService.CleanupStaleConnectionsAsync(virtualKeyHash);
                 }
             }
 

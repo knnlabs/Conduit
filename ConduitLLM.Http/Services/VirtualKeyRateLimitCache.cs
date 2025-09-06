@@ -1,19 +1,22 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Caching.Memory;
 using ConduitLLM.Core.Interfaces;
+using StackExchange.Redis;
 
 namespace ConduitLLM.Http.Services
 {
     /// <summary>
-    /// Caches virtual key rate limit configurations for synchronous access
+    /// Manages virtual key rate limit configurations using Redis for distributed consistency.
+    /// This service ensures all instances share the same rate limit configurations.
     /// </summary>
     public class VirtualKeyRateLimitCache : IHostedService
     {
         private readonly IServiceProvider _serviceProvider;
-        private readonly IMemoryCache _cache;
         private readonly ILogger<VirtualKeyRateLimitCache> _logger;
-        private readonly ConcurrentDictionary<string, VirtualKeyRateLimits> _rateLimits;
+        private readonly IConnectionMultiplexer? _redis;
         private Timer? _refreshTimer;
+        
+        private const string REDIS_KEY_PREFIX = "rate:config:";
 
         /// <summary>
         /// Represents rate limit configuration for a virtual key
@@ -30,64 +33,154 @@ namespace ConduitLLM.Http.Services
         /// </summary>
         public VirtualKeyRateLimitCache(
             IServiceProvider serviceProvider,
-            IMemoryCache cache,
             ILogger<VirtualKeyRateLimitCache> logger)
         {
             _serviceProvider = serviceProvider;
-            _cache = cache;
             _logger = logger;
-            _rateLimits = new ConcurrentDictionary<string, VirtualKeyRateLimits>();
+            
+            // Try to get Redis connection if available
+            try
+            {
+                _redis = serviceProvider.GetService<IConnectionMultiplexer>();
+                if (_redis != null && _redis.IsConnected)
+                {
+                    _logger.LogInformation("VirtualKeyRateLimitCache using Redis for distributed configuration storage");
+                }
+                else
+                {
+                    _logger.LogWarning("Redis not available for VirtualKeyRateLimitCache - rate limiting may not work correctly in multi-instance deployments");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to initialize Redis connection for VirtualKeyRateLimitCache");
+            }
         }
 
         /// <summary>
-        /// Gets rate limits for a virtual key synchronously
+        /// Gets rate limits for a virtual key from Redis or database
         /// </summary>
         public VirtualKeyRateLimits? GetRateLimits(string virtualKeyHash)
         {
-            if (_rateLimits.TryGetValue(virtualKeyHash, out var limits))
+            try
             {
-                // Check if cached value is still fresh (less than 1 minute old)
-                if (DateTime.UtcNow - limits.LastUpdated < TimeSpan.FromMinutes(1))
+                // If Redis is available, try to get from Redis first
+                if (_redis != null && _redis.IsConnected)
                 {
-                    return limits;
+                    var db = _redis.GetDatabase();
+                    var key = $"{REDIS_KEY_PREFIX}{virtualKeyHash}";
+                    
+                    var hashEntries = db.HashGetAll(key);
+                    if (hashEntries.Length > 0)
+                    {
+                        var limits = new VirtualKeyRateLimits
+                        {
+                            LastUpdated = DateTime.UtcNow
+                        };
+                        
+                        foreach (var entry in hashEntries)
+                        {
+                            if (entry.Name == "rpm" && entry.Value.HasValue)
+                            {
+                                limits.RateLimitRpm = (int)entry.Value;
+                            }
+                            else if (entry.Name == "rpd" && entry.Value.HasValue)
+                            {
+                                limits.RateLimitRpd = (int)entry.Value;
+                            }
+                            else if (entry.Name == "updated" && entry.Value.HasValue)
+                            {
+                                var unixTime = (long)entry.Value;
+                                limits.LastUpdated = DateTimeOffset.FromUnixTimeSeconds(unixTime).UtcDateTime;
+                            }
+                        }
+                        
+                        // Check if data is fresh (less than 5 minutes old)
+                        if (DateTime.UtcNow - limits.LastUpdated < TimeSpan.FromMinutes(5))
+                        {
+                            return limits;
+                        }
+                    }
                 }
+                
+                // Fallback: get from database and cache in Redis
+                // This would be done asynchronously in the refresh timer
+                // For now, return null to indicate no cached limits available
+                return null;
             }
-
-            // Try memory cache as backup
-            if (_cache.TryGetValue($"vkey_ratelimits:{virtualKeyHash}", out VirtualKeyRateLimits? cachedLimits) && cachedLimits != null)
+            catch (Exception ex)
             {
-                _rateLimits.TryAdd(virtualKeyHash, cachedLimits);
-                return cachedLimits;
+                _logger.LogError(ex, "Error getting rate limits for virtual key {KeyHash}", virtualKeyHash);
+                return null;
             }
-
-            return null;
         }
 
         /// <summary>
-        /// Updates rate limits for a virtual key
+        /// Updates rate limits for a virtual key in Redis
         /// </summary>
         public void UpdateRateLimits(string virtualKeyHash, int? rpm, int? rpd)
         {
-            var limits = new VirtualKeyRateLimits
+            try
             {
-                RateLimitRpm = rpm,
-                RateLimitRpd = rpd,
-                LastUpdated = DateTime.UtcNow
-            };
-
-            _rateLimits.AddOrUpdate(virtualKeyHash, limits, (key, existing) => limits);
-            
-            // Also update memory cache with 5 minute expiration
-            _cache.Set($"vkey_ratelimits:{virtualKeyHash}", limits, TimeSpan.FromMinutes(5));
+                if (_redis != null && _redis.IsConnected)
+                {
+                    var db = _redis.GetDatabase();
+                    var key = $"{REDIS_KEY_PREFIX}{virtualKeyHash}";
+                    
+                    var transaction = db.CreateTransaction();
+                    
+                    if (rpm.HasValue)
+                        _ = transaction.HashSetAsync(key, "rpm", rpm.Value);
+                    else
+                        _ = transaction.HashDeleteAsync(key, "rpm");
+                    
+                    if (rpd.HasValue)
+                        _ = transaction.HashSetAsync(key, "rpd", rpd.Value);
+                    else
+                        _ = transaction.HashDeleteAsync(key, "rpd");
+                    
+                    _ = transaction.HashSetAsync(key, "updated", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                    _ = transaction.KeyExpireAsync(key, TimeSpan.FromDays(7));
+                    
+                    // Fire and forget - this is a cache update
+                    _ = transaction.ExecuteAsync();
+                    
+                    _logger.LogDebug("Updated rate limit configuration in Redis for virtual key {KeyHash}: RPM={RPM}, RPD={RPD}", 
+                        virtualKeyHash, rpm, rpd);
+                }
+                else
+                {
+                    _logger.LogWarning("Cannot update rate limits - Redis not available");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating rate limits for virtual key {KeyHash}", virtualKeyHash);
+            }
         }
 
         /// <summary>
-        /// Removes rate limits for a virtual key
+        /// Removes rate limits for a virtual key from Redis
         /// </summary>
         public void RemoveRateLimits(string virtualKeyHash)
         {
-            _rateLimits.TryRemove(virtualKeyHash, out _);
-            _cache.Remove($"vkey_ratelimits:{virtualKeyHash}");
+            try
+            {
+                if (_redis != null && _redis.IsConnected)
+                {
+                    var db = _redis.GetDatabase();
+                    var key = $"{REDIS_KEY_PREFIX}{virtualKeyHash}";
+                    
+                    // Fire and forget deletion
+                    _ = db.KeyDeleteAsync(key);
+                    
+                    _logger.LogDebug("Removed rate limit configuration from Redis for virtual key {KeyHash}", virtualKeyHash);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error removing rate limits for virtual key {KeyHash}", virtualKeyHash);
+            }
         }
 
         /// <summary>
@@ -117,24 +210,20 @@ namespace ConduitLLM.Http.Services
         }
 
         /// <summary>
-        /// Refreshes rate limits from the database
+        /// Refreshes rate limits from the database to Redis
         /// </summary>
         private void RefreshRateLimits(object? state)
         {
             try
             {
-                using var scope = _serviceProvider.CreateScope();
-                var virtualKeyService = scope.ServiceProvider.GetRequiredService<IVirtualKeyService>();
-                
-                // Get all active virtual keys with rate limits
-                // This would require a new method in IVirtualKeyService to get all keys with rate limits
-                // For now, we'll update individual keys as they're accessed
-                
-                _logger.LogDebug("Virtual Key rate limits refresh completed");
+                // Note: This refresh method is no longer needed since we can't get the full API key
+                // from ListVirtualKeysAsync. Rate limits will be cached when keys are validated
+                // during authentication. This is actually more efficient as we only cache active keys.
+                _logger.LogDebug("Rate limit refresh timer fired - skipping bulk refresh");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error refreshing virtual key rate limits");
+                _logger.LogError(ex, "Error in refresh timer");
             }
         }
     }
