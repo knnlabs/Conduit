@@ -75,7 +75,7 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
   }>({
     initialValues: {
       name: model?.name ?? '',
-      modelSeriesId: model?.modelSeriesId ?? null,
+      modelSeriesId: (model?.modelSeriesId && model.modelSeriesId !== 0) ? model.modelSeriesId : null,
       isActive: model?.isActive ?? true,
       modelParameters: model?.modelParameters ?? '',
       // Capability fields from the model directly (flat structure)
@@ -124,7 +124,7 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
     if (model) {
       form.setValues({
         name: model.name ?? '',
-        modelSeriesId: model.modelSeriesId ?? null,
+        modelSeriesId: (model.modelSeriesId && model.modelSeriesId !== 0) ? model.modelSeriesId : null,
         isActive: model.isActive ?? true,
         modelParameters: model.modelParameters ?? '',
         // Update capability fields from the model directly (flat structure)
@@ -182,9 +182,10 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       const dto: Partial<UpdateModelDto> & {
         maxInputTokens?: number | null;
         maxOutputTokens?: number | null;
+        modelSeriesId?: number | null;
       } = {
         name: values.name,
-        modelSeriesId: values.modelSeriesId,
+        modelSeriesId: (values.modelSeriesId && values.modelSeriesId !== 0) ? values.modelSeriesId : null,
         isActive: values.isActive,
         // Always include boolean capability fields
         supportsChat: values.supportsChat,
@@ -359,11 +360,12 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
 
           <Select
             label="Model Series"
-            required
             data={seriesOptions}
             placeholder="Select a series"
-            value={form.values.modelSeriesId?.toString() ?? ''}
+            value={form.values.modelSeriesId && form.values.modelSeriesId !== 0 ? form.values.modelSeriesId.toString() : null}
             onChange={(value) => form.setFieldValue('modelSeriesId', value ? parseInt(value) : null)}
+            clearable
+            searchable
           />
 
           <Paper p="md" withBorder>
