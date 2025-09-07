@@ -3,6 +3,7 @@ import {
   isChatCompletionChunk,
   isStreamingMetrics,
   isFinalMetrics,
+  buildMessageContent,
   type StreamingCallbacks, 
   type StreamMessageOptions
 } from '@knn_labs/conduit-core-client';
@@ -46,9 +47,7 @@ export class SDKChatStreamingAdapter {
           ...(options.messages ?? []),
           { 
             role: 'user' as const, 
-            content: message,
-            // Include images if provided
-            ...(options.images && { images: options.images })
+            content: buildMessageContent(message, options.images)
           }
         ],
         model: options.model,
