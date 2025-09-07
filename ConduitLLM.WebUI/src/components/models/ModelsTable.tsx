@@ -7,7 +7,9 @@ import {
   IconTrash, 
   IconSearch, 
   IconEye, 
-  IconLink
+  IconLink,
+  IconAlertTriangle,
+  IconAlertCircle
 } from '@tabler/icons-react';
 import { useAdminClient } from '@/lib/client/adminClient';
 import { notifications } from '@mantine/notifications';
@@ -31,6 +33,7 @@ type ModelWithMappingStatus = ModelDto & {
     normalizedProvider?: number | null;
     providerName?: string | null;
   }>;
+  seriesParameters?: string | null;
 };
 
 
@@ -57,8 +60,43 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
     try {
       setLoading(true);
       const data = await executeWithAdmin(client => client.models.listWithMappingStatus());
-      setModels(data);
-      setFilteredModels(data);
+      
+      // Fetch series parameters for models with series IDs
+      const uniqueSeriesIds = Array.from(
+        new Set(
+          data
+            .map(model => model.modelSeriesId)
+            .filter((id): id is number => id !== undefined && id !== null)
+        )
+      );
+      
+      const seriesParametersMap: Record<number, string | null> = {};
+      
+      if (uniqueSeriesIds.length > 0) {
+        const seriesResults = await Promise.allSettled(
+          uniqueSeriesIds.map(async (seriesId) => {
+            const series = await executeWithAdmin(client => 
+              client.modelSeries.get(seriesId)
+            );
+            return { id: seriesId, parameters: series.parameters ?? null };
+          })
+        );
+        
+        seriesResults.forEach((result) => {
+          if (result.status === 'fulfilled') {
+            seriesParametersMap[result.value.id] = result.value.parameters;
+          }
+        });
+      }
+      
+      // Enhance models with series parameters
+      const enhancedModels = data.map(model => ({
+        ...model,
+        seriesParameters: model.modelSeriesId ? seriesParametersMap[model.modelSeriesId] ?? null : null
+      }));
+      
+      setModels(enhancedModels);
+      setFilteredModels(enhancedModels);
     } catch (error) {
       const errorMessage = getErrorMessage(error);
       console.warn('Failed to load models:', errorMessage);
@@ -145,9 +183,47 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
     onRefresh?.();
   };
 
-
-
-
+  const renderParameterWarning = (model: ModelWithMappingStatus) => {
+    const hasModelParameters = model.modelParameters !== null && model.modelParameters !== undefined;
+    const hasSeriesParameters = model.seriesParameters !== null && model.seriesParameters !== undefined;
+    
+    // No warning if model has parameters
+    if (hasModelParameters) {
+      return null;
+    }
+    
+    // Critical warning if both model and series lack parameters
+    if (!hasModelParameters && !hasSeriesParameters) {
+      return (
+        <Tooltip 
+          label="Critical: This model has no parameter configuration and its series also lacks parameter guidance. Models need parameter configuration for proper UI generation."
+          multiline
+          w={250}
+        >
+          <IconAlertCircle 
+            size={20} 
+            color="var(--mantine-color-red-6)" 
+            style={{ cursor: 'help' }}
+          />
+        </Tooltip>
+      );
+    }
+    
+    // Warning if only model lacks parameters (but series has them)
+    return (
+      <Tooltip 
+        label="Warning: This model has no parameter configuration. Using series defaults."
+        multiline
+        w={200}
+      >
+        <IconAlertTriangle 
+          size={18} 
+          color="var(--mantine-color-yellow-6)" 
+          style={{ cursor: 'help' }}
+        />
+      </Tooltip>
+    );
+  };
 
   const renderProviderInfo = (model: ModelWithMappingStatus) => {
     if (model.providerCount === 0) {
@@ -272,7 +348,10 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
             return filteredModels.map((model) => (
               <Table.Tr key={model.id}>
                 <Table.Td>
-                  <Text fw={500}>{model.name ?? 'Unnamed'}</Text>
+                  <Group gap="xs">
+                    <Text fw={500}>{model.name ?? 'Unnamed'}</Text>
+                    {renderParameterWarning(model)}
+                  </Group>
                 </Table.Td>
                 <Table.Td>
                   <CapabilityIcons capabilities={extractCapabilities(model)} />
