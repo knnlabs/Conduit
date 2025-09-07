@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Configuration;
-using IVirtualKeyService = ConduitLLM.Configuration.Interfaces.IVirtualKeyService;
+using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 using IModelProviderMappingService = ConduitLLM.Configuration.Interfaces.IModelProviderMappingService;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;

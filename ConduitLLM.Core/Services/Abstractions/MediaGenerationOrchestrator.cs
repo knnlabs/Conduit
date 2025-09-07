@@ -13,7 +13,7 @@ using ConduitLLM.Core.Validation;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using IVirtualKeyService = ConduitLLM.Configuration.Interfaces.IVirtualKeyService;
+using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 using IModelProviderMappingService = ConduitLLM.Configuration.Interfaces.IModelProviderMappingService;
 
 namespace ConduitLLM.Core.Services.Abstractions
@@ -122,12 +122,12 @@ namespace ConduitLLM.Core.Services.Abstractions
                 var virtualKeyIdStr = GetVirtualKeyId(request);
                 if (!int.TryParse(virtualKeyIdStr, out var virtualKeyId))
                 {
-                    throw new InvalidOperationException($"Invalid virtual key ID: {virtualKeyIdStr}");
+                    throw new ArgumentException($"Virtual key ID must be a valid integer, got: {virtualKeyIdStr}");
                 }
                 modelInfo = await GetModelInfoAsync(GetModel(request), virtualKeyId);
                 if (modelInfo == null)
                 {
-                    throw new InvalidOperationException($"Model {GetModel(request)} not found or not available");
+                    throw new InvalidOperationException($"Model '{GetModel(request)}' is not configured or mapped to a provider. Please check your model configuration.");
                 }
                 
                 ValidateModelSupport(modelInfo, request);
@@ -266,10 +266,25 @@ namespace ConduitLLM.Core.Services.Abstractions
             }
             
             // Validate and get virtual key info
-            var virtualKeyInfo = await _virtualKeyService.GetVirtualKeyByKeyValueAsync(virtualKey);
-            if (virtualKeyInfo == null || !virtualKeyInfo.IsEnabled)
+            VirtualKey? virtualKeyInfo = null;
+            try
             {
-                throw new UnauthorizedAccessException("Invalid or disabled virtual key");
+                virtualKeyInfo = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKey);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to validate virtual key for task {RequestId}", GetRequestId(request));
+                throw new InvalidOperationException($"Virtual key validation failed: {ex.Message}", ex);
+            }
+            
+            if (virtualKeyInfo == null)
+            {
+                throw new UnauthorizedAccessException("Virtual key validation returned null - key may not exist or service may be unavailable");
+            }
+            
+            if (!virtualKeyInfo.IsEnabled)
+            {
+                throw new UnauthorizedAccessException("Virtual key is disabled");
             }
             
             return virtualKeyInfo;

@@ -8,7 +8,7 @@ using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Metrics;
 using ConduitLLM.Core.Models;
-using IVirtualKeyService = ConduitLLM.Configuration.Interfaces.IVirtualKeyService;
+using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 using IModelProviderMappingService = ConduitLLM.Configuration.Interfaces.IModelProviderMappingService;
 using ConduitLLM.Core.Services.Abstractions;
 using ConduitLLM.Core.Services.Strategies;

@@ -109,12 +109,15 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var okResult = Assert.IsType<OkObjectResult>(result);
             Assert.NotNull(okResult.Value);
             
-            // Check the response structure using dynamic
-            dynamic response = okResult.Value;
-            Assert.NotNull(response.message);
-            Assert.NotNull(response.timestamp);
-            Assert.NotNull(response.note);
-            Assert.Equal("Discovery cache invalidated successfully", response.message);
+            // Check the response structure using JSON serialization
+            var json = System.Text.Json.JsonSerializer.Serialize(okResult.Value);
+            var response = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(json);
+            
+            Assert.NotNull(response);
+            Assert.True(response.ContainsKey("message"));
+            Assert.True(response.ContainsKey("timestamp"));
+            Assert.True(response.ContainsKey("note"));
+            Assert.Equal("Discovery cache invalidated successfully", response["message"].ToString());
         }
     }
 }

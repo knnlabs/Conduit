@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
-using IVirtualKeyService = ConduitLLM.Configuration.Interfaces.IVirtualKeyService;
+using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 using IModelProviderMappingService = ConduitLLM.Configuration.Interfaces.IModelProviderMappingService;
 using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Events;
@@ -144,7 +144,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 .Returns(Task.CompletedTask);
 
             // Setup virtual key service
-            VirtualKeyServiceMock.Setup(x => x.GetVirtualKeyByKeyValueAsync(It.IsAny<string>()))
+            VirtualKeyServiceMock.Setup(x => x.ValidateVirtualKeyAsync(It.IsAny<string>(), It.IsAny<string?>()))
                 .ReturnsAsync(new VirtualKey
                 {
                     Id = 1,
@@ -260,7 +260,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             var request = CreateTestEventRequest();
             var context = CreateConsumeContext(request);
 
-            VirtualKeyServiceMock.Setup(x => x.GetVirtualKeyByKeyValueAsync(It.IsAny<string>()))
+            VirtualKeyServiceMock.Setup(x => x.ValidateVirtualKeyAsync(It.IsAny<string>(), It.IsAny<string?>()))
                 .ReturnsAsync((VirtualKey?)null);
 
             // Act
@@ -272,7 +272,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 TaskState.Failed,
                 It.IsAny<int?>(),
                 It.IsAny<object?>(),
-                It.Is<string>(s => s.Contains("Invalid") || s.Contains("unauthorized") || s.Contains("disabled")),
+                It.Is<string>(s => s.Contains("Virtual key validation returned null") || s.Contains("Invalid") || s.Contains("unauthorized") || s.Contains("disabled")),
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -283,7 +283,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             var request = CreateTestEventRequest();
             var context = CreateConsumeContext(request);
 
-            VirtualKeyServiceMock.Setup(x => x.GetVirtualKeyByKeyValueAsync(It.IsAny<string>()))
+            VirtualKeyServiceMock.Setup(x => x.ValidateVirtualKeyAsync(It.IsAny<string>(), It.IsAny<string?>()))
                 .ReturnsAsync(new VirtualKey
                 {
                     Id = 1,
@@ -302,7 +302,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 TaskState.Failed,
                 It.IsAny<int?>(),
                 It.IsAny<object?>(),
-                It.Is<string>(s => s.Contains("Invalid") || s.Contains("unauthorized") || s.Contains("disabled")),
+                It.Is<string>(s => s.Contains("Virtual key validation returned null") || s.Contains("Invalid") || s.Contains("unauthorized") || s.Contains("disabled")),
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -325,7 +325,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 TaskState.Failed,
                 It.IsAny<int?>(),
                 It.IsAny<object?>(),
-                It.Is<string>(s => s.Contains("Model") && (s.Contains("not found") || s.Contains("not available"))),
+                It.Is<string>(s => s.Contains("Model") && (s.Contains("not configured") || s.Contains("not found") || s.Contains("not available"))),
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 

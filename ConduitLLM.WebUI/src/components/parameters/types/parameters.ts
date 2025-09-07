@@ -9,6 +9,7 @@ export type ParameterType =
   | 'input'  // Added to support Replicate schema conversion
   | 'number' 
   | 'toggle' 
+  | 'checkbox'  // Similar to toggle but for checkbox-style boolean inputs
   | 'color' 
   | 'resolution'
   | 'textarea'
@@ -93,6 +94,12 @@ export interface ToggleParameter extends BaseParameter {
   offLabel?: string;
 }
 
+export interface CheckboxParameter extends BaseParameter {
+  type: 'checkbox';
+  default?: boolean;
+  checkboxLabel?: string;  // Label displayed next to the checkbox
+}
+
 export interface ColorParameter extends BaseParameter {
   type: 'color';
   default?: string;
@@ -128,6 +135,7 @@ export type DynamicParameter =
   | TextareaParameter
   | NumberParameter
   | ToggleParameter
+  | CheckboxParameter
   | ColorParameter
   | ResolutionParameter
   | MediaUploadParameter;

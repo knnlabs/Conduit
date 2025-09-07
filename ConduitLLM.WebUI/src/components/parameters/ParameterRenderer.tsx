@@ -126,6 +126,22 @@ const ParameterRendererComponent = ({
         />
       );
     
+    case 'checkbox':
+      // Checkbox is essentially the same as toggle for boolean values
+      // Convert checkbox parameter to toggle parameter for the control
+      return (
+        <ToggleControl
+          parameter={{
+            ...parameter,
+            type: 'toggle' as const,
+            onLabel: (parameter as { checkboxLabel?: string }).checkboxLabel,
+          }}
+          value={value as boolean}
+          onChange={onChange}
+          disabled={disabled}
+        />
+      );
+    
     case 'color':
       return (
         <ColorControl
