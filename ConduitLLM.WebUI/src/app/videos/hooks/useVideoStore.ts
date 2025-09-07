@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { VideoDefaults, type VideoStoreState, type VideoTask, type VideoSettings } from '../types';
+import { type VideoStoreState, type VideoTask, type VideoSettings } from '../types';
 
 const LOCAL_STORAGE_KEY = 'conduit-video-generation';
 
@@ -8,17 +8,11 @@ export const useVideoStore = create<VideoStoreState>()(
   persist(
     (set) => ({
       // UI State
-      settingsVisible: false,
       error: null,
 
       // Settings
       settings: {
         model: '',
-        duration: VideoDefaults.DURATION,
-        size: VideoDefaults.RESOLUTION,
-        fps: VideoDefaults.FPS,
-        style: undefined,
-        responseFormat: VideoDefaults.RESPONSE_FORMAT,
       },
 
       // Tasks
@@ -26,8 +20,6 @@ export const useVideoStore = create<VideoStoreState>()(
       taskHistory: [],
 
       // Actions
-      toggleSettings: () => set((state) => ({ settingsVisible: !state.settingsVisible })),
-
       updateSettings: (updates: Partial<VideoSettings>) =>
         set((state) => ({
           settings: { ...state.settings, ...updates },

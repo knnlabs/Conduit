@@ -29,15 +29,8 @@ export const createMockStore = () => {
     error: null,
     settings: {
       model: 'minimax-video',
-      duration: 5,
-      size: '1280x720',
-      fps: 30,
-      style: 'natural',
-      responseFormat: 'url',
     },
-    settingsVisible: false,
     updateSettings: jest.fn(),
-    toggleSettings: jest.fn(),
     removeTask: jest.fn(),
     clearHistory: jest.fn(),
   };

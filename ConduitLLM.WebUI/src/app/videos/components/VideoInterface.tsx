@@ -9,7 +9,6 @@ import { DynamicParameters } from '@/components/parameters/DynamicParameters';
 import { useParameterState } from '@/components/parameters/hooks/useParameterState';
 import { useDiscoveryModels } from '@/app/chat/hooks/useDiscoveryModels';
 import { ModelCapability } from '@knn_labs/conduit-core-client';
-import VideoSettings from './VideoSettings';
 import EnhancedVideoPromptInput from './EnhancedVideoPromptInput';
 import VideoGallery from './VideoGallery';
 import VideoQueue from './VideoQueue';
@@ -17,10 +16,8 @@ import VideoQueue from './VideoQueue';
 export default function VideoInterface() {
   const {
     error,
-    settingsVisible,
     settings,
     updateSettings,
-    toggleSettings,
     setError,
     currentTask,
   } = useVideoStore();
@@ -115,13 +112,6 @@ export default function VideoInterface() {
       {/* Header */}
       <div className="video-header">
         <h1>🎬 Video Generation</h1>
-        <button 
-          className="settings-toggle"
-          onClick={toggleSettings}
-          aria-label="Toggle settings"
-        >
-          ⚙️ Settings
-        </button>
       </div>
 
       {/* Error Display */}
@@ -168,10 +158,6 @@ export default function VideoInterface() {
         </Stack>
       </Paper>
 
-      {/* Settings Panel */}
-      {settingsVisible && (
-        <VideoSettings models={discoveryData?.data || []} />
-      )}
 
       {/* Dynamic Parameters from Model */}
       {selectedDiscoveryModel?.parameters && 

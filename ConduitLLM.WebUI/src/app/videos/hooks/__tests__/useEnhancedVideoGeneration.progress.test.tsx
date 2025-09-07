@@ -106,11 +106,6 @@ describe('useEnhancedVideoGeneration - Progress Tracking', () => {
           prompt: 'Test video with progress',
           settings: {
             model: 'minimax-video',
-            duration: 5,
-            size: '1280x720',
-            fps: 30,
-            style: 'natural',
-            responseFormat: 'url',
           },
         });
       });
@@ -134,10 +129,6 @@ describe('useEnhancedVideoGeneration - Progress Tracking', () => {
         expect.objectContaining({
           prompt: 'Test video with progress',
           model: 'minimax-video',
-          duration: 5,
-          size: '1280x720',
-          fps: 30,
-          style: 'natural',
           response_format: 'url',
         }),
         expect.any(Object)
@@ -167,10 +158,6 @@ describe('useEnhancedVideoGeneration - Progress Tracking', () => {
             prompt: 'SDK failure test',
             settings: {
               model: 'minimax-video',
-              duration: 5,
-              size: '1280x720',
-              fps: 30,
-              responseFormat: 'url',
             },
           });
         } catch {
@@ -233,10 +220,6 @@ describe('useEnhancedVideoGeneration - Progress Tracking', () => {
           prompt: 'Progress callback test',
           settings: {
             model: 'minimax-video',
-            duration: 5,
-            size: '1280x720',
-            fps: 30,
-            responseFormat: 'url',
           },
         });
       });

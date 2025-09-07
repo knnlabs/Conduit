@@ -71,16 +71,11 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
       // Get the SDK client with ephemeral key
       const client = await getBrowserCoreClient();
       
-      // Prepare the video generation request
+      // Prepare the video generation request - only model and dynamic parameters
       const request = {
         prompt,
         model: settings.model,
-        duration: settings.duration,
-        size: settings.size,
-        fps: settings.fps,
-        style: settings.style,
-        response_format: settings.responseFormat,
-        // Include dynamic parameters from the UI (e.g., start_image for Kling)
+        // Include all dynamic parameters from the UI (duration, size, fps, style, etc.)
         ...dynamicParameters,
       };
 

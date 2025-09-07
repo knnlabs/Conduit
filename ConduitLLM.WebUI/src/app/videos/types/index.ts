@@ -1,10 +1,5 @@
 export interface VideoSettings {
   model: string;
-  duration: number;
-  size: string;
-  fps: number;
-  style?: string;
-  responseFormat: 'url' | 'b64_json';
 }
 
 export interface VideoTask {
@@ -131,10 +126,6 @@ export const VideoResolutions = {
 } as const;
 
 export const VideoDefaults = {
-  DURATION: 5,
-  FPS: 30,
-  RESOLUTION: VideoResolutions.HD,
-  RESPONSE_FORMAT: 'url' as const,
   POLLING_INTERVAL_MS: 2000,
   POLLING_TIMEOUT_MS: 600000,
   MAX_POLLING_INTERVAL_MS: 30000,
@@ -159,7 +150,6 @@ export const canRetry = (task: VideoTask): boolean => {
 
 export interface VideoStoreState {
   // UI State
-  settingsVisible: boolean;
   error: string | null;
   
   // Settings
@@ -170,7 +160,6 @@ export interface VideoStoreState {
   taskHistory: VideoTask[];
   
   // Actions
-  toggleSettings: () => void;
   updateSettings: (updates: Partial<VideoSettings>) => void;
   setError: (error: string | null) => void;
   addTask: (task: VideoTask) => void;

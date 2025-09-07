@@ -90,11 +90,6 @@ describe('useEnhancedVideoGeneration - Task Management', () => {
           prompt: 'First video',
           settings: {
             model: 'minimax-video',
-            duration: 5,
-            size: '1280x720',
-            fps: 30,
-            style: 'natural',
-            responseFormat: 'url',
           },
         });
       });
@@ -104,11 +99,6 @@ describe('useEnhancedVideoGeneration - Task Management', () => {
           prompt: 'Second video',
           settings: {
             model: 'minimax-video',
-            duration: 5,
-            size: '1280x720',
-            fps: 30,
-            style: 'natural',
-            responseFormat: 'url',
           },
         });
       });
@@ -155,10 +145,6 @@ describe('useEnhancedVideoGeneration - Task Management', () => {
         updatedAt: new Date().toISOString(),
         settings: {
           model: 'minimax-video',
-          duration: 5,
-          size: '1280x720',
-          fps: 30,
-          responseFormat: 'url',
         },
         retryCount: 1,
         retryHistory: [{
@@ -268,20 +254,12 @@ describe('useEnhancedVideoGeneration - Task Management', () => {
             prompt: 'Concurrent video 1',
             settings: {
               model: 'minimax-video',
-              duration: 5,
-              size: '1280x720',
-              fps: 30,
-              responseFormat: 'url',
             },
           }),
           hook.result.current.generateVideo({
             prompt: 'Concurrent video 2',
             settings: {
               model: 'minimax-video',
-              duration: 5,
-              size: '1280x720',
-              fps: 30,
-              responseFormat: 'url',
             },
           }),
         ];

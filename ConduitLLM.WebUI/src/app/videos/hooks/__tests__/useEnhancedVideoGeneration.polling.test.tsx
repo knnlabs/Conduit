@@ -86,11 +86,6 @@ describe('useEnhancedVideoGeneration - Fallback Polling', () => {
           prompt: 'Polling test',
           settings: {
             model: 'minimax-video',
-            duration: 5,
-            size: '1280x720',
-            fps: 30,
-            style: 'natural',
-            responseFormat: 'url',
           },
         });
       });
@@ -173,10 +168,6 @@ describe('useEnhancedVideoGeneration - Fallback Polling', () => {
           prompt: 'Simulated polling test',
           settings: {
             model: 'minimax-video',
-            duration: 5,
-            size: '1280x720',
-            fps: 30,
-            responseFormat: 'url',
           },
         });
         

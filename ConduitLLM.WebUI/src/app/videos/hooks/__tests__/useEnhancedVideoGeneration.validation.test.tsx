@@ -75,11 +75,6 @@ describe('useEnhancedVideoGeneration - Settings Validation', () => {
           prompt: '',
           settings: {
             model: 'minimax-video',
-            duration: 5,
-            size: '1280x720',
-            fps: 30,
-            style: 'natural',
-            responseFormat: 'url',
           },
         });
       });
@@ -104,11 +99,6 @@ describe('useEnhancedVideoGeneration - Settings Validation', () => {
           prompt: 'Duration test',
           settings: {
             model: 'minimax-video',
-            duration: 100, // Long duration
-            size: '1280x720',
-            fps: 30,
-            style: 'natural',
-            responseFormat: 'url',
           },
         });
       });
@@ -117,7 +107,6 @@ describe('useEnhancedVideoGeneration - Settings Validation', () => {
       expect(mockGenerateWithProgress).toHaveBeenCalledWith(
         expect.objectContaining({
           prompt: 'Duration test',
-          duration: 100,
         }),
         expect.any(Object)
       );
@@ -138,10 +127,6 @@ describe('useEnhancedVideoGeneration - Settings Validation', () => {
           prompt: 'Test with dynamic params',
           settings: {
             model: 'kling',
-            duration: 5,
-            size: '1280x720',
-            fps: 30,
-            responseFormat: 'url',
           },
           dynamicParameters: dynamicParams,
         });
@@ -172,10 +157,6 @@ describe('useEnhancedVideoGeneration - Settings Validation', () => {
             prompt: 'Error test',
             settings: {
               model: 'minimax-video',
-              duration: 5,
-              size: '1280x720',
-              fps: 30,
-              responseFormat: 'url',
             },
           });
         } catch {
