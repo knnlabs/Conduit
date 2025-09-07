@@ -73,6 +73,10 @@ namespace ConduitLLM.Admin.Extensions
             // Add context management services
             services.AddConduitContextManagement(configuration);
 
+            // Add discovery cache services
+            services.AddDiscoveryCache(configuration);
+            Console.WriteLine("[ConduitLLM.Admin] Discovery Cache Service registered - cache invalidation endpoints enabled");
+
             // Add Provider Registry - single source of truth for provider metadata
             services.AddSingleton<IProviderMetadataRegistry, ProviderMetadataRegistry>();
             Console.WriteLine("[ConduitLLM.Admin] Provider Registry registered - centralized provider metadata management enabled");

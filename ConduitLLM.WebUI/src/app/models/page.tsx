@@ -1,16 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import { Container, Title, Text, Button, Group, Stack, Tabs } from '@mantine/core';
-import { IconPlus, IconRefresh, IconBrain, IconTags, IconUsers } from '@tabler/icons-react';
+import { Container, Title, Text, Button, Group, Stack, Tabs, Tooltip } from '@mantine/core';
+import { IconPlus, IconRefresh, IconBrain, IconTags, IconUsers, IconTrash } from '@tabler/icons-react';
 import { ModelsTable } from '@/components/models/ModelsTable';
 import { ModelSeriesTable } from '@/components/models/ModelSeriesTable';
 import { ModelAuthorsTable } from '@/components/models/ModelAuthorsTable';
 import { CreateModelModal } from '@/components/models/CreateModelModal';
 import { CreateModelSeriesModal } from '@/components/models/CreateModelSeriesModal';
 import { CreateModelAuthorModal } from '@/components/models/CreateModelAuthorModal';
+import { notifications } from '@mantine/notifications';
+import { useAdminClient } from '@/lib/client/adminClient';
 
 export default function ModelsPage() {
+  const { executeWithAdmin } = useAdminClient();
   const [refreshKey, setRefreshKey] = useState(0);
   const [activeTab, setActiveTab] = useState<string | null>('models');
   const [createModelOpen, setCreateModelOpen] = useState(false);
@@ -19,6 +22,44 @@ export default function ModelsPage() {
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);
+  };
+
+  const handleInvalidateCache = async () => {
+    try {
+      notifications.show({
+        id: 'invalidating-cache',
+        title: 'Invalidating Discovery Cache',
+        message: 'Please wait...',
+        loading: true,
+        autoClose: false,
+      });
+
+      const result = await executeWithAdmin(client => 
+        client.system.invalidateDiscoveryCache()
+      );
+      
+      notifications.update({
+        id: 'invalidating-cache',
+        title: 'Cache Invalidated',
+        message: (result as { message?: string })?.message ?? 'Discovery cache has been successfully cleared',
+        color: 'green',
+        loading: false,
+        autoClose: 5000,
+      });
+
+      // Refresh the tables after cache invalidation
+      handleRefresh();
+    } catch (error) {
+      console.error('Failed to invalidate cache:', error);
+      notifications.update({
+        id: 'invalidating-cache',
+        title: 'Failed to Invalidate Cache',
+        message: error instanceof Error ? error.message : 'An error occurred while invalidating the cache',
+        color: 'red',
+        loading: false,
+        autoClose: 5000,
+      });
+    }
   };
 
   return (
@@ -31,13 +72,25 @@ export default function ModelsPage() {
               Configure AI models, series, and authors
             </Text>
           </div>
-          <Button
-            leftSection={<IconRefresh size={16} />}
-            variant="subtle"
-            onClick={handleRefresh}
-          >
-            Refresh
-          </Button>
+          <Group gap="xs">
+            <Tooltip label="Clear the discovery cache to force reload of model parameters">
+              <Button
+                leftSection={<IconTrash size={16} />}
+                variant="subtle"
+                color="orange"
+                onClick={() => void handleInvalidateCache()}
+              >
+                Clear Cache
+              </Button>
+            </Tooltip>
+            <Button
+              leftSection={<IconRefresh size={16} />}
+              variant="subtle"
+              onClick={handleRefresh}
+            >
+              Refresh
+            </Button>
+          </Group>
         </Group>
 
         <Tabs value={activeTab} onChange={setActiveTab}>

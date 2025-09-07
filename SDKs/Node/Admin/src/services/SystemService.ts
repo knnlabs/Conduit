@@ -119,6 +119,18 @@ export class SystemService extends FetchBaseApiClient {
     return super.get<HealthStatusDto>(ENDPOINTS.SYSTEM.HEALTH);
   }
 
+  /**
+   * Invalidates all discovery cache entries
+   * @returns Promise with cache invalidation result
+   */
+  async invalidateDiscoveryCache(): Promise<{ message: string; timestamp: string; note?: string }> {
+    const response = await super.post<{ message: string; timestamp: string; note?: string }>(
+      '/api/SystemInfo/cache/invalidate-discovery',
+      {}
+    );
+    return response;
+  }
+
   // Backup Management - removed (endpoints no longer exist)
 
   // Notifications
