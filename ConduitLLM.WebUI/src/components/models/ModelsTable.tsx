@@ -185,14 +185,16 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
 
   const renderParameterWarning = (model: ModelWithMappingStatus) => {
     const hasModelParameters = model.modelParameters !== null && model.modelParameters !== undefined;
-    const hasSeriesParameters = model.seriesParameters !== null && model.seriesParameters !== undefined;
+    const hasSeriesParameters = model.seriesParameters !== null && 
+                               model.seriesParameters !== undefined && 
+                               model.seriesParameters !== "{}";
     
     // No warning if model has parameters
     if (hasModelParameters) {
       return null;
     }
     
-    // Critical warning if both model and series lack parameters
+    // Critical warning if both model lacks parameters and series has empty/no parameters
     if (!hasModelParameters && !hasSeriesParameters) {
       return (
         <Tooltip 
@@ -209,7 +211,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
       );
     }
     
-    // Warning if only model lacks parameters (but series has them)
+    // Warning if only model lacks parameters (but series has valid parameters)
     return (
       <Tooltip 
         label="Warning: This model has no parameter configuration. Using series defaults."
