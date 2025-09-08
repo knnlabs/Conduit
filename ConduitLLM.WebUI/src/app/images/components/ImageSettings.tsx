@@ -1,6 +1,6 @@
 'use client';
 
-import { Select, NumberInput, Grid, Text } from '@mantine/core';
+import { Select, Grid, Text } from '@mantine/core';
 import { useImageStore } from '../hooks/useImageStore';
 import { useModelMetadata } from '../hooks/useModelMetadata';
 import type { DiscoveryModel } from '@/app/chat/hooks/useDiscoveryModels';
@@ -23,9 +23,8 @@ export default function ImageSettings({ models }: ImageSettingsProps) {
     if (value) updateSettings({ model: value });
   };
 
-  const handleSizeChange = (value: string | null) => {
-    if (value) updateSettings({ size: value as '256x256' | '512x512' | '1024x1024' | '1792x1024' | '1024x1792' });
-  };
+  // Removed handlers for Size, N, and ResponseFormat as these are now handled
+  // by custom parameters or hardcoded defaults
 
   const handleQualityChange = (value: string | null) => {
     if (value) updateSettings({ quality: value as 'standard' | 'hd' });
@@ -35,34 +34,9 @@ export default function ImageSettings({ models }: ImageSettingsProps) {
     if (value) updateSettings({ style: value as 'vivid' | 'natural' });
   };
 
-  const handleCountChange = (value: string | number) => {
-    updateSettings({ n: Number(value) });
-  };
-
-  const handleResponseFormatChange = (value: string | null) => {
-    if (value) updateSettings({ responseFormat: value as 'url' | 'b64_json' });
-  };
-
   // Get model metadata
   const { data: metadataResponse } = useModelMetadata(settings.model ?? null);
   const imageMetadata = (metadataResponse as { metadata?: { image?: ImageMetadata } } | null)?.metadata?.image;
-
-  // Get size options from metadata or fallback
-  const getSizeOptions = () => {
-    if (imageMetadata?.sizes) {
-      return imageMetadata.sizes;
-    }
-    // Default fallback
-    return ['1024x1024'];
-  };
-
-  // Get max count from metadata or fallback
-  const getMaxCount = () => {
-    if (imageMetadata?.maxImages) {
-      return imageMetadata.maxImages;
-    }
-    return 1; // Safe default
-  };
 
   // Check if quality is supported from metadata
   const supportsQuality = () => {
@@ -74,17 +48,9 @@ export default function ImageSettings({ models }: ImageSettingsProps) {
     return !!imageMetadata?.styleOptions && imageMetadata.styleOptions.length > 0;
   };
 
-  const sizeOptions = getSizeOptions();
-  const maxCount = getMaxCount();
-
   const modelOptions = models.map((model) => ({
     value: model.id,
     label: model.display_name ?? model.id,
-  }));
-
-  const sizeSelectOptions = sizeOptions.map((size) => ({
-    value: size,
-    label: size,
   }));
 
   return (
@@ -98,17 +64,6 @@ export default function ImageSettings({ models }: ImageSettingsProps) {
             value={settings.model}
             onChange={handleModelChange}
             data={modelOptions}
-            required
-          />
-        </Grid.Col>
-
-        {/* Size Selection */}
-        <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
-          <Select
-            label="Size"
-            value={settings.size}
-            onChange={handleSizeChange}
-            data={sizeSelectOptions}
             required
           />
         </Grid.Col>
@@ -144,32 +99,6 @@ export default function ImageSettings({ models }: ImageSettingsProps) {
             />
           </Grid.Col>
         )}
-
-        {/* Count Selection */}
-        <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
-          <NumberInput
-            label={`Number of Images (max ${maxCount})`}
-            value={settings.n}
-            onChange={handleCountChange}
-            min={1}
-            max={maxCount}
-            required
-          />
-        </Grid.Col>
-
-        {/* Response Format */}
-        <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
-          <Select
-            label="Response Format"
-            value={settings.responseFormat}
-            onChange={handleResponseFormatChange}
-            data={[
-              { value: 'url', label: 'URL' },
-              { value: 'b64_json', label: 'Base64' },
-            ]}
-            required
-          />
-        </Grid.Col>
       </Grid>
     </>
   );

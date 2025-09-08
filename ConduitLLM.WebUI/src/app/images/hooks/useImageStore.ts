@@ -16,11 +16,9 @@ export const useImageStore = create<ImageStore>((set, get) => ({
   prompt: '',
   settings: {
     model: '',
-    size: '1024x1024',
     quality: 'standard',
     style: 'vivid',
-    n: 1,
-    responseFormat: 'url',
+    // Size, N, and ResponseFormat removed - hardcoded defaults used
   },
   status: 'idle',
   results: [],
@@ -58,16 +56,15 @@ export const useImageStore = create<ImageStore>((set, get) => ({
       const { getBrowserCoreClient } = await import('@/lib/client/browserCoreClient');
       const client = await getBrowserCoreClient();
       
-      // Use SDK to generate image
+      // Use SDK to generate image with hardcoded defaults
       const result = await client.images.generate({
         prompt,
         model: settings.model,
-        size: settings.size,
         quality: settings.quality,
         style: settings.style,
-        n: settings.n,
-        response_format: settings.responseFormat,
-        // Include dynamic parameters if provided
+        n: 1,  // Hardcoded default
+        response_format: 'url',  // Always use URL for CDN storage
+        // Include dynamic parameters if provided (overrides defaults)
         ...dynamicParameters,
       });
       set({ 

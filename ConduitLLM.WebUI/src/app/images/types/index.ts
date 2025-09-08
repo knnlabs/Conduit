@@ -3,12 +3,11 @@
 export interface ImageGenerationRequest {
   prompt: string;
   model?: string;
-  n?: number;
-  quality?: 'standard' | 'hd';
-  response_format?: 'url' | 'b64_json';
-  size?: '256x256' | '512x512' | '1024x1024' | '1792x1024' | '1024x1792';
-  style?: 'vivid' | 'natural';
+  quality?: 'standard' | 'hd';  // Only for DALL-E models
+  style?: 'vivid' | 'natural';   // Only for DALL-E models
   user?: string;
+  // Size, N, and ResponseFormat removed - now handled by custom parameters
+  // or hardcoded defaults (n=1, response_format='url')
 }
 
 export interface ImageData {
@@ -34,11 +33,9 @@ export interface ErrorResponse {
 // UI-specific interface
 export interface ImageGenerationSettings {
   model: string;
-  size: '256x256' | '512x512' | '1024x1024' | '1792x1024' | '1024x1792';
-  quality: 'standard' | 'hd';
-  style: 'vivid' | 'natural';
-  n: number;
-  responseFormat: 'url' | 'b64_json';
+  quality: 'standard' | 'hd';  // Only for DALL-E models
+  style: 'vivid' | 'natural';   // Only for DALL-E models
+  // Size, N, and ResponseFormat removed - now handled by custom parameters
 }
 
 // UI-specific status type
