@@ -33,7 +33,12 @@ export default function ImageGallery() {
 
   const handleDownload = async (image: GeneratedImage, index: number) => {
     const filename = `generated-image-${index + 1}.png`;
-    await downloadMedia(image.url, image.b64_json, filename, 'image/png');
+    await downloadMedia({
+      url: image.url,
+      b64_json: image.b64_json,
+      filename,
+      mimeType: 'image/png'
+    });
   };
 
   const getImageSrc = (image: GeneratedImage): string => {

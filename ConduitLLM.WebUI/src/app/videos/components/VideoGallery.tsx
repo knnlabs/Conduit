@@ -115,7 +115,12 @@ export default function VideoGallery() {
     const downloadFilename = `video-${task.id.slice(0, 8)}.mp4`;
 
     const handleDownload = async () => {
-      await downloadMedia(video?.url, video?.b64_json, downloadFilename, 'video/mp4');
+      await downloadMedia({
+        url: video?.url,
+        b64_json: video?.b64_json,
+        filename: downloadFilename,
+        mimeType: 'video/mp4'
+      });
     };
 
     // Render completed video card
