@@ -21,16 +21,12 @@ import {
   MediaContent,
   MediaPlaceholder,
   downloadMedia,
-  formatFileSize
-} from '@/app/components/media';
-import { 
+  formatFileSize,
   VideoMetadataExtractor,
-  MetadataCache
-} from '@/app/utils/metadataExtractor';
-import { 
+  MetadataCache,
   extractVideoFromTaskResult,
   createVideoCacheKey
-} from '@/app/utils/responseNormalizer';
+} from '@/app/components/media';
 import { MediaGenerationStatus, type MediaMetadata } from '@/app/types/media';
 
 export default function VideoGallery() {

@@ -7,7 +7,7 @@ import {
   isDefined,
   isNonEmptyString,
   isPositiveNumber
-} from '../typeGuards';
+} from '@/app/components/media/utils/typeGuards';
 
 describe('Type Guards', () => {
   describe('isVideoData', () => {

@@ -23,12 +23,10 @@ import {
   MediaGallery, 
   MediaCard,
   downloadMedia,
-  formatFileSize as formatSize
-} from '@/app/components/media';
-import { 
+  formatFileSize as formatSize,
   ImageMetadataExtractor,
   MetadataCache
-} from '@/app/utils/metadataExtractor';
+} from '@/app/components/media';
 import { MediaGenerationStatus, type MediaMetadata } from '@/app/types/media';
 
 export default function ImageGallery() {

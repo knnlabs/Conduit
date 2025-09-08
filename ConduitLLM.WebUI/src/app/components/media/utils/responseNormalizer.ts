@@ -12,7 +12,7 @@ import {
 import { 
   normalizeBackendVideoResponse,
   type BackendVideoResponse 
-} from './metadataExtractor';
+} from './metadata';
 
 /**
  * Normalize any video response to a consistent VideoGenerationResult

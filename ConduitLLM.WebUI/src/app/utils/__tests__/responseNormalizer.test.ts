@@ -5,7 +5,7 @@ import {
   extractVideosFromTasks,
   validateVideoData,
   createVideoCacheKey
-} from '../responseNormalizer';
+} from '@/app/components/media/utils/responseNormalizer';
 import type { VideoData, VideoGenerationResult } from '@/app/videos/types';
 
 describe('Response Normalizer', () => {
