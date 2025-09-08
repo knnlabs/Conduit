@@ -7,6 +7,7 @@ import {
   GeneratedImage
 } from '../types';
 import { MediaGenerationStatus } from '@/app/types/media';
+import { STORAGE_CONFIG, IMAGE_CONFIG } from '@/app/config/mediaGeneration';
 import { 
   createToastErrorHandler, 
   shouldShowBalanceWarning
@@ -23,13 +24,12 @@ const imageStoreConfig = createMediaStore<ImageTask, ImageGenerationSettings>({
     quality: 'standard',
     style: 'vivid',
   },
-  maxHistorySize: 20,
   persistHistory: true,
   partializeState: (state) => ({
     settings: state.settings,
     taskHistory: state.taskHistory.filter(
       (task) => task.status === MediaGenerationStatus.Completed || task.status === MediaGenerationStatus.Failed
-    ).slice(0, 10), // Keep only last 10 completed/failed images in storage
+    ).slice(0, STORAGE_CONFIG.IMAGE_HISTORY_LIMIT), // Keep only last N completed/failed images in storage
   }),
 });
 
@@ -112,7 +112,7 @@ export const useImageStore = create<ImageStore>()((set, get, api) => ({
         model: settings.model,
         quality: settings.quality,
         style: settings.style,
-        n: 1,  // Hardcoded default
+        n: IMAGE_CONFIG.DEFAULTS.N,
         response_format: 'url',  // Always use URL for CDN storage
         // Include dynamic parameters if provided (overrides defaults)
         ...dynamicParameters,

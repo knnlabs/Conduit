@@ -8,6 +8,7 @@ import type {
   VideoGenerationResult
 } from '../types';
 import { MediaGenerationStatus, mapLegacyStatus } from '@/app/types/media';
+import { REALTIME_CONFIG } from '@/app/config/mediaGeneration';
 import { 
   createToastErrorHandler, 
   shouldShowBalanceWarning,
@@ -45,7 +46,7 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
 
   // Track SignalR connection errors
   const signalRErrorCount = useRef(0);
-  const maxSignalRErrors = 3;
+  const maxSignalRErrors = REALTIME_CONFIG.MAX_SIGNALR_ERRORS;
   
   // Create error handler with toast notifications
   const handleError = createToastErrorHandler(notifications.show);

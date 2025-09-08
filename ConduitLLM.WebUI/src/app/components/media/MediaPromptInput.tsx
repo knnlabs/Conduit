@@ -2,6 +2,7 @@
 
 import React, { useCallback, KeyboardEvent } from 'react';
 import { Textarea, Text, Group, Stack, TextareaProps } from '@mantine/core';
+import { UI_CONFIG } from '@/app/config/mediaGeneration';
 
 /**
  * Props for the MediaPromptInput component
@@ -74,8 +75,8 @@ export function MediaPromptInput({
   showCharCount = true,
   label,
   description,
-  minRows = 4,
-  maxRows = 10,
+  minRows = UI_CONFIG.PROMPT_INPUT.MIN_ROWS,
+  maxRows = UI_CONFIG.PROMPT_INPUT.MAX_ROWS,
   autosize = true,
   textareaProps = {},
   additionalInfo,

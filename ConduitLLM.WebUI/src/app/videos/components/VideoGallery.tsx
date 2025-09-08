@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useEffect, useState } from 'react';
+import { UI_CONFIG } from '@/app/config/mediaGeneration';
 import { 
   Button, 
   Group, 
@@ -202,7 +203,7 @@ export default function VideoGallery() {
             <Button
               onClick={() => void handleDownload()}
               size="sm"
-              leftSection={<IconDownload size={16} />}
+              leftSection={<IconDownload size={UI_CONFIG.ICON_SIZES.MEDIUM} />}
               disabled={!downloadUrl}
             >
               Download
@@ -211,7 +212,7 @@ export default function VideoGallery() {
               onClick={() => removeTask(task.id)}
               variant="light"
               size="sm"
-              leftSection={<IconX size={16} />}
+              leftSection={<IconX size={UI_CONFIG.ICON_SIZES.MEDIUM} />}
             >
               Remove
             </Button>
@@ -229,7 +230,11 @@ export default function VideoGallery() {
       emptyTitle="No videos generated yet"
       emptyMessage="Your generated videos will appear here"
       title={(count) => `Generated Videos (${count})`}
-      cols={{ base: 1, md: 2, lg: 3 }}
+      cols={{ 
+        base: UI_CONFIG.GALLERY_GRID_COLS.BASE, 
+        md: UI_CONFIG.GALLERY_GRID_COLS.MD, 
+        lg: UI_CONFIG.GALLERY_GRID_COLS.LG 
+      }}
       clearButtonText="Clear History"
     />
   );

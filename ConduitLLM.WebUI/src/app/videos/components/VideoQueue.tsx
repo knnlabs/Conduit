@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { UI_CONFIG } from '@/app/config/mediaGeneration';
 import { 
   Paper, 
   Stack, 
@@ -125,7 +126,7 @@ export default function VideoQueue() {
                 variant="light"
                 color="red"
                 size="sm"
-                leftSection={<IconX size={16} />}
+                leftSection={<IconX size={UI_CONFIG.ICON_SIZES.MEDIUM} />}
               >
                 Cancel
               </Button>

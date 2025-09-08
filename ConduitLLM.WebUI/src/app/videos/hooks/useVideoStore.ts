@@ -11,7 +11,6 @@ const videoStoreConfig = createMediaStore<VideoTask, VideoSettings>({
   initialSettings: {
     model: '',
   },
-  maxHistorySize: 20,
   persistHistory: true,
   partializeState: (state) => ({
     settings: state.settings,

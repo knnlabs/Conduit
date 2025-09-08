@@ -6,6 +6,7 @@ import {
   ResponseFormat,
   MediaGenerationStatus 
 } from '@/app/types/media';
+import { VIDEO_POLLING_CONFIG, RETRY_CONFIG } from '@/app/config/mediaGeneration';
 
 // Re-export for components that use ErrorResponse
 export type { ErrorResponse } from '@/app/types/media';
@@ -115,25 +116,25 @@ export const VideoResolutions = {
 } as const;
 
 export const VideoDefaults = {
-  POLLING_INTERVAL_MS: 2000,
-  POLLING_TIMEOUT_MS: 600000,
-  MAX_POLLING_INTERVAL_MS: 30000,
-  MAX_RETRY_COUNT: 3,
-  MIN_RETRY_DELAY_MS: 1000,
-  MAX_RETRY_DELAY_MS: 10000
+  POLLING_INTERVAL_MS: VIDEO_POLLING_CONFIG.INTERVAL_MS,
+  POLLING_TIMEOUT_MS: VIDEO_POLLING_CONFIG.TIMEOUT_MS,
+  MAX_POLLING_INTERVAL_MS: VIDEO_POLLING_CONFIG.MAX_INTERVAL_MS,
+  MAX_RETRY_COUNT: RETRY_CONFIG.MAX_COUNT,
+  MIN_RETRY_DELAY_MS: RETRY_CONFIG.MIN_DELAY_MS,
+  MAX_RETRY_DELAY_MS: RETRY_CONFIG.MAX_DELAY_MS
 } as const;
 
 // Helper functions for retry logic
 export const calculateRetryDelay = (retryCount: number): number => {
   // Exponential backoff: 1s, 2s, 4s (capped at 10s)
   return Math.min(
-    VideoDefaults.MIN_RETRY_DELAY_MS * Math.pow(2, retryCount), 
-    VideoDefaults.MAX_RETRY_DELAY_MS
+    RETRY_CONFIG.MIN_DELAY_MS * Math.pow(RETRY_CONFIG.BACKOFF_MULTIPLIER, retryCount), 
+    RETRY_CONFIG.MAX_DELAY_MS
   );
 };
 
 export const canRetry = (task: VideoTask): boolean => {
-  return task.retryCount < VideoDefaults.MAX_RETRY_COUNT && 
+  return task.retryCount < RETRY_CONFIG.MAX_COUNT && 
          task.status === MediaGenerationStatus.Failed;
 };
 

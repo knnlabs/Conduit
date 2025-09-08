@@ -5,6 +5,7 @@
 import { StateCreator } from 'zustand';
 import { persist, PersistOptions } from 'zustand/middleware';
 import { MediaGenerationStatus } from '@/app/types/media';
+import { STORAGE_CONFIG } from '@/app/config/mediaGeneration';
 
 /**
  * Base media task interface
@@ -113,7 +114,7 @@ export function createMediaStore<
   const {
     name,
     initialSettings,
-    maxHistorySize = 20,
+    maxHistorySize = STORAGE_CONFIG.MAX_HISTORY_SIZE,
     persistHistory = true,
     partializeState
   } = options;
