@@ -1,6 +1,34 @@
 'use client';
 
 import { useState } from 'react';
+import { 
+  Paper, 
+  Stack, 
+  Group, 
+  Text, 
+  Button, 
+  Badge, 
+  Progress, 
+  Collapse,
+  ActionIcon,
+  Alert,
+  List,
+  Box
+} from '@mantine/core';
+import { 
+  IconVideo, 
+  IconX, 
+  IconRefresh,
+  IconAlertCircle,
+  IconChevronDown,
+  IconChevronUp,
+  IconClock,
+  IconHourglass,
+  IconCircleCheck,
+  IconCircleX,
+  IconBan,
+  IconAlarm
+} from '@tabler/icons-react';
 import { useVideoStore } from '../hooks/useVideoStore';
 import { useEnhancedVideoGeneration } from '../hooks/useEnhancedVideoGeneration';
 import { canRetry, type VideoTask } from '../types';
@@ -20,14 +48,15 @@ function RetryButton({ task, onRetry }: { task: VideoTask; onRetry: (task: Video
   };
   
   return (
-    <button
+    <Button
       onClick={handleRetry}
       disabled={isRetrying}
-      className="btn btn-secondary btn-sm"
-      title="Retry generation"
+      variant="light"
+      size="sm"
+      leftSection={<IconRefresh size={16} />}
     >
       {isRetrying ? 'Retrying...' : `Retry (${3 - task.retryCount} left)`}
-    </button>
+    </Button>
   );
 }
 
@@ -36,6 +65,7 @@ export default function VideoQueue() {
   const { cancelGeneration, retryGeneration } = useEnhancedVideoGeneration({
     fallbackToPolling: true,
   });
+  const [retryHistoryOpen, setRetryHistoryOpen] = useState(false);
 
   if (!currentTask) {
     return null;
@@ -44,101 +74,130 @@ export default function VideoQueue() {
   const isActive = currentTask.status === 'pending' || currentTask.status === 'running';
 
   return (
-    <div className="video-queue">
-      <div className="video-queue-header">
-        <span className="queue-icon">🎬</span>
-        Video Generation Queue
-      </div>
-      
-      <div className="video-queue-items">
-        <div className="video-queue-item">
-          <div className="video-queue-item-icon">
+    <Paper shadow="sm" p="md" radius="md" withBorder>
+      <Stack gap="md">
+        <Group gap="sm">
+          <IconVideo size={20} />
+          <Text fw={600}>Video Generation Queue</Text>
+        </Group>
+        
+        <Stack gap="sm">
+          <Group gap="xs">
             {getStatusIcon(currentTask.status)}
-          </div>
-          
-          <div className="video-queue-item-info">
-            <div className="video-queue-item-prompt">
-              {currentTask.prompt}
-            </div>
-            
-            <div className="video-queue-item-status">
-              Status: {getStatusText(currentTask.status)}
+            <Text size="sm" fw={500}>
+              {getStatusText(currentTask.status)}
               {currentTask.message && ` - ${currentTask.message}`}
-              {currentTask.estimatedTimeToCompletion && (
-                <span> (ETA: {formatTime(currentTask.estimatedTimeToCompletion)})</span>
-              )}
-              {currentTask.retryCount > 0 && (
-                <span className="retry-info"> (Attempt {currentTask.retryCount + 1}/{3 + 1})</span>
-              )}
-            </div>
-            
-            {currentTask.progress > 0 && (
-              <div className="video-queue-item-progress">
-                <div 
-                  className="video-queue-item-progress-bar"
-                  style={{ width: `${currentTask.progress}%` }}
-                />
-              </div>
+            </Text>
+          </Group>
+          
+          <Text size="sm" c="dimmed" lineClamp={2}>
+            {currentTask.prompt}
+          </Text>
+          
+          {currentTask.estimatedTimeToCompletion && (
+            <Group gap="xs">
+              <IconClock size={14} />
+              <Text size="xs" c="dimmed">
+                ETA: {formatTime(currentTask.estimatedTimeToCompletion)}
+              </Text>
+            </Group>
+          )}
+          
+          {currentTask.retryCount > 0 && (
+            <Badge variant="light" size="sm">
+              Attempt {currentTask.retryCount + 1}/{3 + 1}
+            </Badge>
+          )}
+          
+          {currentTask.progress > 0 && (
+            <Progress 
+              value={currentTask.progress} 
+              size="sm" 
+              animated={isActive}
+              color={isActive ? 'blue' : 'gray'}
+            />
+          )}
+          
+          <Group gap="xs">
+            {isActive && (
+              <Button
+                onClick={() => void cancelGeneration(currentTask.id)}
+                variant="light"
+                color="red"
+                size="sm"
+                leftSection={<IconX size={16} />}
+              >
+                Cancel
+              </Button>
             )}
-          </div>
-          
-          {isActive && (
-            <button
-              onClick={() => void cancelGeneration(currentTask.id)}
-              className="btn btn-secondary btn-sm"
-              title="Cancel generation"
-            >
-              Cancel
-            </button>
-          )}
-          
-          {(currentTask.status === 'failed' || currentTask.status === 'timedout') && (
-            <RetryButton task={currentTask} onRetry={(task: VideoTask) => retryGeneration(task)} />
-          )}
+            
+            {(currentTask.status === 'failed' || currentTask.status === 'timedout') && (
+              <RetryButton task={currentTask} onRetry={(task: VideoTask) => retryGeneration(task)} />
+            )}
+          </Group>
           
           {(currentTask.status === 'failed' || currentTask.status === 'timedout' || currentTask.status === 'cancelled') && currentTask.error && (
-            <div className={`error-message ${currentTask.status}-message`}>
+            <Alert 
+              icon={<IconAlertCircle size={16} />} 
+              color={currentTask.status === 'cancelled' ? 'orange' : 'red'}
+              variant="light"
+            >
               {currentTask.error}
-            </div>
+            </Alert>
           )}
           
           {currentTask.retryHistory.length > 0 && (
-            <div className="retry-history">
-              <details>
-                <summary>Retry History ({currentTask.retryHistory.length})</summary>
-                <ul>
+            <Box>
+              <Group 
+                gap="xs" 
+                onClick={() => setRetryHistoryOpen(!retryHistoryOpen)}
+                style={{ cursor: 'pointer' }}
+              >
+                <ActionIcon variant="subtle" size="xs">
+                  {retryHistoryOpen ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
+                </ActionIcon>
+                <Text size="sm" c="dimmed">
+                  Retry History ({currentTask.retryHistory.length})
+                </Text>
+              </Group>
+              
+              <Collapse in={retryHistoryOpen}>
+                <List size="sm" mt="xs" spacing="xs">
                   {currentTask.retryHistory.map((retry) => (
-                    <li key={`${retry.attemptNumber}-${retry.timestamp}`}>
-                      Attempt {retry.attemptNumber}: {retry.error} 
-                      <span className="retry-timestamp"> (<TimeDisplay date={retry.timestamp} />)</span>
-                    </li>
+                    <List.Item key={`${retry.attemptNumber}-${retry.timestamp}`}>
+                      <Text size="xs">
+                        <Text component="span" fw={500}>Attempt {retry.attemptNumber}:</Text> {retry.error}
+                        <Text component="span" c="dimmed"> (<TimeDisplay date={retry.timestamp} />)</Text>
+                      </Text>
+                    </List.Item>
                   ))}
-                </ul>
-              </details>
-            </div>
+                </List>
+              </Collapse>
+            </Box>
           )}
-        </div>
-      </div>
-    </div>
+        </Stack>
+      </Stack>
+    </Paper>
   );
 }
 
-function getStatusIcon(status: string): string {
+function getStatusIcon(status: string): React.ReactNode {
+  const iconProps = { size: 16 };
   switch (status) {
     case 'pending':
-      return '⏱️';
+      return <IconClock {...iconProps} />;
     case 'running':
-      return '⏳';
+      return <IconHourglass {...iconProps} />;
     case 'completed':
-      return '✅';
+      return <IconCircleCheck {...iconProps} color="green" />;
     case 'failed':
-      return '❌';
+      return <IconCircleX {...iconProps} color="red" />;
     case 'cancelled':
-      return '🚫';
+      return <IconBan {...iconProps} color="orange" />;
     case 'timedout':
-      return '⏰';
+      return <IconAlarm {...iconProps} color="red" />;
     default:
-      return '❓';
+      return <IconAlertCircle {...iconProps} />;
   }
 }
 

@@ -1,6 +1,26 @@
 'use client';
 
 import { useMemo } from 'react';
+import { 
+  Card, 
+  SimpleGrid, 
+  Text, 
+  Button, 
+  Group, 
+  Stack, 
+  Center, 
+  Badge, 
+  Progress,
+  Box,
+  Title,
+  Paper
+} from '@mantine/core';
+import { 
+  IconDownload, 
+  IconTrash,
+  IconX,
+  IconAlertCircle
+} from '@tabler/icons-react';
 import { useVideoStore } from '../hooks/useVideoStore';
 import type { VideoTask, VideoData } from '../types';
 
@@ -26,28 +46,32 @@ export default function VideoGallery() {
 
   if (completedVideos.length === 0) {
     return (
-      <div className="video-gallery">
-        <div className="empty-state">
-          <h3>No videos generated yet</h3>
-          <p>Your generated videos will appear here</p>
-        </div>
-      </div>
+      <Paper p="xl" withBorder>
+        <Center>
+          <Stack align="center" gap="md">
+            <Title order={3} c="dimmed">No videos generated yet</Title>
+            <Text c="dimmed">Your generated videos will appear here</Text>
+          </Stack>
+        </Center>
+      </Paper>
     );
   }
 
   return (
-    <div className="video-gallery">
-      <div className="video-gallery-header">
-        <h3>Generated Videos ({completedVideos.length})</h3>
-        <button
+    <Stack gap="md">
+      <Group justify="space-between">
+        <Title order={3}>Generated Videos ({completedVideos.length})</Title>
+        <Button
           onClick={clearHistory}
-          className="btn btn-secondary btn-sm"
+          variant="subtle"
+          size="sm"
+          leftSection={<IconTrash size={16} />}
         >
           Clear History
-        </button>
-      </div>
+        </Button>
+      </Group>
       
-      <div className="video-gallery-content">
+      <SimpleGrid cols={{ base: 1, md: 2, lg: 3 }} spacing="lg">
         {completedVideos.map((task) => (
           <VideoCard 
             key={task.id} 
@@ -55,8 +79,8 @@ export default function VideoGallery() {
             onRemove={() => removeTask(task.id)}
           />
         ))}
-      </div>
-    </div>
+      </SimpleGrid>
+    </Stack>
   );
 }
 
@@ -109,51 +133,76 @@ function VideoCard({ task, onRemove }: VideoCardProps) {
   }
   
   // Fallback: Show pending state if no video data
-  if (!video || !video.url) {
+  if (!video?.url) {
     // If task is running or pending, show progress
     if (task.status === 'pending' || task.status === 'running') {
       return (
-        <div className="video-card video-card-pending">
-          <div className="video-card-info">
-            <p className="video-prompt">{task.prompt}</p>
-            <p className="video-status">Status: {task.status}</p>
-            <p className="video-progress">Progress: {task.progress}%</p>
-            <p className="video-id">ID: {task.id.slice(0, 8)}...</p>
-            <button onClick={onRemove} className="btn btn-sm btn-danger">
+        <Card shadow="sm" padding="lg" radius="md" withBorder>
+          <Stack gap="sm">
+            <Text size="sm" lineClamp={2}>{task.prompt}</Text>
+            <Badge color="blue" variant="light">
+              {task.status === 'pending' ? 'Queued' : 'Generating'}
+            </Badge>
+            <Progress value={task.progress} size="sm" animated />
+            <Text size="xs" c="dimmed">ID: {task.id.slice(0, 8)}...</Text>
+            <Button 
+              onClick={onRemove} 
+              color="red" 
+              variant="light"
+              size="sm"
+              fullWidth
+            >
               Cancel
-            </button>
-          </div>
-        </div>
+            </Button>
+          </Stack>
+        </Card>
       );
     }
     
     // If failed, show error  
     if (task.status === 'failed' || task.error) {
       return (
-        <div className="video-card video-card-error">
-          <div className="video-card-info">
-            <p className="video-prompt">{task.prompt}</p>
-            <p className="video-status">Status: {task.status}</p>
-            <p className="video-error">Error: {task.error ?? 'Generation failed'}</p>
-            <button onClick={onRemove} className="btn btn-sm btn-danger">
+        <Card shadow="sm" padding="lg" radius="md" withBorder>
+          <Stack gap="sm">
+            <Text size="sm" lineClamp={2}>{task.prompt}</Text>
+            <Badge color="red" variant="light">Failed</Badge>
+            <Text size="xs" c="red">
+              <Group gap="xs">
+                <IconAlertCircle size={14} />
+                {task.error ?? 'Generation failed'}
+              </Group>
+            </Text>
+            <Button 
+              onClick={onRemove} 
+              color="red" 
+              variant="light"
+              size="sm"
+              fullWidth
+            >
               Remove
-            </button>
-          </div>
-        </div>
+            </Button>
+          </Stack>
+        </Card>
       );
     }
     
     // Shouldn't reach here, but show basic info
     return (
-      <div className="video-card video-card-pending">
-        <div className="video-card-info">
-          <p className="video-prompt">{task.prompt}</p>
-          <p className="video-status">Status: {task.status}</p>
-          <button onClick={onRemove} className="btn btn-sm btn-danger">
+      <Card shadow="sm" padding="lg" radius="md" withBorder>
+        <Stack gap="sm">
+          <Text size="sm" lineClamp={2}>{task.prompt}</Text>
+          <Badge variant="light">{task.status}</Badge>
+          <Button 
+            onClick={onRemove} 
+            color="red" 
+            variant="light"
+            size="sm"
+            fullWidth
+          >
             Remove
-          </button>
-        </div>
-      </div>
+          </Button>
+        </Stack>
+      </Card>
     );
   }
 
@@ -182,82 +231,91 @@ function VideoCard({ task, onRemove }: VideoCardProps) {
 
   // Use simple HTML5 video element for better compatibility
   return (
-    <div className="video-card">
-      <div className="video-card-player">
-        {(() => {
-          if (video.url) {
+    <Card shadow="sm" padding="lg" radius="md" withBorder>
+      <Card.Section>
+        <Box style={{ position: 'relative', backgroundColor: '#000' }}>
+          {(() => {
+            if (video.url) {
+              return (
+                <video
+                  controls
+                  preload="metadata"
+                  style={{ width: '100%', height: 'auto', display: 'block' }}
+                  onError={(e) => {
+                    console.error('Video playback error:', e);
+                    console.warn('Failed to load video from:', video.url);
+                  }}
+                >
+                  <source src={video.url} type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
+              );
+            }
+            if (video.b64_json) {
+              return (
+                <video
+                  controls
+                  preload="metadata"
+                  style={{ width: '100%', height: 'auto', display: 'block' }}
+                >
+                  <source src={`data:video/mp4;base64,${video.b64_json}`} type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
+              );
+            }
             return (
-              <video
-                controls
-                preload="metadata"
-                style={{ width: '100%', height: 'auto', backgroundColor: '#000' }}
-                onError={(e) => {
-                  console.error('Video playback error:', e);
-                  console.warn('Failed to load video from:', video.url);
-                }}
-              >
-                <source src={video.url} type="video/mp4" />
-                Your browser does not support the video tag.
-              </video>
+              <Center h={200} bg="gray.1">
+                <Text c="dimmed">No video available</Text>
+              </Center>
             );
-          }
-          if (video.b64_json) {
-            return (
-              <video
-                controls
-                preload="metadata"
-                style={{ width: '100%', height: 'auto', backgroundColor: '#000' }}
-              >
-                <source src={`data:video/mp4;base64,${video.b64_json}`} type="video/mp4" />
-                Your browser does not support the video tag.
-              </video>
-            );
-          }
-          return <div className="video-placeholder">No video available</div>;
-        })()}
-      </div>
+          })()}
+        </Box>
+      </Card.Section>
       
-      <div className="video-card-content">
-        <div className="video-card-prompt">
+      <Stack gap="sm" mt="md">
+        <Text size="sm" fw={500} lineClamp={2}>
           {task.prompt}
-        </div>
+        </Text>
         
-        <div className="video-card-metadata">
+        <Group gap="xs" wrap="wrap">
           {metadata?.duration ? (
-            <span>{metadata.duration}s</span>
+            <Badge variant="light" size="sm">{metadata.duration}s</Badge>
           ) : null}
           {metadata?.resolution && metadata.resolution !== '' ? (
-            <span>{metadata.resolution}</span>
+            <Badge variant="light" size="sm">{metadata.resolution}</Badge>
           ) : null}
           {metadata?.fps ? (
-            <span>{metadata.fps} FPS</span>
+            <Badge variant="light" size="sm">{metadata.fps} FPS</Badge>
           ) : null}
           {metadata?.file_size_bytes && metadata.file_size_bytes > 0 ? (
-            <span>{formatFileSize(Number(metadata.file_size_bytes))}</span>
+            <Badge variant="light" size="sm">{formatFileSize(Number(metadata.file_size_bytes))}</Badge>
           ) : null}
           {/* Show completion time if no other metadata */}
           {(!metadata || (!metadata.duration && !metadata.resolution && !metadata.fps && !metadata.file_size_bytes)) && (
-            <span>Completed</span>
+            <Badge variant="light" color="green" size="sm">Completed</Badge>
           )}
-        </div>
+        </Group>
         
-        <div className="video-card-actions">
-          <button
+        <Group gap="xs" grow>
+          <Button
             onClick={() => void handleDownload()}
-            className="btn btn-primary btn-sm"
+            size="sm"
+            leftSection={<IconDownload size={16} />}
             disabled={!downloadUrl}
           >
             Download
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={onRemove}
-            className="btn btn-secondary btn-sm"
+            variant="light"
+            size="sm"
+            leftSection={<IconX size={16} />}
           >
             Remove
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </Group>
+      </Stack>
+    </Card>
   );
 }
 

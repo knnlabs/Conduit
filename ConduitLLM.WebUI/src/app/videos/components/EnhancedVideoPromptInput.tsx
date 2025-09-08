@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { Textarea, Button, Group, Text, Stack } from '@mantine/core';
+import { IconVideo } from '@tabler/icons-react';
 import { useVideoStore } from '../hooks/useVideoStore';
 import { useEnhancedVideoGeneration } from '../hooks/useEnhancedVideoGeneration';
 import type { DiscoveryModel } from '@/app/chat/hooks/useDiscoveryModels';
@@ -56,41 +58,46 @@ export default function EnhancedVideoPromptInput({ models, dynamicParameters }: 
     }
   };
 
-
   const isDisabled = isGenerating || !!(currentTask && (currentTask.status === 'pending' || currentTask.status === 'running'));
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); void handleSubmit(e); }} className="video-prompt-section">
-      <textarea
-        className="video-prompt-input"
-        placeholder="Describe the video you want to generate..."
-        value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
-        onKeyDown={(e) => void handleKeyDown(e)}
-        disabled={isDisabled}
-        rows={4}
-      />
-      
-      <div className="video-prompt-controls">
-        <div className="prompt-info">
-          <span className="character-count">{prompt.length} characters</span>
-          {currentTask && (
-            <span className="generation-status">
-              Video generation in progress...
-            </span>
-          )}
-        </div>
+    <form onSubmit={(e) => { e.preventDefault(); void handleSubmit(e); }}>
+      <Stack gap="md">
+        <Textarea
+          label="Video Prompt"
+          placeholder="Describe the video you want to generate..."
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          onKeyDown={(e) => void handleKeyDown(e)}
+          disabled={isDisabled}
+          minRows={4}
+          autosize
+          maxRows={10}
+          description="Press Enter to generate, Shift+Enter for new line"
+        />
         
-        <div className="prompt-actions">
-          <button
+        <Group justify="space-between">
+          <Group gap="md">
+            <Text size="sm" c="dimmed">
+              {prompt.length} characters
+            </Text>
+            {currentTask && (
+              <Text size="sm" c="blue" fw={500}>
+                Video generation in progress...
+              </Text>
+            )}
+          </Group>
+          
+          <Button
             type="submit"
-            className="btn btn-primary"
             disabled={isDisabled || !prompt.trim()}
+            leftSection={<IconVideo size={16} />}
+            loading={isGenerating}
           >
             {isGenerating ? 'Generating...' : 'Generate Video'}
-          </button>
-        </div>
-      </div>
+          </Button>
+        </Group>
+      </Stack>
     </form>
   );
 }
