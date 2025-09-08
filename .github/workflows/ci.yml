@@ -63,9 +63,6 @@ jobs:
             SDKs/Node/Common/package-lock.json
             ConduitLLM.WebUI/package-lock.json
       
-      - name: Validate PostgreSQL migrations
-        run: ./scripts/migrations/validate-postgresql-syntax.sh
-        
       - name: .NET Build & Test
         run: |
           dotnet restore

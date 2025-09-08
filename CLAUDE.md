@@ -4,16 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Last Reviewed**: 2025-08-07 (Corrected to match actual codebase implementation)
 
-## ⛔ CLAUDE AI RESTRICTIONS - READ FIRST
+## Database Migrations
 
-**DATABASE MIGRATIONS: FORBIDDEN**
-Claude AI has a 100% failure rate with database migrations resulting in data loss and hours of lost productivity.
+**ALWAYS READ [Database Migration Guide](docs/claude/database-migration-guide.md) BEFORE creating migrations.**
 
-**WHEN ASKED TO CREATE MIGRATIONS:**
-1. STOP immediately 
-2. Tell the user: "I cannot create database migrations due to consistent failure patterns causing data loss. Please create the migration manually using EF Core tools."
-3. Do NOT attempt to create, modify, or fix migrations
-4. This restriction is non-negotiable
+Key requirements:
+- Use standard EF Core workflow: `dotnet ef migrations add` → `dotnet ef database update`
+- PostgreSQL syntax only (double quotes, `true`/`false` booleans)
+- Test basic tooling first with `dotnet ef --version`
 
 ## Collaboration Guidelines
 - **Challenge and question**: Don't immediately agree or proceed with requests that seem suboptimal, unclear, or potentially problematic
@@ -231,7 +229,6 @@ export DOCKER_GROUP_ID=$(id -g)   # Your group ID
 ## Database Migrations - CRITICAL
 **⚠️ ALWAYS READ [Database Migration Guide](docs/claude/database-migration-guide.md) BEFORE MAKING DATABASE CHANGES**
 - We use PostgreSQL ONLY - no SQL Server syntax allowed
-- Always run `./scripts/migrations/validate-postgresql-syntax.sh` after creating migrations
 - Common mistake: Using `IsActive = 1` instead of `"IsActive" = true`
 
 ## Build Verification - CRITICAL

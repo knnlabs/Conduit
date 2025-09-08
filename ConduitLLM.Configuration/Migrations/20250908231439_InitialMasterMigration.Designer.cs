@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ConduitLLM.Configuration.Migrations
 {
     [DbContext(typeof(ConduitDbContext))]
-    [Migration("20250908223815_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20250908231439_InitialMasterMigration")]
+    partial class InitialMasterMigration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

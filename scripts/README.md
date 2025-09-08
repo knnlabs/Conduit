@@ -69,7 +69,6 @@ Located in `scripts/migrations/`:
 
 - **`ef-wrapper.sh`** - Entity Framework wrapper script
 - **`validate-migrations.sh`** - Validate migration files
-- **`validate-postgresql-syntax.sh`** - **CRITICAL**: Validate PostgreSQL syntax
 - **`reset-dev-migrations.sh`** - Reset development migrations
 - **`fix-production-migrations.sh`** - Fix production migration issues
 - **`clean-build-artifacts.sh`** - Clean build artifacts
@@ -145,10 +144,14 @@ Located in `scripts/migrations/`:
 
 ### Database Migrations
 
-**Always validate PostgreSQL syntax:**
+**Follow standard EF Core workflow:**
 ```bash
-# After creating migrations
-./scripts/migrations/validate-postgresql-syntax.sh
+# Create migration
+cd ConduitLLM.Configuration  # or from root
+dotnet ef migrations add MigrationName
+
+# Apply migration
+dotnet ef database update
 ```
 
 ## Script Naming Conventions
