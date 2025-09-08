@@ -11,14 +11,16 @@ namespace ConduitLLM.Tests.Core.Services
     public class UsageEstimationServiceTests
     {
         private readonly Mock<ITokenCounter> _mockTokenCounter;
+        private readonly Mock<IImageTokenCalculator> _mockImageTokenCalculator;
         private readonly Mock<ILogger<UsageEstimationService>> _mockLogger;
         private readonly UsageEstimationService _service;
 
         public UsageEstimationServiceTests()
         {
             _mockTokenCounter = new Mock<ITokenCounter>();
+            _mockImageTokenCalculator = new Mock<IImageTokenCalculator>();
             _mockLogger = new Mock<ILogger<UsageEstimationService>>();
-            _service = new UsageEstimationService(_mockTokenCounter.Object, _mockLogger.Object);
+            _service = new UsageEstimationService(_mockTokenCounter.Object, _mockImageTokenCalculator.Object, _mockLogger.Object);
         }
 
         [Fact]
@@ -166,6 +168,8 @@ namespace ConduitLLM.Tests.Core.Services
             
             _mockTokenCounter.Setup(x => x.EstimateTokenCountAsync(modelId, inputMessages))
                 .ReturnsAsync(100); // Including image tokens
+            _mockImageTokenCalculator.Setup(x => x.CalculateImageTokensAsync(It.IsAny<ImageUrl>()))
+                .ReturnsAsync(850); // Standard high-res image tokens
             _mockTokenCounter.Setup(x => x.EstimateTokenCountAsync(modelId, streamedContent))
                 .ReturnsAsync(12);
 

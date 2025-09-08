@@ -11,6 +11,7 @@ namespace ConduitLLM.Core.Services
     public class UsageEstimationService : IUsageEstimationService
     {
         private readonly ITokenCounter _tokenCounter;
+        private readonly IImageTokenCalculator _imageTokenCalculator;
         private readonly ILogger<UsageEstimationService> _logger;
         
         /// <summary>
@@ -21,9 +22,11 @@ namespace ConduitLLM.Core.Services
 
         public UsageEstimationService(
             ITokenCounter tokenCounter,
+            IImageTokenCalculator imageTokenCalculator,
             ILogger<UsageEstimationService> logger)
         {
             _tokenCounter = tokenCounter ?? throw new ArgumentNullException(nameof(tokenCounter));
+            _imageTokenCalculator = imageTokenCalculator ?? throw new ArgumentNullException(nameof(imageTokenCalculator));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -78,7 +81,7 @@ namespace ConduitLLM.Core.Services
                 
                 // Fallback to character-based estimation if tokenization fails
                 // Using conservative 4 characters per token estimate
-                var fallbackPromptTokens = EstimateTokensFromCharacters(GetTotalCharacterCount(inputMessages));
+                var fallbackPromptTokens = EstimateTokensFromCharacters(await GetTotalCharacterCountAsync(inputMessages));
                 var fallbackCompletionTokens = EstimateTokensFromCharacters(streamedContent.Length);
                 
                 // Apply conservative buffer
@@ -175,9 +178,9 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <summary>
-        /// Gets the total character count from a list of messages.
+        /// Gets the total character count from a list of messages, including proper image token calculation.
         /// </summary>
-        private int GetTotalCharacterCount(List<Message> messages)
+        private async Task<int> GetTotalCharacterCountAsync(List<Message> messages)
         {
             int totalChars = 0;
             foreach (var message in messages)
@@ -196,25 +199,55 @@ namespace ConduitLLM.Core.Services
                     // Handle multimodal content (list of content parts)
                     foreach (var part in contentParts)
                     {
-                        // Try to handle different content part types dynamically
-                        var partType = part.GetType();
-                        var typeProperty = partType.GetProperty("Type");
-                        if (typeProperty != null)
+                        // Check if it's a known content part type
+                        if (part is TextContentPart textPart)
                         {
-                            var typeValue = typeProperty.GetValue(part)?.ToString();
-                            if (typeValue == "text")
+                            if (!string.IsNullOrEmpty(textPart.Text))
                             {
-                                var textProperty = partType.GetProperty("Text");
-                                var text = textProperty?.GetValue(part)?.ToString();
-                                if (!string.IsNullOrEmpty(text))
-                                {
-                                    totalChars += text.Length;
-                                }
+                                totalChars += textPart.Text.Length;
                             }
-                            else if (typeValue == "image_url")
+                        }
+                        else if (part is ImageUrlContentPart imagePart)
+                        {
+                            try
                             {
-                                // Estimate ~500 chars for image reference (conservative)
-                                totalChars += 500;
+                                // Calculate actual image tokens instead of using fixed estimate
+                                var imageTokens = await _imageTokenCalculator.CalculateImageTokensAsync(imagePart.ImageUrl);
+                                // Convert tokens back to approximate character count (4 chars per token)
+                                totalChars += imageTokens * 4;
+                                _logger.LogDebug("Image tokens calculated: {Tokens} (approx {Chars} chars)", 
+                                    imageTokens, imageTokens * 4);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "Failed to calculate image tokens, using conservative fallback");
+                                // Conservative fallback: assume 850 tokens * 4 chars/token = 3400 chars
+                                totalChars += 3400;
+                            }
+                        }
+                        else
+                        {
+                            // Fallback to reflection for unknown types
+                            var partType = part.GetType();
+                            var typeProperty = partType.GetProperty("Type");
+                            if (typeProperty != null)
+                            {
+                                var typeValue = typeProperty.GetValue(part)?.ToString();
+                                if (typeValue == "text")
+                                {
+                                    var textProperty = partType.GetProperty("Text");
+                                    var text = textProperty?.GetValue(part)?.ToString();
+                                    if (!string.IsNullOrEmpty(text))
+                                    {
+                                        totalChars += text.Length;
+                                    }
+                                }
+                                else if (typeValue == "image_url")
+                                {
+                                    // Conservative fallback for untyped image: 850 tokens * 4 chars/token = 3400 chars
+                                    totalChars += 3400;
+                                    _logger.LogWarning("Using conservative image token estimate for untyped image content");
+                                }
                             }
                         }
                     }

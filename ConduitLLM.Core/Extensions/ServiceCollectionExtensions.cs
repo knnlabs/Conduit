@@ -34,6 +34,9 @@ namespace ConduitLLM.Core.Extensions
             // Register token counter - changed to Scoped to match IModelCapabilityService lifetime
             services.AddScoped<ITokenCounter, TiktokenCounter>();
             
+            // Register image token calculator for accurate vision model billing
+            services.AddScoped<IImageTokenCalculator, ImageTokenCalculator>();
+            
             // Register usage estimation service for streaming responses without usage data
             services.AddScoped<IUsageEstimationService, UsageEstimationService>();
 
