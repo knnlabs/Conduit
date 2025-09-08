@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { createMediaStore, type MediaStore } from '@/app/hooks/createMediaStore';
 import type { VideoTask, VideoSettings } from '../types';
+import { MediaGenerationStatus } from '@/app/types/media';
 
 const LOCAL_STORAGE_KEY = 'conduit-video-generation';
 
@@ -15,7 +16,7 @@ const videoStoreConfig = createMediaStore<VideoTask, VideoSettings>({
   partializeState: (state) => ({
     settings: state.settings,
     taskHistory: state.taskHistory.filter(
-      (task) => task.status === 'completed' || task.status === 'failed'
+      (task) => task.status === MediaGenerationStatus.Completed || task.status === MediaGenerationStatus.Failed
     ),
   }),
 });

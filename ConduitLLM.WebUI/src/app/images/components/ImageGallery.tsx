@@ -29,7 +29,7 @@ import {
   ImageMetadataExtractor,
   MetadataCache
 } from '@/app/utils/metadataExtractor';
-import type { MediaMetadata } from '@/app/types/media';
+import { MediaGenerationStatus, type MediaMetadata } from '@/app/types/media';
 
 export default function ImageGallery() {
   const { currentResults: results, status } = useImageStore();
@@ -296,7 +296,7 @@ export default function ImageGallery() {
   );
 
   // Show empty state if no results and not generating
-  if (status === 'idle' || (status !== 'generating' && results.length === 0)) {
+  if (status === MediaGenerationStatus.Idle || (status !== MediaGenerationStatus.Generating && results.length === 0)) {
     return (
       <Center py="xl">
         <Text c="dimmed">

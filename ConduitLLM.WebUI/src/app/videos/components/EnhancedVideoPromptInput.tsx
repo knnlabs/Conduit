@@ -6,6 +6,7 @@ import { IconVideo } from '@tabler/icons-react';
 import { useVideoStore } from '../hooks/useVideoStore';
 import { useEnhancedVideoGeneration } from '../hooks/useEnhancedVideoGeneration';
 import { MediaPromptInput } from '@/app/components/media';
+import { MediaGenerationStatus } from '@/app/types/media';
 import type { DiscoveryModel } from '@/app/chat/hooks/useDiscoveryModels';
 
 interface VideoPromptInputProps {
@@ -50,7 +51,7 @@ export default function EnhancedVideoPromptInput({ models, dynamicParameters }: 
     }
   }, [prompt, settings, generateVideo, setError, dynamicParameters]);
 
-  const isDisabled = isGenerating || !!(currentTask && (currentTask.status === 'pending' || currentTask.status === 'running'));
+  const isDisabled = isGenerating || !!(currentTask && (currentTask.status === MediaGenerationStatus.Pending || currentTask.status === MediaGenerationStatus.Generating));
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); void handleSubmit(); }}>

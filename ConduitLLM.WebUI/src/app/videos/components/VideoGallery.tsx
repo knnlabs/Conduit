@@ -28,7 +28,7 @@ import {
   MetadataCache,
   type BackendVideoResponse
 } from '@/app/utils/metadataExtractor';
-import type { MediaMetadata } from '@/app/types/media';
+import { MediaGenerationStatus, type MediaMetadata } from '@/app/types/media';
 
 export default function VideoGallery() {
   const { taskHistory, removeTask, clearHistory } = useVideoStore();
@@ -37,7 +37,7 @@ export default function VideoGallery() {
 
   const completedVideos = useMemo(() => {
     // First filter for completed videos with results
-    const completed = taskHistory.filter(task => task.status === 'completed' && task.result);
+    const completed = taskHistory.filter(task => task.status === MediaGenerationStatus.Completed && task.result);
     
     // Then deduplicate by task ID (keep the most recent one)
     const seen = new Set<string>();
@@ -150,7 +150,7 @@ export default function VideoGallery() {
         <MediaCard
           key={task.id}
           prompt={task.prompt}
-          status={task.status as 'pending' | 'running' | 'completed' | 'failed'}
+          status={task.status}
           progress={task.progress}
           error={task.error}
           actions={
@@ -161,7 +161,7 @@ export default function VideoGallery() {
               size="sm"
               fullWidth
             >
-              {task.status === 'pending' || task.status === 'running' ? 'Cancel' : 'Remove'}
+              {task.status === MediaGenerationStatus.Pending || task.status === MediaGenerationStatus.Generating ? 'Cancel' : 'Remove'}
             </Button>
           }
         />

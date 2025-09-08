@@ -3,7 +3,8 @@ import {
   MediaMetadata, 
   MediaUsage,
   RetryHistoryEntry,
-  ResponseFormat 
+  ResponseFormat,
+  MediaGenerationStatus 
 } from '@/app/types/media';
 
 // Re-export for components that use ErrorResponse
@@ -17,7 +18,7 @@ export interface VideoSettings {
 export interface VideoTask {
   id: string;
   prompt: string;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'timedout';
+  status: MediaGenerationStatus;
   progress: number;
   message?: string;
   estimatedTimeToCompletion?: number;
@@ -133,7 +134,7 @@ export const calculateRetryDelay = (retryCount: number): number => {
 
 export const canRetry = (task: VideoTask): boolean => {
   return task.retryCount < VideoDefaults.MAX_RETRY_COUNT && 
-         ['failed', 'timedout'].includes(task.status);
+         task.status === MediaGenerationStatus.Failed;
 };
 
 export interface VideoStoreState {

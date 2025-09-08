@@ -1,6 +1,7 @@
 import { useVideoStore } from '../useVideoStore';
 import * as clientCore from '@/lib/client/browserCoreClient';
 import type { VideoStoreState } from '../../types';
+import { MediaGenerationStatus } from '@/app/types/media';
 
 // Local VideoProgress interface to avoid broken SDK imports
 export interface VideoProgress {
@@ -63,7 +64,7 @@ export const setupMocks = () => {
       ok: true,
       json: () => Promise.resolve({
         task_id: 'mock_task_id',
-        status: 'pending',
+        status: MediaGenerationStatus.Pending,
         progress: 0,
         message: 'Video generation started',
         estimated_time_to_completion: 30,

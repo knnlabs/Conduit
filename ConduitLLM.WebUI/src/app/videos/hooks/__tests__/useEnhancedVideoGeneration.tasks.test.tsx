@@ -4,6 +4,7 @@ import { setupMocks } from './videoTest.helpers';
 import type { VideoTask } from '../../types';
 import * as browserClientModule from '@/lib/client/browserCoreClient';
 import type { VideoProgressCallbacks } from '@knn_labs/conduit-core-client';
+import { MediaGenerationStatus } from '@/app/types/media';
 
 // Mock the browser client module
 jest.mock('@/lib/client/browserCoreClient');
@@ -126,7 +127,7 @@ describe('useEnhancedVideoGeneration - Task Management', () => {
       expect(storeMocks.mockUpdateTask).toHaveBeenCalledWith(
         'task_cancel_123',
         expect.objectContaining({
-          status: 'cancelled',
+          status: MediaGenerationStatus.Cancelled,
         }) as Partial<VideoTask>
       );
 
@@ -138,7 +139,7 @@ describe('useEnhancedVideoGeneration - Task Management', () => {
       const failedTask: VideoTask = {
         id: 'task_retry_789',
         prompt: 'Retry test video',
-        status: 'failed',
+        status: MediaGenerationStatus.Failed,
         progress: 0,
         error: 'Previous failure',
         createdAt: new Date().toISOString(),
@@ -182,7 +183,7 @@ describe('useEnhancedVideoGeneration - Task Management', () => {
       expect(storeMocks.mockUpdateTask).toHaveBeenCalledWith(
         'task_retry_789',
         expect.objectContaining({
-          status: 'pending',
+          status: MediaGenerationStatus.Pending,
           retryCount: 2,
           retryHistory: expect.arrayContaining([
             expect.objectContaining({

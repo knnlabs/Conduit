@@ -4,6 +4,7 @@ import { setupMocks } from './videoTest.helpers';
 import type { VideoTask } from '../../types';
 import * as browserClientModule from '@/lib/client/browserCoreClient';
 import type { VideoProgressCallbacks } from '@knn_labs/conduit-core-client';
+import { MediaGenerationStatus } from '@/app/types/media';
 
 // Mock the browser client module
 jest.mock('@/lib/client/browserCoreClient');
@@ -118,7 +119,7 @@ describe('useEnhancedVideoGeneration - Progress Tracking', () => {
       expect(storeMocks.mockAddTask).toHaveBeenCalledWith(
         expect.objectContaining({
           prompt: 'Test video with progress',
-          status: 'pending',
+          status: MediaGenerationStatus.Pending,
           progress: 0,
           id: 'mock_task_id',
         }) as VideoTask
@@ -139,7 +140,7 @@ describe('useEnhancedVideoGeneration - Progress Tracking', () => {
         'mock_task_id',
         expect.objectContaining({
           progress: 50,
-          status: 'running',
+          status: MediaGenerationStatus.Generating,
         })
       );
     });
@@ -232,7 +233,7 @@ describe('useEnhancedVideoGeneration - Progress Tracking', () => {
       expect(storeMocks.mockAddTask).toHaveBeenCalledWith(
         expect.objectContaining({
           id: 'test-task-123',
-          status: 'pending',
+          status: MediaGenerationStatus.Pending,
           estimatedTimeToCompletion: 60,
         })
       );
@@ -250,7 +251,7 @@ describe('useEnhancedVideoGeneration - Progress Tracking', () => {
       expect(storeMocks.mockUpdateTask).toHaveBeenCalledWith(
         'test-task-123',
         expect.objectContaining({
-          status: 'completed',
+          status: MediaGenerationStatus.Completed,
           progress: 100,
         })
       );

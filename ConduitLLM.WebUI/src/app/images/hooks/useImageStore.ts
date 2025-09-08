@@ -6,6 +6,7 @@ import {
   ImageGenerationResponse,
   GeneratedImage
 } from '../types';
+import { MediaGenerationStatus } from '@/app/types/media';
 import { 
   createToastErrorHandler, 
   shouldShowBalanceWarning
@@ -27,7 +28,7 @@ const imageStoreConfig = createMediaStore<ImageTask, ImageGenerationSettings>({
   partializeState: (state) => ({
     settings: state.settings,
     taskHistory: state.taskHistory.filter(
-      (task) => task.status === 'completed' || task.status === 'failed' || task.status === 'error'
+      (task) => task.status === MediaGenerationStatus.Completed || task.status === MediaGenerationStatus.Failed
     ).slice(0, 10), // Keep only last 10 completed/failed images in storage
   }),
 });
@@ -36,7 +37,7 @@ const imageStoreConfig = createMediaStore<ImageTask, ImageGenerationSettings>({
 interface ImageStoreExtensions {
   // Additional state
   prompt: string;
-  status: 'idle' | 'generating' | 'completed' | 'error';
+  status: MediaGenerationStatus;
   currentResults: GeneratedImage[];
   settingsVisible: boolean;
   
@@ -58,7 +59,7 @@ export const useImageStore = create<ImageStore>()((set, get, api) => ({
   
   // Additional state
   prompt: '',
-  status: 'idle',
+  status: MediaGenerationStatus.Idle,
   currentResults: [],
   settingsVisible: false,
   
@@ -70,12 +71,12 @@ export const useImageStore = create<ImageStore>()((set, get, api) => ({
     const { prompt, settings } = state;
     
     if (!prompt.trim()) {
-      set({ error: 'Please enter a prompt for image generation', status: 'error' });
+      set({ error: 'Please enter a prompt for image generation', status: MediaGenerationStatus.Failed });
       return;
     }
 
     if (!settings.model) {
-      set({ error: 'Please select a model for image generation', status: 'error' });
+      set({ error: 'Please select a model for image generation', status: MediaGenerationStatus.Failed });
       return;
     }
 
@@ -84,7 +85,7 @@ export const useImageStore = create<ImageStore>()((set, get, api) => ({
     const newTask: ImageTask = {
       id: taskId,
       prompt,
-      status: 'generating',
+      status: MediaGenerationStatus.Generating,
       progress: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -95,7 +96,7 @@ export const useImageStore = create<ImageStore>()((set, get, api) => ({
 
     // Add task to history and set as current
     state.addTask(newTask);
-    set({ status: 'generating', currentResults: [], error: null });
+    set({ status: MediaGenerationStatus.Generating, currentResults: [], error: null });
 
     // Create error handler
     const handleError = createToastErrorHandler(notifications.show);
@@ -119,13 +120,13 @@ export const useImageStore = create<ImageStore>()((set, get, api) => ({
 
       // Update task with results
       state.updateTask(taskId, {
-        status: 'completed',
+        status: MediaGenerationStatus.Completed,
         progress: 100,
         result: result as ImageGenerationResponse,
       });
 
       set({ 
-        status: 'completed', 
+        status: MediaGenerationStatus.Completed, 
         currentResults: result.data,
         error: null 
       });
@@ -135,12 +136,12 @@ export const useImageStore = create<ImageStore>()((set, get, api) => ({
       
       // Update task with error
       state.updateTask(taskId, {
-        status: 'error',
+        status: MediaGenerationStatus.Failed,
         error: errorMessage,
       });
       
       set({ 
-        status: 'error', 
+        status: MediaGenerationStatus.Failed, 
         error: errorMessage,
         currentResults: []
       });
@@ -156,7 +157,7 @@ export const useImageStore = create<ImageStore>()((set, get, api) => ({
 
   clearResults: () => set({ 
     currentResults: [], 
-    status: 'idle', 
+    status: MediaGenerationStatus.Idle, 
     error: null,
     currentTask: null 
   }),
@@ -171,7 +172,7 @@ export const useImageStore = create<ImageStore>()((set, get, api) => ({
     }
     
     const latestCompleted = state.taskHistory
-      .filter(task => task.status === 'completed' && task.result)
+      .filter(task => task.status === MediaGenerationStatus.Completed && task.result)
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
     
     return latestCompleted?.result?.data ?? [];

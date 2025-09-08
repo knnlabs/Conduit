@@ -7,6 +7,7 @@ import type {
   VideoTask, 
   VideoGenerationResult
 } from '../types';
+import { MediaGenerationStatus, mapLegacyStatus } from '@/app/types/media';
 import { 
   createToastErrorHandler, 
   shouldShowBalanceWarning,
@@ -91,7 +92,7 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
           const task: VideoTask = {
             id: taskId,
             prompt,
-            status: 'pending',
+            status: MediaGenerationStatus.Pending,
             progress: 0,
             estimatedTimeToCompletion: estimatedSeconds,
             createdAt: new Date().toISOString(),
@@ -105,10 +106,8 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
         onProgress: (progress) => {
           console.warn(`Video generation progress: ${progress.percentage}%`);
           // Map SDK status to VideoTask status
-          let taskStatus: VideoTask['status'] = 'running';
-          if (progress.status === 'completed') taskStatus = 'completed';
-          else if (progress.status === 'failed') taskStatus = 'failed';
-          else if (progress.status === 'cancelled') taskStatus = 'cancelled';
+          // Map SDK status to MediaGenerationStatus
+          const taskStatus = mapLegacyStatus(progress.status);
           
           updateTask(currentTaskId, {
             progress: progress.percentage,
@@ -122,7 +121,7 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
           
           // The SDK returns VideoGenerationResponse, convert to local VideoGenerationResult
           updateTask(currentTaskId, {
-            status: 'completed',
+            status: MediaGenerationStatus.Completed,
             progress: 100,
             result: result as VideoGenerationResult,
             updatedAt: new Date().toISOString(),
@@ -143,7 +142,7 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
           
           // Update task status
           updateTask(currentTaskId, {
-            status: 'failed',
+            status: MediaGenerationStatus.Failed,
             error: errorMessage,
             updatedAt: new Date().toISOString(),
           });
@@ -195,7 +194,7 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
       // Use SDK to cancel the task
       await client.videos.cancelTask(taskId);
 
-      updateTask(taskId, { status: 'cancelled' });
+      updateTask(taskId, { status: MediaGenerationStatus.Cancelled });
       
       // Disconnect SignalR if connected
       await videoSignalRClient.disconnect();
@@ -218,7 +217,7 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
 
       // Update task with retry status
       updateTask(task.id, {
-        status: 'pending',
+        status: MediaGenerationStatus.Pending,
         retryCount: task.retryCount + 1,
         lastRetryAt: new Date().toISOString(),
         retryHistory: [...task.retryHistory, retryHistoryEntry],
@@ -238,7 +237,7 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
       const errorMessage = error instanceof Error ? error.message : 'Failed to retry generation';
       
       updateTask(task.id, {
-        status: 'failed',
+        status: MediaGenerationStatus.Failed,
         error: errorMessage,
         message: 'Retry failed',
         updatedAt: new Date().toISOString(),

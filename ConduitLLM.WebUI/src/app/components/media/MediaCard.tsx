@@ -12,6 +12,7 @@ import {
   Alert
 } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
+import { MediaGenerationStatus } from '@/app/types/media';
 
 /**
  * Common props for media cards
@@ -19,7 +20,7 @@ import { IconAlertCircle } from '@tabler/icons-react';
 export interface MediaCardProps {
   children?: React.ReactNode;
   prompt?: string;
-  status?: 'pending' | 'running' | 'completed' | 'failed' | 'error';
+  status?: MediaGenerationStatus;
   progress?: number;
   error?: string;
   metadata?: React.ReactNode;
@@ -49,13 +50,13 @@ export function MediaCard({
   withBorder = true
 }: MediaCardProps) {
   // Handle pending/loading state
-  if (status === 'pending' || status === 'running') {
+  if (status === MediaGenerationStatus.Pending || status === MediaGenerationStatus.Generating) {
     return (
       <Card shadow={shadow} padding={padding} radius={radius} withBorder={withBorder}>
         <Stack gap="sm">
           {prompt && <Text size="sm" lineClamp={2}>{prompt}</Text>}
           <Badge color="blue" variant="light">
-            {status === 'pending' ? 'Queued' : 'Generating'}
+            {status === MediaGenerationStatus.Pending ? 'Queued' : 'Generating'}
           </Badge>
           {progress !== undefined && (
             <Progress value={progress} size="sm" animated />
@@ -67,7 +68,7 @@ export function MediaCard({
   }
 
   // Handle error state
-  if (status === 'failed' || status === 'error' || error) {
+  if (status === MediaGenerationStatus.Failed || error) {
     return (
       <Card shadow={shadow} padding={padding} radius={radius} withBorder={withBorder}>
         <Stack gap="sm">

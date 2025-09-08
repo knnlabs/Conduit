@@ -4,7 +4,7 @@
 
 import { StateCreator } from 'zustand';
 import { persist, PersistOptions } from 'zustand/middleware';
-import { GenerationStatus } from '@/app/types/media';
+import { MediaGenerationStatus } from '@/app/types/media';
 
 /**
  * Base media task interface
@@ -12,7 +12,7 @@ import { GenerationStatus } from '@/app/types/media';
 export interface MediaTask<TResult = unknown> {
   id: string;
   prompt: string;
-  status: GenerationStatus;
+  status: MediaGenerationStatus;
   progress: number;
   message?: string;
   estimatedTimeToCompletion?: number;
@@ -176,7 +176,7 @@ export function createMediaStore<
           const newTask = {
             id: taskId,
             prompt: '',
-            status: 'pending' as GenerationStatus,
+            status: MediaGenerationStatus.Pending,
             progress: 0,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -218,18 +218,18 @@ export function createMediaStore<
 
     getCompletedTasks: () => {
       const state = get();
-      return state.taskHistory.filter(task => task.status === 'completed');
+      return state.taskHistory.filter(task => task.status === MediaGenerationStatus.Completed);
     },
 
     getFailedTasks: () => {
       const state = get();
-      return state.taskHistory.filter(task => task.status === 'failed' || task.status === 'error');
+      return state.taskHistory.filter(task => task.status === MediaGenerationStatus.Failed);
     },
 
     getPendingTasks: () => {
       const state = get();
       return state.taskHistory.filter(task => 
-        task.status === 'pending' || task.status === 'running' || task.status === 'generating'
+        task.status === MediaGenerationStatus.Pending || task.status === MediaGenerationStatus.Generating
       );
     },
   });
@@ -241,7 +241,7 @@ export function createMediaStore<
       partialize: partializeState ?? ((state: MediaStore<TTask, TSettings>) => ({
         settings: state.settings,
         taskHistory: state.taskHistory.filter(
-          (task) => task.status === 'completed' || task.status === 'failed' || task.status === 'error'
+          (task) => task.status === MediaGenerationStatus.Completed || task.status === MediaGenerationStatus.Failed
         ).slice(0, state.maxHistorySize),
       })),
     };
@@ -267,7 +267,7 @@ export interface SimpleMediaState<TSettings extends MediaSettings, TResult = unk
   // UI State
   prompt: string;
   settings: TSettings;
-  status: GenerationStatus;
+  status: MediaGenerationStatus;
   results: TResult[];
   error?: string;
   
@@ -281,7 +281,7 @@ export interface SimpleMediaState<TSettings extends MediaSettings, TResult = unk
 export interface SimpleMediaActions<TSettings extends MediaSettings, TResult = unknown> {
   setPrompt: (prompt: string) => void;
   updateSettings: (settings: Partial<TSettings>) => void;
-  setStatus: (status: GenerationStatus) => void;
+  setStatus: (status: MediaGenerationStatus) => void;
   setResults: (results: TResult[]) => void;
   clearResults: () => void;
   setError: (error: string | undefined) => void;
@@ -328,7 +328,7 @@ export function createSimpleMediaStore<
     // Initial state
     prompt: '',
     settings: initialSettings,
-    status: 'idle',
+    status: MediaGenerationStatus.Idle,
     results: [],
     error: undefined,
     settingsVisible: false,
@@ -341,11 +341,11 @@ export function createSimpleMediaStore<
         settings: { ...state.settings, ...newSettings },
       })),
     
-    setStatus: (status: GenerationStatus) => set({ status }),
+    setStatus: (status: MediaGenerationStatus) => set({ status }),
     
     setResults: (results: TResult[]) => set({ results }),
     
-    clearResults: () => set({ results: [], status: 'idle', error: undefined }),
+    clearResults: () => set({ results: [], status: MediaGenerationStatus.Idle, error: undefined }),
     
     setError: (error) => set({ error }),
     

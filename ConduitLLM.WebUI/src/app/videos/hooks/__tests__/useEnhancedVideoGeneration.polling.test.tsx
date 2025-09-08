@@ -4,6 +4,7 @@ import { setupMocks } from './videoTest.helpers';
 import type { VideoTask } from '../../types';
 import * as browserClientModule from '@/lib/client/browserCoreClient';
 import type { VideoProgressCallbacks } from '@knn_labs/conduit-core-client';
+import { MediaGenerationStatus } from '@/app/types/media';
 
 // Mock the browser client module
 jest.mock('@/lib/client/browserCoreClient');
@@ -93,7 +94,7 @@ describe('useEnhancedVideoGeneration - Fallback Polling', () => {
       expect(storeMocks.mockAddTask).toHaveBeenCalledWith(
         expect.objectContaining({
           prompt: 'Polling test',
-          status: 'pending',
+          status: MediaGenerationStatus.Pending,
           progress: 0,
         }) as VideoTask
       );
@@ -188,7 +189,7 @@ describe('useEnhancedVideoGeneration - Fallback Polling', () => {
       expect(storeMocks.mockUpdateTask).toHaveBeenCalledWith(
         'polling_task_id',
         expect.objectContaining({
-          status: 'completed',
+          status: MediaGenerationStatus.Completed,
           progress: 100,
         })
       );

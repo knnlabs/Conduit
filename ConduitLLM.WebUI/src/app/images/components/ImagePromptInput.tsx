@@ -5,6 +5,7 @@ import { Button, Group } from '@mantine/core';
 import { IconPalette, IconTrash } from '@tabler/icons-react';
 import { useImageStore } from '../hooks/useImageStore';
 import { MediaPromptInput } from '@/app/components/media';
+import { MediaGenerationStatus } from '@/app/types/media';
 
 interface ImagePromptInputProps {
   dynamicParameters?: Record<string, unknown>;
@@ -37,7 +38,7 @@ export default function ImagePromptInput({ dynamicParameters }: ImagePromptInput
     clearResults();
   }, [clearResults]);
 
-  const isGenerating = status === 'generating';
+  const isGenerating = status === MediaGenerationStatus.Generating;
 
   return (
     <>
@@ -54,7 +55,7 @@ export default function ImagePromptInput({ dynamicParameters }: ImagePromptInput
       />
       
       <Group justify="flex-end" mt="md">
-        {status === 'completed' && (
+        {status === MediaGenerationStatus.Completed && (
           <Button
             onClick={handleClear}
             variant="subtle"

@@ -3,7 +3,8 @@
 import { 
   MediaData,
   Quality,
-  Style
+  Style,
+  MediaGenerationStatus
 } from '@/app/types/media';
 
 // Re-export for components that use ErrorResponse
@@ -54,7 +55,7 @@ export interface GeneratedImage extends ImageData {
 export interface ImageTask {
   id: string;
   prompt: string;
-  status: 'pending' | 'generating' | 'completed' | 'failed' | 'error';
+  status: MediaGenerationStatus;
   progress: number;
   message?: string;
   estimatedTimeToCompletion?: number;

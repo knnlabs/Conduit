@@ -26,12 +26,12 @@ import {
   IconHourglass,
   IconCircleCheck,
   IconCircleX,
-  IconBan,
-  IconAlarm
+  IconBan
 } from '@tabler/icons-react';
 import { useVideoStore } from '../hooks/useVideoStore';
 import { useEnhancedVideoGeneration } from '../hooks/useEnhancedVideoGeneration';
 import { canRetry, type VideoTask } from '../types';
+import { MediaGenerationStatus, isActiveStatus } from '@/app/types/media';
 import { TimeDisplay } from '@/components/common/TimeDisplay';
 
 // Retry button component
@@ -71,7 +71,7 @@ export default function VideoQueue() {
     return null;
   }
 
-  const isActive = currentTask.status === 'pending' || currentTask.status === 'running';
+  const isActive = isActiveStatus(currentTask.status);
 
   return (
     <Paper shadow="sm" p="md" radius="md" withBorder>
@@ -131,15 +131,15 @@ export default function VideoQueue() {
               </Button>
             )}
             
-            {(currentTask.status === 'failed' || currentTask.status === 'timedout') && (
+            {currentTask.status === MediaGenerationStatus.Failed && (
               <RetryButton task={currentTask} onRetry={(task: VideoTask) => retryGeneration(task)} />
             )}
           </Group>
           
-          {(currentTask.status === 'failed' || currentTask.status === 'timedout' || currentTask.status === 'cancelled') && currentTask.error && (
+          {(currentTask.status === MediaGenerationStatus.Failed || currentTask.status === MediaGenerationStatus.Cancelled) && currentTask.error && (
             <Alert 
               icon={<IconAlertCircle size={16} />} 
-              color={currentTask.status === 'cancelled' ? 'orange' : 'red'}
+              color={currentTask.status === MediaGenerationStatus.Cancelled ? 'orange' : 'red'}
               variant="light"
             >
               {currentTask.error}
@@ -181,40 +181,38 @@ export default function VideoQueue() {
   );
 }
 
-function getStatusIcon(status: string): React.ReactNode {
+function getStatusIcon(status: MediaGenerationStatus): React.ReactNode {
   const iconProps = { size: 16 };
   switch (status) {
-    case 'pending':
+    case MediaGenerationStatus.Pending:
       return <IconClock {...iconProps} />;
-    case 'running':
+    case MediaGenerationStatus.Generating:
       return <IconHourglass {...iconProps} />;
-    case 'completed':
+    case MediaGenerationStatus.Completed:
       return <IconCircleCheck {...iconProps} color="green" />;
-    case 'failed':
+    case MediaGenerationStatus.Failed:
       return <IconCircleX {...iconProps} color="red" />;
-    case 'cancelled':
+    case MediaGenerationStatus.Cancelled:
       return <IconBan {...iconProps} color="orange" />;
-    case 'timedout':
-      return <IconAlarm {...iconProps} color="red" />;
+    case MediaGenerationStatus.Idle:
     default:
       return <IconAlertCircle {...iconProps} />;
   }
 }
 
-function getStatusText(status: string): string {
+function getStatusText(status: MediaGenerationStatus): string {
   switch (status) {
-    case 'pending':
+    case MediaGenerationStatus.Pending:
       return 'Queued';
-    case 'running':
+    case MediaGenerationStatus.Generating:
       return 'Generating';
-    case 'completed':
+    case MediaGenerationStatus.Completed:
       return 'Completed';
-    case 'failed':
+    case MediaGenerationStatus.Failed:
       return 'Failed';
-    case 'cancelled':
+    case MediaGenerationStatus.Cancelled:
       return 'Cancelled';
-    case 'timedout':
-      return 'Timed Out';
+    case MediaGenerationStatus.Idle:
     default:
       return status;
   }

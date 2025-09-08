@@ -22,6 +22,7 @@ import { ModelCapability } from '@knn_labs/conduit-core-client';
 import ImageSettings from './ImageSettings';
 import ImagePromptInput from './ImagePromptInput';
 import ImageGallery from './ImageGallery';
+import { MediaGenerationStatus } from '@/app/types/media';
 
 export default function ImageInterface() {
   const {
@@ -156,16 +157,16 @@ export default function ImageInterface() {
       )}
 
       {/* Status Display */}
-      {status !== 'idle' && (
+      {status !== MediaGenerationStatus.Idle && (
         <Alert
           color={(() => {
-            if (status === 'generating') return 'blue';
-            if (status === 'completed') return 'green';
+            if (status === MediaGenerationStatus.Generating) return 'blue';
+            if (status === MediaGenerationStatus.Completed) return 'green';
             return 'red';
           })()}
           title={(() => {
-            if (status === 'generating') return 'Generating images...';
-            if (status === 'completed') return 'Images generated successfully!';
+            if (status === MediaGenerationStatus.Generating) return 'Generating images...';
+            if (status === MediaGenerationStatus.Completed) return 'Images generated successfully!';
             return 'Generation failed';
           })()}
         />
