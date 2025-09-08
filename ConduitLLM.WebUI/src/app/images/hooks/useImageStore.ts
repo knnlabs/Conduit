@@ -24,10 +24,10 @@ const imageStoreConfig = createMediaStore<ImageTask, ImageGenerationSettings>({
   },
   maxHistorySize: 20,
   persistHistory: true,
-  partializeState: (state: MediaStore<ImageTask, ImageGenerationSettings>) => ({
+  partializeState: (state) => ({
     settings: state.settings,
     taskHistory: state.taskHistory.filter(
-      (task: ImageTask) => task.status === 'completed' || task.status === 'failed' || task.status === 'error'
+      (task) => task.status === 'completed' || task.status === 'failed' || task.status === 'error'
     ).slice(0, 10), // Keep only last 10 completed/failed images in storage
   }),
 });

@@ -12,6 +12,9 @@ export type {
   MediaPlaceholderProps 
 } from './MediaCard';
 
+export { MediaPromptInput, useMediaPrompt } from './MediaPromptInput';
+export type { MediaPromptInputProps } from './MediaPromptInput';
+
 // Re-export media download utilities
 export {
   downloadMedia,

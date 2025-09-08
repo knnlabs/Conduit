@@ -12,10 +12,10 @@ const videoStoreConfig = createMediaStore<VideoTask, VideoSettings>({
   },
   maxHistorySize: 20,
   persistHistory: true,
-  partializeState: (state: MediaStore<VideoTask, VideoSettings>) => ({
+  partializeState: (state) => ({
     settings: state.settings,
     taskHistory: state.taskHistory.filter(
-      (task: VideoTask) => task.status === 'completed' || task.status === 'failed'
+      (task) => task.status === 'completed' || task.status === 'failed'
     ),
   }),
 });

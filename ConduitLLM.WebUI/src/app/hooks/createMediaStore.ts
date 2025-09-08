@@ -89,12 +89,12 @@ export type MediaStore<
 /**
  * Options for creating a media store
  */
-export interface CreateMediaStoreOptions<TSettings extends MediaSettings> {
+export interface CreateMediaStoreOptions<TSettings extends MediaSettings, TTask extends MediaTask = MediaTask> {
   name: string;
   initialSettings: TSettings;
   maxHistorySize?: number;
   persistHistory?: boolean;
-  partializeState?: (state: unknown) => unknown;
+  partializeState?: (state: MediaStore<TTask, TSettings>) => Partial<MediaStore<TTask, TSettings>>;
 }
 
 /**
@@ -104,7 +104,7 @@ export function createMediaStore<
   TTask extends MediaTask = MediaTask,
   TSettings extends MediaSettings = MediaSettings
 >(
-  options: CreateMediaStoreOptions<TSettings>
+  options: CreateMediaStoreOptions<TSettings, TTask>
 ): StateCreator<
   MediaStore<TTask, TSettings>,
   [],
@@ -238,7 +238,7 @@ export function createMediaStore<
   if (persistHistory) {
     const persistOptions: PersistOptions<MediaStore<TTask, TSettings>, Partial<MediaStore<TTask, TSettings>>> = {
       name,
-      partialize: partializeState ?? ((state) => ({
+      partialize: partializeState ?? ((state: MediaStore<TTask, TSettings>) => ({
         settings: state.settings,
         taskHistory: state.taskHistory.filter(
           (task) => task.status === 'completed' || task.status === 'failed' || task.status === 'error'

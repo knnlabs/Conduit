@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Textarea, Button, Group, Text, Stack } from '@mantine/core';
+import { Button, Group, Text, Stack } from '@mantine/core';
 import { IconVideo } from '@tabler/icons-react';
 import { useVideoStore } from '../hooks/useVideoStore';
 import { useEnhancedVideoGeneration } from '../hooks/useEnhancedVideoGeneration';
+import { MediaPromptInput } from '@/app/components/media';
 import type { DiscoveryModel } from '@/app/chat/hooks/useDiscoveryModels';
 
 interface VideoPromptInputProps {
@@ -22,9 +23,7 @@ export default function EnhancedVideoPromptInput({ models, dynamicParameters }: 
     fallbackToPolling: true,
   });
 
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleSubmit = useCallback(async () => {
     if (!prompt.trim()) {
       setError('Please enter a prompt');
       return;
@@ -51,43 +50,31 @@ export default function EnhancedVideoPromptInput({ models, dynamicParameters }: 
     }
   }, [prompt, settings, generateVideo, setError, dynamicParameters]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      void handleSubmit(e as React.FormEvent);
-    }
-  };
-
   const isDisabled = isGenerating || !!(currentTask && (currentTask.status === 'pending' || currentTask.status === 'running'));
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); void handleSubmit(e); }}>
+    <form onSubmit={(e) => { e.preventDefault(); void handleSubmit(); }}>
       <Stack gap="md">
-        <Textarea
+        <MediaPromptInput
+          value={prompt}
+          onChange={setPrompt}
+          onSubmit={() => void handleSubmit()}
           label="Video Prompt"
           placeholder="Describe the video you want to generate..."
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={(e) => void handleKeyDown(e)}
           disabled={isDisabled}
-          minRows={4}
-          autosize
-          maxRows={10}
-          description="Press Enter to generate, Shift+Enter for new line"
-        />
-        
-        <Group justify="space-between">
-          <Group gap="md">
-            <Text size="sm" c="dimmed">
-              {prompt.length} characters
-            </Text>
-            {currentTask && (
+          isLoading={isGenerating}
+          submitShortcut="enter"
+          showCharCount={true}
+          additionalInfo={
+            currentTask && (
               <Text size="sm" c="blue" fw={500}>
                 Video generation in progress...
               </Text>
-            )}
-          </Group>
-          
+            )
+          }
+        />
+        
+        <Group justify="flex-end">
           <Button
             type="submit"
             disabled={isDisabled || !prompt.trim()}
