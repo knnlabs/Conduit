@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@/app/test-utils';
 import '@testing-library/jest-dom';
-import userEvent from '@testing-library/user-event';
+// import userEvent from '@testing-library/user-event';
 import ImagePromptInput from '../ImagePromptInput';
 import { useImageStore } from '../../hooks/useImageStore';
 import { MediaGenerationStatus } from '@/app/types/media';
@@ -18,19 +18,28 @@ jest.mock('@/app/components/media', () => ({
     placeholder,
     label,
     submitShortcut
-  }: any) => (
+  }: {
+    value: string;
+    onChange: (value: string) => void;
+    onSubmit: () => void;
+    disabled?: boolean;
+    isLoading?: boolean;
+    placeholder?: string;
+    label?: string;
+    submitShortcut?: string;
+  }) => (
     <div data-testid="media-prompt-input">
       <label>{label}</label>
       <textarea
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)}
         disabled={disabled}
         placeholder={placeholder}
         data-testid="prompt-textarea"
       />
       <button 
         onClick={onSubmit} 
-        disabled={disabled || isLoading}
+        disabled={disabled ?? isLoading}
         data-testid="submit-button"
       >
         {isLoading ? 'Generating...' : 'Generate'}
@@ -57,7 +66,7 @@ describe('ImagePromptInput', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseImageStore.mockReturnValue(defaultMockStore as any);
+    mockUseImageStore.mockReturnValue(defaultMockStore as unknown as ReturnType<typeof useImageStore>);
   });
 
   describe('Rendering', () => {
@@ -73,7 +82,7 @@ describe('ImagePromptInput', () => {
       mockUseImageStore.mockReturnValue({
         ...defaultMockStore,
         prompt: 'A beautiful sunset'
-      } as any);
+      } as unknown as ReturnType<typeof useImageStore>);
 
       render(<ImagePromptInput />);
       
@@ -109,7 +118,7 @@ describe('ImagePromptInput', () => {
       mockUseImageStore.mockReturnValue({
         ...defaultMockStore,
         prompt: 'Generate this image'
-      } as any);
+      } as unknown as ReturnType<typeof useImageStore>);
 
       render(<ImagePromptInput />);
       
@@ -135,7 +144,7 @@ describe('ImagePromptInput', () => {
         ...defaultMockStore,
         prompt: 'Generate this',
         settings: { model: '' }
-      } as any);
+      } as unknown as ReturnType<typeof useImageStore>);
 
       render(<ImagePromptInput />);
       
@@ -153,7 +162,7 @@ describe('ImagePromptInput', () => {
       mockUseImageStore.mockReturnValue({
         ...defaultMockStore,
         status: MediaGenerationStatus.Generating
-      } as any);
+      } as unknown as ReturnType<typeof useImageStore>);
 
       render(<ImagePromptInput />);
       
@@ -168,7 +177,7 @@ describe('ImagePromptInput', () => {
       mockUseImageStore.mockReturnValue({
         ...defaultMockStore,
         status: MediaGenerationStatus.Generating
-      } as any);
+      } as unknown as ReturnType<typeof useImageStore>);
 
       render(<ImagePromptInput />);
       
@@ -181,7 +190,7 @@ describe('ImagePromptInput', () => {
       mockUseImageStore.mockReturnValue({
         ...defaultMockStore,
         error: 'Failed to generate image'
-      } as any);
+      } as unknown as ReturnType<typeof useImageStore>);
 
       render(<ImagePromptInput />);
       
@@ -195,7 +204,7 @@ describe('ImagePromptInput', () => {
         ...defaultMockStore,
         status: MediaGenerationStatus.Failed,
         error: 'Generation failed'
-      } as any);
+      } as unknown as ReturnType<typeof useImageStore>);
 
       render(<ImagePromptInput />);
       
@@ -212,7 +221,7 @@ describe('ImagePromptInput', () => {
       mockUseImageStore.mockReturnValue({
         ...defaultMockStore,
         prompt: 'Test prompt'
-      } as any);
+      } as unknown as ReturnType<typeof useImageStore>);
 
       render(<ImagePromptInput />);
       
@@ -233,7 +242,7 @@ describe('ImagePromptInput', () => {
       mockUseImageStore.mockReturnValue({
         ...defaultMockStore,
         prompt: 'Test prompt'
-      } as any);
+      } as unknown as ReturnType<typeof useImageStore>);
 
       render(<ImagePromptInput />);
       
@@ -254,7 +263,7 @@ describe('ImagePromptInput', () => {
       mockUseImageStore.mockReturnValue({
         ...defaultMockStore,
         prompt: 'This is a test prompt'
-      } as any);
+      } as unknown as ReturnType<typeof useImageStore>);
 
       render(<ImagePromptInput />);
       
@@ -281,8 +290,6 @@ describe('ImagePromptInput', () => {
       render(<ImagePromptInput />);
       
       const textarea = screen.getByTestId('prompt-textarea');
-      const submitButton = screen.getByTestId('submit-button');
-      
       // Test tab navigation
       textarea.focus();
       expect(document.activeElement).toBe(textarea);

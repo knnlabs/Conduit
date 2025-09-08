@@ -1,7 +1,7 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useImageStore } from '../useImageStore';
 import { MediaGenerationStatus } from '@/app/types/media';
-import type { ImageTask, GeneratedImage } from '../../types';
+import type { ImageTask } from '../../types';
 
 // Mock the browser client
 jest.mock('@/lib/client/browserCoreClient', () => ({
@@ -21,7 +21,7 @@ jest.mock('@mantine/notifications', () => ({
 
 // Mock the createMediaStore
 jest.mock('@/app/hooks/createMediaStore', () => ({
-  createMediaStore: jest.fn((options) => (set: any, get: any, api: any) => ({
+  createMediaStore: jest.fn((options: { initialSettings: unknown }) => (set: (fn: (state: unknown) => unknown) => void) => ({
     error: null,
     settings: options.initialSettings,
     currentTask: null,
@@ -29,19 +29,19 @@ jest.mock('@/app/hooks/createMediaStore', () => ({
     maxHistorySize: 20,
     persistHistory: true,
     
-    updateSettings: (updates: any) => set((state: any) => ({
+    updateSettings: (updates: Record<string, unknown>) => set((state: { settings: Record<string, unknown> }) => ({
       settings: { ...state.settings, ...updates }
     })),
     
     setError: (error: string | null) => set({ error }),
     
-    addTask: (task: any) => set((state: any) => ({
+    addTask: (task: unknown) => set((state: { taskHistory: unknown[]; maxHistorySize: number }) => ({
       taskHistory: [task, ...state.taskHistory].slice(0, state.maxHistorySize),
       currentTask: task
     })),
     
-    updateTask: (taskId: string, updates: any) => set((state: any) => ({
-      taskHistory: state.taskHistory.map((t: any) =>
+    updateTask: (taskId: string, updates: Record<string, unknown>) => set((state: { taskHistory: Array<{ id: string; [key: string]: unknown }>; currentTask: { id: string; [key: string]: unknown } | null }) => ({
+      taskHistory: state.taskHistory.map((t: { id: string; [key: string]: unknown }) =>
         t.id === taskId ? { ...t, ...updates, updatedAt: new Date().toISOString() } : t
       ),
       currentTask: state.currentTask?.id === taskId 
@@ -49,8 +49,8 @@ jest.mock('@/app/hooks/createMediaStore', () => ({
         : state.currentTask
     })),
     
-    removeTask: (taskId: string) => set((state: any) => ({
-      taskHistory: state.taskHistory.filter((t: any) => t.id !== taskId),
+    removeTask: (taskId: string) => set((state: { taskHistory: Array<{ id: string; [key: string]: unknown }>; currentTask: { id: string; [key: string]: unknown } | null }) => ({
+      taskHistory: state.taskHistory.filter((t: { id: string }) => t.id !== taskId),
       currentTask: state.currentTask?.id === taskId ? null : state.currentTask
     })),
     
@@ -60,12 +60,12 @@ jest.mock('@/app/hooks/createMediaStore', () => ({
 
 // Mock error handler
 jest.mock('@knn_labs/conduit-core-client', () => ({
-  createToastErrorHandler: jest.fn(() => jest.fn((error: any) => {
-    if (error?.message) return error.message;
+  createToastErrorHandler: jest.fn(() => jest.fn((error: { message?: string } | string) => {
+    if (typeof error === 'object' && error?.message) return error.message;
     if (typeof error === 'string') return error;
     return 'An error occurred';
   })),
-  shouldShowBalanceWarning: jest.fn((error: any) => {
+  shouldShowBalanceWarning: jest.fn((error: { code?: string }) => {
     return error?.code === 'insufficient_balance';
   })
 }));
@@ -177,7 +177,9 @@ describe('useImageStore', () => {
         }
       };
 
-      const { getBrowserCoreClient } = require('@/lib/client/browserCoreClient');
+      const { getBrowserCoreClient } = jest.requireMock('@/lib/client/browserCoreClient') as {
+        getBrowserCoreClient: jest.MockedFunction<() => Promise<typeof mockClient>>;
+      };
       getBrowserCoreClient.mockResolvedValue(mockClient);
 
       const { result } = renderHook(() => useImageStore());
@@ -216,7 +218,9 @@ describe('useImageStore', () => {
         }
       };
 
-      const { getBrowserCoreClient } = require('@/lib/client/browserCoreClient');
+      const { getBrowserCoreClient } = jest.requireMock('@/lib/client/browserCoreClient') as {
+        getBrowserCoreClient: jest.MockedFunction<() => Promise<typeof mockClient>>;
+      };
       getBrowserCoreClient.mockResolvedValue(mockClient);
 
       const { result } = renderHook(() => useImageStore());
@@ -245,7 +249,9 @@ describe('useImageStore', () => {
         }
       };
 
-      const { getBrowserCoreClient } = require('@/lib/client/browserCoreClient');
+      const { getBrowserCoreClient } = jest.requireMock('@/lib/client/browserCoreClient') as {
+        getBrowserCoreClient: jest.MockedFunction<() => Promise<typeof mockClient>>;
+      };
       getBrowserCoreClient.mockResolvedValue(mockClient);
 
       const { result } = renderHook(() => useImageStore());
@@ -273,7 +279,9 @@ describe('useImageStore', () => {
         }
       };
 
-      const { getBrowserCoreClient } = require('@/lib/client/browserCoreClient');
+      const { getBrowserCoreClient } = jest.requireMock('@/lib/client/browserCoreClient') as {
+        getBrowserCoreClient: jest.MockedFunction<() => Promise<typeof mockClient>>;
+      };
       getBrowserCoreClient.mockResolvedValue(mockClient);
 
       const { result } = renderHook(() => useImageStore());
@@ -301,7 +309,7 @@ describe('useImageStore', () => {
 
       // Set some results first
       act(() => {
-        (result.current as any).currentResults = [
+        (result.current as unknown as { currentResults: Array<{ url: string }> }).currentResults = [
           { url: 'https://example.com/image.jpg' }
         ];
       });

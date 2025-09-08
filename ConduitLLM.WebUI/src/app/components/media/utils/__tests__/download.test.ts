@@ -14,8 +14,10 @@ import {
 global.fetch = jest.fn();
 
 // Mock URL.createObjectURL and URL.revokeObjectURL
-global.URL.createObjectURL = jest.fn(() => 'blob:mock-url');
-global.URL.revokeObjectURL = jest.fn();
+const mockCreateObjectURL = jest.fn(() => 'blob:mock-url');
+const mockRevokeObjectURL = jest.fn();
+global.URL.createObjectURL = mockCreateObjectURL;
+global.URL.revokeObjectURL = mockRevokeObjectURL;
 
 // Mock document.createElement and click
 const mockClick = jest.fn();
@@ -167,12 +169,12 @@ describe('download utilities', () => {
       const blob = new Blob(['test'], { type: 'text/plain' });
       triggerDownload(blob, 'test.txt');
       
-      expect(global.URL.createObjectURL).toHaveBeenCalledWith(blob);
+      expect(mockCreateObjectURL).toHaveBeenCalledWith(blob);
       expect(mockClick).toHaveBeenCalled();
       
       // revokeObjectURL is called after a 100ms timeout
-      setTimeout(() => {
-        expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+      setTimeout((): void => {
+        expect(mockRevokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
         done();
       }, 150);
     });
@@ -243,7 +245,7 @@ describe('download utilities', () => {
     it('should reject if filename is not provided', async () => {
       const result = await downloadMedia({
         url: 'https://example.com/test.jpg'
-      } as any);
+      } as Parameters<typeof downloadMedia>[0]);
 
       expect(result.success).toBe(false);
       expect(result.error).toBeInstanceOf(Error);
