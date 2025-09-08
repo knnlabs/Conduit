@@ -47,6 +47,10 @@ export type ImageGenerationStatus = 'idle' | 'generating' | 'completed' | 'error
 // Extend ImageData with UI-specific properties
 export interface GeneratedImage extends ImageData {
   id?: string; // UI-specific property for tracking
+  width?: number; // Image width in pixels
+  height?: number; // Image height in pixels
+  sizeBytes?: number; // File size in bytes
+  format?: string; // Image format (png, jpeg, etc.)
 }
 
 

@@ -1,15 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Card, SimpleGrid, Text, Button, Group, Modal, Center } from '@mantine/core';
-import { IconDownload, IconZoomIn } from '@tabler/icons-react';
+import { Card, SimpleGrid, Text, Button, Group, Modal, Center, Stack, Badge } from '@mantine/core';
+import { IconDownload, IconZoomIn, IconDimensions, IconFile } from '@tabler/icons-react';
 import { useImageStore } from '../hooks/useImageStore';
 import { GeneratedImage } from '../types';
 
 export default function ImageGallery() {
   const { results, status } = useImageStore();
   const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
+  const [imageMetadata, setImageMetadata] = useState<Record<string, GeneratedImage>>({});
 
   const handleDownload = async (image: GeneratedImage, index: number) => {
     try {
@@ -66,11 +67,95 @@ export default function ImageGallery() {
   };
 
   const handleImageClick = (image: GeneratedImage) => {
-    setSelectedImage(image);
+    // Merge stored metadata with the image
+    const imageKey = image.url ?? image.b64_json ?? '';
+    const enrichedImage = imageMetadata[imageKey] ? { ...image, ...imageMetadata[imageKey] } : image;
+    setSelectedImage(enrichedImage);
   };
 
   const closeModal = () => {
     setSelectedImage(null);
+  };
+
+  // Function to extract image metadata
+  const extractImageMetadata = async (image: GeneratedImage): Promise<Partial<GeneratedImage>> => {
+    const src = getImageSrc(image);
+    if (!src) return {};
+
+    return new Promise((resolve) => {
+      const img = new window.Image();
+      img.onload = async () => {
+        const metadata: Partial<GeneratedImage> = {
+          width: img.width,
+          height: img.height,
+        };
+
+        // Try to get file size
+        if (image.b64_json) {
+          // Calculate size from base64
+          const base64Length = image.b64_json.length;
+          const padding = (image.b64_json.match(/=/g) ?? []).length;
+          metadata.sizeBytes = Math.floor((base64Length * 3) / 4) - padding;
+          metadata.format = 'png'; // Base64 images are typically PNG
+        } else if (image.url) {
+          // For URLs, try to fetch headers to get size
+          try {
+            const response = await fetch(image.url, { method: 'HEAD' });
+            const contentLength = response.headers.get('content-length');
+            if (contentLength) {
+              metadata.sizeBytes = parseInt(contentLength, 10);
+            }
+            const contentType = response.headers.get('content-type');
+            if (contentType) {
+              metadata.format = contentType.split('/')[1] ?? 'unknown';
+            }
+          } catch (error) {
+            console.warn('Failed to fetch image headers:', error);
+          }
+        }
+
+        resolve(metadata);
+      };
+      img.onerror = () => resolve({});
+      img.src = src;
+    });
+  };
+
+  // Extract metadata for all images when they change
+  useEffect(() => {
+    const extractAllMetadata = async () => {
+      const metadataMap: Record<string, GeneratedImage> = {};
+      
+      for (const image of results) {
+        const imageKey = image.url ?? image.b64_json ?? '';
+        if (imageKey && !imageMetadata[imageKey]) {
+          const metadata = await extractImageMetadata(image);
+          metadataMap[imageKey] = metadata as GeneratedImage;
+        }
+      }
+      
+      if (Object.keys(metadataMap).length > 0) {
+        setImageMetadata(prev => ({ ...prev, ...metadataMap }));
+      }
+    };
+
+    void extractAllMetadata();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [results]);
+
+  // Helper function to format file size
+  const formatFileSize = (bytes?: number): string => {
+    if (!bytes) return 'Unknown';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let size = bytes;
+    let unitIndex = 0;
+    
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex++;
+    }
+    
+    return `${size.toFixed(1)} ${units[unitIndex]}`;
   };
 
   if (status === 'idle' || (status !== 'generating' && results.length === 0)) {
@@ -186,26 +271,73 @@ export default function ImageGallery() {
         opened={!!selectedImage}
         onClose={closeModal}
         size="xl"
-        title={selectedImage?.revised_prompt ? "Generated Image" : undefined}
+        title="Image Details"
         centered
       >
         {selectedImage && (
-          <div style={{ position: 'relative', width: '100%', height: '70vh' }}>
-            <Image
-              src={getImageSrc(selectedImage)}
-              alt={selectedImage.revised_prompt ?? 'Generated image'}
-              fill
-              style={{ objectFit: 'contain' }}
-              unoptimized={true}
-            />
+          <Stack>
+            {/* Metadata badges */}
+            <Group gap="xs">
+              {selectedImage.width && selectedImage.height && (
+                <Badge 
+                  leftSection={<IconDimensions size={14} />}
+                  variant="light"
+                  color="blue"
+                >
+                  {selectedImage.width} × {selectedImage.height}px
+                </Badge>
+              )}
+              {selectedImage.sizeBytes && (
+                <Badge 
+                  leftSection={<IconFile size={14} />}
+                  variant="light"
+                  color="green"
+                >
+                  {formatFileSize(selectedImage.sizeBytes)}
+                </Badge>
+              )}
+              {selectedImage.format && (
+                <Badge variant="light" color="gray">
+                  {selectedImage.format.toUpperCase()}
+                </Badge>
+              )}
+            </Group>
+
+            {/* Image display */}
+            <div style={{ position: 'relative', width: '100%', height: '60vh' }}>
+              <Image
+                src={getImageSrc(selectedImage)}
+                alt={selectedImage.revised_prompt ?? 'Generated image'}
+                fill
+                style={{ objectFit: 'contain' }}
+                unoptimized={true}
+              />
+            </div>
+
+            {/* Revised prompt if available */}
             {selectedImage.revised_prompt && (
-              <div style={{ marginTop: '1rem', position: 'absolute', bottom: 0, left: 0, right: 0 }}>
+              <div>
+                <Text size="sm" fw={500} mb={4}>Revised Prompt:</Text>
                 <Text size="sm" c="dimmed">
-                  <strong>Revised Prompt:</strong> {selectedImage.revised_prompt}
+                  {selectedImage.revised_prompt}
                 </Text>
               </div>
             )}
-          </div>
+
+            {/* Download button */}
+            <Button
+              leftSection={<IconDownload size={16} />}
+              onClick={() => {
+                const index = results.findIndex(img => 
+                  (img.url === selectedImage.url && img.b64_json === selectedImage.b64_json) ||
+                  img.id === selectedImage.id
+                );
+                void handleDownload(selectedImage, index);
+              }}
+            >
+              Download Image
+            </Button>
+          </Stack>
         )}
       </Modal>
     </>
