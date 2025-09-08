@@ -13,7 +13,7 @@ import {
   IconX
 } from '@tabler/icons-react';
 import { useVideoStore } from '../hooks/useVideoStore';
-import type { VideoTask, VideoData } from '../types';
+import type { VideoTask } from '../types';
 import { 
   MediaGallery, 
   MediaCard, 
@@ -23,11 +23,13 @@ import {
   formatFileSize
 } from '@/app/components/media';
 import { 
-  normalizeBackendVideoResponse,
   VideoMetadataExtractor,
-  MetadataCache,
-  type BackendVideoResponse
+  MetadataCache
 } from '@/app/utils/metadataExtractor';
+import { 
+  extractVideoFromTaskResult,
+  createVideoCacheKey
+} from '@/app/utils/responseNormalizer';
 import { MediaGenerationStatus, type MediaMetadata } from '@/app/types/media';
 
 export default function VideoGallery() {
@@ -61,34 +63,11 @@ export default function VideoGallery() {
       for (const task of completedVideos) {
         if (!task.result) continue;
         
-        // Get the video data
-        let video: VideoData | undefined = task.result.data?.[0];
-        
-        // Parse result if it's a string
-        let parsedResult: unknown = task.result;
-        if (typeof task.result === 'string') {
-          try {
-            parsedResult = JSON.parse(task.result) as unknown;
-          } catch (e) {
-            console.error('Failed to parse task result:', e);
-            continue;
-          }
-        }
-        
-        // Check if we have the direct backend structure
-        const isBackendResult = (obj: unknown): obj is BackendVideoResponse => {
-          return typeof obj === 'object' && obj !== null && 'VideoUrl' in obj;
-        };
-        
-        if (!video && isBackendResult(parsedResult)) {
-          video = normalizeBackendVideoResponse(parsedResult);
-        } else if (!video && typeof parsedResult === 'object' && parsedResult !== null && 'data' in parsedResult) {
-          const standardResult = parsedResult as { data?: VideoData[] };
-          video = standardResult.data?.[0];
-        }
+        // Use the new response normalizer to extract video data
+        const video = extractVideoFromTaskResult(task.result);
         
         if (video) {
-          const cacheKey = video.url ?? video.b64_json ?? task.id;
+          const cacheKey = createVideoCacheKey(video, task.id);
           
           // Check if we already have metadata for this video
           if (!metadataCache.has(video)) {
@@ -113,35 +92,11 @@ export default function VideoGallery() {
   }, [completedVideos, metadataCache]);
 
   const renderVideoCard = (task: VideoTask) => {
-    // Handle both backend response structures
-    let video: VideoData | undefined = task.result?.data?.[0];
-    
-    // Parse result if it's a string
-    let parsedResult: unknown = task.result;
-    if (typeof task.result === 'string') {
-      try {
-        parsedResult = JSON.parse(task.result) as unknown;
-      } catch (e) {
-        console.error('Failed to parse task result:', e);
-      }
-    }
-    
-    const isBackendResult = (obj: unknown): obj is BackendVideoResponse => {
-      return typeof obj === 'object' && obj !== null && 'VideoUrl' in obj;
-    };
-    
-    // Check if we have the direct backend structure (VideoUrl instead of data array)
-    if (!video && isBackendResult(parsedResult)) {
-      // Convert backend structure to expected frontend structure
-      video = normalizeBackendVideoResponse(parsedResult);
-    } else if (!video && typeof parsedResult === 'object' && parsedResult !== null && 'data' in parsedResult) {
-      // Try to get video from standard structure
-      const standardResult = parsedResult as { data?: VideoData[] };
-      video = standardResult.data?.[0];
-    }
+    // Use the new response normalizer to extract video data
+    const video = extractVideoFromTaskResult(task.result);
     
     // Get cached metadata for this video
-    const cacheKey = video?.url ?? video?.b64_json ?? task.id;
+    const cacheKey = video ? createVideoCacheKey(video, task.id) : task.id;
     const metadata = videoMetadata[cacheKey] ?? video?.metadata;
     
     // Handle various states
