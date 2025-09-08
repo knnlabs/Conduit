@@ -2,10 +2,29 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Card, SimpleGrid, Text, Button, Group, Modal, Center, Stack, Badge } from '@mantine/core';
-import { IconDownload, IconZoomIn, IconDimensions, IconFile } from '@tabler/icons-react';
+import { 
+  Card, 
+  Text, 
+  Button, 
+  Group, 
+  Center, 
+  Stack, 
+  Badge
+} from '@mantine/core';
+import { 
+  IconDownload, 
+  IconZoomIn, 
+  IconDimensions, 
+  IconFile 
+} from '@tabler/icons-react';
 import { useImageStore } from '../hooks/useImageStore';
 import { GeneratedImage } from '../types';
+import { 
+  MediaGallery, 
+  MediaCard,
+  downloadMedia,
+  formatFileSize as formatSize
+} from '@/app/components/media';
 
 export default function ImageGallery() {
   const { results, status } = useImageStore();
@@ -13,47 +32,8 @@ export default function ImageGallery() {
   const [imageMetadata, setImageMetadata] = useState<Record<string, GeneratedImage>>({});
 
   const handleDownload = async (image: GeneratedImage, index: number) => {
-    try {
-      let imageData: string;
-      let filename: string;
-
-      if (image.url) {
-        // Download from URL
-        const response = await fetch(image.url);
-        const blob = await response.blob();
-        imageData = URL.createObjectURL(blob);
-        filename = `generated-image-${index + 1}.png`;
-      } else if (image.b64_json) {
-        // Convert base64 to blob
-        const byteCharacters = atob(image.b64_json);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: 'image/png' });
-        imageData = URL.createObjectURL(blob);
-        filename = `generated-image-${index + 1}.png`;
-      } else {
-        console.error('No image data available');
-        return;
-      }
-
-      // Create download link
-      const link = document.createElement('a');
-      link.href = imageData;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      // Clean up object URL if it was created from fetch
-      if (image.url) {
-        URL.revokeObjectURL(imageData);
-      }
-    } catch (error) {
-      console.error('Download failed:', error);
-    }
+    const filename = `generated-image-${index + 1}.png`;
+    await downloadMedia(image.url, image.b64_json, filename, 'image/png');
   };
 
   const getImageSrc = (image: GeneratedImage): string => {
@@ -143,21 +123,174 @@ export default function ImageGallery() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [results]);
 
-  // Helper function to format file size
-  const formatFileSize = (bytes?: number): string => {
-    if (!bytes) return 'Unknown';
-    const units = ['B', 'KB', 'MB', 'GB'];
-    let size = bytes;
-    let unitIndex = 0;
+  const renderImageCard = (image: GeneratedImage, index: number) => {
     
-    while (size >= 1024 && unitIndex < units.length - 1) {
-      size /= 1024;
-      unitIndex++;
-    }
-    
-    return `${size.toFixed(1)} ${units[unitIndex]}`;
+    return (
+      <MediaCard 
+        key={`image-${image.id ?? index}`}
+        onClick={() => handleImageClick(image)}
+      >
+        <Card.Section>
+          <div 
+            style={{ 
+              position: 'relative', 
+              width: '100%', 
+              height: '250px',
+              cursor: 'pointer'
+            }}
+          >
+            <Image
+              src={getImageSrc(image)}
+              alt={image.revised_prompt ?? `Generated image ${index + 1}`}
+              fill
+              style={{ objectFit: 'cover' }}
+              loading="lazy"
+              unoptimized={true}
+              onError={(e) => {
+                const failedUrl = getImageSrc(image);
+                console.error('Image failed to load');
+                console.error('Failed URL:', failedUrl);
+                console.error('URL length:', failedUrl.length);
+                console.error('Full URL:', JSON.stringify(failedUrl));
+                // Log the event details separately to avoid React property contamination
+                console.error('Error event:', {
+                  type: e.type,
+                  target: e.currentTarget?.src
+                });
+              }}
+            />
+            <div 
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0, 0, 0, 0)',
+                transition: 'background 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(0, 0, 0, 0.5)';
+                const icon = e.currentTarget.querySelector('svg');
+                if (icon instanceof HTMLElement) {
+                  icon.style.opacity = '1';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(0, 0, 0, 0)';
+                const icon = e.currentTarget.querySelector('svg');
+                if (icon instanceof HTMLElement) {
+                  icon.style.opacity = '0';
+                }
+              }}
+            >
+              <IconZoomIn 
+                size={48} 
+                color="white" 
+                style={{ opacity: 0, transition: 'opacity 0.2s' }}
+              />
+            </div>
+          </div>
+        </Card.Section>
+
+        <Card.Section p="sm">
+          <Group justify="space-between">
+            <div style={{ flex: 1 }}>
+              <Text size="sm" fw={500}>Image {index + 1}</Text>
+              {image.revised_prompt && (
+                <Text size="xs" c="dimmed" lineClamp={1} title={image.revised_prompt}>
+                  {image.revised_prompt}
+                </Text>
+              )}
+            </div>
+            <Button
+              size="xs"
+              variant="light"
+              leftSection={<IconDownload size={14} />}
+              onClick={(e) => {
+                e.stopPropagation();
+                void handleDownload(image, index);
+              }}
+            >
+              Download
+            </Button>
+          </Group>
+        </Card.Section>
+      </MediaCard>
+    );
   };
 
+  // Modal content for preview
+  const modalContent = selectedImage && (
+    <Stack>
+      {/* Metadata badges */}
+      <Group gap="xs">
+        {selectedImage.width && selectedImage.height && (
+          <Badge 
+            leftSection={<IconDimensions size={14} />}
+            variant="light"
+            color="blue"
+          >
+            {selectedImage.width} × {selectedImage.height}px
+          </Badge>
+        )}
+        {selectedImage.sizeBytes && (
+          <Badge 
+            leftSection={<IconFile size={14} />}
+            variant="light"
+            color="green"
+          >
+            {formatSize(selectedImage.sizeBytes)}
+          </Badge>
+        )}
+        {selectedImage.format && (
+          <Badge variant="light" color="gray">
+            {selectedImage.format.toUpperCase()}
+          </Badge>
+        )}
+      </Group>
+
+      {/* Image display */}
+      <div style={{ position: 'relative', width: '100%', height: '60vh' }}>
+        <Image
+          src={getImageSrc(selectedImage)}
+          alt={selectedImage.revised_prompt ?? 'Generated image'}
+          fill
+          style={{ objectFit: 'contain' }}
+          unoptimized={true}
+        />
+      </div>
+
+      {/* Revised prompt if available */}
+      {selectedImage.revised_prompt && (
+        <div>
+          <Text size="sm" fw={500} mb={4}>Revised Prompt:</Text>
+          <Text size="sm" c="dimmed">
+            {selectedImage.revised_prompt}
+          </Text>
+        </div>
+      )}
+
+      {/* Download button */}
+      <Button
+        leftSection={<IconDownload size={16} />}
+        onClick={() => {
+          const index = results.findIndex(img => 
+            (img.url === selectedImage.url && img.b64_json === selectedImage.b64_json) ||
+            img.id === selectedImage.id
+          );
+          void handleDownload(selectedImage, index);
+        }}
+      >
+        Download Image
+      </Button>
+    </Stack>
+  );
+
+  // Show empty state if no results and not generating
   if (status === 'idle' || (status !== 'generating' && results.length === 0)) {
     return (
       <Center py="xl">
@@ -169,177 +302,14 @@ export default function ImageGallery() {
   }
 
   return (
-    <>
-      <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing="lg">
-        {results.map((image, index) => (
-          <Card 
-            key={`image-${image.id ?? index}`} 
-            p="sm" 
-            radius="md" 
-            withBorder
-            style={{ overflow: 'hidden' }}
-          >
-            <Card.Section>
-              <div 
-                style={{ 
-                  position: 'relative', 
-                  width: '100%', 
-                  height: '250px',
-                  cursor: 'pointer'
-                }}
-                onClick={() => handleImageClick(image)}
-              >
-                <Image
-                  src={getImageSrc(image)}
-                  alt={image.revised_prompt ?? `Generated image ${index + 1}`}
-                  fill
-                  style={{ objectFit: 'cover' }}
-                  loading="lazy"
-                  unoptimized={true}
-                  onError={(e) => {
-                    const failedUrl = getImageSrc(image);
-                    console.error('Image failed to load');
-                    console.error('Failed URL:', failedUrl);
-                    console.error('URL length:', failedUrl.length);
-                    console.error('Full URL:', JSON.stringify(failedUrl));
-                    // Log the event details separately to avoid React property contamination
-                    console.error('Error event:', {
-                      type: e.type,
-                      target: e.currentTarget?.src
-                    });
-                  }}
-                />
-                <div 
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'rgba(0, 0, 0, 0)',
-                    transition: 'background 0.2s',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(0, 0, 0, 0.5)';
-                    const icon = e.currentTarget.querySelector('svg');
-                    if (icon) icon.style.opacity = '1';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'rgba(0, 0, 0, 0)';
-                    const icon = e.currentTarget.querySelector('svg');
-                    if (icon) icon.style.opacity = '0';
-                  }}
-                >
-                  <IconZoomIn 
-                    size={48} 
-                    color="white" 
-                    style={{ opacity: 0, transition: 'opacity 0.2s' }}
-                  />
-                </div>
-              </div>
-            </Card.Section>
-
-            <Card.Section p="sm">
-              <Group justify="space-between">
-                <div style={{ flex: 1 }}>
-                  <Text size="sm" fw={500}>Image {index + 1}</Text>
-                  {image.revised_prompt && (
-                    <Text size="xs" c="dimmed" lineClamp={1} title={image.revised_prompt}>
-                      {image.revised_prompt}
-                    </Text>
-                  )}
-                </div>
-                <Button
-                  size="xs"
-                  variant="light"
-                  leftSection={<IconDownload size={14} />}
-                  onClick={() => void handleDownload(image, index)}
-                >
-                  Download
-                </Button>
-              </Group>
-            </Card.Section>
-          </Card>
-        ))}
-      </SimpleGrid>
-
-      {/* Image Modal */}
-      <Modal
-        opened={!!selectedImage}
-        onClose={closeModal}
-        size="xl"
-        title="Image Details"
-        centered
-      >
-        {selectedImage && (
-          <Stack>
-            {/* Metadata badges */}
-            <Group gap="xs">
-              {selectedImage.width && selectedImage.height && (
-                <Badge 
-                  leftSection={<IconDimensions size={14} />}
-                  variant="light"
-                  color="blue"
-                >
-                  {selectedImage.width} × {selectedImage.height}px
-                </Badge>
-              )}
-              {selectedImage.sizeBytes && (
-                <Badge 
-                  leftSection={<IconFile size={14} />}
-                  variant="light"
-                  color="green"
-                >
-                  {formatFileSize(selectedImage.sizeBytes)}
-                </Badge>
-              )}
-              {selectedImage.format && (
-                <Badge variant="light" color="gray">
-                  {selectedImage.format.toUpperCase()}
-                </Badge>
-              )}
-            </Group>
-
-            {/* Image display */}
-            <div style={{ position: 'relative', width: '100%', height: '60vh' }}>
-              <Image
-                src={getImageSrc(selectedImage)}
-                alt={selectedImage.revised_prompt ?? 'Generated image'}
-                fill
-                style={{ objectFit: 'contain' }}
-                unoptimized={true}
-              />
-            </div>
-
-            {/* Revised prompt if available */}
-            {selectedImage.revised_prompt && (
-              <div>
-                <Text size="sm" fw={500} mb={4}>Revised Prompt:</Text>
-                <Text size="sm" c="dimmed">
-                  {selectedImage.revised_prompt}
-                </Text>
-              </div>
-            )}
-
-            {/* Download button */}
-            <Button
-              leftSection={<IconDownload size={16} />}
-              onClick={() => {
-                const index = results.findIndex(img => 
-                  (img.url === selectedImage.url && img.b64_json === selectedImage.b64_json) ||
-                  img.id === selectedImage.id
-                );
-                void handleDownload(selectedImage, index);
-              }}
-            >
-              Download Image
-            </Button>
-          </Stack>
-        )}
-      </Modal>
-    </>
+    <MediaGallery
+      items={results}
+      renderCard={renderImageCard}
+      cols={{ base: 1, sm: 2, md: 3, lg: 4 }}
+      modalContent={modalContent}
+      modalOpened={!!selectedImage}
+      onModalClose={closeModal}
+      modalTitle="Image Details"
+    />
   );
 }
