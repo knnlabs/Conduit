@@ -25,11 +25,17 @@ import {
   downloadMedia,
   formatFileSize as formatSize
 } from '@/app/components/media';
+import { 
+  ImageMetadataExtractor,
+  MetadataCache
+} from '@/app/utils/metadataExtractor';
+import type { MediaMetadata } from '@/app/types/media';
 
 export default function ImageGallery() {
   const { results, status } = useImageStore();
   const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
-  const [imageMetadata, setImageMetadata] = useState<Record<string, GeneratedImage>>({});
+  const [metadataCache] = useState(() => new MetadataCache());
+  const [imageMetadata, setImageMetadata] = useState<Record<string, MediaMetadata>>({});
 
   const handleDownload = async (image: GeneratedImage, index: number) => {
     const filename = `generated-image-${index + 1}.png`;
@@ -54,7 +60,14 @@ export default function ImageGallery() {
   const handleImageClick = (image: GeneratedImage) => {
     // Merge stored metadata with the image
     const imageKey = image.url ?? image.b64_json ?? '';
-    const enrichedImage = imageMetadata[imageKey] ? { ...image, ...imageMetadata[imageKey] } : image;
+    const metadata = imageMetadata[imageKey];
+    const enrichedImage: GeneratedImage = metadata ? {
+      ...image,
+      width: metadata.width,
+      height: metadata.height,
+      sizeBytes: metadata.sizeBytes ?? metadata.file_size_bytes,
+      format: metadata.format
+    } : image;
     setSelectedImage(enrichedImage);
   };
 
@@ -62,60 +75,24 @@ export default function ImageGallery() {
     setSelectedImage(null);
   };
 
-  // Function to extract image metadata
-  const extractImageMetadata = async (image: GeneratedImage): Promise<Partial<GeneratedImage>> => {
-    const src = getImageSrc(image);
-    if (!src) return {};
-
-    return new Promise((resolve) => {
-      const img = new window.Image();
-      img.onload = async () => {
-        const metadata: Partial<GeneratedImage> = {
-          width: img.width,
-          height: img.height,
-        };
-
-        // Try to get file size
-        if (image.b64_json) {
-          // Calculate size from base64
-          const base64Length = image.b64_json.length;
-          const padding = (image.b64_json.match(/=/g) ?? []).length;
-          metadata.sizeBytes = Math.floor((base64Length * 3) / 4) - padding;
-          metadata.format = 'png'; // Base64 images are typically PNG
-        } else if (image.url) {
-          // For URLs, try to fetch headers to get size
-          try {
-            const response = await fetch(image.url, { method: 'HEAD' });
-            const contentLength = response.headers.get('content-length');
-            if (contentLength) {
-              metadata.sizeBytes = parseInt(contentLength, 10);
-            }
-            const contentType = response.headers.get('content-type');
-            if (contentType) {
-              metadata.format = contentType.split('/')[1] ?? 'unknown';
-            }
-          } catch (error) {
-            console.warn('Failed to fetch image headers:', error);
-          }
-        }
-
-        resolve(metadata);
-      };
-      img.onerror = () => resolve({});
-      img.src = src;
-    });
-  };
-
   // Extract metadata for all images when they change
   useEffect(() => {
     const extractAllMetadata = async () => {
-      const metadataMap: Record<string, GeneratedImage> = {};
+      const extractor = new ImageMetadataExtractor();
+      const metadataMap: Record<string, MediaMetadata> = {};
       
       for (const image of results) {
         const imageKey = image.url ?? image.b64_json ?? '';
-        if (imageKey && !imageMetadata[imageKey]) {
-          const metadata = await extractImageMetadata(image);
-          metadataMap[imageKey] = metadata as GeneratedImage;
+        
+        if (imageKey && !metadataCache.has(image)) {
+          const metadata = await extractor.extract(image);
+          metadataCache.set(image, metadata);
+          metadataMap[imageKey] = metadata;
+        } else if (imageKey) {
+          const cached = metadataCache.get(image);
+          if (cached) {
+            metadataMap[imageKey] = cached;
+          }
         }
       }
       
@@ -125,10 +102,12 @@ export default function ImageGallery() {
     };
 
     void extractAllMetadata();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [results]);
+  }, [results, metadataCache]);
 
   const renderImageCard = (image: GeneratedImage, index: number) => {
+    // Get metadata for this image
+    const imageKey = image.url ?? image.b64_json ?? '';
+    const metadata = imageMetadata[imageKey];
     
     return (
       <MediaCard 
@@ -202,27 +181,48 @@ export default function ImageGallery() {
         </Card.Section>
 
         <Card.Section p="sm">
-          <Group justify="space-between">
-            <div style={{ flex: 1 }}>
-              <Text size="sm" fw={500}>Image {index + 1}</Text>
-              {image.revised_prompt && (
-                <Text size="xs" c="dimmed" lineClamp={1} title={image.revised_prompt}>
-                  {image.revised_prompt}
-                </Text>
-              )}
-            </div>
-            <Button
-              size="xs"
-              variant="light"
-              leftSection={<IconDownload size={14} />}
-              onClick={(e) => {
-                e.stopPropagation();
-                void handleDownload(image, index);
-              }}
-            >
-              Download
-            </Button>
-          </Group>
+          <Stack gap="xs">
+            <Group justify="space-between">
+              <div style={{ flex: 1 }}>
+                <Text size="sm" fw={500}>Image {index + 1}</Text>
+                {image.revised_prompt && (
+                  <Text size="xs" c="dimmed" lineClamp={1} title={image.revised_prompt}>
+                    {image.revised_prompt}
+                  </Text>
+                )}
+              </div>
+              <Button
+                size="xs"
+                variant="light"
+                leftSection={<IconDownload size={14} />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleDownload(image, index);
+                }}
+              >
+                Download
+              </Button>
+            </Group>
+            {metadata && (metadata.width ?? metadata.height ?? metadata.sizeBytes ?? metadata.file_size_bytes) && (
+              <Group gap="xs">
+                {metadata.width && metadata.height && (
+                  <Badge size="xs" variant="light" color="blue">
+                    {metadata.width}×{metadata.height}
+                  </Badge>
+                )}
+                {(metadata.sizeBytes ?? metadata.file_size_bytes) && (
+                  <Badge size="xs" variant="light" color="green">
+                    {formatSize(metadata.sizeBytes ?? metadata.file_size_bytes ?? 0)}
+                  </Badge>
+                )}
+                {metadata.format && (
+                  <Badge size="xs" variant="light" color="gray">
+                    {metadata.format.toUpperCase()}
+                  </Badge>
+                )}
+              </Group>
+            )}
+          </Stack>
         </Card.Section>
       </MediaCard>
     );

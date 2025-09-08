@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { 
   Button, 
   Group, 
@@ -22,9 +22,18 @@ import {
   downloadMedia,
   formatFileSize
 } from '@/app/components/media';
+import { 
+  normalizeBackendVideoResponse,
+  VideoMetadataExtractor,
+  MetadataCache,
+  type BackendVideoResponse
+} from '@/app/utils/metadataExtractor';
+import type { MediaMetadata } from '@/app/types/media';
 
 export default function VideoGallery() {
   const { taskHistory, removeTask, clearHistory } = useVideoStore();
+  const [metadataCache] = useState(() => new MetadataCache());
+  const [videoMetadata, setVideoMetadata] = useState<Record<string, MediaMetadata>>({});
 
   const completedVideos = useMemo(() => {
     // First filter for completed videos with results
@@ -43,6 +52,66 @@ export default function VideoGallery() {
     return deduplicated;
   }, [taskHistory]);
 
+  // Extract metadata for completed videos
+  useEffect(() => {
+    const extractAllMetadata = async () => {
+      const extractor = new VideoMetadataExtractor();
+      const metadataMap: Record<string, MediaMetadata> = {};
+      
+      for (const task of completedVideos) {
+        if (!task.result) continue;
+        
+        // Get the video data
+        let video: VideoData | undefined = task.result.data?.[0];
+        
+        // Parse result if it's a string
+        let parsedResult: unknown = task.result;
+        if (typeof task.result === 'string') {
+          try {
+            parsedResult = JSON.parse(task.result) as unknown;
+          } catch (e) {
+            console.error('Failed to parse task result:', e);
+            continue;
+          }
+        }
+        
+        // Check if we have the direct backend structure
+        const isBackendResult = (obj: unknown): obj is BackendVideoResponse => {
+          return typeof obj === 'object' && obj !== null && 'VideoUrl' in obj;
+        };
+        
+        if (!video && isBackendResult(parsedResult)) {
+          video = normalizeBackendVideoResponse(parsedResult);
+        } else if (!video && typeof parsedResult === 'object' && parsedResult !== null && 'data' in parsedResult) {
+          const standardResult = parsedResult as { data?: VideoData[] };
+          video = standardResult.data?.[0];
+        }
+        
+        if (video) {
+          const cacheKey = video.url ?? video.b64_json ?? task.id;
+          
+          // Check if we already have metadata for this video
+          if (!metadataCache.has(video)) {
+            const metadata = await extractor.extract(video);
+            metadataCache.set(video, metadata);
+            metadataMap[cacheKey] = metadata;
+          } else {
+            const cached = metadataCache.get(video);
+            if (cached) {
+              metadataMap[cacheKey] = cached;
+            }
+          }
+        }
+      }
+      
+      if (Object.keys(metadataMap).length > 0) {
+        setVideoMetadata(prev => ({ ...prev, ...metadataMap }));
+      }
+    };
+
+    void extractAllMetadata();
+  }, [completedVideos, metadataCache]);
+
   const renderVideoCard = (task: VideoTask) => {
     // Handle both backend response structures
     let video: VideoData | undefined = task.result?.data?.[0];
@@ -57,34 +126,23 @@ export default function VideoGallery() {
       }
     }
     
-    // Type guard for backend result structure
-    interface BackendVideoResult {
-      VideoUrl?: string;
-      Duration?: number;
-      Resolution?: string;
-      FileSize?: number;
-    }
-    
-    const isBackendResult = (obj: unknown): obj is BackendVideoResult => {
+    const isBackendResult = (obj: unknown): obj is BackendVideoResponse => {
       return typeof obj === 'object' && obj !== null && 'VideoUrl' in obj;
     };
     
     // Check if we have the direct backend structure (VideoUrl instead of data array)
     if (!video && isBackendResult(parsedResult)) {
       // Convert backend structure to expected frontend structure
-      video = {
-        url: parsedResult.VideoUrl ?? '',
-        metadata: {
-          duration: parsedResult.Duration,
-          resolution: parsedResult.Resolution,
-          file_size_bytes: parsedResult.FileSize,
-        }
-      };
+      video = normalizeBackendVideoResponse(parsedResult);
     } else if (!video && typeof parsedResult === 'object' && parsedResult !== null && 'data' in parsedResult) {
       // Try to get video from standard structure
       const standardResult = parsedResult as { data?: VideoData[] };
       video = standardResult.data?.[0];
     }
+    
+    // Get cached metadata for this video
+    const cacheKey = video?.url ?? video?.b64_json ?? task.id;
+    const metadata = videoMetadata[cacheKey] ?? video?.metadata;
     
     // Handle various states
     if (!video?.url) {
@@ -110,7 +168,6 @@ export default function VideoGallery() {
       );
     }
 
-    const metadata = video.metadata;
     const downloadUrl = video.url ?? '';
     const downloadFilename = `video-${task.id.slice(0, 8)}.mp4`;
 
@@ -166,19 +223,22 @@ export default function VideoGallery() {
           </Text>
           
           <Group gap="xs" wrap="wrap" mt="xs">
-            {metadata?.duration ? (
+            {metadata?.duration !== undefined && metadata.duration > 0 ? (
               <Badge variant="light" size="sm">{metadata.duration}s</Badge>
             ) : null}
             {metadata?.resolution && metadata.resolution !== '' ? (
               <Badge variant="light" size="sm">{metadata.resolution}</Badge>
             ) : null}
-            {metadata?.fps ? (
+            {metadata?.fps !== undefined && metadata.fps > 0 ? (
               <Badge variant="light" size="sm">{metadata.fps} FPS</Badge>
             ) : null}
-            {metadata?.file_size_bytes && metadata.file_size_bytes > 0 ? (
-              <Badge variant="light" size="sm">{formatFileSize(Number(metadata.file_size_bytes))}</Badge>
+            {metadata?.file_size_bytes !== undefined && metadata.file_size_bytes > 0 ? (
+              <Badge variant="light" size="sm">{formatFileSize(metadata.file_size_bytes)}</Badge>
             ) : null}
-            {(!metadata || (!metadata.duration && !metadata.resolution && !metadata.fps && !metadata.file_size_bytes)) && (
+            {metadata?.codec ? (
+              <Badge variant="light" size="sm">{metadata.codec}</Badge>
+            ) : null}
+            {(!metadata || (metadata.duration === undefined && !metadata.resolution && metadata.fps === undefined && metadata.file_size_bytes === undefined)) && (
               <Badge variant="light" color="green" size="sm">Completed</Badge>
             )}
           </Group>
