@@ -1,4 +1,11 @@
 import { notifications } from '@mantine/notifications';
+import { 
+  getErrorDisplayMessage,
+  isNetworkError,
+  isAuthError,
+  isRateLimitError,
+  ConduitError
+} from '@knn_labs/conduit-core-client';
 
 /**
  * Global error handler for unhandled errors
@@ -24,28 +31,30 @@ export function setupGlobalErrorHandler() {
       // Show notification for user-facing errors
       if (event.reason instanceof Error) {
         const error = event.reason;
-        const isNetworkError = error.message.toLowerCase().includes('network') || 
-                              error.message.toLowerCase().includes('fetch');
-        const isAuthError = error.message.toLowerCase().includes('unauthorized') ||
-                            error.message.toLowerCase().includes('authentication');
-
-        if (isNetworkError) {
+        
+        // Use SDK's type checking instead of string matching
+        if (isNetworkError(error)) {
           notifications.show({
             title: 'Connection Error',
-            message: 'Unable to connect to the server. Please check your connection.',
+            message: getErrorDisplayMessage(error) || 'Unable to connect to the server. Please check your connection.',
             color: 'red',
           });
-        } else if (isAuthError) {
+        } else if (isAuthError(error)) {
           notifications.show({
             title: 'Authentication Error',
-            message: 'Your session may have expired. Please try logging in again.',
+            message: getErrorDisplayMessage(error) || 'Your session may have expired. Please try logging in again.',
             color: 'red',
           });
         } else if (!error.message.includes('QueryErrorResetBoundary')) {
           // Don't show notifications for React Query boundary resets
+          // Use SDK's error message formatting for all ConduitErrors
+          const message = error instanceof ConduitError 
+            ? getErrorDisplayMessage(error) 
+            : (error.message || 'Something went wrong. Please try again.');
+          
           notifications.show({
             title: 'An error occurred',
-            message: error.message || 'Something went wrong. Please try again.',
+            message,
             color: 'red',
           });
         }
@@ -112,20 +121,18 @@ export function serializeError(error: unknown): Record<string, unknown> { // Gen
 export function isRecoverableError(error: unknown): boolean { // Check if any error type is recoverable
   if (!(error instanceof Error)) return false;
   
-  const message = error.message.toLowerCase();
-  
-  // Network errors are usually recoverable
-  if (message.includes('network') || message.includes('fetch')) {
+  // Use SDK's type checking for proper error classification
+  if (isNetworkError(error)) {
     return true;
   }
   
   // Rate limit errors are recoverable after waiting
-  if (message.includes('rate limit') || message.includes('too many requests')) {
+  if (isRateLimitError(error)) {
     return true;
   }
   
   // Timeout errors are recoverable
-  if (message.includes('timeout')) {
+  if (error instanceof Error && error.message.toLowerCase().includes('timeout')) {
     return true;
   }
   
@@ -136,35 +143,13 @@ export function isRecoverableError(error: unknown): boolean { // Check if any er
  * Format error message for display
  */
 export function formatErrorMessage(error: unknown): string { // Format any error type for user display
+  // Use SDK's error formatting for all ConduitErrors
+  if (error instanceof ConduitError) {
+    return getErrorDisplayMessage(error);
+  }
+  
   if (error instanceof Error) {
-    // Special handling for common errors
-    const message = error.message.toLowerCase();
-    
-    if (message.includes('network')) {
-      return 'Unable to connect to the server. Please check your internet connection.';
-    }
-    
-    if (message.includes('unauthorized') || message.includes('401')) {
-      return 'Your session has expired. Please log in again.';
-    }
-    
-    if (message.includes('forbidden') || message.includes('403')) {
-      return 'You do not have permission to perform this action.';
-    }
-    
-    if (message.includes('not found') || message.includes('404')) {
-      return 'The requested resource was not found.';
-    }
-    
-    if (message.includes('rate limit')) {
-      return 'Too many requests. Please try again in a few moments.';
-    }
-    
-    if (message.includes('timeout')) {
-      return 'The request took too long. Please try again.';
-    }
-    
-    // Return the original message if no special handling
+    // For non-Conduit errors, return the message as-is
     return error.message;
   }
   
