@@ -11,6 +11,7 @@ import { ProviderTypeList } from './ProviderTypeList';
 import { EditProviderTypeModal } from './EditProviderTypeModal';
 import { DeleteProviderTypeModal } from './DeleteProviderTypeModal';
 import { tryConvertReplicateSchema, isValidReplicateSchema } from '@/utils/replicateSchemaConverter';
+import { TOKENIZER_SELECT_OPTIONS, TokenizerType } from '@/lib/utils/tokenizerTypes';
 import type { 
   ModelDto, 
   UpdateModelDto, 
@@ -63,6 +64,7 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
     modelSeriesId: number | null;
     isActive: boolean;
     modelParameters: string;
+    tokenizerType: number;
     supportsChat: boolean;
     supportsVision: boolean;
     supportsFunctionCalling: boolean;
@@ -78,6 +80,7 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       modelSeriesId: (model?.modelSeriesId && model.modelSeriesId !== 0) ? model.modelSeriesId : null,
       isActive: model?.isActive ?? true,
       modelParameters: model?.modelParameters ?? '',
+      tokenizerType: model?.tokenizerType ?? TokenizerType.Cl100KBase,
       // Capability fields from the model directly (flat structure)
       supportsChat: model?.supportsChat ?? false,
       supportsVision: model?.supportsVision ?? false,
@@ -91,6 +94,11 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
     },
     validate: {
       name: (value) => !value ? 'Name is required' : null,
+      tokenizerType: (value) => {
+        if (value === null || value === undefined) return 'Tokenizer type is required';
+        if (typeof value !== 'number' || value < 0 || value > Object.keys(TokenizerType).length / 2 - 1) return 'Invalid tokenizer type';
+        return null;
+      },
       modelParameters: (value) => {
         if (value) {
           try {
@@ -127,6 +135,7 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
         modelSeriesId: (model.modelSeriesId && model.modelSeriesId !== 0) ? model.modelSeriesId : null,
         isActive: model.isActive ?? true,
         modelParameters: model.modelParameters ?? '',
+        tokenizerType: model.tokenizerType ?? TokenizerType.Cl100KBase,
         // Update capability fields from the model directly (flat structure)
         supportsChat: model.supportsChat ?? false,
         supportsVision: model.supportsVision ?? false,
@@ -183,10 +192,12 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
         maxInputTokens?: number | null;
         maxOutputTokens?: number | null;
         modelSeriesId?: number | null;
+        tokenizerType?: number;
       } = {
         name: values.name,
         modelSeriesId: (values.modelSeriesId && values.modelSeriesId !== 0) ? values.modelSeriesId : null,
         isActive: values.isActive,
+        tokenizerType: values.tokenizerType,
         // Always include boolean capability fields
         supportsChat: values.supportsChat,
         supportsVision: values.supportsVision,
@@ -366,6 +377,17 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
             onChange={(value) => form.setFieldValue('modelSeriesId', value ? parseInt(value) : null)}
             clearable
             searchable
+          />
+
+          <Select
+            label="Tokenizer Type"
+            data={TOKENIZER_SELECT_OPTIONS}
+            placeholder="Select tokenizer type"
+            value={form.values.tokenizerType.toString()}
+            onChange={(value) => form.setFieldValue('tokenizerType', value ? parseInt(value) : TokenizerType.Cl100KBase)}
+            required
+            searchable
+            error={form.errors.tokenizerType}
           />
 
           <Paper p="md" withBorder>

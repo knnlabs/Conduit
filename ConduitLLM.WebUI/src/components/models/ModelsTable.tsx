@@ -19,6 +19,7 @@ import { DeleteModelModal } from './DeleteModelModal';
 import { useModelSeries } from '@/hooks/useModelSeries';
 import { extractCapabilities, getErrorMessage } from '@/utils/typeGuards';
 import { CapabilityIcons } from '@/components/common/CapabilityIcons';
+import { getTokenizerDisplayName } from '@/lib/utils/tokenizerTypes';
 import type { ModelDto } from '@knn_labs/conduit-admin-client';
 
 // Extended model type with provider mapping status and details
@@ -322,6 +323,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
             <Table.Th>Name</Table.Th>
             <Table.Th>Capabilities</Table.Th>
             <Table.Th>Series</Table.Th>
+            <Table.Th>Tokenizer</Table.Th>
             <Table.Th>Provider</Table.Th>
             <Table.Th>Status</Table.Th>
             <Table.Th>Actions</Table.Th>
@@ -332,7 +334,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
             if (loading) {
               return (
                 <Table.Tr>
-                  <Table.Td colSpan={6}>
+                  <Table.Td colSpan={7}>
                     <Text ta="center" c="dimmed">Loading...</Text>
                   </Table.Td>
                 </Table.Tr>
@@ -341,7 +343,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
             if (filteredModels.length === 0) {
               return (
                 <Table.Tr>
-                  <Table.Td colSpan={6}>
+                  <Table.Td colSpan={7}>
                     <Text ta="center" c="dimmed">No models found</Text>
                   </Table.Td>
                 </Table.Tr>
@@ -364,6 +366,11 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
                   ) : (
                     <Text c="dimmed">-</Text>
                   )}
+                </Table.Td>
+                <Table.Td>
+                  <Tooltip label={getTokenizerDisplayName(model.tokenizerType ?? 0, false)}>
+                    <Text size="sm">{getTokenizerDisplayName(model.tokenizerType ?? 0, true)}</Text>
+                  </Tooltip>
                 </Table.Td>
                 <Table.Td>
                   {renderProviderInfo(model)}

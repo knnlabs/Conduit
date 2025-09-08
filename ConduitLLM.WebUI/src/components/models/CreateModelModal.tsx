@@ -5,6 +5,7 @@ import { Modal, TextInput, Select, Switch, Button, Stack, Group } from '@mantine
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useAdminClient } from '@/lib/client/adminClient';
+import { TOKENIZER_SELECT_OPTIONS, TokenizerType } from '@/lib/utils/tokenizerTypes';
 import type { CreateModelDto, ModelSeriesDto } from '@knn_labs/conduit-admin-client';
 
 interface CreateModelModalProps {
@@ -24,10 +25,20 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
     initialValues: {
       name: '',
       modelSeriesId: '',
+      tokenizerType: TokenizerType.Cl100KBase,
       isActive: true
     },
     validate: {
-      name: (value) => !value ? 'Name is required' : null
+      name: (value) => !value ? 'Name is required' : null,
+      tokenizerType: (value: TokenizerType | null | undefined) => {
+        if (value === null || value === undefined) return 'Tokenizer type is required';
+        if (typeof value !== 'number') return 'Invalid tokenizer type';
+        const isValidEnum = Object.values(TokenizerType)
+          .filter((v): v is number => typeof v === 'number')
+          .includes(value);
+        if (!isValidEnum) return 'Invalid tokenizer type';
+        return null;
+      }
     }
   });
 
@@ -64,8 +75,9 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
       const dto: CreateModelDto = {
         name: values.name,
         modelSeriesId: values.modelSeriesId ? parseInt(values.modelSeriesId) : undefined,
+        tokenizerType: values.tokenizerType,
         isActive: values.isActive
-      };
+      } as CreateModelDto;
       await executeWithAdmin(client => client.models.create(dto));
       notifications.show({
         title: 'Success',
@@ -114,6 +126,17 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
             data={seriesOptions}
             placeholder="Select a series (optional)"
             {...form.getInputProps('modelSeriesId')}
+          />
+
+          <Select
+            label="Tokenizer Type"
+            data={TOKENIZER_SELECT_OPTIONS}
+            placeholder="Select tokenizer type"
+            value={form.values.tokenizerType.toString()}
+            onChange={(value) => form.setFieldValue('tokenizerType', value ? parseInt(value) : TokenizerType.Cl100KBase)}
+            required
+            searchable
+            error={form.errors.tokenizerType}
           />
 
           {/* Capabilities are now embedded directly in the Model entity */}
