@@ -213,10 +213,15 @@ namespace ConduitLLM.Http.Controllers
                                 {
                                     ["prompt"] = request.Prompt,
                                     ["model"] = request.Model ?? "unknown",
-                                    ["provider"] = mapping?.ProviderId.ToString() ?? "unknown",
-                                    ["originalUrl"] = imageData.Url ?? ""
+                                    ["provider"] = mapping?.ProviderId.ToString() ?? "unknown"
                                 }
                             };
+                            
+                            // Only add originalUrl if it's not empty (R2 doesn't like empty metadata values)
+                            if (!string.IsNullOrEmpty(imageData.Url))
+                            {
+                                metadata.CustomMetadata["originalUrl"] = imageData.Url;
+                            }
 
                             if (request.User != null)
                             {

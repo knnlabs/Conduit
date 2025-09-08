@@ -162,13 +162,25 @@ namespace ConduitLLM.Core.Services
                     // Add metadata
                     uploadRequest.Metadata.Add("content-type", metadata.ContentType);
                     uploadRequest.Metadata.Add("media-type", metadata.MediaType.ToString());
-                    uploadRequest.Metadata.Add("original-filename", metadata.FileName ?? "");
-                    uploadRequest.Metadata.Add("created-by", metadata.CreatedBy ?? "");
+                    
+                    // Only add optional metadata if not null/empty (R2 doesn't like empty metadata values)
+                    if (!string.IsNullOrEmpty(metadata.FileName))
+                    {
+                        uploadRequest.Metadata.Add("original-filename", metadata.FileName);
+                    }
+                    
+                    if (!string.IsNullOrEmpty(metadata.CreatedBy))
+                    {
+                        uploadRequest.Metadata.Add("created-by", metadata.CreatedBy);
+                    }
 
-                    // Add custom metadata
+                    // Add custom metadata (skip empty values)
                     foreach (var (key, value) in metadata.CustomMetadata ?? new Dictionary<string, string>())
                     {
-                        uploadRequest.Metadata.Add($"custom-{key}", value);
+                        if (!string.IsNullOrEmpty(value))
+                        {
+                            uploadRequest.Metadata.Add($"custom-{key}", value);
+                        }
                     }
 
                     if (metadata.ExpiresAt.HasValue)
@@ -208,13 +220,25 @@ namespace ConduitLLM.Core.Services
                     // Add metadata
                     putRequest.Metadata.Add("content-type", metadata.ContentType);
                     putRequest.Metadata.Add("media-type", metadata.MediaType.ToString());
-                    putRequest.Metadata.Add("original-filename", metadata.FileName ?? "");
-                    putRequest.Metadata.Add("created-by", metadata.CreatedBy ?? "");
+                    
+                    // Only add optional metadata if not null/empty (R2 doesn't like empty metadata values)
+                    if (!string.IsNullOrEmpty(metadata.FileName))
+                    {
+                        putRequest.Metadata.Add("original-filename", metadata.FileName);
+                    }
+                    
+                    if (!string.IsNullOrEmpty(metadata.CreatedBy))
+                    {
+                        putRequest.Metadata.Add("created-by", metadata.CreatedBy);
+                    }
 
-                    // Add custom metadata
+                    // Add custom metadata (skip empty values)
                     foreach (var (key, value) in metadata.CustomMetadata ?? new Dictionary<string, string>())
                     {
-                        putRequest.Metadata.Add($"custom-{key}", value);
+                        if (!string.IsNullOrEmpty(value))
+                        {
+                            putRequest.Metadata.Add($"custom-{key}", value);
+                        }
                     }
 
                     if (metadata.ExpiresAt.HasValue)
