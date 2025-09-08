@@ -11,6 +11,7 @@ export type { ErrorResponse } from '@/app/types/media';
 
 export interface VideoSettings {
   model: string;
+  [key: string]: unknown; // Allow additional properties
 }
 
 export interface VideoTask {

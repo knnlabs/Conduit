@@ -35,6 +35,7 @@ export interface ImageGenerationSettings {
   quality: Quality;  // Only for DALL-E models
   style: Style;   // Only for DALL-E models
   // Size, N, and ResponseFormat removed - now handled by custom parameters
+  [key: string]: unknown; // Allow additional properties
 }
 
 // UI-specific status type
@@ -49,13 +50,35 @@ export interface GeneratedImage extends ImageData {
   format?: string; // Image format (png, jpeg, etc.)
 }
 
+// Image task for history tracking
+export interface ImageTask {
+  id: string;
+  prompt: string;
+  status: 'pending' | 'generating' | 'completed' | 'failed' | 'error';
+  progress: number;
+  message?: string;
+  estimatedTimeToCompletion?: number;
+  createdAt: string;
+  updatedAt: string;
+  result?: ImageGenerationResponse;
+  error?: string;
+  settings: ImageGenerationSettings;
+  retryCount: number;
+  retryHistory: Array<{
+    attemptNumber: number;
+    timestamp: string;
+    error: string;
+  }>;
+}
 
 
+
+// Legacy interfaces for backward compatibility - components should use the store directly
 export interface ImageGenerationState {
   prompt: string;
   settings: ImageGenerationSettings;
   status: ImageGenerationStatus;
-  results: GeneratedImage[];
+  currentResults: GeneratedImage[];
   error?: string;
   settingsVisible: boolean;
 }
@@ -65,6 +88,6 @@ export interface ImageGenerationActions {
   updateSettings: (settings: Partial<ImageGenerationSettings>) => void;
   generateImages: (dynamicParameters?: Record<string, unknown>) => Promise<void>;
   clearResults: () => void;
-  setError: (error: string | undefined) => void;
+  setError: (error: string | null) => void;
   toggleSettings: () => void;
 }

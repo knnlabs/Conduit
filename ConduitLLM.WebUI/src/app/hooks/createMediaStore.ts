@@ -1,0 +1,377 @@
+/**
+ * Base media store factory for creating consistent stores across media types
+ */
+
+import { StateCreator } from 'zustand';
+import { persist, PersistOptions } from 'zustand/middleware';
+import { GenerationStatus } from '@/app/types/media';
+
+/**
+ * Base media task interface
+ */
+export interface MediaTask<TResult = unknown> {
+  id: string;
+  prompt: string;
+  status: GenerationStatus;
+  progress: number;
+  message?: string;
+  estimatedTimeToCompletion?: number;
+  createdAt: string;
+  updatedAt: string;
+  result?: TResult;
+  error?: string;
+  retryCount: number;
+  retryHistory: Array<{
+    attemptNumber: number;
+    timestamp: string;
+    error: string;
+  }>;
+}
+
+/**
+ * Base media settings interface
+ */
+export interface MediaSettings {
+  model: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Base media store state
+ */
+export interface BaseMediaState<TTask extends MediaTask, TSettings extends MediaSettings> {
+  // UI State
+  error: string | null;
+  
+  // Settings
+  settings: TSettings;
+  
+  // Tasks
+  currentTask: TTask | null;
+  taskHistory: TTask[];
+  
+  // Options
+  maxHistorySize: number;
+  persistHistory: boolean;
+}
+
+/**
+ * Base media store actions
+ */
+export interface BaseMediaActions<TTask extends MediaTask, TSettings extends MediaSettings> {
+  // Settings actions
+  updateSettings: (updates: Partial<TSettings>) => void;
+  
+  // Error handling
+  setError: (error: string | null) => void;
+  
+  // Task management
+  addTask: (task: TTask) => void;
+  updateTask: (taskId: string, updates: Partial<TTask>) => void;
+  removeTask: (taskId: string) => void;
+  clearHistory: () => void;
+  
+  // Task queries
+  getTaskById: (taskId: string) => TTask | undefined;
+  getCompletedTasks: () => TTask[];
+  getFailedTasks: () => TTask[];
+  getPendingTasks: () => TTask[];
+}
+
+/**
+ * Complete media store type
+ */
+export type MediaStore<
+  TTask extends MediaTask = MediaTask,
+  TSettings extends MediaSettings = MediaSettings
+> = BaseMediaState<TTask, TSettings> & BaseMediaActions<TTask, TSettings>;
+
+/**
+ * Options for creating a media store
+ */
+export interface CreateMediaStoreOptions<TSettings extends MediaSettings> {
+  name: string;
+  initialSettings: TSettings;
+  maxHistorySize?: number;
+  persistHistory?: boolean;
+  partializeState?: (state: unknown) => unknown;
+}
+
+/**
+ * Creates a base media store with common functionality
+ */
+export function createMediaStore<
+  TTask extends MediaTask = MediaTask,
+  TSettings extends MediaSettings = MediaSettings
+>(
+  options: CreateMediaStoreOptions<TSettings>
+): StateCreator<
+  MediaStore<TTask, TSettings>,
+  [],
+  [['zustand/persist', MediaStore<TTask, TSettings>]]
+> {
+  const {
+    name,
+    initialSettings,
+    maxHistorySize = 20,
+    persistHistory = true,
+    partializeState
+  } = options;
+
+  const baseStore: StateCreator<MediaStore<TTask, TSettings>> = (set, get) => ({
+    // Initial state
+    error: null,
+    settings: initialSettings,
+    currentTask: null,
+    taskHistory: [],
+    maxHistorySize,
+    persistHistory,
+
+    // Settings actions
+    updateSettings: (updates: Partial<TSettings>) =>
+      set((state) => ({
+        settings: { ...state.settings, ...updates },
+      })),
+
+    // Error handling
+    setError: (error: string | null) => set({ error }),
+
+    // Task management
+    addTask: (task: TTask) =>
+      set((state) => {
+        // Check if task already exists in history
+        const existingTaskIndex = state.taskHistory.findIndex(t => t.id === task.id);
+        let newHistory;
+        
+        if (existingTaskIndex !== -1) {
+          // Update existing task instead of adding duplicate
+          newHistory = [...state.taskHistory];
+          newHistory[existingTaskIndex] = task;
+        } else {
+          // Add new task to the beginning
+          newHistory = [task, ...state.taskHistory].slice(0, state.maxHistorySize);
+        }
+        
+        return {
+          currentTask: task,
+          taskHistory: newHistory,
+        };
+      }),
+
+    updateTask: (taskId: string, updates: Partial<TTask>) =>
+      set((state) => {
+        // Check if task exists in history
+        const taskExists = state.taskHistory.some(task => task.id === taskId);
+        
+        let updatedHistory;
+        if (taskExists) {
+          // Update existing task
+          updatedHistory = state.taskHistory.map((task) =>
+            task.id === taskId 
+              ? { ...task, ...updates, updatedAt: new Date().toISOString() } as TTask
+              : task
+          );
+        } else {
+          // Add as new task if it doesn't exist (shouldn't happen normally)
+          const newTask = {
+            id: taskId,
+            prompt: '',
+            status: 'pending' as GenerationStatus,
+            progress: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            retryCount: 0,
+            retryHistory: [],
+            ...updates,
+          } as unknown as TTask;
+          updatedHistory = [newTask, ...state.taskHistory].slice(0, state.maxHistorySize);
+        }
+        
+        let updatedCurrent = state.currentTask?.id === taskId
+          ? { ...state.currentTask, ...updates, updatedAt: new Date().toISOString() } as TTask
+          : state.currentTask;
+        
+        // Clear currentTask if it's completed, failed, or cancelled
+        if (updatedCurrent && ['completed', 'failed', 'cancelled', 'error'].includes(updatedCurrent.status)) {
+          updatedCurrent = null;
+        }
+
+        return {
+          currentTask: updatedCurrent,
+          taskHistory: updatedHistory,
+        };
+      }),
+
+    removeTask: (taskId: string) =>
+      set((state) => ({
+        currentTask: state.currentTask?.id === taskId ? null : state.currentTask,
+        taskHistory: state.taskHistory.filter((task) => task.id !== taskId),
+      })),
+
+    clearHistory: () => set({ taskHistory: [], currentTask: null }),
+
+    // Task queries
+    getTaskById: (taskId: string) => {
+      const state = get();
+      return state.taskHistory.find(task => task.id === taskId);
+    },
+
+    getCompletedTasks: () => {
+      const state = get();
+      return state.taskHistory.filter(task => task.status === 'completed');
+    },
+
+    getFailedTasks: () => {
+      const state = get();
+      return state.taskHistory.filter(task => task.status === 'failed' || task.status === 'error');
+    },
+
+    getPendingTasks: () => {
+      const state = get();
+      return state.taskHistory.filter(task => 
+        task.status === 'pending' || task.status === 'running' || task.status === 'generating'
+      );
+    },
+  });
+
+  // If persistence is enabled, wrap with persist middleware
+  if (persistHistory) {
+    const persistOptions: PersistOptions<MediaStore<TTask, TSettings>, Partial<MediaStore<TTask, TSettings>>> = {
+      name,
+      partialize: partializeState ?? ((state) => ({
+        settings: state.settings,
+        taskHistory: state.taskHistory.filter(
+          (task) => task.status === 'completed' || task.status === 'failed' || task.status === 'error'
+        ).slice(0, state.maxHistorySize),
+      })),
+    };
+
+    return persist(baseStore, persistOptions) as StateCreator<
+      MediaStore<TTask, TSettings>,
+      [],
+      [['zustand/persist', MediaStore<TTask, TSettings>]]
+    >;
+  }
+
+  return baseStore as StateCreator<
+    MediaStore<TTask, TSettings>,
+    [],
+    [['zustand/persist', MediaStore<TTask, TSettings>]]
+  >;
+}
+
+/**
+ * Helper to create a simple media store without task history
+ */
+export interface SimpleMediaState<TSettings extends MediaSettings, TResult = unknown> {
+  // UI State
+  prompt: string;
+  settings: TSettings;
+  status: GenerationStatus;
+  results: TResult[];
+  error?: string;
+  
+  // Settings visibility
+  settingsVisible: boolean;
+}
+
+/**
+ * Simple media store actions
+ */
+export interface SimpleMediaActions<TSettings extends MediaSettings, TResult = unknown> {
+  setPrompt: (prompt: string) => void;
+  updateSettings: (settings: Partial<TSettings>) => void;
+  setStatus: (status: GenerationStatus) => void;
+  setResults: (results: TResult[]) => void;
+  clearResults: () => void;
+  setError: (error: string | undefined) => void;
+  toggleSettings: () => void;
+}
+
+/**
+ * Complete simple media store type
+ */
+export type SimpleMediaStore<
+  TSettings extends MediaSettings = MediaSettings,
+  TResult = unknown
+> = SimpleMediaState<TSettings, TResult> & SimpleMediaActions<TSettings, TResult>;
+
+/**
+ * Options for creating a simple media store
+ */
+export interface CreateSimpleMediaStoreOptions<TSettings extends MediaSettings> {
+  name?: string;
+  initialSettings: TSettings;
+  enablePersistence?: boolean;
+}
+
+/**
+ * Creates a simple media store without task history
+ */
+export function createSimpleMediaStore<
+  TSettings extends MediaSettings = MediaSettings,
+  TResult = unknown
+>(
+  options: CreateSimpleMediaStoreOptions<TSettings>
+): StateCreator<
+  SimpleMediaStore<TSettings, TResult>,
+  [],
+  [['zustand/persist', SimpleMediaStore<TSettings, TResult>]]
+> {
+  const {
+    name,
+    initialSettings,
+    enablePersistence = false
+  } = options;
+
+  const baseStore: StateCreator<SimpleMediaStore<TSettings, TResult>> = (set) => ({
+    // Initial state
+    prompt: '',
+    settings: initialSettings,
+    status: 'idle',
+    results: [],
+    error: undefined,
+    settingsVisible: false,
+
+    // Actions
+    setPrompt: (prompt: string) => set({ prompt }),
+    
+    updateSettings: (newSettings) =>
+      set((state) => ({
+        settings: { ...state.settings, ...newSettings },
+      })),
+    
+    setStatus: (status: GenerationStatus) => set({ status }),
+    
+    setResults: (results: TResult[]) => set({ results }),
+    
+    clearResults: () => set({ results: [], status: 'idle', error: undefined }),
+    
+    setError: (error) => set({ error }),
+    
+    toggleSettings: () => set((state) => ({ settingsVisible: !state.settingsVisible })),
+  });
+
+  // If persistence is enabled and name is provided, wrap with persist middleware
+  if (enablePersistence && name) {
+    const persistOptions: PersistOptions<SimpleMediaStore<TSettings, TResult>, Partial<SimpleMediaStore<TSettings, TResult>>> = {
+      name,
+      partialize: (state) => ({
+        settings: state.settings,
+        prompt: state.prompt,
+      }),
+    };
+
+    return persist(baseStore, persistOptions) as StateCreator<
+      SimpleMediaStore<TSettings, TResult>,
+      [],
+      [['zustand/persist', SimpleMediaStore<TSettings, TResult>]]
+    >;
+  }
+
+  return baseStore as StateCreator<
+    SimpleMediaStore<TSettings, TResult>,
+    [],
+    [['zustand/persist', SimpleMediaStore<TSettings, TResult>]]
+  >;
+}

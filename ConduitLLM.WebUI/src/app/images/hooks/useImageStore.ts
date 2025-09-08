@@ -1,7 +1,10 @@
 import { create } from 'zustand';
+import { createMediaStore, type MediaStore } from '@/app/hooks/createMediaStore';
 import { 
-  ImageGenerationState, 
-  ImageGenerationActions
+  ImageTask, 
+  ImageGenerationSettings,
+  ImageGenerationResponse,
+  GeneratedImage
 } from '../types';
 import { 
   createToastErrorHandler, 
@@ -9,44 +12,90 @@ import {
 } from '@knn_labs/conduit-core-client';
 import { notifications } from '@mantine/notifications';
 
-type ImageStore = ImageGenerationState & ImageGenerationActions;
+const LOCAL_STORAGE_KEY = 'conduit-image-generation';
 
-export const useImageStore = create<ImageStore>((set, get) => ({
-  // Initial state
-  prompt: '',
-  settings: {
+// Create the base store configuration
+const imageStoreConfig = createMediaStore<ImageTask, ImageGenerationSettings>({
+  name: LOCAL_STORAGE_KEY,
+  initialSettings: {
     model: '',
     quality: 'standard',
     style: 'vivid',
-    // Size, N, and ResponseFormat removed - hardcoded defaults used
   },
+  maxHistorySize: 20,
+  persistHistory: true,
+  partializeState: (state: MediaStore<ImageTask, ImageGenerationSettings>) => ({
+    settings: state.settings,
+    taskHistory: state.taskHistory.filter(
+      (task: ImageTask) => task.status === 'completed' || task.status === 'failed' || task.status === 'error'
+    ).slice(0, 10), // Keep only last 10 completed/failed images in storage
+  }),
+});
+
+// Extend with image-specific state and actions
+interface ImageStoreExtensions {
+  // Additional state
+  prompt: string;
+  status: 'idle' | 'generating' | 'completed' | 'error';
+  currentResults: GeneratedImage[];
+  settingsVisible: boolean;
+  
+  // Additional actions
+  setPrompt: (prompt: string) => void;
+  generateImages: (dynamicParameters?: Record<string, unknown>) => Promise<void>;
+  clearResults: () => void;
+  toggleSettings: () => void;
+  getLatestResults: () => GeneratedImage[];
+}
+
+// Complete store type
+export type ImageStore = MediaStore<ImageTask, ImageGenerationSettings> & ImageStoreExtensions;
+
+// Create the actual store with extensions
+export const useImageStore = create<ImageStore>()((set, get, api) => ({
+  // Base store functionality
+  ...imageStoreConfig(set, get, api),
+  
+  // Additional state
+  prompt: '',
   status: 'idle',
-  results: [],
-  error: undefined,
+  currentResults: [],
   settingsVisible: false,
-
-  // Actions
+  
+  // Additional actions
   setPrompt: (prompt: string) => set({ prompt }),
-
-  updateSettings: (newSettings) =>
-    set((state) => ({
-      settings: { ...state.settings, ...newSettings },
-    })),
-
+  
   generateImages: async (dynamicParameters?: Record<string, unknown>) => {
-    const { prompt, settings } = get();
+    const state = get();
+    const { prompt, settings } = state;
     
     if (!prompt.trim()) {
-      set({ error: 'Please enter a prompt for image generation' });
+      set({ error: 'Please enter a prompt for image generation', status: 'error' });
       return;
     }
 
     if (!settings.model) {
-      set({ error: 'Please select a model for image generation' });
+      set({ error: 'Please select a model for image generation', status: 'error' });
       return;
     }
 
-    set({ status: 'generating', results: [], error: undefined });
+    // Create a new task
+    const taskId = `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const newTask: ImageTask = {
+      id: taskId,
+      prompt,
+      status: 'generating',
+      progress: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      settings,
+      retryCount: 0,
+      retryHistory: [],
+    };
+
+    // Add task to history and set as current
+    state.addTask(newTask);
+    set({ status: 'generating', currentResults: [], error: null });
 
     // Create error handler
     const handleError = createToastErrorHandler(notifications.show);
@@ -67,18 +116,33 @@ export const useImageStore = create<ImageStore>((set, get) => ({
         // Include dynamic parameters if provided (overrides defaults)
         ...dynamicParameters,
       });
+
+      // Update task with results
+      state.updateTask(taskId, {
+        status: 'completed',
+        progress: 100,
+        result: result as ImageGenerationResponse,
+      });
+
       set({ 
         status: 'completed', 
-        results: result.data,
-        error: undefined 
+        currentResults: result.data,
+        error: null 
       });
     } catch (error) {
       // Use enhanced error handler with toast notifications
       const errorMessage = handleError(error, 'generate images');
       
+      // Update task with error
+      state.updateTask(taskId, {
+        status: 'error',
+        error: errorMessage,
+      });
+      
       set({ 
         status: 'error', 
-        error: errorMessage
+        error: errorMessage,
+        currentResults: []
       });
       
       // Special handling for balance errors
@@ -90,9 +154,26 @@ export const useImageStore = create<ImageStore>((set, get) => ({
     }
   },
 
-  clearResults: () => set({ results: [], status: 'idle', error: undefined }),
-
-  setError: (error) => set({ error }),
+  clearResults: () => set({ 
+    currentResults: [], 
+    status: 'idle', 
+    error: null,
+    currentTask: null 
+  }),
 
   toggleSettings: () => set((state) => ({ settingsVisible: !state.settingsVisible })),
+
+  getLatestResults: () => {
+    const state = get();
+    // Return current results if available, otherwise get from latest completed task
+    if (state.currentResults.length > 0) {
+      return state.currentResults;
+    }
+    
+    const latestCompleted = state.taskHistory
+      .filter(task => task.status === 'completed' && task.result)
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
+    
+    return latestCompleted?.result?.data ?? [];
+  },
 }));

@@ -143,7 +143,7 @@ export default function ImageInterface() {
           error={createEnhancedError(error)}
           variant="inline"
           showDetails={true}
-          onRetry={() => setError(undefined)}
+          onRetry={() => setError(null)}
           actions={[
             {
               label: 'Configure Providers',

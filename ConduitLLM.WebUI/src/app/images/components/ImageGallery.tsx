@@ -32,7 +32,7 @@ import {
 import type { MediaMetadata } from '@/app/types/media';
 
 export default function ImageGallery() {
-  const { results, status } = useImageStore();
+  const { currentResults: results, status } = useImageStore();
   const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
   const [metadataCache] = useState(() => new MetadataCache());
   const [imageMetadata, setImageMetadata] = useState<Record<string, MediaMetadata>>({});
