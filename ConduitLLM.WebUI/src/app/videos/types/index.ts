@@ -1,3 +1,14 @@
+import { 
+  MediaData, 
+  MediaMetadata, 
+  MediaUsage,
+  RetryHistoryEntry,
+  ResponseFormat 
+} from '@/app/types/media';
+
+// Re-export for components that use ErrorResponse
+export type { ErrorResponse } from '@/app/types/media';
+
 export interface VideoSettings {
   model: string;
 }
@@ -16,39 +27,22 @@ export interface VideoTask {
   settings: VideoSettings;
   retryCount: number;
   lastRetryAt?: string;
-  retryHistory: Array<{
-    attemptNumber: number;
-    timestamp: string;
-    error: string;
-  }>;
+  retryHistory: Array<RetryHistoryEntry>;
 }
 
 // Local video types to avoid broken SDK imports
-export interface VideoData {
-  url?: string;
-  b64_json?: string;
-  revised_prompt?: string;
+export interface VideoData extends MediaData {
   metadata?: VideoMetadata;
 }
 
-export interface VideoUsage {
-  prompt_tokens: number;
-  total_tokens: number;
-  duration_seconds?: number;
-  processing_time_seconds?: number;
-}
+// VideoUsage is the same as MediaUsage - use MediaUsage directly
+export type VideoUsage = MediaUsage;
 
-export interface VideoMetadata {
-  duration?: number;
-  resolution?: string;
+export interface VideoMetadata extends MediaMetadata {
   fps?: number;
-  file_size_bytes?: number;
-  format?: string;
   codec?: string;
   audio_codec?: string;
   bitrate?: number;
-  mime_type?: string;
-  seed?: number;
 }
 
 export interface AsyncVideoGenerationResponse {
@@ -63,14 +57,7 @@ export interface AsyncVideoGenerationResponse {
   error?: string;
 }
 
-export interface ErrorResponse {
-  error: {
-    message: string;
-    type: string;
-    param?: string | null;
-    code?: string | null;
-  };
-}
+// ErrorResponse is now imported from shared media types
 
 export interface AsyncVideoGenerationRequest {
   prompt: string;
@@ -79,7 +66,7 @@ export interface AsyncVideoGenerationRequest {
   size?: string;
   fps?: number;
   style?: string;
-  response_format?: 'url' | 'b64_json';
+  response_format?: ResponseFormat;
   user?: string;
   seed?: number;
   n?: number;

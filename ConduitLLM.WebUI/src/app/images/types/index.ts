@@ -1,40 +1,39 @@
 // Local type definitions to avoid broken SDK imports
 
+import { 
+  MediaData,
+  Quality,
+  Style
+} from '@/app/types/media';
+
+// Re-export for components that use ErrorResponse
+export type { ErrorResponse } from '@/app/types/media';
+
 export interface ImageGenerationRequest {
   prompt: string;
   model?: string;
-  quality?: 'standard' | 'hd';  // Only for DALL-E models
-  style?: 'vivid' | 'natural';   // Only for DALL-E models
+  quality?: Quality;  // Only for DALL-E models
+  style?: Style;   // Only for DALL-E models
   user?: string;
   // Size, N, and ResponseFormat removed - now handled by custom parameters
   // or hardcoded defaults (n=1, response_format='url')
 }
 
-export interface ImageData {
-  b64_json?: string;
-  url?: string;
-  revised_prompt?: string;
-}
+// ImageData is the same as MediaData - use MediaData directly or create alias
+export type ImageData = MediaData;
 
 export interface ImageGenerationResponse {
   created: number;
   data: ImageData[];
 }
 
-export interface ErrorResponse {
-  error: {
-    message: string;
-    type: string;
-    param?: string | null;
-    code?: string | null;
-  };
-}
+// ErrorResponse is now imported from shared media types
 
 // UI-specific interface
 export interface ImageGenerationSettings {
   model: string;
-  quality: 'standard' | 'hd';  // Only for DALL-E models
-  style: 'vivid' | 'natural';   // Only for DALL-E models
+  quality: Quality;  // Only for DALL-E models
+  style: Style;   // Only for DALL-E models
   // Size, N, and ResponseFormat removed - now handled by custom parameters
 }
 
