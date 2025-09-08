@@ -1,5 +1,6 @@
 using System.Text.Json;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Configuration;
 
 namespace ConduitLLM.Http.Middleware
 {
@@ -45,6 +46,10 @@ namespace ConduitLLM.Http.Middleware
 
                 if (usageElement.TryGetProperty("cache_read_input_tokens", out var cacheReadTokens))
                     usage.CachedInputTokens = cacheReadTokens.GetInt32();
+
+                // Reasoning tokens (o1 models and other reasoning models)
+                if (usageElement.TryGetProperty("reasoning_tokens", out var reasoningTokens))
+                    usage.ReasoningTokens = reasoningTokens.GetInt32();
 
                 // Image generation
                 if (usageElement.TryGetProperty("images", out var imageCount))
@@ -109,5 +114,139 @@ namespace ConduitLLM.Http.Middleware
             
             return 0;
         }
+
+        /// <summary>
+        /// Extracts tool usage data from a provider response.
+        /// </summary>
+        /// <param name="responseBody">The full response body as a string</param>
+        /// <param name="providerType">The provider type to determine parsing strategy</param>
+        /// <param name="logger">Logger for error reporting</param>
+        /// <returns>Tool usage data or null if no tools were used</returns>
+        public static ToolUsageData? ExtractToolUsage(string responseBody, ProviderType providerType, ILogger logger)
+        {
+            try
+            {
+                return providerType switch
+                {
+                    ProviderType.Groq => ExtractGroqToolUsage(responseBody, logger),
+                    ProviderType.OpenAI => null, // OpenAI uses function calling, not hosted tools
+                    ProviderType.OpenAICompatible => null, // Most OpenAI-compatible providers don't host tools
+                    _ => null
+                };
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to extract tool usage data from {ProviderType} response", providerType);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Extracts tool usage from Groq API responses.
+        /// </summary>
+        /// <param name="responseBody">The response body JSON</param>
+        /// <param name="logger">Logger for error reporting</param>
+        /// <returns>Tool usage data specific to Groq tools</returns>
+        private static ToolUsageData? ExtractGroqToolUsage(string responseBody, ILogger logger)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(responseBody);
+                var root = doc.RootElement;
+
+                if (!root.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
+                    return null;
+
+                var firstChoice = choices[0];
+                if (!firstChoice.TryGetProperty("message", out var message))
+                    return null;
+
+                if (!message.TryGetProperty("executed_tools", out var executedTools) || 
+                    executedTools.ValueKind != JsonValueKind.Array)
+                    return null;
+
+                var toolUsageList = new List<ToolUsageItem>();
+
+                foreach (var tool in executedTools.EnumerateArray())
+                {
+                    if (tool.TryGetProperty("type", out var toolType))
+                    {
+                        var toolName = toolType.GetString();
+                        
+                        // Map Groq's tool types to billing names
+                        var billingToolName = toolName switch
+                        {
+                            "python" => "code_interpreter",
+                            "browser_search" => "browser_search",
+                            _ => toolName
+                        };
+
+                        if (billingToolName != null)
+                        {
+                            var existingTool = toolUsageList.FirstOrDefault(t => t.ToolName == billingToolName);
+                            if (existingTool != null)
+                            {
+                                existingTool.Count++;
+                            }
+                            else
+                            {
+                                toolUsageList.Add(new ToolUsageItem 
+                                { 
+                                    ToolName = billingToolName, 
+                                    Count = 1,
+                                    // For code_interpreter, we might want to track duration
+                                    // For now, we'll use a standard unit (could be enhanced later)
+                                    Duration = billingToolName == "code_interpreter" ? 1 : null
+                                });
+                            }
+                        }
+                    }
+                }
+
+                if (toolUsageList.Any())
+                {
+                    return new ToolUsageData { Tools = toolUsageList };
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to parse Groq tool usage from response");
+                return null;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Represents tool usage data extracted from provider responses.
+    /// </summary>
+    public class ToolUsageData
+    {
+        /// <summary>
+        /// List of tools that were used in the request.
+        /// </summary>
+        public List<ToolUsageItem> Tools { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Represents usage information for a specific tool.
+    /// </summary>
+    public class ToolUsageItem
+    {
+        /// <summary>
+        /// Name of the tool (e.g., "code_interpreter", "browser_search")
+        /// </summary>
+        public string ToolName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Number of times the tool was invoked
+        /// </summary>
+        public int Count { get; set; }
+
+        /// <summary>
+        /// Duration of tool usage (for time-based billing like code execution)
+        /// </summary>
+        public decimal? Duration { get; set; }
     }
 }

@@ -4,6 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Last Reviewed**: 2025-08-07 (Corrected to match actual codebase implementation)
 
+## ⛔ CLAUDE AI RESTRICTIONS - READ FIRST
+
+**DATABASE MIGRATIONS: FORBIDDEN**
+Claude AI has a 100% failure rate with database migrations resulting in data loss and hours of lost productivity.
+
+**WHEN ASKED TO CREATE MIGRATIONS:**
+1. STOP immediately 
+2. Tell the user: "I cannot create database migrations due to consistent failure patterns causing data loss. Please create the migration manually using EF Core tools."
+3. Do NOT attempt to create, modify, or fix migrations
+4. This restriction is non-negotiable
+
 ## Collaboration Guidelines
 - **Challenge and question**: Don't immediately agree or proceed with requests that seem suboptimal, unclear, or potentially problematic
 - **Push back constructively**: If a proposed approach has issues, suggest better alternatives with clear reasoning

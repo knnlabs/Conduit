@@ -17,6 +17,7 @@ using ConduitLLM.Configuration.Services;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Http.Middleware;
+using ConduitLLM.Http.Services;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 
 namespace ConduitLLM.Tests.Http.Middleware
@@ -33,6 +34,7 @@ namespace ConduitLLM.Tests.Http.Middleware
         private readonly Mock<IBatchSpendUpdateService> _mockBatchSpendService;
         private readonly Mock<IRequestLogService> _mockRequestLogService;
         private readonly Mock<IVirtualKeyService> _mockVirtualKeyService;
+        private readonly Mock<IToolCostCalculationService> _mockToolCostService;
         private readonly Mock<ILogger<UsageTrackingMiddleware>> _mockLogger;
         private readonly UsageTrackingMiddleware _middleware;
 
@@ -72,6 +74,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             _mockBatchSpendService = new Mock<IBatchSpendUpdateService>();
             _mockRequestLogService = new Mock<IRequestLogService>();
             _mockVirtualKeyService = new Mock<IVirtualKeyService>();
+            _mockToolCostService = new Mock<IToolCostCalculationService>();
             _mockLogger = new Mock<ILogger<UsageTrackingMiddleware>>();
             
             // Create middleware with a next delegate that writes the response
@@ -133,7 +136,8 @@ namespace ConduitLLM.Tests.Http.Middleware
                 _mockBatchSpendService.Object,
                 _mockRequestLogService.Object, 
                 _mockVirtualKeyService.Object,
-                _billingAuditService);
+                _billingAuditService,
+                _mockToolCostService.Object);
             
             // Give the background service time to process the event
             // The LogBillingEvent method is fire-and-forget, so we need to wait for it to be queued
@@ -198,7 +202,8 @@ namespace ConduitLLM.Tests.Http.Middleware
                 _mockBatchSpendService.Object,
                 _mockRequestLogService.Object, 
                 _mockVirtualKeyService.Object,
-                _billingAuditService);
+                _billingAuditService,
+                _mockToolCostService.Object);
             
             // Give the background service time to process the event
             await Task.Delay(100);
@@ -253,7 +258,8 @@ namespace ConduitLLM.Tests.Http.Middleware
                 _mockBatchSpendService.Object,
                 _mockRequestLogService.Object, 
                 _mockVirtualKeyService.Object,
-                _billingAuditService);
+                _billingAuditService,
+                _mockToolCostService.Object);
             
             // Give the background service time to process the event
             await Task.Delay(100);
@@ -291,7 +297,8 @@ namespace ConduitLLM.Tests.Http.Middleware
                 _mockBatchSpendService.Object,
                 _mockRequestLogService.Object, 
                 _mockVirtualKeyService.Object,
-                _billingAuditService);
+                _billingAuditService,
+                _mockToolCostService.Object);
             
             // Force flush
             await ((BillingAuditService)_billingAuditService).StopAsync(default);
@@ -322,7 +329,8 @@ namespace ConduitLLM.Tests.Http.Middleware
                 _mockBatchSpendService.Object,
                 _mockRequestLogService.Object, 
                 _mockVirtualKeyService.Object,
-                _billingAuditService);
+                _billingAuditService,
+                _mockToolCostService.Object);
             
             // Force flush
             await ((BillingAuditService)_billingAuditService).StopAsync(default);
@@ -357,7 +365,8 @@ namespace ConduitLLM.Tests.Http.Middleware
                 _mockBatchSpendService.Object,
                 _mockRequestLogService.Object, 
                 _mockVirtualKeyService.Object,
-                _billingAuditService);
+                _billingAuditService,
+                _mockToolCostService.Object);
             
             // Force flush
             await ((BillingAuditService)_billingAuditService).StopAsync(default);
@@ -395,7 +404,8 @@ namespace ConduitLLM.Tests.Http.Middleware
                 _mockBatchSpendService.Object,
                 _mockRequestLogService.Object, 
                 _mockVirtualKeyService.Object,
-                _billingAuditService);
+                _billingAuditService,
+                _mockToolCostService.Object);
             
             // Force flush
             await ((BillingAuditService)_billingAuditService).StopAsync(default);
@@ -451,7 +461,8 @@ namespace ConduitLLM.Tests.Http.Middleware
                 _mockBatchSpendService.Object,
                 _mockRequestLogService.Object, 
                 _mockVirtualKeyService.Object,
-                _billingAuditService);
+                _billingAuditService,
+                _mockToolCostService.Object);
             
             // Give the background service time to process the event
             await Task.Delay(100);

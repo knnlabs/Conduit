@@ -88,6 +88,18 @@ namespace ConduitLLM.Configuration.Entities
         public bool IsEstimated { get; set; }
 
         /// <summary>
+        /// JSON array of tools used in this request
+        /// </summary>
+        [Column(TypeName = "jsonb")]
+        public string? ToolUsageJson { get; set; }
+
+        /// <summary>
+        /// Total cost from tool usage (separate from token costs)
+        /// </summary>
+        [Column(TypeName = "decimal(10, 6)")]
+        public decimal? ToolUsageCost { get; set; }
+
+        /// <summary>
         /// Navigation property to the virtual key
         /// </summary>
         [ForeignKey("VirtualKeyId")]
@@ -152,6 +164,16 @@ namespace ConduitLLM.Configuration.Entities
         /// <summary>
         /// Unexpected error during tracking
         /// </summary>
-        UnexpectedError = 11
+        UnexpectedError = 11,
+
+        /// <summary>
+        /// Tool usage was tracked and billed
+        /// </summary>
+        ToolUsageTracked = 12,
+
+        /// <summary>
+        /// Tool usage occurred but no cost config found
+        /// </summary>
+        ToolUsageMissingCostConfig = 13
     }
 }

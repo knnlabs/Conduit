@@ -314,6 +314,23 @@ public class ModelCost
     public int? DefaultInferenceSteps { get; set; }
 
     /// <summary>
+    /// Gets or sets the cost per million reasoning tokens for models with reasoning capabilities.
+    /// </summary>
+    /// <remarks>
+    /// This represents the cost in USD for processing one million reasoning tokens.
+    /// Reasoning tokens represent the model's internal thought process in models like:
+    /// - OpenAI o1 and o1-mini
+    /// - DeepSeek-R1
+    /// - Claude with thinking mode
+    /// - Gemini 2.5 with thinking
+    /// - Qwen QwQ
+    /// If null, falls back to OutputCostPerMillionTokens as reasoning tokens are typically billed at output rates.
+    /// Stored with high precision (decimal 18,10) to accommodate fractional costs.
+    /// </remarks>
+    [Column(TypeName = "decimal(18, 10)")]
+    public decimal? ReasoningCostPerMillionTokens { get; set; }
+
+    /// <summary>
     /// Gets or sets the collection of model provider type associations that use this cost configuration.
     /// </summary>
     /// <remarks>

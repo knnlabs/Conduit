@@ -1,5 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
-
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
@@ -104,6 +104,33 @@ namespace ConduitLLM.Configuration.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "MediaRetentionPolicies",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    PositiveBalanceRetentionDays = table.Column<int>(type: "integer", nullable: false),
+                    ZeroBalanceRetentionDays = table.Column<int>(type: "integer", nullable: false),
+                    NegativeBalanceRetentionDays = table.Column<int>(type: "integer", nullable: false),
+                    SoftDeleteGracePeriodDays = table.Column<int>(type: "integer", nullable: false),
+                    RespectRecentAccess = table.Column<bool>(type: "boolean", nullable: false),
+                    RecentAccessWindowDays = table.Column<int>(type: "integer", nullable: false),
+                    IsProTier = table.Column<bool>(type: "boolean", nullable: false),
+                    IsDefault = table.Column<bool>(type: "boolean", nullable: false),
+                    MaxStorageSizeBytes = table.Column<long>(type: "bigint", nullable: true),
+                    MaxFileCount = table.Column<int>(type: "integer", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_MediaRetentionPolicies", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "ModelAuthors",
                 columns: table => new
                 {
@@ -116,34 +143,6 @@ namespace ConduitLLM.Configuration.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_ModelAuthors", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "ModelCapabilities",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    MaxTokens = table.Column<int>(type: "integer", nullable: false),
-                    MinTokens = table.Column<int>(type: "integer", nullable: false),
-                    SupportsVision = table.Column<bool>(type: "boolean", nullable: false),
-                    SupportsAudioTranscription = table.Column<bool>(type: "boolean", nullable: false),
-                    SupportsTextToSpeech = table.Column<bool>(type: "boolean", nullable: false),
-                    SupportsRealtimeAudio = table.Column<bool>(type: "boolean", nullable: false),
-                    SupportsImageGeneration = table.Column<bool>(type: "boolean", nullable: false),
-                    SupportsVideoGeneration = table.Column<bool>(type: "boolean", nullable: false),
-                    SupportsEmbeddings = table.Column<bool>(type: "boolean", nullable: false),
-                    SupportsChat = table.Column<bool>(type: "boolean", nullable: false),
-                    SupportsFunctionCalling = table.Column<bool>(type: "boolean", nullable: false),
-                    SupportsStreaming = table.Column<bool>(type: "boolean", nullable: false),
-                    TokenizerType = table.Column<int>(type: "integer", nullable: false),
-                    SupportedVoices = table.Column<string>(type: "text", nullable: true),
-                    SupportedLanguages = table.Column<string>(type: "text", nullable: true),
-                    SupportedFormats = table.Column<string>(type: "text", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ModelCapabilities", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -167,10 +166,6 @@ namespace ConduitLLM.Configuration.Migrations
                     ExpiryDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
                     Priority = table.Column<int>(type: "integer", nullable: false),
-                    AudioCostPerMinute = table.Column<decimal>(type: "numeric(18,4)", nullable: true),
-                    AudioCostPerKCharacters = table.Column<decimal>(type: "numeric(18,4)", nullable: true),
-                    AudioInputCostPerMinute = table.Column<decimal>(type: "numeric(18,4)", nullable: true),
-                    AudioOutputCostPerMinute = table.Column<decimal>(type: "numeric(18,4)", nullable: true),
                     VideoCostPerSecond = table.Column<decimal>(type: "numeric(18,4)", nullable: true),
                     VideoResolutionMultipliers = table.Column<string>(type: "text", nullable: true),
                     BatchProcessingMultiplier = table.Column<decimal>(type: "numeric(18,4)", nullable: true),
@@ -181,7 +176,8 @@ namespace ConduitLLM.Configuration.Migrations
                     CachedInputWriteCostPerMillionTokens = table.Column<decimal>(type: "numeric(18,10)", nullable: true),
                     CostPerSearchUnit = table.Column<decimal>(type: "numeric(18,8)", nullable: true),
                     CostPerInferenceStep = table.Column<decimal>(type: "numeric(18,8)", nullable: true),
-                    DefaultInferenceSteps = table.Column<int>(type: "integer", nullable: true)
+                    DefaultInferenceSteps = table.Column<int>(type: "integer", nullable: true),
+                    ReasoningCostPerMillionTokens = table.Column<decimal>(type: "numeric(18,10)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -207,25 +203,23 @@ namespace ConduitLLM.Configuration.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "RouterConfigEntity",
+                name: "ProviderTools",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    DefaultRoutingStrategy = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    MaxRetries = table.Column<int>(type: "integer", nullable: false),
-                    RetryBaseDelayMs = table.Column<int>(type: "integer", nullable: false),
-                    RetryMaxDelayMs = table.Column<int>(type: "integer", nullable: false),
-                    FallbacksEnabled = table.Column<bool>(type: "boolean", nullable: false),
-                    LastUpdated = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     IsActive = table.Column<bool>(type: "boolean", nullable: false),
-                    Name = table.Column<string>(type: "text", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    Provider = table.Column<int>(type: "integer", nullable: false),
+                    ToolName = table.Column<string>(type: "text", nullable: false),
+                    ToolParameters = table.Column<string>(type: "text", nullable: true),
+                    CostPerUnit = table.Column<decimal>(type: "numeric(10,6)", nullable: true),
+                    BillingUnit = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    CostDescription = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RouterConfigEntity", x => x.Id);
+                    table.PrimaryKey("PK_ProviderTools", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -241,11 +235,18 @@ namespace ConduitLLM.Configuration.Migrations
                     LifetimeSpent = table.Column<decimal>(type: "numeric(19,8)", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    MediaRetentionPolicyId = table.Column<int>(type: "integer", nullable: true),
                     RowVersion = table.Column<byte[]>(type: "bytea", rowVersion: true, nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_VirtualKeyGroups", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_VirtualKeyGroups_MediaRetentionPolicies_MediaRetentionPolic~",
+                        column: x => x.MediaRetentionPolicyId,
+                        principalTable: "MediaRetentionPolicies",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.CreateTable(
@@ -267,104 +268,6 @@ namespace ConduitLLM.Configuration.Migrations
                         name: "FK_ModelSeries_ModelAuthors_AuthorId",
                         column: x => x.AuthorId,
                         principalTable: "ModelAuthors",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "AudioCosts",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    ProviderId = table.Column<int>(type: "integer", nullable: false),
-                    OperationType = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    Model = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    CostUnit = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    CostPerUnit = table.Column<decimal>(type: "numeric(10,6)", nullable: false),
-                    MinimumCharge = table.Column<decimal>(type: "numeric(10,6)", nullable: true),
-                    AdditionalFactors = table.Column<string>(type: "text", nullable: true),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
-                    EffectiveFrom = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    EffectiveTo = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_AudioCosts", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_AudioCosts_Providers_ProviderId",
-                        column: x => x.ProviderId,
-                        principalTable: "Providers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "AudioProviderConfigs",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    ProviderId = table.Column<int>(type: "integer", nullable: false),
-                    TranscriptionEnabled = table.Column<bool>(type: "boolean", nullable: false),
-                    DefaultTranscriptionModel = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    TextToSpeechEnabled = table.Column<bool>(type: "boolean", nullable: false),
-                    DefaultTTSModel = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    DefaultTTSVoice = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    RealtimeEnabled = table.Column<bool>(type: "boolean", nullable: false),
-                    DefaultRealtimeModel = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    RealtimeEndpoint = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    CustomSettings = table.Column<string>(type: "text", nullable: true),
-                    RoutingPriority = table.Column<int>(type: "integer", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_AudioProviderConfigs", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_AudioProviderConfigs_Providers_ProviderId",
-                        column: x => x.ProviderId,
-                        principalTable: "Providers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "AudioUsageLogs",
-                columns: table => new
-                {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    VirtualKey = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    ProviderId = table.Column<int>(type: "integer", nullable: false),
-                    OperationType = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    Model = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    RequestId = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    SessionId = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    DurationSeconds = table.Column<double>(type: "double precision", nullable: true),
-                    CharacterCount = table.Column<int>(type: "integer", nullable: true),
-                    InputTokens = table.Column<int>(type: "integer", nullable: true),
-                    OutputTokens = table.Column<int>(type: "integer", nullable: true),
-                    Cost = table.Column<decimal>(type: "numeric(10,6)", nullable: false),
-                    Language = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: true),
-                    Voice = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    StatusCode = table.Column<int>(type: "integer", nullable: true),
-                    ErrorMessage = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    IpAddress = table.Column<string>(type: "character varying(45)", maxLength: 45, nullable: true),
-                    UserAgent = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    Metadata = table.Column<string>(type: "text", nullable: true),
-                    Timestamp = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_AudioUsageLogs", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_AudioUsageLogs_Providers_ProviderId",
-                        column: x => x.ProviderId,
-                        principalTable: "Providers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -395,70 +298,6 @@ namespace ConduitLLM.Configuration.Migrations
                         name: "FK_ProviderKeyCredentials_Providers_ProviderId",
                         column: x => x.ProviderId,
                         principalTable: "Providers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "FallbackConfigurations",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    PrimaryModelDeploymentId = table.Column<Guid>(type: "uuid", nullable: false),
-                    RouterConfigId = table.Column<int>(type: "integer", nullable: false),
-                    LastUpdated = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    Name = table.Column<string>(type: "text", nullable: false),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_FallbackConfigurations", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_FallbackConfigurations_RouterConfigEntity_RouterConfigId",
-                        column: x => x.RouterConfigId,
-                        principalTable: "RouterConfigEntity",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "ModelDeployments",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    ModelName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    ProviderId = table.Column<int>(type: "integer", nullable: false),
-                    Weight = table.Column<int>(type: "integer", nullable: false),
-                    HealthCheckEnabled = table.Column<bool>(type: "boolean", nullable: false),
-                    IsEnabled = table.Column<bool>(type: "boolean", nullable: false),
-                    RPM = table.Column<int>(type: "integer", nullable: true),
-                    TPM = table.Column<int>(type: "integer", nullable: true),
-                    InputTokenCostPer1K = table.Column<decimal>(type: "numeric(18,8)", nullable: true),
-                    OutputTokenCostPer1K = table.Column<decimal>(type: "numeric(18,8)", nullable: true),
-                    Priority = table.Column<int>(type: "integer", nullable: false),
-                    IsHealthy = table.Column<bool>(type: "boolean", nullable: false),
-                    RouterConfigId = table.Column<int>(type: "integer", nullable: false),
-                    LastUpdated = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    DeploymentName = table.Column<string>(type: "text", nullable: false),
-                    SupportsEmbeddings = table.Column<bool>(type: "boolean", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ModelDeployments", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_ModelDeployments_Providers_ProviderId",
-                        column: x => x.ProviderId,
-                        principalTable: "Providers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_ModelDeployments_RouterConfigEntity_RouterConfigId",
-                        column: x => x.RouterConfigId,
-                        principalTable: "RouterConfigEntity",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -534,10 +373,19 @@ namespace ConduitLLM.Configuration.Migrations
                     Version = table.Column<string>(type: "text", nullable: true),
                     Description = table.Column<string>(type: "text", nullable: true),
                     ModelCardUrl = table.Column<string>(type: "text", nullable: true),
-                    ModelType = table.Column<int>(type: "integer", nullable: false),
                     ModelSeriesId = table.Column<int>(type: "integer", nullable: false),
-                    ModelCapabilitiesId = table.Column<int>(type: "integer", nullable: false),
+                    SupportsVision = table.Column<bool>(type: "boolean", nullable: false),
+                    SupportsImageGeneration = table.Column<bool>(type: "boolean", nullable: false),
+                    SupportsVideoGeneration = table.Column<bool>(type: "boolean", nullable: false),
+                    SupportsEmbeddings = table.Column<bool>(type: "boolean", nullable: false),
+                    SupportsChat = table.Column<bool>(type: "boolean", nullable: false),
+                    SupportsFunctionCalling = table.Column<bool>(type: "boolean", nullable: false),
+                    SupportsStreaming = table.Column<bool>(type: "boolean", nullable: false),
+                    TokenizerType = table.Column<int>(type: "integer", nullable: false),
+                    MaxInputTokens = table.Column<int>(type: "integer", nullable: true),
+                    MaxOutputTokens = table.Column<int>(type: "integer", nullable: true),
                     IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    Parameters = table.Column<string>(type: "text", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
@@ -545,39 +393,9 @@ namespace ConduitLLM.Configuration.Migrations
                 {
                     table.PrimaryKey("PK_Models", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Models_ModelCapabilities_ModelCapabilitiesId",
-                        column: x => x.ModelCapabilitiesId,
-                        principalTable: "ModelCapabilities",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
                         name: "FK_Models_ModelSeries_ModelSeriesId",
                         column: x => x.ModelSeriesId,
                         principalTable: "ModelSeries",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "FallbackModelMappings",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    FallbackConfigurationId = table.Column<Guid>(type: "uuid", nullable: false),
-                    ModelDeploymentId = table.Column<Guid>(type: "uuid", nullable: false),
-                    Order = table.Column<int>(type: "integer", nullable: false),
-                    SourceModelName = table.Column<string>(type: "text", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_FallbackModelMappings", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_FallbackModelMappings_FallbackConfigurations_FallbackConfig~",
-                        column: x => x.FallbackConfigurationId,
-                        principalTable: "FallbackConfigurations",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -656,36 +474,35 @@ namespace ConduitLLM.Configuration.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "MediaLifecycleRecords",
+                name: "BillingAuditEvents",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    VirtualKeyId = table.Column<int>(type: "integer", nullable: false),
-                    MediaType = table.Column<string>(type: "text", nullable: false),
-                    MediaUrl = table.Column<string>(type: "text", nullable: false),
-                    StorageKey = table.Column<string>(type: "text", nullable: false),
-                    FileSizeBytes = table.Column<long>(type: "bigint", nullable: false),
-                    ContentType = table.Column<string>(type: "text", nullable: false),
-                    GeneratedByModel = table.Column<string>(type: "text", nullable: false),
-                    GenerationPrompt = table.Column<string>(type: "text", nullable: false),
-                    GeneratedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    ExpiresAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    Metadata = table.Column<string>(type: "text", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false),
-                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    Timestamp = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    EventType = table.Column<int>(type: "integer", nullable: false),
+                    VirtualKeyId = table.Column<int>(type: "integer", nullable: true),
+                    Model = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    RequestId = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    UsageJson = table.Column<string>(type: "jsonb", nullable: true),
+                    CalculatedCost = table.Column<decimal>(type: "numeric(10,6)", nullable: true),
+                    FailureReason = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    ProviderType = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    HttpStatusCode = table.Column<int>(type: "integer", nullable: true),
+                    MetadataJson = table.Column<string>(type: "jsonb", nullable: true),
+                    RequestPath = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    IsEstimated = table.Column<bool>(type: "boolean", nullable: false),
+                    ToolUsageJson = table.Column<string>(type: "jsonb", nullable: true),
+                    ToolUsageCost = table.Column<decimal>(type: "numeric(10,6)", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_MediaLifecycleRecords", x => x.Id);
+                    table.PrimaryKey("PK_BillingAuditEvents", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_MediaLifecycleRecords_VirtualKeys_VirtualKeyId",
+                        name: "FK_BillingAuditEvents_VirtualKeys_VirtualKeyId",
                         column: x => x.VirtualKeyId,
                         principalTable: "VirtualKeys",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.CreateTable(
@@ -803,14 +620,27 @@ namespace ConduitLLM.Configuration.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     ModelId = table.Column<int>(type: "integer", nullable: false),
+                    IsEnabled = table.Column<bool>(type: "boolean", nullable: false),
+                    MaxInputTokens = table.Column<int>(type: "integer", nullable: true),
+                    MaxOutputTokens = table.Column<int>(type: "integer", nullable: true),
+                    ProviderVariation = table.Column<string>(type: "text", nullable: true),
+                    QualityScore = table.Column<decimal>(type: "numeric", nullable: true),
+                    SpeedScore = table.Column<decimal>(type: "numeric", nullable: true),
                     Identifier = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    Provider = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    Provider = table.Column<int>(type: "integer", nullable: true),
+                    ModelCostId = table.Column<int>(type: "integer", nullable: true),
                     IsPrimary = table.Column<bool>(type: "boolean", nullable: false),
                     Metadata = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_ModelIdentifiers", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ModelIdentifiers_ModelCosts_ModelCostId",
+                        column: x => x.ModelCostId,
+                        principalTable: "ModelCosts",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "FK_ModelIdentifiers_Models_ModelId",
                         column: x => x.ModelId,
@@ -829,23 +659,17 @@ namespace ConduitLLM.Configuration.Migrations
                     ProviderModelId = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     ProviderId = table.Column<int>(type: "integer", nullable: false),
                     IsEnabled = table.Column<bool>(type: "boolean", nullable: false),
-                    MaxContextTokensOverride = table.Column<int>(type: "integer", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    CapabilityOverrides = table.Column<string>(type: "text", nullable: true),
-                    IsDefault = table.Column<bool>(type: "boolean", nullable: false),
-                    DefaultCapabilityType = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
-                    ModelId = table.Column<int>(type: "integer", nullable: false),
-                    ProviderVariation = table.Column<string>(type: "text", nullable: true),
-                    QualityScore = table.Column<decimal>(type: "numeric", nullable: true)
+                    ModelProviderTypeAssociationId = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_ModelProviderMappings", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_ModelProviderMappings_Models_ModelId",
-                        column: x => x.ModelId,
-                        principalTable: "Models",
+                        name: "FK_ModelProviderMappings_ModelIdentifiers_ModelProviderTypeAss~",
+                        column: x => x.ModelProviderTypeAssociationId,
+                        principalTable: "ModelIdentifiers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
@@ -854,34 +678,6 @@ namespace ConduitLLM.Configuration.Migrations
                         principalTable: "Providers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "ModelCostMappings",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    ModelCostId = table.Column<int>(type: "integer", nullable: false),
-                    ModelProviderMappingId = table.Column<int>(type: "integer", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ModelCostMappings", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_ModelCostMappings_ModelCosts_ModelCostId",
-                        column: x => x.ModelCostId,
-                        principalTable: "ModelCosts",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_ModelCostMappings_ModelProviderMappings_ModelProviderMappin~",
-                        column: x => x.ModelProviderMappingId,
-                        principalTable: "ModelProviderMappings",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
@@ -925,42 +721,6 @@ namespace ConduitLLM.Configuration.Migrations
                 columns: new[] { "VirtualKeyId", "CreatedAt" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_AudioCosts_EffectiveFrom_EffectiveTo",
-                table: "AudioCosts",
-                columns: new[] { "EffectiveFrom", "EffectiveTo" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_AudioCosts_ProviderId_OperationType_Model_IsActive",
-                table: "AudioCosts",
-                columns: new[] { "ProviderId", "OperationType", "Model", "IsActive" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_AudioProviderConfigs_ProviderId",
-                table: "AudioProviderConfigs",
-                column: "ProviderId",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_AudioUsageLogs_ProviderId_OperationType",
-                table: "AudioUsageLogs",
-                columns: new[] { "ProviderId", "OperationType" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_AudioUsageLogs_SessionId",
-                table: "AudioUsageLogs",
-                column: "SessionId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_AudioUsageLogs_Timestamp",
-                table: "AudioUsageLogs",
-                column: "Timestamp");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_AudioUsageLogs_VirtualKey",
-                table: "AudioUsageLogs",
-                column: "VirtualKey");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_BatchOperationHistory_OperationType",
                 table: "BatchOperationHistory",
                 column: "OperationType");
@@ -989,6 +749,36 @@ namespace ConduitLLM.Configuration.Migrations
                 name: "IX_BatchOperationHistory_VirtualKeyId_StartedAt",
                 table: "BatchOperationHistory",
                 columns: new[] { "VirtualKeyId", "StartedAt" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BillingAuditEvents_EventType",
+                table: "BillingAuditEvents",
+                column: "EventType");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BillingAuditEvents_EventType_Timestamp",
+                table: "BillingAuditEvents",
+                columns: new[] { "EventType", "Timestamp" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BillingAuditEvents_RequestId",
+                table: "BillingAuditEvents",
+                column: "RequestId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BillingAuditEvents_Timestamp",
+                table: "BillingAuditEvents",
+                column: "Timestamp");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BillingAuditEvents_VirtualKeyId",
+                table: "BillingAuditEvents",
+                column: "VirtualKeyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BillingAuditEvents_VirtualKeyId_Timestamp",
+                table: "BillingAuditEvents",
+                columns: new[] { "VirtualKeyId", "Timestamp" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_CacheConfigurationAudits_ChangedAt",
@@ -1028,28 +818,6 @@ namespace ConduitLLM.Configuration.Migrations
                 column: "UpdatedAt");
 
             migrationBuilder.CreateIndex(
-                name: "IX_FallbackConfigurations_PrimaryModelDeploymentId",
-                table: "FallbackConfigurations",
-                column: "PrimaryModelDeploymentId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_FallbackConfigurations_RouterConfigId",
-                table: "FallbackConfigurations",
-                column: "RouterConfigId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_FallbackModelMappings_FallbackConfigurationId_ModelDeployme~",
-                table: "FallbackModelMappings",
-                columns: new[] { "FallbackConfigurationId", "ModelDeploymentId" },
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_FallbackModelMappings_FallbackConfigurationId_Order",
-                table: "FallbackModelMappings",
-                columns: new[] { "FallbackConfigurationId", "Order" },
-                unique: true);
-
-            migrationBuilder.CreateIndex(
                 name: "IX_GlobalSettings_Key",
                 table: "GlobalSettings",
                 column: "Key",
@@ -1064,37 +832,6 @@ namespace ConduitLLM.Configuration.Migrations
                 name: "IX_IpFilters_IsEnabled",
                 table: "IpFilters",
                 column: "IsEnabled");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_MediaLifecycleRecords_CreatedAt",
-                table: "MediaLifecycleRecords",
-                column: "CreatedAt");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_MediaLifecycleRecords_ExpiresAt",
-                table: "MediaLifecycleRecords",
-                column: "ExpiresAt");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_MediaLifecycleRecords_ExpiresAt_IsDeleted",
-                table: "MediaLifecycleRecords",
-                columns: new[] { "ExpiresAt", "IsDeleted" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_MediaLifecycleRecords_StorageKey",
-                table: "MediaLifecycleRecords",
-                column: "StorageKey",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_MediaLifecycleRecords_VirtualKeyId",
-                table: "MediaLifecycleRecords",
-                column: "VirtualKeyId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_MediaLifecycleRecords_VirtualKeyId_IsDeleted",
-                table: "MediaLifecycleRecords",
-                columns: new[] { "VirtualKeyId", "IsDeleted" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_MediaRecords_CreatedAt",
@@ -1123,86 +860,33 @@ namespace ConduitLLM.Configuration.Migrations
                 columns: new[] { "VirtualKeyId", "CreatedAt" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_MediaRetentionPolicies_IsActive",
+                table: "MediaRetentionPolicies",
+                column: "IsActive");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_MediaRetentionPolicies_IsDefault",
+                table: "MediaRetentionPolicies",
+                column: "IsDefault",
+                unique: true,
+                filter: "\"IsDefault\" = true");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_MediaRetentionPolicies_Name",
+                table: "MediaRetentionPolicies",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_ModelAuthor_Name_Unique",
                 table: "ModelAuthors",
                 column: "Name",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_ModelCapabilities_Chat_Function_Streaming",
-                table: "ModelCapabilities",
-                columns: new[] { "SupportsChat", "SupportsFunctionCalling", "SupportsStreaming" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ModelCapabilities_SupportsChat",
-                table: "ModelCapabilities",
-                column: "SupportsChat",
-                filter: "\"SupportsChat\" = true");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ModelCapabilities_SupportsFunctionCalling",
-                table: "ModelCapabilities",
-                column: "SupportsFunctionCalling",
-                filter: "\"SupportsFunctionCalling\" = true");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ModelCapabilities_SupportsImageGeneration",
-                table: "ModelCapabilities",
-                column: "SupportsImageGeneration",
-                filter: "\"SupportsImageGeneration\" = true");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ModelCapabilities_SupportsVideoGeneration",
-                table: "ModelCapabilities",
-                column: "SupportsVideoGeneration",
-                filter: "\"SupportsVideoGeneration\" = true");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ModelCapabilities_SupportsVision",
-                table: "ModelCapabilities",
-                column: "SupportsVision",
-                filter: "\"SupportsVision\" = true");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ModelCostMappings_ModelCostId_ModelProviderMappingId",
-                table: "ModelCostMappings",
-                columns: new[] { "ModelCostId", "ModelProviderMappingId" },
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ModelCostMappings_ModelProviderMappingId",
-                table: "ModelCostMappings",
-                column: "ModelProviderMappingId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_ModelCosts_CostName",
                 table: "ModelCosts",
                 column: "CostName");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ModelDeployments_IsEnabled",
-                table: "ModelDeployments",
-                column: "IsEnabled");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ModelDeployments_IsHealthy",
-                table: "ModelDeployments",
-                column: "IsHealthy");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ModelDeployments_ModelName",
-                table: "ModelDeployments",
-                column: "ModelName");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ModelDeployments_ProviderId",
-                table: "ModelDeployments",
-                column: "ProviderId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ModelDeployments_RouterConfigId",
-                table: "ModelDeployments",
-                column: "RouterConfigId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ModelIdentifier_Identifier",
@@ -1227,21 +911,14 @@ namespace ConduitLLM.Configuration.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_ModelProviderMapping_CapabilityOverrides",
-                table: "ModelProviderMappings",
-                column: "CapabilityOverrides",
-                filter: "\"CapabilityOverrides\" IS NOT NULL");
+                name: "IX_ModelIdentifiers_ModelCostId",
+                table: "ModelIdentifiers",
+                column: "ModelCostId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ModelProviderMapping_ModelId",
+                name: "IX_ModelProviderMapping_ModelProviderTypeAssociationId",
                 table: "ModelProviderMappings",
-                column: "ModelId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ModelProviderMapping_ModelId_QualityScore",
-                table: "ModelProviderMappings",
-                columns: new[] { "ModelId", "QualityScore" },
-                filter: "\"QualityScore\" IS NOT NULL");
+                column: "ModelProviderTypeAssociationId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ModelProviderMapping_ProviderId_IsEnabled",
@@ -1256,24 +933,9 @@ namespace ConduitLLM.Configuration.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Model_ModelCapabilitiesId",
-                table: "Models",
-                column: "ModelCapabilitiesId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Model_ModelSeriesId",
                 table: "Models",
                 column: "ModelSeriesId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Model_ModelSeriesId_ModelType",
-                table: "Models",
-                columns: new[] { "ModelSeriesId", "ModelType" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Model_ModelType",
-                table: "Models",
-                column: "ModelType");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ModelSeries_AuthorId",
@@ -1321,19 +983,30 @@ namespace ConduitLLM.Configuration.Migrations
                 column: "ProviderType");
 
             migrationBuilder.CreateIndex(
+                name: "IX_ProviderTool_IsActive",
+                table: "ProviderTools",
+                column: "IsActive");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ProviderTool_Provider_ToolName",
+                table: "ProviderTools",
+                columns: new[] { "Provider", "ToolName" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_RequestLogs_VirtualKeyId",
                 table: "RequestLogs",
                 column: "VirtualKeyId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_RouterConfigEntity_LastUpdated",
-                table: "RouterConfigEntity",
-                column: "LastUpdated");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_VirtualKeyGroups_ExternalGroupId",
                 table: "VirtualKeyGroups",
                 column: "ExternalGroupId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_VirtualKeyGroups_MediaRetentionPolicyId",
+                table: "VirtualKeyGroups",
+                column: "MediaRetentionPolicyId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_VirtualKeyGroupTransactions_CreatedAt",
@@ -1389,16 +1062,10 @@ namespace ConduitLLM.Configuration.Migrations
                 name: "AsyncTasks");
 
             migrationBuilder.DropTable(
-                name: "AudioCosts");
-
-            migrationBuilder.DropTable(
-                name: "AudioProviderConfigs");
-
-            migrationBuilder.DropTable(
-                name: "AudioUsageLogs");
-
-            migrationBuilder.DropTable(
                 name: "BatchOperationHistory");
+
+            migrationBuilder.DropTable(
+                name: "BillingAuditEvents");
 
             migrationBuilder.DropTable(
                 name: "CacheConfigurationAudits");
@@ -1407,34 +1074,25 @@ namespace ConduitLLM.Configuration.Migrations
                 name: "CacheConfigurations");
 
             migrationBuilder.DropTable(
-                name: "FallbackModelMappings");
-
-            migrationBuilder.DropTable(
                 name: "GlobalSettings");
 
             migrationBuilder.DropTable(
                 name: "IpFilters");
 
             migrationBuilder.DropTable(
-                name: "MediaLifecycleRecords");
-
-            migrationBuilder.DropTable(
                 name: "MediaRecords");
 
             migrationBuilder.DropTable(
-                name: "ModelCostMappings");
-
-            migrationBuilder.DropTable(
-                name: "ModelDeployments");
-
-            migrationBuilder.DropTable(
-                name: "ModelIdentifiers");
+                name: "ModelProviderMappings");
 
             migrationBuilder.DropTable(
                 name: "Notifications");
 
             migrationBuilder.DropTable(
                 name: "ProviderKeyCredentials");
+
+            migrationBuilder.DropTable(
+                name: "ProviderTools");
 
             migrationBuilder.DropTable(
                 name: "RequestLogs");
@@ -1446,34 +1104,28 @@ namespace ConduitLLM.Configuration.Migrations
                 name: "VirtualKeySpendHistory");
 
             migrationBuilder.DropTable(
-                name: "FallbackConfigurations");
-
-            migrationBuilder.DropTable(
-                name: "ModelCosts");
-
-            migrationBuilder.DropTable(
-                name: "ModelProviderMappings");
-
-            migrationBuilder.DropTable(
-                name: "VirtualKeys");
-
-            migrationBuilder.DropTable(
-                name: "RouterConfigEntity");
-
-            migrationBuilder.DropTable(
-                name: "Models");
+                name: "ModelIdentifiers");
 
             migrationBuilder.DropTable(
                 name: "Providers");
 
             migrationBuilder.DropTable(
+                name: "VirtualKeys");
+
+            migrationBuilder.DropTable(
+                name: "ModelCosts");
+
+            migrationBuilder.DropTable(
+                name: "Models");
+
+            migrationBuilder.DropTable(
                 name: "VirtualKeyGroups");
 
             migrationBuilder.DropTable(
-                name: "ModelCapabilities");
+                name: "ModelSeries");
 
             migrationBuilder.DropTable(
-                name: "ModelSeries");
+                name: "MediaRetentionPolicies");
 
             migrationBuilder.DropTable(
                 name: "ModelAuthors");

@@ -269,7 +269,8 @@ namespace ConduitLLM.Providers.OpenAICompatible
                     {
                         PromptTokens = response.Usage.PromptTokens,
                         CompletionTokens = response.Usage.CompletionTokens,
-                        TotalTokens = response.Usage.TotalTokens
+                        TotalTokens = response.Usage.TotalTokens,
+                        ReasoningTokens = response.Usage.ReasoningTokens
                     } : null,
                     SystemFingerprint = response.SystemFingerprint,
                     Seed = response.Seed,

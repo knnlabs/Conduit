@@ -45,6 +45,9 @@ public partial class Program
         
         builder.Services.AddScoped<ConduitLLM.Core.Interfaces.ICostCalculationService, ConduitLLM.Core.Services.CostCalculationService>();
 
+        // Tool cost calculation service for provider tool billing
+        builder.Services.AddScoped<IToolCostCalculationService, ToolCostCalculationService>();
+
         // Parameter validation service for minimal, provider-agnostic validation
         builder.Services.AddScoped<ConduitLLM.Core.Validation.MinimalParameterValidator>();
 

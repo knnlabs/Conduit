@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Moq;
 using ConduitLLM.Http.Middleware;
+using ConduitLLM.Http.Services;
 using ConduitLLM.Core.Interfaces;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 using ConduitLLM.Configuration.Interfaces;
@@ -17,6 +18,7 @@ namespace ConduitLLM.Tests.Http.Middleware
         private readonly Mock<IRequestLogService> _mockRequestLogService;
         private readonly Mock<IVirtualKeyService> _mockVirtualKeyService;
         private readonly Mock<IBillingAuditService> _mockBillingAuditService;
+        private readonly Mock<IToolCostCalculationService> _mockToolCostService;
         private readonly Mock<ILogger<UsageTrackingMiddleware>> _mockLogger;
         private readonly UsageTrackingMiddleware _middleware;
         private RequestDelegate _next;
@@ -28,6 +30,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             _mockRequestLogService = new Mock<IRequestLogService>();
             _mockVirtualKeyService = new Mock<IVirtualKeyService>();
             _mockBillingAuditService = new Mock<IBillingAuditService>();
+            _mockToolCostService = new Mock<IToolCostCalculationService>();
             _mockLogger = new Mock<ILogger<UsageTrackingMiddleware>>();
             
             // Default _next delegate - will be replaced by SetupMockResponse

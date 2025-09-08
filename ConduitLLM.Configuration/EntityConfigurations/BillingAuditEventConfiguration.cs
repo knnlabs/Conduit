@@ -56,8 +56,14 @@ namespace ConduitLLM.Configuration.EntityConfigurations
             builder.Property(e => e.MetadataJson)
                 .HasColumnType("jsonb");
 
+            builder.Property(e => e.ToolUsageJson)
+                .HasColumnType("jsonb");
+
             // Configure decimal precision
             builder.Property(e => e.CalculatedCost)
+                .HasColumnType("decimal(10, 6)");
+
+            builder.Property(e => e.ToolUsageCost)
                 .HasColumnType("decimal(10, 6)");
 
             // Foreign key relationship

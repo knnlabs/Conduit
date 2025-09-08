@@ -7,6 +7,7 @@ using ConduitLLM.Http.Middleware;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Http.Services;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 
 namespace ConduitLLM.Tests.Http.Middleware
@@ -39,10 +40,11 @@ namespace ConduitLLM.Tests.Http.Middleware
             var mockRequestLogService = new Mock<IRequestLogService>();
             var mockVirtualKeyService = new Mock<IVirtualKeyService>();
             var mockBillingAuditService = new Mock<IBillingAuditService>();
+            var mockToolCostService = new Mock<IToolCostCalculationService>();
             
             // Act
             await middleware.InvokeAsync(context, mockCostService.Object, mockBatchSpendService.Object, 
-                mockRequestLogService.Object, mockVirtualKeyService.Object, mockBillingAuditService.Object);
+                mockRequestLogService.Object, mockVirtualKeyService.Object, mockBillingAuditService.Object, mockToolCostService.Object);
             
             // Assert
             Assert.True(wasCalled, "The next delegate should have been called");
@@ -94,10 +96,11 @@ namespace ConduitLLM.Tests.Http.Middleware
             var mockRequestLogService = new Mock<IRequestLogService>();
             var mockVirtualKeyService = new Mock<IVirtualKeyService>();
             var mockBillingAuditService = new Mock<IBillingAuditService>();
+            var mockToolCostService = new Mock<IToolCostCalculationService>();
             
             // Act
             await middleware.InvokeAsync(context, mockCostService.Object, mockBatchSpendService.Object, 
-                mockRequestLogService.Object, mockVirtualKeyService.Object, mockBillingAuditService.Object);
+                mockRequestLogService.Object, mockVirtualKeyService.Object, mockBillingAuditService.Object, mockToolCostService.Object);
             
             // Assert
             mockCostService.Verify(x => x.CalculateCostAsync("gpt-4", It.IsAny<Usage>(), default), Times.Once);

@@ -64,6 +64,17 @@ public partial class CostCalculationService
             calculatedCost += (usage.CompletionTokens.Value * modelCost.OutputCostPerMillionTokens) / 1_000_000m;
         }
 
+        // Add reasoning token cost if applicable (cost is per million tokens)
+        if (usage.ReasoningTokens.HasValue && usage.ReasoningTokens.Value > 0)
+        {
+            // Use specific reasoning rate if available, otherwise fall back to output rate
+            var reasoningRate = modelCost.ReasoningCostPerMillionTokens ?? modelCost.OutputCostPerMillionTokens;
+            calculatedCost += (usage.ReasoningTokens.Value * reasoningRate) / 1_000_000m;
+            
+            _logger.LogDebug("Applied reasoning token pricing for {ReasoningTokens} tokens at rate {ReasoningRate}",
+                usage.ReasoningTokens.Value, reasoningRate);
+        }
+
         // Add image generation cost if applicable
         if (modelCost.ImageCostPerImage.HasValue && usage.ImageCount.HasValue)
         {

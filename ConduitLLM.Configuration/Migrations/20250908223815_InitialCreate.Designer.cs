@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ConduitLLM.Configuration.Migrations
 {
     [DbContext(typeof(ConduitDbContext))]
-    [Migration("20250831064038_UpdateVideoModelsAndRemoveAudio")]
-    partial class UpdateVideoModelsAndRemoveAudio
+    [Migration("20250908223815_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -249,6 +249,12 @@ namespace ConduitLLM.Configuration.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<decimal?>("ToolUsageCost")
+                        .HasColumnType("decimal(10, 6)");
+
+                    b.Property<string>("ToolUsageJson")
+                        .HasColumnType("jsonb");
 
                     b.Property<string>("UsageJson")
                         .HasColumnType("jsonb");
@@ -842,6 +848,9 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<int>("Priority")
                         .HasColumnType("integer");
 
+                    b.Property<decimal?>("ReasoningCostPerMillionTokens")
+                        .HasColumnType("decimal(18, 10)");
+
                     b.Property<bool>("SupportsBatchProcessing")
                         .HasColumnType("boolean");
 
@@ -943,9 +952,8 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<int>("ModelId")
                         .HasColumnType("integer");
 
-                    b.Property<string>("Provider")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                    b.Property<int?>("Provider")
+                        .HasColumnType("integer");
 
                     b.Property<string>("ProviderVariation")
                         .HasColumnType("text");
@@ -973,9 +981,6 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("Provider", "Identifier")
                         .IsUnique()
                         .HasDatabaseName("IX_ModelIdentifier_Provider_Identifier_Unique");
-
-                    b.HasIndex("ModelId", "Identifier", "Provider")
-                        .IsUnique();
 
                     b.ToTable("ModelIdentifiers", (string)null);
                 });
@@ -1149,6 +1154,53 @@ namespace ConduitLLM.Configuration.Migrations
 
                             t.HasCheckConstraint("CK_ProviderKeyCredential_PrimaryMustBeEnabled", "\"IsPrimary\" = false OR \"IsEnabled\" = true");
                         });
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ProviderTool", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BillingUnit")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("CostDescription")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal?>("CostPerUnit")
+                        .HasColumnType("decimal(10, 6)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Provider")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ToolName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ToolParameters")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive")
+                        .HasDatabaseName("IX_ProviderTool_IsActive");
+
+                    b.HasIndex("Provider", "ToolName")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ProviderTool_Provider_ToolName");
+
+                    b.ToTable("ProviderTools");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.RequestLog", b =>

@@ -146,6 +146,18 @@ public partial class CostCalculationService
             totalRefund += breakdown.OutputTokenRefund;
         }
 
+        // Handle reasoning token refunds (cost is per million tokens)
+        if (refundUsage.ReasoningTokens.HasValue && refundUsage.ReasoningTokens.Value > 0)
+        {
+            // Use specific reasoning rate if available, otherwise fall back to output rate
+            var reasoningRate = modelCost.ReasoningCostPerMillionTokens ?? modelCost.OutputCostPerMillionTokens;
+            var reasoningRefund = (refundUsage.ReasoningTokens.Value * reasoningRate) / 1_000_000m;
+            totalRefund += reasoningRefund;
+            
+            _logger.LogDebug("Applied reasoning token refund for {ReasoningTokens} tokens at rate {ReasoningRate}",
+                refundUsage.ReasoningTokens.Value, reasoningRate);
+        }
+
         // Handle image generation refunds
         if (modelCost.ImageCostPerImage.HasValue && refundUsage.ImageCount.HasValue && refundUsage.ImageCount.Value > 0)
         {

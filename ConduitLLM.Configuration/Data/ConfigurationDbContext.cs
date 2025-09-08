@@ -118,6 +118,11 @@ namespace ConduitLLM.Configuration
         public virtual DbSet<ProviderKeyCredential> ProviderKeyCredentials { get; set; } = null!;
 
         /// <summary>
+        /// Database set for provider tools
+        /// </summary>
+        public virtual DbSet<ProviderTool> ProviderTools { get; set; } = null!;
+
+        /// <summary>
         /// Database set for IP filters
         /// </summary>
         public virtual DbSet<IpFilterEntity> IpFilters { get; set; } = null!;
@@ -394,6 +399,21 @@ namespace ConduitLLM.Configuration
                       .HasConversion<int>();
                       
                 entity.Property(e => e.ReferenceType)
+                      .HasConversion<int>();
+            });
+
+            // Configure ProviderTool entity
+            modelBuilder.Entity<ProviderTool>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.Provider, e.ToolName })
+                      .HasDatabaseName("IX_ProviderTool_Provider_ToolName")
+                      .IsUnique();
+                entity.HasIndex(e => e.IsActive)
+                      .HasDatabaseName("IX_ProviderTool_IsActive");
+                
+                // Store enum as integer
+                entity.Property(e => e.Provider)
                       .HasConversion<int>();
             });
 

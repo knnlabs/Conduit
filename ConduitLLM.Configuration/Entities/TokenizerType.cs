@@ -26,6 +26,12 @@ public enum TokenizerType
     // Cohere tokenizers
     Cohere,          // Command and other Cohere models
     
+    // OpenAI OSS tokenizers
+    O200KHarmony,    // GPT-OSS models (120B, 20B) - OpenAI's open-source models
+    
+    // Moonshot AI tokenizers
+    Kimi,            // Kimi K2 models (K2-0905 with 256k context)
+    
     // Other provider tokenizers
     Groq,            // Groq-specific if different from base models
     Cerebras,        // Cerebras-specific if different

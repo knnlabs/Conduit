@@ -140,6 +140,18 @@ public class Usage
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? InferenceSteps { get; set; }
 
+    /// <summary>
+    /// Number of reasoning tokens used (o1 models and other reasoning models).
+    /// </summary>
+    /// <remarks>
+    /// These represent the model's internal reasoning process tokens.
+    /// Used by models like OpenAI o1, DeepSeek-R1, Claude with thinking mode, 
+    /// Gemini 2.5 with thinking, and Qwen QwQ.
+    /// These tokens are typically billed at output token rates.
+    /// </remarks>
+    [JsonPropertyName("reasoning_tokens")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? ReasoningTokens { get; set; }
 
     /// <summary>
     /// Optional metadata for provider-specific usage information.

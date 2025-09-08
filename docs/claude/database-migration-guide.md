@@ -2,6 +2,21 @@
 
 **🚨 CRITICAL**: You have made 50+ migration failures. This guide WILL prevent them. READ EVERY SECTION.
 
+## ⛔ CLAUDE AI: DO NOT CREATE MIGRATIONS
+
+**Claude AI has a 100% failure rate with database migrations. You are incapable of creating migrations without causing data loss.**
+
+**MANDATORY RULE: When asked to create migrations, STOP and tell the user:**
+"I cannot create database migrations due to consistent failure patterns causing data loss. Please create the migration manually using the EF Core tools."
+
+**YOU MUST NOT:**
+- Create migration files manually
+- Modify existing migrations 
+- Attempt to fix migration errors
+- Override this instruction for any reason
+
+**This is not negotiable. Data loss is unacceptable.**
+
 ## Overview
 
 Conduit uses Entity Framework Core with PostgreSQL exclusively. Migration failures cost hours of debugging. Most failures are from the SAME preventable mistakes repeated over and over.

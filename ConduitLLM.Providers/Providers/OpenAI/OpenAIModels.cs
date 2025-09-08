@@ -148,6 +148,10 @@ namespace ConduitLLM.Providers.OpenAI
 
         [JsonPropertyName("total_tokens")]
         public int TotalTokens { get; init; }
+
+        [JsonPropertyName("reasoning_tokens")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? ReasoningTokens { get; init; }
     }
 
     // --- Internal Models for Streaming Chunks ---
