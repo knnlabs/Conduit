@@ -75,6 +75,24 @@ describe('useImageStore', () => {
     // Clear store state between tests
     jest.clearAllMocks();
     localStorage.clear();
+    // Reset the store state completely
+    const { getState } = useImageStore;
+    if (getState) {
+      useImageStore.setState({
+        prompt: '',
+        status: MediaGenerationStatus.Idle,
+        currentResults: [],
+        settingsVisible: false,
+        error: null,
+        settings: {
+          model: '',
+          quality: 'standard',
+          style: 'vivid'
+        },
+        currentTask: null,
+        taskHistory: []
+      });
+    }
   });
 
   describe('Initial State', () => {

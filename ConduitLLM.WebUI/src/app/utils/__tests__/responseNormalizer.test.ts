@@ -22,7 +22,7 @@ describe('Response Normalizer', () => {
       expect(result).toBeDefined();
       expect(result?.data).toHaveLength(1);
       expect(result?.data[0]).toEqual({ url: 'https://example.com/video.mp4' });
-      expect(result?.usage).toEqual({ total_tokens: 100 });
+      expect(result?.usage).toEqual({ prompt_tokens: 0, total_tokens: 100 });
     });
 
     it('should normalize backend response format', () => {

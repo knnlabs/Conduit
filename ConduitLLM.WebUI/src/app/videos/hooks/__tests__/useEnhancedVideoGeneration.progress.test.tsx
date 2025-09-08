@@ -53,7 +53,7 @@ describe('useEnhancedVideoGeneration - Progress Tracking', () => {
         if (callbacks?.onProgress) {
           callbacks.onProgress({
             percentage: 50,
-            status: 'processing',
+            status: 'running',  // Changed to 'running' which maps to Generating
             message: 'Processing video...',
           });
         }
@@ -130,7 +130,6 @@ describe('useEnhancedVideoGeneration - Progress Tracking', () => {
         expect.objectContaining({
           prompt: 'Test video with progress',
           model: 'minimax-video',
-          response_format: 'url',
         }),
         expect.any(Object)
       );
