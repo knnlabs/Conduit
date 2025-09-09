@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Modal, TextInput, Select, Switch, Button, Stack, Group } from '@mantine/core';
+import { Modal, TextInput, Select, Switch, Button, Stack, Group, NumberInput, Divider } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useAdminClient } from '@/lib/client/adminClient';
@@ -26,7 +26,16 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
       name: '',
       modelSeriesId: '',
       tokenizerType: TokenizerType.Cl100KBase,
-      isActive: true
+      isActive: true,
+      supportsChat: true,
+      supportsVision: false,
+      supportsFunctionCalling: false,
+      supportsStreaming: true,
+      supportsImageGeneration: false,
+      supportsVideoGeneration: false,
+      supportsEmbeddings: false,
+      maxInputTokens: undefined as number | undefined,
+      maxOutputTokens: undefined as number | undefined
     },
     validate: {
       name: (value) => !value ? 'Name is required' : null,
@@ -76,7 +85,16 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
         name: values.name,
         modelSeriesId: values.modelSeriesId ? parseInt(values.modelSeriesId) : undefined,
         tokenizerType: values.tokenizerType,
-        isActive: values.isActive
+        isActive: values.isActive,
+        supportsChat: values.supportsChat,
+        supportsVision: values.supportsVision,
+        supportsFunctionCalling: values.supportsFunctionCalling,
+        supportsStreaming: values.supportsStreaming,
+        supportsImageGeneration: values.supportsImageGeneration,
+        supportsVideoGeneration: values.supportsVideoGeneration,
+        supportsEmbeddings: values.supportsEmbeddings,
+        maxInputTokens: values.maxInputTokens ?? undefined,
+        maxOutputTokens: values.maxOutputTokens ?? undefined
       } as CreateModelDto;
       await executeWithAdmin(client => client.models.create(dto));
       notifications.show({
@@ -139,7 +157,64 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
             error={form.errors.tokenizerType}
           />
 
-          {/* Capabilities are now embedded directly in the Model entity */}
+          <Divider label="Model Capabilities" labelPosition="center" my="md" />
+          
+          <Group grow>
+            <Switch
+              label="Supports Chat"
+              {...form.getInputProps('supportsChat', { type: 'checkbox' })}
+            />
+            <Switch
+              label="Supports Vision"
+              {...form.getInputProps('supportsVision', { type: 'checkbox' })}
+            />
+          </Group>
+
+          <Group grow>
+            <Switch
+              label="Supports Function Calling"
+              {...form.getInputProps('supportsFunctionCalling', { type: 'checkbox' })}
+            />
+            <Switch
+              label="Supports Streaming"
+              {...form.getInputProps('supportsStreaming', { type: 'checkbox' })}
+            />
+          </Group>
+
+          <Group grow>
+            <Switch
+              label="Supports Image Generation"
+              {...form.getInputProps('supportsImageGeneration', { type: 'checkbox' })}
+            />
+            <Switch
+              label="Supports Video Generation"
+              {...form.getInputProps('supportsVideoGeneration', { type: 'checkbox' })}
+            />
+          </Group>
+
+          <Switch
+            label="Supports Embeddings"
+            {...form.getInputProps('supportsEmbeddings', { type: 'checkbox' })}
+          />
+
+          <Divider label="Token Limits" labelPosition="center" my="md" />
+
+          <Group grow>
+            <NumberInput
+              label="Max Input Tokens"
+              placeholder="e.g., 128000"
+              min={0}
+              {...form.getInputProps('maxInputTokens')}
+            />
+            <NumberInput
+              label="Max Output Tokens"
+              placeholder="e.g., 4096"
+              min={0}
+              {...form.getInputProps('maxOutputTokens')}
+            />
+          </Group>
+
+          <Divider my="md" />
 
           <Switch
             label="Active"
