@@ -76,7 +76,7 @@ namespace ConduitLLM.Http.Middleware
                     responseBody.Seek(0, SeekOrigin.Begin);
                     await responseBody.CopyToAsync(originalBodyStream);
                     await TrackStreamingUsageAsync(context, costCalculationService, batchSpendService, 
-                        requestLogService, virtualKeyService, billingAuditService);
+                        requestLogService, virtualKeyService, billingAuditService, toolCostCalculationService);
                     return;
                 }
 
@@ -256,7 +256,8 @@ namespace ConduitLLM.Http.Middleware
             IBatchSpendUpdateService batchSpendService,
             IRequestLogService requestLogService,
             IVirtualKeyService virtualKeyService,
-            IBillingAuditService billingAuditService)
+            IBillingAuditService billingAuditService,
+            IToolCostCalculationService toolCostCalculationService)
         {
             var endpointType = UsageExtractor.DetermineRequestType(context.Request.Path);
             
@@ -290,8 +291,30 @@ namespace ConduitLLM.Http.Middleware
                 ? providerTypeObj?.ToString() ?? "unknown"
                 : "unknown";
             
-            // Calculate cost and track
-            var cost = await costCalculationService.CalculateCostAsync(model, usage);
+            // Parse provider type enum for tool usage
+            var providerTypeEnum = Enum.TryParse<ProviderType>(providerType, true, out var parsedProviderType) 
+                ? parsedProviderType 
+                : ProviderType.OpenAI;
+            
+            // Extract tool usage from streaming context if available
+            var toolUsageData = context.Items.TryGetValue("StreamingToolUsage", out var toolObj) 
+                ? toolObj as ToolUsageData 
+                : null;
+            
+            var toolCost = 0m;
+            string? toolUsageJson = null;
+            
+            if (toolUsageData != null)
+            {
+                toolCost = await toolCostCalculationService.CalculateToolCostsAsync(toolUsageData, providerTypeEnum);
+                toolUsageJson = toolCostCalculationService.SerializeToolUsage(toolUsageData);
+                _logger.LogDebug("Streaming tool usage detected: {ToolUsageJson}, Cost: ${ToolCost}", toolUsageJson, toolCost);
+            }
+            
+            // Calculate base cost and add tool cost
+            var baseCost = await costCalculationService.CalculateCostAsync(model, usage);
+            var cost = baseCost + toolCost;
+            
             if (cost > 0)
             {
                 // Update metrics
@@ -308,12 +331,12 @@ namespace ConduitLLM.Http.Middleware
                 await SpendUpdateHelper.UpdateSpendAsync(virtualKeyId, cost, batchSpendService, virtualKeyService, _logger);
                 await LogRequestAsync(context, virtualKeyId, model, usage, cost, requestLogService);
                 
-                LogStreamingBilling(context, model, usage, cost, providerType, isEstimated, billingAuditService);
+                LogStreamingBilling(context, model, usage, cost, providerType, isEstimated, billingAuditService, toolUsageJson, toolCost);
             }
             else
             {
                 UsageMetrics.UsageTrackingFailures.WithLabels("zero_cost_streaming", endpointType).Inc();
-                LogZeroCostBilling(context, model, usage, cost, providerType, billingAuditService);
+                LogZeroCostBilling(context, model, usage, cost, providerType, billingAuditService, toolUsageJson, toolCost);
                 UsageMetrics.ZeroCostEvents.WithLabels(model ?? "unknown", "streaming_zero").Inc();
             }
         }
@@ -368,7 +391,7 @@ namespace ConduitLLM.Http.Middleware
         private void LogSuccessfulBilling(HttpContext context, string model, Usage usage, decimal cost, 
             string providerType, IBillingAuditService billingAuditService, string? toolUsageJson = null, decimal? toolCost = null)
         {
-            BillingPolicyHandler.LogSuccessfulBilling(context, model, usage, cost, providerType, billingAuditService, _logger);
+            BillingPolicyHandler.LogSuccessfulBilling(context, model, usage, cost, providerType, billingAuditService, _logger, toolUsageJson, toolCost);
         }
 
         /// <summary>
@@ -397,7 +420,7 @@ namespace ConduitLLM.Http.Middleware
         private void LogZeroCostBilling(HttpContext context, string model, Usage usage, decimal cost, 
             string providerType, IBillingAuditService billingAuditService, string? toolUsageJson = null, decimal? toolCost = null)
         {
-            BillingPolicyHandler.LogZeroCostBilling(context, model, usage, cost, providerType, billingAuditService);
+            BillingPolicyHandler.LogZeroCostBilling(context, model, usage, cost, providerType, billingAuditService, toolUsageJson, toolCost);
         }
 
         private void LogMissingUsageData(HttpContext context, IBillingAuditService billingAuditService)
@@ -406,9 +429,9 @@ namespace ConduitLLM.Http.Middleware
         }
 
         private void LogStreamingBilling(HttpContext context, string model, Usage usage, decimal cost, 
-            string providerType, bool isEstimated, IBillingAuditService billingAuditService)
+            string providerType, bool isEstimated, IBillingAuditService billingAuditService, string? toolUsageJson = null, decimal? toolCost = null)
         {
-            BillingPolicyHandler.LogStreamingBilling(context, model, usage, cost, providerType, isEstimated, billingAuditService, _logger);
+            BillingPolicyHandler.LogStreamingBilling(context, model, usage, cost, providerType, isEstimated, billingAuditService, _logger, toolUsageJson, toolCost);
         }
 
         private void LogMissingStreamingUsage(HttpContext context, IBillingAuditService billingAuditService)

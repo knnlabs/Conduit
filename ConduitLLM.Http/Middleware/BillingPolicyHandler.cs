@@ -92,11 +92,26 @@ namespace ConduitLLM.Http.Middleware
         public static void LogSuccessfulBilling(HttpContext context, string model, Usage usage, decimal cost, 
             string providerType, IBillingAuditService billingAuditService, ILogger logger)
         {
+            LogSuccessfulBilling(context, model, usage, cost, providerType, billingAuditService, logger, null, null);
+        }
+
+        /// <summary>
+        /// Logs successful billing event with usage data, including optional tool usage.
+        /// </summary>
+        public static void LogSuccessfulBilling(HttpContext context, string model, Usage usage, decimal cost, 
+            string providerType, IBillingAuditService billingAuditService, ILogger logger,
+            string? toolUsageJson, decimal? toolCost)
+        {
             var virtualKeyId = (int)context.Items["VirtualKeyId"]!;
+            
+            // Determine event type based on whether tools were used
+            var eventType = toolUsageJson != null 
+                ? BillingAuditEventType.ToolUsageTracked 
+                : BillingAuditEventType.UsageTracked;
             
             billingAuditService.LogBillingEvent(new BillingAuditEvent
             {
-                EventType = BillingAuditEventType.UsageTracked,
+                EventType = eventType,
                 VirtualKeyId = virtualKeyId,
                 Model = model,
                 RequestId = context.TraceIdentifier,
@@ -104,13 +119,23 @@ namespace ConduitLLM.Http.Middleware
                 CalculatedCost = cost,
                 ProviderType = providerType,
                 RequestPath = context.Request.Path.ToString(),
-                HttpStatusCode = context.Response.StatusCode
+                HttpStatusCode = context.Response.StatusCode,
+                ToolUsageJson = toolUsageJson,
+                ToolUsageCost = toolCost
             });
             
             // Increment metrics
-            UsageMetrics.BillingAuditEvents.WithLabels("UsageTracked", providerType ?? "unknown").Inc();
+            UsageMetrics.BillingAuditEvents.WithLabels(eventType.ToString(), providerType ?? "unknown").Inc();
             UsageMetrics.BillingRevenue.WithLabels(model ?? "unknown", providerType ?? "unknown").Inc(Convert.ToDouble(cost));
             UsageMetrics.BillingCostDistribution.WithLabels(model ?? "unknown", providerType ?? "unknown").Observe(Convert.ToDouble(cost));
+            
+            // Log tool usage metrics if applicable
+            if (toolCost.HasValue && toolCost.Value > 0)
+            {
+                logger.LogInformation("Tool usage billed: Model={Model}, ToolCost=${ToolCost:F6}, TotalCost=${TotalCost:F6}",
+                    model, toolCost.Value, cost);
+                UsageMetrics.BillingRevenue.WithLabels(model ?? "unknown", providerType ?? "unknown_tools").Inc(Convert.ToDouble(toolCost.Value));
+            }
         }
 
         /// <summary>
@@ -119,11 +144,26 @@ namespace ConduitLLM.Http.Middleware
         public static void LogZeroCostBilling(HttpContext context, string model, Usage usage, decimal cost, 
             string providerType, IBillingAuditService billingAuditService)
         {
+            LogZeroCostBilling(context, model, usage, cost, providerType, billingAuditService, null, null);
+        }
+
+        /// <summary>
+        /// Logs billing event for zero cost calculations, including optional tool usage.
+        /// </summary>
+        public static void LogZeroCostBilling(HttpContext context, string model, Usage usage, decimal cost, 
+            string providerType, IBillingAuditService billingAuditService,
+            string? toolUsageJson, decimal? toolCost)
+        {
             var virtualKeyId = (int)context.Items["VirtualKeyId"]!;
+            
+            // Determine if this is a missing tool cost config scenario
+            var eventType = toolUsageJson != null && (!toolCost.HasValue || toolCost.Value == 0)
+                ? BillingAuditEventType.ToolUsageMissingCostConfig
+                : BillingAuditEventType.ZeroCostSkipped;
             
             billingAuditService.LogBillingEvent(new BillingAuditEvent
             {
-                EventType = BillingAuditEventType.ZeroCostSkipped,
+                EventType = eventType,
                 VirtualKeyId = virtualKeyId,
                 Model = model,
                 RequestId = context.TraceIdentifier,
@@ -131,12 +171,25 @@ namespace ConduitLLM.Http.Middleware
                 CalculatedCost = cost,
                 ProviderType = providerType,
                 RequestPath = context.Request.Path.ToString(),
-                HttpStatusCode = context.Response.StatusCode
+                HttpStatusCode = context.Response.StatusCode,
+                ToolUsageJson = toolUsageJson,
+                ToolUsageCost = toolCost,
+                FailureReason = eventType == BillingAuditEventType.ToolUsageMissingCostConfig 
+                    ? "Tool usage detected but no cost configuration found" 
+                    : null
             });
             
             // Increment metrics
-            UsageMetrics.BillingAuditEvents.WithLabels("ZeroCostSkipped", providerType ?? "unknown").Inc();
-            UsageMetrics.ZeroCostEvents.WithLabels(model ?? "unknown", "calculated_zero").Inc();
+            UsageMetrics.BillingAuditEvents.WithLabels(eventType.ToString(), providerType ?? "unknown").Inc();
+            
+            if (eventType == BillingAuditEventType.ToolUsageMissingCostConfig)
+            {
+                UsageMetrics.BillingRevenueLoss.WithLabels("ToolUsageMissingCostConfig", "missing_tool_config").Inc();
+            }
+            else
+            {
+                UsageMetrics.ZeroCostEvents.WithLabels(model ?? "unknown", "calculated_zero").Inc();
+            }
         }
 
         /// <summary>
@@ -168,8 +221,22 @@ namespace ConduitLLM.Http.Middleware
         public static void LogStreamingBilling(HttpContext context, string model, Usage usage, decimal cost, 
             string providerType, bool isEstimated, IBillingAuditService billingAuditService, ILogger logger)
         {
+            LogStreamingBilling(context, model, usage, cost, providerType, isEstimated, billingAuditService, logger, null, null);
+        }
+
+        /// <summary>
+        /// Logs billing event for streaming usage, including optional tool usage.
+        /// </summary>
+        public static void LogStreamingBilling(HttpContext context, string model, Usage usage, decimal cost, 
+            string providerType, bool isEstimated, IBillingAuditService billingAuditService, ILogger logger,
+            string? toolUsageJson, decimal? toolCost)
+        {
             var virtualKeyId = (int)context.Items["VirtualKeyId"]!;
-            var eventType = isEstimated ? BillingAuditEventType.UsageEstimated : BillingAuditEventType.UsageTracked;
+            
+            // Determine event type based on estimation and tool usage
+            var eventType = toolUsageJson != null 
+                ? BillingAuditEventType.ToolUsageTracked
+                : (isEstimated ? BillingAuditEventType.UsageEstimated : BillingAuditEventType.UsageTracked);
             
             billingAuditService.LogBillingEvent(new BillingAuditEvent
             {
@@ -183,6 +250,8 @@ namespace ConduitLLM.Http.Middleware
                 RequestPath = context.Request.Path.ToString(),
                 HttpStatusCode = context.Response.StatusCode,
                 IsEstimated = isEstimated,
+                ToolUsageJson = toolUsageJson,
+                ToolUsageCost = toolCost,
                 FailureReason = isEstimated ? "Provider did not return usage data - usage was estimated conservatively" : null
             });
             
@@ -196,6 +265,15 @@ namespace ConduitLLM.Http.Middleware
                 // Track that we recovered revenue through estimation
                 UsageMetrics.BillingRevenue.WithLabels(model ?? "unknown", providerType ?? "unknown_estimated").Inc(Convert.ToDouble(cost));
             }
+            
+            // Log tool usage if applicable
+            if (toolCost.HasValue && toolCost.Value > 0)
+            {
+                logger.LogInformation("Tool usage billed in streaming: Model={Model}, ToolCost=${ToolCost:F6}, TotalCost=${TotalCost:F6}",
+                    model, toolCost.Value, cost);
+                UsageMetrics.BillingRevenue.WithLabels(model ?? "unknown", providerType ?? "unknown_tools_stream").Inc(Convert.ToDouble(toolCost.Value));
+            }
+            
             UsageMetrics.BillingRevenue.WithLabels(model ?? "unknown", providerType ?? "unknown").Inc(Convert.ToDouble(cost));
             UsageMetrics.BillingCostDistribution.WithLabels(model ?? "unknown", providerType ?? "unknown").Observe(Convert.ToDouble(cost));
         }

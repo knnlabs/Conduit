@@ -94,6 +94,11 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
+                if (toolUsage == null)
+                {
+                    return "{}";
+                }
+                
                 var options = new JsonSerializerOptions
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
