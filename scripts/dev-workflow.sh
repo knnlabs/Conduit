@@ -41,7 +41,7 @@ show_usage() {
     cat << EOF
 Usage: $0 <command> [options]
 
-Development Commands:
+Development Commands (Container):
   build-webui          - Build the WebUI application
   build-sdks           - Build all SDK packages (Common, Admin, Core)
   build-sdk <name>     - Build specific SDK (common|admin|core)
@@ -57,6 +57,11 @@ Development Commands:
   status               - Show container status
   exec <cmd>           - Execute any command in WebUI container
 
+Local Build Commands (No Container Required):
+  install-local        - Install all dependencies locally (SDKs + WebUI)
+  build-local          - Build all TypeScript projects locally
+  install-and-build-local - Install and build everything locally (fresh clone)
+
 Utility Commands:
   fix-permissions      - Fix file permissions if needed (legacy)
   clean                - Clean node_modules and build artifacts
@@ -70,6 +75,7 @@ Examples:
   $0 npm-install-webui         # Install WebUI dependencies
   $0 exec npm install axios    # Install a package
   $0 exec npm run test:unit   # Run specific test suite
+  $0 install-and-build-local  # Fresh clone? Build everything locally
 
 Environment Variables:
   DOCKER_COMPOSE_CMD   - Docker compose command (default: docker compose)
@@ -239,6 +245,75 @@ clean() {
     log_info "Clean completed"
 }
 
+# Install dependencies for all TypeScript projects locally
+install_local() {
+    log_info "Installing dependencies for all TypeScript projects locally..."
+    
+    # Install Common SDK dependencies (no dependencies on other SDKs)
+    log_task "Installing Common SDK dependencies..."
+    cd "$PROJECT_ROOT/SDKs/Node/Common"
+    npm install
+    
+    # Install Core SDK dependencies (depends on Common)
+    log_task "Installing Core SDK dependencies..."
+    cd "$PROJECT_ROOT/SDKs/Node/Core"
+    npm install
+    
+    # Install Admin SDK dependencies (depends on Common)
+    log_task "Installing Admin SDK dependencies..."
+    cd "$PROJECT_ROOT/SDKs/Node/Admin"
+    npm install
+    
+    # Install WebUI dependencies (depends on all SDKs via symlinks)
+    log_task "Installing WebUI dependencies..."
+    cd "$PROJECT_ROOT/ConduitLLM.WebUI"
+    npm install
+    
+    log_info "All dependencies installed successfully!"
+}
+
+# Build all TypeScript projects locally
+build_local() {
+    log_info "Building all TypeScript projects locally..."
+    
+    # Build Common SDK first (base dependency)
+    log_task "Building Common SDK..."
+    cd "$PROJECT_ROOT/SDKs/Node/Common"
+    npm run build
+    
+    # Build Core SDK (depends on Common)
+    log_task "Building Core SDK..."
+    cd "$PROJECT_ROOT/SDKs/Node/Core"
+    npm run build
+    
+    # Build Admin SDK (depends on Common)
+    log_task "Building Admin SDK..."
+    cd "$PROJECT_ROOT/SDKs/Node/Admin"
+    npm run build
+    
+    # Build WebUI (depends on all SDKs)
+    log_task "Building WebUI..."
+    cd "$PROJECT_ROOT/ConduitLLM.WebUI"
+    npm run build
+    
+    log_info "All projects built successfully!"
+}
+
+# Install and build everything locally (for fresh clones)
+install_and_build_local() {
+    log_info "Installing and building all TypeScript projects locally..."
+    log_warn "This is intended for fresh clones or CI environments"
+    
+    # First install all dependencies
+    install_local
+    
+    # Then build everything
+    build_local
+    
+    log_info "Installation and build completed successfully!"
+    log_info "The WebUI production build is in: $PROJECT_ROOT/ConduitLLM.WebUI/.next"
+}
+
 # Main execution
 main() {
     local command="${1:-}"
@@ -312,6 +387,15 @@ main() {
             ;;
         clean)
             clean
+            ;;
+        install-local)
+            install_local
+            ;;
+        build-local)
+            build_local
+            ;;
+        install-and-build-local)
+            install_and_build_local
             ;;
         exec)
             shift  # Remove 'exec' from arguments
