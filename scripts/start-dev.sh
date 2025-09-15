@@ -40,6 +40,7 @@ Options:
   --build        Rebuild containers (smart caching: keeps OS layers, rebuilds .NET code)
   --rebuild      Full rebuild with --no-cache (slower, use when --build fails)
   --webui        Rebuild WebUI container (fixes Next.js issues)
+  --logs [service]  Show container logs (api|core|admin|rabbitmq|webui, or all if omitted)
   --help         Show this help
 
 Default behavior:
@@ -186,26 +187,51 @@ rebuild_webui() {
     log_info "WebUI available at: http://localhost:3000"
 }
 
+show_logs() {
+    local service="$1"
+
+    # Map "core" alias to "api"
+    if [[ "$service" == "core" ]]; then
+        service="api"
+    fi
+
+    # Validate service name if provided
+    if [[ -n "$service" ]] && [[ ! "$service" =~ ^(api|admin|rabbitmq|webui)$ ]]; then
+        log_error "Invalid service: $service"
+        log_info "Valid services: api (or core), admin, rabbitmq, webui"
+        exit 1
+    fi
+
+    # Show logs
+    if [[ -z "$service" ]]; then
+        log_info "Showing logs for all services (Ctrl+C to exit)..."
+        docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f
+    else
+        log_info "Showing logs for $service (Ctrl+C to exit)..."
+        docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f "$service"
+    fi
+}
+
 start_development() {
     log_info "Starting development environment..."
-    
+
     # Set user mapping for volume permissions
     export DOCKER_USER_ID=$(id -u)
     export DOCKER_GROUP_ID=$(id -g)
-    
+
     # Start all services
     docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
-    
+
     # Wait a moment for containers to initialize
     sleep 5
-    
+
     # Check if containers are running
     local running_containers=$(docker compose -f docker-compose.yml -f docker-compose.dev.yml ps --services --filter "status=running" | wc -l)
     if [[ $running_containers -lt 4 ]]; then
         log_warn "Some containers may not have started properly"
         log_info "Check status with: docker compose -f docker-compose.yml -f docker-compose.dev.yml ps"
     fi
-    
+
     log_info "Development environment started!"
     echo
     log_info "Services available at:"
@@ -223,7 +249,9 @@ main() {
     local clean_volumes_flag=false
     local build_flag=""
     local webui_only=false
-    
+    local show_logs_flag=false
+    local logs_service=""
+
     # Parse arguments
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -243,6 +271,15 @@ main() {
                 webui_only=true
                 shift
                 ;;
+            --logs)
+                show_logs_flag=true
+                shift
+                # Check if next argument is a service name (not another flag)
+                if [[ $# -gt 0 ]] && [[ ! "$1" =~ ^-- ]]; then
+                    logs_service="$1"
+                    shift
+                fi
+                ;;
             --help|-h)
                 show_usage
                 exit 0
@@ -254,29 +291,35 @@ main() {
                 ;;
         esac
     done
-    
+
     # Change to project root
     cd "$PROJECT_ROOT"
-    
+
+    # Handle logs display
+    if [[ "$show_logs_flag" == "true" ]]; then
+        show_logs "$logs_service"
+        return 0
+    fi
+
     check_prerequisites
-    
+
     # Handle WebUI-only rebuild
     if [[ "$webui_only" == "true" ]]; then
         rebuild_webui
         return 0
     fi
-    
+
     # Clean volumes if requested
     if [[ "$clean_volumes_flag" == "true" ]]; then
         clean_volumes
     fi
-    
+
     # Build containers
     build_containers "$build_flag"
-    
+
     # Build SDKs (required for WebUI)
     build_sdks
-    
+
     # Start development environment
     start_development
 }
