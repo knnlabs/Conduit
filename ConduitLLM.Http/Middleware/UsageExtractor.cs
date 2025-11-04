@@ -154,51 +154,41 @@ namespace ConduitLLM.Http.Middleware
                 using var doc = JsonDocument.Parse(responseBody);
                 var root = doc.RootElement;
 
-                if (!root.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
+                // Groq returns tool usage in x_groq.usage field
+                if (!root.TryGetProperty("x_groq", out var xGroq))
                     return null;
 
-                var firstChoice = choices[0];
-                if (!firstChoice.TryGetProperty("message", out var message))
-                    return null;
-
-                if (!message.TryGetProperty("executed_tools", out var executedTools) || 
-                    executedTools.ValueKind != JsonValueKind.Array)
+                if (!xGroq.TryGetProperty("usage", out var usage))
                     return null;
 
                 var toolUsageList = new List<ToolUsageItem>();
 
-                foreach (var tool in executedTools.EnumerateArray())
+                // Iterate through all properties in the usage object
+                foreach (var property in usage.EnumerateObject())
                 {
-                    if (tool.TryGetProperty("type", out var toolType))
-                    {
-                        var toolName = toolType.GetString();
-                        
-                        // Map Groq's tool types to billing names
-                        var billingToolName = toolName switch
-                        {
-                            "python" => "code_interpreter",
-                            "browser_search" => "browser_search",
-                            _ => toolName
-                        };
+                    var toolName = property.Name;
 
-                        if (billingToolName != null)
+                    // Map Groq's tool names to our billing names if needed
+                    // Currently Groq uses "code_interpreter" and "browser_search" directly
+                    var billingToolName = toolName switch
+                    {
+                        "python" => "code_interpreter", // In case they change to python
+                        _ => toolName
+                    };
+
+                    if (property.Value.ValueKind == JsonValueKind.Number)
+                    {
+                        var count = property.Value.GetInt32();
+                        if (count > 0)
                         {
-                            var existingTool = toolUsageList.FirstOrDefault(t => t.ToolName == billingToolName);
-                            if (existingTool != null)
+                            toolUsageList.Add(new ToolUsageItem
                             {
-                                existingTool.Count++;
-                            }
-                            else
-                            {
-                                toolUsageList.Add(new ToolUsageItem 
-                                { 
-                                    ToolName = billingToolName, 
-                                    Count = 1,
-                                    // For code_interpreter, we might want to track duration
-                                    // For now, we'll use a standard unit (could be enhanced later)
-                                    Duration = billingToolName == "code_interpreter" ? 1 : null
-                                });
-                            }
+                                ToolName = billingToolName,
+                                Count = count,
+                                // For code_interpreter, we might want to track duration
+                                // For now, we'll use a standard unit (could be enhanced later)
+                                Duration = billingToolName == "code_interpreter" ? 1 : null
+                            });
                         }
                     }
                 }

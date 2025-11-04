@@ -15,17 +15,14 @@ jest.mock('@mantine/notifications', () => ({
 
 // Mock dependencies
 jest.mock('../../hooks/useImageStore');
-jest.mock('next/image', () => {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const React = require('react');
-  return {
-    __esModule: true,
-    default: (props: { src: string; alt: string; [key: string]: unknown }) => {
-      const { src, alt, ...rest } = props;
-      return React.createElement('img', { src, alt, ...(rest as Record<string, string>) });
-    },
-  };
-});
+jest.mock('next/image', () => ({
+  esModule: true,
+  default: (props: { src: string; alt: string; [key: string]: unknown }) => {
+    const { src, alt, ...rest } = props;
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={src} alt={alt} {...(rest as Record<string, string>)} />;
+  },
+}));
 
 // Mock Mantine components
 jest.mock('@mantine/core', () => ({
@@ -61,47 +58,39 @@ jest.mock('@tabler/icons-react', () => ({
   IconFile: () => null
 }));
 
-// Mock media components - must be before the component import
-jest.mock('@/app/components/media', () => {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const React = require('react');
-  
-  // Define components as proper React functions
-  function MockMediaGallery({ items, renderCard, modalContent, modalOpened, onModalClose, modalTitle }: any) {
-    return React.createElement('div', { 'data-testid': 'media-gallery' },
-      items.map((item: any, index: number) => renderCard(item, index)),
-      modalOpened && React.createElement('div', { 'data-testid': 'modal' },
-        React.createElement('h2', {}, modalTitle),
-        modalContent,
-        React.createElement('button', { onClick: onModalClose }, 'Close')
-      )
-    );
+jest.mock('@/app/components/media', () => ({
+  MediaGallery: ({ items, renderCard }: {
+    items: unknown[];
+    renderCard: (item: unknown, index: number) => React.ReactNode;
+  }) => (
+    <div data-testid="media-gallery">
+      {items.map((item: unknown, index: number) => renderCard(item, index))}
+    </div>
+  ),
+  MediaCard: ({ children, onClick }: {
+    children: React.ReactNode;
+    onClick?: () => void;
+  }) => (
+    <div data-testid="media-card" onClick={onClick}>
+      {children}
+    </div>
+  ),
+  downloadMedia: jest.fn().mockResolvedValue({ success: true }),
+  formatFileSize: jest.fn((bytes: number) => `${Math.round(bytes / 1024)} KB`),
+  ImageMetadataExtractor: class {
+    extract = jest.fn().mockResolvedValue({
+      width: 1024,
+      height: 768,
+      sizeBytes: 153600,
+      format: 'png'
+    });
+  },
+  MetadataCache: class {
+    has = jest.fn().mockReturnValue(false);
+    get = jest.fn();
+    set = jest.fn();
   }
-  
-  function MockMediaCard({ children, onClick }: any) {
-    return React.createElement('div', { 'data-testid': 'media-card', onClick }, children);
-  }
-  
-  return {
-    MediaGallery: MockMediaGallery,
-    MediaCard: MockMediaCard,
-    downloadMedia: jest.fn().mockResolvedValue({ success: true }),
-    formatFileSize: jest.fn((bytes: number) => `${Math.round(bytes / 1024)} KB`),
-    ImageMetadataExtractor: class {
-      extract = jest.fn().mockResolvedValue({
-        width: 1024,
-        height: 768,
-        sizeBytes: 153600,
-        format: 'png'
-      });
-    },
-    MetadataCache: class {
-      has = jest.fn().mockReturnValue(false);
-      get = jest.fn();
-      set = jest.fn();
-    }
-  };
-});
+}));
 
 const mockUseImageStore = useImageStore as jest.MockedFunction<typeof useImageStore>;
 
@@ -115,7 +104,7 @@ describe('ImageGallery', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseImageStore.mockReturnValue(defaultMockStore as unknown as ReturnType<typeof useImageStore>);
+    mockUseImageStore.mockReturnValue(defaultMockStore as unknown);
   });
 
   describe('Empty State', () => {
@@ -149,7 +138,7 @@ describe('ImageGallery', () => {
         ...defaultMockStore,
         currentResults: mockResults,
         status: MediaGenerationStatus.Completed  // Ensure status is not Idle
-      } as unknown as ReturnType<typeof useImageStore>);
+      } as unknown);
     });
 
     it('should render images when results exist', () => {
@@ -175,9 +164,9 @@ describe('ImageGallery', () => {
     });
 
     it('should handle download button click', async () => {
-      const { downloadMedia } = jest.requireMock('@/app/components/media') as {
-        downloadMedia: jest.MockedFunction<typeof import('@/app/components/media').downloadMedia>;
-      };
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+      const mediaModule = jest.requireMock('@/app/components/media') as { downloadMedia: jest.Mock };
+      const { downloadMedia } = mediaModule;
       render(<ImageGallery />);
       
       const downloadButtons = screen.getAllByText('Download');
@@ -210,7 +199,7 @@ describe('ImageGallery', () => {
         ...defaultMockStore,
         status: MediaGenerationStatus.Generating,
         currentResults: []
-      } as unknown as ReturnType<typeof useImageStore>);
+      } as unknown);
 
       render(<ImageGallery />);
       
@@ -227,7 +216,7 @@ describe('ImageGallery', () => {
         ...defaultMockStore,
         status: MediaGenerationStatus.Generating,
         currentResults: existingResults
-      } as unknown as ReturnType<typeof useImageStore>);
+      } as unknown);
 
       render(<ImageGallery />);
       
@@ -243,7 +232,7 @@ describe('ImageGallery', () => {
         status: MediaGenerationStatus.Failed,
         error: 'Generation failed',
         currentResults: []
-      } as unknown as ReturnType<typeof useImageStore>);
+      } as unknown);
 
       render(<ImageGallery />);
       
@@ -260,7 +249,7 @@ describe('ImageGallery', () => {
         status: MediaGenerationStatus.Failed,
         error: 'Generation failed',
         currentResults: existingResults
-      } as unknown as ReturnType<typeof useImageStore>);
+      } as unknown);
 
       render(<ImageGallery />);
       
@@ -285,7 +274,7 @@ describe('ImageGallery', () => {
         ...defaultMockStore,
         currentResults: mockResults,
         status: MediaGenerationStatus.Completed
-      } as unknown as ReturnType<typeof useImageStore>);
+      } as unknown);
 
       render(<ImageGallery />);
       
@@ -314,7 +303,7 @@ describe('ImageGallery', () => {
         ...defaultMockStore,
         currentResults: mockResults,
         status: MediaGenerationStatus.Completed
-      } as unknown as ReturnType<typeof useImageStore>);
+      } as unknown);
 
       render(<ImageGallery />);
       
@@ -332,7 +321,7 @@ describe('ImageGallery', () => {
         ...defaultMockStore,
         currentResults: mockResults,
         status: MediaGenerationStatus.Completed
-      } as unknown as ReturnType<typeof useImageStore>);
+      } as unknown);
 
       render(<ImageGallery />);
       

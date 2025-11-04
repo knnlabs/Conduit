@@ -84,7 +84,7 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                if (int.TryParse(costId, out var id))
+                if (int.TryParse(costId.ToString(), out var id))
                 {
                     await InvalidateModelCostAsync(id);
                     _logger.LogDebug("Invalidated model cost from pub/sub: {CostId}", id);
@@ -103,7 +103,7 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                var batchMessage = JsonSerializer.Deserialize<ModelCostBatchInvalidation>(message!);
+                var batchMessage = JsonSerializer.Deserialize<ModelCostBatchInvalidation>(message!.ToString());
                 if (batchMessage?.CostIds != null)
                 {
                     var requests = batchMessage.CostIds.Select(id => new InvalidationRequest

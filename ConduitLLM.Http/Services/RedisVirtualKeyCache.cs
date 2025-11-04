@@ -205,7 +205,7 @@ namespace ConduitLLM.Http.Services
                 DateTime lastResetTime = DateTime.UtcNow;
                 if (resetTimeTask.Result.HasValue)
                 {
-                    if (long.TryParse(resetTimeTask.Result, out var ticks))
+                    if (long.TryParse(resetTimeTask.Result.ToString(), out var ticks))
                     {
                         lastResetTime = new DateTime(ticks, DateTimeKind.Utc);
                     }
@@ -373,7 +373,7 @@ namespace ConduitLLM.Http.Services
         {
             try
             {
-                var batchMessage = JsonSerializer.Deserialize<VirtualKeyBatchInvalidation>(message!);
+                var batchMessage = JsonSerializer.Deserialize<VirtualKeyBatchInvalidation>(message!.ToString());
                 if (batchMessage?.KeyHashes != null)
                 {
                     var batch = _database.CreateBatch();

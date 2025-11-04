@@ -53,8 +53,18 @@ namespace ConduitLLM.Tests.Http.Middleware
                 .Setup(x => x.LogBillingEvent(It.IsAny<BillingAuditEvent>()))
                 .Callback<BillingAuditEvent>(evt => _capturedBillingEvents.Add(evt));
 
+            // The middleware needs the next delegate to write the response
+            // This simulates what a controller would do
             _middleware = new UsageTrackingMiddleware(
-                next: (innerHttpContext) => Task.CompletedTask,
+                next: async (innerHttpContext) =>
+                {
+                    // Write the prepared response to the body stream
+                    if (innerHttpContext.Items.TryGetValue("TestResponseBody", out var responseBody) &&
+                        responseBody is string responseJson)
+                    {
+                        await innerHttpContext.Response.WriteAsync(responseJson);
+                    }
+                },
                 _loggerMock.Object);
         }
 
@@ -68,8 +78,8 @@ namespace ConduitLLM.Tests.Http.Middleware
         {
             // Arrange
             await SetupToolConfiguration();
-            var context = CreateHttpContext();
             var responseBody = CreateResponseWithToolUsage();
+            var context = CreateHttpContextWithResponse(responseBody);
 
             // Setup mocks
             _costCalculationServiceMock
@@ -102,8 +112,8 @@ namespace ConduitLLM.Tests.Http.Middleware
         {
             // Arrange
             await SetupMultipleToolConfiguration();
-            var context = CreateHttpContext();
             var responseBody = CreateResponseWithMultipleTools();
+            var context = CreateHttpContextWithResponse(responseBody);
 
             _costCalculationServiceMock
                 .Setup(x => x.CalculateCostAsync(It.IsAny<string>(), It.IsAny<Usage>(), default))
@@ -135,8 +145,8 @@ namespace ConduitLLM.Tests.Http.Middleware
         public async Task ProcessResponseAsync_WithMissingToolConfig_LogsWarningEvent()
         {
             // Arrange - No tool configuration in database
-            var context = CreateHttpContext();
             var responseBody = CreateResponseWithToolUsage();
+            var context = CreateHttpContextWithResponse(responseBody);
 
             _costCalculationServiceMock
                 .Setup(x => x.CalculateCostAsync(It.IsAny<string>(), It.IsAny<Usage>(), default))
@@ -167,8 +177,8 @@ namespace ConduitLLM.Tests.Http.Middleware
         public async Task ProcessResponseAsync_WithoutToolUsage_DoesNotSetToolFields()
         {
             // Arrange
-            var context = CreateHttpContext();
             var responseBody = CreateResponseWithoutToolUsage();
+            var context = CreateHttpContextWithResponse(responseBody);
 
             _costCalculationServiceMock
                 .Setup(x => x.CalculateCostAsync(It.IsAny<string>(), It.IsAny<Usage>(), default))
@@ -281,7 +291,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             await _context.SaveChangesAsync();
         }
 
-        private HttpContext CreateHttpContext()
+        private HttpContext CreateHttpContextWithResponse(string responseBody)
         {
             var context = new DefaultHttpContext();
             context.Request.Path = "/v1/chat/completions";
@@ -290,15 +300,13 @@ namespace ConduitLLM.Tests.Http.Middleware
             context.Items["VirtualKeyId"] = 123;
             context.Items["ProviderType"] = "Groq";
             context.TraceIdentifier = "test-request-id";
-            
-            // Setup response body
-            var responseBody = CreateResponseWithToolUsage();
+
+            // Store the response body for the middleware's next delegate to write
+            context.Items["TestResponseBody"] = responseBody;
+
+            // Initialize response body as empty stream - middleware will replace it
             context.Response.Body = new MemoryStream();
-            var writer = new StreamWriter(context.Response.Body);
-            writer.Write(responseBody);
-            writer.Flush();
-            context.Response.Body.Position = 0;
-            
+
             return context;
         }
 

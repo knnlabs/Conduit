@@ -37,7 +37,7 @@ namespace ConduitLLM.Http.Controllers
         [Consumes("multipart/form-data")]
         [RequestSizeLimit(524288000)] // 500MB limit
         public async Task<IActionResult> UploadMedia(
-            [FromForm] IFormFile file,
+            IFormFile file,
             [FromForm] string? mediaType = null)
         {
             try

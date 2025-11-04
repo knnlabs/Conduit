@@ -1,5 +1,5 @@
 # HTTP API Dockerfile - Optimized for selective cache invalidation
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0.100-rc.2 AS build
 WORKDIR /src
 
 # ===== CACHED LAYERS (Keep these fast) =====
@@ -36,7 +36,7 @@ RUN dotnet publish "ConduitLLM.Http/ConduitLLM.Http.csproj" \
     --no-restore
 
 # Runtime stage - Debian-based for reliability
-FROM mcr.microsoft.com/dotnet/aspnet:9.0
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.0-rc.2
 WORKDIR /app
 
 # Install curl for health checks
@@ -45,9 +45,9 @@ RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 # Copy published application
 COPY --from=build /app/publish .
 
-# Create non-root user
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
-USER appuser
+# Use the existing non-root user (ubuntu with UID 1000 in .NET 10.0 images)
+RUN chown -R 1000:1000 /app
+USER 1000
 
 # Configure ASP.NET Core
 ENV ASPNETCORE_URLS=http://+:8080

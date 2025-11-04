@@ -205,7 +205,7 @@ namespace ConduitLLM.Http.Services
                     return false;
                 }
 
-                var pending = JsonSerializer.Deserialize<PendingAcknowledgment>(pendingData!);
+                var pending = JsonSerializer.Deserialize<PendingAcknowledgment>(pendingData.ToString());
                 if (pending == null)
                 {
                     _logger.LogWarning("Failed to deserialize pending acknowledgment for message {MessageId}", messageId);
@@ -265,7 +265,7 @@ namespace ConduitLLM.Http.Services
                     return false;
                 }
 
-                var pending = JsonSerializer.Deserialize<PendingAcknowledgment>(pendingData!);
+                var pending = JsonSerializer.Deserialize<PendingAcknowledgment>(pendingData.ToString());
                 if (pending == null)
                 {
                     _logger.LogWarning("Failed to deserialize pending acknowledgment for message {MessageId}", messageId);
@@ -333,7 +333,7 @@ namespace ConduitLLM.Http.Services
                     return null;
                 }
 
-                var pending = JsonSerializer.Deserialize<PendingAcknowledgment>(pendingData!);
+                var pending = JsonSerializer.Deserialize<PendingAcknowledgment>(pendingData.ToString());
                 return pending?.Status;
             }
             catch (Exception ex)
@@ -371,7 +371,7 @@ namespace ConduitLLM.Http.Services
                         
                         if (pendingData.HasValue)
                         {
-                            var pending = JsonSerializer.Deserialize<PendingAcknowledgment>(pendingData!);
+                            var pending = JsonSerializer.Deserialize<PendingAcknowledgment>(pendingData.ToString());
                             if (pending != null && pending.Status == AcknowledgmentStatus.Pending)
                             {
                                 pendingAcks.Add(pending);
@@ -421,7 +421,7 @@ namespace ConduitLLM.Http.Services
                         
                         if (pendingData.HasValue)
                         {
-                            var pending = JsonSerializer.Deserialize<PendingAcknowledgment>(pendingData!);
+                            var pending = JsonSerializer.Deserialize<PendingAcknowledgment>(pendingData.ToString());
                             if (pending != null && pending.Status == AcknowledgmentStatus.Pending)
                             {
                                 pending.Status = AcknowledgmentStatus.Failed;
@@ -470,7 +470,7 @@ namespace ConduitLLM.Http.Services
                     return; // Already processed or expired
                 }
 
-                var pending = JsonSerializer.Deserialize<PendingAcknowledgment>(pendingData!);
+                var pending = JsonSerializer.Deserialize<PendingAcknowledgment>(pendingData.ToString());
                 if (pending == null || pending.Status != AcknowledgmentStatus.Pending)
                 {
                     return;

@@ -331,7 +331,7 @@ namespace ConduitLLM.Http.Services
                         var dataField = entry.Values.FirstOrDefault(v => v.Name == "data");
                         if (dataField.Value.HasValue)
                         {
-                            var message = JsonSerializer.Deserialize<QueuedMessage>(dataField.Value!);
+                            var message = JsonSerializer.Deserialize<QueuedMessage>(dataField.Value!.ToString());
                             if (message != null)
                             {
                                 messages.Add(message);
@@ -383,7 +383,7 @@ namespace ConduitLLM.Http.Services
                     var dataField = targetEntry.Value.Values.FirstOrDefault(v => v.Name == "data");
                     if (dataField.Value.HasValue)
                     {
-                        var message = JsonSerializer.Deserialize<QueuedMessage>(dataField.Value!);
+                        var message = JsonSerializer.Deserialize<QueuedMessage>(dataField.Value!.ToString());
                         if (message != null)
                         {
                             message.IsDeadLetter = false;
@@ -480,7 +480,7 @@ namespace ConduitLLM.Http.Services
                     return;
                 }
 
-                var message = JsonSerializer.Deserialize<QueuedMessage>(dataField.Value!);
+                var message = JsonSerializer.Deserialize<QueuedMessage>(dataField.Value!.ToString());
                 if (message == null)
                 {
                     _logger.LogWarning("Failed to deserialize message from stream entry {EntryId}", entry.Id);

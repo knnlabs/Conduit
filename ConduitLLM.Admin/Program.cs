@@ -8,12 +8,13 @@ using ConduitLLM.Providers.Extensions;
 
 using MassTransit; // Added for event bus infrastructure
 
-using Microsoft.OpenApi.Models;
 
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 
 using Prometheus;
+using Scalar.AspNetCore;
+
 namespace ConduitLLM.Admin;
 
 /// <summary>
@@ -46,52 +47,11 @@ public partial class Program
         // Add HttpClient factory for provider connection testing
         builder.Services.AddHttpClient();
 
-        // Configure Swagger with XML comments
-        builder.Services.AddSwaggerGen(c =>
+        // Configure built-in OpenAPI support
+        builder.Services.AddOpenApi("v1", options =>
         {
-            c.SwaggerDoc("v1", new OpenApiInfo
-            {
-                Title = "ConduitLLM Admin API",
-                Version = "v1",
-                Description = "Administrative API for ConduitLLM",
-                Contact = new OpenApiContact
-                {
-                    Name = "ConduitLLM Team"
-                }
-            });
-
-            // Use fully qualified type names to avoid schema ID conflicts
-            c.CustomSchemaIds(type => type.FullName?.Replace("+", ".") ?? type.Name);
-
-            // Add XML comments
-            var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-            var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-            c.IncludeXmlComments(xmlPath);
-
-            // Add security definition for API Key
-            c.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
-            {
-                Type = SecuritySchemeType.ApiKey,
-                In = ParameterLocation.Header,
-                Name = "X-API-Key",
-                Description = "API Key Authentication"
-            });
-
-            // Add security requirement for API Key
-            c.AddSecurityRequirement(new OpenApiSecurityRequirement
-            {
-                {
-                    new OpenApiSecurityScheme
-                    {
-                        Reference = new OpenApiReference
-                        {
-                            Type = ReferenceType.SecurityScheme,
-                            Id = "ApiKey"
-                        }
-                    },
-                    new string[] { }
-                }
-            });
+            options.AddDocumentTransformer<ConduitLLM.Admin.OpenApi.AdminApiDocumentTransformer>();
+            options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.ApiKeySecurityOperationTransformer>();
         });
 
         // Add leader election service for distributed background service coordination
@@ -301,8 +261,13 @@ public partial class Program
         // Configure the HTTP request pipeline
         if (app.Environment.IsDevelopment())
         {
-            app.UseSwagger();
-            app.UseSwaggerUI();
+            // Map the OpenAPI endpoint
+            app.MapOpenApi("/openapi/v1.json");
+
+            // Map Scalar UI for interactive API documentation
+            app.MapScalarApiReference();
+
+            Console.WriteLine("[ConduitLLM.Admin] Scalar UI available at /scalar/v1");
         }
 
         // Only use HTTPS redirection if explicitly enabled

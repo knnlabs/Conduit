@@ -49,9 +49,10 @@ namespace ConduitLLM.Core.Utilities
             string dataBuffer = string.Empty;
             int lineCount = 0;
 
-            while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
+            while (!cancellationToken.IsCancellationRequested)
             {
                 line = await reader.ReadLineAsync();
+                if (line == null) break; // End of stream
                 lineCount++;
                 
                 // Log first few lines for debugging
@@ -135,9 +136,10 @@ namespace ConduitLLM.Core.Utilities
                 int lineCount = 0;
                 // SSE event type (only used internally for parsing, not exposed)
 
-                while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
+                while (!cancellationToken.IsCancellationRequested)
                 {
                     line = await reader.ReadLineAsync();
+                    if (line == null) break; // End of stream
                     lineCount++;
                     
                     // Log first few lines for debugging
@@ -359,9 +361,10 @@ namespace ConduitLLM.Core.Utilities
                 using var reader = new StreamReader(stream, Encoding.UTF8);
 
                 string? line;
-                while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
+                while (!cancellationToken.IsCancellationRequested)
                 {
                     line = await reader.ReadLineAsync();
+                    if (line == null) break; // End of stream
                     if (string.IsNullOrEmpty(line))
                     {
                         continue;

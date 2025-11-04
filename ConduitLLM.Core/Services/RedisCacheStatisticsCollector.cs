@@ -232,8 +232,8 @@ namespace ConduitLLM.Core.Services
                 var heartbeatKey = string.Format(INSTANCE_HEARTBEAT_KEY, instanceId);
                 var lastHeartbeat = await _db.StringGetAsync(heartbeatKey);
                 
-                if (lastHeartbeat.HasValue && 
-                    long.TryParse(lastHeartbeat, out var timestamp) &&
+                if (lastHeartbeat.HasValue &&
+                    long.TryParse(lastHeartbeat.ToString(), out var timestamp) &&
                     now.ToUnixTimeMilliseconds() - timestamp < _instanceTimeout.TotalMilliseconds)
                 {
                     activeInstances.Add(instanceId);

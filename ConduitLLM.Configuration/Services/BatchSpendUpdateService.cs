@@ -198,7 +198,7 @@ namespace ConduitLLM.Configuration.Services
                 var key = $"{_redisKeyPrefix}{virtualKeyId}";
                 var value = await db.StringGetAsync(key);
                 
-                if (value.HasValue && double.TryParse(value, out var pendingSpend))
+                if (value.HasValue && double.TryParse(value.ToString(), out var pendingSpend))
                 {
                     return (decimal)pendingSpend;
                 }
@@ -247,7 +247,7 @@ namespace ConduitLLM.Configuration.Services
                     
                     // Get and delete atomically
                     var value = await db.StringGetDeleteAsync(key);
-                    if (value.HasValue && double.TryParse(value, out var cost))
+                    if (value.HasValue && double.TryParse(value.ToString(), out var cost))
                     {
                         groupUpdates[groupId] = (decimal)cost;
                     }
@@ -261,7 +261,7 @@ namespace ConduitLLM.Configuration.Services
                     if (parts.Length == 5 && int.TryParse(parts[2], out var groupId) && int.TryParse(parts[4], out var keyId))
                     {
                         var value = await db.StringGetDeleteAsync(key);
-                        if (value.HasValue && double.TryParse(value, out var cost))
+                        if (value.HasValue && double.TryParse(value.ToString(), out var cost))
                         {
                             if (!keyUsageByGroup.ContainsKey(groupId))
                                 keyUsageByGroup[groupId] = new Dictionary<int, decimal>();
@@ -456,7 +456,7 @@ namespace ConduitLLM.Configuration.Services
                 foreach (var key in keys)
                 {
                     var value = await db.StringGetAsync(key);
-                    if (value.HasValue && double.TryParse(value, out var cost))
+                    if (value.HasValue && double.TryParse(value.ToString(), out var cost))
                     {
                         totalPending += (decimal)cost;
                     }

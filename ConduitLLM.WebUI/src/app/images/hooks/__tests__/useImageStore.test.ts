@@ -20,41 +20,63 @@ jest.mock('@mantine/notifications', () => ({
 }));
 
 // Mock the createMediaStore
+type MockState = {
+  error: string | null;
+  settings: Record<string, unknown>;
+  currentTask: unknown;
+  taskHistory: Array<{ id: string; [key: string]: unknown }>;
+  maxHistorySize: number;
+  persistHistory: boolean;
+};
+
 jest.mock('@/app/hooks/createMediaStore', () => ({
-  createMediaStore: jest.fn((options: { initialSettings: unknown }) => (set: (fn: (state: unknown) => unknown) => void) => ({
+  createMediaStore: jest.fn(() => (set: (fn: (state: MockState) => MockState) => void) => ({
     error: null,
-    settings: options.initialSettings,
+    settings: {
+      model: '',
+      quality: 'standard',
+      style: 'vivid'
+    },
     currentTask: null,
     taskHistory: [],
     maxHistorySize: 20,
     persistHistory: true,
-    
-    updateSettings: (updates: Record<string, unknown>) => set((state: { settings: Record<string, unknown> }) => ({
+
+    updateSettings: (updates: Record<string, unknown>) => set((state: MockState) => ({
+      ...state,
       settings: { ...state.settings, ...updates }
     })),
-    
-    setError: (error: string | null) => set({ error }),
-    
-    addTask: (task: unknown) => set((state: { taskHistory: unknown[]; maxHistorySize: number }) => ({
-      taskHistory: [task, ...state.taskHistory].slice(0, state.maxHistorySize),
+
+    setError: (error: string | null) => set((state: MockState) => ({ ...state, error })),
+
+    addTask: (task: unknown) => set((state: MockState) => ({
+      ...state,
+      taskHistory: [task as { id: string; [key: string]: unknown }, ...state.taskHistory].slice(0, state.maxHistorySize),
       currentTask: task
     })),
-    
-    updateTask: (taskId: string, updates: Record<string, unknown>) => set((state: { taskHistory: Array<{ id: string; [key: string]: unknown }>; currentTask: { id: string; [key: string]: unknown } | null }) => ({
-      taskHistory: state.taskHistory.map((t: { id: string; [key: string]: unknown }) =>
+
+    updateTask: (taskId: string, updates: Record<string, unknown>) => set((state: MockState) => ({
+      ...state,
+      taskHistory: state.taskHistory.map((t) =>
         t.id === taskId ? { ...t, ...updates, updatedAt: new Date().toISOString() } : t
       ),
-      currentTask: state.currentTask?.id === taskId 
-        ? { ...state.currentTask, ...updates, updatedAt: new Date().toISOString() }
+      currentTask: (state.currentTask as { id?: string } | null)?.id === taskId
+        ? { ...(state.currentTask as Record<string, unknown>), ...updates, updatedAt: new Date().toISOString() }
         : state.currentTask
     })),
-    
-    removeTask: (taskId: string) => set((state: { taskHistory: Array<{ id: string; [key: string]: unknown }>; currentTask: { id: string; [key: string]: unknown } | null }) => ({
-      taskHistory: state.taskHistory.filter((t: { id: string }) => t.id !== taskId),
-      currentTask: state.currentTask?.id === taskId ? null : state.currentTask
+
+    removeTask: (taskId: string) => set((state: MockState) => ({
+      ...state,
+      taskHistory: state.taskHistory.filter((t) => t.id !== taskId),
+      currentTask: (state.currentTask as { id?: string } | null)?.id === taskId ? null : state.currentTask
     })),
-    
-    clearHistory: () => set({ taskHistory: [], currentTask: null })
+
+    clearHistory: () => set((state: MockState) => ({ ...state, taskHistory: [], currentTask: null })),
+
+    getTaskById: () => undefined,
+    getCompletedTasks: () => [],
+    getFailedTasks: () => [],
+    getPendingTasks: () => []
   }))
 }));
 
@@ -77,7 +99,7 @@ describe('useImageStore', () => {
     localStorage.clear();
     // Reset the store state completely
     const { getState } = useImageStore;
-    if (getState) {
+    if (getState && typeof getState === 'function') {
       useImageStore.setState({
         prompt: '',
         status: MediaGenerationStatus.Idle,
@@ -177,9 +199,11 @@ describe('useImageStore', () => {
         }
       };
 
-      const { getBrowserCoreClient } = jest.requireMock('@/lib/client/browserCoreClient') as {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+      const browserClientModule = jest.requireMock('@/lib/client/browserCoreClient') as {
         getBrowserCoreClient: jest.MockedFunction<() => Promise<typeof mockClient>>;
       };
+      const { getBrowserCoreClient } = browserClientModule;
       getBrowserCoreClient.mockResolvedValue(mockClient);
 
       const { result } = renderHook(() => useImageStore());
@@ -218,9 +242,11 @@ describe('useImageStore', () => {
         }
       };
 
-      const { getBrowserCoreClient } = jest.requireMock('@/lib/client/browserCoreClient') as {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+      const browserClientModule = jest.requireMock('@/lib/client/browserCoreClient') as {
         getBrowserCoreClient: jest.MockedFunction<() => Promise<typeof mockClient>>;
       };
+      const { getBrowserCoreClient } = browserClientModule;
       getBrowserCoreClient.mockResolvedValue(mockClient);
 
       const { result } = renderHook(() => useImageStore());
@@ -249,9 +275,11 @@ describe('useImageStore', () => {
         }
       };
 
-      const { getBrowserCoreClient } = jest.requireMock('@/lib/client/browserCoreClient') as {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+      const browserClientModule = jest.requireMock('@/lib/client/browserCoreClient') as {
         getBrowserCoreClient: jest.MockedFunction<() => Promise<typeof mockClient>>;
       };
+      const { getBrowserCoreClient } = browserClientModule;
       getBrowserCoreClient.mockResolvedValue(mockClient);
 
       const { result } = renderHook(() => useImageStore());
@@ -279,9 +307,11 @@ describe('useImageStore', () => {
         }
       };
 
-      const { getBrowserCoreClient } = jest.requireMock('@/lib/client/browserCoreClient') as {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+      const browserClientModule = jest.requireMock('@/lib/client/browserCoreClient') as {
         getBrowserCoreClient: jest.MockedFunction<() => Promise<typeof mockClient>>;
       };
+      const { getBrowserCoreClient } = browserClientModule;
       getBrowserCoreClient.mockResolvedValue(mockClient);
 
       const { result } = renderHook(() => useImageStore());

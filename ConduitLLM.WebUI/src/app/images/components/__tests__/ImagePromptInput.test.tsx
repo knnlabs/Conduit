@@ -66,7 +66,7 @@ describe('ImagePromptInput', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseImageStore.mockReturnValue(defaultMockStore as unknown as ReturnType<typeof useImageStore>);
+    mockUseImageStore.mockReturnValue(defaultMockStore as unknown);
   });
 
   describe('Rendering', () => {
@@ -82,7 +82,7 @@ describe('ImagePromptInput', () => {
       mockUseImageStore.mockReturnValue({
         ...defaultMockStore,
         prompt: 'A beautiful sunset'
-      } as unknown as ReturnType<typeof useImageStore>);
+      } as unknown);
 
       render(<ImagePromptInput />);
       
@@ -118,7 +118,7 @@ describe('ImagePromptInput', () => {
       mockUseImageStore.mockReturnValue({
         ...defaultMockStore,
         prompt: 'Generate this image'
-      } as unknown as ReturnType<typeof useImageStore>);
+      } as unknown);
 
       render(<ImagePromptInput />);
       
@@ -144,7 +144,7 @@ describe('ImagePromptInput', () => {
         ...defaultMockStore,
         prompt: 'Generate this',
         settings: { model: '' }
-      } as unknown as ReturnType<typeof useImageStore>);
+      } as unknown);
 
       render(<ImagePromptInput />);
       
@@ -162,7 +162,7 @@ describe('ImagePromptInput', () => {
       mockUseImageStore.mockReturnValue({
         ...defaultMockStore,
         status: MediaGenerationStatus.Generating
-      } as unknown as ReturnType<typeof useImageStore>);
+      } as unknown);
 
       render(<ImagePromptInput />);
       
@@ -177,7 +177,7 @@ describe('ImagePromptInput', () => {
       mockUseImageStore.mockReturnValue({
         ...defaultMockStore,
         status: MediaGenerationStatus.Generating
-      } as unknown as ReturnType<typeof useImageStore>);
+      } as unknown);
 
       render(<ImagePromptInput />);
       
@@ -190,7 +190,7 @@ describe('ImagePromptInput', () => {
       mockUseImageStore.mockReturnValue({
         ...defaultMockStore,
         error: 'Failed to generate image'
-      } as unknown as ReturnType<typeof useImageStore>);
+      } as unknown);
 
       render(<ImagePromptInput />);
       
@@ -204,7 +204,7 @@ describe('ImagePromptInput', () => {
         ...defaultMockStore,
         status: MediaGenerationStatus.Failed,
         error: 'Generation failed'
-      } as unknown as ReturnType<typeof useImageStore>);
+      } as unknown);
 
       render(<ImagePromptInput />);
       
@@ -221,7 +221,7 @@ describe('ImagePromptInput', () => {
       mockUseImageStore.mockReturnValue({
         ...defaultMockStore,
         prompt: 'Test prompt'
-      } as unknown as ReturnType<typeof useImageStore>);
+      } as unknown);
 
       render(<ImagePromptInput />);
       
@@ -242,7 +242,7 @@ describe('ImagePromptInput', () => {
       mockUseImageStore.mockReturnValue({
         ...defaultMockStore,
         prompt: 'Test prompt'
-      } as unknown as ReturnType<typeof useImageStore>);
+      } as unknown);
 
       render(<ImagePromptInput />);
       
@@ -263,7 +263,7 @@ describe('ImagePromptInput', () => {
       mockUseImageStore.mockReturnValue({
         ...defaultMockStore,
         prompt: 'This is a test prompt'
-      } as unknown as ReturnType<typeof useImageStore>);
+      } as unknown);
 
       render(<ImagePromptInput />);
       

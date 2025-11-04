@@ -236,7 +236,7 @@ namespace ConduitLLM.Http.Services
                 {
                     try
                     {
-                        connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData!);
+                        connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData.ToString());
                     }
                     catch (JsonException ex)
                     {
@@ -295,7 +295,7 @@ namespace ConduitLLM.Http.Services
                 var connectionData = await _redis.HashGetAsync(_connectionsKey, connectionId);
                 if (connectionData.HasValue)
                 {
-                    var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData!);
+                    var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData.ToString());
                     if (connectionInfo != null)
                     {
                         connectionInfo.LastActivityAt = DateTime.UtcNow;
@@ -323,7 +323,7 @@ namespace ConduitLLM.Http.Services
                 var connectionData = await _redis.HashGetAsync(_connectionsKey, connectionId);
                 if (connectionData.HasValue)
                 {
-                    var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData!);
+                    var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData.ToString());
                     if (connectionInfo != null)
                     {
                         connectionInfo.Groups.Add(groupName);
@@ -359,7 +359,7 @@ namespace ConduitLLM.Http.Services
                 var connectionData = await _redis.HashGetAsync(_connectionsKey, connectionId);
                 if (connectionData.HasValue)
                 {
-                    var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData!);
+                    var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData.ToString());
                     if (connectionInfo != null)
                     {
                         connectionInfo.Groups.Remove(groupName);
@@ -394,7 +394,7 @@ namespace ConduitLLM.Http.Services
                 var connectionData = await _redis.HashGetAsync(_connectionsKey, connectionId);
                 if (connectionData.HasValue)
                 {
-                    var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData!);
+                    var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData.ToString());
                     if (connectionInfo != null)
                     {
                         connectionInfo.MessagesSent++;
@@ -422,7 +422,7 @@ namespace ConduitLLM.Http.Services
                 var connectionData = await _redis.HashGetAsync(_connectionsKey, connectionId);
                 if (connectionData.HasValue)
                 {
-                    var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData!);
+                    var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData.ToString());
                     if (connectionInfo != null)
                     {
                         connectionInfo.MessagesAcknowledged++;
@@ -450,7 +450,7 @@ namespace ConduitLLM.Http.Services
                 var connectionData = await _redis.HashGetAsync(_connectionsKey, connectionId);
                 if (connectionData.HasValue)
                 {
-                    return JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData!);
+                    return JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData.ToString());
                 }
             }
             catch (Exception ex)
@@ -483,7 +483,7 @@ namespace ConduitLLM.Http.Services
                 {
                     try
                     {
-                        var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData.Value!);
+                        var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData.Value!.ToString());
                         if (connectionInfo != null && !connectionInfo.IsStale(_staleConnectionThreshold))
                         {
                             activeConnections.Add(connectionInfo);
@@ -532,7 +532,7 @@ namespace ConduitLLM.Http.Services
                 {
                     try
                     {
-                        var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData.Value!);
+                        var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData.Value!.ToString());
                         if (connectionInfo != null && connectionInfo.HubName == hubName && !connectionInfo.IsStale(_staleConnectionThreshold))
                         {
                             hubConnections.Add(connectionInfo);
@@ -575,7 +575,7 @@ namespace ConduitLLM.Http.Services
                 {
                     try
                     {
-                        var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData.Value!);
+                        var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData.Value!.ToString());
                         if (connectionInfo != null && connectionInfo.VirtualKeyId == virtualKeyId && !connectionInfo.IsStale(_staleConnectionThreshold))
                         {
                             virtualKeyConnections.Add(connectionInfo);
@@ -622,7 +622,7 @@ namespace ConduitLLM.Http.Services
                         var connectionData = await _redis.HashGetAsync(_connectionsKey, connectionId!);
                         if (connectionData.HasValue)
                         {
-                            var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData!);
+                            var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(connectionData.ToString());
                             if (connectionInfo != null && !connectionInfo.IsStale(_staleConnectionThreshold))
                             {
                                 return connectionInfo;
@@ -721,7 +721,7 @@ namespace ConduitLLM.Http.Services
                 {
                     try
                     {
-                        var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(data.Value!);
+                        var connectionInfo = JsonSerializer.Deserialize<SignalRConnectionInfo>(data.Value!.ToString());
                         if (connectionInfo != null)
                         {
                             allConnections.Add(connectionInfo);

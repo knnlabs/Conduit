@@ -13,7 +13,8 @@ import {
 } from '@mantine/core';
 import { IconRefresh } from '@tabler/icons-react';
 import { useChatStore } from '../hooks/useChatStore';
-import { CHAT_PRESETS, findMatchingPreset, getPresetIcon } from '../utils/presets';
+import { CHAT_PRESETS, findMatchingPreset } from '@knn_labs/conduit-core-client';
+import { getPresetIcon } from '../utils/presets';
 import { ChatParameters } from '../types';
 
 interface ChatSettingsProps {

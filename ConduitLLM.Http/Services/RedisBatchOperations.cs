@@ -98,7 +98,7 @@ namespace ConduitLLM.Http.Services
                 {
                     try
                     {
-                        results[i] = JsonSerializer.Deserialize<T>(values[i]!, _jsonOptions)!;
+                        results[i] = JsonSerializer.Deserialize<T>(values[i]!.ToString(), _jsonOptions)!;
                     }
                     catch (Exception ex)
                     {

@@ -192,9 +192,12 @@ namespace ConduitLLM.Http.Middleware
                 // Calculate base cost from token usage
                 var cost = await costCalculationService.CalculateCostAsync(model, usage);
 
+                // Reset stream position after JsonDocument.ParseAsync for tool usage extraction
+                responseBody.Seek(0, SeekOrigin.Begin);
+
                 // Extract and calculate tool usage costs
                 var toolUsageData = ExtractToolUsageFromResponse(responseBody, providerTypeEnum);
-                var toolCost = 0m;
+                decimal? toolCost = null;
                 string? toolUsageJson = null;
 
                 if (toolUsageData != null)
@@ -205,7 +208,7 @@ namespace ConduitLLM.Http.Middleware
                 }
 
                 // Add tool cost to total cost
-                var totalCost = cost + toolCost;
+                var totalCost = cost + (toolCost ?? 0m);
                 
                 if (totalCost <= 0)
                 {
@@ -297,23 +300,23 @@ namespace ConduitLLM.Http.Middleware
                 : ProviderType.OpenAI;
             
             // Extract tool usage from streaming context if available
-            var toolUsageData = context.Items.TryGetValue("StreamingToolUsage", out var toolObj) 
-                ? toolObj as ToolUsageData 
+            var toolUsageData = context.Items.TryGetValue("StreamingToolUsage", out var toolObj)
+                ? toolObj as ToolUsageData
                 : null;
-            
-            var toolCost = 0m;
+
+            decimal? toolCost = null;
             string? toolUsageJson = null;
-            
+
             if (toolUsageData != null)
             {
                 toolCost = await toolCostCalculationService.CalculateToolCostsAsync(toolUsageData, providerTypeEnum);
                 toolUsageJson = toolCostCalculationService.SerializeToolUsage(toolUsageData);
                 _logger.LogDebug("Streaming tool usage detected: {ToolUsageJson}, Cost: ${ToolCost}", toolUsageJson, toolCost);
             }
-            
+
             // Calculate base cost and add tool cost
             var baseCost = await costCalculationService.CalculateCostAsync(model, usage);
-            var cost = baseCost + toolCost;
+            var cost = baseCost + (toolCost ?? 0m);
             
             if (cost > 0)
             {

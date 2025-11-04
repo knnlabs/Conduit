@@ -29,6 +29,92 @@ log_warn() {
     echo -e "${YELLOW}[WARN]${NC} $1"
 }
 
+# Cleanup function for error handling
+cleanup_on_error() {
+    log_error "Startup failed. Cleaning up partial state..."
+    docker compose -f docker-compose.yml -f docker-compose.dev.yml down --remove-orphans 2>/dev/null || true
+    exit 1
+}
+
+# Auto-cleanup stale Conduit containers
+cleanup_stale_containers() {
+    log_info "Checking for stale Conduit containers..."
+
+    # Get all Conduit-related containers (running or stopped)
+    local conduit_containers=$(docker ps -a --filter "name=conduit-" --format "{{.Names}}" 2>/dev/null || true)
+
+    if [[ -n "$conduit_containers" ]]; then
+        log_info "Found stale Conduit containers, cleaning up..."
+        docker compose -f docker-compose.yml -f docker-compose.dev.yml down --remove-orphans 2>/dev/null || true
+        log_info "Stale containers removed"
+    fi
+}
+
+# Check for port conflicts before starting
+check_port_conflicts() {
+    log_info "Checking for port conflicts..."
+
+    local ports=(6379 5432 5000 5002 3000 15672)
+    local port_names=("Redis" "PostgreSQL" "Core API" "Admin API" "WebUI" "RabbitMQ")
+    local conflicts_found=false
+    local conflicting_containers=()
+
+    for i in "${!ports[@]}"; do
+        local port="${ports[$i]}"
+        local name="${port_names[$i]}"
+
+        # Check if port is in use
+        if ss -tuln 2>/dev/null | grep -q ":$port " || lsof -i ":$port" >/dev/null 2>&1; then
+            # Find what's using the port
+            local container=$(docker ps --format "{{.Names}}" --filter "publish=$port" 2>/dev/null | head -1)
+
+            if [[ -n "$container" ]]; then
+                # Port is used by a Docker container
+                if [[ "$container" == conduit-* ]]; then
+                    log_warn "Port $port ($name) is used by stale Conduit container: $container"
+                    # Will be cleaned up by cleanup_stale_containers
+                else
+                    log_warn "Port $port ($name) is used by container: $container"
+                    conflicting_containers+=("$container")
+                    conflicts_found=true
+                fi
+            else
+                # Port is used by a system process
+                log_warn "Port $port ($name) is in use by a system process"
+                log_info "  Check with: sudo lsof -i :$port"
+                conflicts_found=true
+            fi
+        fi
+    done
+
+    # Handle non-Conduit Docker container conflicts
+    if [[ ${#conflicting_containers[@]} -gt 0 ]]; then
+        echo
+        log_warn "The following Docker containers are blocking required ports:"
+        for container in "${conflicting_containers[@]}"; do
+            echo "  - $container"
+        done
+        echo
+        read -p "Stop these containers? [y/N] " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            for container in "${conflicting_containers[@]}"; do
+                log_info "Stopping $container..."
+                docker stop "$container" 2>/dev/null || true
+            done
+            log_info "Conflicting containers stopped"
+        else
+            log_error "Cannot proceed with port conflicts. Please resolve manually."
+            exit 1
+        fi
+    elif [[ "$conflicts_found" == "true" ]]; then
+        log_error "Port conflicts detected. Please resolve the system process conflicts and try again."
+        exit 1
+    fi
+
+    log_info "No port conflicts detected"
+}
+
 show_usage() {
     cat << EOF
 Conduit Development Environment Startup
@@ -44,6 +130,8 @@ Options:
   --help         Show this help
 
 Default behavior:
+  - Automatically cleans up stale Conduit containers
+  - Checks for port conflicts (offers to stop conflicting containers)
   - Build local Docker containers
   - Start from docker-compose.dev.yml
   - Mount WebUI directory for rapid development
@@ -243,9 +331,15 @@ start_development() {
     echo
     log_info "The WebUI directory is mounted for rapid development."
     log_info "Changes to files will be reflected automatically."
+
+    # Disable error trap after successful startup
+    trap - ERR
 }
 
 main() {
+    # Set up error trap to cleanup on failure
+    trap cleanup_on_error ERR
+
     local clean_volumes_flag=false
     local build_flag=""
     local webui_only=false
@@ -308,6 +402,12 @@ main() {
         rebuild_webui
         return 0
     fi
+
+    # Auto-cleanup stale containers before starting
+    cleanup_stale_containers
+
+    # Check for port conflicts
+    check_port_conflicts
 
     # Clean volumes if requested
     if [[ "$clean_volumes_flag" == "true" ]]; then

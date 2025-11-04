@@ -88,7 +88,7 @@ namespace ConduitLLM.Core.Services
 
                 if (cachedData.HasValue)
                 {
-                    var response = JsonSerializer.Deserialize<EmbeddingResponse>(cachedData!);
+                    var response = JsonSerializer.Deserialize<EmbeddingResponse>(cachedData.ToString());
                     
                     lock (_statsLock)
                     {

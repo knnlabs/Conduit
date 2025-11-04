@@ -50,7 +50,7 @@ namespace ConduitLLM.Core.Services
                 
                 if (state.HasValue)
                 {
-                    var circuitState = JsonSerializer.Deserialize<CircuitState>(state!);
+                    var circuitState = JsonSerializer.Deserialize<CircuitState>(state.ToString());
                     if (circuitState != null)
                     {
                         // Check if circuit should transition from Open to Half-Open
@@ -112,7 +112,7 @@ namespace ConduitLLM.Core.Services
                 
                 if (currentState.HasValue)
                 {
-                    var circuitState = JsonSerializer.Deserialize<CircuitState>(currentState!);
+                    var circuitState = JsonSerializer.Deserialize<CircuitState>(currentState.ToString());
                     if (circuitState != null && (circuitState.State == "Open" || circuitState.State == "HalfOpen"))
                     {
                         // Close the circuit
@@ -146,7 +146,7 @@ namespace ConduitLLM.Core.Services
                 
                 if (currentState.HasValue)
                 {
-                    var circuitState = JsonSerializer.Deserialize<CircuitState>(currentState!);
+                    var circuitState = JsonSerializer.Deserialize<CircuitState>(currentState.ToString());
                     if (circuitState != null && circuitState.State == "HalfOpen")
                     {
                         // Failed in half-open state, immediately open circuit again
@@ -207,7 +207,7 @@ namespace ConduitLLM.Core.Services
                 
                 if (stateTask.Result.HasValue)
                 {
-                    var circuitState = JsonSerializer.Deserialize<CircuitState>(stateTask.Result!);
+                    var circuitState = JsonSerializer.Deserialize<CircuitState>(stateTask.Result.ToString());
                     if (circuitState != null)
                     {
                         isOpen = circuitState.State == "Open";

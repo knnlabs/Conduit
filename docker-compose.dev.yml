@@ -83,6 +83,8 @@ services:
       CLERK_SECRET_KEY: "sk_test_oOI6FRt1EhRGaCVUc1zJVyWCNyqf3w1DSJnLZlxEQK"
       # Development authentication bypass
       DISABLE_CLERK_AUTH: "true"
+      # Official Next.js Docker configuration from docs
+      HOSTNAME: "0.0.0.0"
     working_dir: /app/ConduitLLM.WebUI
     # Smarter startup that handles both fresh installs and fast restarts
     command: |

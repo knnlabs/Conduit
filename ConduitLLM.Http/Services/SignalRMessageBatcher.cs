@@ -325,13 +325,13 @@ namespace ConduitLLM.Http.Services
         private long GetLongValue(HashEntry[] hashEntries, string key)
         {
             var entry = hashEntries.FirstOrDefault(h => h.Name == key);
-            return entry.Value.HasValue && long.TryParse(entry.Value, out var value) ? value : 0;
+            return entry.Value.HasValue && long.TryParse(entry.Value.ToString(), out var value) ? value : 0;
         }
 
         private DateTime GetDateTimeValue(HashEntry[] hashEntries, string key)
         {
             var entry = hashEntries.FirstOrDefault(h => h.Name == key);
-            if (entry.Value.HasValue && long.TryParse(entry.Value, out var binary))
+            if (entry.Value.HasValue && long.TryParse(entry.Value.ToString(), out var binary))
             {
                 try
                 {
@@ -356,7 +356,7 @@ namespace ConduitLLM.Http.Services
                 {
                     try
                     {
-                        var batch = JsonSerializer.Deserialize<MessageBatch>(batchData.Value!);
+                        var batch = JsonSerializer.Deserialize<MessageBatch>(batchData.Value!.ToString());
                         if (batch != null)
                         {
                             totalPending += batch.Messages.Count;
@@ -396,7 +396,7 @@ namespace ConduitLLM.Http.Services
                 {
                     try
                     {
-                        var batch = JsonSerializer.Deserialize<MessageBatch>(batchEntry.Value!);
+                        var batch = JsonSerializer.Deserialize<MessageBatch>(batchEntry.Value!.ToString());
                         if (batch != null)
                         {
                             var batchKey = new BatchKey(batch.HubName, batch.MethodName, batch.ConnectionId, batch.GroupName);
@@ -467,8 +467,8 @@ namespace ConduitLLM.Http.Services
                 {
                     try
                     {
-                        var batch = JsonSerializer.Deserialize<MessageBatch>(batchEntry.Value!);
-                        if (batch != null && batch.Messages.Count > 0 && 
+                        var batch = JsonSerializer.Deserialize<MessageBatch>(batchEntry.Value!.ToString());
+                        if (batch != null && batch.Messages.Count > 0 &&
                             (now - batch.CreatedAt >= _batchWindow || batch.IsQueued))
                         {
                             var batchKey = new BatchKey(batch.HubName, batch.MethodName, batch.ConnectionId, batch.GroupName);
@@ -494,7 +494,7 @@ namespace ConduitLLM.Http.Services
                     {
                         try
                         {
-                            var batch = JsonSerializer.Deserialize<MessageBatch>(batchData!);
+                            var batch = JsonSerializer.Deserialize<MessageBatch>(batchData.ToString());
                             if (batch != null)
                             {
                                 var batchKey = new BatchKey(batch.HubName, batch.MethodName, batch.ConnectionId, batch.GroupName);
@@ -617,7 +617,7 @@ namespace ConduitLLM.Http.Services
             {
                 try
                 {
-                    var existingBatch = JsonSerializer.Deserialize<MessageBatch>(batchData!);
+                    var existingBatch = JsonSerializer.Deserialize<MessageBatch>(batchData.ToString());
                     if (existingBatch != null)
                     {
                         return existingBatch;
