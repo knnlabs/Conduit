@@ -100,9 +100,9 @@ namespace ConduitLLM.Configuration.Services
                 _lock.Release();
             }
 
-            // Load from database
+            // Load from database (IsActive filter applied automatically via named query filter)
             var entity = await _dbContext.CacheConfigurations
-                .Where(c => c.Region == region && c.IsActive)
+                .Where(c => c.Region == region)
                 .FirstOrDefaultAsync(cancellationToken);
 
             if (entity == null)
@@ -128,9 +128,8 @@ namespace ConduitLLM.Configuration.Services
         {
             var configs = new Dictionary<string, CacheRegionConfig>();
 
-            // Load all from database
+            // Load all from database (IsActive filter applied automatically via named query filter)
             var entities = await _dbContext.CacheConfigurations
-                .Where(c => c.IsActive)
                 .ToListAsync(cancellationToken);
 
             foreach (var entity in entities)
@@ -183,8 +182,9 @@ namespace ConduitLLM.Configuration.Services
                 throw new InvalidOperationException($"Invalid configuration: {string.Join(", ", validation.Errors)}");
             }
 
+            // IsActive filter applied automatically via named query filter
             var entity = await _dbContext.CacheConfigurations
-                .Where(c => c.Region == region && c.IsActive)
+                .Where(c => c.Region == region)
                 .FirstOrDefaultAsync(cancellationToken);
 
             if (entity == null)
@@ -262,9 +262,9 @@ namespace ConduitLLM.Configuration.Services
                 throw new InvalidOperationException($"Invalid configuration: {string.Join(", ", validation.Errors)}");
             }
 
-            // Check if already exists
+            // Check if already exists (IsActive filter applied automatically via named query filter)
             var existing = await _dbContext.CacheConfigurations
-                .Where(c => c.Region == region && c.IsActive)
+                .Where(c => c.Region == region)
                 .FirstOrDefaultAsync(cancellationToken);
 
             if (existing != null)
@@ -329,13 +329,14 @@ namespace ConduitLLM.Configuration.Services
         }
 
         public async Task<bool> DeleteConfigurationAsync(
-            string region, 
-            string deletedBy, 
-            string? reason = null, 
+            string region,
+            string deletedBy,
+            string? reason = null,
             CancellationToken cancellationToken = default)
         {
+            // IsActive filter applied automatically via named query filter
             var entity = await _dbContext.CacheConfigurations
-                .Where(c => c.Region == region && c.IsActive)
+                .Where(c => c.Region == region)
                 .FirstOrDefaultAsync(cancellationToken);
 
             if (entity == null)

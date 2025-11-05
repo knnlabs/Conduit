@@ -292,18 +292,18 @@ namespace ConduitLLM.Admin.Controllers
                 if (pageSize < 1) pageSize = 50;
                 if (pageSize > 100) pageSize = 100;
 
-                // Get total count
+                // Get total count (soft delete filter applied automatically via named query filter)
                 var totalCount = await _context.VirtualKeyGroupTransactions
-                    .Where(t => t.VirtualKeyGroupId == id && !t.IsDeleted)
+                    .Where(t => t.VirtualKeyGroupId == id)
                     .CountAsync();
 
                 // Calculate pagination
                 var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
                 var skip = (page - 1) * pageSize;
 
-                // Get paginated transactions
+                // Get paginated transactions (soft delete filter applied automatically via named query filter)
                 var transactions = await _context.VirtualKeyGroupTransactions
-                    .Where(t => t.VirtualKeyGroupId == id && !t.IsDeleted)
+                    .Where(t => t.VirtualKeyGroupId == id)
                     .OrderByDescending(t => t.CreatedAt)
                     .Skip(skip)
                     .Take(pageSize)

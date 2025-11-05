@@ -356,7 +356,7 @@ namespace ConduitLLM.Configuration
             modelBuilder.Entity<CacheConfiguration>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                
+
                 // Apply filtered index only for non-test environments (PostgreSQL)
                 if (!IsTestEnvironment)
                 {
@@ -367,10 +367,13 @@ namespace ConduitLLM.Configuration
                     // For SQLite in tests, use a regular unique index
                     entity.HasIndex(e => e.Region).IsUnique();
                 }
-                
+
                 entity.HasIndex(e => new { e.Region, e.IsActive });
                 entity.HasIndex(e => e.UpdatedAt);
                 entity.Property(e => e.Version).IsConcurrencyToken();
+
+                // Global query filter for active configurations (EF Core 10 named query filter)
+                entity.HasQueryFilter("Active", c => c.IsActive);
             });
 
             // Configure CacheConfigurationAudit entity
@@ -393,13 +396,16 @@ namespace ConduitLLM.Configuration
                 entity.HasIndex(e => new { e.IsDeleted, e.CreatedAt });
                 entity.HasIndex(e => e.ReferenceType);
                 entity.HasIndex(e => e.TransactionType);
-                
+
                 // Store enums as integers
                 entity.Property(e => e.TransactionType)
                       .HasConversion<int>();
-                      
+
                 entity.Property(e => e.ReferenceType)
                       .HasConversion<int>();
+
+                // Global query filter for soft deletes (EF Core 10 named query filter)
+                entity.HasQueryFilter("SoftDelete", t => !t.IsDeleted);
             });
 
             // Configure ProviderTool entity

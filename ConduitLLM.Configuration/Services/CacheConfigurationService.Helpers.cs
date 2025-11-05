@@ -66,9 +66,9 @@ namespace ConduitLLM.Configuration.Services
                             currentConfig.MaxTTL = TimeSpan.FromSeconds(maxTtlSeconds);
                         }
 
-                        // Check if configuration exists in database
+                        // Check if configuration exists in database (IsActive filter applied automatically via named query filter)
                         var exists = await _dbContext.CacheConfigurations
-                            .AnyAsync(c => c.Region == region && c.IsActive, cancellationToken);
+                            .AnyAsync(c => c.Region == region, cancellationToken);
 
                         if (exists)
                         {
