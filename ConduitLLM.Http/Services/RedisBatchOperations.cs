@@ -173,7 +173,7 @@ namespace ConduitLLM.Http.Services
                 {
                     Success = true,
                     DeletedCount = deletedCount,
-                    FailedKeys = failedKeys.ToArray(),
+                    FailedKeys = [..failedKeys],
                     Duration = stopwatch.Elapsed,
                     OperationCount = keys.Length
                 };
@@ -230,7 +230,7 @@ namespace ConduitLLM.Http.Services
                 
                 // Count successful sets
                 var setCount = 0;
-                var keys = keyValuePairs.Keys.ToArray();
+                string[] keys = [..keyValuePairs.Keys];
                 for (int i = 0; i < results.Length; i++)
                 {
                     if (results[i])
@@ -254,7 +254,7 @@ namespace ConduitLLM.Http.Services
                 {
                     Success = true,
                     SetCount = setCount,
-                    FailedKeys = failedKeys.ToArray(),
+                    FailedKeys = [..failedKeys],
                     Duration = stopwatch.Elapsed,
                     OperationCount = keyValuePairs.Count()
                 };
@@ -271,7 +271,7 @@ namespace ConduitLLM.Http.Services
                     ErrorType = ex.GetType().Name,
                     Duration = stopwatch.Elapsed,
                     OperationCount = keyValuePairs.Count(),
-                    FailedKeys = keyValuePairs.Keys.ToArray()
+                    FailedKeys = [..keyValuePairs.Keys]
                 };
             }
         }
@@ -308,7 +308,7 @@ namespace ConduitLLM.Http.Services
                 
                 // Count successful publishes
                 var publishedCount = 0;
-                var channels = channelMessages.Keys.ToArray();
+                string[] channels = [..channelMessages.Keys];
                 for (int i = 0; i < results.Length; i++)
                 {
                     if (results[i] > 0)
@@ -328,7 +328,7 @@ namespace ConduitLLM.Http.Services
                 {
                     Success = true,
                     PublishedCount = publishedCount,
-                    FailedChannels = failedChannels.ToArray(),
+                    FailedChannels = [..failedChannels],
                     Duration = stopwatch.Elapsed,
                     OperationCount = channelMessages.Count()
                 };
@@ -345,7 +345,7 @@ namespace ConduitLLM.Http.Services
                     ErrorType = ex.GetType().Name,
                     Duration = stopwatch.Elapsed,
                     OperationCount = channelMessages.Count(),
-                    FailedChannels = channelMessages.Keys.ToArray()
+                    FailedChannels = [..channelMessages.Keys]
                 };
             }
         }

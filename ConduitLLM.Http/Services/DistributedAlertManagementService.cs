@@ -136,10 +136,11 @@ namespace ConduitLLM.Http.Services
                 }
             }
 
-            return alerts
-                .OrderByDescending(a => a.Severity)
-                .ThenByDescending(a => a.TriggeredAt)
-                .ToList();
+            return [
+                ..alerts
+                    .OrderByDescending(a => a.Severity)
+                    .ThenByDescending(a => a.TriggeredAt)
+            ];
         }
 
         public async Task TriggerAlertAsync(HealthAlert alert)
@@ -298,7 +299,7 @@ namespace ConduitLLM.Http.Services
                 }
             }
             
-            return entries.OrderByDescending(e => e.Timestamp).ToList();
+            return [..entries.OrderByDescending(e => e.Timestamp)];
         }
 
         public async Task<AlertRule> SaveAlertRuleAsync(AlertRule rule)
@@ -338,10 +339,11 @@ namespace ConduitLLM.Http.Services
                 }
             }
 
-            return alertRules
-                .OrderBy(r => r.Component)
-                .ThenBy(r => r.Name)
-                .ToList();
+            return [
+                ..alertRules
+                    .OrderBy(r => r.Component)
+                    .ThenBy(r => r.Name)
+            ];
         }
 
         public async Task<AlertSuppression> CreateSuppressionAsync(AlertSuppression suppression)
@@ -391,7 +393,7 @@ namespace ConduitLLM.Http.Services
                 }
             }
 
-            return activeSuppressions.OrderBy(s => s.StartTime).ToList();
+            return [..activeSuppressions.OrderBy(s => s.StartTime)];
         }
 
         public async Task<List<string>> GetActiveInstancesAsync()

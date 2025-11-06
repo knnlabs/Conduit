@@ -245,7 +245,7 @@ namespace ConduitLLM.Http.Services
             try
             {
                 var virtualKeys = await _virtualKeyRepository.GetAllAsync();
-                return virtualKeys.Select(VirtualKeyUtilities.MapToDto).ToList();
+                return [..virtualKeys.Select(VirtualKeyUtilities.MapToDto)];
             }
             catch (Exception ex)
             {
@@ -461,9 +461,9 @@ namespace ConduitLLM.Http.Services
         public async Task<bool> BulkUpdateSpendAsync(Dictionary<string, decimal> spendUpdates)
         {
             _logger.LogWarning("BulkUpdateSpendAsync is deprecated. Spend tracking is now at the group level.");
-            
+
             // Still invalidate cache for the affected keys
-            var keyHashes = spendUpdates.Keys.ToArray();
+            string[] keyHashes = [..spendUpdates.Keys];
             await _cache.InvalidateVirtualKeysAsync(keyHashes);
             
             return false;

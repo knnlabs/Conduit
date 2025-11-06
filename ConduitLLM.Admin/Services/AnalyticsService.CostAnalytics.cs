@@ -49,29 +49,35 @@ namespace ConduitLLM.Admin.Services
                 var aggregatedCosts = AggregateByTimeframe(dailyCosts, timeframe);
 
                 // Convert to DetailedCostDataDto format for compatibility
-                var topModelsBySpend = modelBreakdown.Take(10).Select(m => new DetailedCostDataDto
-                {
-                    Name = m.ModelName,
-                    Cost = m.TotalCost,
-                    Percentage = logs.Any() ? (m.TotalCost / logs.Sum(l => l.Cost) * 100) : 0,
-                    RequestCount = m.RequestCount
-                }).ToList();
+                List<DetailedCostDataDto> topModelsBySpend = [
+                    ..modelBreakdown.Take(10).Select(m => new DetailedCostDataDto
+                    {
+                        Name = m.ModelName,
+                        Cost = m.TotalCost,
+                        Percentage = logs.Any() ? (m.TotalCost / logs.Sum(l => l.Cost) * 100) : 0,
+                        RequestCount = m.RequestCount
+                    })
+                ];
 
-                var topProvidersBySpend = providerBreakdown.Take(10).Select(p => new DetailedCostDataDto
-                {
-                    Name = p.ProviderName,
-                    Cost = p.TotalCost,
-                    Percentage = logs.Any() ? (p.TotalCost / logs.Sum(l => l.Cost) * 100) : 0,
-                    RequestCount = p.RequestCount
-                }).ToList();
+                List<DetailedCostDataDto> topProvidersBySpend = [
+                    ..providerBreakdown.Take(10).Select(p => new DetailedCostDataDto
+                    {
+                        Name = p.ProviderName,
+                        Cost = p.TotalCost,
+                        Percentage = logs.Any() ? (p.TotalCost / logs.Sum(l => l.Cost) * 100) : 0,
+                        RequestCount = p.RequestCount
+                    })
+                ];
 
-                var topVirtualKeysBySpend = virtualKeyBreakdown.Take(10).Select(v => new DetailedCostDataDto
-                {
-                    Name = v.KeyName,
-                    Cost = v.TotalCost,
-                    Percentage = logs.Any() ? (v.TotalCost / logs.Sum(l => l.Cost) * 100) : 0,
-                    RequestCount = v.RequestCount
-                }).ToList();
+                List<DetailedCostDataDto> topVirtualKeysBySpend = [
+                    ..virtualKeyBreakdown.Take(10).Select(v => new DetailedCostDataDto
+                    {
+                        Name = v.KeyName,
+                        Cost = v.TotalCost,
+                        Percentage = logs.Any() ? (v.TotalCost / logs.Sum(l => l.Cost) * 100) : 0,
+                        RequestCount = v.RequestCount
+                    })
+                ];
 
                 return new CostDashboardDto
                 {

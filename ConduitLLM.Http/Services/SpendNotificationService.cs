@@ -293,10 +293,11 @@ namespace ConduitLLM.Http.Services
 
                 // Clean up old patterns (not accessed in 24 hours)
                 var cutoff = DateTime.UtcNow.AddHours(-24);
-                var keysToRemove = _spendingPatterns
-                    .Where(kvp => kvp.Value.LastAccessed < cutoff)
-                    .Select(kvp => kvp.Key)
-                    .ToList();
+                List<int> keysToRemove = [
+                    .._spendingPatterns
+                        .Where(kvp => kvp.Value.LastAccessed < cutoff)
+                        .Select(kvp => kvp.Key)
+                ];
 
                 foreach (var key in keysToRemove)
                 {
@@ -345,8 +346,8 @@ namespace ConduitLLM.Http.Services
                     }
 
                     var now = DateTime.UtcNow;
-                    var lastHour = _recentSpends.Where(s => s.Timestamp > now.AddHours(-1)).ToList();
-                    var previousHour = _recentSpends.Where(s => s.Timestamp <= now.AddHours(-1) && s.Timestamp > now.AddHours(-2)).ToList();
+                    List<SpendRecord> lastHour = [.._recentSpends.Where(s => s.Timestamp > now.AddHours(-1))];
+                    List<SpendRecord> previousHour = [.._recentSpends.Where(s => s.Timestamp <= now.AddHours(-1) && s.Timestamp > now.AddHours(-2))];
 
                     if (lastHour.Count() == 0 || previousHour.Count() == 0)
                     {

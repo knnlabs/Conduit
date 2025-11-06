@@ -46,11 +46,12 @@ namespace ConduitLLM.Http.Services
         /// </summary>
         public Task<List<HealthAlert>> GetActiveAlertsAsync()
         {
-            var activeAlerts = _activeAlerts.Values
-                .Where(a => a.State == AlertState.Active || a.State == AlertState.Acknowledged)
-                .OrderByDescending(a => a.Severity)
-                .ThenByDescending(a => a.TriggeredAt)
-                .ToList();
+            List<HealthAlert> activeAlerts = [
+                .._activeAlerts.Values
+                    .Where(a => a.State == AlertState.Active || a.State == AlertState.Acknowledged)
+                    .OrderByDescending(a => a.Severity)
+                    .ThenByDescending(a => a.TriggeredAt)
+            ];
 
             return Task.FromResult(activeAlerts);
         }
@@ -165,10 +166,11 @@ namespace ConduitLLM.Http.Services
         /// </summary>
         public Task<List<AlertRule>> GetAlertRulesAsync()
         {
-            var rules = _alertRules.Values
-                .OrderBy(r => r.Component)
-                .ThenBy(r => r.Name)
-                .ToList();
+            List<AlertRule> rules = [
+                .._alertRules.Values
+                    .OrderBy(r => r.Component)
+                    .ThenBy(r => r.Name)
+            ];
             return Task.FromResult(rules);
         }
 
@@ -211,10 +213,11 @@ namespace ConduitLLM.Http.Services
         public Task<List<AlertSuppression>> GetActiveSuppressionsAsync()
         {
             var now = DateTime.UtcNow;
-            var activeSuppressions = _suppressions.Values
-                .Where(s => s.IsActive && s.StartTime <= now && s.EndTime > now)
-                .OrderBy(s => s.StartTime)
-                .ToList();
+            List<AlertSuppression> activeSuppressions = [
+                .._suppressions.Values
+                    .Where(s => s.IsActive && s.StartTime <= now && s.EndTime > now)
+                    .OrderBy(s => s.StartTime)
+            ];
             return Task.FromResult(activeSuppressions);
         }
 

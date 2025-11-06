@@ -127,9 +127,10 @@ namespace ConduitLLM.Http.Services
                         {
                             MetricName = series.MetricName,
                             Label = series.Label,
-                            DataPoints = series.DataPoints
-                                .Where(p => p.Timestamp >= request.StartTime && p.Timestamp <= request.EndTime)
-                                .ToList()
+                            DataPoints = [
+                                ..series.DataPoints
+                                    .Where(p => p.Timestamp >= request.StartTime && p.Timestamp <= request.EndTime)
+                            ]
                         };
 
                         if (filteredSeries.DataPoints.Count() > 0)
@@ -176,9 +177,10 @@ namespace ConduitLLM.Http.Services
                 return snapshot.ProviderHealth;
             }
 
-            return snapshot.ProviderHealth
-                .Where(p => p.ProviderType.ToString().Equals(providerName, StringComparison.OrdinalIgnoreCase))
-                .ToList();
+            return [
+                ..snapshot.ProviderHealth
+                    .Where(p => p.ProviderType.ToString().Equals(providerName, StringComparison.OrdinalIgnoreCase))
+            ];
         }
 
         public async Task<List<VirtualKeyStats>> GetTopVirtualKeysAsync(string metric, int count)
@@ -187,19 +189,22 @@ namespace ConduitLLM.Http.Services
             
             return metric.ToLower() switch
             {
-                "requests" => snapshot.Business.TopVirtualKeys
-                    .OrderByDescending(k => k.RequestsPerMinute)
-                    .Take(count)
-                    .ToList(),
-                "spend" => snapshot.Business.TopVirtualKeys
-                    .OrderByDescending(k => k.TotalSpend)
-                    .Take(count)
-                    .ToList(),
-                "budget" => snapshot.Business.TopVirtualKeys
-                    .OrderByDescending(k => k.BudgetUtilization)
-                    .Take(count)
-                    .ToList(),
-                _ => snapshot.Business.TopVirtualKeys.Take(count).ToList()
+                "requests" => [
+                    ..snapshot.Business.TopVirtualKeys
+                        .OrderByDescending(k => k.RequestsPerMinute)
+                        .Take(count)
+                ],
+                "spend" => [
+                    ..snapshot.Business.TopVirtualKeys
+                        .OrderByDescending(k => k.TotalSpend)
+                        .Take(count)
+                ],
+                "budget" => [
+                    ..snapshot.Business.TopVirtualKeys
+                        .OrderByDescending(k => k.BudgetUtilization)
+                        .Take(count)
+                ],
+                _ => [..snapshot.Business.TopVirtualKeys.Take(count)]
             };
         }
 

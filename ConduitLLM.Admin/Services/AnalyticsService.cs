@@ -102,10 +102,11 @@ public partial class AnalyticsService : IAnalyticsService
             }
 
             // Map to DTOs
-            var pagedLogs = logs
-                .OrderByDescending(l => l.Timestamp)
-                .Select(MapToLogRequestDto)
-                .ToList();
+            List<LogRequestDto> pagedLogs = [
+                ..logs
+                    .OrderByDescending(l => l.Timestamp)
+                    .Select(MapToLogRequestDto)
+            ];
 
             _metrics?.RecordOperationDuration("GetLogsAsync", stopwatch.ElapsedMilliseconds);
 

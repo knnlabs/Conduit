@@ -131,7 +131,7 @@ namespace ConduitLLM.Http.Services
             try
             {
                 var virtualKeys = await _virtualKeyRepository.GetAllAsync();
-                return virtualKeys.Select(MapToDto).ToList();
+                return [..virtualKeys.Select(MapToDto)];
             }
             catch (Exception ex)
             {

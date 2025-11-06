@@ -662,7 +662,7 @@ namespace ConduitLLM.Http.Services
             try
             {
                 var allConnections = await GetAllConnectionsFromRedisAsync();
-                var activeConnections = allConnections.Where(c => !c.IsStale(_staleConnectionThreshold)).ToList();
+                List<Models.ConnectionInfo> activeConnections = [..allConnections.Where(c => !c.IsStale(_staleConnectionThreshold))];
 
                 var stats = new ConnectionStatistics
                 {
@@ -769,9 +769,9 @@ namespace ConduitLLM.Http.Services
             try
             {
                 var allConnections = await GetAllConnectionsFromRedisAsync();
-                var staleConnections = allConnections
-                    .Where(c => c.IsStale(_staleConnectionThreshold))
-                    .ToList();
+                List<Models.ConnectionInfo> staleConnections = [
+                    ..allConnections.Where(c => c.IsStale(_staleConnectionThreshold))
+                ];
 
                 var cleanupTasks = new List<Task>();
                 foreach (var connection in staleConnections)
@@ -858,7 +858,7 @@ namespace ConduitLLM.Http.Services
 
                     if (emptyGroups.Count > 0)
                     {
-                        await _redis.KeyDeleteAsync(emptyGroups.Select(g => (RedisKey)g).ToArray());
+                        await _redis.KeyDeleteAsync([..emptyGroups.Select(g => (RedisKey)g)]);
                     }
 
                     return emptyGroups.Count;
