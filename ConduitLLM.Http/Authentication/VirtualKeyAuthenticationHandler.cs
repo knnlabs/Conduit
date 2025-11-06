@@ -3,6 +3,7 @@ using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Utilities;
 using ConduitLLM.Http.Services;
 
 namespace ConduitLLM.Http.Authentication
@@ -190,9 +191,13 @@ namespace ConduitLLM.Http.Authentication
 
             // Try Authorization header first (Bearer token)
             var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
-            if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(authHeader))
             {
-                return authHeader.Substring("Bearer ".Length).Trim();
+                var token = SpanHelper.ExtractBearerToken(authHeader);
+                if (!string.IsNullOrEmpty(token))
+                {
+                    return token;
+                }
             }
 
             // Try X-API-Key header
@@ -212,7 +217,7 @@ namespace ConduitLLM.Http.Authentication
         {
             if (key.Length <= 10)
                 return key;
-            return $"{key.Substring(0, 10)}...";
+            return SpanHelper.TruncateWithEllipsis(key, 10);
         }
 
         /// <summary>
@@ -224,7 +229,7 @@ namespace ConduitLLM.Http.Authentication
             var forwardedFor = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
             if (!string.IsNullOrEmpty(forwardedFor))
             {
-                var ip = forwardedFor.Split(',').First().Trim();
+                var ip = SpanHelper.ExtractFirstSegment(forwardedFor);
                 if (System.Net.IPAddress.TryParse(ip, out _))
                 {
                     return ip;

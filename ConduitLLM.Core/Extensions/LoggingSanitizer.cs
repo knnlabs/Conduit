@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using ConduitLLM.Core.Utilities;
 
 namespace ConduitLLM.Core.Extensions
 {
@@ -36,10 +37,10 @@ namespace ConduitLLM.Core.Extensions
             // Remove Unicode line/paragraph separators
             str = UnicodeSeparatorPattern.Replace(str, " ");
             
-            // Truncate if too long
+            // Truncate if too long (no ellipsis - exact length for security logging)
             if (str.Length > MaxLength)
             {
-                str = str.Substring(0, MaxLength);
+                str = new string(str.AsSpan(0, MaxLength));
             }
             
             return str;
@@ -64,10 +65,10 @@ namespace ConduitLLM.Core.Extensions
             // Remove Unicode line/paragraph separators
             value = UnicodeSeparatorPattern.Replace(value, " ");
             
-            // Truncate if too long
+            // Truncate if too long (no ellipsis - exact length for security logging)
             if (value.Length > MaxLength)
             {
-                value = value.Substring(0, MaxLength);
+                value = new string(value.AsSpan(0, MaxLength));
             }
             
             return value;

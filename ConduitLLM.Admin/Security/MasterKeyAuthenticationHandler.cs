@@ -3,6 +3,7 @@ using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 using ConduitLLM.Admin.Services;
+using ConduitLLM.Core.Utilities;
 
 namespace ConduitLLM.Admin.Security
 {
@@ -89,9 +90,9 @@ namespace ConduitLLM.Admin.Security
             else if (Context.Request.Headers.TryGetValue("Authorization", out var authValues))
             {
                 var authHeader = authValues.FirstOrDefault();
-                if (authHeader?.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) == true)
+                if (!string.IsNullOrEmpty(authHeader))
                 {
-                    providedKey = authHeader.Substring("Bearer ".Length).Trim();
+                    providedKey = SpanHelper.ExtractBearerToken(authHeader);
                 }
             }
 
@@ -197,8 +198,8 @@ namespace ConduitLLM.Admin.Security
             // Only show first 10 characters of the key for security
             if (key.Length <= 10)
                 return key;
-                
-            return $"{key.Substring(0, 10)}...";
+
+            return SpanHelper.TruncateWithEllipsis(key, 10);
         }
     }
 

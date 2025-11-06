@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Utilities;
 
 namespace ConduitLLM.Http.Authentication
 {
@@ -148,9 +149,13 @@ namespace ConduitLLM.Http.Authentication
 
             // Try Authorization header (for .NET clients)
             var authHeader = httpContext.Request.Headers["Authorization"].FirstOrDefault();
-            if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(authHeader))
             {
-                return authHeader.Substring("Bearer ".Length).Trim();
+                var token = SpanHelper.ExtractBearerToken(authHeader);
+                if (!string.IsNullOrEmpty(token))
+                {
+                    return token;
+                }
             }
 
             // Try X-API-Key header
@@ -174,7 +179,7 @@ namespace ConduitLLM.Http.Authentication
             var forwardedFor = httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
             if (!string.IsNullOrEmpty(forwardedFor))
             {
-                var ip = forwardedFor.Split(',').First().Trim();
+                var ip = SpanHelper.ExtractFirstSegment(forwardedFor);
                 if (System.Net.IPAddress.TryParse(ip, out _))
                 {
                     return ip;

@@ -1,4 +1,5 @@
 using System.Text;
+using ConduitLLM.Core.Utilities;
 
 namespace ConduitLLM.Providers.Helpers
 {
@@ -21,20 +22,14 @@ namespace ConduitLLM.Providers.Helpers
                 throw new ArgumentException("Base URL cannot be null or whitespace", nameof(baseUrl));
             }
 
-            // Trim trailing slash from base URL
-            baseUrl = baseUrl.TrimEnd('/');
-
             // Handle null or empty path
             if (string.IsNullOrWhiteSpace(path))
             {
-                return baseUrl;
+                return baseUrl.TrimEnd('/');
             }
 
-            // Trim leading slash from path
-            path = path.TrimStart('/');
-
-            // Combine with single slash
-            return $"{baseUrl}/{path}";
+            // Use SpanHelper for zero-allocation URL combining
+            return SpanHelper.CombineUrl(baseUrl, path);
         }
 
         /// <summary>
@@ -167,16 +162,18 @@ namespace ConduitLLM.Providers.Helpers
                 throw new ArgumentException("URL cannot be null or whitespace", nameof(url));
             }
 
-            if (url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            ReadOnlySpan<char> urlSpan = url.AsSpan();
+
+            if (urlSpan.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             {
-                return "wss://" + url.Substring(8);
+                return string.Concat("wss://", urlSpan.Slice(8));
             }
-            else if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+            else if (urlSpan.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
             {
-                return "ws://" + url.Substring(7);
+                return string.Concat("ws://", urlSpan.Slice(7));
             }
-            else if (url.StartsWith("wss://", StringComparison.OrdinalIgnoreCase) || 
-                     url.StartsWith("ws://", StringComparison.OrdinalIgnoreCase))
+            else if (urlSpan.StartsWith("wss://", StringComparison.OrdinalIgnoreCase) ||
+                     urlSpan.StartsWith("ws://", StringComparison.OrdinalIgnoreCase))
             {
                 // Already a WebSocket URL
                 return url;

@@ -2,8 +2,9 @@ using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
-using ConduitLLM.Http.Services;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Utilities;
+using ConduitLLM.Http.Services;
 
 namespace ConduitLLM.Http.Authentication
 {
@@ -169,8 +170,8 @@ namespace ConduitLLM.Http.Authentication
             // Only show first 10 characters of the key for security
             if (key.Length <= 10)
                 return key;
-                
-            return $"{key.Substring(0, 10)}...";
+
+            return SpanHelper.TruncateWithEllipsis(key, 10);
         }
     }
 

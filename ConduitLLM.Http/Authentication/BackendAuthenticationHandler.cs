@@ -4,6 +4,8 @@ using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 
+using ConduitLLM.Core.Utilities;
+
 namespace ConduitLLM.Http.Authentication
 {
     /// <summary>
@@ -42,12 +44,12 @@ namespace ConduitLLM.Http.Authentication
 
             // Extract the auth key from the header
             var authHeader = Request.Headers["Authorization"].ToString();
-            if (!authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            var providedKey = SpanHelper.ExtractBearerToken(authHeader);
+
+            if (string.IsNullOrEmpty(providedKey))
             {
                 return Task.FromResult(AuthenticateResult.Fail("Invalid Authorization header format"));
             }
-
-            var providedKey = authHeader.Substring("Bearer ".Length).Trim();
 
             // Validate the key
             if (providedKey != _backendAuthKey)
