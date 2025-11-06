@@ -72,8 +72,8 @@ namespace ConduitLLM.Http.EventHandlers
         public async Task Consume(ConsumeContext<TEvent> context)
         {
             var stopwatch = Stopwatch.StartNew();
-            var eventType = typeof(TEvent).Name;
-            
+            var eventType = nameof(TEvent);
+
             try
             {
                 Logger.LogDebug(

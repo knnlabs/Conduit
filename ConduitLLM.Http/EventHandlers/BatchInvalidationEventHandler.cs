@@ -56,15 +56,15 @@ namespace ConduitLLM.Http.EventHandlers
                     
                     _logger.LogDebug(
                         "Enqueued {Count} cache invalidation requests from {EventType}",
-                        requests.Count(), 
-                        typeof(TEvent).Name);
+                        requests.Count(),
+                        nameof(TEvent));
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, 
+                _logger.LogError(ex,
                     "Failed to process cache invalidation for {EventType}",
-                    typeof(TEvent).Name);
+                    nameof(TEvent));
                 throw; // Let MassTransit handle retry
             }
         }

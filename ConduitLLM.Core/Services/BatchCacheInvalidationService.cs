@@ -60,7 +60,7 @@ namespace ConduitLLM.Core.Services
             {
                 EntityType = cacheType.ToString(),
                 EntityId = key,
-                Reason = $"Event: {typeof(T).Name}",
+                Reason = $"Event: {nameof(T)}",
                 Priority = DeterminePriority(eventData),
                 QueuedAt = DateTime.UtcNow,
                 SourceEvent = eventData
@@ -100,7 +100,7 @@ namespace ConduitLLM.Core.Services
                 {
                     EntityType = cacheType.ToString(),
                     EntityId = key,
-                    Reason = $"Bulk Event: {typeof(T).Name}",
+                    Reason = $"Bulk Event: {nameof(T)}",
                     Priority = priority,
                     QueuedAt = queuedAt,
                     SourceEvent = eventData

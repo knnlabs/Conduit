@@ -52,7 +52,7 @@ namespace ConduitLLM.Core.Controllers
             {
                 _logger.LogWarning(
                     "Attempted to publish null event of type {EventType} for {Operation}",
-                    typeof(TEvent).Name, operationName);
+                    nameof(TEvent), operationName);
                 return;
             }
 
@@ -60,7 +60,7 @@ namespace ConduitLLM.Core.Controllers
             {
                 _logger.LogWarning(
                     "Event publishing not configured - skipping {EventType} for {Operation}",
-                    typeof(TEvent).Name, operationName);
+                    nameof(TEvent), operationName);
                 return;
             }
 
@@ -72,13 +72,13 @@ namespace ConduitLLM.Core.Controllers
                     await _publishEndpoint.Publish(domainEvent);
                     _logger.LogDebug(
                         "Published {EventType} event for {Operation}",
-                        typeof(TEvent).Name, operationName);
+                        nameof(TEvent), operationName);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex,
                         "Failed to publish {EventType} event for {Operation} - operation completed but event not sent",
-                        typeof(TEvent).Name, operationName);
+                        nameof(TEvent), operationName);
                     // Don't rethrow - event publishing should not fail business operations
                 }
             });
@@ -101,7 +101,7 @@ namespace ConduitLLM.Core.Controllers
             {
                 _logger.LogWarning(
                     "Attempted to publish null event of type {EventType} for {Operation} with context {ContextData}",
-                    typeof(TEvent).Name, operationName, contextData);
+                    nameof(TEvent), operationName, contextData);
                 return;
             }
 
@@ -109,7 +109,7 @@ namespace ConduitLLM.Core.Controllers
             {
                 _logger.LogDebug(
                     "Event publishing not configured - skipping {EventType} for {Operation} with context {ContextData}",
-                    typeof(TEvent).Name, operationName, contextData);
+                    nameof(TEvent), operationName, contextData);
                 return;
             }
 
@@ -121,13 +121,13 @@ namespace ConduitLLM.Core.Controllers
                     await _publishEndpoint.Publish(domainEvent);
                     _logger.LogDebug(
                         "Published {EventType} event for {Operation} with context {ContextData}",
-                        typeof(TEvent).Name, operationName, contextData);
+                        nameof(TEvent), operationName, contextData);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex,
                         "Failed to publish {EventType} event for {Operation} with context {ContextData} - operation completed but event not sent",
-                        typeof(TEvent).Name, operationName, contextData);
+                        nameof(TEvent), operationName, contextData);
                     // Don't rethrow - event publishing should not fail business operations
                 }
             });
