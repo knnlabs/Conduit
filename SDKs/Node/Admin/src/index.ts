@@ -167,15 +167,13 @@ export { FetchMonitoringService } from './services/FetchMonitoringService';
 export { FetchIpFilterService } from './services/FetchIpFilterService';
 export { FetchMediaService } from './services/FetchMediaService';
 export { FetchModelCostService } from './services/FetchModelCostService';
+export { FetchMetricsService } from './services/FetchMetricsService';
+export { FetchNotificationsService } from './services/FetchNotificationsService';
 export type {
   CostDashboardDto,
   CostTrendDto,
   DetailedCostDataDto,
 } from './services/FetchAnalyticsService';
-export { ModelMappingService } from './services/ModelMappingService';
-export { SettingsService } from './services/SettingsService';
-export { IpFilterService } from './services/IpFilterService';
-export { FetchModelCostService as ModelCostService } from './services/FetchModelCostService'; // Alias for backward compatibility
 export { FetchModelService } from './services/FetchModelService';
 export { FetchModelSeriesService } from './services/FetchModelSeriesService';
 export { FetchModelAuthorService } from './services/FetchModelAuthorService';
@@ -186,14 +184,8 @@ export type {
   UpdateProviderTool,
   ProviderOption as ToolProviderOption
 } from './services/ProviderToolsService';
-export { AnalyticsService } from './services/AnalyticsService';
-export { SystemService } from './services/SystemService';
-export { MetricsService } from './services/MetricsService';
-export { NotificationsService } from './services/NotificationsService';
 export { SignalRService } from './services/SignalRService';
 export { RealtimeNotificationsService } from './services/RealtimeNotificationsService';
-export { FetchSecurityService as SecurityService } from './services/FetchSecurityService'; // Alias for backward compatibility
-export { FetchConfigurationService as ConfigurationService } from './services/FetchConfigurationService'; // Alias for backward compatibility
 
 // SignalR Hub Clients
 export { NavigationStateHubClient } from './signalr/NavigationStateHubClient';

@@ -1,6 +1,6 @@
 {
   "name": "@knn_labs/conduit-admin-client",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "TypeScript client library for Conduit Admin API",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -60,8 +60,7 @@
   },
   "dependencies": {
     "@knn_labs/conduit-common": "file:../Common",
-    "@microsoft/signalr": "^8.0.7",
-    "zod": "^4.0.5"
+    "@microsoft/signalr": "^8.0.7"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

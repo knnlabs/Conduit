@@ -19,6 +19,8 @@ import { FetchModelAuthorService } from './services/FetchModelAuthorService';
 // import { FetchModelCapabilitiesService } from './services/FetchModelCapabilitiesService'; // Disabled - capabilities now embedded in Model
 import { FetchProviderErrorsService } from './services/FetchProviderErrorsService';
 import { ProviderToolsService } from './services/ProviderToolsService';
+import { FetchMetricsService } from './services/FetchMetricsService';
+import { FetchNotificationsService } from './services/FetchNotificationsService';
 import type { ApiClientConfig } from './client/types';
 import {
   ConduitError,
@@ -68,6 +70,8 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
   // public readonly modelCapabilities: FetchModelCapabilitiesService; // Disabled - capabilities now embedded in Model
   public readonly providerErrors: FetchProviderErrorsService;
   public readonly providerTools: ProviderToolsService;
+  public readonly metrics: FetchMetricsService;
+  public readonly notifications: FetchNotificationsService;
 
   constructor(config: ApiClientConfig) {
     super(config);
@@ -93,6 +97,8 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
     // this.modelCapabilities = new FetchModelCapabilitiesService(this); // Disabled - capabilities now embedded in Model
     this.providerErrors = new FetchProviderErrorsService(this);
     this.providerTools = new ProviderToolsService(this);
+    this.metrics = new FetchMetricsService(this);
+    this.notifications = new FetchNotificationsService(this);
   }
 
   /**

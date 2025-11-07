@@ -1,17 +1,20 @@
-import { FetchBaseApiClient } from '../client/FetchBaseApiClient';
-import { DatabasePoolMetricsResponse, AdminMetricsResponse } from '../models/metrics';
+import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
+import type { RequestConfig } from '../client/types';
+import type { DatabasePoolMetricsResponse, AdminMetricsResponse } from '../models/metrics';
 
 /**
  * Service for accessing Admin API metrics and performance data
+ * Uses composition pattern with FetchBaseApiClient
  */
-export class MetricsService extends FetchBaseApiClient {
+export class FetchMetricsService {
+  constructor(private readonly client: FetchBaseApiClient) {}
 
   /**
    * Gets database connection pool metrics for the Admin API
-   * 
-   * @returns Promise<DatabasePoolMetricsResponse> Database pool statistics and health information
+   *
+ * @returns Promise<DatabasePoolMetricsResponse> Database pool statistics and health information
    * @throws {ConduitAdminError} When the API request fails
-   * 
+   *
    * @example
    * ```typescript
    * const poolMetrics = await adminClient.metrics.getDatabasePoolMetrics();
@@ -20,54 +23,66 @@ export class MetricsService extends FetchBaseApiClient {
    * console.warn(`Pool is healthy: ${poolMetrics.isHealthy}`);
    * ```
    */
-  async getDatabasePoolMetrics(): Promise<DatabasePoolMetricsResponse> {
-    const response = await this.get<DatabasePoolMetricsResponse>('/metrics/database/pool');
-    return response;
+  async getDatabasePoolMetrics(config?: RequestConfig): Promise<DatabasePoolMetricsResponse> {
+    return this.client['get']<DatabasePoolMetricsResponse>(
+      '/metrics/database/pool',
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
   }
 
   /**
    * Gets comprehensive Admin API metrics including database, memory, CPU, and request statistics
-   * 
+   *
    * @returns Promise<AdminMetricsResponse> Complete system metrics and health information
    * @throws {ConduitAdminError} When the API request fails
-   * 
+   *
    * @example
    * ```typescript
    * const systemMetrics = await adminClient.metrics.getAllMetrics();
-   * 
+   *
    * console.warn('Database Pool:');
    * console.warn(`  Active connections: ${systemMetrics.metrics.databasePool.activeConnections}`);
    * console.warn(`  Pool efficiency: ${systemMetrics.metrics.databasePool.poolEfficiency}%`);
-   * 
+   *
    * console.warn('Memory Usage:');
    * console.warn(`  Working set: ${Math.round(systemMetrics.metrics.memory.workingSet / 1024 / 1024)} MB`);
    * console.warn(`  GC heap size: ${Math.round(systemMetrics.metrics.memory.gcHeapSize / 1024 / 1024)} MB`);
-   * 
+   *
    * console.warn('CPU Usage:');
    * console.warn(`  CPU usage: ${systemMetrics.metrics.cpu.usage}%`);
    * console.warn(`  Thread count: ${systemMetrics.metrics.cpu.threadCount}`);
-   * 
+   *
    * console.warn('Request Statistics:');
    * console.warn(`  Total requests: ${systemMetrics.metrics.requests.totalRequests}`);
    * console.warn(`  Requests per second: ${systemMetrics.metrics.requests.requestsPerSecond}`);
    * console.warn(`  Average response time: ${systemMetrics.metrics.requests.averageResponseTime}ms`);
    * console.warn(`  Error rate: ${systemMetrics.metrics.requests.errorRate}%`);
-   * 
+   *
    * console.warn(`System is healthy: ${systemMetrics.isHealthy}`);
    * console.warn(`Uptime: ${Math.round(systemMetrics.uptime / 1000 / 60)} minutes`);
    * ```
    */
-  async getAllMetrics(): Promise<AdminMetricsResponse> {
-    const response = await this.get<AdminMetricsResponse>('/metrics');
-    return response;
+  async getAllMetrics(config?: RequestConfig): Promise<AdminMetricsResponse> {
+    return this.client['get']<AdminMetricsResponse>(
+      '/metrics',
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
   }
 
   /**
    * Checks if the database connection pool is healthy
-   * 
+   *
    * @returns Promise<boolean> True if the pool is healthy, false otherwise
    * @throws {ConduitAdminError} When the API request fails
-   * 
+   *
    * @example
    * ```typescript
    * const isHealthy = await adminClient.metrics.isDatabasePoolHealthy();
@@ -76,9 +91,9 @@ export class MetricsService extends FetchBaseApiClient {
    * }
    * ```
    */
-  async isDatabasePoolHealthy(): Promise<boolean> {
+  async isDatabasePoolHealthy(config?: RequestConfig): Promise<boolean> {
     try {
-      const poolMetrics = await this.getDatabasePoolMetrics();
+      const poolMetrics = await this.getDatabasePoolMetrics(config);
       return poolMetrics.isHealthy;
     } catch {
       return false;
@@ -87,10 +102,10 @@ export class MetricsService extends FetchBaseApiClient {
 
   /**
    * Checks if the overall Admin API system is healthy
-   * 
+   *
    * @returns Promise<boolean> True if the system is healthy, false otherwise
    * @throws {ConduitAdminError} When the API request fails
-   * 
+   *
    * @example
    * ```typescript
    * const isHealthy = await adminClient.metrics.isSystemHealthy();
@@ -99,9 +114,9 @@ export class MetricsService extends FetchBaseApiClient {
    * }
    * ```
    */
-  async isSystemHealthy(): Promise<boolean> {
+  async isSystemHealthy(config?: RequestConfig): Promise<boolean> {
     try {
-      const systemMetrics = await this.getAllMetrics();
+      const systemMetrics = await this.getAllMetrics(config);
       return systemMetrics.isHealthy;
     } catch {
       return false;
@@ -110,10 +125,10 @@ export class MetricsService extends FetchBaseApiClient {
 
   /**
    * Gets database connection pool efficiency percentage
-   * 
+   *
    * @returns Promise<number> Pool efficiency as a percentage (0-100)
    * @throws {ConduitAdminError} When the API request fails
-   * 
+   *
    * @example
    * ```typescript
    * const efficiency = await adminClient.metrics.getDatabasePoolEfficiency();
@@ -122,17 +137,17 @@ export class MetricsService extends FetchBaseApiClient {
    * }
    * ```
    */
-  async getDatabasePoolEfficiency(): Promise<number> {
-    const poolMetrics = await this.getDatabasePoolMetrics();
+  async getDatabasePoolEfficiency(config?: RequestConfig): Promise<number> {
+    const poolMetrics = await this.getDatabasePoolMetrics(config);
     return poolMetrics.metrics.poolEfficiency;
   }
 
   /**
    * Gets current memory usage information
-   * 
+   *
    * @returns Promise<{workingSetMB: number, gcHeapSizeMB: number, usage: string}> Memory usage summary
    * @throws {ConduitAdminError} When the API request fails
-   * 
+   *
    * @example
    * ```typescript
    * const memoryInfo = await adminClient.metrics.getMemoryUsage();
@@ -141,14 +156,14 @@ export class MetricsService extends FetchBaseApiClient {
    * console.warn(`Usage summary: ${memoryInfo.usage}`);
    * ```
    */
-  async getMemoryUsage(): Promise<{workingSetMB: number, gcHeapSizeMB: number, usage: string}> {
-    const systemMetrics = await this.getAllMetrics();
+  async getMemoryUsage(config?: RequestConfig): Promise<{workingSetMB: number, gcHeapSizeMB: number, usage: string}> {
+    const systemMetrics = await this.getAllMetrics(config);
     const memory = systemMetrics.metrics.memory;
-    
+
     const workingSetMB = Math.round(memory.workingSet / 1024 / 1024);
     const gcHeapSizeMB = Math.round(memory.gcHeapSize / 1024 / 1024);
     const totalAllocatedMB = Math.round(memory.totalAllocated / 1024 / 1024);
-    
+
     return {
       workingSetMB,
       gcHeapSizeMB,
@@ -158,10 +173,10 @@ export class MetricsService extends FetchBaseApiClient {
 
   /**
    * Gets current request processing statistics
-   * 
+   *
    * @returns Promise<{rps: number, avgResponseTime: number, errorRate: number, activeRequests: number}> Request statistics summary
    * @throws {ConduitAdminError} When the API request fails
-   * 
+   *
    * @example
    * ```typescript
    * const requestStats = await adminClient.metrics.getRequestStatistics();
@@ -171,10 +186,10 @@ export class MetricsService extends FetchBaseApiClient {
    * console.warn(`Active requests: ${requestStats.activeRequests}`);
    * ```
    */
-  async getRequestStatistics(): Promise<{rps: number, avgResponseTime: number, errorRate: number, activeRequests: number}> {
-    const systemMetrics = await this.getAllMetrics();
+  async getRequestStatistics(config?: RequestConfig): Promise<{rps: number, avgResponseTime: number, errorRate: number, activeRequests: number}> {
+    const systemMetrics = await this.getAllMetrics(config);
     const requests = systemMetrics.metrics.requests;
-    
+
     return {
       rps: requests.requestsPerSecond,
       avgResponseTime: requests.averageResponseTime,
@@ -185,10 +200,10 @@ export class MetricsService extends FetchBaseApiClient {
 
   /**
    * Gets system uptime information
-   * 
+   *
    * @returns Promise<{uptimeMs: number, uptimeMinutes: number, uptimeHours: number, uptimeString: string}> Uptime information
    * @throws {ConduitAdminError} When the API request fails
-   * 
+   *
    * @example
    * ```typescript
    * const uptime = await adminClient.metrics.getSystemUptime();
@@ -196,17 +211,17 @@ export class MetricsService extends FetchBaseApiClient {
    * console.warn(`Uptime in hours: ${uptime.uptimeHours}`);
    * ```
    */
-  async getSystemUptime(): Promise<{uptimeMs: number, uptimeMinutes: number, uptimeHours: number, uptimeString: string}> {
-    const systemMetrics = await this.getAllMetrics();
+  async getSystemUptime(config?: RequestConfig): Promise<{uptimeMs: number, uptimeMinutes: number, uptimeHours: number, uptimeString: string}> {
+    const systemMetrics = await this.getAllMetrics(config);
     const uptimeMs = systemMetrics.uptime;
     const uptimeMinutes = Math.floor(uptimeMs / 1000 / 60);
     const uptimeHours = Math.floor(uptimeMinutes / 60);
     const remainingMinutes = uptimeMinutes % 60;
-    
-    const uptimeString = uptimeHours > 0 
+
+    const uptimeString = uptimeHours > 0
       ? `${uptimeHours}h ${remainingMinutes}m`
       : `${uptimeMinutes}m`;
-    
+
     return {
       uptimeMs,
       uptimeMinutes,
