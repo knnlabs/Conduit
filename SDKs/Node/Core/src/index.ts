@@ -249,7 +249,6 @@ export { DiscoveryService } from './services/DiscoveryService';
 export { ProviderModelsService } from './services/ProviderModelsService';
 
 export { SignalRService } from './services/SignalRService';
-// export { ConnectionService } from './services/ConnectionService'; // Removed - using ConnectionService from FetchConduitCoreClient
 export { TaskHubClient } from './signalr/TaskHubClient';
 export { VideoGenerationHubClient } from './signalr/VideoGenerationHubClient';
 export { ImageGenerationHubClient } from './signalr/ImageGenerationHubClient';

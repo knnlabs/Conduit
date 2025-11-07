@@ -3,7 +3,7 @@
  * Extracted and refactored from WebUI ChatStreamingLogic
  */
 
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { parseSSEStream, buildMessageContent, SSEEventType, type SSEEvent, type ImageAttachment } from '../utils';
 import type {
   StreamingConfig,
@@ -326,7 +326,7 @@ export class ChatStreamingManager {
           // Create chunk for callback if there's any meaningful content
           if (hasContent || delta.role !== undefined || delta.channel !== undefined) {
             const chunk: ChatCompletionChunk = {
-              id: uuidv4(),
+              id: randomUUID(),
               object: 'chat.completion.chunk',
               created: Math.floor(Date.now() / 1000),
               model: 'unknown',

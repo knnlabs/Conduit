@@ -234,6 +234,9 @@ function isStreamError(error) {
 function isTimeoutError(error) {
   return error instanceof TimeoutError;
 }
+function isServerError(error) {
+  return isConduitError(error) && error.statusCode !== void 0 && error.statusCode >= 500;
+}
 function isSerializedConduitError(data) {
   return typeof data === "object" && data !== null && "isConduitError" in data && data.isConduitError === true;
 }
@@ -803,6 +806,7 @@ export {
   isNotFoundError,
   isRateLimitError,
   isSerializedConduitError,
+  isServerError,
   isStreamError,
   isTimeoutError,
   isValidationError,

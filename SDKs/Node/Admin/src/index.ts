@@ -16,7 +16,6 @@ export * from './types/providers';
 export * from './types/models';
 export * from './validation/modelValidation';
 export * from './errors/modelErrors';
-// discovery models removed - discovery types are in modelMapping
 export * from './models/virtualKey';
 export * from './models/provider';
 export * from './models/providerType';
@@ -168,14 +167,11 @@ export { FetchMonitoringService } from './services/FetchMonitoringService';
 export { FetchIpFilterService } from './services/FetchIpFilterService';
 export { FetchMediaService } from './services/FetchMediaService';
 export { FetchModelCostService } from './services/FetchModelCostService';
-// Cost types now exported from FetchAnalyticsService
 export type {
   CostDashboardDto,
   CostTrendDto,
   DetailedCostDataDto,
 } from './services/FetchAnalyticsService';
-// ProviderService removed - use FetchProvidersService instead which is exported via the client
-export { ProviderModelsService } from './services/ProviderModelsService';
 export { ModelMappingService } from './services/ModelMappingService';
 export { SettingsService } from './services/SettingsService';
 export { IpFilterService } from './services/IpFilterService';
@@ -184,28 +180,23 @@ export { FetchModelService } from './services/FetchModelService';
 export { FetchModelSeriesService } from './services/FetchModelSeriesService';
 export { FetchModelAuthorService } from './services/FetchModelAuthorService';
 export { ProviderToolsService } from './services/ProviderToolsService';
-export type { 
-  ProviderTool, 
-  CreateProviderTool, 
-  UpdateProviderTool, 
-  ProviderOption as ToolProviderOption 
+export type {
+  ProviderTool,
+  CreateProviderTool,
+  UpdateProviderTool,
+  ProviderOption as ToolProviderOption
 } from './services/ProviderToolsService';
-// export { FetchModelCapabilitiesService } from './services/FetchModelCapabilitiesService'; // Disabled - capabilities now embedded in Model
 export { AnalyticsService } from './services/AnalyticsService';
 export { SystemService } from './services/SystemService';
-// DiscoveryService removed - use ModelMappingService.discoverProviderModels() instead
 export { MetricsService } from './services/MetricsService';
 export { NotificationsService } from './services/NotificationsService';
-// export { DatabaseBackupService } from './services/DatabaseBackupService'; // Removed
 export { SignalRService } from './services/SignalRService';
-// export { ConnectionService } from './services/ConnectionService'; // Removed
 export { RealtimeNotificationsService } from './services/RealtimeNotificationsService';
 export { FetchSecurityService as SecurityService } from './services/FetchSecurityService'; // Alias for backward compatibility
 export { FetchConfigurationService as ConfigurationService } from './services/FetchConfigurationService'; // Alias for backward compatibility
 
 // SignalR Hub Clients
 export { NavigationStateHubClient } from './signalr/NavigationStateHubClient';
-// AdminNotificationHubClient removed - AdminNotificationHub has been removed from the backend
 
 // Utilities
 export * from './utils/errors';

@@ -20,7 +20,15 @@ import { FetchModelAuthorService } from './services/FetchModelAuthorService';
 import { FetchProviderErrorsService } from './services/FetchProviderErrorsService';
 import { ProviderToolsService } from './services/ProviderToolsService';
 import type { ApiClientConfig } from './client/types';
-import { ConduitError } from './utils/errors';
+import {
+  ConduitError,
+  isConduitError,
+  isAuthError,
+  isRateLimitError,
+  isValidationError,
+  isNotFoundError,
+  isServerError
+} from '@knn_labs/conduit-common';
 
 /**
  * Type-safe Conduit Admin Client using native fetch
@@ -89,47 +97,39 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
 
   /**
    * Type guard for checking if an error is a ConduitError
+   * Re-exported from @knn_labs/conduit-common for convenience
    */
-  isConduitError(error: unknown): error is ConduitError {
-    return error instanceof ConduitError;
-  }
+  isConduitError = isConduitError;
 
   /**
    * Type guard for checking if an error is an authentication error
+   * Re-exported from @knn_labs/conduit-common for convenience
    */
-  isAuthError(error: unknown): error is ConduitError {
-    return this.isConduitError(error) && error.statusCode === 401;
-  }
+  isAuthError = isAuthError;
 
   /**
    * Type guard for checking if an error is a rate limit error
+   * Re-exported from @knn_labs/conduit-common for convenience
    */
-  isRateLimitError(error: unknown): error is ConduitError {
-    return this.isConduitError(error) && error.statusCode === 429;
-  }
+  isRateLimitError = isRateLimitError;
 
   /**
    * Type guard for checking if an error is a validation error
+   * Re-exported from @knn_labs/conduit-common for convenience
    */
-  isValidationError(error: unknown): error is ConduitError {
-    return this.isConduitError(error) && error.statusCode === 400;
-  }
+  isValidationError = isValidationError;
 
   /**
    * Type guard for checking if an error is a not found error
+   * Re-exported from @knn_labs/conduit-common for convenience
    */
-  isNotFoundError(error: unknown): error is ConduitError {
-    return this.isConduitError(error) && error.statusCode === 404;
-  }
+  isNotFoundError = isNotFoundError;
 
   /**
    * Type guard for checking if an error is a server error
+   * Re-exported from @knn_labs/conduit-common for convenience
    */
-  isServerError(error: unknown): error is ConduitError {
-    return this.isConduitError(error) && 
-           error.statusCode !== undefined && 
-           error.statusCode >= 500;
-  }
+  isServerError = isServerError;
 }
 
 // Export the fetch-based client as the default
