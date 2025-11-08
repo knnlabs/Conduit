@@ -10,7 +10,7 @@ const isPublicRoute = createRouteMatcher([
 
 export default clerkMiddleware(async (auth, req) => {
   // Skip all auth in development when explicitly disabled
-  if (process.env.DISABLE_CLERK_AUTH === 'true' && process.env.NODE_ENV === 'development') {
+  if (process.env.CLERK_AUTH_ENABLED !== 'true' && process.env.NODE_ENV === 'development') {
     return NextResponse.next();
   }
 

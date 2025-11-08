@@ -33,11 +33,11 @@ export async function POST(request: NextRequest) {
                      'unknown';
     const userAgent = request.headers.get('user-agent') ?? 'unknown';
     
-    // In development mode with DISABLE_CLERK_AUTH=true, 
+    // In development mode with CLERK_AUTH_ENABLED=false,
     // we return the master key directly without calling the Admin API
     // In production, this would call the Admin API to generate a real ephemeral key
-    
-    const isDevelopment = process.env.DISABLE_CLERK_AUTH === 'true';
+
+    const isDevelopment = process.env.CLERK_AUTH_ENABLED !== 'true';
     
     if (isDevelopment) {
       // Development mode: return the master key directly

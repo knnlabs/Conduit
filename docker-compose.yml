@@ -237,7 +237,7 @@ services:
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_cHJlY2lzZS1yaW5ndGFpbC0zMy5jbGVyay5hY2NvdW50cy5kZXYk"
       CLERK_SECRET_KEY: "sk_test_oOI6FRt1EhRGaCVUc1zJVyWCNyqf3w1DSJnLZlxEQK"
       # Disable Clerk authentication for development
-      DISABLE_CLERK_AUTH: "true"
+      CLERK_AUTH_ENABLED: "false"
     ports:
       - "3000:3000"
     restart: on-failure

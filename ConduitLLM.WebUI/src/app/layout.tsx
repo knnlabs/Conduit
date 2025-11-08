@@ -30,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   // Server-side check - secure and not accessible to client
-  const isAuthDisabled = process.env.DISABLE_CLERK_AUTH === 'true' && process.env.NODE_ENV === 'development';
+  const isAuthDisabled = process.env.CLERK_AUTH_ENABLED !== 'true' && process.env.NODE_ENV === 'development';
   
   const content = (
     <AuthProvider isAuthDisabled={isAuthDisabled}>

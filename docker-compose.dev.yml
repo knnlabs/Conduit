@@ -82,7 +82,7 @@ services:
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_cHJlY2lzZS1yaW5ndGFpbC0zMy5jbGVyay5hY2NvdW50cy5kZXYk"
       CLERK_SECRET_KEY: "sk_test_oOI6FRt1EhRGaCVUc1zJVyWCNyqf3w1DSJnLZlxEQK"
       # Development authentication bypass
-      DISABLE_CLERK_AUTH: "true"
+      CLERK_AUTH_ENABLED: "false"
       # Official Next.js Docker configuration from docs
       HOSTNAME: "0.0.0.0"
     working_dir: /app/ConduitLLM.WebUI
