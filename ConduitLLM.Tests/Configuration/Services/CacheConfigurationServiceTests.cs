@@ -231,6 +231,7 @@ namespace ConduitLLM.Tests.Configuration.Services
             Assert.True(result);
 
             var deletedEntity = await _dbContext.CacheConfigurations
+                .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(c => c.Region == CacheRegions.IpFilters);
             Assert.NotNull(deletedEntity);
             Assert.False(deletedEntity.IsActive);
