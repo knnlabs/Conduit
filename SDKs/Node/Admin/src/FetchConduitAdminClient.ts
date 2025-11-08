@@ -23,7 +23,6 @@ import { FetchMetricsService } from './services/FetchMetricsService';
 import { FetchNotificationsService } from './services/FetchNotificationsService';
 import type { ApiClientConfig } from './client/types';
 import {
-  ConduitError,
   isConduitError,
   isAuthError,
   isRateLimitError,
