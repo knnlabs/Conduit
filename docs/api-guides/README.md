@@ -19,6 +19,15 @@ These guides provide **in-depth explanations**, **best practices**, and **practi
 - **[Admin Client Guide](./admin-client-guide.md)** - Client implementation guide
 - **[Admin Examples](./admin-examples.md)** - Practical code examples
 
+### SDK Guides
+- **[SDK Documentation](./sdk/)** - Complete SDK integration guides
+  - **[Next.js Integration](./sdk/nextjs-integration.md)** - Next.js integration with Conduit SDKs
+  - **[Best Practices](./sdk/best-practices.md)** - Security, performance, and code quality
+  - **[Quick Reference](./sdk/quick-reference.md)** - Common SDK patterns
+  - **[Troubleshooting](./sdk/troubleshooting.md)** - Common issues and solutions
+  - **[Connection Management](./sdk/connection-management.md)** - SignalR real-time connections
+  - **[Health Checks](./sdk/health-checks.md)** - Lightweight health check functionality
+
 ### Feature Guides
 - **[Function Calling](./function-calling.md)** - How to use function calling with LLMs
 - **[LLM Routing](./llm-routing.md)** - Routing strategies and load balancing
@@ -47,17 +56,23 @@ These guides provide **in-depth explanations**, **best practices**, and **practi
 2. Review [Core API Detailed](./core-api-detailed.md) - see full capabilities
 3. Explore feature guides as needed
 
+### For SDK Integration
+1. Start with [SDK Documentation](./sdk/) - overview and installation
+2. Follow [Next.js Integration](./sdk/nextjs-integration.md) for Next.js apps
+3. Check [Best Practices](./sdk/best-practices.md) for security and performance
+
 ### For Specific Features
 - **Using tools/functions?** → [Function Calling](./function-calling.md)
 - **Multi-provider setup?** → [LLM Routing](./llm-routing.md)
 - **Image analysis?** → [Multimodal Vision](./multimodal-vision.md)
 - **Event notifications?** → [Webhooks](./webhooks.md)
+- **Integrating SDKs?** → [SDK Documentation](./sdk/)
 
 ## 📋 Related Documentation
 
 - **[API Reference](../api-reference/)** - Endpoint specifications and parameters
-- **[Admin API](../admin-api/)** - Administrative operations
-- **[SDK Documentation](../development/)** - SDK usage and best practices
+- **[SDK Documentation](./sdk/)** - Complete SDK guides and integration examples
+- **[Development](../development/)** - Contributing to Conduit codebase
 - **[Architecture](../architecture/)** - System design and patterns
 
 ## 💡 Tips for Using These Guides

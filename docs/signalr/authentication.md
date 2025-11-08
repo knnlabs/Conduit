@@ -542,4 +542,4 @@ Enable debug logging to troubleshoot authentication issues:
 - [Configuration Guide](./configuration.md) - SignalR configuration options
 - [API Reference](../api-reference/API-REFERENCE.md) - REST API documentation
 - [Virtual Key Management](../virtual-keys.md) - Virtual key management guide
-- [Security Guidelines](../Security-Guidelines.md) - General security practices
+- [Security Guidelines](../operations/security/Security-Guidelines.md) - General security practices

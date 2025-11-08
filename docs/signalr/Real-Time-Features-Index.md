@@ -72,7 +72,7 @@ Complete, production-ready client implementations with error handling and reconn
   - Connection Pool: `GET /health/ready` (check `http_connection_pool`)
 
 #### Security
-- **[Security Guidelines](./Security-Guidelines.md)** - General security best practices
+- **[Security Guidelines](../operations/security/Security-Guidelines.md)** - General security best practices
 - **Virtual Key Authentication** - All real-time features require valid virtual keys
 - **Webhook Security** - HTTPS enforcement, custom headers, idempotency
 

@@ -6,24 +6,17 @@ A comprehensive guide for integrating the Conduit SDK into Next.js applications 
 
 This guide provides step-by-step instructions for integrating Conduit's Node.js SDK into Next.js applications, with practical examples for common use cases including chat interfaces, image generation, and admin dashboards.
 
-## Documentation Structure
+## Table of Contents
 
-The Next.js integration guide has been organized into focused implementation guides:
-
-### 🚀 Getting Started
-- **[Next.js Setup & Configuration](./nextjs/setup-configuration.md)** - Initial setup and environment configuration
-- **[Authentication Integration](./nextjs/authentication.md)** - NextAuth and session management
-- **[SDK Client Setup](./nextjs/sdk-clients.md)** - Admin and Core client configuration
-
-### 🎯 Core Features
-- **[Chat Interface Implementation](./nextjs/chat-interface.md)** - Streaming chat with real-time updates
-- **[Image Generation UI](./nextjs/image-generation.md)** - Image generation with gallery interface
-- **[Video Generation Dashboard](./nextjs/video-generation.md)** - Async video generation with progress tracking
-
-### 🛠️ Advanced Integration
-- **[Admin Dashboard](./nextjs/admin-dashboard.md)** - Complete administrative interface
-- **[Real-Time Features](./nextjs/realtime-features.md)** - SignalR integration and live updates
-- **[Error Handling & Testing](./nextjs/error-handling.md)** - Production-ready error handling
+1. [Quick Start](#quick-start)
+2. [Core Integration Examples](#core-integration-examples)
+3. [App Router vs Pages Router](#app-router-vs-pages-router)
+4. [Authentication Integration](#authentication-integration)
+5. [State Management with React Query](#state-management-with-react-query)
+6. [Error Handling](#error-handling)
+7. [Testing](#testing)
+8. [Deployment](#deployment)
+9. [Best Practices](#best-practices)
 
 ## Quick Start
 
@@ -697,6 +690,9 @@ CMD ["npm", "start"]
 
 ## Related Documentation
 
-- [Admin API Examples](./admin-api/examples.md) - Administrative API usage examples
-- [Real-Time API Guide](./real-time-api-guide.md) - Real-time features and SignalR integration
-- [Integration Examples](./examples/INTEGRATION-EXAMPLES.md) - Broader integration patterns
+- **[SDK Best Practices](./best-practices.md)** - Best practices and anti-patterns
+- **[SDK Quick Reference](./quick-reference.md)** - Quick reference for common patterns
+- **[SDK Troubleshooting](./troubleshooting.md)** - Common issues and solutions
+- **[Connection Management](./connection-management.md)** - SignalR connection management
+- **[Admin SDK TypeScript Guide](../admin-sdk-typescript.md)** - Complete Admin SDK guide
+- **[Core API Guide](../core-api-guide.md)** - Core API reference and examples
