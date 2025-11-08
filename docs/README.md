@@ -73,9 +73,9 @@ High-quality technical documentation for AI assistant context:
 
 Complete API references:
 
-- **[Core API Reference](./core-api-detailed-reference.md)** - Chat, completions, embeddings
+- **[Core API Detailed Guide](./api-guides/core-api-detailed.md)** - Chat, completions, embeddings
 - **[Admin API](./admin-api/)** - Administrative operations
-- **[Webhook API](./webhook-api.md)** - Event notifications
+- **[Webhook API Guide](./api-guides/webhooks.md)** - Event notifications and webhook integration
 - **[Real-Time API Guide](./real-time-api-guide.md)** - WebSocket/SignalR integration
 
 ## 🔧 Operations

@@ -39,5 +39,5 @@ This directory contains technical guides and best practices for developing with 
 
 - **[CLAUDE.md](../../CLAUDE.md)** - Primary development workflow, Docker setup, build verification
 - **[Architecture Overview](../architecture/)** - System design and patterns
-- **[API Reference](../API-Reference.md)** - Complete API documentation
+- **[Core API Guide](../api-guides/core-api-guide.md)** - Complete API documentation and SDK overview
 - **[Archived Development Docs](../archive/)** - Historical guides (CodeQL lessons learned, etc.)
