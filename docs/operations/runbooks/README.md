@@ -74,6 +74,18 @@ This directory contains operational runbooks for handling various incidents and 
 - **Impact**: Inaccurate metrics, monitoring blind spots
 - **First Response**: Check Redis connectivity, verify instance registration
 
+### [Cost Observability Alerts](./cost-observability-alerts.md)
+- **Severity**: Critical/Warning
+- **Trigger**: Various cost-related alerts (budget exceeded, high burn rate, etc.)
+- **Impact**: Budget overruns, unexpected costs
+- **First Response**: Check alert rules, verify metrics, investigate cost spikes
+
+### [Cost Observability Troubleshooting](./cost-observability-troubleshooting.md)
+- **Severity**: Varies
+- **Issues**: Metrics not appearing, cost updates stuck, incorrect calculations, dashboard performance, alert issues, cache problems
+- **Impact**: Inaccurate cost tracking, monitoring failures
+- **First Response**: Comprehensive diagnostic and resolution procedures for cost system issues
+
 ### Webhook Delivery Slow
 - **Severity**: Info
 - **Trigger**: p95 >5s for >10 minutes
