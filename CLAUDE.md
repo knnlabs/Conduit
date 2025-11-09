@@ -39,23 +39,23 @@ Key requirements:
    - Configured on the WebUI service to talk to other backend services
 
 ## Development Workflow - CRITICAL
-**⚠️ CANONICAL DEVELOPMENT STARTUP: Always use `./scripts/start-dev.sh` for development**
+**⚠️ CANONICAL DEVELOPMENT STARTUP: Always use `./scripts/dev/start-dev.sh` for development**
 
 ### Starting Development Environment
 
 #### Available Flags:
 ```bash
 # Standard startup (builds containers if needed)
-./scripts/start-dev.sh
+./scripts/dev/start-dev.sh
 
 # Rebuild WebUI container (fixes Next.js issues)
-./scripts/start-dev.sh --webui
+./scripts/dev/start-dev.sh --webui
 
 # Complete reset (removes all volumes and containers)
-./scripts/start-dev.sh --clean
+./scripts/dev/start-dev.sh --clean
 
 # Force rebuild containers with no cache
-./scripts/start-dev.sh --build
+./scripts/dev/start-dev.sh --build
 ```
 
 #### What Each Flag Actually Does:
@@ -83,18 +83,18 @@ Key requirements:
 docker compose up -d
 ```
 
-**Note**: Using `docker compose up -d` will create permission conflicts with development. If you accidentally use it, run `docker compose down --volumes --remove-orphans` before using `./scripts/start-dev.sh`.
+**Note**: Using `docker compose up -d` will create permission conflicts with development. If you accidentally use it, run `docker compose down --volumes --remove-orphans` before using `./scripts/dev/start-dev.sh`.
 
 ## Docker Development Setup
 
 ### Starting Development Environment
 ```bash
 # Always use the development script for local development
-./scripts/start-dev.sh
+./scripts/dev/start-dev.sh
 
 # If switching from production docker-compose:
 docker compose down --volumes --remove-orphans
-./scripts/start-dev.sh --clean
+./scripts/dev/start-dev.sh --clean
 ```
 
 ### Verifying Services
@@ -132,14 +132,14 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f [service]
 ```bash
 # Symptom: npm EACCES errors, cannot write to node_modules
 # Solution: Clean restart with proper permissions
-./scripts/start-dev.sh --clean
+./scripts/dev/start-dev.sh --clean
 ```
 
 #### After Adding New Packages
 ```bash
 # When you add packages to package.json
 # Restart WebUI container to install new dependencies
-./scripts/start-dev.sh --webui
+./scripts/dev/start-dev.sh --webui
 ```
 
 #### Container Conflicts
@@ -147,14 +147,14 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f [service]
 # Symptom: Containers already exist or port conflicts
 # Solution: Stop all containers and restart
 docker compose down --volumes --remove-orphans
-./scripts/start-dev.sh --clean
+./scripts/dev/start-dev.sh --clean
 ```
 
 #### Next.js Build Issues
 ```bash
 # Symptom: WebUI not updating, stale builds
 # Solution: Restart WebUI container
-./scripts/start-dev.sh --webui
+./scripts/dev/start-dev.sh --webui
 ```
 
 #### WebUI Not Starting
@@ -175,7 +175,7 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml exec webui ls -la
 
 # Restart with clean build artifacts
 rm -rf ConduitLLM.WebUI/.next
-./scripts/start-dev.sh --webui
+./scripts/dev/start-dev.sh --webui
 ```
 
 ### Development Services
@@ -188,22 +188,22 @@ After successful startup, these services are available:
 ### Development Helper Commands (dev-workflow.sh)
 ```bash
 # Show WebUI logs in real-time
-./scripts/dev-workflow.sh logs
+./scripts/dev/dev-workflow.sh logs
 
 # Open shell in WebUI container
-./scripts/dev-workflow.sh shell
+./scripts/dev/dev-workflow.sh shell
 
 # Build WebUI in container
-./scripts/dev-workflow.sh build-webui
+./scripts/dev/dev-workflow.sh build-webui
 
 # Run ESLint with --fix
-./scripts/dev-workflow.sh lint-fix-webui
+./scripts/dev/dev-workflow.sh lint-fix-webui
 
 # Build SDKs
-./scripts/dev-workflow.sh build-sdks
+./scripts/dev/dev-workflow.sh build-sdks
 
 # Execute any command in WebUI container
-./scripts/dev-workflow.sh exec [command]
+./scripts/dev/dev-workflow.sh exec [command]
 ```
 
 ### Technical Implementation Notes
@@ -242,7 +242,7 @@ export DOCKER_GROUP_ID=$(id -g)   # Your group ID
 **FORBIDDEN FOR WEBUI DEVELOPMENT:**
 - ❌ `npm run build` - **WILL BREAK THE DEVELOPMENT CONTAINER**
 - ❌ `cd ConduitLLM.WebUI && npm run build` - **WILL BREAK THE DEVELOPMENT CONTAINER**
-- ❌ `./scripts/dev-workflow.sh build-webui` - **ONLY FOR PRODUCTION TESTING**
+- ❌ `./scripts/dev/dev-workflow.sh build-webui` - **ONLY FOR PRODUCTION TESTING**
 
 **WEBUI VERIFICATION COMMANDS (SAFE FOR DEVELOPMENT):**
 - ✅ `npm run lint` - Check ESLint errors
@@ -267,7 +267,7 @@ export DOCKER_GROUP_ID=$(id -g)   # Your group ID
 4. **Never commit code that doesn't verify cleanly**
 
 ### TypeScript/React Specific Rules
-- When replacing `any` types, test immediately with `./scripts/fix-webui-errors.sh` or `./scripts/fix-sdk-errors.sh`
+- When replacing `any` types, test immediately with `./scripts/dev/fix-webui-errors.sh` or `./scripts/dev/fix-sdk-errors.sh`
 - Check existing error handling patterns before creating new ones
 - Use small, incremental changes (1-3 files at a time)
 - Follow established import patterns in the codebase
@@ -326,12 +326,11 @@ The WebUI uses very strict ESLint rules that will cause build failures:
 - Clean up temporary test files and scripts after completing features
 
 ### Available Helper Scripts
-- **fix-webui-errors.sh**: Automated fixes for common WebUI TypeScript/ESLint errors
-- **fix-sdk-errors.sh**: Fixes SDK TypeScript compilation issues
-- **validate-eslint.sh**: Validates ESLint configuration
-- **dev-workflow.sh**: Helper commands for development tasks (see above)
-- **create-webui-key.sh**: Creates virtual keys for WebUI testing
-- **test-webui-connection.sh**: Tests WebUI connectivity
+- **dev/fix-webui-errors.sh**: Automated fixes for common WebUI TypeScript/ESLint errors
+- **dev/fix-sdk-errors.sh**: Fixes SDK TypeScript compilation issues
+- **test/validate-eslint.sh**: Validates ESLint configuration
+- **dev/dev-workflow.sh**: Helper commands for development tasks (see above)
+- **dev/create-webui-key.sh**: Creates virtual keys for WebUI testing
 
 ### WebUI Development
 You can run npm commands DIRECTLY on the host filesystem:
@@ -541,7 +540,7 @@ For comprehensive documentation on specific topics, see:
 These commands will break the development container and force a 5+ minute restart:
 - `npm run build` (anywhere in WebUI directory)
 - `cd ConduitLLM.WebUI && npm run build`
-- `./scripts/dev-workflow.sh build-webui` (production only)
+- `./scripts/dev/dev-workflow.sh build-webui` (production only)
 
 ### ✅ SAFE WEBUI COMMANDS  
 Use these instead for WebUI verification:
@@ -549,7 +548,7 @@ Use these instead for WebUI verification:
 - `npm run type-check`
 
 ### ❌ FORBIDDEN DEVELOPMENT COMMANDS
-- `docker compose up` for development (use `./scripts/start-dev.sh`)
+- `docker compose up` for development (use `./scripts/dev/start-dev.sh`)
 
 **If you run any forbidden command, you will:**
 1. Break the development environment

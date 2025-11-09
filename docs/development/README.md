@@ -18,7 +18,7 @@ This directory contains technical guides and best practices for **developing the
 
 ### Getting Started
 
-1. **Start development environment**: Always use `./scripts/start-dev.sh` (see [CLAUDE.md](../../CLAUDE.md#development-workflow---critical))
+1. **Start development environment**: Always use `./scripts/dev/start-dev.sh` (see [CLAUDE.md](../../CLAUDE.md#development-workflow---critical))
 2. **Review API patterns**: Check [API Patterns Best Practices](./API-PATTERNS-BEST-PRACTICES.md) before implementing new endpoints
 3. **Check SDK coverage**: Review [SDK Gaps](./sdk-gaps.md) for known limitations
 4. **Follow established patterns**: Reference existing code in the codebase

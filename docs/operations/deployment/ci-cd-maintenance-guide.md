@@ -13,7 +13,7 @@ This guide explains the simplified CI/CD approach for the Conduit project, desig
 
 ## The New Approach
 
-### 1. Simplified Build Script (`scripts/ci-build-test.sh`)
+### 1. Simplified Build Script (`scripts/test/ci-build-test.sh`)
 
 This wrapper script handles the entire build and test process:
 
@@ -29,7 +29,7 @@ This wrapper script handles the entire build and test process:
 - Provides visual indicators for coverage levels
 - Handles errors gracefully
 
-### 2. Informational Coverage (`scripts/check-coverage-info.sh`)
+### 2. Informational Coverage (`scripts/test/check-coverage-info.sh`)
 
 This script provides coverage insights without blocking:
 
@@ -79,7 +79,7 @@ When a build fails:
 1. **Check the Summary** - GitHub UI shows a clear summary
 2. **Look for Red Text** - Errors are highlighted
 3. **Download Artifacts** - Detailed logs are available as artifacts
-4. **Run Locally** - Use `./scripts/ci-build-test.sh` to reproduce
+4. **Run Locally** - Use `./scripts/test/ci-build-test.sh` to reproduce
 
 ## Making Changes
 
@@ -87,7 +87,7 @@ When a build fails:
 Just add them - the scripts will automatically include them.
 
 ### To Change Coverage Thresholds
-Edit `scripts/ci-build-test.sh` and update these variables:
+Edit `scripts/test/ci-build-test.sh` and update these variables:
 ```bash
 COVERAGE_THRESHOLD_WARNING=40  # Warn if below this
 COVERAGE_THRESHOLD_INFO=60     # Info if below this
@@ -141,5 +141,5 @@ To integrate these changes into your existing workflow, replace the build-and-te
 ## Questions?
 
 If you encounter issues not covered here, the scripts are designed to be self-documenting. Read the comments in:
-- `scripts/ci-build-test.sh`
-- `scripts/check-coverage-info.sh`
+- `scripts/test/ci-build-test.sh`
+- `scripts/test/check-coverage-info.sh`
