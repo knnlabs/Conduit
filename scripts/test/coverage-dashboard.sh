@@ -12,7 +12,7 @@ echo "================================"
 COVERAGE_DIR="./TestResults"
 REPORT_DIR="./CoverageReport"
 SCRIPTS_DIR="$(dirname "$0")"
-PROJECT_ROOT="$(cd "$SCRIPTS_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPTS_DIR/../.." && pwd)"
 
 cd "$PROJECT_ROOT"
 

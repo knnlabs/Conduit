@@ -3,7 +3,14 @@
 
 # Get master key
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MASTER_KEY=$("$SCRIPT_DIR/get-master-key.sh")
+
+# Get master key from environment
+if [ -z "$CONDUIT_MASTER_KEY" ]; then
+    echo "Error: CONDUIT_MASTER_KEY environment variable is not set" >&2
+    echo "Please set CONDUIT_MASTER_KEY in your .env file or environment" >&2
+    exit 1
+fi
+MASTER_KEY="$CONDUIT_MASTER_KEY"
 if [ $? -ne 0 ]; then
     echo "Error: Failed to get master key" >&2
     exit 1

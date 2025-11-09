@@ -62,13 +62,13 @@ See the main [Development README](../../README.md) for setup instructions.
 
 **Run ESLint:**
 ```bash
-cd ConduitLLM.WebUI
+cd WebAdmin
 npm run lint
 ```
 
 **Type Check:**
 ```bash
-cd ConduitLLM.WebUI
+cd WebAdmin
 npm run type-check
 ```
 
@@ -94,7 +94,7 @@ cd ../Core && npm run build
 ### Key Directories
 
 ```
-ConduitLLM.WebUI/
+WebAdmin/
 ├── src/
 │   ├── app/              # Next.js app router pages
 │   ├── components/       # React components

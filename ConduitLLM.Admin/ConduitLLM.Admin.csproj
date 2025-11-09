@@ -48,14 +48,14 @@
 
   <!--
   DEPENDENCY ISSUE RESOLVED:
-  The circular dependency between ConduitLLM.Admin and ConduitLLM.WebUI has been resolved.
+  The circular dependency between ConduitLLM.Admin and WebAdmin has been resolved.
   The resolution followed these steps:
   1. Shared DTOs moved to ConduitLLM.Configuration
   2. Services implemented in Admin without depending on WebUI implementations
-  3. ConduitLLM.WebUI updated to use the Admin API client
+  3. WebAdmin updated to use the Admin API client
 
   The WebUI reference has been removed and the Admin project now stands independent,
-  while WebUI consumes Admin APIs through the IAdminApiClient implementation.
+  while WebAdmin consumes Admin APIs through the IAdminApiClient implementation.
   -->
 
 </Project>

@@ -100,7 +100,7 @@ ENABLE_RATE_LIMITING=true
 1. Clone the repository:
 ```bash
 git clone https://github.com/your-org/conduit-webui.git
-cd conduit-webui/ConduitLLM.WebUI
+cd conduit-webui/WebAdmin
 ```
 
 2. Install dependencies:
@@ -133,7 +133,7 @@ version: '3.8'
 services:
   webui:
     build:
-      context: ./ConduitLLM.WebUI
+      context: ./WebAdmin
       dockerfile: Dockerfile.dev
     ports:
       - "3000:3000"
@@ -142,7 +142,7 @@ services:
       - CONDUIT_API_BASE_URL=http://api:8080
       - CONDUIT_ADMIN_API_BASE_URL=http://admin:8080
     volumes:
-      - ./ConduitLLM.WebUI:/app
+      - ./WebAdmin:/app
       - /app/node_modules
       - /app/.next
     depends_on:
@@ -174,7 +174,7 @@ volumes:
 ### Production Dockerfile
 
 ```dockerfile
-# ConduitLLM.WebUI/Dockerfile
+# WebAdmin/Dockerfile
 FROM node:18-alpine AS deps
 WORKDIR /app
 COPY package*.json ./

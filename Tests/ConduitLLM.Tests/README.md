@@ -8,7 +8,7 @@ The ConduitLLM solution is a modular .NET-based framework for working with Large
 
 - **ConduitLLM.Core**: Core abstractions, interfaces, and shared logic for LLM operations.
 - **ConduitLLM.Http**: Provides HTTP APIs for LLM operations.
-- **ConduitLLM.WebUI**: Web-based user interface for interacting with LLMs.
+- **WebAdmin**: Web-based user interface for interacting with LLMs.
 - **ConduitLLM.Configuration**: Centralized configuration management.
 - **ConduitLLM.Providers**: Integrations for various LLM providers (OpenAI, Cohere, Gemini, Anthropic, LiteLLM, etc.).
 - **ConduitLLM.Tests**: This project. Contains tests for all core, provider, HTTP, and configuration components.

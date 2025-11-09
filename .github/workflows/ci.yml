@@ -61,7 +61,7 @@ jobs:
             SDKs/Node/Admin/package-lock.json
             SDKs/Node/Core/package-lock.json
             SDKs/Node/Common/package-lock.json
-            ConduitLLM.WebUI/package-lock.json
+            WebAdmin/package-lock.json
       
       - name: .NET Build & Test
         run: |
@@ -82,7 +82,7 @@ jobs:
       
       - name: WebUI Type Check
         run: |
-          cd ConduitLLM.WebUI
+          cd WebAdmin
           npm ci
           # Clean any stale .next directory before type checking
           rm -rf .next
@@ -101,7 +101,7 @@ jobs:
         include:
           - service: webui
             context: .
-            dockerfile: ConduitLLM.WebUI/Dockerfile
+            dockerfile: WebAdmin/Dockerfile
           - service: http
             context: .
             dockerfile: ConduitLLM.Http/Dockerfile

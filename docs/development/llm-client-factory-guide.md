@@ -47,8 +47,8 @@ builder.Services.AddProviderServices();                   // Registers DatabaseA
 
 ### **WebUI**
 WebUI does **NOT** use any factory directly. It uses HTTP clients to call Core/Admin APIs:
-- `ConduitLLM.WebUI/src/lib/server/coreClient.ts`
-- `ConduitLLM.WebUI/src/lib/server/adminClient.ts`
+- `WebAdmin/src/lib/server/coreClient.ts`
+- `WebAdmin/src/lib/server/adminClient.ts`
 
 ---
 

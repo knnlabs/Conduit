@@ -209,7 +209,7 @@ services:
   webui:
     build:
       context: .
-      dockerfile: ConduitLLM.WebUI/Dockerfile
+      dockerfile: WebAdmin/Dockerfile
     depends_on:
       admin:
         condition: service_healthy

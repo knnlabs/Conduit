@@ -15,7 +15,7 @@ readonly NC='\033[0m' # No Color
 
 # Configuration
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+readonly PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 log_info() {
     echo -e "${GREEN}[INFO]${NC} $1"
@@ -183,8 +183,8 @@ clean_volumes() {
     docker volume ls --filter "name=conduit" --format "{{.Name}}" | xargs -r docker volume rm -f 2>/dev/null || true
     
     # Clean local build artifacts
-    rm -rf ./ConduitLLM.WebUI/.next 2>/dev/null || true
-    rm -rf ./ConduitLLM.WebUI/node_modules 2>/dev/null || true
+    rm -rf ./WebAdmin/.next 2>/dev/null || true
+    rm -rf ./WebAdmin/node_modules 2>/dev/null || true
     rm -rf ./SDKs/Node/*/node_modules 2>/dev/null || true
     rm -rf ./SDKs/Node/*/dist 2>/dev/null || true
     
@@ -263,7 +263,7 @@ rebuild_webui() {
     docker compose -f docker-compose.yml -f docker-compose.dev.yml rm -f webui 2>/dev/null || true
     
     # Clean Next.js build artifacts that can cause issues
-    rm -rf ./ConduitLLM.WebUI/.next 2>/dev/null || true
+    rm -rf ./WebAdmin/.next 2>/dev/null || true
     
     # Start WebUI (no build needed - uses node:22-alpine with volume mounts)
     export DOCKER_USER_ID=$(id -u)

@@ -2,7 +2,7 @@
 
 ## What Was Done
 
-The ConduitLLM.WebUI Dockerfile has been optimized with the following improvements:
+The WebAdmin Dockerfile has been optimized with the following improvements:
 
 ### 1. Multi-Stage Build
 - **Builder stage**: Compiles all code and dependencies
@@ -46,7 +46,7 @@ Once fixed, you can update the Dockerfile to use `npm ci` instead of `npm instal
 
 Build the image:
 ```bash
-docker build -f ConduitLLM.WebUI/Dockerfile -t conduit-webui .
+docker build -f WebAdmin/Dockerfile -t conduit-webui .
 ```
 
 Run the container:

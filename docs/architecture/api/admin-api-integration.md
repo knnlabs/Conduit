@@ -1,6 +1,6 @@
 # Admin API Integration
 
-This document describes the integration between the ConduitLLM.Admin API and the ConduitLLM.WebUI project, including the Admin API client implementation.
+This document describes the integration between the ConduitLLM.Admin API and the WebAdmin project, including the Admin API client implementation.
 
 ## Table of Contents
 
@@ -16,7 +16,7 @@ This document describes the integration between the ConduitLLM.Admin API and the
 
 ## Overview
 
-The ConduitLLM.WebUI project communicates with the ConduitLLM.Admin API through a well-defined HTTP client interface. This approach provides several benefits:
+The WebAdmin project communicates with the ConduitLLM.Admin API through a well-defined HTTP client interface. This approach provides several benefits:
 
 1. **Decoupled Architecture**: WebUI and Admin projects are fully decoupled, eliminating circular dependencies
 2. **Scalability**: Services can be deployed separately in distributed environments
@@ -243,11 +243,11 @@ For local development, you can run both services on the same machine:
 ```bash
 # Option 1: Run Admin API and use direct repository access in WebUI
 dotnet run --project ConduitLLM.Admin  # Runs on http://localhost:5000
-CONDUIT_USE_ADMIN_API=false dotnet run --project ConduitLLM.WebUI
+CONDUIT_USE_ADMIN_API=false dotnet run --project WebAdmin
 
 # Option 2: Run both services and use API access
 dotnet run --project ConduitLLM.Admin  # Runs on http://localhost:5000
-CONDUIT_USE_ADMIN_API=true CONDUIT_ADMIN_API_URL=http://localhost:5000 dotnet run --project ConduitLLM.WebUI
+CONDUIT_USE_ADMIN_API=true CONDUIT_ADMIN_API_URL=http://localhost:5000 dotnet run --project WebAdmin
 ```
 
 **Typical local setup:**

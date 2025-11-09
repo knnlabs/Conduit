@@ -16,8 +16,9 @@ COPY ConduitLLM.Core/*.csproj ./ConduitLLM.Core/
 COPY ConduitLLM.Security/*.csproj ./ConduitLLM.Security/
 COPY ConduitLLM.Providers/*.csproj ./ConduitLLM.Providers/
 COPY ConduitLLM.Admin/*.csproj ./ConduitLLM.Admin/
-COPY ConduitLLM.Tests/*.csproj ./ConduitLLM.Tests/
-COPY ConduitLLM.IntegrationTests/*.csproj ./ConduitLLM.IntegrationTests/
+COPY Tests/ConduitLLM.Tests/*.csproj ./Tests/ConduitLLM.Tests/
+COPY Tests/ConduitLLM.IntegrationTests/*.csproj ./Tests/ConduitLLM.IntegrationTests/
+COPY Tests/ConduitLLM.Benchmarks/*.csproj ./Tests/ConduitLLM.Benchmarks/
 
 # Restore dependencies (cached unless project files change)
 RUN dotnet restore "ConduitLLM.Http/ConduitLLM.Http.csproj"

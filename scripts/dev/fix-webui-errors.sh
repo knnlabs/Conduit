@@ -102,13 +102,13 @@ check_project_root() {
         exit 1
     fi
     
-    if [[ ! -d "ConduitLLM.WebUI" ]]; then
-        log_error "ConduitLLM.WebUI directory not found"
+    if [[ ! -d "WebAdmin" ]]; then
+        log_error "WebAdmin directory not found"
         exit 1
     fi
     
-    if [[ ! -f "ConduitLLM.WebUI/package.json" ]]; then
-        log_error "ConduitLLM.WebUI/package.json not found"
+    if [[ ! -f "WebAdmin/package.json" ]]; then
+        log_error "WebAdmin/package.json not found"
         exit 1
     fi
     
@@ -174,15 +174,15 @@ check_permissions() {
     local issues_found=false
     
     # Check WebUI source directory permissions
-    if ! test_write_access "./ConduitLLM.WebUI"; then
-        log_error "Cannot write to ConduitLLM.WebUI directory"
-        log_error "Fix with: sudo chown -R $USER:$USER ./ConduitLLM.WebUI"
+    if ! test_write_access "./WebAdmin"; then
+        log_error "Cannot write to WebAdmin directory"
+        log_error "Fix with: sudo chown -R $USER:$USER ./WebAdmin"
         issues_found=true
     fi
     
     # Check .next directory if it exists
-    if [[ -d "./ConduitLLM.WebUI/.next" ]]; then
-        if ! test_write_access "./ConduitLLM.WebUI/.next"; then
+    if [[ -d "./WebAdmin/.next" ]]; then
+        if ! test_write_access "./WebAdmin/.next"; then
             log_error "Cannot write to .next folder"
             log_error "This will cause build failures"
             log_error "Fix with: ./scripts/start-dev.sh --fix-perms"
@@ -190,7 +190,7 @@ check_permissions() {
             issues_found=true
         else
             # Check ownership
-            local next_owner=$(stat -c "%u:%g" "./ConduitLLM.WebUI/.next" 2>/dev/null || echo "unknown")
+            local next_owner=$(stat -c "%u:%g" "./WebAdmin/.next" 2>/dev/null || echo "unknown")
             if [[ "$next_owner" != "$current_uid:$current_gid" ]] && [[ "$next_owner" != "unknown" ]]; then
                 log_warn ".next folder ownership mismatch: $next_owner (expected: $current_uid:$current_gid)"
                 log_warn "This may cause permission issues during build"
@@ -202,8 +202,8 @@ check_permissions() {
     fi
     
     # Check node_modules directory if it exists
-    if [[ -d "./ConduitLLM.WebUI/node_modules" ]]; then
-        if ! test_write_access "./ConduitLLM.WebUI/node_modules"; then
+    if [[ -d "./WebAdmin/node_modules" ]]; then
+        if ! test_write_access "./WebAdmin/node_modules"; then
             log_error "Cannot write to node_modules folder"
             log_error "This will cause npm install failures"
             log_error "Fix with: ./scripts/start-dev.sh --fix-perms"
@@ -213,7 +213,7 @@ check_permissions() {
     fi
     
     # Check for specific build artifact directories
-    local build_dirs=("./ConduitLLM.WebUI/.next/cache" "./ConduitLLM.WebUI/.next/static")
+    local build_dirs=("./WebAdmin/.next/cache" "./WebAdmin/.next/static")
     for dir in "${build_dirs[@]}"; do
         if [[ -d "$dir" ]] && ! test_write_access "$dir"; then
             log_error "Cannot write to build directory: $dir"
@@ -230,7 +230,7 @@ check_permissions() {
         log_error "RECOMMENDED FIXES:"
         log_error "1. Quick permission fix: ./scripts/start-dev.sh --fix-perms"
         log_error "2. Full environment cleanup: ./scripts/start-dev.sh --clean"
-        log_error "3. Manual fix (if above fail): sudo chown -R \$USER:\$USER ./ConduitLLM.WebUI"
+        log_error "3. Manual fix (if above fail): sudo chown -R \$USER:\$USER ./WebAdmin"
         echo ""
         return 1
     else
@@ -242,7 +242,7 @@ check_permissions() {
 # Check if npm script exists
 has_npm_script() {
     local script_name="$1"
-    (cd ConduitLLM.WebUI && npm run 2>/dev/null | grep -q "^  $script_name$")
+    (cd WebAdmin && npm run 2>/dev/null | grep -q "^  $script_name$")
 }
 
 # Run ESLint auto-fix and validation
@@ -254,14 +254,14 @@ run_eslint() {
     # Step 1: Auto-fix what can be fixed
     log_task "Step 1: Running ESLint auto-fix..."
     if has_npm_script "lint:fix"; then
-        if (cd ConduitLLM.WebUI && npm run lint:fix 2>/dev/null); then
+        if (cd WebAdmin && npm run lint:fix 2>/dev/null); then
             log_info "ESLint auto-fix completed"
         else
             log_warn "ESLint auto-fix encountered issues (this is normal)"
         fi
     else
         log_warn "No lint:fix script found, trying direct ESLint fix"
-        if (cd ConduitLLM.WebUI && npx next lint --fix 2>/dev/null); then
+        if (cd WebAdmin && npx next lint --fix 2>/dev/null); then
             log_info "ESLint auto-fix completed"
         else
             log_warn "ESLint auto-fix encountered issues (this is normal)"
@@ -274,9 +274,9 @@ run_eslint() {
     local lint_exit_code=0
     
     if has_npm_script "lint"; then
-        lint_output=$(cd ConduitLLM.WebUI && npm run lint 2>&1) || lint_exit_code=$?
+        lint_output=$(cd WebAdmin && npm run lint 2>&1) || lint_exit_code=$?
     else
-        lint_output=$(cd ConduitLLM.WebUI && npx next lint 2>&1) || lint_exit_code=$?
+        lint_output=$(cd WebAdmin && npx next lint 2>&1) || lint_exit_code=$?
     fi
     
     # Count errors
@@ -312,15 +312,15 @@ run_type_check() {
     
     if has_npm_script "type-check"; then
         log_info "Using npm run type-check"
-        if (cd ConduitLLM.WebUI && npm run type-check 2>/dev/null); then
+        if (cd WebAdmin && npm run type-check 2>/dev/null); then
             log_info "TypeScript type checking passed"
         else
             type_check_exit_code=$?
             log_error "TypeScript type checking failed"
         fi
-    elif (cd ConduitLLM.WebUI && command -v tsc >/dev/null); then
+    elif (cd WebAdmin && command -v tsc >/dev/null); then
         log_warn "No type-check script found, using tsc directly"
-        if (cd ConduitLLM.WebUI && npx tsc --noEmit 2>/dev/null); then
+        if (cd WebAdmin && npx tsc --noEmit 2>/dev/null); then
             log_info "TypeScript type checking passed"
         else
             type_check_exit_code=$?
@@ -422,7 +422,7 @@ run_build() {
     
     if has_npm_script "build"; then
         log_info "Using npm run build"
-        if (cd ConduitLLM.WebUI && npm run build); then
+        if (cd WebAdmin && npm run build); then
             local build_end_time=$(date +%s)
             local build_duration=$((build_end_time - build_start_time))
             log_info "Build completed successfully in ${build_duration}s"
@@ -463,7 +463,7 @@ print_summary() {
     
     if [[ $LINT_ERRORS -gt 0 ]]; then
         log_error "ESLint errors: $LINT_ERRORS"
-        log_error "Fix manually or use: cd ConduitLLM.WebUI && npm run lint:fix"
+        log_error "Fix manually or use: cd WebAdmin && npm run lint:fix"
     else
         log_info "ESLint validation passed"
     fi

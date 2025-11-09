@@ -17,7 +17,7 @@ readonly NC='\033[0m' # No Color
 
 # Configuration
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+readonly PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 readonly WEBUI_SERVICE="webui"
 
 # Helper functions
@@ -104,7 +104,7 @@ exec_in_webui() {
 # Build WebUI
 build_webui() {
     log_info "Building WebUI..."
-    exec_in_webui sh -c "cd /app/ConduitLLM.WebUI && npm run build"
+    exec_in_webui sh -c "cd /app/WebAdmin && npm run build"
     log_info "WebUI build completed"
 }
 
@@ -149,31 +149,31 @@ build_sdk() {
 # Lint WebUI
 lint_webui() {
     log_info "Running ESLint on WebUI..."
-    exec_in_webui sh -c "cd /app/ConduitLLM.WebUI && npm run lint"
+    exec_in_webui sh -c "cd /app/WebAdmin && npm run lint"
 }
 
 # Lint fix WebUI
 lint_fix_webui() {
     log_info "Running ESLint with --fix on WebUI..."
-    exec_in_webui sh -c "cd /app/ConduitLLM.WebUI && npm run lint:fix"
+    exec_in_webui sh -c "cd /app/WebAdmin && npm run lint:fix"
 }
 
 # Type check WebUI
 type_check_webui() {
     log_info "Running TypeScript type checking on WebUI..."
-    exec_in_webui sh -c "cd /app/ConduitLLM.WebUI && npm run type-check"
+    exec_in_webui sh -c "cd /app/WebAdmin && npm run type-check"
 }
 
 # Test WebUI
 test_webui() {
     log_info "Running WebUI tests..."
-    exec_in_webui sh -c "cd /app/ConduitLLM.WebUI && npm run test"
+    exec_in_webui sh -c "cd /app/WebAdmin && npm run test"
 }
 
 # Install WebUI dependencies
 npm_install_webui() {
     log_info "Installing WebUI dependencies..."
-    exec_in_webui sh -c "cd /app/ConduitLLM.WebUI && npm install"
+    exec_in_webui sh -c "cd /app/WebAdmin && npm install"
 }
 
 # Install all SDK dependencies
@@ -220,8 +220,8 @@ fix_permissions() {
     log_info "Fixing file permissions..."
     
     # Fix ownership to current user
-    sudo chown -R "$(id -u):$(id -g)" "$PROJECT_ROOT/ConduitLLM.WebUI/node_modules" 2>/dev/null || true
-    sudo chown -R "$(id -u):$(id -g)" "$PROJECT_ROOT/ConduitLLM.WebUI/.next" 2>/dev/null || true
+    sudo chown -R "$(id -u):$(id -g)" "$PROJECT_ROOT/WebAdmin/node_modules" 2>/dev/null || true
+    sudo chown -R "$(id -u):$(id -g)" "$PROJECT_ROOT/WebAdmin/.next" 2>/dev/null || true
     sudo chown -R "$(id -u):$(id -g)" "$PROJECT_ROOT/SDKs/Node/*/node_modules" 2>/dev/null || true
     sudo chown -R "$(id -u):$(id -g)" "$PROJECT_ROOT/SDKs/Node/*/dist" 2>/dev/null || true
     
@@ -233,8 +233,8 @@ clean() {
     log_info "Cleaning build artifacts..."
     
     # Remove node_modules and build outputs
-    rm -rf "$PROJECT_ROOT/ConduitLLM.WebUI/node_modules"
-    rm -rf "$PROJECT_ROOT/ConduitLLM.WebUI/.next"
+    rm -rf "$PROJECT_ROOT/WebAdmin/node_modules"
+    rm -rf "$PROJECT_ROOT/WebAdmin/.next"
     rm -rf "$PROJECT_ROOT/SDKs/Node/Common/node_modules"
     rm -rf "$PROJECT_ROOT/SDKs/Node/Common/dist"
     rm -rf "$PROJECT_ROOT/SDKs/Node/Admin/node_modules" 
@@ -266,7 +266,7 @@ install_local() {
     
     # Install WebUI dependencies (depends on all SDKs via symlinks)
     log_task "Installing WebUI dependencies..."
-    cd "$PROJECT_ROOT/ConduitLLM.WebUI"
+    cd "$PROJECT_ROOT/WebAdmin"
     npm install
     
     log_info "All dependencies installed successfully!"
@@ -293,7 +293,7 @@ build_local() {
     
     # Build WebUI (depends on all SDKs)
     log_task "Building WebUI..."
-    cd "$PROJECT_ROOT/ConduitLLM.WebUI"
+    cd "$PROJECT_ROOT/WebAdmin"
     npm run build
     
     log_info "All projects built successfully!"
@@ -311,7 +311,7 @@ install_and_build_local() {
     build_local
     
     log_info "Installation and build completed successfully!"
-    log_info "The WebUI production build is in: $PROJECT_ROOT/ConduitLLM.WebUI/.next"
+    log_info "The WebUI production build is in: $PROJECT_ROOT/WebAdmin/.next"
 }
 
 # Main execution

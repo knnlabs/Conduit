@@ -15,7 +15,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "prepare": "cd .. && husky install ConduitLLM.WebUI/.husky",
+    "prepare": "cd .. && husky install WebAdmin/.husky",
     "pre-commit": "lint-staged"
   },
   "dependencies": {

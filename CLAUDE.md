@@ -171,10 +171,10 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml logs webui
 #### Hot Reload Not Working
 ```bash
 # Verify file mounting
-docker compose -f docker-compose.yml -f docker-compose.dev.yml exec webui ls -la /app/ConduitLLM.WebUI/
+docker compose -f docker-compose.yml -f docker-compose.dev.yml exec webui ls -la /app/WebAdmin/
 
 # Restart with clean build artifacts
-rm -rf ConduitLLM.WebUI/.next
+rm -rf WebAdmin/.next
 ./scripts/dev/start-dev.sh --webui
 ```
 
@@ -217,7 +217,7 @@ The development environment uses user ID mapping to prevent permission issues:
 4. **Switches to host user** - All operations run as the mapped user
 
 #### Volume Mounting Strategy
-- WebUI source is mounted directly: `./ConduitLLM.WebUI:/app/ConduitLLM.WebUI`
+- WebUI source is mounted directly: `./WebAdmin:/app/WebAdmin`
 - SDKs are mounted for development: `./SDKs:/app/SDKs`
 - Node modules are accessible from both host and container
 - No anonymous volumes that would block host access
@@ -241,7 +241,7 @@ export DOCKER_GROUP_ID=$(id -g)   # Your group ID
 ### ⚠️ WEBUI EXCEPTION - NEVER RUN NPM BUILD ⚠️
 **FORBIDDEN FOR WEBUI DEVELOPMENT:**
 - ❌ `npm run build` - **WILL BREAK THE DEVELOPMENT CONTAINER**
-- ❌ `cd ConduitLLM.WebUI && npm run build` - **WILL BREAK THE DEVELOPMENT CONTAINER**
+- ❌ `cd WebAdmin && npm run build` - **WILL BREAK THE DEVELOPMENT CONTAINER**
 - ❌ `./scripts/dev/dev-workflow.sh build-webui` - **ONLY FOR PRODUCTION TESTING**
 
 **WEBUI VERIFICATION COMMANDS (SAFE FOR DEVELOPMENT):**
@@ -539,7 +539,7 @@ For comprehensive documentation on specific topics, see:
 ### ❌ FORBIDDEN WEBUI COMMANDS
 These commands will break the development container and force a 5+ minute restart:
 - `npm run build` (anywhere in WebUI directory)
-- `cd ConduitLLM.WebUI && npm run build`
+- `cd WebAdmin && npm run build`
 - `./scripts/dev/dev-workflow.sh build-webui` (production only)
 
 ### ✅ SAFE WEBUI COMMANDS  

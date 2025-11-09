@@ -146,7 +146,7 @@ dotnet build --configuration Release  # Production build
 ```bash
 dotnet build ConduitLLM.Http           # Core API
 dotnet build ConduitLLM.Admin          # Admin API
-dotnet build ConduitLLM.WebUI          # WebUI backend
+dotnet build WebAdmin          # WebUI backend
 ```
 
 ### SDK Builds

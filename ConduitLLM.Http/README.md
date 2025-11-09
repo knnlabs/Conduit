@@ -8,7 +8,7 @@
 
 - **Conduit.sln**: The overall solution file tying together all Conduit sub-projects.
 - **ConduitLLM.Http**: This project. Provides the HTTP API for LLM access, model routing, API key/virtual key management, and provider abstraction.
-- **ConduitLLM.WebUI**: The web-based frontend for interactive LLM usage, configuration, and administration. Communicates with this API.
+- **WebAdmin**: The web-based frontend for interactive LLM usage, configuration, and administration. Communicates with this API.
 - **ConduitLLM.Core**: Shared logic, models, and interfaces for LLM operations, used by both Http and WebUI.
 - **ConduitLLM.Configuration**: Handles configuration persistence (database, environment, files) and settings management.
 - **ConduitLLM.Providers**: Implements provider-specific logic for different LLM backends.

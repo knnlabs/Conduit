@@ -51,7 +51,7 @@ Strict mode:
 Projects validated:
 - SDKs/Node/Admin (Admin Client)
 - SDKs/Node/Core (Core Client)
-- ConduitLLM.WebUI (WebUI)
+- WebAdmin (WebUI)
 EOF
         exit 0
         ;;
@@ -147,7 +147,7 @@ validate_eslint() {
 # Validate all TypeScript projects
 validate_eslint "SDKs/Node/Admin" "Admin Client"
 validate_eslint "SDKs/Node/Core" "Core Client"
-validate_eslint "ConduitLLM.WebUI" "WebUI"
+validate_eslint "WebAdmin" "WebUI"
 
 # Print summary
 echo -e "\n📊 Summary:"

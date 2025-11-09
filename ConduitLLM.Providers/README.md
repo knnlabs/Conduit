@@ -7,7 +7,7 @@
 This project is part of the larger `Conduit.sln` solution, which is composed of several sub-projects:
 
 - **ConduitLLM.Http**: The HTTP API layer that exposes LLM functionality via REST endpoints.
-- **ConduitLLM.WebUI**: The web-based user interface for interacting with LLMs.
+- **WebAdmin**: The web-based user interface for interacting with LLMs.
 - **ConduitLLM.Configuration**: Centralized configuration and settings management.
 - **ConduitLLM.Providers**: (This project) LLM provider abstraction and implementations.
 - **Other sub-projects**: May include Caching, Utilities, or Domain-specific libraries.

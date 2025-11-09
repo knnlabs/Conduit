@@ -141,14 +141,14 @@ check_webui() {
     local project_name="WebUI"
     log_section "Checking WebUI (Next.js Application)"
     
-    if [[ ! -d "ConduitLLM.WebUI" ]]; then
+    if [[ ! -d "WebAdmin" ]]; then
         log_error "WebUI directory not found"
         PROJECT_ERRORS["$project_name"]="Directory not found"
         FAILED_PROJECTS+=("$project_name")
         return 1
     fi
     
-    cd ConduitLLM.WebUI
+    cd WebAdmin
     
     local lint_errors=0
     local lint_warnings=0

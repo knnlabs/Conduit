@@ -1,4 +1,4 @@
-# Optimized multi-stage Dockerfile for ConduitLLM.WebUI
+# Optimized multi-stage Dockerfile for WebAdmin
 # Features: Multi-stage build, Alpine base, non-root user, health checks
 
 FROM node:22-alpine AS builder
@@ -35,7 +35,7 @@ RUN npm run build
 
 # Build WebUI last (depends on Admin and Core SDKs via file: references)
 # The WebUI's npm install will symlink to the local Admin and Core packages
-WORKDIR /app/ConduitLLM.WebUI
+WORKDIR /app/WebAdmin
 # Create public directory if it doesn't exist (Next.js 15 doesn't require it)
 RUN mkdir -p public
 # npm install here will resolve file: dependencies to the already-built SDKs above
@@ -57,10 +57,10 @@ ENV HOSTNAME="0.0.0.0"
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Copy only what's needed from builder
-COPY --from=builder --chown=nextjs:nodejs /app/ConduitLLM.WebUI/package*.json ./
-COPY --from=builder --chown=nextjs:nodejs /app/ConduitLLM.WebUI/.next ./.next
-COPY --from=builder --chown=nextjs:nodejs /app/ConduitLLM.WebUI/node_modules ./node_modules
-COPY --from=builder --chown=nextjs:nodejs /app/ConduitLLM.WebUI/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/WebAdmin/package*.json ./
+COPY --from=builder --chown=nextjs:nodejs /app/WebAdmin/.next ./.next
+COPY --from=builder --chown=nextjs:nodejs /app/WebAdmin/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/WebAdmin/public ./public
 
 # IMPORTANT: We must also copy the SDK packages because WebUI's node_modules contains
 # symlinks to these local packages (due to file: references in package.json)
