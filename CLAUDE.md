@@ -2,16 +2,18 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Last Reviewed**: 2025-08-07 (Corrected to match actual codebase implementation)
+**Last Reviewed**: 2025-11-08 (Updated documentation paths to match reorganized structure)
 
 ## Database Migrations
 
-**ALWAYS READ [Database Migration Guide](docs/claude/database-migration-guide.md) BEFORE creating migrations.**
+**CRITICAL REQUIREMENTS** for creating migrations:
 
 Key requirements:
 - Use standard EF Core workflow: `dotnet ef migrations add` → `dotnet ef database update`
-- PostgreSQL syntax only (double quotes, `true`/`false` booleans)
+- PostgreSQL syntax only (double quotes for identifiers, `true`/`false` booleans, not `1`/`0`)
 - Test basic tooling first with `dotnet ef --version`
+- See `docs/architecture/patterns/repository-and-data-access.md` for EF Core best practices
+- Common mistake: Using SQL Server syntax like `IsActive = 1` instead of `"IsActive" = true`
 
 ## Collaboration Guidelines
 - **Challenge and question**: Don't immediately agree or proceed with requests that seem suboptimal, unclear, or potentially problematic
@@ -227,9 +229,11 @@ export DOCKER_GROUP_ID=$(id -g)   # Your group ID
 ```
 
 ## Database Migrations - CRITICAL
-**⚠️ ALWAYS READ [Database Migration Guide](docs/claude/database-migration-guide.md) BEFORE MAKING DATABASE CHANGES**
+**⚠️ POSTGRESQL SYNTAX ONLY - NO SQL SERVER PATTERNS**
 - We use PostgreSQL ONLY - no SQL Server syntax allowed
 - Common mistake: Using `IsActive = 1` instead of `"IsActive" = true`
+- See `docs/architecture/patterns/repository-and-data-access.md` for EF Core patterns
+- Use double quotes for identifiers, boolean literals for booleans
 
 ## Build Verification - CRITICAL
 **ALWAYS VERIFY BUILDS BEFORE COMPLETING WORK:**
@@ -395,9 +399,9 @@ The development environment shares node_modules between host and container.
 - **Backward compatibility**: Some legacy properties may be marked `[Obsolete]`
 
 ### Documentation:
-- See `/docs/architecture/provider-multi-instance.md` for detailed provider architecture
-- See `/docs/architecture/model-cost-mapping.md` for cost configuration details
-- See `/docs/architecture/provider-system-analysis.md` for system analysis
+- See `docs/architecture/provider-system/provider-architecture.md` for detailed provider architecture
+- See `docs/architecture/provider-system/model-and-cost-mapping.md` for cost configuration details
+- See `docs/architecture/provider-system/provider-system-analysis.md` for system analysis
 
 ### Available Provider Types:
 ```csharp
@@ -420,49 +424,115 @@ public enum ProviderType
 
 For comprehensive documentation on specific topics, see:
 
-- **[Database Migration Guide](docs/claude/database-migration-guide.md)** - PostgreSQL migration requirements and validation
-- **[XML Documentation Standards](docs/claude/xml-documentation-standards.md)** - Comprehensive XML documentation requirements
-- **[Media Storage Configuration](docs/claude/media-storage-configuration.md)** - S3/CDN setup, Docker SignalR configuration
-- **[Event-Driven Architecture](docs/claude/event-driven-architecture.md)** - MassTransit events, domain events
-- **[SignalR Configuration](docs/claude/signalr-configuration.md)** - Real-time updates, Redis backplane
-- **[RabbitMQ High-Throughput](docs/claude/rabbitmq-high-throughput.md)** - Production scaling configuration
-- **[Provider Models](docs/claude/provider-models.md)** - Supported models by provider
-- **[R2 Health Check](docs/claude/r2-health-check.md)** - Cloudflare R2 health monitoring
-- **[SDK Generation Workflow](docs/claude/sdk-generation-workflow.md)** - SDK generation from OpenAPI specs
-- **[Batch Cache Invalidation](docs/claude/batch-cache-invalidation.md)** - Cache invalidation batching
-- **[Workflow Concurrency Strategy](docs/claude/workflow-concurrency-strategy.md)** - Concurrent execution patterns
+### Core Development Guides
+- **[API Patterns & Best Practices](docs/development/API-PATTERNS-BEST-PRACTICES.md)** - WebUI API patterns, SDK usage, error handling
+- **[LLM Client Factory Guide](docs/development/llm-client-factory-guide.md)** - Provider client creation patterns
+- **[Development Documentation](docs/development/README.md)** - Development guides index
+
+### Architecture Documentation
+- **[Architecture Overview](docs/architecture/README.md)** - Complete architecture documentation index
+- **[Provider System Architecture](docs/architecture/provider-system/provider-architecture.md)** - Provider design and multi-instance support
+- **[Model and Cost Mapping](docs/architecture/provider-system/model-and-cost-mapping.md)** - Cost tracking and model mapping details
+- **[Provider System Analysis](docs/architecture/provider-system/provider-system-analysis.md)** - Architectural analysis and improvements
+- **[Streaming and WebSockets](docs/architecture/real-time/streaming-and-websockets.md)** - Real-time communication, SSE, WebSocket streaming
+- **[Webhook Delivery](docs/architecture/real-time/webhook-delivery.md)** - Distributed webhook delivery with circuit breakers
+- **[Async Media Generation](docs/architecture/media-generation/async-media-generation.md)** - Event-driven image/video generation
+- **[Background Services and Workers](docs/architecture/patterns/background-services-and-workers.md)** - Worker patterns, distributed locking, eventual consistency
+- **[Repository and Data Access](docs/architecture/patterns/repository-and-data-access.md)** - Data access patterns, EF Core best practices
+- **[DTO Guidelines](docs/architecture/data-transfer/dto-guidelines.md)** - Data transfer object patterns
+- **[Scaling Architecture](docs/architecture/infrastructure/scaling-architecture.md)** - Scaling to 10,000+ concurrent sessions
+
+### Operations and Deployment
+- **[Operations Documentation](docs/operations/README.md)** - Operations documentation index
+- **[SignalR Configuration](docs/operations/signalr/configuration.md)** - Real-time updates, Redis backplane
+- **[RabbitMQ Scaling](docs/operations/infrastructure/rabbitmq-scaling.md)** - High-throughput configuration (1,000+ tasks/min)
+- **[Redis Resilience](docs/operations/infrastructure/redis-resilience.md)** - Redis configuration and failover
+- **[PostgreSQL Scaling](docs/operations/infrastructure/postgresql-scaling.md)** - Database scaling strategies
+- **[HTTP Connection Pooling](docs/operations/infrastructure/http-connection-pooling.md)** - Connection pool optimization
+- **[Provider Health Monitoring](docs/operations/providers/health-monitoring.md)** - Provider status tracking
+- **[Provider Usage Mappings](docs/operations/providers/usage-mappings.md)** - Usage tracking configuration
+- **[Deployment Configuration](docs/operations/deployment/DEPLOYMENT-CONFIGURATION.md)** - Production deployment guide
+- **[Docker Optimization](docs/operations/deployment/docker-optimization.md)** - Container optimization strategies
+
+### Media and Storage
+- **[Media Cleanup Configuration](docs/CRITICAL-Media-Cleanup-Configuration.md)** - **⚠️ CRITICAL** - S3/R2 cleanup requirements to prevent unbounded storage costs
+
+### Model Pricing
+- **[Model Pricing Documentation](docs/model-pricing/README.md)** - Pricing configurations by provider
+- **[Pricing Quick Reference](docs/model-pricing/pricing-quick-reference.md)** - Quick pricing lookup
+- **[WebUI Pricing Guide](docs/model-pricing/webui-pricing-guide.md)** - WebUI pricing display patterns
+
+### API Integration Guides
+- **[API Guides Index](docs/api-guides/README.md)** - API integration documentation
+- **[Core API Getting Started](docs/api-guides/core/getting-started.md)** - Core API usage
+- **[Admin API Getting Started](docs/api-guides/admin/getting-started.md)** - Admin API usage
+- **[SignalR Getting Started](docs/api-guides/signalr/getting-started.md)** - Real-time updates integration
+- **[SDK Best Practices](docs/api-guides/sdk/best-practices.md)** - SDK usage patterns
+- **[Next.js Integration](docs/api-guides/sdk/nextjs-integration.md)** - WebUI SDK integration
+
+### Monitoring and Troubleshooting
+- **[Runbooks](docs/operations/runbooks/README.md)** - Operational runbooks
+- **[High Error Rate Runbook](docs/operations/runbooks/high-error-rate.md)** - Error troubleshooting
+- **[High Response Time Runbook](docs/operations/runbooks/high-response-time.md)** - Performance troubleshooting
+- **[Database Connection Pool Runbook](docs/operations/runbooks/db-connection-pool.md)** - Connection pool issues
+- **[Cost Observability Troubleshooting](docs/operations/runbooks/cost-observability-troubleshooting.md)** - Cost tracking issues
 
 ## Key Points from Detailed Docs
 
-### Media Storage
+### WebUI API Architecture
+**The WebUI has only 3 API routes** - it relies on client-side SDK usage with ephemeral keys:
+- `/api/health` - Health check endpoint
+- `/api/auth/ephemeral-key` - Generate virtual keys for Core API access
+- `/api/auth/ephemeral-master-key` - Generate master keys for Admin API access
+
+**When writing new API routes:**
+- ✅ Use `getServerAdminClient()` for Admin API access
+- ✅ Use `await getServerCoreClient()` for Core API access (note: async!)
+- ✅ Wrap all SDK calls in `try/catch` with `handleSDKError(error)`
+- ✅ Return `NextResponse.json(data)` for responses
+- ✅ Validate request input before passing to SDK
+- ❌ **Never** create SDK clients directly with `new ConduitAdminClient()`
+- ❌ **Never** expose master keys to clients
+
+**Full guide:** See [API Patterns & Best Practices](docs/development/API-PATTERNS-BEST-PRACTICES.md)
+
+### Media Storage and Cleanup (CRITICAL)
 - Development defaults to S3-compatible storage (configure in .env)
 - Production requires S3-compatible storage (AWS S3, Cloudflare R2)
-- **WARNING**: Media files are not automatically cleaned up when virtual keys are deleted
+- **⚠️ CRITICAL**: Media files require proper cleanup configuration to prevent unbounded storage costs
+- **MUST** configure storage provider in Admin API for automatic cleanup when virtual keys are deleted
+- See `docs/CRITICAL-Media-Cleanup-Configuration.md` for required configuration
 
-### Cloudflare R2 Specific Configuration
-- **Automatic Detection**: The system automatically detects R2 based on the service URL
-- **Optimized Settings**: When R2 is detected, multipart uploads use 10MB chunks (vs 5MB default)
-- **CORS Configuration**: R2 may require manual CORS setup in the Cloudflare dashboard
+#### Cloudflare R2 Specific Configuration
+- **Automatic Detection**: System automatically detects R2 based on service URL
+- **Optimized Settings**: R2 uses 10MB multipart upload chunks (vs 5MB default)
+- **CORS Configuration**: May require manual CORS setup in Cloudflare dashboard
 - **Public Access**: Enable public access in R2 dashboard for CDN functionality
 - **Benefits**: R2 offers free egress bandwidth, making it cost-effective for media delivery
 
 ### Event-Driven Architecture
-- Uses MassTransit for event processing
+- Uses MassTransit for event processing with RabbitMQ
 - Supports in-memory (dev) or RabbitMQ (production) transport
 - Events ensure cache consistency and eliminate race conditions
 - Virtual Key events are partitioned by key ID for ordered processing
+- See `docs/operations/infrastructure/rabbitmq-scaling.md` for production configuration
+- See `docs/architecture/media-generation/async-media-generation.md` for async task patterns
 
 ### Real-Time Updates
-- SignalR provides real-time navigation state updates
-- Supports Redis backplane for horizontal scaling
+- SignalR provides real-time updates via WebSockets
+- Supports Redis backplane for horizontal scaling across multiple instances
 - Falls back to polling if WebSocket connection fails
-- Three hubs: navigation-state, video-generation, image-generation
+- Hubs: navigation-state, video-generation, image-generation
+- See `docs/operations/signalr/configuration.md` for setup
+- See `docs/architecture/real-time/streaming-and-websockets.md` for architecture
 
 ### High-Throughput Configuration
 - RabbitMQ supports 1,000+ async tasks per minute
 - Optimized settings: 25 prefetch, 30 partitions, 50 concurrent messages
 - HTTP client connection pooling: 50 connections per server
 - Circuit breakers and rate limiting prevent overload
+- See `docs/operations/infrastructure/rabbitmq-scaling.md` for complete configuration
+- See `docs/architecture/infrastructure/scaling-architecture.md` for scaling to 10,000+ concurrent sessions
 
 # CRITICAL SAFETY SECTION - READ FIRST
 ## Commands That WILL Break Development and Waste Time
