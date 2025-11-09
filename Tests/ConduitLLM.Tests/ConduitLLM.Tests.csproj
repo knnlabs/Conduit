@@ -65,11 +65,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ConduitLLM.Core\ConduitLLM.Core.csproj" />
-    <ProjectReference Include="..\ConduitLLM.Providers\ConduitLLM.Providers.csproj" />
-    <ProjectReference Include="..\ConduitLLM.Admin\ConduitLLM.Admin.csproj" />
-    <ProjectReference Include="..\ConduitLLM.Configuration\ConduitLLM.Configuration.csproj" />
-    <ProjectReference Include="..\ConduitLLM.Http\ConduitLLM.Http.csproj" />
+    <ProjectReference Include="..\..\ConduitLLM.Core\ConduitLLM.Core.csproj" />
+    <ProjectReference Include="..\..\ConduitLLM.Providers\ConduitLLM.Providers.csproj" />
+    <ProjectReference Include="..\..\ConduitLLM.Admin\ConduitLLM.Admin.csproj" />
+    <ProjectReference Include="..\..\ConduitLLM.Configuration\ConduitLLM.Configuration.csproj" />
+    <ProjectReference Include="..\..\ConduitLLM.Http\ConduitLLM.Http.csproj" />
   </ItemGroup>
 
   <ItemGroup>
