@@ -10,6 +10,8 @@
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "lint:fix": "next lint --fix",
+    "css:lint": "stylelint \"src/**/*.css\" --cache --cache-location .stylelintcache",
+    "css:lint:fix": "stylelint \"src/**/*.css\" --fix --cache --cache-location .stylelintcache",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -80,6 +82,11 @@
     "jest-environment-jsdom": "^30.0.4",
     "lint-staged": "^16.1.2",
     "playwright": "^1.54.1",
+    "stylelint": "^16.2.1",
+    "stylelint-config-rational-order": "^0.1.2",
+    "stylelint-config-standard": "^36.0.0",
+    "stylelint-order": "^6.0.4",
+    "stylelint-scss": "^6.1.0",
     "ts-jest": "^29.4.0",
     "ts-node": "^10.9.2"
   },
@@ -90,6 +97,9 @@
     ],
     "*.{js,jsx}": [
       "eslint --fix"
+    ],
+    "*.css": [
+      "stylelint --fix"
     ],
     "*.{json,md}": [
       "prettier --write"
