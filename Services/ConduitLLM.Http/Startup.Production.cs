@@ -26,7 +26,7 @@ namespace ConduitLLM.Http
             // Add core MVC services
             services.AddControllers();
             services.AddEndpointsApiExplorer();
-            services.AddSwaggerGen();
+            services.AddOpenApi("v1");
 
             // Add CORS for production domains
             services.AddCors(options =>
@@ -118,8 +118,7 @@ namespace ConduitLLM.Http
             if (!env.IsProduction())
             {
                 app.UseDeveloperExceptionPage();
-                app.UseSwagger();
-                app.UseSwaggerUI();
+                // Scalar is configured in Program.Middleware.cs for development
             }
             else
             {

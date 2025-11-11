@@ -9,49 +9,12 @@ public partial class Program
         // Add Controller support
         builder.Services.AddControllers();
 
-        // Add Swagger/OpenAPI support
+        // Add OpenAPI support with Scalar
         builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen(c =>
+        builder.Services.AddOpenApi("v1", options =>
         {
-            c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
-            {
-                Title = "Conduit Core API",
-                Version = "v1",
-                Description = "OpenAI-compatible API for multi-provider LLM access"
-            });
-            
-            // Add API Key authentication
-            c.AddSecurityDefinition("ApiKey", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-            {
-                Description = "Virtual Key authentication using Authorization header",
-                Name = "Authorization",
-                In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-                Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
-                Scheme = "Bearer"
-            });
-            
-            c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
-            {
-                {
-                    new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-                    {
-                        Reference = new Microsoft.OpenApi.Models.OpenApiReference
-                        {
-                            Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                            Id = "ApiKey"
-                        }
-                    },
-                    Array.Empty<string>()
-                }
-            });
-            
-            // Include XML comments if available
-            var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
-            var xmlPath = System.IO.Path.Combine(AppContext.BaseDirectory, xmlFile);
-            if (System.IO.File.Exists(xmlPath))
-            {
-                c.IncludeXmlComments(xmlPath);
-            }
+            options.AddDocumentTransformer<ConduitLLM.Http.OpenApi.CoreApiDocumentTransformer>();
+            options.AddOperationTransformer<ConduitLLM.Http.OpenApi.VirtualKeySecurityOperationTransformer>();
         });
 
         // Get Redis and RabbitMQ configuration for health checks

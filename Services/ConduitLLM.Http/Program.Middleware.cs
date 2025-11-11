@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Core.Middleware;
 using ConduitLLM.Http.Middleware;
+using Scalar.AspNetCore;
 
 public partial class Program
 {
@@ -29,15 +30,16 @@ public partial class Program
         app.UseCors();
         Console.WriteLine("[Conduit] CORS configured");
 
-        // Enable Swagger UI in development
+        // Enable Scalar API documentation in development
         if (app.Environment.IsDevelopment())
         {
-            app.UseSwagger();
-            app.UseSwaggerUI(c =>
-            {
-                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Conduit Core API v1");
-                c.RoutePrefix = "swagger";
-            });
+            // Map the OpenAPI endpoint
+            app.MapOpenApi("/openapi/v1.json");
+
+            // Map Scalar UI for interactive API documentation
+            app.MapScalarApiReference();
+
+            Console.WriteLine("[Conduit] Scalar UI available at /scalar/v1");
         }
 
         // Add security headers

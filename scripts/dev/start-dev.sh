@@ -138,8 +138,8 @@ Default behavior:
 
 Services available after startup:
   - WebUI:            http://localhost:3000
-  - Core API:         http://localhost:5000/swagger
-  - Admin API:        http://localhost:5002/swagger
+  - Core API:         http://localhost:5000/scalar/v1
+  - Admin API:        http://localhost:5002/scalar/v1
   - RabbitMQ:         http://localhost:15672 (conduit/conduitpass)
   - Media Storage:    Cloudflare R2 (configured via .env)
 
@@ -324,8 +324,8 @@ start_development() {
     echo
     log_info "Services available at:"
     log_info "  🌐 WebUI:            http://localhost:3000"
-    log_info "  📚 Core API:         http://localhost:5000/swagger"
-    log_info "  🔧 Admin API:        http://localhost:5002/swagger"
+    log_info "  📚 Core API:         http://localhost:5000/scalar/v1"
+    log_info "  🔧 Admin API:        http://localhost:5002/scalar/v1"
     log_info "  🐰 RabbitMQ:         http://localhost:15672 (conduit/conduitpass)"
     log_info "  📦 Media Storage:    Cloudflare R2"
     echo
