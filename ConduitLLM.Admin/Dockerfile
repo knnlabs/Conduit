@@ -11,10 +11,10 @@ RUN find . -name "*.csproj" -exec dirname {} \; | xargs -I {} mkdir -p {}
 
 # Copy project files to correct locations
 COPY ConduitLLM.Http/*.csproj ./ConduitLLM.Http/
-COPY ConduitLLM.Configuration/*.csproj ./ConduitLLM.Configuration/
-COPY ConduitLLM.Core/*.csproj ./ConduitLLM.Core/
-COPY ConduitLLM.Security/*.csproj ./ConduitLLM.Security/
-COPY ConduitLLM.Providers/*.csproj ./ConduitLLM.Providers/
+COPY Shared/ConduitLLM.Configuration/*.csproj ./Shared/ConduitLLM.Configuration/
+COPY Shared/ConduitLLM.Core/*.csproj ./Shared/ConduitLLM.Core/
+COPY Shared/ConduitLLM.Security/*.csproj ./Shared/ConduitLLM.Security/
+COPY Shared/ConduitLLM.Providers/*.csproj ./Shared/ConduitLLM.Providers/
 COPY ConduitLLM.Admin/*.csproj ./ConduitLLM.Admin/
 COPY Tests/ConduitLLM.Tests/*.csproj ./Tests/ConduitLLM.Tests/
 COPY Tests/ConduitLLM.IntegrationTests/*.csproj ./Tests/ConduitLLM.IntegrationTests/
