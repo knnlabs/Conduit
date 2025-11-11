@@ -2,7 +2,7 @@
 
 ## Issue
 Without proper configuration, media files (images/videos) are **NEVER cleaned up** when virtual keys are deleted, leading to:
-- **Unbounded S3/storage costs** 
+- **Unbounded S3/storage costs**
 - **Orphaned media files accumulating forever**
 - **No way to track storage usage per virtual key**
 
@@ -12,16 +12,24 @@ The Admin API's `MediaLifecycleService` is only registered when storage provider
 ## Solution
 
 ### 1. Configure Storage Provider in Admin API
-The Admin API needs the **SAME** storage configuration as the Core API:
+The Admin API needs the **SAME** storage configuration as the Core API.
+
+**See `.env.example` for complete configuration examples** including:
+- Simplified Docker format (recommended)
+- Hierarchical .NET configuration format
+- Provider-specific examples (Cloudflare R2, AWS S3)
+- Media lifecycle management settings
+
+**Quick reference** (see `.env.example` for full details):
 
 ```bash
-# For S3/R2 storage (production)
-export CONDUITLLM__STORAGE__PROVIDER=S3
-export CONDUITLLM__STORAGE__S3__SERVICEURL=https://your-s3-endpoint.com
-export CONDUITLLM__STORAGE__S3__ACCESSKEY=your-access-key
-export CONDUITLLM__STORAGE__S3__SECRETKEY=your-secret-key
-export CONDUITLLM__STORAGE__S3__BUCKETNAME=conduit-media
-export CONDUITLLM__STORAGE__S3__REGION=auto
+# For S3/R2 storage (production) - Simplified format
+export CONDUIT_MEDIA_STORAGE_TYPE=S3
+export CONDUIT_S3_ENDPOINT=https://your-s3-endpoint.com
+export CONDUIT_S3_ACCESS_KEY_ID=your-access-key
+export CONDUIT_S3_SECRET_ACCESS_KEY=your-secret-key
+export CONDUIT_S3_BUCKET_NAME=conduit-media
+export CONDUIT_S3_REGION=auto
 ```
 
 ### 2. Enable Auto-Cleanup (Optional but Recommended)

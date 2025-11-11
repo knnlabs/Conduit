@@ -5,6 +5,7 @@ This directory contains guides for deploying and operating Conduit in production
 ## Contents
 
 - **[Deployment Configuration](./DEPLOYMENT-CONFIGURATION.md)** - Comprehensive production deployment guide
+- **[Media Cleanup Configuration](./media-cleanup-configuration.md)** - **⚠️ CRITICAL** - S3/R2 configuration to prevent unbounded storage costs
 - **[Docker Optimization](./docker-optimization.md)** - Container performance and security best practices
 - **[CI/CD Maintenance Guide](./ci-cd-maintenance-guide.md)** - GitHub Actions workflow maintenance and troubleshooting
 
@@ -23,6 +24,7 @@ docker run -p 5000:5000 ghcr.io/knnlabs/conduit:latest
 - [ ] Configure PostgreSQL connection string
 - [ ] Set up Redis for caching (optional but recommended)
 - [ ] Configure RabbitMQ for event processing (optional)
+- [ ] **⚠️ Configure S3/R2 storage for media cleanup** (see [Media Cleanup Configuration](./media-cleanup-configuration.md))
 - [ ] Set authentication keys (CONDUIT_API_TO_API_BACKEND_AUTH_KEY)
 - [ ] Configure CORS origins for your domain
 - [ ] Set up SSL/TLS termination
