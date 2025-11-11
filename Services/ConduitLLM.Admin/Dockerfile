@@ -10,18 +10,18 @@ COPY */*.csproj ./
 RUN find . -name "*.csproj" -exec dirname {} \; | xargs -I {} mkdir -p {}
 
 # Copy project files to correct locations
-COPY ConduitLLM.Http/*.csproj ./ConduitLLM.Http/
+COPY Services/ConduitLLM.Http/*.csproj ./Services/ConduitLLM.Http/
 COPY Shared/ConduitLLM.Configuration/*.csproj ./Shared/ConduitLLM.Configuration/
 COPY Shared/ConduitLLM.Core/*.csproj ./Shared/ConduitLLM.Core/
 COPY Shared/ConduitLLM.Security/*.csproj ./Shared/ConduitLLM.Security/
 COPY Shared/ConduitLLM.Providers/*.csproj ./Shared/ConduitLLM.Providers/
-COPY ConduitLLM.Admin/*.csproj ./ConduitLLM.Admin/
+COPY Services/ConduitLLM.Admin/*.csproj ./Services/ConduitLLM.Admin/
 COPY Tests/ConduitLLM.Tests/*.csproj ./Tests/ConduitLLM.Tests/
 COPY Tests/ConduitLLM.IntegrationTests/*.csproj ./Tests/ConduitLLM.IntegrationTests/
 COPY Tests/ConduitLLM.Benchmarks/*.csproj ./Tests/ConduitLLM.Benchmarks/
 
 # Restore dependencies (cached unless project files change)
-RUN dotnet restore "ConduitLLM.Admin/ConduitLLM.Admin.csproj"
+RUN dotnet restore "Services/ConduitLLM.Admin/ConduitLLM.Admin.csproj"
 
 # ===== CACHE INVALIDATION POINT =====
 # This argument forces rebuild from here down when .NET code changes
@@ -31,7 +31,7 @@ ARG CACHEBUST=1
 COPY . .
 
 # Build and publish
-RUN dotnet publish "ConduitLLM.Admin/ConduitLLM.Admin.csproj" \
+RUN dotnet publish "Services/ConduitLLM.Admin/ConduitLLM.Admin.csproj" \
     -c Release \
     -o /app/publish \
     --no-restore

@@ -59,7 +59,7 @@ Key requirements:
 ```
 
 #### What Each Flag Actually Does:
-- **--webui**: Restarts WebUI container, cleans .next build artifacts
+- **--webui**: Restarts WebUI container (container manages its own isolated .next directory)
 - **--clean**: Removes all containers, volumes, node_modules, and build artifacts for fresh start
 - **--build**: Rebuilds containers with `--no-cache` flag
 - **--help**: Shows usage information
@@ -69,6 +69,7 @@ Key requirements:
 - ✅ WebUI directory mounted for hot reloading
 - ✅ User ID mapping prevents permission issues (uses your UID/GID)
 - ✅ Development containers use node:22-alpine directly
+- ✅ Isolated .next directories - run `npm run build` on host without breaking container
 
 ### Build Commands
 - Build entire solution: `dotnet build`
@@ -173,9 +174,10 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml logs webui
 # Verify file mounting
 docker compose -f docker-compose.yml -f docker-compose.dev.yml exec webui ls -la /app/WebAdmin/
 
-# Restart with clean build artifacts
+# Restart with clean build artifacts (cleans host .next only)
 rm -rf WebAdmin/.next
 ./scripts/dev/start-dev.sh --webui
+# Note: Container has its own isolated .next directory
 ```
 
 ### Development Services
@@ -193,7 +195,7 @@ After successful startup, these services are available:
 # Open shell in WebUI container
 ./scripts/dev/dev-workflow.sh shell
 
-# Build WebUI in container
+# Build WebUI in container (builds in container's isolated .next)
 ./scripts/dev/dev-workflow.sh build-webui
 
 # Run ESLint with --fix

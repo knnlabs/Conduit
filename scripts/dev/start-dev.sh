@@ -175,19 +175,19 @@ check_prerequisites() {
 
 clean_volumes() {
     log_info "Cleaning volumes for fresh experience..."
-    
+
     # Stop containers
     docker compose -f docker-compose.yml -f docker-compose.dev.yml down --volumes --remove-orphans 2>/dev/null || true
-    
+
     # Remove all conduit volumes
     docker volume ls --filter "name=conduit" --format "{{.Name}}" | xargs -r docker volume rm -f 2>/dev/null || true
-    
-    # Clean local build artifacts
+
+    # Clean local build artifacts (host only - container has isolated .next)
     rm -rf ./WebAdmin/.next 2>/dev/null || true
     rm -rf ./WebAdmin/node_modules 2>/dev/null || true
     rm -rf ./SDKs/Node/*/node_modules 2>/dev/null || true
     rm -rf ./SDKs/Node/*/dist 2>/dev/null || true
-    
+
     log_info "Volumes cleaned"
 }
 
@@ -254,23 +254,23 @@ build_sdks() {
 
 rebuild_webui() {
     log_info "Restarting WebUI container to fix Next.js issues..."
-    
+
     # Ensure SDKs are built (WebUI depends on them)
     build_sdks
-    
+
     # Stop and remove WebUI container
     docker compose -f docker-compose.yml -f docker-compose.dev.yml stop webui 2>/dev/null || true
     docker compose -f docker-compose.yml -f docker-compose.dev.yml rm -f webui 2>/dev/null || true
-    
-    # Clean Next.js build artifacts that can cause issues
+
+    # Clean host's Next.js build artifacts (container has its own isolated .next)
     rm -rf ./WebAdmin/.next 2>/dev/null || true
-    
+
     # Start WebUI (no build needed - uses node:22-alpine with volume mounts)
     export DOCKER_USER_ID=$(id -u)
     export DOCKER_GROUP_ID=$(id -g)
-    
+
     docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d webui
-    
+
     log_info "WebUI container restarted"
     log_info "WebUI available at: http://localhost:3000"
 }

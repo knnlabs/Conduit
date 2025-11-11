@@ -103,9 +103,10 @@ exec_in_webui() {
 
 # Build WebUI
 build_webui() {
-    log_info "Building WebUI..."
+    log_info "Building WebUI in container's isolated .next directory..."
+    log_warn "This production build is separate from host .next directory"
     exec_in_webui sh -c "cd /app/WebAdmin && npm run build"
-    log_info "WebUI build completed"
+    log_info "WebUI build completed (in container)"
 }
 
 # Build all SDKs
@@ -218,31 +219,31 @@ show_status() {
 fix_permissions() {
     log_warn "This command is legacy and should not be needed with proper user mapping"
     log_info "Fixing file permissions..."
-    
-    # Fix ownership to current user
+
+    # Fix ownership to current user (skip .next - container has its own isolated copy)
     sudo chown -R "$(id -u):$(id -g)" "$PROJECT_ROOT/WebAdmin/node_modules" 2>/dev/null || true
     sudo chown -R "$(id -u):$(id -g)" "$PROJECT_ROOT/WebAdmin/.next" 2>/dev/null || true
     sudo chown -R "$(id -u):$(id -g)" "$PROJECT_ROOT/SDKs/Node/*/node_modules" 2>/dev/null || true
     sudo chown -R "$(id -u):$(id -g)" "$PROJECT_ROOT/SDKs/Node/*/dist" 2>/dev/null || true
-    
-    log_info "Permissions fixed"
+
+    log_info "Permissions fixed (note: container .next is isolated)"
 }
 
 # Clean build artifacts
 clean() {
     log_info "Cleaning build artifacts..."
-    
-    # Remove node_modules and build outputs
+
+    # Remove node_modules and build outputs (host only - container has isolated .next)
     rm -rf "$PROJECT_ROOT/WebAdmin/node_modules"
-    rm -rf "$PROJECT_ROOT/WebAdmin/.next"
+    rm -rf "$PROJECT_ROOT/WebAdmin/.next"  # Host .next only
     rm -rf "$PROJECT_ROOT/SDKs/Node/Common/node_modules"
     rm -rf "$PROJECT_ROOT/SDKs/Node/Common/dist"
-    rm -rf "$PROJECT_ROOT/SDKs/Node/Admin/node_modules" 
+    rm -rf "$PROJECT_ROOT/SDKs/Node/Admin/node_modules"
     rm -rf "$PROJECT_ROOT/SDKs/Node/Admin/dist"
     rm -rf "$PROJECT_ROOT/SDKs/Node/Core/node_modules"
     rm -rf "$PROJECT_ROOT/SDKs/Node/Core/dist"
-    
-    log_info "Clean completed"
+
+    log_info "Clean completed (container .next is preserved)"
 }
 
 # Install dependencies for all TypeScript projects locally
@@ -303,15 +304,16 @@ build_local() {
 install_and_build_local() {
     log_info "Installing and building all TypeScript projects locally..."
     log_warn "This is intended for fresh clones or CI environments"
-    
+
     # First install all dependencies
     install_local
-    
+
     # Then build everything
     build_local
-    
+
     log_info "Installation and build completed successfully!"
-    log_info "The WebUI production build is in: $PROJECT_ROOT/WebAdmin/.next"
+    log_info "The WebUI production build is in: $PROJECT_ROOT/WebAdmin/.next (host build)"
+    log_warn "Note: Container has its own isolated .next directory when running in Docker"
 }
 
 # Main execution

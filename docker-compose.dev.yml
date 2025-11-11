@@ -60,9 +60,11 @@ services:
     # Start as root to fix volume ownership, then switch to user
     user: root
     volumes:
-      # Mount everything - no anonymous volumes so host can access node_modules
+      # Mount source code for hot reloading
       - ./WebAdmin:/app/WebAdmin
       - ./SDKs:/app/SDKs
+      # Isolate .next directory so host and container builds don't conflict
+      - /app/WebAdmin/.next
     environment:
       # Next.js development settings
       NODE_ENV: development
