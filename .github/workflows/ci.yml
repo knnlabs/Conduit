@@ -104,10 +104,10 @@ jobs:
             dockerfile: WebAdmin/Dockerfile
           - service: http
             context: .
-            dockerfile: ConduitLLM.Http/Dockerfile
+            dockerfile: Services/ConduitLLM.Http/Dockerfile
           - service: admin
             context: .
-            dockerfile: ConduitLLM.Admin/Dockerfile
+            dockerfile: Services/ConduitLLM.Admin/Dockerfile
     
     steps:
       - uses: actions/checkout@v4

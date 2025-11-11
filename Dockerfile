@@ -4,13 +4,12 @@ WORKDIR /src
 
 # Copy solution and project files first for layer caching
 COPY Conduit.sln .
-COPY ConduitLLM.Configuration/*.csproj ./ConduitLLM.Configuration/
-COPY ConduitLLM.Core/*.csproj ./ConduitLLM.Core/
-COPY ConduitLLM.Providers/*.csproj ./ConduitLLM.Providers/
-COPY ConduitLLM.Http/*.csproj ./ConduitLLM.Http/
+COPY Shared/ConduitLLM.Configuration/*.csproj ./Shared/ConduitLLM.Configuration/
+COPY Shared/ConduitLLM.Core/*.csproj ./Shared/ConduitLLM.Core/
+COPY Shared/ConduitLLM.Providers/*.csproj ./Shared/ConduitLLM.Providers/
+COPY Services/ConduitLLM.Http/*.csproj ./Services/ConduitLLM.Http/
 COPY WebAdmin/*.csproj ./WebAdmin/
 # Add other projects referenced by the solution for restore step
-COPY ConduitLLM.Examples/*.csproj ./ConduitLLM.Examples/
 COPY Tests/ConduitLLM.Tests/*.csproj ./Tests/ConduitLLM.Tests/
 COPY Tests/ConduitLLM.IntegrationTests/*.csproj ./Tests/ConduitLLM.IntegrationTests/
 COPY Tests/ConduitLLM.Benchmarks/*.csproj ./Tests/ConduitLLM.Benchmarks/
@@ -27,11 +26,11 @@ RUN dotnet restore WebAdmin.csproj # Ensure project-specific restore before publ
 RUN dotnet publish WebAdmin.csproj -c Release -o /app/publish/webui --no-restore
 
 # Publish the Http API project
-WORKDIR /src/ConduitLLM.Http
+WORKDIR /src/Services/ConduitLLM.Http
 RUN dotnet restore ConduitLLM.Http.csproj # Ensure project-specific restore before publish
 # Temporarily remove conflicting file from WebUI source *before* publishing Http
 # The WebUI project is already published correctly with its appsettings.json
-RUN rm ../WebAdmin/appsettings.json
+RUN rm ../../WebAdmin/appsettings.json
 RUN dotnet publish ConduitLLM.Http.csproj -c Release -o /app/publish/http --no-restore
 
 # Stage 2: Final runtime image

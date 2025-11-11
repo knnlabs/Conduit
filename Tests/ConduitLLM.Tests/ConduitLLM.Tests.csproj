@@ -67,9 +67,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Shared\ConduitLLM.Core\ConduitLLM.Core.csproj" />
     <ProjectReference Include="..\..\Shared\ConduitLLM.Providers\ConduitLLM.Providers.csproj" />
-    <ProjectReference Include="..\..\ConduitLLM.Admin\ConduitLLM.Admin.csproj" />
+    <ProjectReference Include="..\..\Services\ConduitLLM.Admin\ConduitLLM.Admin.csproj" />
     <ProjectReference Include="..\..\Shared\ConduitLLM.Configuration\ConduitLLM.Configuration.csproj" />
-    <ProjectReference Include="..\..\ConduitLLM.Http\ConduitLLM.Http.csproj" />
+    <ProjectReference Include="..\..\Services\ConduitLLM.Http\ConduitLLM.Http.csproj" />
   </ItemGroup>
 
   <ItemGroup>
