@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM mcr.microsoft.com/dotnet/sdk:10.0.100-rc.2 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Copy solution and project files first for layer caching
@@ -34,7 +34,7 @@ RUN rm ../../WebAdmin/appsettings.json
 RUN dotnet publish ConduitLLM.Http.csproj -c Release -o /app/publish/http --no-restore
 
 # Stage 2: Final runtime image
-FROM mcr.microsoft.com/dotnet/aspnet:10.0.0-rc.2
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 
 # Copy published application files from the build stage

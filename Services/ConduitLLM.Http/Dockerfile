@@ -1,5 +1,5 @@
 # HTTP API Dockerfile - Optimized for selective cache invalidation
-FROM mcr.microsoft.com/dotnet/sdk:10.0.100-rc.2 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # ===== CACHED LAYERS (Keep these fast) =====
@@ -37,7 +37,7 @@ RUN dotnet publish "Services/ConduitLLM.Http/ConduitLLM.Http.csproj" \
     --no-restore
 
 # Runtime stage - Debian-based for reliability
-FROM mcr.microsoft.com/dotnet/aspnet:10.0.0-rc.2
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 
 # Install curl for health checks
