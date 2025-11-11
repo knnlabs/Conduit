@@ -13,8 +13,8 @@
     <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.0" />
-    <PackageReference Include="MassTransit" Version="8.5.2" />
-    <PackageReference Include="StackExchange.Redis" Version="2.8.58" />
+    <PackageReference Include="MassTransit" Version="8.5.5" />
+    <PackageReference Include="StackExchange.Redis" Version="2.9.32" />
   </ItemGroup>
 
   <ItemGroup>
