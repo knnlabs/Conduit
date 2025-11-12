@@ -1,5 +1,8 @@
 public enum TokenizerType
 {
+    // No tokenizer (for non-text models like image/video generation)
+    None = 0,
+
     // OpenAI tokenizers
     Cl100KBase,      // GPT-3.5-turbo, GPT-4, GPT-4-turbo
     P50KBase,        // Older GPT-3 models (text-davinci-002, etc.)
