@@ -2,7 +2,7 @@
 [![CodeQL](https://github.com/knnlabs/Conduit/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/knnlabs/Conduit/actions/workflows/codeql-analysis.yml)
 [![Build & Test](https://github.com/knnlabs/Conduit/actions/workflows/ci.yml/badge.svg)](https://github.com/knnlabs/Conduit/actions/workflows/ci.yml)
 [![OpenAI Compatible](https://img.shields.io/badge/OpenAI-Compatible-brightgreen.svg)](https://platform.openai.com/docs/api-reference)
-[![Built with .NET](https://img.shields.io/badge/.NET-9.0-512BD4)](https://dotnet.microsoft.com/)
+[![Built with .NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 [![Docker Ready](https://img.shields.io/badge/Docker-Ready-2496ED)](https://www.docker.com/)
 
 > A unified API gateway for multiple LLM providers with OpenAI-compatible endpoints
@@ -230,7 +230,7 @@ For more details, see the per-service README files.
 
 ### Prerequisites
 
-- .NET 9.0 SDK
+- .NET 10.0 SDK
 - (Optional) Docker Desktop for containerized deployment
 
 ### Installation
