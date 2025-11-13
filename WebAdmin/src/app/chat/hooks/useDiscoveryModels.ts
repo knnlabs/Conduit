@@ -38,7 +38,7 @@ export function useDiscoveryModels(capability?: ModelCapability | string) {
         throw new Error('An error occurred while fetching models');
       }
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 30 * 1000, // 30 seconds - short cache to quickly reflect model mapping changes
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });

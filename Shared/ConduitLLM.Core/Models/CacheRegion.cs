@@ -79,6 +79,13 @@ namespace ConduitLLM.Core.Models
         ModelCosts,
 
         /// <summary>
+        /// Model discovery results showing available models and their capabilities.
+        /// Cached for performance but requires immediate invalidation when model mappings change.
+        /// Long TTL (6 hours) but surgically invalidated on model mapping changes.
+        /// </summary>
+        ModelDiscovery,
+
+        /// <summary>
         /// Audio stream data for real-time processing.
         /// Temporary storage with streaming requirements.
         /// </summary>

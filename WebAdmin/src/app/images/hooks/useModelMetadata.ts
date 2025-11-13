@@ -50,6 +50,6 @@ export function useModelMetadata(modelId: string | null) {
       }
     },
     enabled: !!modelId,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 30 * 1000, // 30 seconds - short cache to quickly reflect model mapping changes
   });
 }

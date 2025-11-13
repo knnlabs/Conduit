@@ -349,5 +349,135 @@ namespace ConduitLLM.Tests.Core.Services
             var avgOperationTime = stopwatch.ElapsedMilliseconds / (double)(iterations * 2); // Set + Get
             Assert.True(avgOperationTime < 1.0, $"Average operation time {avgOperationTime}ms exceeds 1ms threshold");
         }
+
+        [Fact]
+        public async Task ClearRegionAsync_WithDistributedCache_ClearsBothMemoryAndDistributed()
+        {
+            // Arrange
+            var cacheManager = new CacheManager(_memoryCache, _distributedCacheMock.Object, _loggerMock.Object);
+            const string key1 = "discovery-key-1";
+            const string key2 = "discovery-key-2";
+            const CacheRegion region = CacheRegion.ModelDiscovery;
+
+            // Add items to cache
+            await cacheManager.SetAsync(key1, "value1", region);
+            await cacheManager.SetAsync(key2, "value2", region);
+
+            // Verify items exist
+            var value1 = await cacheManager.GetAsync<string>(key1, region);
+            var value2 = await cacheManager.GetAsync<string>(key2, region);
+            Assert.Equal("value1", value1);
+            Assert.Equal("value2", value2);
+
+            // Act
+            await cacheManager.ClearRegionAsync(region);
+
+            // Assert
+            var clearedValue1 = await cacheManager.GetAsync<string>(key1, region);
+            var clearedValue2 = await cacheManager.GetAsync<string>(key2, region);
+            Assert.Null(clearedValue1);
+            Assert.Null(clearedValue2);
+
+            // Verify distributed cache Remove was called for both keys
+            _distributedCacheMock.Verify(x => x.RemoveAsync(
+                It.Is<string>(k => k == $"{region}:{key1}"),
+                default), Times.Once);
+            _distributedCacheMock.Verify(x => x.RemoveAsync(
+                It.Is<string>(k => k == $"{region}:{key2}"),
+                default), Times.Once);
+        }
+
+        [Fact]
+        public async Task ClearRegionAsync_WithEmptyRegion_DoesNotThrow()
+        {
+            // Arrange
+            var cacheManager = new CacheManager(_memoryCache, _distributedCacheMock.Object, _loggerMock.Object);
+            const CacheRegion region = CacheRegion.Embeddings;
+
+            // Act & Assert - Should not throw
+            await cacheManager.ClearRegionAsync(region);
+        }
+
+        [Fact]
+        public async Task ClearRegionAsync_ResetsRegionStatistics()
+        {
+            // Arrange
+            var cacheManager = new CacheManager(_memoryCache, null, _loggerMock.Object);
+            const CacheRegion region = CacheRegion.ModelDiscovery;
+
+            // Generate some cache activity
+            await cacheManager.SetAsync("key1", "value1", region);
+            await cacheManager.GetAsync<string>("key1", region);
+            await cacheManager.GetAsync<string>("missing-key", region);
+
+            // Verify statistics exist
+            var statsBefore = await cacheManager.GetRegionStatisticsAsync(region);
+            Assert.True(statsBefore.HitCount > 0 || statsBefore.MissCount > 0);
+
+            // Act
+            await cacheManager.ClearRegionAsync(region);
+
+            // Assert
+            var statsAfter = await cacheManager.GetRegionStatisticsAsync(region);
+            Assert.Equal(0, statsAfter.HitCount);
+            Assert.Equal(0, statsAfter.MissCount);
+            Assert.True(statsAfter.LastResetTime > DateTime.MinValue);
+        }
+
+        [Fact]
+        public async Task ClearRegionAsync_OnlyAffectsSpecifiedRegion_VerifiesKeyTracking()
+        {
+            // Arrange
+            var cacheManager = new CacheManager(_memoryCache, _distributedCacheMock.Object, _loggerMock.Object);
+
+            // Add items to multiple regions
+            await cacheManager.SetAsync("discovery-key", "discovery-value", CacheRegion.ModelDiscovery);
+            await cacheManager.SetAsync("metadata-key", "metadata-value", CacheRegion.ModelMetadata);
+            await cacheManager.SetAsync("auth-key", "auth-value", CacheRegion.AuthTokens);
+
+            // Act - Clear only ModelDiscovery region
+            await cacheManager.ClearRegionAsync(CacheRegion.ModelDiscovery);
+
+            // Assert
+            var discoveryValue = await cacheManager.GetAsync<string>("discovery-key", CacheRegion.ModelDiscovery);
+            var metadataValue = await cacheManager.GetAsync<string>("metadata-key", CacheRegion.ModelMetadata);
+            var authValue = await cacheManager.GetAsync<string>("auth-key", CacheRegion.AuthTokens);
+
+            Assert.Null(discoveryValue); // Should be cleared
+            Assert.Equal("metadata-value", metadataValue); // Should remain
+            Assert.Equal("auth-value", authValue); // Should remain
+
+            // Verify distributed cache was only called for discovery keys
+            _distributedCacheMock.Verify(x => x.RemoveAsync(
+                It.Is<string>(k => k.Contains("ModelDiscovery")),
+                default), Times.Once);
+            _distributedCacheMock.Verify(x => x.RemoveAsync(
+                It.Is<string>(k => k.Contains("ModelMetadata") || k.Contains("AuthTokens")),
+                default), Times.Never);
+        }
+
+        [Fact]
+        public async Task ClearAllAsync_ClearsAllRegions()
+        {
+            // Arrange
+            var cacheManager = new CacheManager(_memoryCache, null, _loggerMock.Object);
+
+            // Add items to multiple regions
+            await cacheManager.SetAsync("key1", "value1", CacheRegion.VirtualKeys);
+            await cacheManager.SetAsync("key2", "value2", CacheRegion.RateLimits);
+            await cacheManager.SetAsync("key3", "value3", CacheRegion.ModelDiscovery);
+
+            // Act
+            await cacheManager.ClearAllAsync();
+
+            // Assert
+            var value1 = await cacheManager.GetAsync<string>("key1", CacheRegion.VirtualKeys);
+            var value2 = await cacheManager.GetAsync<string>("key2", CacheRegion.RateLimits);
+            var value3 = await cacheManager.GetAsync<string>("key3", CacheRegion.ModelDiscovery);
+
+            Assert.Null(value1);
+            Assert.Null(value2);
+            Assert.Null(value3);
+        }
     }
 }

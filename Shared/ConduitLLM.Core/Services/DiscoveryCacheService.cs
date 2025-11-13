@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Core.Services
 {
@@ -55,15 +56,13 @@ namespace ConduitLLM.Core.Services
     }
 
     /// <summary>
-    /// Implementation of discovery cache service
+    /// Implementation of discovery cache service using CacheManager for unified cache management
     /// </summary>
     public class DiscoveryCacheService : IDiscoveryCacheService
     {
         private readonly DiscoveryCacheOptions _options;
-        private readonly IDistributedCache? _distributedCache;
-        private readonly IMemoryCache _memoryCache;
+        private readonly ICacheManager _cacheManager;
         private readonly ILogger<DiscoveryCacheService> _logger;
-        private readonly JsonSerializerOptions _jsonOptions;
 
         // Statistics tracking
         private long _totalHits;
@@ -71,31 +70,18 @@ namespace ConduitLLM.Core.Services
         private DateTime? _lastInvalidation;
         private DateTime? _lastWarmingTime;
 
-        private const string CACHE_KEY_PREFIX = "discovery:models:";
+        private const CacheRegion DISCOVERY_REGION = CacheRegion.ModelDiscovery;
 
         public DiscoveryCacheService(
             IOptions<DiscoveryCacheOptions> options,
-            IMemoryCache memoryCache,
-            ILogger<DiscoveryCacheService> logger,
-            IServiceProvider serviceProvider)
+            ICacheManager cacheManager,
+            ILogger<DiscoveryCacheService> logger)
         {
             _options = options.Value;
-            _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
+            _cacheManager = cacheManager ?? throw new ArgumentNullException(nameof(cacheManager));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            
-            // Try to get distributed cache if available
-            _distributedCache = serviceProvider.GetService<IDistributedCache>();
 
-            _jsonOptions = new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                WriteIndented = false
-            };
-
-            if (_distributedCache == null)
-            {
-                _logger.LogInformation("Redis/Distributed cache not available, using memory cache only for discovery results");
-            }
+            _logger.LogInformation("DiscoveryCacheService initialized using CacheManager with ModelDiscovery region");
         }
 
         public async Task<DiscoveryModelsResult?> GetDiscoveryResultsAsync(string cacheKey, CancellationToken cancellationToken = default)
@@ -107,33 +93,20 @@ namespace ConduitLLM.Core.Services
 
             try
             {
-                // Try distributed cache first (Redis)
-                if (_distributedCache != null)
-                {
-                    var cachedJson = await _distributedCache.GetStringAsync(cacheKey, cancellationToken);
-                    if (!string.IsNullOrEmpty(cachedJson))
-                    {
-                        var result = JsonSerializer.Deserialize<DiscoveryModelsResult>(cachedJson, _jsonOptions);
-                        if (result != null)
-                        {
-                            Interlocked.Increment(ref _totalHits);
-                            _logger.LogDebug("Discovery cache hit (Redis) for key: {CacheKey}", cacheKey);
-                            return result;
-                        }
-                    }
-                }
+                var result = await _cacheManager.GetAsync<DiscoveryModelsResult>(cacheKey, DISCOVERY_REGION, cancellationToken);
 
-                // Fallback to memory cache
-                if (_memoryCache.TryGetValue<DiscoveryModelsResult>(cacheKey, out var memoryResult))
+                if (result != null)
                 {
                     Interlocked.Increment(ref _totalHits);
-                    _logger.LogDebug("Discovery cache hit (Memory) for key: {CacheKey}", cacheKey);
-                    return memoryResult;
+                    _logger.LogDebug("Discovery cache hit for key: {CacheKey}", cacheKey);
+                }
+                else
+                {
+                    Interlocked.Increment(ref _totalMisses);
+                    _logger.LogDebug("Discovery cache miss for key: {CacheKey}", cacheKey);
                 }
 
-                Interlocked.Increment(ref _totalMisses);
-                _logger.LogDebug("Discovery cache miss for key: {CacheKey}", cacheKey);
-                return null;
+                return result;
             }
             catch (Exception ex)
             {
@@ -155,25 +128,8 @@ namespace ConduitLLM.Core.Services
 
             try
             {
-                // Set in distributed cache (Redis)
-                if (_distributedCache != null)
-                {
-                    var json = JsonSerializer.Serialize(results, _jsonOptions);
-                    await _distributedCache.SetStringAsync(
-                        cacheKey,
-                        json,
-                        new DistributedCacheEntryOptions
-                        {
-                            AbsoluteExpirationRelativeToNow = expiration
-                        },
-                        cancellationToken);
-                    
-                    _logger.LogDebug("Cached discovery results in Redis for key: {CacheKey} with {Count} models", cacheKey, results.Count);
-                }
+                await _cacheManager.SetAsync(cacheKey, results, DISCOVERY_REGION, expiration, cancellationToken);
 
-                // Also set in memory cache as backup
-                _memoryCache.Set(cacheKey, results, expiration);
-                
                 _logger.LogInformation("Cached discovery results for key: {CacheKey} with {Count} models, expires in {Minutes} minutes",
                     cacheKey, results.Count, _options.CacheDurationMinutes);
             }
@@ -189,38 +145,11 @@ namespace ConduitLLM.Core.Services
             {
                 _lastInvalidation = DateTime.UtcNow;
 
-                // For Redis, we would need to scan and delete keys with pattern
-                // This is a simplified approach - in production, use SCAN with pattern matching
-                if (_distributedCache != null)
-                {
-                    // Invalidate common patterns
-                    var commonPatterns = new[]
-                    {
-                        $"{CACHE_KEY_PREFIX}all",
-                        $"{CACHE_KEY_PREFIX}capability:chat",
-                        $"{CACHE_KEY_PREFIX}capability:vision",
-                        $"{CACHE_KEY_PREFIX}capability:image_generation",
-                        $"{CACHE_KEY_PREFIX}capability:video_generation",
-                        $"{CACHE_KEY_PREFIX}capability:audio_transcription",
-                        $"{CACHE_KEY_PREFIX}capability:text_to_speech",
-                        $"{CACHE_KEY_PREFIX}capability:embeddings",
-                        $"{CACHE_KEY_PREFIX}capability:function_calling"
-                    };
+                // Use CacheManager's ClearRegionAsync for surgical invalidation
+                // This uses the tracked keys to remove only discovery entries from both memory and Redis
+                await _cacheManager.ClearRegionAsync(DISCOVERY_REGION, cancellationToken);
 
-                    foreach (var pattern in commonPatterns)
-                    {
-                        await _distributedCache.RemoveAsync(pattern, cancellationToken);
-                    }
-                }
-
-                // Clear memory cache entries with discovery prefix
-                // Note: This is a simplified approach - production would use a more sophisticated key tracking
-                if (_memoryCache is MemoryCache mc)
-                {
-                    mc.Compact(0.5); // Compact 50% to remove discovery entries
-                }
-
-                _logger.LogInformation("Invalidated all discovery cache entries at {Time}", _lastInvalidation);
+                _logger.LogInformation("Invalidated all discovery cache entries at {Time} using CacheManager.ClearRegionAsync", _lastInvalidation);
             }
             catch (Exception ex)
             {
@@ -234,19 +163,16 @@ namespace ConduitLLM.Core.Services
             {
                 _lastInvalidation = DateTime.UtcNow;
 
-                // For production Redis, you would use SCAN command with pattern
-                // For now, we'll handle specific patterns
-                if (_distributedCache != null && pattern.StartsWith(CACHE_KEY_PREFIX))
+                // Use CacheManager's pattern-based invalidation
+                if (pattern.EndsWith("*"))
                 {
-                    // Handle wildcard patterns
-                    if (pattern.EndsWith("*"))
-                    {
-                        await InvalidateAllDiscoveryAsync(cancellationToken);
-                    }
-                    else
-                    {
-                        await _distributedCache.RemoveAsync(pattern, cancellationToken);
-                    }
+                    // For wildcard patterns, clear the entire region
+                    await InvalidateAllDiscoveryAsync(cancellationToken);
+                }
+                else
+                {
+                    // For specific keys, use RemoveByPatternAsync
+                    await _cacheManager.RemoveByPatternAsync(pattern, DISCOVERY_REGION, cancellationToken);
                 }
 
                 _logger.LogInformation("Invalidated discovery cache entries matching pattern: {Pattern}", pattern);
@@ -311,20 +237,21 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <summary>
-        /// Builds cache key for discovery results
+        /// Builds cache key for discovery results.
+        /// Note: CacheManager handles region prefixing internally, so we only need the logical key.
         /// </summary>
         public static string BuildCacheKey(string? capability = null, int? virtualKeyId = null)
         {
             if (virtualKeyId.HasValue)
             {
-                return capability != null 
-                    ? $"{CACHE_KEY_PREFIX}virtualkey:{virtualKeyId}:capability:{capability}"
-                    : $"{CACHE_KEY_PREFIX}virtualkey:{virtualKeyId}";
+                return capability != null
+                    ? $"virtualkey:{virtualKeyId}:capability:{capability}"
+                    : $"virtualkey:{virtualKeyId}";
             }
 
-            return capability != null 
-                ? $"{CACHE_KEY_PREFIX}capability:{capability}"
-                : $"{CACHE_KEY_PREFIX}all";
+            return capability != null
+                ? $"capability:{capability}"
+                : "all";
         }
     }
 }

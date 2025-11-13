@@ -51,6 +51,6 @@ export function useModels() {
         return a.displayName.localeCompare(b.displayName);
       });
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 30 * 1000, // 30 seconds - short cache to quickly reflect model mapping changes
   });
 }

@@ -30,29 +30,39 @@ namespace ConduitLLM.Core.Services
         public async Task ClearRegionAsync(CacheRegion region, CancellationToken cancellationToken = default)
         {
             var stopwatch = Stopwatch.StartNew();
-            
+
             try
             {
                 var clearedCount = 0;
-                
-                // Clear from memory cache using tracked keys
+
+                // Get the keys list ONCE before clearing anything
+                List<string>? keysList = null;
                 if (_regionKeys.TryGetValue(region, out var regionKeys))
                 {
-                    var keysList = regionKeys.Keys.ToList();
+                    keysList = regionKeys.Keys.ToList();
+                }
+
+                // Clear from memory cache using tracked keys
+                if (keysList != null)
+                {
                     foreach (var key in keysList)
                     {
                         var fullKey = BuildKey(key, region);
                         _memoryCache.Remove(fullKey);
-                        regionKeys.TryRemove(key, out _);
+                        regionKeys!.TryRemove(key, out _);
                         clearedCount++;
                     }
                 }
 
-                // Clear from distributed cache if available
-                if (_useDistributedCache && _distributedCache != null)
+                // Clear from distributed cache if available - use the same keys list
+                if (_useDistributedCache && _distributedCache != null && keysList != null)
                 {
-                    // TODO: Implement distributed cache clearing based on specific cache provider
-                    _logger.LogWarning("Distributed cache clear not fully implemented for region {Region}", region);
+                    foreach (var key in keysList)
+                    {
+                        var fullKey = BuildKey(key, region);
+                        await _distributedCache.RemoveAsync(fullKey, cancellationToken);
+                    }
+                    _logger.LogDebug("Cleared {Count} entries from distributed cache for region {Region}", keysList.Count, region);
                 }
 
                 _logger.LogInformation("Cleared {Count} entries from cache region {Region}", clearedCount, region);

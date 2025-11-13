@@ -34,7 +34,7 @@ export function useModelParameters(modelAlias: string | null) {
       }
     },
     enabled: !!modelAlias,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 30 * 1000, // 30 seconds - short cache to quickly reflect model mapping changes
     retry: 1, // Only retry once on failure
   });
 }

@@ -18,19 +18,15 @@ namespace ConduitLLM.Tests.Core.Services
     [Trait("Category", "Unit")]
     public class DiscoveryCacheServiceTests
     {
-        private readonly Mock<IDistributedCache> _mockDistributedCache;
-        private readonly Mock<IMemoryCache> _mockMemoryCache;
+        private readonly Mock<ICacheManager> _mockCacheManager;
         private readonly Mock<ILogger<DiscoveryCacheService>> _mockLogger;
-        private readonly Mock<IServiceProvider> _mockServiceProvider;
         private readonly DiscoveryCacheOptions _options;
         private readonly DiscoveryCacheService _service;
 
         public DiscoveryCacheServiceTests()
         {
-            _mockDistributedCache = new Mock<IDistributedCache>();
-            _mockMemoryCache = new Mock<IMemoryCache>();
+            _mockCacheManager = new Mock<ICacheManager>();
             _mockLogger = new Mock<ILogger<DiscoveryCacheService>>();
-            _mockServiceProvider = new Mock<IServiceProvider>();
 
             _options = new DiscoveryCacheOptions
             {
@@ -42,16 +38,10 @@ namespace ConduitLLM.Tests.Core.Services
             var mockOptions = new Mock<IOptions<DiscoveryCacheOptions>>();
             mockOptions.Setup(x => x.Value).Returns(_options);
 
-            // Setup service provider to return distributed cache
-            _mockServiceProvider
-                .Setup(x => x.GetService(typeof(IDistributedCache)))
-                .Returns(_mockDistributedCache.Object);
-
             _service = new DiscoveryCacheService(
                 mockOptions.Object,
-                _mockMemoryCache.Object,
-                _mockLogger.Object,
-                _mockServiceProvider.Object);
+                _mockCacheManager.Object,
+                _mockLogger.Object);
         }
 
         [Fact]
@@ -66,12 +56,11 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             Assert.Null(result);
-            _mockDistributedCache.Verify(x => x.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
-            _mockMemoryCache.Verify(x => x.TryGetValue(It.IsAny<object>(), out It.Ref<object>.IsAny), Times.Never);
+            _mockCacheManager.Verify(x => x.GetAsync<DiscoveryModelsResult>(It.IsAny<string>(), It.IsAny<ConduitLLM.Core.Models.CacheRegion>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
-        public async Task GetDiscoveryResultsAsync_Should_Return_From_Redis_When_Available()
+        public async Task GetDiscoveryResultsAsync_Should_Return_From_Cache_When_Available()
         {
             // Arrange
             var cacheKey = "discovery:models:all";
@@ -81,12 +70,10 @@ namespace ConduitLLM.Tests.Core.Services
                 Count = 1,
                 CachedAt = DateTime.UtcNow
             };
-            var json = JsonSerializer.Serialize(expectedResult, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 
-            var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-            _mockDistributedCache
-                .Setup(x => x.GetAsync(cacheKey, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(bytes);
+            _mockCacheManager
+                .Setup(x => x.GetAsync<DiscoveryModelsResult>(cacheKey, ConduitLLM.Core.Models.CacheRegion.ModelDiscovery, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(expectedResult);
 
             // Act
             var result = await _service.GetDiscoveryResultsAsync(cacheKey);
@@ -94,39 +81,25 @@ namespace ConduitLLM.Tests.Core.Services
             // Assert
             Assert.NotNull(result);
             Assert.Equal(1, result.Count);
-            _mockDistributedCache.Verify(x => x.GetAsync(cacheKey, It.IsAny<CancellationToken>()), Times.Once);
-            _mockMemoryCache.Verify(x => x.TryGetValue(It.IsAny<object>(), out It.Ref<object>.IsAny), Times.Never);
+            _mockCacheManager.Verify(x => x.GetAsync<DiscoveryModelsResult>(cacheKey, ConduitLLM.Core.Models.CacheRegion.ModelDiscovery, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
-        public async Task GetDiscoveryResultsAsync_Should_Fallback_To_Memory_Cache_When_Redis_Empty()
+        public async Task GetDiscoveryResultsAsync_Should_Return_Null_When_Cache_Empty()
         {
             // Arrange
             var cacheKey = "discovery:models:all";
-            var expectedResult = new DiscoveryModelsResult
-            {
-                Data = new List<object> { new { id = "claude-3", provider = "anthropic" } },
-                Count = 1,
-                CachedAt = DateTime.UtcNow
-            };
 
-            _mockDistributedCache
-                .Setup(x => x.GetAsync(cacheKey, It.IsAny<CancellationToken>()))
-                .ReturnsAsync((byte[])null);
-
-            object memoryResult = expectedResult;
-            _mockMemoryCache
-                .Setup(x => x.TryGetValue(cacheKey, out memoryResult))
-                .Returns(true);
+            _mockCacheManager
+                .Setup(x => x.GetAsync<DiscoveryModelsResult>(cacheKey, ConduitLLM.Core.Models.CacheRegion.ModelDiscovery, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((DiscoveryModelsResult)null);
 
             // Act
             var result = await _service.GetDiscoveryResultsAsync(cacheKey);
 
             // Assert
-            Assert.NotNull(result);
-            Assert.Equal(1, result.Count);
-            _mockDistributedCache.Verify(x => x.GetAsync(cacheKey, It.IsAny<CancellationToken>()), Times.Once);
-            _mockMemoryCache.Verify(x => x.TryGetValue(cacheKey, out It.Ref<object>.IsAny), Times.Once);
+            Assert.Null(result);
+            _mockCacheManager.Verify(x => x.GetAsync<DiscoveryModelsResult>(cacheKey, ConduitLLM.Core.Models.CacheRegion.ModelDiscovery, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -141,14 +114,11 @@ namespace ConduitLLM.Tests.Core.Services
             await service.SetDiscoveryResultsAsync("test-key", results);
 
             // Assert
-            _mockDistributedCache.Verify(
-                x => x.SetAsync(It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()), 
-                Times.Never);
-            _mockMemoryCache.Verify(x => x.CreateEntry(It.IsAny<object>()), Times.Never);
+            _mockCacheManager.Verify(x => x.SetAsync(It.IsAny<string>(), It.IsAny<DiscoveryModelsResult>(), It.IsAny<ConduitLLM.Core.Models.CacheRegion>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
-        public async Task SetDiscoveryResultsAsync_Should_Cache_In_Both_Redis_And_Memory()
+        public async Task SetDiscoveryResultsAsync_Should_Cache_With_Correct_TTL()
         {
             // Arrange
             var cacheKey = "discovery:models:capability:chat";
@@ -158,66 +128,40 @@ namespace ConduitLLM.Tests.Core.Services
                 Count = 1
             };
 
-            var memoryCacheEntry = new Mock<Microsoft.Extensions.Caching.Memory.ICacheEntry>();
-            memoryCacheEntry.SetupAllProperties();
-            _mockMemoryCache
-                .Setup(x => x.CreateEntry(cacheKey))
-                .Returns(memoryCacheEntry.Object);
-
             // Act
             await _service.SetDiscoveryResultsAsync(cacheKey, results);
 
             // Assert
-            _mockDistributedCache.Verify(
+            _mockCacheManager.Verify(
                 x => x.SetAsync(
-                    cacheKey, 
-                    It.IsAny<byte[]>(), 
-                    It.Is<DistributedCacheEntryOptions>(opts => 
-                        opts.AbsoluteExpirationRelativeToNow == TimeSpan.FromMinutes(360)), 
-                    It.IsAny<CancellationToken>()), 
+                    cacheKey,
+                    results,
+                    ConduitLLM.Core.Models.CacheRegion.ModelDiscovery,
+                    It.Is<TimeSpan>(ttl => ttl == TimeSpan.FromMinutes(360)),
+                    It.IsAny<CancellationToken>()),
                 Times.Once);
-
-            _mockMemoryCache.Verify(x => x.CreateEntry(cacheKey), Times.Once);
             Assert.True(results.CachedAt != default);
         }
 
         [Fact]
-        public async Task InvalidateAllDiscoveryAsync_Should_Remove_Common_Patterns_From_Redis()
+        public async Task InvalidateAllDiscoveryAsync_Should_Call_ClearRegionAsync()
         {
-            // Arrange
-            var expectedPatterns = new[]
-            {
-                "discovery:models:all",
-                "discovery:models:capability:chat",
-                "discovery:models:capability:vision",
-                "discovery:models:capability:image_generation",
-                "discovery:models:capability:video_generation",
-                "discovery:models:capability:audio_transcription",
-                "discovery:models:capability:text_to_speech",
-                "discovery:models:capability:embeddings",
-                "discovery:models:capability:function_calling"
-            };
-
             // Act
             await _service.InvalidateAllDiscoveryAsync();
 
             // Assert
-            foreach (var pattern in expectedPatterns)
-            {
-                _mockDistributedCache.Verify(
-                    x => x.RemoveAsync(pattern, It.IsAny<CancellationToken>()), 
-                    Times.Once,
-                    $"Should remove pattern: {pattern}");
-            }
+            _mockCacheManager.Verify(
+                x => x.ClearRegionAsync(ConduitLLM.Core.Models.CacheRegion.ModelDiscovery, It.IsAny<CancellationToken>()),
+                Times.Once);
         }
 
         [Fact]
-        public async Task InvalidateAllDiscoveryAsync_Should_Handle_Redis_Errors_Gracefully()
+        public async Task InvalidateAllDiscoveryAsync_Should_Handle_Errors_Gracefully()
         {
             // Arrange
-            _mockDistributedCache
-                .Setup(x => x.RemoveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ThrowsAsync(new InvalidOperationException("Redis connection failed"));
+            _mockCacheManager
+                .Setup(x => x.ClearRegionAsync(It.IsAny<ConduitLLM.Core.Models.CacheRegion>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("Cache error"));
 
             // Act (should not throw)
             await _service.InvalidateAllDiscoveryAsync();
@@ -234,17 +178,17 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
-        public async Task InvalidatePatternAsync_Should_Remove_Specific_Pattern()
+        public async Task InvalidatePatternAsync_Should_Use_RemoveByPatternAsync()
         {
             // Arrange
-            var pattern = "discovery:models:capability:custom";
+            var pattern = "capability:custom";
 
             // Act
             await _service.InvalidatePatternAsync(pattern);
 
             // Assert
-            _mockDistributedCache.Verify(
-                x => x.RemoveAsync(pattern, It.IsAny<CancellationToken>()), 
+            _mockCacheManager.Verify(
+                x => x.RemoveByPatternAsync(pattern, ConduitLLM.Core.Models.CacheRegion.ModelDiscovery, It.IsAny<CancellationToken>()),
                 Times.Once);
         }
 
@@ -258,10 +202,10 @@ namespace ConduitLLM.Tests.Core.Services
             await _service.InvalidatePatternAsync(pattern);
 
             // Assert
-            // Should invalidate all common patterns when wildcard is used
-            _mockDistributedCache.Verify(
-                x => x.RemoveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), 
-                Times.AtLeast(9)); // At least the 9 common patterns
+            // Wildcard patterns should call InvalidateAllDiscoveryAsync which calls ClearRegionAsync
+            _mockCacheManager.Verify(
+                x => x.ClearRegionAsync(ConduitLLM.Core.Models.CacheRegion.ModelDiscovery, It.IsAny<CancellationToken>()),
+                Times.Once);
         }
 
         [Fact]
@@ -270,25 +214,18 @@ namespace ConduitLLM.Tests.Core.Services
             // Arrange
             // Simulate some cache hits and misses
             var cacheKey = "test-key";
-            _mockDistributedCache
-                .Setup(x => x.GetAsync(cacheKey, It.IsAny<CancellationToken>()))
-                .ReturnsAsync((byte[])null);
-            
-            object nullResult = null;
-            _mockMemoryCache
-                .Setup(x => x.TryGetValue(cacheKey, out nullResult))
-                .Returns(false);
+            _mockCacheManager
+                .Setup(x => x.GetAsync<DiscoveryModelsResult>(cacheKey, ConduitLLM.Core.Models.CacheRegion.ModelDiscovery, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((DiscoveryModelsResult)null);
 
             // Generate a miss
             await _service.GetDiscoveryResultsAsync(cacheKey);
 
             // Setup for a hit
             var result = new DiscoveryModelsResult { Data = new List<object>(), Count = 0 };
-            var json = JsonSerializer.Serialize(result, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-            var bytes2 = System.Text.Encoding.UTF8.GetBytes(json);
-            _mockDistributedCache
-                .Setup(x => x.GetAsync(cacheKey, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(bytes2);
+            _mockCacheManager
+                .Setup(x => x.GetAsync<DiscoveryModelsResult>(cacheKey, ConduitLLM.Core.Models.CacheRegion.ModelDiscovery, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(result);
 
             // Generate a hit
             await _service.GetDiscoveryResultsAsync(cacheKey);
@@ -303,11 +240,11 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Theory]
-        [InlineData(null, null, "discovery:models:all")]
-        [InlineData("chat", null, "discovery:models:capability:chat")]
-        [InlineData("vision", null, "discovery:models:capability:vision")]
-        [InlineData(null, 123, "discovery:models:virtualkey:123")]
-        [InlineData("chat", 456, "discovery:models:virtualkey:456:capability:chat")]
+        [InlineData(null, null, "all")]
+        [InlineData("chat", null, "capability:chat")]
+        [InlineData("vision", null, "capability:vision")]
+        [InlineData(null, 123, "virtualkey:123")]
+        [InlineData("chat", 456, "virtualkey:456:capability:chat")]
         public void BuildCacheKey_Should_Generate_Correct_Keys(string capability, int? virtualKeyId, string expected)
         {
             // Act
@@ -318,37 +255,22 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
-        public async Task Service_Should_Work_Without_Redis()
+        public async Task SetDiscoveryResultsAsync_Should_Use_CacheManager()
         {
-            // Arrange - Create service without distributed cache
-            var serviceProvider = new Mock<IServiceProvider>();
-            serviceProvider
-                .Setup(x => x.GetService(typeof(IDistributedCache)))
-                .Returns((IDistributedCache)null);
-
-            var service = new DiscoveryCacheService(
-                Options.Create(_options),
-                _mockMemoryCache.Object,
-                _mockLogger.Object,
-                serviceProvider.Object);
-
+            // Arrange
             var cacheKey = "test-key";
             var results = new DiscoveryModelsResult { Data = new List<object>(), Count = 0 };
 
-            var memoryCacheEntry = new Mock<Microsoft.Extensions.Caching.Memory.ICacheEntry>();
-            memoryCacheEntry.SetupAllProperties();
-            _mockMemoryCache
-                .Setup(x => x.CreateEntry(cacheKey))
-                .Returns(memoryCacheEntry.Object);
-
             // Act
-            await service.SetDiscoveryResultsAsync(cacheKey, results);
+            await _service.SetDiscoveryResultsAsync(cacheKey, results);
 
-            // Assert - Should still cache in memory
-            _mockMemoryCache.Verify(x => x.CreateEntry(cacheKey), Times.Once);
-            _mockDistributedCache.Verify(
-                x => x.SetAsync(It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()), 
-                Times.Never);
+            // Assert - Should call CacheManager.SetAsync
+            _mockCacheManager.Verify(x => x.SetAsync(
+                cacheKey,
+                results,
+                ConduitLLM.Core.Models.CacheRegion.ModelDiscovery,
+                It.IsAny<TimeSpan>(),
+                It.IsAny<CancellationToken>()), Times.Once);
         }
 
         private DiscoveryCacheService CreateServiceWithOptions(DiscoveryCacheOptions options)
@@ -358,9 +280,8 @@ namespace ConduitLLM.Tests.Core.Services
 
             return new DiscoveryCacheService(
                 mockOptions.Object,
-                _mockMemoryCache.Object,
-                _mockLogger.Object,
-                _mockServiceProvider.Object);
+                _mockCacheManager.Object,
+                _mockLogger.Object);
         }
     }
 }
