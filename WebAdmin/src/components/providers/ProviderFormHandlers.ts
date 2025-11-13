@@ -1,6 +1,7 @@
 import { useRouter } from 'next/navigation';
 import { notifications } from '@mantine/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
+import { ApiKeyTestResult } from '@knn_labs/conduit-admin-client';
 import type { ProviderFormData, ProviderFormLogicResult } from './ProviderFormLogic';
 
 interface UseProviderFormHandlersParams {
@@ -140,9 +141,9 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
         );
       }
       
-      // Handle new response format
-      const isSuccess = (result.result as string) === 'success';
-      
+      // Handle response format with proper enum comparison
+      const isSuccess = result.result === ApiKeyTestResult.SUCCESS;
+
       setTestResult({
         success: isSuccess,
         message: result.message ?? (isSuccess ? 'Connection successful' : 'Connection failed'),

@@ -26,6 +26,17 @@ namespace ConduitLLM.Admin.Controllers
                     return NotFound(new ErrorResponseDto("Provider not found"));
                 }
 
+                // Check if this provider type doesn't support testing
+                var nonTestableResponse = ApiKeyTestResultService.CreateErrorResponse(
+                    new NotSupportedException("Provider does not support API key testing"),
+                    provider.ProviderType
+                );
+
+                if (nonTestableResponse.Result == ApiKeyTestResult.Ignored)
+                {
+                    return Ok(nonTestableResponse);
+                }
+
                 // Get a client for this provider to test
                 var client = _clientFactory.GetClientByProviderId(id);
                 
@@ -103,6 +114,17 @@ namespace ConduitLLM.Admin.Controllers
                     };
                 }
 
+                // Check if this provider type doesn't support testing
+                var nonTestableResponse = ApiKeyTestResultService.CreateErrorResponse(
+                    new NotSupportedException("Provider does not support API key testing"),
+                    testProvider.ProviderType
+                );
+
+                if (nonTestableResponse.Result == ApiKeyTestResult.Ignored)
+                {
+                    return Ok(nonTestableResponse);
+                }
+
                 // Test the connection
                 var testKey = new ProviderKeyCredential 
                 { 
@@ -169,6 +191,17 @@ namespace ConduitLLM.Admin.Controllers
                 if (provider == null)
                 {
                     return NotFound(new ErrorResponseDto("Provider not found"));
+                }
+
+                // Check if this provider type doesn't support testing
+                var nonTestableResponse = ApiKeyTestResultService.CreateErrorResponse(
+                    new NotSupportedException("Provider does not support API key testing"),
+                    provider.ProviderType
+                );
+
+                if (nonTestableResponse.Result == ApiKeyTestResult.Ignored)
+                {
+                    return Ok(nonTestableResponse);
                 }
 
                 // Test the connection with this specific key

@@ -7,14 +7,60 @@ import type {
   StandardApiKeyTestResponse,
   ProviderDto
 } from '../models/provider';
+import { ApiKeyTestResult } from '../models/provider';
 import { ENDPOINTS } from '../constants';
 import { classifyApiKeyTestError, createSuccessResponse } from '../utils/error-classification';
 
-type TestConnectionResult = {
-  success: boolean;
-  message?: string;
-  details?: Record<string, unknown>;
-};
+/**
+ * Normalizes the API response to handle case mismatches between C# PascalCase and TypeScript camelCase
+ */
+function normalizeApiKeyTestResponse(response: any): StandardApiKeyTestResponse {
+  // Handle both PascalCase (from C#) and camelCase (expected by SDK)
+  const result = response.result || response.Result;
+  const message = response.message || response.Message;
+  const details = response.details || response.Details;
+
+  // Normalize the result enum value to lowercase with underscores
+  const normalizedResult = normalizeEnumValue(result);
+
+  return {
+    result: normalizedResult,
+    message: message || '',
+    details: details ? {
+      responseTimeMs: details.responseTimeMs ?? details.ResponseTimeMs,
+      modelsAvailable: details.modelsAvailable ?? details.ModelsAvailable,
+      providerMessage: details.providerMessage ?? details.ProviderMessage,
+      errorCode: details.errorCode ?? details.ErrorCode,
+      statusCode: details.statusCode ?? details.StatusCode,
+    } : undefined,
+  };
+}
+
+/**
+ * Normalizes enum values from PascalCase to snake_case
+ * Examples: "InvalidKey" -> "invalid_key", "Success" -> "success"
+ */
+function normalizeEnumValue(value: string): ApiKeyTestResult {
+  if (!value) return ApiKeyTestResult.UNKNOWN_ERROR;
+
+  // Convert PascalCase to snake_case
+  const snakeCase = value
+    .replace(/([A-Z])/g, '_$1')
+    .toLowerCase()
+    .replace(/^_/, '');
+
+  // Map to the enum
+  const enumMap: Record<string, ApiKeyTestResult> = {
+    'success': ApiKeyTestResult.SUCCESS,
+    'invalid_key': ApiKeyTestResult.INVALID_KEY,
+    'ignored': ApiKeyTestResult.IGNORED,
+    'provider_down': ApiKeyTestResult.PROVIDER_DOWN,
+    'rate_limited': ApiKeyTestResult.RATE_LIMITED,
+    'unknown_error': ApiKeyTestResult.UNKNOWN_ERROR,
+  };
+
+  return enumMap[snakeCase] ?? ApiKeyTestResult.UNKNOWN_ERROR;
+}
 
 /**
  * Provider key credential management methods
@@ -158,8 +204,7 @@ export class FetchProvidersServiceKeys {
     config?: RequestConfig
   ): Promise<StandardApiKeyTestResponse> {
     try {
-      const startTime = Date.now();
-      const result = await this.client['post']<TestConnectionResult>(
+      const result = await this.client['post']<any>(
         ENDPOINTS.PROVIDER_KEYS.TEST(providerId, keyId),
         undefined,
         {
@@ -168,23 +213,9 @@ export class FetchProvidersServiceKeys {
           headers: config?.headers,
         }
       );
-      
-      const responseTimeMs = Date.now() - startTime;
-      
-      // Convert old response format to new standardized format
-      if (result.success) {
-        return createSuccessResponse(
-          responseTimeMs,
-          (result.details as Record<string, unknown>)?.modelsAvailable as string[] | undefined
-        );
-      } else {
-        // Get provider info to determine type
-        const provider = await this.getProviderById(providerId, config);
-        return classifyApiKeyTestError(
-          { message: result.message, status: 400 },
-          provider?.providerType
-        );
-      }
+
+      // Normalize the response to handle C# PascalCase and enum mismatches
+      return normalizeApiKeyTestResponse(result);
     } catch (error) {
       // Get provider info to determine type for error classification
       try {
