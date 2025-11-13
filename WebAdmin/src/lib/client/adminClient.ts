@@ -1,4 +1,5 @@
 import { ConduitAdminClient } from '@knn_labs/conduit-admin-client';
+import { useCallback } from 'react';
 
 /**
  * Ephemeral master key response from WebUI backend
@@ -74,11 +75,11 @@ export async function withAdminClient<T>(
  * Provides a function to execute operations with fresh ephemeral keys
  */
 export function useAdminClient() {
-  const executeWithAdmin = async <T>(
+  const executeWithAdmin = useCallback(async <T>(
     operation: (client: ConduitAdminClient) => Promise<T>
   ): Promise<T> => {
     return withAdminClient(operation);
-  };
+  }, []); // Empty deps - function never needs to change since it only calls withAdminClient
 
   return { executeWithAdmin };
 }
