@@ -86,6 +86,13 @@ namespace ConduitLLM.Core.Models
         ModelDiscovery,
 
         /// <summary>
+        /// LLM completion responses cached for cost optimization.
+        /// Configurable TTL based on use case (typically 15-60 minutes).
+        /// Automatically bypassed for streaming requests.
+        /// </summary>
+        LLMCompletion,
+
+        /// <summary>
         /// Audio stream data for real-time processing.
         /// Temporary storage with streaming requirements.
         /// </summary>

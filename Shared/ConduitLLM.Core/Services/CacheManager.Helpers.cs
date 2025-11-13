@@ -26,6 +26,8 @@ namespace ConduitLLM.Core.Services
                 { CacheRegion.GlobalSettings, (TimeSpan.FromMinutes(30), 75, true) },
                 { CacheRegion.Providers, (TimeSpan.FromHours(4), 80, true) },
                 { CacheRegion.ModelCosts, (TimeSpan.FromHours(12), 55, true) },
+                { CacheRegion.ModelDiscovery, (TimeSpan.FromHours(6), 65, true) },
+                { CacheRegion.LLMCompletion, (TimeSpan.FromMinutes(30), 60, true) },
                 { CacheRegion.AudioStreams, (TimeSpan.FromMinutes(10), 30, false) },
                 { CacheRegion.Monitoring, (TimeSpan.FromMinutes(5), 45, false) },
                 { CacheRegion.Default, (TimeSpan.FromMinutes(15), 50, false) }

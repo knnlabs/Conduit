@@ -5,7 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Core.Caching
 {
     /// <summary>
@@ -50,7 +49,7 @@ namespace ConduitLLM.Core.Caching
                     }
 
                     // Get the required services for the caching factory
-                    var cacheService = provider.GetRequiredService<ICacheService>();
+                    var cacheManager = provider.GetRequiredService<ICacheManager>();
                     var metricsService = provider.GetRequiredService<ICacheMetricsService>();
                     var cacheOptions = provider.GetRequiredService<IOptions<CacheOptions>>();
                     var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
@@ -58,7 +57,7 @@ namespace ConduitLLM.Core.Caching
                     // Create and return the caching factory
                     return new CachingLLMClientFactory(
                         originalFactory,
-                        cacheService,
+                        cacheManager,
                         metricsService,
                         cacheOptions,
                         loggerFactory);
@@ -78,17 +77,17 @@ namespace ConduitLLM.Core.Caching
     /// <remarks>
     /// This is a decorator factory that adds caching functionality to any ILLMClientFactory implementation.
     /// It intercepts client creation and wraps the returned clients with CachingLLMClient decorators.
-    /// 
+    ///
     /// This factory is automatically registered when caching is enabled through AddConduitCaching().
     /// It wraps the existing factory registration, preserving the underlying factory's behavior
     /// while adding caching capabilities to all created clients.
-    /// 
+    ///
     /// The caching behavior can be configured through CacheOptions in the application settings.
     /// </remarks>
     public class CachingLLMClientFactory : ILLMClientFactory
     {
         private readonly ILLMClientFactory _innerFactory;
-        private readonly ICacheService _cacheService;
+        private readonly ICacheManager _cacheManager;
         private readonly ICacheMetricsService _metricsService;
         private readonly IOptions<CacheOptions> _cacheOptions;
         private readonly ILoggerFactory _loggerFactory;
@@ -98,13 +97,13 @@ namespace ConduitLLM.Core.Caching
         /// </summary>
         public CachingLLMClientFactory(
             ILLMClientFactory innerFactory,
-            ICacheService cacheService,
+            ICacheManager cacheManager,
             ICacheMetricsService metricsService,
             IOptions<CacheOptions> cacheOptions,
             ILoggerFactory loggerFactory)
         {
             _innerFactory = innerFactory ?? throw new ArgumentNullException(nameof(innerFactory));
-            _cacheService = cacheService ?? throw new ArgumentNullException(nameof(cacheService));
+            _cacheManager = cacheManager ?? throw new ArgumentNullException(nameof(cacheManager));
             _metricsService = metricsService ?? throw new ArgumentNullException(nameof(metricsService));
             _cacheOptions = cacheOptions ?? throw new ArgumentNullException(nameof(cacheOptions));
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
@@ -124,7 +123,7 @@ namespace ConduitLLM.Core.Caching
                 // Wrap the client with the caching decorator
                 return new CachingLLMClient(
                     client,
-                    _cacheService,
+                    _cacheManager,
                     _metricsService,
                     _cacheOptions,
                     logger);
@@ -149,7 +148,7 @@ namespace ConduitLLM.Core.Caching
                 // Wrap the client with the caching decorator
                 return new CachingLLMClient(
                     client,
-                    _cacheService,
+                    _cacheManager,
                     _metricsService,
                     _cacheOptions,
                     logger);
@@ -180,7 +179,7 @@ namespace ConduitLLM.Core.Caching
                 // Wrap the client with the caching decorator
                 return new CachingLLMClient(
                     client,
-                    _cacheService,
+                    _cacheManager,
                     _metricsService,
                     _cacheOptions,
                     logger);

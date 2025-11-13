@@ -39,11 +39,6 @@ namespace ConduitLLM.Configuration.Options
         public int DefaultAbsoluteExpirationMinutes { get; set; } = 60; // 1 hour default
 
         /// <summary>
-        /// Default sliding expiration time in minutes
-        /// </summary>
-        public int DefaultSlidingExpirationMinutes { get; set; } = 20; // 20 minutes default
-
-        /// <summary>
         /// Whether to use default expiration times when not specified
         /// </summary>
         public bool UseDefaultExpirationTimes { get; set; } = true;
@@ -114,14 +109,6 @@ namespace ConduitLLM.Configuration.Options
         public TimeSpan? DefaultAbsoluteExpiration =>
             UseDefaultExpirationTimes && DefaultAbsoluteExpirationMinutes > 0
                 ? TimeSpan.FromMinutes(DefaultAbsoluteExpirationMinutes)
-                : null;
-
-        /// <summary>
-        /// Gets the default sliding expiration time as TimeSpan
-        /// </summary>
-        public TimeSpan? DefaultSlidingExpiration =>
-            UseDefaultExpirationTimes && DefaultSlidingExpirationMinutes > 0
-                ? TimeSpan.FromMinutes(DefaultSlidingExpirationMinutes)
                 : null;
     }
 

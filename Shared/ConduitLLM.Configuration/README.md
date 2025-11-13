@@ -49,8 +49,8 @@ using ConduitLLM.Configuration.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Register LLM caching with configuration
-builder.Services.AddLLMCaching(builder.Configuration);
+// Register caching services
+builder.Services.AddCachingServices(builder.Configuration);
 
 // Register other shared services
 builder.Services.AddConduitLLMConfiguration(builder.Configuration);

@@ -19,14 +19,6 @@ namespace ConduitLLM.Tests.TestHelpers
         }
 
         /// <summary>
-        /// Creates a fluent builder for ICacheService mock.
-        /// </summary>
-        public static CacheServiceBuilder BuildCacheService()
-        {
-            return new CacheServiceBuilder();
-        }
-
-        /// <summary>
         /// Creates a fluent builder for complex memory cache scenarios.
         /// </summary>
         public static MemoryCacheBuilder BuildMemoryCache()
@@ -104,81 +96,6 @@ namespace ConduitLLM.Tests.TestHelpers
         }
 
         public Mock<IDistributedCache> Build()
-        {
-            return _mock;
-        }
-    }
-
-    /// <summary>
-    /// Fluent builder for ICacheService mocks (ConduitLLM.Configuration.Services).
-    /// </summary>
-    public class CacheServiceBuilder
-    {
-        private readonly Mock<ConduitLLM.Configuration.Interfaces.ICacheService> _mock = new();
-        private readonly Dictionary<string, object> _cache = new();
-        private TimeSpan? _defaultExpiration;
-
-        public CacheServiceBuilder WithDefaultExpiration(TimeSpan expiration)
-        {
-            _defaultExpiration = expiration;
-            return this;
-        }
-
-        public CacheServiceBuilder WithCachedValue<T>(string key, T value)
-        {
-            _cache[key] = value;
-            return this;
-        }
-
-        public CacheServiceBuilder WithGetBehavior()
-        {
-            _mock.Setup(x => x.Get<It.IsAnyType>(It.IsAny<string>()))
-                .Returns((string key) =>
-                {
-                    if (_cache.TryGetValue(key, out var value))
-                    {
-                        return value;
-                    }
-                    return null;
-                });
-
-            return this;
-        }
-
-        public CacheServiceBuilder WithSetBehavior()
-        {
-            _mock.Setup(x => x.Set(It.IsAny<string>(), It.IsAny<It.IsAnyType>(), It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan?>()))
-                .Callback((string key, object value, TimeSpan? absoluteExpiration, TimeSpan? slidingExpiration) =>
-                {
-                    _cache[key] = value;
-                });
-
-            return this;
-        }
-
-        public CacheServiceBuilder WithGetOrCreateBehavior<T>(Func<string, Task<T>> factory = null)
-        {
-            _mock.Setup(x => x.GetOrCreateAsync(
-                It.IsAny<string>(),
-                It.IsAny<Func<Task<T>>>(),
-                It.IsAny<TimeSpan?>(),
-                It.IsAny<TimeSpan?>()))
-                .Returns(async (string key, Func<Task<T>> valueFactory, TimeSpan? absoluteExpiration, TimeSpan? slidingExpiration) =>
-                {
-                    if (_cache.TryGetValue(key, out var cached) && cached is T typedValue)
-                    {
-                        return typedValue;
-                    }
-
-                    var value = factory != null ? await factory(key) : await valueFactory();
-                    _cache[key] = value;
-                    return value;
-                });
-
-            return this;
-        }
-
-        public Mock<ConduitLLM.Configuration.Interfaces.ICacheService> Build()
         {
             return _mock;
         }

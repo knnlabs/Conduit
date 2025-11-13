@@ -15,9 +15,6 @@ public partial class Program
 
         // Virtual Key service registration will be done after Redis configuration
 
-        // Register cache service based on configuration
-        builder.Services.AddCacheService(builder.Configuration);
-
         // Configure Redis connection for all Redis-dependent services
         // Check for REDIS_URL first, then fall back to CONDUIT_REDIS_CONNECTION_STRING
         var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");

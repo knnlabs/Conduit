@@ -80,9 +80,6 @@ namespace ConduitLLM.Configuration.Extensions
             // Add Redis connection factory
             services.AddSingleton<RedisConnectionFactory>();
 
-            // Register cache service factory
-            services.AddSingleton<CacheServiceFactory>();
-
             // Register the appropriate distributed cache provider based on configuration
             var cacheType = configuration.GetSection(CacheOptions.SectionName)
                 .GetValue<string>("CacheType")?.ToLowerInvariant();
@@ -114,21 +111,6 @@ namespace ConduitLLM.Configuration.Extensions
                 // Use memory cache if Redis is not specified
                 services.AddDistributedMemoryCache();
             }
-
-            // Register the ICacheService as a singleton but with factory-based initialization
-            services.AddSingleton<ICacheService>(serviceProvider =>
-            {
-                var logger = serviceProvider.GetRequiredService<ILogger<CacheServiceFactory>>();
-                logger.LogInformation("[CacheService] Creating cache service during service registration...");
-                
-                var factory = serviceProvider.GetRequiredService<CacheServiceFactory>();
-
-                // Create the appropriate cache service based on configuration
-                // For simplicity in the synchronous service provider context, we'll block on the async result here
-                var cacheService = factory.CreateCacheServiceAsync().GetAwaiter().GetResult();
-                logger.LogInformation("[CacheService] Cache service created successfully");
-                return cacheService;
-            });
 
             return services;
         }

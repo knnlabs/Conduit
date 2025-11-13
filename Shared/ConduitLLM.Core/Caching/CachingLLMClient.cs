@@ -10,42 +10,40 @@ using ConduitLLM.Core.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Core.Caching
 {
     /// <summary>
-    /// A decorator for ILLMClient that adds caching functionality
+    /// A decorator for ILLMClient that adds caching functionality using ICacheManager
     /// </summary>
     public class CachingLLMClient : ILLMClient
     {
         private readonly ILLMClient _innerClient;
-        private readonly ICacheService _cacheService;
+        private readonly ICacheManager _cacheManager;
         private readonly ICacheMetricsService _metricsService;
         private readonly IOptions<CacheOptions> _cacheOptions;
         private readonly ILogger<CachingLLMClient> _logger;
         private readonly bool _isEnabled;
 
-        // Cache key prefixes for different operations
-        private const string COMPLETION_CACHE_PREFIX = "llm:completion:";
-        private const string MODEL_LIST_CACHE_PREFIX = "llm:models:";
+        // Cache region for LLM completions
+        private const CacheRegion CACHE_REGION = CacheRegion.LLMCompletion;
 
         /// <summary>
         /// Creates a new instance of the CachingLLMClient
         /// </summary>
         /// <param name="innerClient">The inner LLM client to decorate</param>
-        /// <param name="cacheService">The cache service</param>
+        /// <param name="cacheManager">The cache manager</param>
         /// <param name="metricsService">The cache metrics service</param>
         /// <param name="cacheOptions">The cache options</param>
         /// <param name="logger">The logger</param>
         public CachingLLMClient(
             ILLMClient innerClient,
-            ICacheService cacheService,
+            ICacheManager cacheManager,
             ICacheMetricsService metricsService,
             IOptions<CacheOptions> cacheOptions,
             ILogger<CachingLLMClient> logger)
         {
             _innerClient = innerClient ?? throw new ArgumentNullException(nameof(innerClient));
-            _cacheService = cacheService ?? throw new ArgumentNullException(nameof(cacheService));
+            _cacheManager = cacheManager ?? throw new ArgumentNullException(nameof(cacheManager));
             _metricsService = metricsService ?? throw new ArgumentNullException(nameof(metricsService));
             _cacheOptions = cacheOptions ?? throw new ArgumentNullException(nameof(cacheOptions));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -71,7 +69,7 @@ namespace ConduitLLM.Core.Caching
             try
             {
                 // Try to get from cache first
-                var cachedResponse = _cacheService.Get<ChatCompletionResponse>(cacheKey);
+                var cachedResponse = await _cacheManager.GetAsync<ChatCompletionResponse>(cacheKey, CACHE_REGION, cancellationToken);
 
                 if (cachedResponse != null)
                 {
@@ -102,7 +100,7 @@ namespace ConduitLLM.Core.Caching
 
                 if (cacheExpiration.HasValue)
                 {
-                    _cacheService.Set(cacheKey, response, cacheExpiration);
+                    await _cacheManager.SetAsync(cacheKey, response, CACHE_REGION, cacheExpiration, cancellationToken);
                     _logger.LogDebug("Cached response with key {CacheKey} for {ExpirationMinutes} minutes",
                         cacheKey, cacheExpiration.Value.TotalMinutes);
                 }
@@ -139,15 +137,17 @@ namespace ConduitLLM.Core.Caching
             }
 
             // Generate a cache key for the models list
-            string cacheKey = $"{MODEL_LIST_CACHE_PREFIX}{_innerClient.GetType().Name}:{(!string.IsNullOrEmpty(apiKey) ? ComputeHash(apiKey) : "default")}";
+            string cacheKey = $"models:{_innerClient.GetType().Name}:{(!string.IsNullOrEmpty(apiKey) ? ComputeHash(apiKey) : "default")}";
 
             try
             {
                 // Try to get from cache first with longer TTL for model lists
-                var result = await _cacheService.GetOrCreateAsync(
+                var result = await _cacheManager.GetOrCreateAsync(
                     cacheKey,
                     async () => await _innerClient.ListModelsAsync(apiKey, cancellationToken),
-                    TimeSpan.FromHours(1)); // Cache model lists for an hour
+                    CacheRegion.ModelMetadata,
+                    TimeSpan.FromHours(1),
+                    cancellationToken);
 
                 return result ?? new List<string>();
             }
@@ -173,7 +173,7 @@ namespace ConduitLLM.Core.Caching
         private string GenerateCacheKey(ChatCompletionRequest request, string? apiKey)
         {
             var options = _cacheOptions.Value;
-            var keyBuilder = new StringBuilder(COMPLETION_CACHE_PREFIX);
+            var keyBuilder = new StringBuilder("completion:");
 
             // Add model to the key
             keyBuilder.Append(request.Model.ToLowerInvariant());
