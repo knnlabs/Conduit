@@ -17,11 +17,17 @@ namespace ConduitLLM.Configuration.Options
         /// Whether the cache is enabled
         /// Auto-enables when Redis is configured unless explicitly overridden
         /// </summary>
-        public bool IsEnabled 
-        { 
+        public bool IsEnabled
+        {
             get => _isEnabledOverride ?? !string.IsNullOrWhiteSpace(RedisConnectionString);
             set => _isEnabledOverride = value;
         }
+
+        /// <summary>
+        /// Whether LLM response caching is enabled (runtime toggleable via Admin API)
+        /// Default: false (opt-in for safety)
+        /// </summary>
+        public bool LLMCachingEnabled { get; set; } = false;
 
         /// <summary>
         /// The type of cache to use

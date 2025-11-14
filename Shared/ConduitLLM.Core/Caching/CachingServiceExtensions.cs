@@ -51,7 +51,7 @@ namespace ConduitLLM.Core.Caching
                     // Get the required services for the caching factory
                     var cacheManager = provider.GetRequiredService<ICacheManager>();
                     var metricsService = provider.GetRequiredService<ICacheMetricsService>();
-                    var cacheOptions = provider.GetRequiredService<IOptions<CacheOptions>>();
+                    var cacheOptions = provider.GetRequiredService<IOptionsMonitor<CacheOptions>>();
                     var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
 
                     // Create and return the caching factory
@@ -89,7 +89,7 @@ namespace ConduitLLM.Core.Caching
         private readonly ILLMClientFactory _innerFactory;
         private readonly ICacheManager _cacheManager;
         private readonly ICacheMetricsService _metricsService;
-        private readonly IOptions<CacheOptions> _cacheOptions;
+        private readonly IOptionsMonitor<CacheOptions> _cacheOptions;
         private readonly ILoggerFactory _loggerFactory;
 
         /// <summary>
@@ -99,7 +99,7 @@ namespace ConduitLLM.Core.Caching
             ILLMClientFactory innerFactory,
             ICacheManager cacheManager,
             ICacheMetricsService metricsService,
-            IOptions<CacheOptions> cacheOptions,
+            IOptionsMonitor<CacheOptions> cacheOptions,
             ILoggerFactory loggerFactory)
         {
             _innerFactory = innerFactory ?? throw new ArgumentNullException(nameof(innerFactory));
@@ -115,8 +115,9 @@ namespace ConduitLLM.Core.Caching
             // Get the original client from the inner factory
             var client = _innerFactory.GetClient(modelAlias);
 
-            // Only wrap the client if caching is enabled
-            if (_cacheOptions.Value.IsEnabled)
+            // Always wrap the client - the wrapper checks LLMCachingEnabled at runtime
+            // This allows runtime toggling without recreating clients
+            if (_cacheOptions.CurrentValue.IsEnabled)
             {
                 var logger = _loggerFactory.CreateLogger<CachingLLMClient>();
 
@@ -140,8 +141,9 @@ namespace ConduitLLM.Core.Caching
             // Get the original client from the inner factory
             var client = _innerFactory.GetClientByProviderId(providerId);
 
-            // Only wrap the client if caching is enabled
-            if (_cacheOptions.Value.IsEnabled)
+            // Always wrap the client - the wrapper checks LLMCachingEnabled at runtime
+            // This allows runtime toggling without recreating clients
+            if (_cacheOptions.CurrentValue.IsEnabled)
             {
                 var logger = _loggerFactory.CreateLogger<CachingLLMClient>();
 
@@ -171,8 +173,9 @@ namespace ConduitLLM.Core.Caching
             // Get the original client from the inner factory
             var client = _innerFactory.GetClientByProviderType(providerType);
 
-            // Only wrap the client if caching is enabled
-            if (_cacheOptions.Value.IsEnabled)
+            // Always wrap the client - the wrapper checks LLMCachingEnabled at runtime
+            // This allows runtime toggling without recreating clients
+            if (_cacheOptions.CurrentValue.IsEnabled)
             {
                 var logger = _loggerFactory.CreateLogger<CachingLLMClient>();
 

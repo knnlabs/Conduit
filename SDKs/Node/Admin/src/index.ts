@@ -122,6 +122,8 @@ export {
   CacheClearResult,
   CacheStatsDto,
   CacheKeyStats,
+  LLMCacheControlDto,
+  ToggleLLMCacheRequest,
   LoadBalancerConfigDto,
   UpdateLoadBalancerConfigDto,
   LoadBalancerHealthDto,

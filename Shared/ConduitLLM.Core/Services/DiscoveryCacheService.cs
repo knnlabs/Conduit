@@ -21,8 +21,9 @@ namespace ConduitLLM.Core.Services
 
         /// <summary>
         /// Whether caching is enabled
+        /// TEMPORARILY DISABLED: Serialization issue with anonymous objects in DiscoveryModelsResult.Data
         /// </summary>
-        public bool EnableCaching { get; set; } = true;
+        public bool EnableCaching { get; set; } = false; // TODO: Re-enable after fixing serialization
 
         /// <summary>
         /// Whether to warm cache on startup

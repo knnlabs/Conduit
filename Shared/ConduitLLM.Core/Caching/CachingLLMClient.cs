@@ -20,9 +20,8 @@ namespace ConduitLLM.Core.Caching
         private readonly ILLMClient _innerClient;
         private readonly ICacheManager _cacheManager;
         private readonly ICacheMetricsService _metricsService;
-        private readonly IOptions<CacheOptions> _cacheOptions;
+        private readonly IOptionsMonitor<CacheOptions> _cacheOptions;
         private readonly ILogger<CachingLLMClient> _logger;
-        private readonly bool _isEnabled;
 
         // Cache region for LLM completions
         private const CacheRegion CACHE_REGION = CacheRegion.LLMCompletion;
@@ -39,7 +38,7 @@ namespace ConduitLLM.Core.Caching
             ILLMClient innerClient,
             ICacheManager cacheManager,
             ICacheMetricsService metricsService,
-            IOptions<CacheOptions> cacheOptions,
+            IOptionsMonitor<CacheOptions> cacheOptions,
             ILogger<CachingLLMClient> logger)
         {
             _innerClient = innerClient ?? throw new ArgumentNullException(nameof(innerClient));
@@ -47,7 +46,6 @@ namespace ConduitLLM.Core.Caching
             _metricsService = metricsService ?? throw new ArgumentNullException(nameof(metricsService));
             _cacheOptions = cacheOptions ?? throw new ArgumentNullException(nameof(cacheOptions));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _isEnabled = _cacheOptions.Value.IsEnabled;
         }
 
         /// <inheritdoc />
@@ -57,7 +55,8 @@ namespace ConduitLLM.Core.Caching
             CancellationToken cancellationToken = default)
         {
             // Skip caching if disabled or for streaming requests
-            if (!_isEnabled || (request.Stream.HasValue && request.Stream.Value))
+            // Use CurrentValue for runtime-updated configuration
+            if (!_cacheOptions.CurrentValue.LLMCachingEnabled || (request.Stream.HasValue && request.Stream.Value))
             {
                 return await _innerClient.CreateChatCompletionAsync(request, apiKey, cancellationToken);
             }
@@ -131,7 +130,7 @@ namespace ConduitLLM.Core.Caching
             CancellationToken cancellationToken = default)
         {
             // Skip caching if disabled
-            if (!_isEnabled)
+            if (!_cacheOptions.CurrentValue.LLMCachingEnabled)
             {
                 return await _innerClient.ListModelsAsync(apiKey, cancellationToken);
             }
@@ -172,7 +171,7 @@ namespace ConduitLLM.Core.Caching
         /// </summary>
         private string GenerateCacheKey(ChatCompletionRequest request, string? apiKey)
         {
-            var options = _cacheOptions.Value;
+            var options = _cacheOptions.CurrentValue;
             var keyBuilder = new StringBuilder("completion:");
 
             // Add model to the key
@@ -221,7 +220,7 @@ namespace ConduitLLM.Core.Caching
             }
 
             // Compute a hash of the request content based on the chosen algorithm
-            string requestHash = options.HashAlgorithm.ToUpperInvariant() switch
+            string requestHash = (options.HashAlgorithm ?? "MD5").ToUpperInvariant() switch
             {
                 "MD5" => ComputeMD5Hash(requestHashContent.ToString()),
                 "SHA256" => ComputeSHA256Hash(requestHashContent.ToString()),
@@ -240,7 +239,7 @@ namespace ConduitLLM.Core.Caching
         /// </summary>
         private TimeSpan? GetCacheExpiration(string model)
         {
-            var options = _cacheOptions.Value;
+            var options = _cacheOptions.CurrentValue;
 
             // Check model-specific rules first
             if (options.ModelSpecificRules != null && options.ModelSpecificRules.Count() > 0)

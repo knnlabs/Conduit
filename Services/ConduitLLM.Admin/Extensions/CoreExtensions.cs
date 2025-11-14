@@ -21,6 +21,9 @@ namespace ConduitLLM.Admin.Extensions
         /// <returns>The service collection for chaining</returns>
         public static IServiceCollection AddCoreServices(this IServiceCollection services, IConfiguration configuration)
         {
+            // Register unified cache manager (required by CacheManagementService)
+            services.AddCacheManager(configuration);
+
             // Add database services - use ConfigurationDbContext
             services.AddDatabaseServices<ConduitLLM.Configuration.ConduitDbContext>();
 
@@ -73,9 +76,9 @@ namespace ConduitLLM.Admin.Extensions
             // Add context management services
             services.AddConduitContextManagement(configuration);
 
-            // Add discovery cache services
-            services.AddDiscoveryCache(configuration);
-            Console.WriteLine("[ConduitLLM.Admin] Discovery Cache Service registered - cache invalidation endpoints enabled");
+            // Note: AddDiscoveryCache is not registered in Admin API as it's optional
+            // SystemInfoController has IDiscoveryCacheService? as nullable dependency
+            // If needed in the future, must first register AddCacheManager(configuration)
 
             // Add Provider Registry - single source of truth for provider metadata
             services.AddSingleton<IProviderMetadataRegistry, ProviderMetadataRegistry>();

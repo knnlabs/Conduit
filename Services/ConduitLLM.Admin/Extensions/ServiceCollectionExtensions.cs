@@ -177,8 +177,13 @@ public static class ServiceCollectionExtensions
         // Register SignalR admin notification service
         services.AddScoped<ConduitLLM.Admin.Hubs.AdminNotificationService>();
 
-        // Register cache management service
-        services.AddScoped<ICacheManagementService, CacheManagementService>();
+        // Register LLM cache management service (simple database + event publishing)
+        services.AddScoped<ILLMCacheManagementService, LLMCacheManagementService>();
+
+        // NOTE: ICacheManagementService registration is commented out because it requires
+        // cache infrastructure services (ICacheRegistry, ICacheStatisticsCollector, ICachePolicyEngine)
+        // that are not currently implemented. General cache management endpoints will return 501.
+        // services.AddScoped<ICacheManagementService, CacheManagementService>();
 
         // Register billing audit service for comprehensive billing event tracking - with leader election
         services.AddSingleton<ConduitLLM.Configuration.Interfaces.IBillingAuditService, ConduitLLM.Configuration.Services.BillingAuditService>();

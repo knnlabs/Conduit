@@ -235,9 +235,6 @@ public partial class Program
 
         // Add monitoring services - with leader election
         builder.Services.AddLeaderElectedHostedService<ConduitLLM.Admin.Services.AdminOperationsMetricsService>("AdminOperationsMetricsService");
-        
-        // Add cache infrastructure
-        builder.Services.AddCacheInfrastructure(builder.Configuration);
 
         var app = builder.Build();
 

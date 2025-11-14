@@ -27,13 +27,14 @@ import {
 } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
-import { SystemInfoDto } from '@knn_labs/conduit-admin-client';
+import { SystemInfoDto, LLMCacheControlDto } from '@knn_labs/conduit-admin-client';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { formatUptime } from './helpers';
 import { SystemOverviewTab } from './SystemOverviewTab';
 import { SystemServicesTab } from './SystemServicesTab';
 import { SystemEnvironmentTab } from './SystemEnvironmentTab';
 import { SystemDependenciesTab } from './SystemDependenciesTab';
+import { modals } from '@mantine/modals';
 
 
 
@@ -42,6 +43,8 @@ export default function SystemInfoPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [systemInfo, setSystemInfo] = useState<SystemInfoDto | null>(null);
+  const [cacheStatus, setCacheStatus] = useState<LLMCacheControlDto | null>(null);
+  const [isTogglingCache, setIsTogglingCache] = useState(false);
   const [activeTab, setActiveTab] = useState<string | null>('overview');
   const [error, setError] = useState<string | null>(null);
 
@@ -52,12 +55,20 @@ export default function SystemInfoPage() {
   const fetchSystemInfo = async () => {
     try {
       setError(null);
-      
-      const data = await withAdminClient(client => 
-        client.system.getSystemInfo()
-      );
-      
-      setSystemInfo(data);
+
+      // Fetch system info (required)
+      const systemData = await withAdminClient(client => client.system.getSystemInfo());
+      setSystemInfo(systemData);
+
+      // Fetch cache status separately (optional, non-blocking)
+      withAdminClient(client => client.configuration.getLLMCacheStatus())
+        .then(setCacheStatus)
+        .catch((error) => {
+          // Silently fail for cache status - it's optional
+          console.warn('Failed to fetch LLM cache status:', error);
+          setCacheStatus(null);
+        });
+
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('Error fetching system info:', errorMessage);
@@ -88,7 +99,7 @@ export default function SystemInfoPage() {
       timestamp: new Date().toISOString(),
       system: systemInfo,
     };
-    
+
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -96,11 +107,62 @@ export default function SystemInfoPage() {
     a.download = `system-info-${new Date().toISOString()}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    
+
     notifications.show({
       title: 'Exported',
       message: 'System information exported successfully',
       color: 'green',
+    });
+  };
+
+  const handleCacheToggle = (newValue: boolean) => {
+    const action = newValue ? 'enable' : 'disable';
+
+    modals.openConfirmModal({
+      title: `${action === 'enable' ? 'Enable' : 'Disable'} LLM Cache`,
+      children: (
+        <Text size="sm">
+          Are you sure you want to {action} LLM response caching?
+          {!newValue && (
+            <>
+              <br /><br />
+              This will:
+              <br />• Increase latency for repeated requests
+              <br />• Increase provider API costs
+              <br />• Apply to all Core API instances immediately
+            </>
+          )}
+        </Text>
+      ),
+      labels: { confirm: 'Confirm', cancel: 'Cancel' },
+      confirmProps: { color: newValue ? 'green' : 'red' },
+      onConfirm: async () => {
+        setIsTogglingCache(true);
+        try {
+          const updatedStatus = await withAdminClient(client =>
+            client.configuration.toggleLLMCache({ enabled: newValue })
+          );
+
+          setCacheStatus(updatedStatus);
+
+          notifications.show({
+            title: 'Success',
+            message: `LLM cache ${newValue ? 'enabled' : 'disabled'} successfully`,
+            color: 'green',
+          });
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          console.error('Error toggling cache:', errorMessage);
+
+          notifications.show({
+            title: 'Error',
+            message: `Failed to ${action} cache: ${errorMessage}`,
+            color: 'red',
+          });
+        } finally {
+          setIsTogglingCache(false);
+        }
+      },
     });
   };
 
@@ -260,7 +322,12 @@ export default function SystemInfoPage() {
         </Tabs.List>
 
         <Tabs.Panel value="overview" pt="md">
-          <SystemOverviewTab systemInfo={systemInfo} />
+          <SystemOverviewTab
+            systemInfo={systemInfo}
+            cacheStatus={cacheStatus}
+            onCacheToggle={handleCacheToggle}
+            isTogglingCache={isTogglingCache}
+          />
         </Tabs.Panel>
 
         <Tabs.Panel value="services" pt="md">

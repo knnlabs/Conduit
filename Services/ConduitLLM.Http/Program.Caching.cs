@@ -4,11 +4,15 @@ using ConduitLLM.Configuration.Options;
 using ConduitLLM.Http.Services;
 using StackExchange.Redis;
 using MassTransit;
+using ConduitLLM.Core.Extensions;
 
 public partial class Program
 {
     public static void ConfigureCachingServices(WebApplicationBuilder builder)
     {
+        // Register unified cache manager (required by DiscoveryCacheService and other services)
+        builder.Services.AddCacheManager(builder.Configuration);
+
         // Configure batch spending options
         builder.Services.Configure<BatchSpendingOptions>(
             builder.Configuration.GetSection(BatchSpendingOptions.SectionName));
@@ -33,12 +37,41 @@ public partial class Program
             }
         }
 
+        // Configure CacheOptions with the parsed Redis connection string
+        // This ensures SignalRAcknowledgmentService and other services can access it
+        builder.Services.Configure<ConduitLLM.Configuration.Options.CacheOptions>(options =>
+        {
+            if (!string.IsNullOrEmpty(redisConnectionString))
+            {
+                options.RedisConnectionString = redisConnectionString;
+            }
+        });
+
         builder.Services.AddRedisDataProtection(redisConnectionString, "Conduit");
 
-        // Configure distributed cache for async tasks
+        // Configure Redis connection multiplexer FIRST (shared across all Redis services)
         if (!string.IsNullOrEmpty(redisConnectionString))
         {
-            // Add Redis distributed cache for async task storage
+            Console.WriteLine($"[Conduit] Redis connection string configured: {redisConnectionString}");
+
+            // Register Redis connection factory for proper connection pooling
+            builder.Services.AddSingleton<ConduitLLM.Configuration.Services.RedisConnectionFactory>();
+
+            // Use Redis-cached Virtual Key service for high-performance validation
+            builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+            {
+                Console.WriteLine("[Conduit] Creating Redis connection during service registration...");
+                var factory = sp.GetRequiredService<ConduitLLM.Configuration.Services.RedisConnectionFactory>();
+                var connectionTask = factory.GetConnectionAsync(redisConnectionString);
+                Console.WriteLine("[Conduit] Waiting for Redis connection to complete...");
+                var connection = connectionTask.GetAwaiter().GetResult();
+                Console.WriteLine("[Conduit] Redis connection established successfully");
+                return connection;
+            });
+
+            // Add Redis distributed cache using the connection string directly
+            // Note: This creates a separate connection pool from IConnectionMultiplexer
+            // which is intentional for distributed cache operations
             builder.Services.AddStackExchangeRedisCache(options =>
             {
                 options.Configuration = redisConnectionString;
@@ -56,23 +89,8 @@ public partial class Program
         // Register Virtual Key service with optional Redis caching
         if (!string.IsNullOrEmpty(redisConnectionString))
         {
-            Console.WriteLine($"[Conduit] Redis connection string configured: {redisConnectionString}");
-            
-            // Register Redis connection factory for proper connection pooling
-            builder.Services.AddSingleton<ConduitLLM.Configuration.Services.RedisConnectionFactory>();
-            
-            // Use Redis-cached Virtual Key service for high-performance validation
-            builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
-            {
-                Console.WriteLine("[Conduit] Creating Redis connection during service registration...");
-                var factory = sp.GetRequiredService<ConduitLLM.Configuration.Services.RedisConnectionFactory>();
-                var connectionTask = factory.GetConnectionAsync(redisConnectionString);
-                Console.WriteLine("[Conduit] Waiting for Redis connection to complete...");
-                var connection = connectionTask.GetAwaiter().GetResult();
-                Console.WriteLine("[Conduit] Redis connection established successfully");
-                return connection;
-            });
-            
+            // IConnectionMultiplexer and RedisConnectionFactory are already registered above
+
             builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IVirtualKeyCache, RedisVirtualKeyCache>();
             
             // Register additional Redis cache services

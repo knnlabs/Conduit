@@ -21,7 +21,8 @@ namespace ConduitLLM.Admin.Controllers
         private readonly ILogger<ConfigurationController> _logger;
         private readonly IMemoryCache _cache;
         private readonly IConfiguration _configuration;
-        private readonly ICacheManagementService _cacheManagementService;
+        private readonly ICacheManagementService? _cacheManagementService;
+        private readonly ILLMCacheManagementService _llmCacheManagementService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ConfigurationController"/> class.
@@ -30,19 +31,22 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="logger">Logger instance.</param>
         /// <param name="cache">Memory cache.</param>
         /// <param name="configuration">Application configuration.</param>
-        /// <param name="cacheManagementService">Service for cache maintenance operations.</param>
+        /// <param name="cacheManagementService">Service for cache maintenance operations (optional - required only for general cache endpoints).</param>
+        /// <param name="llmCacheManagementService">Service for LLM cache toggle operations.</param>
         public ConfigurationController(
             IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<ConfigurationController> logger,
             IMemoryCache cache,
             IConfiguration configuration,
-            ICacheManagementService cacheManagementService)
+            ILLMCacheManagementService llmCacheManagementService,
+            ICacheManagementService? cacheManagementService = null)
         {
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            _cacheManagementService = cacheManagementService ?? throw new ArgumentNullException(nameof(cacheManagementService));
+            _cacheManagementService = cacheManagementService; // Optional - may be null
+            _llmCacheManagementService = llmCacheManagementService ?? throw new ArgumentNullException(nameof(llmCacheManagementService));
         }
 
         /// <summary>
@@ -126,6 +130,10 @@ namespace ConduitLLM.Admin.Controllers
         {
             try
             {
+                if (_cacheManagementService == null)
+                {
+                    return StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." });
+                }
                 var configuration = await _cacheManagementService.GetConfigurationAsync(cancellationToken);
                 return Ok(configuration);
             }
@@ -148,6 +156,10 @@ namespace ConduitLLM.Admin.Controllers
         {
             try
             {
+                if (_cacheManagementService == null)
+                {
+                    return StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." });
+                }
                 await _cacheManagementService.UpdateConfigurationAsync(config, cancellationToken);
                 return Ok(new { message = "Caching configuration updated successfully" });
             }
@@ -169,6 +181,10 @@ namespace ConduitLLM.Admin.Controllers
         {
             try
             {
+                if (_cacheManagementService == null)
+                {
+                    return StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." });
+                }
                 await _cacheManagementService.ClearCacheAsync(cacheId, cancellationToken);
                 return Ok(new { message = $"Cache '{cacheId}' cleared successfully" });
             }
@@ -194,6 +210,10 @@ namespace ConduitLLM.Admin.Controllers
         {
             try
             {
+                if (_cacheManagementService == null)
+                {
+                    return StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." });
+                }
                 var statistics = await _cacheManagementService.GetStatisticsAsync(regionId, cancellationToken);
                 return Ok(statistics);
             }
@@ -218,6 +238,10 @@ namespace ConduitLLM.Admin.Controllers
         {
             try
             {
+                if (_cacheManagementService == null)
+                {
+                    return StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." });
+                }
                 var configuration = await _cacheManagementService.GetConfigurationAsync(cancellationToken);
                 return Ok(new
                 {
@@ -245,6 +269,10 @@ namespace ConduitLLM.Admin.Controllers
         {
             try
             {
+                if (_cacheManagementService == null)
+                {
+                    return StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." });
+                }
                 if (take > 1000)
                 {
                     return BadRequest(new ErrorResponseDto("Cannot retrieve more than 1000 entries at once"));
@@ -276,9 +304,13 @@ namespace ConduitLLM.Admin.Controllers
         {
             try
             {
+                if (_cacheManagementService == null)
+                {
+                    return StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." });
+                }
                 await _cacheManagementService.RefreshCacheAsync(regionId, key, cancellationToken);
-                var message = string.IsNullOrEmpty(key) 
-                    ? $"Cache region '{regionId}' refreshed successfully" 
+                var message = string.IsNullOrEmpty(key)
+                    ? $"Cache region '{regionId}' refreshed successfully"
                     : $"Cache key '{key}' in region '{regionId}' refreshed successfully";
                 return Ok(new { message });
             }
@@ -309,6 +341,10 @@ namespace ConduitLLM.Admin.Controllers
         {
             try
             {
+                if (_cacheManagementService == null)
+                {
+                    return StatusCode(501, new { error = "General cache management service not implemented", message = "This endpoint requires cache infrastructure services that are not currently registered." });
+                }
                 await _cacheManagementService.UpdatePolicyAsync(regionId, policyUpdate, cancellationToken);
                 return Ok(new { message = $"Cache policy for region '{regionId}' updated successfully" });
             }
@@ -367,6 +403,55 @@ namespace ConduitLLM.Admin.Controllers
                 TotalRequests = stats.Sum(s => s.RequestCount),
                 ProviderDistribution = stats
             };
+        }
+
+        /// <summary>
+        /// Gets the current LLM caching status.
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>LLM cache control status.</returns>
+        [HttpGet("caching/llm-status")]
+        [ProducesResponseType(typeof(LLMCacheControlDto), 200)]
+        public async Task<IActionResult> GetLLMCacheStatus(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var status = await _llmCacheManagementService.GetLLMCacheStatusAsync(cancellationToken);
+                return Ok(status);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get LLM cache status");
+                return StatusCode(500, new { error = "Failed to get LLM cache status", message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Toggles LLM caching for all instances.
+        /// </summary>
+        /// <param name="request">Toggle request with enabled state and reason.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Updated LLM cache control status.</returns>
+        [HttpPost("caching/llm-toggle")]
+        [ProducesResponseType(typeof(LLMCacheControlDto), 200)]
+        public async Task<IActionResult> ToggleLLMCache([FromBody] ToggleLLMCacheRequest request, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var userName = User?.Identity?.Name ?? "Unknown";
+                var result = await _llmCacheManagementService.ToggleLLMCacheAsync(
+                    request.Enabled,
+                    userName,
+                    request.Reason,
+                    cancellationToken);
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to toggle LLM cache");
+                return StatusCode(500, new { error = "Failed to toggle LLM cache", message = ex.Message });
+            }
         }
 
     }

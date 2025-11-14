@@ -41,6 +41,9 @@ public partial class Program
             // Add Admin API event consumers for cache invalidation
             x.AddConsumer<ConduitLLM.Http.Consumers.GlobalSettingCacheInvalidationHandler>();
             x.AddConsumer<ConduitLLM.Http.Consumers.IpFilterCacheInvalidationHandler>();
+
+            // Add LLM cache toggle consumer for runtime caching control
+            x.AddConsumer<ConduitLLM.Http.Consumers.LLMCacheToggleConsumer>();
             
             // Add async task cache invalidation handler
             x.AddConsumer<ConduitLLM.Http.EventHandlers.AsyncTaskCacheInvalidationHandler>();

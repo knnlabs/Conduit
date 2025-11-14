@@ -1,6 +1,7 @@
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Configuration.DTOs.Cache;
+using ConduitLLM.Configuration.Interfaces;
 using MassTransit;
 
 namespace ConduitLLM.Admin.Services
@@ -18,6 +19,7 @@ namespace ConduitLLM.Admin.Services
         private readonly ICachePolicyEngine _policyEngine;
         private readonly ILogger<CacheManagementService> _logger;
         private readonly IPublishEndpoint _publishEndpoint;
+        private readonly IGlobalSettingRepository _globalSettingRepository;
 
         /// <summary>
         /// Initializes a new instance of the CacheManagementService.
@@ -29,7 +31,8 @@ namespace ConduitLLM.Admin.Services
             ICacheStatisticsCollector statisticsCollector,
             ICachePolicyEngine policyEngine,
             ILogger<CacheManagementService> logger,
-            IPublishEndpoint publishEndpoint)
+            IPublishEndpoint publishEndpoint,
+            IGlobalSettingRepository globalSettingRepository)
         {
             _cacheManager = cacheManager ?? throw new ArgumentNullException(nameof(cacheManager));
             _cacheRegistry = cacheRegistry ?? throw new ArgumentNullException(nameof(cacheRegistry));
@@ -38,6 +41,7 @@ namespace ConduitLLM.Admin.Services
             _policyEngine = policyEngine ?? throw new ArgumentNullException(nameof(policyEngine));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
+            _globalSettingRepository = globalSettingRepository ?? throw new ArgumentNullException(nameof(globalSettingRepository));
         }
 
 
@@ -118,5 +122,8 @@ namespace ConduitLLM.Admin.Services
         /// <param name="policyUpdate">Policy mutation DTO.</param>
         /// <param name="cancellationToken">Token to cancel the asynchronous operation.</param>
         Task UpdatePolicyAsync(string regionId, UpdateCachePolicyDto policyUpdate, CancellationToken cancellationToken = default);
+
+        // NOTE: LLM cache methods have been moved to ILLMCacheManagementService
+        // See Services/LLMCacheManagementService.cs for LLM-specific cache control
     }
 }
