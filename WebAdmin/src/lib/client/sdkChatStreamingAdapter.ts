@@ -75,7 +75,7 @@ export class SDKChatStreamingAdapter {
         signal: this.abortController.signal
       });
 
-      // Track content and performance
+      // Track content for callbacks
       let totalContent = '';
       let partialContent = '';
       const startTime = Date.now();
@@ -85,11 +85,6 @@ export class SDKChatStreamingAdapter {
       for await (const data of stream) {
         // Handle different event types from the stream
         if (isChatCompletionChunk(data)) {
-          // Track first token time for performance metrics
-          if (!firstTokenTime && data.choices?.[0]?.delta?.content) {
-            firstTokenTime = Date.now();
-          }
-
           // Handle chunk callback
           if (callbacks.onChunk) {
             // Transform SDK chunk to match expected callback type
@@ -143,32 +138,30 @@ export class SDKChatStreamingAdapter {
             callbacks.onMetrics(data as Parameters<typeof callbacks.onMetrics>[0]);
           }
         } else if (isFinalMetrics(data)) {
-          // Handle final metrics - this has the accurate token counts
+          // Handle final metrics - this has the accurate token counts and timing
           // Cast to unknown first, then to expected shape to satisfy ESLint
           const finalMetrics = data as unknown as {
             model?: string;
             total_tokens?: number;
             completion_tokens?: number;
             prompt_tokens?: number;
+            total_latency_ms?: number;
             time_to_first_token_ms?: number;
             tokens_per_second?: number;
             completion_tokens_per_second?: number;
             provider?: string;
           };
-          
-          // Calculate final timings
-          const totalTime = Date.now() - startTime;
-          const timeToFirstToken = firstTokenTime ? firstTokenTime - startTime : undefined;
-          
-          // Build metadata from final metrics (using correct field names)
+
+          // Build metadata from server-provided final metrics
+          // The backend calculates accurate timing using Stopwatch from request start to completion
           const metadata = {
             model: finalMetrics.model ?? options.model,
             finishReason: 'stop' as const, // FinalMetrics indicate completion
             tokensUsed: finalMetrics.total_tokens ?? undefined,
             completionTokens: finalMetrics.completion_tokens ?? undefined,
             promptTokens: finalMetrics.prompt_tokens ?? undefined,
-            latency: totalTime,
-            timeToFirstToken: timeToFirstToken ?? finalMetrics.time_to_first_token_ms ?? undefined,
+            latency: finalMetrics.total_latency_ms ?? undefined,
+            timeToFirstToken: finalMetrics.time_to_first_token_ms ?? undefined,
             tokensPerSecond: finalMetrics.tokens_per_second ?? finalMetrics.completion_tokens_per_second ?? undefined,
             streaming: true,
             provider: finalMetrics.provider ?? undefined

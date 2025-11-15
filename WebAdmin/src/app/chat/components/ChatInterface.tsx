@@ -46,6 +46,7 @@ export function ChatInterface() {
   const [reasoningExpanded, setReasoningExpanded] = useState(true); // Default to expanded
   const [currentInputText, setCurrentInputText] = useState('');
   const [currentInputImages, setCurrentInputImages] = useState(0);
+  const [sendHistoryEnabled, setSendHistoryEnabled] = useState(true); // Default to sending history
   
   const performanceSettings = usePerformanceSettings();
   const { 
@@ -94,6 +95,7 @@ export function ChatInterface() {
     getActiveSession,
     performanceSettings,
     dynamicParameters: parameterState.getSubmitValues(),
+    sendHistoryEnabled,
   });
 
   // Cleanup on unmount - abort any pending requests
@@ -257,6 +259,23 @@ export function ChatInterface() {
             } : undefined}
             onInputChange={setCurrentInputText}
             onImagesChange={setCurrentInputImages}
+            sendHistoryEnabled={sendHistoryEnabled}
+            onToggleSendHistory={() => setSendHistoryEnabled(!sendHistoryEnabled)}
+            onClearChat={() => {
+              // Abort any ongoing streaming
+              if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+              }
+              // Clear all chat state
+              setMessages([]);
+              setStreamingContent('');
+              setStreamingChannel(null);
+              setTokensPerSecond(null);
+              setError(null);
+              setIsLoading(false);
+              setCurrentInputText('');
+              setCurrentInputImages(0);
+            }}
           />
         </Paper>
       </Stack>

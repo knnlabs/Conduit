@@ -15,12 +15,14 @@ import {
   Collapse,
   Divider
 } from '@mantine/core';
-import { 
-  IconSend, 
+import {
+  IconSend,
   IconPlayerStop,
   IconTool,
   IconMicrophone,
-  IconX
+  IconX,
+  IconTrash,
+  IconHistory
 } from '@tabler/icons-react';
 import { useState, useRef, KeyboardEvent, useEffect } from 'react';
 import { ModelWithCapabilities, FunctionDefinition, ImageAttachment } from '../types';
@@ -35,16 +37,22 @@ interface ChatInputProps {
   model?: ModelWithCapabilities;
   onInputChange?: (text: string) => void;
   onImagesChange?: (count: number) => void;
+  onClearChat?: () => void;
+  sendHistoryEnabled?: boolean;
+  onToggleSendHistory?: () => void;
 }
 
-export function ChatInput({ 
-  onSendMessage, 
-  isStreaming, 
-  onStopStreaming, 
+export function ChatInput({
+  onSendMessage,
+  isStreaming,
+  onStopStreaming,
   disabled,
   model,
   onInputChange,
-  onImagesChange
+  onImagesChange,
+  onClearChat,
+  sendHistoryEnabled = true,
+  onToggleSendHistory
 }: ChatInputProps) {
   const [message, setMessage] = useState('');
   const [images, setImages] = useState<ImageAttachment[]>([]);
@@ -164,6 +172,34 @@ export function ChatInput({
         />
         
         <Group gap="xs">
+          {onClearChat && (
+            <Tooltip label="Clear chat history">
+              <ActionIcon
+                size="lg"
+                variant="default"
+                color="red"
+                onClick={onClearChat}
+                disabled={disabled ?? isStreaming}
+              >
+                <IconTrash size={20} />
+              </ActionIcon>
+            </Tooltip>
+          )}
+
+          {onToggleSendHistory && (
+            <Tooltip label={sendHistoryEnabled ? "Send with history (enabled)" : "Send single message only (disabled)"}>
+              <ActionIcon
+                size="lg"
+                variant={sendHistoryEnabled ? 'filled' : 'default'}
+                color={sendHistoryEnabled ? 'blue' : 'gray'}
+                onClick={onToggleSendHistory}
+                disabled={disabled ?? isStreaming}
+              >
+                <IconHistory size={20} />
+              </ActionIcon>
+            </Tooltip>
+          )}
+
           {supportsFunctions && (
             <Tooltip label="Toggle function calling">
               <ActionIcon
@@ -175,7 +211,7 @@ export function ChatInput({
               </ActionIcon>
             </Tooltip>
           )}
-          
+
           {/* Audio input stub - TODO: Implement audio recording */}
           <Tooltip label="Audio input - Coming soon">
             <ActionIcon size="lg" variant="default" disabled>

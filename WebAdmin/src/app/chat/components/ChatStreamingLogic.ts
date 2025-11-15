@@ -30,6 +30,7 @@ interface ChatStreamingLogicParams {
     useServerMetrics: boolean;
   };
   dynamicParameters?: Record<string, unknown>;
+  sendHistoryEnabled?: boolean;
 }
 
 export function useChatStreamingLogic({
@@ -45,6 +46,7 @@ export function useChatStreamingLogic({
   getActiveSession,
   performanceSettings,
   dynamicParameters = {},
+  sendHistoryEnabled = true,
 }: ChatStreamingLogicParams) {
   const streamingAdapterRef = useRef<SDKChatStreamingAdapter | null>(null);
   
@@ -108,7 +110,7 @@ export function useChatStreamingLogic({
       const streamingOptions: StreamMessageOptions = {
         model: selectedModel,
         stream: true,
-        messages: conversationHistory.slice(0, -1), // All except the current message
+        messages: sendHistoryEnabled ? conversationHistory.slice(0, -1) : [], // Include history or send empty array
         images: images,
         systemPrompt: sessionParams.systemPrompt,
         temperature: sessionParams.temperature,
@@ -224,7 +226,7 @@ export function useChatStreamingLogic({
       // Cleanup handled in callbacks
       setTokensPerSecond(null);
     }
-  }, [selectedModel, messages, isLoading, getActiveSession, performanceSettings, handleError, setMessages, setIsLoading, setStreamingContent, setStreamingChannel, setTokensPerSecond, setError, dynamicParameters, streamingAdapter]);
+  }, [selectedModel, messages, isLoading, getActiveSession, performanceSettings, handleError, setMessages, setIsLoading, setStreamingContent, setStreamingChannel, setTokensPerSecond, setError, dynamicParameters, streamingAdapter, sendHistoryEnabled]);
 
   const abortMessage = useCallback(() => {
     if (streamingAdapterRef.current) {
