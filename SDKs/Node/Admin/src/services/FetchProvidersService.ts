@@ -1,16 +1,16 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { RequestConfig } from '../client/types';
 import type { ProviderSettings } from '../models/common-types';
-import type {
-  ProviderDto,
-  CreateProviderDto,
-  UpdateProviderDto,
-  StandardApiKeyTestResponse
+import {
+  type ProviderDto,
+  type CreateProviderDto,
+  type UpdateProviderDto,
+  type StandardApiKeyTestResponse,
+  ApiKeyTestResult
 } from '../models/provider';
-import { ApiKeyTestResult } from '../models/provider';
 import { ENDPOINTS } from '../constants';
 import { ProviderType } from '../models/providerType';
-import { classifyApiKeyTestError, createSuccessResponse } from '../utils/error-classification';
+import { classifyApiKeyTestError } from '../utils/error-classification';
 import { FetchProvidersServiceHealth } from './FetchProvidersServiceHealth';
 import { FetchProvidersServiceKeys } from './FetchProvidersServiceKeys';
 
@@ -36,21 +36,44 @@ interface ProviderConfig {
   additionalConfig?: ProviderSettings;
 }
 
+// Type for raw API response (handles both PascalCase and camelCase)
+interface RawApiKeyTestResponse {
+  result?: string;
+  Result?: string;
+  message?: string;
+  Message?: string;
+  details?: RawApiKeyTestDetails;
+  Details?: RawApiKeyTestDetails;
+}
+
+interface RawApiKeyTestDetails {
+  responseTimeMs?: number;
+  ResponseTimeMs?: number;
+  modelsAvailable?: number;
+  ModelsAvailable?: number;
+  providerMessage?: string;
+  ProviderMessage?: string;
+  errorCode?: string;
+  ErrorCode?: string;
+  statusCode?: number;
+  StatusCode?: number;
+}
+
 /**
  * Normalizes the API response to handle case mismatches between C# PascalCase and TypeScript camelCase
  */
-function normalizeApiKeyTestResponse(response: any): StandardApiKeyTestResponse {
+function normalizeApiKeyTestResponse(response: RawApiKeyTestResponse): StandardApiKeyTestResponse {
   // Handle both PascalCase (from C#) and camelCase (expected by SDK)
-  const result = response.result || response.Result;
-  const message = response.message || response.Message;
-  const details = response.details || response.Details;
+  const result = response.result ?? response.Result ?? '';
+  const message = response.message ?? response.Message ?? '';
+  const details = response.details ?? response.Details;
 
   // Normalize the result enum value to lowercase with underscores
   const normalizedResult = normalizeEnumValue(result);
 
   return {
     result: normalizedResult,
-    message: message || '',
+    message: message,
     details: details ? {
       responseTimeMs: details.responseTimeMs ?? details.ResponseTimeMs,
       modelsAvailable: details.modelsAvailable ?? details.ModelsAvailable,
@@ -205,7 +228,7 @@ export class FetchProvidersService {
     config?: RequestConfig
   ): Promise<StandardApiKeyTestResponse> {
     try {
-      const result = await this.client['post']<any>(
+      const result = await this.client['post']<RawApiKeyTestResponse>(
         ENDPOINTS.PROVIDERS.TEST_BY_ID(id),
         undefined,
         {
@@ -237,7 +260,7 @@ export class FetchProvidersService {
     config?: RequestConfig
   ): Promise<StandardApiKeyTestResponse> {
     try {
-      const result = await this.client['post']<any, ProviderConfig>(
+      const result = await this.client['post']<RawApiKeyTestResponse, ProviderConfig>(
         `${ENDPOINTS.PROVIDERS.BASE}/test`,
         providerConfig,
         {
