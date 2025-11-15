@@ -270,11 +270,59 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
             var response = Assert.IsType<StandardApiKeyTestResponse>(okResult.Value!);
-            
+
             Assert.Equal(ApiKeyTestResult.UnknownError, response.Result);
             Assert.Contains("unexpected error", response.Message);
             Assert.NotNull(response.Details);
             Assert.Contains("Network timeout", response.Details.ProviderMessage);
+        }
+
+        [Fact]
+        public async Task TestProviderConnectionWithCredentials_WithSambaNova_ShouldReturnIgnored()
+        {
+            // Arrange - SambaNova is a non-testable provider
+            var testRequest = new TestProviderRequest
+            {
+                ProviderType = ProviderType.SambaNova,
+                ApiKey = "fake-api-key",
+                BaseUrl = null
+            };
+
+            // Act
+            var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var response = Assert.IsType<StandardApiKeyTestResponse>(okResult.Value!);
+
+            _output.WriteLine($"Result: {response.Result}");
+            _output.WriteLine($"Message: {response.Message}");
+
+            Assert.Equal(ApiKeyTestResult.Ignored, response.Result);
+            Assert.Contains("untested", response.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("doesn't support", response.Message, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public async Task TestProviderConnectionWithCredentials_WithReplicate_ShouldReturnIgnored()
+        {
+            // Arrange - Replicate is also a non-testable provider
+            var testRequest = new TestProviderRequest
+            {
+                ProviderType = ProviderType.Replicate,
+                ApiKey = "fake-api-key",
+                BaseUrl = null
+            };
+
+            // Act
+            var result = await _controller.TestProviderConnectionWithCredentials(testRequest);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var response = Assert.IsType<StandardApiKeyTestResponse>(okResult.Value!);
+
+            Assert.Equal(ApiKeyTestResult.Ignored, response.Result);
+            Assert.Contains("untested", response.Message, StringComparison.OrdinalIgnoreCase);
         }
 
         #endregion

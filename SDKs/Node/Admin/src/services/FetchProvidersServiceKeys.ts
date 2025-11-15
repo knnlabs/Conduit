@@ -24,8 +24,8 @@ interface RawApiKeyTestResponse {
 interface RawApiKeyTestDetails {
   responseTimeMs?: number;
   ResponseTimeMs?: number;
-  modelsAvailable?: number;
-  ModelsAvailable?: number;
+  modelsAvailable?: string[];
+  ModelsAvailable?: string[];
   providerMessage?: string;
   ProviderMessage?: string;
   errorCode?: string;
