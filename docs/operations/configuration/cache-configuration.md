@@ -146,7 +146,7 @@ When using Redis in production:
 
 ### Monitoring Redis Cache
 
-The Conduit Web UI provides a Redis cache monitoring panel that shows:
+The Conduit Web Admin provides a Redis cache monitoring panel that shows:
 
 - Connection status
 - Memory usage

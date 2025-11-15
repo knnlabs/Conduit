@@ -54,7 +54,7 @@
    - All hubs (ImageGenerationHub, NavigationHub, TaskHub, VideoGenerationHub)
    - Hub context services
 
-6. **WebUI** (0% coverage) - **EXCLUDED FROM PRIORITY**
+6. **WebAdmin** (0% coverage) - **EXCLUDED FROM PRIORITY**
    - No test files found in src directory
    - Only Jest configuration present
 
@@ -77,7 +77,7 @@
 
 ## Recommendations
 
-### High Priority (Excluding WebUI)
+### High Priority (Excluding WebAdmin)
 1. **Add Controller Tests** - Entry points need coverage
 2. **Security Layer Tests** - Critical for safety
 3. **Background Service Tests** - Can fail silently

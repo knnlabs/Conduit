@@ -406,7 +406,7 @@ EOF
             
             if [[ ${PROJECT_ERRORS["WebUI"]:-0} -gt 0 ]]; then
                 echo "WebUI fixes:"
-                echo "  ./scripts/fix-webui-errors.sh --lint-only"
+                echo "  ./scripts/fix-webadmin-errors.sh --lint-only"
                 echo ""
             fi
             

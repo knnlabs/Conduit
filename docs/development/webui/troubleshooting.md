@@ -1,8 +1,8 @@
-# Conduit WebUI Troubleshooting Guide
+# Conduit WebAdmin Troubleshooting Guide
 
 ## Overview
 
-This guide helps diagnose and resolve common issues when working with the Conduit WebUI and SDK integration. Each section includes symptoms, causes, and step-by-step solutions.
+This guide helps diagnose and resolve common issues when working with the Conduit WebAdmin and SDK integration. Each section includes symptoms, causes, and step-by-step solutions.
 
 ## Table of Contents
 
@@ -66,7 +66,7 @@ console.log('API URLs:', {
 ```yaml
 # Ensure services are on same network
 services:
-  webui:
+  webadmin:
     networks:
       - conduit-network
   api:
@@ -903,7 +903,7 @@ npm run diagnostics
 
 ## Conclusion
 
-This troubleshooting guide covers the most common issues with the Conduit WebUI. Remember to:
+This troubleshooting guide covers the most common issues with the Conduit WebAdmin. Remember to:
 
 1. **Check logs first** - Most issues leave traces
 2. **Isolate the problem** - Test components individually

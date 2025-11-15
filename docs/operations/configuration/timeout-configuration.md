@@ -114,7 +114,7 @@ Enable diagnostics:
 The following hard-coded timeouts have been replaced:
 
 1. **HTTP Client Factory** (was 100 seconds) → Now uses operation-specific timeouts
-2. **WebUI HTTP Client** (was 60 seconds) → Now uses operation-specific timeouts
+2. **WebAdmin HTTP Client** (was 60 seconds) → Now uses operation-specific timeouts
 3. **Sync Video Endpoint** (was 120 seconds) → Now uses `video-generation` timeout
 4. **MiniMax Polling** (was ~10 minutes) → Now uses `video-polling` timeout
 

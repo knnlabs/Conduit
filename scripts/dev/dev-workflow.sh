@@ -2,7 +2,7 @@
 # =============================================================================
 # Conduit Development Workflow Script
 # =============================================================================
-# Provides convenient development commands for working with the WebUI and SDKs
+# Provides convenient development commands for working with the WebAdmin and SDKs
 # without stopping Docker containers. Handles permissions correctly.
 # =============================================================================
 
@@ -18,7 +18,7 @@ readonly NC='\033[0m' # No Color
 # Configuration
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-readonly WEBUI_SERVICE="webui"
+readonly WEBADMIN_SERVICE="webadmin"
 
 # Helper functions
 log_info() {
@@ -42,20 +42,20 @@ show_usage() {
 Usage: $0 <command> [options]
 
 Development Commands (Container):
-  build-webui          - Build the WebUI application
+  build-webadmin          - Build the WebAdmin application
   build-sdks           - Build all SDK packages (Common, Admin, Core)
   build-sdk <name>     - Build specific SDK (common|admin|core)
-  lint-webui           - Run ESLint on WebUI
-  lint-fix-webui       - Run ESLint with --fix on WebUI
-  type-check-webui     - Run TypeScript type checking on WebUI
-  test-webui           - Run WebUI tests
-  npm-install-webui    - Install WebUI dependencies
+  lint-webadmin           - Run ESLint on WebAdmin
+  lint-fix-webadmin       - Run ESLint with --fix on WebAdmin
+  type-check-webadmin     - Run TypeScript type checking on WebAdmin
+  test-webadmin           - Run WebAdmin tests
+  npm-install-webadmin    - Install WebAdmin dependencies
   npm-install-sdks     - Install all SDK dependencies
-  shell                - Open bash shell in WebUI container
-  logs                 - Show WebUI container logs
-  restart-webui        - Restart WebUI container
+  shell                - Open bash shell in WebAdmin container
+  logs                 - Show WebAdmin container logs
+  restart-webadmin        - Restart WebAdmin container
   status               - Show container status
-  exec <cmd>           - Execute any command in WebUI container
+  exec <cmd>           - Execute any command in WebAdmin container
 
 Local Build Commands (No Container Required):
   install-local        - Install all dependencies locally (SDKs + WebUI)
@@ -68,11 +68,11 @@ Utility Commands:
   help                 - Show this help message
 
 Examples:
-  $0 build-webui               # Build WebUI
+  $0 build-webadmin               # Build WebUI
   $0 build-sdk admin           # Build Admin SDK only
-  $0 lint-fix-webui           # Fix ESLint errors in WebUI
-  $0 shell                     # Open shell in WebUI container
-  $0 npm-install-webui         # Install WebUI dependencies
+  $0 lint-fix-webadmin           # Fix ESLint errors in WebAdmin
+  $0 shell                     # Open shell in WebAdmin container
+  $0 npm-install-webadmin         # Install WebAdmin dependencies
   $0 exec npm install axios    # Install a package
   $0 exec npm run test:unit   # Run specific test suite
   $0 install-and-build-local  # Fresh clone? Build everything locally
@@ -87,32 +87,32 @@ EOF
 check_containers() {
     local compose_cmd="${DOCKER_COMPOSE_CMD:-docker compose}"
     
-    if ! $compose_cmd -f docker-compose.yml -f docker-compose.dev.yml ps --services --filter "status=running" | grep -q "$WEBUI_SERVICE"; then
-        log_error "WebUI container is not running. Start development environment first:"
+    if ! $compose_cmd -f docker-compose.yml -f docker-compose.dev.yml ps --services --filter "status=running" | grep -q "$WEBADMIN_SERVICE"; then
+        log_error "WebAdmin container is not running. Start development environment first:"
         log_info "  $0 start-dev"
         exit 1
     fi
 }
 
-# Execute command in WebUI container
-exec_in_webui() {
+# Execute command in WebAdmin container
+exec_in_webadmin() {
     local compose_cmd="${DOCKER_COMPOSE_CMD:-docker compose}"
-    log_task "Executing in WebUI container: $*"
-    $compose_cmd -f docker-compose.yml -f docker-compose.dev.yml exec "$WEBUI_SERVICE" "$@"
+    log_task "Executing in WebAdmin container: $*"
+    $compose_cmd -f docker-compose.yml -f docker-compose.dev.yml exec "$WEBADMIN_SERVICE" "$@"
 }
 
 # Build WebUI
-build_webui() {
-    log_info "Building WebUI in container's isolated .next directory..."
+build_webadmin() {
+    log_info "Building WebAdmin in container's isolated .next directory..."
     log_warn "This production build is separate from host .next directory"
-    exec_in_webui sh -c "cd /app/WebAdmin && npm run build"
-    log_info "WebUI build completed (in container)"
+    exec_in_webadmin sh -c "cd /app/WebAdmin && npm run build"
+    log_info "WebAdmin build completed (in container)"
 }
 
 # Build all SDKs
 build_sdks() {
     log_info "Building all SDKs..."
-    exec_in_webui sh -c "
+    exec_in_webadmin sh -c "
         cd /app/SDKs/Node/Common && npm run build &&
         cd /app/SDKs/Node/Admin && npm run build &&
         cd /app/SDKs/Node/Core && npm run build
@@ -143,69 +143,69 @@ build_sdk() {
     esac
     
     log_info "Building $sdk_name SDK..."
-    exec_in_webui sh -c "cd /app/SDKs/Node/$sdk_path && npm run build"
+    exec_in_webadmin sh -c "cd /app/SDKs/Node/$sdk_path && npm run build"
     log_info "$sdk_name SDK build completed"
 }
 
 # Lint WebUI
-lint_webui() {
-    log_info "Running ESLint on WebUI..."
-    exec_in_webui sh -c "cd /app/WebAdmin && npm run lint"
+lint_webadmin() {
+    log_info "Running ESLint on WebAdmin..."
+    exec_in_webadmin sh -c "cd /app/WebAdmin && npm run lint"
 }
 
 # Lint fix WebUI
-lint_fix_webui() {
-    log_info "Running ESLint with --fix on WebUI..."
-    exec_in_webui sh -c "cd /app/WebAdmin && npm run lint:fix"
+lint_fix_webadmin() {
+    log_info "Running ESLint with --fix on WebAdmin..."
+    exec_in_webadmin sh -c "cd /app/WebAdmin && npm run lint:fix"
 }
 
 # Type check WebUI
-type_check_webui() {
-    log_info "Running TypeScript type checking on WebUI..."
-    exec_in_webui sh -c "cd /app/WebAdmin && npm run type-check"
+type_check_webadmin() {
+    log_info "Running TypeScript type checking on WebAdmin..."
+    exec_in_webadmin sh -c "cd /app/WebAdmin && npm run type-check"
 }
 
 # Test WebUI
-test_webui() {
-    log_info "Running WebUI tests..."
-    exec_in_webui sh -c "cd /app/WebAdmin && npm run test"
+test_webadmin() {
+    log_info "Running WebAdmin tests..."
+    exec_in_webadmin sh -c "cd /app/WebAdmin && npm run test"
 }
 
-# Install WebUI dependencies
-npm_install_webui() {
-    log_info "Installing WebUI dependencies..."
-    exec_in_webui sh -c "cd /app/WebAdmin && npm install"
+# Install WebAdmin dependencies
+npm_install_webadmin() {
+    log_info "Installing WebAdmin dependencies..."
+    exec_in_webadmin sh -c "cd /app/WebAdmin && npm install"
 }
 
 # Install all SDK dependencies
 npm_install_sdks() {
     log_info "Installing SDK dependencies..."
-    exec_in_webui sh -c "
+    exec_in_webadmin sh -c "
         cd /app/SDKs/Node/Common && npm install &&
         cd /app/SDKs/Node/Admin && npm install &&
         cd /app/SDKs/Node/Core && npm install
     "
 }
 
-# Open shell in WebUI container
+# Open shell in WebAdmin container
 open_shell() {
-    log_info "Opening bash shell in WebUI container..."
-    exec_in_webui bash
+    log_info "Opening bash shell in WebAdmin container..."
+    exec_in_webadmin bash
 }
 
-# Show WebUI logs
+# Show WebAdmin logs
 show_logs() {
     local compose_cmd="${DOCKER_COMPOSE_CMD:-docker compose}"
-    log_info "Showing WebUI container logs..."
-    $compose_cmd -f docker-compose.yml -f docker-compose.dev.yml logs -f "$WEBUI_SERVICE"
+    log_info "Showing WebAdmin container logs..."
+    $compose_cmd -f docker-compose.yml -f docker-compose.dev.yml logs -f "$WEBADMIN_SERVICE"
 }
 
-# Restart WebUI container
-restart_webui() {
+# Restart WebAdmin container
+restart_webadmin() {
     local compose_cmd="${DOCKER_COMPOSE_CMD:-docker compose}"
-    log_info "Restarting WebUI container..."
-    $compose_cmd -f docker-compose.yml -f docker-compose.dev.yml restart "$WEBUI_SERVICE"
-    log_info "WebUI container restarted"
+    log_info "Restarting WebAdmin container..."
+    $compose_cmd -f docker-compose.yml -f docker-compose.dev.yml restart "$WEBADMIN_SERVICE"
+    log_info "WebAdmin container restarted"
 }
 
 # Show container status
@@ -265,8 +265,8 @@ install_local() {
     cd "$PROJECT_ROOT/SDKs/Node/Admin"
     npm install
     
-    # Install WebUI dependencies (depends on all SDKs via symlinks)
-    log_task "Installing WebUI dependencies..."
+    # Install WebAdmin dependencies (depends on all SDKs via symlinks)
+    log_task "Installing WebAdmin dependencies..."
     cd "$PROJECT_ROOT/WebAdmin"
     npm install
     
@@ -293,7 +293,7 @@ build_local() {
     npm run build
     
     # Build WebUI (depends on all SDKs)
-    log_task "Building WebUI..."
+    log_task "Building WebAdmin..."
     cd "$PROJECT_ROOT/WebAdmin"
     npm run build
     
@@ -329,9 +329,9 @@ main() {
     cd "$PROJECT_ROOT"
     
     case "$command" in
-        build-webui)
+        build-webadmin)
             check_containers
-            build_webui
+            build_webadmin
             ;;
         build-sdks)
             check_containers
@@ -346,25 +346,25 @@ main() {
             check_containers
             build_sdk "$2"
             ;;
-        lint-webui)
+        lint-webadmin)
             check_containers
-            lint_webui
+            lint_webadmin
             ;;
-        lint-fix-webui)
+        lint-fix-webadmin)
             check_containers
-            lint_fix_webui
+            lint_fix_webadmin
             ;;
-        type-check-webui)
+        type-check-webadmin)
             check_containers
-            type_check_webui
+            type_check_webadmin
             ;;
-        test-webui)
+        test-webadmin)
             check_containers
-            test_webui
+            test_webadmin
             ;;
-        npm-install-webui)
+        npm-install-webadmin)
             check_containers
-            npm_install_webui
+            npm_install_webadmin
             ;;
         npm-install-sdks)
             check_containers
@@ -378,8 +378,8 @@ main() {
             check_containers
             show_logs
             ;;
-        restart-webui)
-            restart_webui
+        restart-webadmin)
+            restart_webadmin
             ;;
         status)
             show_status
@@ -407,7 +407,7 @@ main() {
                 exit 1
             fi
             check_containers
-            exec_in_webui "$@"
+            exec_in_webadmin "$@"
             ;;
         help|--help|-h)
             show_usage

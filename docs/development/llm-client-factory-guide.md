@@ -45,8 +45,8 @@ builder.Services.AddCoreServices(builder.Configuration);  // Includes factory
 builder.Services.AddProviderServices();                   // Registers DatabaseAwareLLMClientFactory
 ```
 
-### **WebUI**
-WebUI does **NOT** use any factory directly. It uses HTTP clients to call Core/Admin APIs:
+### **WebAdmin**
+WebAdmin does **NOT** use any factory directly. It uses HTTP clients to call Core/Admin APIs:
 - `WebAdmin/src/lib/server/coreClient.ts`
 - `WebAdmin/src/lib/server/adminClient.ts`
 

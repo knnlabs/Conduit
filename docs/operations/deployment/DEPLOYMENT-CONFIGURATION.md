@@ -1,8 +1,8 @@
-# Conduit WebUI Deployment & Configuration Guide
+# Conduit WebAdmin Deployment & Configuration Guide
 
 ## Overview
 
-This guide covers deployment and configuration of the Conduit WebUI with SDK integration for various environments including development, staging, and production.
+This guide covers deployment and configuration of the Conduit WebAdmin with SDK integration for various environments including development, staging, and production.
 
 ## Table of Contents
 
@@ -99,8 +99,8 @@ ENABLE_RATE_LIMITING=true
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/your-org/conduit-webui.git
-cd conduit-webui/WebAdmin
+git clone https://github.com/your-org/conduit-webadmin.git
+cd conduit-webadmin/WebAdmin
 ```
 
 2. Install dependencies:
@@ -131,7 +131,7 @@ npm run dev
 version: '3.8'
 
 services:
-  webui:
+  webadmin:
     build:
       context: ./WebAdmin
       dockerfile: Dockerfile.dev
@@ -215,8 +215,8 @@ CMD ["node", "server.js"]
 version: '3.8'
 
 services:
-  webui:
-    image: conduit-webui:latest
+  webadmin:
+    image: conduit-webadmin:latest
     ports:
       - "3000:3000"
     environment:
@@ -253,7 +253,7 @@ services:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ./ssl:/etc/nginx/ssl:ro
     depends_on:
-      - webui
+      - webadmin
     restart: unless-stopped
 
 volumes:
@@ -269,8 +269,8 @@ events {
 }
 
 http {
-    upstream webui {
-        server webui:3000;
+    upstream webadmin {
+        server webadmin:3000;
     }
 
     server {
@@ -289,7 +289,7 @@ http {
         ssl_ciphers HIGH:!aNULL:!MD5;
 
         location / {
-            proxy_pass http://webui;
+            proxy_pass http://webadmin;
             proxy_http_version 1.1;
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection 'upgrade';
@@ -302,7 +302,7 @@ http {
 
         # WebSocket support for SignalR
         location /hubs/ {
-            proxy_pass http://webui;
+            proxy_pass http://webadmin;
             proxy_http_version 1.1;
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection "upgrade";
@@ -344,14 +344,14 @@ vercel --prod
 ```yaml
 # task-definition.json
 {
-  "family": "conduit-webui",
+  "family": "conduit-webadmin",
   "taskRoleArn": "arn:aws:iam::123456789012:role/ConduitTaskRole",
   "executionRoleArn": "arn:aws:iam::123456789012:role/ConduitExecutionRole",
   "networkMode": "awsvpc",
   "containerDefinitions": [
     {
-      "name": "webui",
-      "image": "123456789012.dkr.ecr.us-east-1.amazonaws.com/conduit-webui:latest",
+      "name": "webadmin",
+      "image": "123456789012.dkr.ecr.us-east-1.amazonaws.com/conduit-webadmin:latest",
       "portMappings": [
         {
           "containerPort": 3000,
@@ -373,7 +373,7 @@ vercel --prod
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
-          "awslogs-group": "/ecs/conduit-webui",
+          "awslogs-group": "/ecs/conduit-webadmin",
           "awslogs-region": "us-east-1",
           "awslogs-stream-prefix": "ecs"
         }
@@ -399,22 +399,22 @@ vercel --prod
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: conduit-webui
+  name: conduit-webadmin
   labels:
-    app: conduit-webui
+    app: conduit-webadmin
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: conduit-webui
+      app: conduit-webadmin
   template:
     metadata:
       labels:
-        app: conduit-webui
+        app: conduit-webadmin
     spec:
       containers:
-      - name: webui
-        image: conduit-webui:latest
+      - name: webadmin
+        image: conduit-webadmin:latest
         ports:
         - containerPort: 3000
         env:
@@ -451,10 +451,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: conduit-webui
+  name: conduit-webadmin
 spec:
   selector:
-    app: conduit-webui
+    app: conduit-webadmin
   ports:
   - port: 80
     targetPort: 3000
@@ -762,7 +762,7 @@ redis-cli BGSAVE
 
 ## Conclusion
 
-This deployment guide covers the essential aspects of deploying the Conduit WebUI:
+This deployment guide covers the essential aspects of deploying the Conduit WebAdmin:
 
 1. **Environment Setup** - Proper configuration for each environment
 2. **Container Deployment** - Docker and orchestration options

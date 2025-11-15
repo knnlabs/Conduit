@@ -79,7 +79,7 @@ When adding features to Admin/Core SDKs:
 ### Contributing
 
 - Write clear, self-documenting code with XML documentation
-- **Always verify builds**: Run `npm run lint` and `npm run type-check` for WebUI changes
+- **Always verify builds**: Run `npm run lint` and `npm run type-check` for WebAdmin changes
 - **Backend changes**: Run `dotnet build` to verify compilation
 - Update relevant documentation when making changes
 - Follow naming conventions from [CLAUDE.md](../../CLAUDE.md#code-style-guidelines)
@@ -146,7 +146,7 @@ dotnet build --configuration Release  # Production build
 ```bash
 dotnet build ConduitLLM.Http           # Core API
 dotnet build ConduitLLM.Admin          # Admin API
-dotnet build WebAdmin          # WebUI backend
+dotnet build WebAdmin          # WebAdmin backend
 ```
 
 ### SDK Builds
@@ -156,9 +156,9 @@ cd SDKs/Node/Core && npm run build    # Core SDK
 cd SDKs/Node/Common && npm run build  # Common SDK
 ```
 
-### WebUI Development
+### WebAdmin Development
 ```bash
-# ⚠️ WebUI-specific rules (see CLAUDE.md)
+# ⚠️ WebAdmin-specific rules (see CLAUDE.md)
 npm run lint         # ✅ Check ESLint errors
 npm run type-check   # ✅ Verify TypeScript types
 # ❌ NEVER run `npm run build` - breaks development container

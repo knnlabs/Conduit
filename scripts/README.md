@@ -28,13 +28,13 @@ Scripts are organized into the following subdirectories:
   - All SDKs: `./scripts/dev/fix-sdk-errors.sh`
   - Admin only: `./scripts/dev/fix-sdk-errors.sh admin`
   - Core only: `./scripts/dev/fix-sdk-errors.sh core`
-- **`fix-webui-errors.sh`** - Fix WebUI-specific lint and build errors
+- **`fix-webadmin-errors.sh`** - Fix WebUI-specific lint and build errors
 - **`setup-r2-dev.sh`** - Setup Cloudflare R2 storage for development
 
 ### 🔑 Virtual Key Management (`dev/`)
 
-- **`get-webui-virtual-key.sh`** - **PRIMARY**: Get existing WebUI key or regenerate if needed
-- **`create-webui-key.sh`** - Create new WebUI virtual key (if none exists)
+- **`get-webadmin-virtual-key.sh`** - **PRIMARY**: Get existing WebUI key or regenerate if needed
+- **`create-webadmin-key.sh`** - Create new WebUI virtual key (if none exists)
 - **`create-test-virtual-key.sh`** - Create temporary virtual keys for testing
 - **`clear-blocked-ips.sh`** - Clear blocked IP addresses from Redis and database
 
@@ -136,10 +136,10 @@ Scripts are organized into the following subdirectories:
 **WebUI key management flow:**
 ```bash
 # Get existing key (or regenerate if missing)
-./scripts/dev/get-webui-virtual-key.sh
+./scripts/dev/get-webadmin-virtual-key.sh
 
 # Create new key (fails if exists)
-./scripts/dev/create-webui-key.sh
+./scripts/dev/create-webadmin-key.sh
 
 # Create test keys for development
 ./scripts/dev/create-test-virtual-key.sh
@@ -200,7 +200,7 @@ dotnet ef database update
 
 - **Primary scripts**: Named for their main function (`start-dev.sh`, `validate-eslint.sh`)
 - **Wrappers**: Maintain backward compatibility (`validate-eslint-strict.sh`)
-- **Specialized scripts**: Clear purpose indication (`fix-webui-errors.sh`)
+- **Specialized scripts**: Clear purpose indication (`fix-webadmin-errors.sh`)
 - **Test scripts**: Prefixed with `test-` (`test-codeql.sh`)
 
 ## Path Updates
@@ -213,7 +213,7 @@ dotnet ef database update
 ./scripts/start-dev.sh → ./scripts/dev/start-dev.sh
 ./scripts/dev-workflow.sh → ./scripts/dev/dev-workflow.sh
 ./scripts/fix-sdk-errors.sh → ./scripts/dev/fix-sdk-errors.sh
-./scripts/fix-webui-errors.sh → ./scripts/dev/fix-webui-errors.sh
+./scripts/fix-webadmin-errors.sh → ./scripts/dev/fix-webadmin-errors.sh
 
 # Testing
 ./scripts/tests.sh → ./scripts/test/tests.sh

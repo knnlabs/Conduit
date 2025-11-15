@@ -6,7 +6,7 @@ This document describes the lightweight health check functionality added to both
 
 ## Background
 
-Previously, the WebUI had one remaining direct API call for connection monitoring in `useConnectionStore.ts`. To achieve 100% SDK usage, we've added lightweight ping methods to both SDKs.
+Previously, the WebAdmin had one remaining direct API call for connection monitoring in `useConnectionStore.ts`. To achieve 100% SDK usage, we've added lightweight ping methods to both SDKs.
 
 ## Implementation
 
@@ -74,7 +74,7 @@ Both methods call the `/health/ready` endpoint without authentication headers.
 - `pingWithTimeout(ms)`: Uses custom timeout in milliseconds
 - Throws error if timeout <= 0
 
-## WebUI Integration
+## WebAdmin Integration
 
 The `useConnectionStore` has been updated to use these SDK methods:
 
@@ -92,7 +92,7 @@ const isConnected = await client.connection.pingWithTimeout(5000);
 
 ### Backward Compatibility
 
-The WebUI implementation includes a fallback for older SDK versions:
+The WebAdmin implementation includes a fallback for older SDK versions:
 
 ```typescript
 if ('connection' in coreClient && coreClient.connection && 'pingWithTimeout' in coreClient.connection) {
@@ -106,7 +106,7 @@ if ('connection' in coreClient && coreClient.connection && 'pingWithTimeout' in 
 
 ## Benefits
 
-1. **100% SDK Usage**: Eliminates the last direct API call in WebUI
+1. **100% SDK Usage**: Eliminates the last direct API call in WebAdmin
 2. **Consistent Error Handling**: SDK manages retries and errors
 3. **Type Safety**: Full TypeScript support
 4. **Easier Testing**: Can mock SDK methods
@@ -129,5 +129,5 @@ if ('connection' in coreClient && coreClient.connection && 'pingWithTimeout' in 
 ## Related Issues
 
 - #249 - Add lightweight health check method to SDK for connection monitoring
-- #242 - Epic: WebUI SDK Feature Integration
+- #242 - Epic: WebAdmin SDK Feature Integration
 - #243 - Epic: Conduit SDK Feature Parity (Completed)

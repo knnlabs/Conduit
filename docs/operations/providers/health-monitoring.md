@@ -66,10 +66,10 @@ The service uses existing provider health tables:
 1. ProviderHealthMonitoringService performs health check
 2. If status changes, publishes ProviderHealthChanged event
 3. Core API's ProviderHealthChangedNotificationConsumer receives event
-4. SignalR hub pushes update to connected WebUI clients
+4. SignalR hub pushes update to connected WebAdmin clients
 5. Navigation state updates instantly without polling
 
-### WebUI Impact
+### WebAdmin Impact
 - Navigation items that depend on provider availability update in real-time
 - Users see immediate feedback when providers go offline/online
 - No more 30-second delays for navigation state changes

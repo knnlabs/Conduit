@@ -7,8 +7,8 @@ This document describes the PostgreSQL configuration changes needed to support 1
 Conduit has been updated to support service-specific connection pool settings that optimize database connection usage based on traffic patterns:
 
 - **Core API**: High traffic (150 max connections per instance)
-- **Admin API**: Medium traffic (75 max connections per instance)  
-- **WebUI**: No direct database access (uses Admin API)
+- **Admin API**: Medium traffic (75 max connections per instance)
+- **WebAdmin**: No direct database access (uses Admin API)
 
 ## Production Scale Calculations
 

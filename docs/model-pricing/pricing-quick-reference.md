@@ -358,7 +358,7 @@ conduit_pricing_cache_hit_ratio
 ## Support Links
 
 - [Full Documentation](./polymorphic-pricing.md)
-- [WebUI Guide](./webui-pricing-guide.md)
+- [WebAdmin Guide](./webadmin-pricing-guide.md)
 - [Migration Guide](./pricing-migration-guide.md)
 - [API Reference](/api/swagger)
 - [GitHub Issues](https://github.com/knnlabs/Conduit/issues)

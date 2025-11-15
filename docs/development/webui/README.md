@@ -1,11 +1,11 @@
-# WebUI Development Documentation
+# WebAdmin Development Documentation
 
-This directory contains development documentation specific to the Conduit WebUI (Next.js application).
+This directory contains development documentation specific to the Conduit WebAdmin (Next.js application).
 
 ## 📚 Available Documentation
 
 ### [Troubleshooting Guide](troubleshooting.md)
-Comprehensive troubleshooting guide for WebUI development issues.
+Comprehensive troubleshooting guide for WebAdmin development issues.
 
 **Topics Covered**:
 - Connection issues (ECONNREFUSED, CORS errors)
@@ -19,7 +19,7 @@ Comprehensive troubleshooting guide for WebUI development issues.
 - Debugging tools and techniques
 
 ### [Component Library](component-library.md)
-Guide to using the WebUI component library.
+Guide to using the WebAdmin component library.
 
 **Topics Covered**:
 - Component organization and structure
@@ -28,7 +28,7 @@ Guide to using the WebUI component library.
 - Styling and theming
 
 ### [Error Handling](error-handling.md)
-Error handling patterns and practices for the WebUI.
+Error handling patterns and practices for the WebAdmin.
 
 **Topics Covered**:
 - Client-side error handling
@@ -80,7 +80,7 @@ cd ../Core && npm run build
 
 ---
 
-## 🔧 WebUI Architecture
+## 🔧 WebAdmin Architecture
 
 ### Technology Stack
 - **Framework**: Next.js 14 (App Router)
@@ -147,4 +147,4 @@ WebAdmin/
 
 ---
 
-*For questions or clarifications about WebUI development, please refer to the troubleshooting guide or create an issue in the repository.*
+*For questions or clarifications about WebAdmin development, please refer to the troubleshooting guide or create an issue in the repository.*

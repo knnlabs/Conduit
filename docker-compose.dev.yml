@@ -54,7 +54,7 @@ services:
       # Public URL for R2 bucket (either public dev URL or custom domain)
       CONDUIT_S3_PUBLIC_BASE_URL: "${CONDUIT_S3_PUBLIC_BASE_URL}"
 
-  webui:
+  webadmin:
     # Use Node 22 to match host environment
     image: node:22-alpine
     # Start as root to fix volume ownership, then switch to user

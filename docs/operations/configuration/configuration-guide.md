@@ -8,7 +8,7 @@ ConduitLLM can be configured through:
 
 1. **Environment Variables**: System-wide configuration
 2. **Configuration Files**: Application-specific settings
-3. **WebUI**: Interactive configuration through the web interface
+3. **WebAdmin**: Interactive configuration through the web interface
 4. **Admin API**: Programmatic configuration through administrative endpoints
 5. **LLM API**: Programmatic access to the LLM functionality
 
@@ -79,13 +79,13 @@ Or in `appsettings.json`:
 - **App uses wrong database file**: Double-check environment variable spelling and container/service environment.
 - **Switching between SQLite and PostgreSQL**: Ensure you set `DB_PROVIDER` and the correct connection string/variable for your provider.
 
-For more diagnostics, use the Database Status page in the WebUI.
+For more diagnostics, use the Database Status page in the WebAdmin.
 
 ## Provider Configuration
 
 ### Adding a Provider
 
-Providers can be configured through the WebUI or API. Each provider requires:
+Providers can be configured through the WebAdmin or API. Each provider requires:
 
 - **Name**: Provider identifier (e.g., "OpenAI", "Anthropic")
 - **API Key**: Authentication key for the provider
@@ -290,9 +290,9 @@ Override settings for development:
 }
 ```
 
-## WebUI Configuration
+## WebAdmin Configuration
 
-The WebUI provides an interactive way to configure all aspects of the system:
+The WebAdmin provides an interactive way to configure all aspects of the system:
 
 1. **Providers Page**: Manage LLM provider configurations
 2. **Model Mappings**: Configure generic-to-specific model mappings
@@ -389,9 +389,9 @@ Access the security dashboard at `/security` to:
 3. **Cost Management**:
    - Set appropriate budgets for virtual keys
    - Configure fallbacks from expensive to cheaper models
-   - Monitor usage through the WebUI dashboard
+   - Monitor usage through the WebAdmin dashboard
 
 4. **Reliability**:
    - Configure multiple providers for the same capability
    - Set up fallbacks for critical models
-   - Monitor provider health through the WebUI dashboard
+   - Monitor provider health through the WebAdmin dashboard

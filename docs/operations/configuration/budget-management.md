@@ -128,7 +128,7 @@ Alerts for budget-related events:
 
 ## Budget Visualization
 
-The WebUI provides comprehensive budget visualization:
+The WebAdmin provides comprehensive budget visualization:
 
 ### VirtualKeys Dashboard
 
@@ -342,7 +342,7 @@ Returns detailed usage statistics for budget analysis.
 
 - **Regular Reviews**: Check usage patterns frequently
 - **Alert Configuration**: Set up notifications before limits are reached
-- **Dashboard Monitoring**: Use the WebUI to visualize trends
+- **Dashboard Monitoring**: Use the WebAdmin to visualize trends
 - **Usage Forecasting**: Project future spending based on current patterns
 
 ### Cost Optimization

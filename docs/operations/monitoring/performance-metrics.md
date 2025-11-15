@@ -92,7 +92,7 @@ public class EnhancedSSEResponseWriter
 ```
 
 #### 3. Client Integration
-The `ConduitApiClient` in WebUI handles multiple event types:
+The `ConduitApiClient` in WebAdmin handles multiple event types:
 - Parses content events for display
 - Captures metrics events for real-time updates
 - Stores final metrics with completed messages

@@ -1,6 +1,6 @@
 # Admin API Overview
 
-The ConduitLLM Admin API provides administrative endpoints for managing and configuring the Conduit platform. It is separate from the Core LLM API and is used by the WebUI and other admin tools.
+The ConduitLLM Admin API provides administrative endpoints for managing and configuring the Conduit platform. It is separate from the Core LLM API and is used by the WebAdmin and other admin tools.
 
 ## Quick Navigation
 
@@ -22,7 +22,7 @@ The ConduitLLM Admin API provides administrative endpoints for managing and conf
 The Admin API is designed as a separate service with these key components:
 
 ```
-WebUI / Admin Tools
+WebAdmin / Admin Tools
        ↓
 Admin API Client
        ↓
@@ -146,8 +146,8 @@ services:
     depends_on:
       - postgres
 
-  webui:
-    image: ghcr.io/knnlabs/conduit-webui:latest
+  webadmin:
+    image: ghcr.io/knnlabs/conduit-webadmin:latest
     environment:
       CONDUIT_ADMIN_API_URL: http://admin:8080
       CONDUIT_API_TO_API_BACKEND_AUTH_KEY: your_master_key

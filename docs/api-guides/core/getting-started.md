@@ -4,7 +4,7 @@ This guide will help you get started with the Conduit Core API.
 
 ## Authentication
 
-All API requests require authentication using Virtual Keys. Virtual Keys are managed through the Admin API or WebUI.
+All API requests require authentication using Virtual Keys. Virtual Keys are managed through the Admin API or WebAdmin.
 
 ### Header Format
 

@@ -2,8 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Last Reviewed**: 2025-11-08 (Updated documentation paths to match reorganized structure)
-
 ## Database Migrations
 
 **CRITICAL REQUIREMENTS** for creating migrations:
@@ -29,14 +27,14 @@ Key requirements:
 - **Pull Requests URL**: https://github.com/knnlabs/Conduit/pulls
 
 ## CRITICAL SECURITY: Authentication
-**WebUI Authentication**: The WebUI now uses Clerk for authentication. Human administrators authenticate through Clerk, not through password-based authentication.
+**WebAdmin Authentication**: The WebAdmin now uses Clerk for authentication. Human administrators authenticate through Clerk, not through password-based authentication.
 
 **Backend Authentication Key**:
 - **CONDUIT_API_TO_API_BACKEND_AUTH_KEY**: 
-   - Used by WebUI backend to authenticate with the Core API and Admin API
+   - Used by WebAdmin backend to authenticate with the Core API and Admin API
    - This is for server-to-server communication between backend services
    - NOT for end-users or client applications
-   - Configured on the WebUI service to talk to other backend services
+   - Configured on the WebAdmin service to talk to other backend services
 
 ## Development Workflow - CRITICAL
 **⚠️ CANONICAL DEVELOPMENT STARTUP: Always use `./scripts/dev/start-dev.sh` for development**
@@ -48,8 +46,8 @@ Key requirements:
 # Standard startup (builds containers if needed)
 ./scripts/dev/start-dev.sh
 
-# Rebuild WebUI container (fixes Next.js issues)
-./scripts/dev/start-dev.sh --webui
+# Rebuild WebAdmin container (fixes Next.js issues)
+./scripts/dev/start-dev.sh --webadmin
 
 # Complete reset (removes all volumes and containers)
 ./scripts/dev/start-dev.sh --clean
@@ -59,14 +57,14 @@ Key requirements:
 ```
 
 #### What Each Flag Actually Does:
-- **--webui**: Restarts WebUI container (container manages its own isolated .next directory)
+- **--webadmin**: Restarts WebAdmin container (container manages its own isolated .next directory)
 - **--clean**: Removes all containers, volumes, node_modules, and build artifacts for fresh start
 - **--build**: Rebuilds containers with `--no-cache` flag
 - **--help**: Shows usage information
 
 #### Key Features:
 - ✅ Node modules exist on HOST - direct npm command access
-- ✅ WebUI directory mounted for hot reloading
+- ✅ WebAdmin directory mounted for hot reloading
 - ✅ User ID mapping prevents permission issues (uses your UID/GID)
 - ✅ Development containers use node:22-alpine directly
 - ✅ Isolated .next directories - run `npm run build` on host without breaking container
@@ -77,14 +75,6 @@ Key requirements:
 - Run specific test: `dotnet test --filter "FullyQualifiedName=ConduitLLM.Tests.TestClassName.TestMethodName"`
 - Build Core API: `dotnet build ConduitLLM.Http`
 - Build Admin API: `dotnet build ConduitLLM.Admin`
-
-### ⚠️ Production Testing Only
-```bash
-# Only use for production-like testing, NOT for development
-docker compose up -d
-```
-
-**Note**: Using `docker compose up -d` will create permission conflicts with development. If you accidentally use it, run `docker compose down --volumes --remove-orphans` before using `./scripts/dev/start-dev.sh`.
 
 ## Docker Development Setup
 
@@ -111,7 +101,7 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f [service]
 
 | Aspect | Development (`start-dev.sh`) | Production (`docker compose up`) |
 |--------|------------------------------|----------------------------------|
-| WebUI Container | `node:22-alpine` with mounted source | Built Next.js app in container |
+| WebAdmin Container | `node:22-alpine` with mounted source | Built Next.js app in container |
 | Hot Reloading | ✅ Enabled via volume mounts | ❌ Static build |
 | User Permissions | Maps to host UID/GID | Runs as container user |
 | Node Modules | Shared with host | Container-only |
@@ -119,7 +109,7 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f [service]
 
 ### How Development Environment Works
 
-**Volume Mounting**: WebUI source code is mounted directly into container, allowing hot reloading.
+**Volume Mounting**: WebAdmin source code is mounted directly into container, allowing hot reloading.
 
 **Permission Handling**: Container starts as root, fixes ownership to match host user (${DOCKER_USER_ID}:${DOCKER_GROUP_ID}), then switches to that user for all operations.
 
@@ -139,8 +129,8 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f [service]
 #### After Adding New Packages
 ```bash
 # When you add packages to package.json
-# Restart WebUI container to install new dependencies
-./scripts/dev/start-dev.sh --webui
+# Restart WebAdmin container to install new dependencies
+./scripts/dev/start-dev.sh --webadmin
 ```
 
 #### Container Conflicts
@@ -153,15 +143,15 @@ docker compose down --volumes --remove-orphans
 
 #### Next.js Build Issues
 ```bash
-# Symptom: WebUI not updating, stale builds
-# Solution: Restart WebUI container
-./scripts/dev/start-dev.sh --webui
+# Symptom: WebAdmin not updating, stale builds
+# Solution: Restart WebAdmin container
+./scripts/dev/start-dev.sh --webadmin
 ```
 
-#### WebUI Not Starting
+#### WebAdmin Not Starting
 ```bash
 # Check container logs
-docker compose -f docker-compose.yml -f docker-compose.dev.yml logs webui
+docker compose -f docker-compose.yml -f docker-compose.dev.yml logs webadmin
 
 # Common causes:
 # 1. Port 3000 already in use
@@ -172,39 +162,39 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml logs webui
 #### Hot Reload Not Working
 ```bash
 # Verify file mounting
-docker compose -f docker-compose.yml -f docker-compose.dev.yml exec webui ls -la /app/WebAdmin/
+docker compose -f docker-compose.yml -f docker-compose.dev.yml exec webadmin ls -la /app/WebAdmin/
 
 # Restart with clean build artifacts (cleans host .next only)
 rm -rf WebAdmin/.next
-./scripts/dev/start-dev.sh --webui
+./scripts/dev/start-dev.sh --webadmin
 # Note: Container has its own isolated .next directory
 ```
 
 ### Development Services
 After successful startup, these services are available:
-- 🌐 **WebUI**: http://localhost:3000 (Next.js with hot reloading)
+- 🌐 **WebAdmin**: http://localhost:3000 (Next.js with hot reloading)
 - 📚 **Core API Swagger**: http://localhost:5000/swagger
 - 🔧 **Admin API Swagger**: http://localhost:5002/swagger
 - 🐰 **RabbitMQ Management**: http://localhost:15672 (conduit/conduitpass)
 
 ### Development Helper Commands (dev-workflow.sh)
 ```bash
-# Show WebUI logs in real-time
+# Show WebAdmin logs in real-time
 ./scripts/dev/dev-workflow.sh logs
 
-# Open shell in WebUI container
+# Open shell in WebAdmin container
 ./scripts/dev/dev-workflow.sh shell
 
-# Build WebUI in container (builds in container's isolated .next)
-./scripts/dev/dev-workflow.sh build-webui
+# Build WebAdmin in container (builds in container's isolated .next)
+./scripts/dev/dev-workflow.sh build-webadmin
 
 # Run ESLint with --fix
-./scripts/dev/dev-workflow.sh lint-fix-webui
+./scripts/dev/dev-workflow.sh lint-fix-webadmin
 
 # Build SDKs
 ./scripts/dev/dev-workflow.sh build-sdks
 
-# Execute any command in WebUI container
+# Execute any command in WebAdmin container
 ./scripts/dev/dev-workflow.sh exec [command]
 ```
 
@@ -219,7 +209,7 @@ The development environment uses user ID mapping to prevent permission issues:
 4. **Switches to host user** - All operations run as the mapped user
 
 #### Volume Mounting Strategy
-- WebUI source is mounted directly: `./WebAdmin:/app/WebAdmin`
+- WebAdmin source is mounted directly: `./WebAdmin:/app/WebAdmin`
 - SDKs are mounted for development: `./SDKs:/app/SDKs`
 - Node modules are accessible from both host and container
 - No anonymous volumes that would block host access
@@ -240,19 +230,19 @@ export DOCKER_GROUP_ID=$(id -g)   # Your group ID
 ## Build Verification - CRITICAL
 **ALWAYS VERIFY BUILDS BEFORE COMPLETING WORK:**
 
-### ⚠️ WEBUI EXCEPTION - NEVER RUN NPM BUILD ⚠️
-**FORBIDDEN FOR WEBUI DEVELOPMENT:**
+### ⚠️ WEBADMIN EXCEPTION - NEVER RUN NPM BUILD ⚠️
+**FORBIDDEN FOR WEBADMIN DEVELOPMENT:**
 - ❌ `npm run build` - **WILL BREAK THE DEVELOPMENT CONTAINER**
 - ❌ `cd WebAdmin && npm run build` - **WILL BREAK THE DEVELOPMENT CONTAINER**
-- ❌ `./scripts/dev/dev-workflow.sh build-webui` - **ONLY FOR PRODUCTION TESTING**
+- ❌ `./scripts/dev/dev-workflow.sh build-webadmin` - **ONLY FOR PRODUCTION TESTING**
 
-**WEBUI VERIFICATION COMMANDS (SAFE FOR DEVELOPMENT):**
+**WEBADMIN VERIFICATION COMMANDS (SAFE FOR DEVELOPMENT):**
 - ✅ `npm run lint` - Check ESLint errors
 - ✅ `npm run type-check` - Verify TypeScript types
 - ✅ Hot reloading in development container automatically validates code
 
 ### Project-Specific Build Commands
-- **WebUI**: **USE LINT AND TYPE-CHECK ONLY** (see above)
+- **WebAdmin**: **USE LINT AND TYPE-CHECK ONLY** (see above)
 - **Core API**: `dotnet build ConduitLLM.Http`
 - **Admin API**: `dotnet build ConduitLLM.Admin`
 - **Admin SDK**: `cd SDKs/Node/Admin && npm run build`
@@ -263,13 +253,13 @@ export DOCKER_GROUP_ID=$(id -g)   # Your group ID
 ### Incremental Development Rules
 1. **NEVER make more than 3-5 file changes without verifying**
 2. **ALWAYS run the appropriate verification command after ANY TypeScript/React changes**
-   - **WebUI**: `npm run lint` and `npm run type-check` ONLY
+   - **WebAdmin**: `npm run lint` and `npm run type-check` ONLY
    - **Backend/SDKs**: Use build commands listed above
 3. **Fix ALL ESLint errors immediately - do not accumulate technical debt**
 4. **Never commit code that doesn't verify cleanly**
 
 ### TypeScript/React Specific Rules
-- When replacing `any` types, test immediately with `./scripts/dev/fix-webui-errors.sh` or `./scripts/dev/fix-sdk-errors.sh`
+- When replacing `any` types, test immediately with `./scripts/dev/fix-webadmin-errors.sh` or `./scripts/dev/fix-sdk-errors.sh`
 - Check existing error handling patterns before creating new ones
 - Use small, incremental changes (1-3 files at a time)
 - Follow established import patterns in the codebase
@@ -281,8 +271,8 @@ export DOCKER_GROUP_ID=$(id -g)   # Your group ID
 - Address warnings immediately, don't let them accumulate
 - Use proper TypeScript patterns from existing codebase
 
-### WebUI ESLint Strict Rules - CRITICAL
-The WebUI uses very strict ESLint rules that will cause build failures:
+### WebAdmin ESLint Strict Rules - CRITICAL
+The WebAdmin uses very strict ESLint rules that will cause build failures:
 
 1. **Type Safety Rules**:
    - `@typescript-eslint/no-unsafe-assignment`: Cannot assign `any` or `unknown` types without explicit casting
@@ -313,38 +303,38 @@ The WebUI uses very strict ESLint rules that will cause build failures:
    ```
 
 5. **Always Verify Before Committing**:
-   - **WebUI**: `npm run lint` and `npm run type-check` (NEVER `npm run build`)
+   - **WebAdmin**: `npm run lint` and `npm run type-check` (NEVER `npm run build`)
    - Fix ALL ESLint errors immediately
    - The verification will fail with any ESLint errors
 
 ## Development Workflow
 - After implementing features, always run: `dotnet build` to check for compilation errors
-- **For WebUI changes**: Run `npm run lint` to check for ESLint errors
+- **For WebAdmin changes**: Run `npm run lint` to check for ESLint errors
 - **For TypeScript checks**: Run `npm run type-check` to verify types
-- **❌ NEVER run `npm run build` for WebUI - it breaks the development container**
+- **❌ NEVER run `npm run build` for WebAdmin - it breaks the development container**
 - Test your changes locally before committing
 - When working with API changes, test with Swagger UI or curl
 - For UI changes, verify in the browser with developer tools open
 - Clean up temporary test files and scripts after completing features
 
 ### Available Helper Scripts
-- **dev/fix-webui-errors.sh**: Automated fixes for common WebUI TypeScript/ESLint errors
+- **dev/fix-webadmin-errors.sh**: Automated fixes for common WebAdmin TypeScript/ESLint errors
 - **dev/fix-sdk-errors.sh**: Fixes SDK TypeScript compilation issues
 - **test/validate-eslint.sh**: Validates ESLint configuration
 - **dev/dev-workflow.sh**: Helper commands for development tasks (see above)
-- **dev/create-webui-key.sh**: Creates virtual keys for WebUI testing
+- **dev/create-webadmin-key.sh**: Creates virtual keys for WebAdmin testing
 
-### WebUI Development
+### WebAdmin Development
 You can run npm commands DIRECTLY on the host filesystem:
 - ✅ `npm run lint` - Run ESLint
 - ✅ `npm run type-check` - Check TypeScript types  
 - ✅ `cd SDKs/Node/Admin && npm run build` - Build SDKs
-- ❌ **NEVER run `npm run build` for WebUI - breaks development container**
+- ❌ **NEVER run `npm run build` for WebAdmin - breaks development container**
 
 The development environment shares node_modules between host and container.
 
 💡 **Development Notes**:
-- The WebUI container runs Next.js dev server with hot-reloading
+- The WebAdmin container runs Next.js dev server with hot-reloading
 - Changes to source files are immediately reflected
 - **DO NOT run production builds during development**
 - To check types: `npm run type-check` (equivalent to `npx tsc --noEmit`)
@@ -426,7 +416,7 @@ public enum ProviderType
 For comprehensive documentation on specific topics, see:
 
 ### Core Development Guides
-- **[API Patterns & Best Practices](docs/development/API-PATTERNS-BEST-PRACTICES.md)** - WebUI API patterns, SDK usage, error handling
+- **[API Patterns & Best Practices](docs/development/API-PATTERNS-BEST-PRACTICES.md)** - WebAdmin API patterns, SDK usage, error handling
 - **[LLM Client Factory Guide](docs/development/llm-client-factory-guide.md)** - Provider client creation patterns
 - **[Development Documentation](docs/development/README.md)** - Development guides index
 
@@ -458,30 +448,18 @@ For comprehensive documentation on specific topics, see:
 ### Media and Storage
 - **[Media Cleanup Configuration](docs/CRITICAL-Media-Cleanup-Configuration.md)** - **⚠️ CRITICAL** - S3/R2 cleanup requirements to prevent unbounded storage costs
 
-### Model Pricing
-- **[Model Pricing Documentation](docs/model-pricing/README.md)** - Pricing configurations by provider
-- **[Pricing Quick Reference](docs/model-pricing/pricing-quick-reference.md)** - Quick pricing lookup
-- **[WebUI Pricing Guide](docs/model-pricing/webui-pricing-guide.md)** - WebUI pricing display patterns
-
 ### API Integration Guides
 - **[API Guides Index](docs/api-guides/README.md)** - API integration documentation
 - **[Core API Getting Started](docs/api-guides/core/getting-started.md)** - Core API usage
 - **[Admin API Getting Started](docs/api-guides/admin/getting-started.md)** - Admin API usage
 - **[SignalR Getting Started](docs/api-guides/signalr/getting-started.md)** - Real-time updates integration
 - **[SDK Best Practices](docs/api-guides/sdk/best-practices.md)** - SDK usage patterns
-- **[Next.js Integration](docs/api-guides/sdk/nextjs-integration.md)** - WebUI SDK integration
-
-### Monitoring and Troubleshooting
-- **[Runbooks](docs/operations/runbooks/README.md)** - Operational runbooks
-- **[High Error Rate Runbook](docs/operations/runbooks/high-error-rate.md)** - Error troubleshooting
-- **[High Response Time Runbook](docs/operations/runbooks/high-response-time.md)** - Performance troubleshooting
-- **[Database Connection Pool Runbook](docs/operations/runbooks/db-connection-pool.md)** - Connection pool issues
-- **[Cost Observability Troubleshooting](docs/operations/runbooks/cost-observability-troubleshooting.md)** - Cost tracking issues
+- **[Next.js Integration](docs/api-guides/sdk/nextjs-integration.md)** - WebAdmin SDK integration
 
 ## Key Points from Detailed Docs
 
-### WebUI API Architecture
-**The WebUI has only 3 API routes** - it relies on client-side SDK usage with ephemeral keys:
+### WebAdmin API Architecture
+**The WebAdmin has only 3 API routes** - it relies on client-side SDK usage with ephemeral keys:
 - `/api/health` - Health check endpoint
 - `/api/auth/ephemeral-key` - Generate virtual keys for Core API access
 - `/api/auth/ephemeral-master-key` - Generate master keys for Admin API access
@@ -538,14 +516,14 @@ For comprehensive documentation on specific topics, see:
 # CRITICAL SAFETY SECTION - READ FIRST
 ## Commands That WILL Break Development and Waste Time
 
-### ❌ FORBIDDEN WEBUI COMMANDS
+### ❌ FORBIDDEN WEBADMIN COMMANDS
 These commands will break the development container and force a 5+ minute restart:
-- `npm run build` (anywhere in WebUI directory)
+- `npm run build` (anywhere in WebAdmin directory)
 - `cd WebAdmin && npm run build`
-- `./scripts/dev/dev-workflow.sh build-webui` (production only)
+- `./scripts/dev/dev-workflow.sh build-webadmin` (production only)
 
-### ✅ SAFE WEBUI COMMANDS  
-Use these instead for WebUI verification:
+### ✅ SAFE WEBADMIN COMMANDS  
+Use these instead for WebAdmin verification:
 - `npm run lint`
 - `npm run type-check`
 

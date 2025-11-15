@@ -1,5 +1,5 @@
 #!/bin/bash
-# Script to get the WebUI Internal Virtual Key
+# Script to get the WebAdmin Internal Virtual Key
 
 # First, ensure services are running
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,8 +19,8 @@ fi
 
 echo "Using master key: $MASTER_KEY" >&2
 
-# Try to get the WebUI virtual key from GlobalSettings
-RESPONSE=$(curl -s -X GET "http://localhost:5002/api/GlobalSettings/by-key/WebUI_VirtualKey" \
+# Try to get the WebAdmin virtual key from GlobalSettings
+RESPONSE=$(curl -s -X GET "http://localhost:5002/api/GlobalSettings/by-key/WebAdmin_VirtualKey" \
   -H "X-API-Key: $MASTER_KEY" \
   -H "Content-Type: application/json")
 
@@ -30,13 +30,13 @@ if [ $? -eq 0 ] && [ ! -z "$RESPONSE" ] && ! echo "$RESPONSE" | grep -q '"error"
     WEBUI_KEY=$(echo "$RESPONSE" | jq -r '.value // empty' 2>/dev/null)
     
     if [ ! -z "$WEBUI_KEY" ]; then
-        echo "Found WebUI virtual key in GlobalSettings" >&2
+        echo "Found WebAdmin virtual key in GlobalSettings" >&2
         echo "$WEBUI_KEY"
         exit 0
     fi
 fi
 
-echo "WebUI virtual key not found in GlobalSettings. Creating new one..." >&2
+echo "WebAdmin virtual key not found in GlobalSettings. Creating new one..." >&2
 
 # First, ensure we have a default virtual key group
 GROUP_RESPONSE=$(curl -s -X GET http://localhost:5002/api/VirtualKeyGroups \
@@ -58,16 +58,16 @@ if [ -z "$GROUP_ID" ]; then
 fi
 
 # Create a new virtual key
-echo "Creating new 'WebUI Internal Key'..." >&2
+echo "Creating new 'WebAdmin Internal Key'..." >&2
 CREATE_PAYLOAD=$(cat <<EOF
 {
-    "keyName": "WebUI Internal Key",
+    "keyName": "WebAdmin Internal Key",
     "allowedModels": null,
     "maxBudget": null,
     "budgetDuration": null,
     "expiresAt": null,
     "virtualKeyGroupId": $GROUP_ID,
-    "metadata": "{\"purpose\": \"Internal WebUI authentication\"}",
+    "metadata": "{\"purpose\": \"Internal WebAdmin authentication\"}",
     "rateLimitRpm": null,
     "rateLimitRpd": null
 }
@@ -81,7 +81,7 @@ CREATE_RESPONSE=$(curl -s -X POST http://localhost:5002/api/VirtualKeys \
 
 # Check for curl error or API error
 if [ $? -ne 0 ] || echo "$CREATE_RESPONSE" | grep -q '"error"'; then
-    echo "Error: Failed to create new WebUI key. API response:" >&2
+    echo "Error: Failed to create new WebAdmin key. API response:" >&2
     echo "$CREATE_RESPONSE" >&2
     exit 1
 fi
@@ -96,12 +96,12 @@ if [ -z "$WEBUI_KEY" ]; then
 fi
 
 # Store the key in GlobalSettings for future use
-echo "Storing WebUI key in GlobalSettings..." >&2
+echo "Storing WebAdmin key in GlobalSettings..." >&2
 STORE_PAYLOAD=$(cat <<EOF
 {
-    "key": "WebUI_VirtualKey",
+    "key": "WebAdmin_VirtualKey",
     "value": "$WEBUI_KEY",
-    "description": "Virtual key for WebUI Core API access"
+    "description": "Virtual key for WebAdmin Core API access"
 }
 EOF
 )
@@ -112,7 +112,7 @@ STORE_RESPONSE=$(curl -s -X POST http://localhost:5002/api/GlobalSettings \
   -d "$STORE_PAYLOAD")
 
 if [ $? -eq 0 ] && ! echo "$STORE_RESPONSE" | grep -q '"error"'; then
-    echo "Successfully stored WebUI key in GlobalSettings." >&2
+    echo "Successfully stored WebAdmin key in GlobalSettings." >&2
 else
     echo "Warning: Failed to store key in GlobalSettings, but key was created." >&2
 fi

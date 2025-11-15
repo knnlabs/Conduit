@@ -55,7 +55,7 @@ check_port_conflicts() {
     log_info "Checking for port conflicts..."
 
     local ports=(6379 5432 5000 5002 3000 15672)
-    local port_names=("Redis" "PostgreSQL" "Core API" "Admin API" "WebUI" "RabbitMQ")
+    local port_names=("Redis" "PostgreSQL" "Core API" "Admin API" "WebAdmin" "RabbitMQ")
     local conflicts_found=false
     local conflicting_containers=()
 
@@ -125,8 +125,8 @@ Options:
   --clean        Delete volumes for fresh experience
   --build        Rebuild containers (smart caching: keeps OS layers, rebuilds .NET code)
   --rebuild      Full rebuild with --no-cache (slower, use when --build fails)
-  --webui        Rebuild WebUI container (fixes Next.js issues)
-  --logs [service]  Show container logs (api|core|admin|rabbitmq|webui, or all if omitted)
+  --webadmin     Rebuild WebAdmin container (fixes Next.js issues)
+  --logs [service]  Show container logs (api|core|admin|rabbitmq|webadmin, or all if omitted)
   --help         Show this help
 
 Default behavior:
@@ -134,10 +134,10 @@ Default behavior:
   - Checks for port conflicts (offers to stop conflicting containers)
   - Build local Docker containers
   - Start from docker-compose.dev.yml
-  - Mount WebUI directory for rapid development
+  - Mount WebAdmin directory for rapid development
 
 Services available after startup:
-  - WebUI:            http://localhost:3000
+  - WebAdmin:         http://localhost:3000
   - Core API:         http://localhost:5000/scalar/v1
   - Admin API:        http://localhost:5002/scalar/v1
   - RabbitMQ:         http://localhost:15672 (conduit/conduitpass)
@@ -213,7 +213,7 @@ build_containers() {
 }
 
 build_sdks() {
-    log_info "Building SDK packages for WebUI..."
+    log_info "Building SDK packages for WebAdmin..."
     
     # Check if SDKs need building
     if [[ ! -d "./SDKs/Node/Common/dist" ]] || [[ ! -d "./SDKs/Node/Core/dist" ]] || [[ ! -d "./SDKs/Node/Admin/dist" ]]; then
@@ -252,27 +252,27 @@ build_sdks() {
     fi
 }
 
-rebuild_webui() {
-    log_info "Restarting WebUI container to fix Next.js issues..."
+rebuild_webadmin() {
+    log_info "Restarting WebAdmin container to fix Next.js issues..."
 
-    # Ensure SDKs are built (WebUI depends on them)
+    # Ensure SDKs are built (WebAdmin depends on them)
     build_sdks
 
-    # Stop and remove WebUI container
-    docker compose -f docker-compose.yml -f docker-compose.dev.yml stop webui 2>/dev/null || true
-    docker compose -f docker-compose.yml -f docker-compose.dev.yml rm -f webui 2>/dev/null || true
+    # Stop and remove WebAdmin container
+    docker compose -f docker-compose.yml -f docker-compose.dev.yml stop webadmin 2>/dev/null || true
+    docker compose -f docker-compose.yml -f docker-compose.dev.yml rm -f webadmin 2>/dev/null || true
 
     # Clean host's Next.js build artifacts (container has its own isolated .next)
     rm -rf ./WebAdmin/.next 2>/dev/null || true
 
-    # Start WebUI (no build needed - uses node:22-alpine with volume mounts)
+    # Start WebAdmin (no build needed - uses node:22-alpine with volume mounts)
     export DOCKER_USER_ID=$(id -u)
     export DOCKER_GROUP_ID=$(id -g)
 
-    docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d webui
+    docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d webadmin
 
-    log_info "WebUI container restarted"
-    log_info "WebUI available at: http://localhost:3000"
+    log_info "WebAdmin container restarted"
+    log_info "WebAdmin available at: http://localhost:3000"
 }
 
 show_logs() {
@@ -284,9 +284,9 @@ show_logs() {
     fi
 
     # Validate service name if provided
-    if [[ -n "$service" ]] && [[ ! "$service" =~ ^(api|admin|rabbitmq|webui)$ ]]; then
+    if [[ -n "$service" ]] && [[ ! "$service" =~ ^(api|admin|rabbitmq|webadmin)$ ]]; then
         log_error "Invalid service: $service"
-        log_info "Valid services: api (or core), admin, rabbitmq, webui"
+        log_info "Valid services: api (or core), admin, rabbitmq, webadmin"
         exit 1
     fi
 
@@ -323,13 +323,13 @@ start_development() {
     log_info "Development environment started!"
     echo
     log_info "Services available at:"
-    log_info "  🌐 WebUI:            http://localhost:3000"
+    log_info "  🌐 WebAdmin:         http://localhost:3000"
     log_info "  📚 Core API:         http://localhost:5000/scalar/v1"
     log_info "  🔧 Admin API:        http://localhost:5002/scalar/v1"
     log_info "  🐰 RabbitMQ:         http://localhost:15672 (conduit/conduitpass)"
     log_info "  📦 Media Storage:    Cloudflare R2"
     echo
-    log_info "The WebUI directory is mounted for rapid development."
+    log_info "The WebAdmin directory is mounted for rapid development."
     log_info "Changes to files will be reflected automatically."
 
     # Disable error trap after successful startup
@@ -342,7 +342,7 @@ main() {
 
     local clean_volumes_flag=false
     local build_flag=""
-    local webui_only=false
+    local webadmin_only=false
     local show_logs_flag=false
     local logs_service=""
 
@@ -361,8 +361,8 @@ main() {
                 build_flag="--no-cache"  # Nuclear option for full rebuild
                 shift
                 ;;
-            --webui)
-                webui_only=true
+            --webadmin)
+                webadmin_only=true
                 shift
                 ;;
             --logs)
@@ -397,9 +397,9 @@ main() {
 
     check_prerequisites
 
-    # Handle WebUI-only rebuild
-    if [[ "$webui_only" == "true" ]]; then
-        rebuild_webui
+    # Handle WebAdmin-only rebuild
+    if [[ "$webadmin_only" == "true" ]]; then
+        rebuild_webadmin
         return 0
     fi
 
@@ -417,7 +417,7 @@ main() {
     # Build containers
     build_containers "$build_flag"
 
-    # Build SDKs (required for WebUI)
+    # Build SDKs (required for WebAdmin)
     build_sdks
 
     # Start development environment

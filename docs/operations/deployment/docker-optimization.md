@@ -46,12 +46,12 @@ Once fixed, you can update the Dockerfile to use `npm ci` instead of `npm instal
 
 Build the image:
 ```bash
-docker build -f WebAdmin/Dockerfile -t conduit-webui .
+docker build -f WebAdmin/Dockerfile -t conduit-webadmin .
 ```
 
 Run the container:
 ```bash
-docker run -p 3000:3000 conduit-webui
+docker run -p 3000:3000 conduit-webadmin
 ```
 
 The optimized Dockerfile is now the default and is ready for production use.

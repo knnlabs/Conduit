@@ -36,7 +36,7 @@ Conduit has different hubs for different features:
 
 | Feature | Hub Name | Use Case |
 |---------|----------|----------|
-| `navigation-state` | Real-time UI navigation updates | WebUI state synchronization |
+| `navigation-state` | Real-time UI navigation updates | WebAdmin state synchronization |
 | `image-generation` | Image creation progress | Track DALL-E, Stable Diffusion tasks |
 | `video-generation` | Video creation progress | Track video generation tasks |
 | `tasks` | General async operations | Any long-running operation |
@@ -107,7 +107,7 @@ Run your code and you should see:
 ✅ Connected to navigation-state hub
 ```
 
-If you're using the WebUI, navigate around and you should see navigation updates in your console.
+If you're using the WebAdmin, navigate around and you should see navigation updates in your console.
 
 ## Working with Task-Based Hubs
 

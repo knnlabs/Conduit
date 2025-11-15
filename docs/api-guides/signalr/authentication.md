@@ -108,7 +108,7 @@ const connection = new signalR.HubConnectionBuilder()
 Admin authentication uses master key authentication for internal administrative hubs.
 
 #### Supported Hubs
-- **Navigation State Hub** (`/hubs/navigation-state`) - WebUI navigation state updates
+- **Navigation State Hub** (`/hubs/navigation-state`) - WebAdmin navigation state updates
 
 #### Implementation
 

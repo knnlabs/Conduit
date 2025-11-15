@@ -64,7 +64,7 @@ Avoid having multiple representations of the same data unless there's a compelli
 Make the purpose of each DTO clear through naming and documentation.
 
 ### 4. No Backward Compatibility Debt ⚠️
-When moving DTOs from other projects (such as WebUI or Http) to the Configuration project, revise the consuming code to use the new DTOs. DO NOT allow backward compatibility to proliferate through the codebase. We do not want tech debt!
+When moving DTOs from other projects (such as WebAdmin or Http) to the Configuration project, revise the consuming code to use the new DTOs. DO NOT allow backward compatibility to proliferate through the codebase. We do not want tech debt!
 
 ---
 

@@ -310,9 +310,9 @@ POST /api/router/fallbacks
 
 See the [API Reference](API-Reference.md) for detailed endpoint documentation.
 
-## WebUI Configuration
+## WebAdmin Configuration
 
-The Router can be configured through the WebUI:
+The Router can be configured through the WebAdmin:
 
 1. Navigate to the **Configuration** page
 2. Select the **Router** tab
@@ -325,6 +325,6 @@ The Router can be configured through the WebUI:
 1. **Multiple Providers**: Configure multiple providers for critical models
 2. **Fallback Chains**: Create thoughtful fallback paths from expensive to cheaper models
 3. **Weights**: Use weights to control traffic distribution based on cost and performance
-4. **Health Monitoring**: Regularly review deployment health in the WebUI
+4. **Health Monitoring**: Regularly review deployment health in the WebAdmin
 5. **Testing**: Test fallback behavior before relying on it in production
 6. **Cost Optimization:** The router can optimize for cost by considering model pricing, including vision/multimodal models, when distributing requests and configuring fallbacks.

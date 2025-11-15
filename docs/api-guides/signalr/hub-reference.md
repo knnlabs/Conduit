@@ -9,7 +9,7 @@ This document provides a comprehensive overview of all SignalR hubs in Conduit, 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                        Clients                              │
-│  (WebUI, Admin UI, External Apps, SDK)                      │
+│  (WebAdmin, Admin UI, External Apps, SDK)                      │
 └─────────────────┬───────────────────────────────────────────┘
                   │
 ┌─────────────────▼───────────────────────────────────────────┐

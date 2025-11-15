@@ -18,7 +18,7 @@ Perfect starting point for developers and administrators:
 - **[Configuration](./user-guides/configuration.md)** - System configuration
 - **[Virtual Keys](./user-guides/virtual-keys.md)** - API key management
 - **[Budget Management](./user-guides/budget-management.md)** - Cost control and limits
-- **[WebUI Guide](./user-guides/webui-guide.md)** - Admin dashboard usage
+- **[WebAdmin Guide](./user-guides/webadmin-guide.md)** - Admin dashboard usage
 
 ## 🎯 Features
 
@@ -159,7 +159,7 @@ Historical and reference material:
 ### By User Role
 - **SDK Users**: Start with [SDK Documentation](./api-guides/sdk/) for integration guides
 - **API Users**: See [API Guides](./api-guides/) for tutorials and [API Reference](./api-reference/) for specs
-- **Administrators**: Check [WebUI Guide](./user-guides/webui-guide.md) and [Operations](#operations)
+- **Administrators**: Check [WebAdmin Guide](./user-guides/webadmin-guide.md) and [Operations](#operations)
 - **Contributors**: Reference [Development](./development/) for codebase development
 - **DevOps**: Check [Deployment](./deployment/) and [Runbooks](./runbooks/)
 

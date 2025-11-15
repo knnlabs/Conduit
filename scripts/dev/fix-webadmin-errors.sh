@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Safe WebUI lint and build script with permission detection and environment validation
+# Safe WebAdmin lint and build script with permission detection and environment validation
 # Usage: 
-#   ./scripts/fix-webui-errors.sh           # Full workflow
-#   ./scripts/fix-webui-errors.sh --lint-only    # Lint validation only
-#   ./scripts/fix-webui-errors.sh --build-only   # Skip lint, build only  
-#   ./scripts/fix-webui-errors.sh --check-only   # Check environment/permissions only
+#   ./scripts/fix-webadmin-errors.sh           # Full workflow
+#   ./scripts/fix-webadmin-errors.sh --lint-only    # Lint validation only
+#   ./scripts/fix-webadmin-errors.sh --build-only   # Skip lint, build only  
+#   ./scripts/fix-webadmin-errors.sh --check-only   # Check environment/permissions only
 
 set -e
 
@@ -66,7 +66,7 @@ print_section_header() {
 
 show_usage() {
     cat << EOF
-WebUI Lint and Build Script
+WebAdmin Lint and Build Script
 
 Usage: $0 [options]
 
@@ -76,7 +76,7 @@ Options:
   --check-only    Check environment and permissions only
   --help          Show this help message
 
-This script safely validates the WebUI development environment and runs 
+This script safely validates the WebAdmin development environment and runs 
 linting and build processes with proper error detection and guidance.
 
 The script will:
@@ -126,22 +126,22 @@ check_development_environment() {
     fi
     
     # Check if development containers are running
-    local webui_containers=$(docker ps --filter "name=conduit-webui" --format "{{.Names}}\t{{.Image}}" 2>/dev/null || echo "")
+    local webadmin_containers=$(docker ps --filter "name=conduit-webadmin" --format "{{.Names}}\t{{.Image}}" 2>/dev/null || echo "")
     
-    if [[ -n "$webui_containers" ]]; then
+    if [[ -n "$webadmin_containers" ]]; then
         # Check if using development image
-        if echo "$webui_containers" | grep -q "node:22-alpine"; then
+        if echo "$webadmin_containers" | grep -q "node:22-alpine"; then
             log_info "Development containers detected and running"
         else
             log_error "Production containers detected (not development setup)"
-            log_error "Found: $webui_containers"
+            log_error "Found: $webadmin_containers"
             log_error "To fix: docker compose down --volumes --remove-orphans"
             log_error "Then run: ./scripts/start-dev.sh"
             ENVIRONMENT_ISSUES=true
             return 1
         fi
     else
-        log_warn "No WebUI containers running - host-based development assumed"
+        log_warn "No WebAdmin containers running - host-based development assumed"
         log_warn "Ensure you have Node.js and npm installed for host development"
     fi
     
@@ -173,7 +173,7 @@ check_permissions() {
     local current_gid=$(id -g)
     local issues_found=false
     
-    # Check WebUI source directory permissions
+    # Check WebAdmin source directory permissions
     if ! test_write_access "./WebAdmin"; then
         log_error "Cannot write to WebAdmin directory"
         log_error "Fix with: sudo chown -R $USER:$USER ./WebAdmin"
@@ -334,65 +334,65 @@ run_type_check() {
     return $type_check_exit_code
 }
 
-# Check if WebUI container is running and stop it if needed
-stop_webui_container() {
-    # Find any container running on port 3000 (WebUI port)
+# Check if WebAdmin container is running and stop it if needed
+stop_webadmin_container() {
+    # Find any container running on port 3000 (WebAdmin port)
     local container_id=$(docker ps --format "{{.ID}}" --filter "publish=3000" | head -1)
     local was_running=false
     
     if [[ -n "$container_id" ]]; then
         was_running=true
         local container_name=$(docker inspect --format='{{.Name}}' "$container_id" | sed 's/^\/*//')
-        log_warn "WebUI development container is running: $container_name"
-        log_task "Stopping WebUI container to prevent build conflicts..."
+        log_warn "WebAdmin development container is running: $container_name"
+        log_task "Stopping WebAdmin container to prevent build conflicts..."
         
         if docker stop "$container_id" >/dev/null 2>&1; then
-            log_info "WebUI container stopped successfully"
+            log_info "WebAdmin container stopped successfully"
             # Store container ID for restart
             echo "$container_id"
             return 0
         else
-            log_error "Failed to stop WebUI container"
+            log_error "Failed to stop WebAdmin container"
             return 1
         fi
     else
-        log_info "No WebUI container running on port 3000 - safe to build"
+        log_info "No WebAdmin container running on port 3000 - safe to build"
     fi
     
     echo ""
     return 0
 }
 
-# Restart WebUI container if it was running before
-restart_webui_container() {
+# Restart WebAdmin container if it was running before
+restart_webadmin_container() {
     local container_id="$1"
     
     if [[ -z "$container_id" ]]; then
         return 0
     fi
     
-    log_task "Restarting WebUI development container..."
+    log_task "Restarting WebAdmin development container..."
     
     if docker start "$container_id" >/dev/null 2>&1; then
-        log_info "WebUI container restarted"
+        log_info "WebAdmin container restarted"
         
         # Wait for container to be ready
-        log_task "Waiting for WebUI to be ready..."
+        log_task "Waiting for WebAdmin to be ready..."
         local max_attempts=30
         local attempt=0
         
         while [[ $attempt -lt $max_attempts ]]; do
             if docker logs "$container_id" 2>&1 | tail -n 20 | grep -q "Ready in"; then
-                log_info "WebUI is ready"
+                log_info "WebAdmin is ready"
                 return 0
             fi
             sleep 1
             ((attempt++))
         done
         
-        log_warn "WebUI container started but may not be fully ready"
+        log_warn "WebAdmin container started but may not be fully ready"
     else
-        log_error "Failed to restart WebUI container"
+        log_error "Failed to restart WebAdmin container"
         log_error "To restart manually: docker start $container_id"
         return 1
     fi
@@ -408,12 +408,12 @@ run_build() {
         echo ""
     fi
     
-    # Check and stop WebUI container if running
-    local container_id=$(stop_webui_container)
+    # Check and stop WebAdmin container if running
+    local container_id=$(stop_webadmin_container)
     local stop_status=$?
     
     if [[ $stop_status -ne 0 ]]; then
-        log_error "Failed to stop WebUI container, aborting build"
+        log_error "Failed to stop WebAdmin container, aborting build"
         return 1
     fi
     
@@ -438,7 +438,7 @@ run_build() {
     
     # Restart container if it was running before
     if [[ -n "$container_id" ]]; then
-        restart_webui_container "$container_id" || log_error "Please restart the development environment manually"
+        restart_webadmin_container "$container_id" || log_error "Please restart the development environment manually"
     fi
     
     return $build_exit_code
@@ -481,7 +481,7 @@ print_summary() {
     # Overall status
     if [[ "$ENVIRONMENT_ISSUES" == "false" ]] && [[ "$PERMISSION_ISSUES" == "false" ]] && [[ $LINT_ERRORS -eq 0 ]] && [[ "$BUILD_FAILED" == "false" ]]; then
         echo ""
-        log_info "🎉 All checks passed - WebUI is ready!"
+        log_info "🎉 All checks passed - WebAdmin is ready!"
         return 0
     else
         echo ""

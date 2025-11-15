@@ -18,7 +18,7 @@ This document describes the integration between the ConduitLLM.Admin API and the
 
 The WebAdmin project communicates with the ConduitLLM.Admin API through a well-defined HTTP client interface. This approach provides several benefits:
 
-1. **Decoupled Architecture**: WebUI and Admin projects are fully decoupled, eliminating circular dependencies
+1. **Decoupled Architecture**: WebAdmin and Admin projects are fully decoupled, eliminating circular dependencies
 2. **Scalability**: Services can be deployed separately in distributed environments
 3. **Clear API Contracts**: API contracts are explicitly defined through interfaces and DTOs
 4. **Simplified Testing**: Mock implementations of the API client can be used for testing
@@ -30,7 +30,7 @@ The WebAdmin project communicates with the ConduitLLM.Admin API through a well-d
 
 ### Implementation Structure
 
-#### WebUI Components
+#### WebAdmin Components
 
 **Interfaces:**
 - `IAdminApiClient`: Comprehensive interface for all Admin API operations, organized by feature areas
@@ -39,7 +39,7 @@ The WebAdmin project communicates with the ConduitLLM.Admin API through a well-d
 - `AdminApiClient`: HTTP client implementation handling JSON serialization, error handling, and HTTP communication
 
 **Service Adapters:**
-These adapters implement existing WebUI service interfaces but delegate to the Admin API:
+These adapters implement existing WebAdmin service interfaces but delegate to the Admin API:
 - `VirtualKeyServiceAdapter`: Implements `IVirtualKeyService` using Admin API
 - `GlobalSettingServiceAdapter`: Implements `IGlobalSettingService` using Admin API
 - `RequestLogServiceAdapter`: Implements `IRequestLogService` using Admin API
@@ -64,7 +64,7 @@ The API client interface is organized by feature areas:
 
 ### How It Works
 
-1. **Service Registration**: WebUI registers the Admin API client and service adapters in Program.cs
+1. **Service Registration**: WebAdmin registers the Admin API client and service adapters in Program.cs
 2. **Configuration**: Uses environment variables for flexible configuration
 3. **Adapter Pattern**: Choose between direct database access or API access based on configuration
 4. **Error Handling**: Comprehensive error handling with logging ensures resilient behavior
@@ -72,7 +72,7 @@ The API client interface is organized by feature areas:
 **Request Flow:**
 
 ```
-WebUI Component → Service Interface → Adapter/Implementation → Admin API Client → HTTP → Admin API → Repository → Database
+WebAdmin Component → Service Interface → Adapter/Implementation → Admin API Client → HTTP → Admin API → Repository → Database
 ```
 
 ---
@@ -122,7 +122,7 @@ builder.Services.AddAdminApiAdapters(builder.Configuration);
 
 ### Adapter Pattern
 
-The WebUI project uses the adapter pattern to maintain compatibility with existing service interfaces:
+The WebAdmin project uses the adapter pattern to maintain compatibility with existing service interfaces:
 
 ```csharp
 // Depending on CONDUIT_USE_ADMIN_API setting, either use:
@@ -241,7 +241,7 @@ catch (HttpRequestException ex)
 For local development, you can run both services on the same machine:
 
 ```bash
-# Option 1: Run Admin API and use direct repository access in WebUI
+# Option 1: Run Admin API and use direct repository access in WebAdmin
 dotnet run --project ConduitLLM.Admin  # Runs on http://localhost:5000
 CONDUIT_USE_ADMIN_API=false dotnet run --project WebAdmin
 
@@ -252,7 +252,7 @@ CONDUIT_USE_ADMIN_API=true CONDUIT_ADMIN_API_URL=http://localhost:5000 dotnet ru
 
 **Typical local setup:**
 - Admin API: http://localhost:5000
-- WebUI: http://localhost:5001
+- WebAdmin: http://localhost:5001
 
 ### Docker Environment
 
@@ -261,7 +261,7 @@ In a Docker environment, services are typically deployed in separate containers:
 ```yaml
 services:
   webui:
-    image: conduit-webui:latest
+    image: conduit-webadmin:latest
     environment:
       CONDUIT_ADMIN_API_URL: http://admin:8080
       CONDUIT_API_TO_API_BACKEND_AUTH_KEY: ${MASTER_KEY}
@@ -276,7 +276,7 @@ services:
     environment:
       DATABASE_URL: postgresql://user:password@postgres:5432/conduitdb
       AdminApi__MasterKey: ${MASTER_KEY}
-      AdminApi__AllowedOrigins__0: http://webui:8080
+      AdminApi__AllowedOrigins__0: http://webadmin:8080
     depends_on:
       - postgres
     ports:
@@ -298,7 +298,7 @@ volumes:
 ### Container Deployment Considerations
 
 For container environments:
-- Set `CONDUIT_ADMIN_API_URL=http://admin-api:8080` in WebUI container
+- Set `CONDUIT_ADMIN_API_URL=http://admin-api:8080` in WebAdmin container
 - Ensure networking allows communication between containers
 - Use Docker Compose networks or Kubernetes service discovery
 - Configure health checks for each service

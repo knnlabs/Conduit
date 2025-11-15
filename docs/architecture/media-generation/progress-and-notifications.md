@@ -41,7 +41,7 @@ The video generation progress tracking system provides real-time progress update
 - Uses exponential backoff for polling intervals
 - Seamlessly switches between SignalR and polling
 
-### WebUI Components
+### WebAdmin Components
 
 #### 1. useVideoGeneration Hook
 - React hook providing simplified progress tracking

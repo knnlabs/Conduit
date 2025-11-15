@@ -263,7 +263,7 @@ Conduit delivers streaming chat completions using Server-Sent Events (SSE) with 
 
 ```
 ┌─────────────┐     ┌─────────────────┐     ┌──────────────┐
-│   WebUI     │────▶│  API Gateway    │────▶│  LLM Client  │
+│  WebAdmin   │────▶│  API Gateway    │────▶│  LLM Client  │
 │             │     │                 │     │              │
 │ ┌─────────┐ │     │ ┌─────────────┐ │     │ ┌──────────┐ │
 │ │Content  │◀──SSE──│ │Content      │◀──────│ │Provider  │ │
@@ -635,7 +635,7 @@ Considerations for load testing:
 ### SSE Migration
 
 1. **Phase 1**: Deploy server with metrics events (backward compatible)
-2. **Phase 2**: Update WebUI to consume metrics events
+2. **Phase 2**: Update WebAdmin to consume metrics events
 3. **Phase 3**: Add configuration to control metrics frequency
 4. **Phase 4**: Extend to other endpoints (embeddings, etc.)
 

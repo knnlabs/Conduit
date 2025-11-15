@@ -1,12 +1,12 @@
-# WebUI Pricing Configuration Guide
+# WebAdmin Pricing Configuration Guide
 
 ## Quick Start
 
-This guide helps you configure pricing for AI models using the Conduit WebUI.
+This guide helps you configure pricing for AI models using the Conduit WebAdmin.
 
 ## Accessing Model Pricing
 
-1. Navigate to **Settings** → **Model Costs** in the WebUI
+1. Navigate to **Settings** → **Model Costs** in the WebAdmin
 2. Click **Add Pricing** to create new pricing configuration
 3. Or click the menu (⋮) next to existing pricing to edit
 

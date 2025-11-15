@@ -219,7 +219,7 @@ await connection.invoke('SubscribeToTask', taskId);
 
 #### Navigation State Hub (`/hubs/navigation-state`)
 ```javascript
-// Events (WebUI specific)
+// Events (WebAdmin specific)
 - NavigationStateChanged(state)
 - PageDataUpdated(pageData)
 ```
@@ -539,4 +539,4 @@ describe('Webhook Handler', () => {
 
 - [JavaScript Client](./real-time/javascript-client.md) - Complete TypeScript client implementation
 - [Integration Examples](./examples/INTEGRATION-EXAMPLES.md) - Real-world integration patterns
-- [WebUI API Reference](./api-reference/webui-api-reference.md) - WebUI real-time features
+- [WebAdmin API Reference](./api-reference/webadmin-api-reference.md) - WebAdmin real-time features

@@ -1,6 +1,6 @@
 # Function Calling Guide
 
-This guide explains how to use function calling (tool use) in Conduit, both through the API and the WebUI Chat Playground.
+This guide explains how to use function calling (tool use) in Conduit, both through the API and the WebAdmin Chat Playground.
 
 ## Overview
 
@@ -120,7 +120,7 @@ Execute the function and send the result back:
 
 The LLM will then provide a final response using the function results.
 
-## WebUI Chat Playground
+## WebAdmin Chat Playground
 
 The Chat Playground provides a visual interface for testing function calling:
 

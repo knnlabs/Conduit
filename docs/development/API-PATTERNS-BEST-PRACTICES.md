@@ -1,8 +1,8 @@
-# Conduit WebUI API Patterns & Best Practices
+# Conduit WebAdmin API Patterns & Best Practices
 
 ## Overview
 
-This guide documents the **actual implementation patterns** used in the Conduit WebUI (Next.js). The WebUI uses a minimal API architecture where most business logic happens client-side using SDK clients with ephemeral authentication keys.
+This guide documents the **actual implementation patterns** used in the Conduit WebAdmin (Next.js). The WebAdmin uses a minimal API architecture where most business logic happens client-side using SDK clients with ephemeral authentication keys.
 
 **Last Updated**: 2025-11-08
 **Status**: ✅ Accurate and Current
@@ -26,7 +26,7 @@ This guide documents the **actual implementation patterns** used in the Conduit 
 
 ### Design Philosophy
 
-The WebUI follows a **minimal server-side API** approach:
+The WebAdmin follows a **minimal server-side API** approach:
 
 - **Only 3 server-side API routes** - All for authentication/key generation
 - **Client-side SDK usage** - Browser communicates directly with Core/Admin APIs
@@ -42,7 +42,7 @@ The WebUI follows a **minimal server-side API** approach:
        │ 1. Request ephemeral key
        ▼
 ┌─────────────────┐
-│  WebUI API      │ ── Clerk Auth ──┐
+│  WebAdmin API      │ ── Clerk Auth ──┐
 │  (3 routes)     │                  │
 └────────┬────────┘                  │
          │ 2. Returns key + API URL  │
@@ -63,7 +63,7 @@ The WebUI follows a **minimal server-side API** approach:
 
 ## The Three API Routes
 
-The WebUI has exactly **three API routes**:
+The WebAdmin has exactly **three API routes**:
 
 ### 1. `/api/health` - Health Check
 
@@ -102,9 +102,9 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as EphemeralKeyRequest;
 
-    // Get WebUI's virtual key
+    // Get WebAdmin's virtual key
     const adminClient = getServerAdminClient();
-    const webuiVirtualKey = await adminClient.system.getWebUIVirtualKey();
+    const webadminVirtualKey = await adminClient.system.getWebAdminVirtualKey();
 
     // Extract request metadata
     const sourceIP = request.headers.get('x-forwarded-for') ??
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
 
     // Generate ephemeral key via Core SDK
     const coreClient = await getServerCoreClient();
-    const response = await coreClient.auth.generateEphemeralKey(webuiVirtualKey, {
+    const response = await coreClient.auth.generateEphemeralKey(webadminVirtualKey, {
       metadata: {
         sourceIP,
         userAgent,
@@ -368,7 +368,7 @@ const details = getCombinedErrorDetails(error);
 
 1. **Security** - Short-lived, single-purpose keys minimize exposure
 2. **Direct API access** - Browser can call Core/Admin APIs directly
-3. **Scalability** - No need to proxy all API traffic through WebUI
+3. **Scalability** - No need to proxy all API traffic through WebAdmin
 4. **Simplicity** - Clean separation between auth and business logic
 
 ### Ephemeral Key Flow
@@ -376,8 +376,8 @@ const details = getCombinedErrorDetails(error);
 ```
 1. Browser needs to call Core API
 2. Request ephemeral key from /api/auth/ephemeral-key
-3. WebUI validates user via Clerk
-4. WebUI generates ephemeral key using its virtual key
+3. WebAdmin validates user via Clerk
+4. WebAdmin generates ephemeral key using its virtual key
 5. Returns ephemeral key + Core API URL to browser
 6. Browser stores key in memory (with expiration)
 7. Browser makes direct calls to Core API with ephemeral key
@@ -671,7 +671,7 @@ const page = parseInt(searchParams.get('page') ?? '1');
 
 ### Key Takeaways
 
-1. **Only 3 API routes** - WebUI is not a traditional API backend
+1. **Only 3 API routes** - WebAdmin is not a traditional API backend
 2. **Clerk handles authentication** - No custom auth in routes
 3. **Use SDK clients** - `getServerAdminClient()` and `getServerCoreClient()`
 4. **Simple error handling** - `handleSDKError()` for all SDK errors
@@ -701,8 +701,8 @@ export async function GET(request: NextRequest) {
 
 - **[Architecture Documentation](../architecture/README.md)** - System architecture overview
 - **[SDK Best Practices](../api-guides/sdk/best-practices.md)** - SDK usage patterns
-- **[Next.js Integration](../api-guides/sdk/nextjs-integration.md)** - WebUI SDK integration
-- **[Error Handling](webui/error-handling.md)** - WebUI error patterns
+- **[Next.js Integration](../api-guides/sdk/nextjs-integration.md)** - WebAdmin SDK integration
+- **[Error Handling](webadmin/error-handling.md)** - WebAdmin error patterns
 
 ---
 

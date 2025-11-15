@@ -116,7 +116,7 @@ Conduit's Health Monitoring system provides comprehensive real-time monitoring, 
 
 ### Accessing the Dashboard
 
-1. Navigate to `/health-monitoring` in the WebUI
+1. Navigate to `/health-monitoring` in the WebAdmin
 2. The dashboard displays:
    - Overall system health status
    - Active alerts with severity indicators

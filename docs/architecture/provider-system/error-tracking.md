@@ -150,7 +150,7 @@ Endpoints for error monitoring and key management:
 - `GET /api/provider-errors/keys/{keyId}` - Get key error details
 - `POST /api/provider-errors/keys/{keyId}/clear` - Clear errors and re-enable
 
-### With WebUI (To Be Implemented)
+### With WebAdmin (To Be Implemented)
 - Error dashboard showing provider health
 - Disabled keys with error reasons
 - Manual re-enable interface with confirmation
@@ -167,7 +167,7 @@ Endpoints for error monitoring and key management:
 2. Add DTOs for API responses
 3. Update Admin SDK with error endpoints
 
-### Phase 4: WebUI Integration
+### Phase 4: WebAdmin Integration
 1. Create error dashboard page
 2. Enhance key management with error badges
 3. Add real-time updates via SignalR

@@ -206,7 +206,7 @@ services:
       retries: 3
       start_period: 60s
 
-  webui:
+  webadmin:
     build:
       context: .
       dockerfile: WebAdmin/Dockerfile
@@ -226,9 +226,9 @@ services:
       # External URLs for SignalR connections from browser
       CONDUIT_API_EXTERNAL_URL: http://localhost:5000
       CONDUIT_ADMIN_API_EXTERNAL_URL: http://localhost:5002
-      # Clerk authentication for WebUI access (Required)
+      # Clerk authentication for WebAdmin access (Required)
       # Get these values from your Clerk dashboard at https://dashboard.clerk.com
-      # Users must have siteadmin: true in their public metadata to access the WebUI
+      # Users must have siteadmin: true in their public metadata to access the WebAdmin
       
       # Optional: Configure a redirect URL for users without admin access
       # If set, users without proper permissions will be redirected to this URL

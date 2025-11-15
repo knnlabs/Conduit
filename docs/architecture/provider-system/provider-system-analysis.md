@@ -15,8 +15,8 @@ While adding SambaNova as a new provider to Conduit, we discovered significant a
 5. **Admin Discovery Service** - `ConduitLLM.Admin/Services/ProviderModelDiscoveryService.cs` (2 places)
 6. **Core Discovery Service** - `ConduitLLM.Core/Services/ProviderDiscoveryService.cs`
 7. **TypeScript SDK Enum** - `SDKs/Node/Admin/src/models/providerType.ts`
-8. **WebUI Provider Utilities** - `WebAdmin/src/lib/utils/providerTypeUtils.ts` (3 separate mappings)
-9. **WebUI Constants** - `WebAdmin/src/lib/constants/providers.ts`
+8. **WebAdmin Provider Utilities** - `WebAdmin/src/lib/utils/providerTypeUtils.ts` (3 separate mappings)
+9. **WebAdmin Constants** - `WebAdmin/src/lib/constants/providers.ts`
 10. **Static Model JSON** - `ConduitLLM.Providers/StaticModels/sambanova-models.json`
 
 ### The Core Issues
@@ -59,7 +59,7 @@ There's no single place where a provider "registers" itself. Instead, provider s
 
 ### Discovery Flow
 ```
-WebUI → Admin API → ProviderDiscoveryService → ProviderModelDiscoveryService → Provider-specific discovery
+WebAdmin → Admin API → ProviderDiscoveryService → ProviderModelDiscoveryService → Provider-specific discovery
                                     ↓                          ↓
                           (checks supported list)    (checks another list)
 ```
