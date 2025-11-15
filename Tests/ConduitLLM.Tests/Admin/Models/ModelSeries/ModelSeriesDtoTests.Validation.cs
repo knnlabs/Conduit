@@ -20,7 +20,7 @@ namespace ConduitLLM.Tests.Admin.Models.ModelSeries
             dto.AuthorId.Should().Be(0);
             dto.Name.Should().Be(string.Empty);
             dto.Description.Should().BeNull();
-            dto.TokenizerType.Should().Be(TokenizerType.None); // Default enum value is 0
+            dto.TokenizerType.Should().Be(TokenizerType.Cl100KBase); // Default value as per DTO definition
             dto.Parameters.Should().BeNull();
         }
 
