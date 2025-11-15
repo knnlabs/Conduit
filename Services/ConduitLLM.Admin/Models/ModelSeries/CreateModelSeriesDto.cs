@@ -82,9 +82,10 @@ namespace ConduitLLM.Admin.Models.ModelSeries
         /// - TokenizerType.Custom - For proprietary tokenization schemes
         /// 
         /// The tokenizer affects token counting, cost calculation, and context limits.
+        /// Defaults to Cl100KBase (modern OpenAI tokenizer) as a sensible default.
         /// </remarks>
         /// <value>The tokenizer type enum value.</value>
-        public TokenizerType TokenizerType { get; set; }
+        public TokenizerType TokenizerType { get; set; } = TokenizerType.Cl100KBase;
         
         /// <summary>
         /// Gets or sets optional UI parameter configuration for the series.
