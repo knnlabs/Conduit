@@ -4,11 +4,13 @@ using Microsoft.AspNetCore.Mvc;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration.DTOs.BatchOperations;
+using ConduitLLM.Core.Services.BatchOperations;
 
 namespace ConduitLLM.Http.Controllers
 {
     /// <summary>
-    /// API controller for managing batch operations with real-time progress tracking
+    /// API controller for managing batch operations with real-time progress tracking.
+    /// Supports idempotency tokens via X-Idempotency-Token header.
     /// </summary>
     [ApiController]
     [Route("v1/batch")]
@@ -21,6 +23,7 @@ namespace ConduitLLM.Http.Controllers
         private readonly IBatchVirtualKeyUpdateOperation _batchVirtualKeyUpdateOperation;
         private readonly IBatchWebhookSendOperation _batchWebhookSendOperation;
         private readonly IVirtualKeyService _virtualKeyService;
+        private readonly BatchSpendUpdateOperationV2? _batchSpendUpdateOperationV2;
 
         public BatchOperationsController(
             ILogger<BatchOperationsController> logger,
@@ -28,7 +31,8 @@ namespace ConduitLLM.Http.Controllers
             IBatchSpendUpdateOperation batchSpendUpdateOperation,
             IBatchVirtualKeyUpdateOperation batchVirtualKeyUpdateOperation,
             IBatchWebhookSendOperation batchWebhookSendOperation,
-            IVirtualKeyService virtualKeyService)
+            IVirtualKeyService virtualKeyService,
+            BatchSpendUpdateOperationV2? batchSpendUpdateOperationV2 = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _batchOperationService = batchOperationService ?? throw new ArgumentNullException(nameof(batchOperationService));
@@ -36,13 +40,19 @@ namespace ConduitLLM.Http.Controllers
             _batchVirtualKeyUpdateOperation = batchVirtualKeyUpdateOperation ?? throw new ArgumentNullException(nameof(batchVirtualKeyUpdateOperation));
             _batchWebhookSendOperation = batchWebhookSendOperation ?? throw new ArgumentNullException(nameof(batchWebhookSendOperation));
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
+            _batchSpendUpdateOperationV2 = batchSpendUpdateOperationV2;
         }
 
         /// <summary>
-        /// Start a batch spend update operation
+        /// Start a batch spend update operation.
+        /// Supports idempotency via X-Idempotency-Token header to prevent duplicate processing.
         /// </summary>
         /// <param name="request">Batch spend update request</param>
         /// <returns>Operation result with tracking ID</returns>
+        /// <remarks>
+        /// Include X-Idempotency-Token header to enable duplicate detection.
+        /// Duplicate requests with the same token will return the cached result.
+        /// </remarks>
         [HttpPost("spend-updates")]
         [ProducesResponseType(typeof(BatchOperationStartResponse), 202)]
         [ProducesResponseType(400)]
@@ -50,7 +60,7 @@ namespace ConduitLLM.Http.Controllers
         public async Task<IActionResult> StartBatchSpendUpdate([FromBody] BatchSpendUpdateRequest request)
         {
             var virtualKeyId = GetVirtualKeyId();
-            
+
             // Validate request
             if (request.Updates == null || request.Updates.Count() == 0)
             {
@@ -72,16 +82,43 @@ namespace ConduitLLM.Http.Controllers
                 RequestMetadata = u.Metadata
             }).ToList();
 
-            // Start operation
-            var result = await _batchSpendUpdateOperation.ExecuteAsync(
-                spendUpdates,
-                virtualKeyId,
-                HttpContext.RequestAborted);
+            // Get idempotency token from header if provided
+            var idempotencyToken = HttpContext.Request.Headers["X-Idempotency-Token"].FirstOrDefault();
+
+            // Use V2 operation if available and idempotency token provided
+            BatchOperationResult result;
+            if (!string.IsNullOrWhiteSpace(idempotencyToken) && _batchSpendUpdateOperationV2 != null)
+            {
+                _logger.LogInformation(
+                    "Using V2 batch spend update operation with idempotency token {Token}",
+                    idempotencyToken);
+
+                result = await _batchSpendUpdateOperationV2.ExecuteAsync(
+                    spendUpdates,
+                    virtualKeyId,
+                    idempotencyToken,
+                    HttpContext.RequestAborted);
+            }
+            else
+            {
+                // Fall back to legacy V1 operation
+                if (!string.IsNullOrWhiteSpace(idempotencyToken))
+                {
+                    _logger.LogWarning(
+                        "Idempotency token provided but V2 operation not available. Using legacy operation.");
+                }
+
+                result = await _batchSpendUpdateOperation.ExecuteAsync(
+                    spendUpdates,
+                    virtualKeyId,
+                    HttpContext.RequestAborted);
+            }
 
             _logger.LogInformation(
-                "Started batch spend update operation {OperationId} with {Count} items",
+                "Started batch spend update operation {OperationId} with {Count} items (Idempotent: {Idempotent})",
                 result.OperationId,
-                request.Updates.Count());
+                request.Updates.Count(),
+                !string.IsNullOrWhiteSpace(idempotencyToken));
 
             return Accepted(new BatchOperationStartResponse
             {
