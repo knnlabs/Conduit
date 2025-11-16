@@ -436,3 +436,6 @@ codeql-results/
 *.sarif
 qlconfig.yml
 .codeql-build.sh
+
+# CSS linting cache
+.stylelintcache

@@ -42,6 +42,13 @@ export type {
   ModelsResponse,
 } from './models/models';
 
+// Media Service exports
+export type {
+  MediaUploadResponse,
+  MediaUploadOptions,
+} from './services/MediaService';
+export { MediaService } from './services/MediaService';
+
 export type {
   ImageGenerationRequest,
   ImageGenerationResponse,
@@ -85,39 +92,6 @@ export {
   validateAsyncVideoGenerationRequest,
 } from './models/videos';
 
-export type {
-  AudioFile,
-  VoiceSettings,
-  AudioTranscriptionRequest,
-  AudioTranscriptionResponse,
-  TranscriptionSegment,
-  TranscriptionWord,
-  AudioTranslationRequest,
-  AudioTranslationResponse,
-  TextToSpeechRequest,
-  TextToSpeechResponse,
-  HybridAudioRequest,
-  HybridAudioResponse,
-  RealtimeConnectionRequest,
-  RealtimeSessionConfig,
-  RealtimeMessage,
-  RealtimeSession,
-  AudioMetadata,
-  AudioProcessingOptions,
-  AudioError,
-  AudioValidation,
-} from './models/audio';
-
-export type {
-  AudioFormat,
-  TranscriptionFormat,
-  TimestampGranularity,
-  TextToSpeechModel,
-  Voice,
-  TranscriptionModel,
-} from './models/audio';
-
-export { AudioService, AudioUtils } from './services/AudioService';
 export { ImagesService } from './services/ImagesService';
 export { VideosService } from './services/VideosService';
 export type {
@@ -275,7 +249,6 @@ export { DiscoveryService } from './services/DiscoveryService';
 export { ProviderModelsService } from './services/ProviderModelsService';
 
 export { SignalRService } from './services/SignalRService';
-// export { ConnectionService } from './services/ConnectionService'; // Removed - using ConnectionService from FetchConduitCoreClient
 export { TaskHubClient } from './signalr/TaskHubClient';
 export { VideoGenerationHubClient } from './signalr/VideoGenerationHubClient';
 export { ImageGenerationHubClient } from './signalr/ImageGenerationHubClient';

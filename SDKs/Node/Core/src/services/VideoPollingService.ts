@@ -128,8 +128,9 @@ export class VideoPollingService {
         throw error;
       }
 
-      // Fire onStarted callback when status changes from Pending to Running
-      if (lastStatus === VideoTaskStatus.Pending && status.status === VideoTaskStatus.Running) {
+      // Fire onStarted callback when status changes from Pending to Processing or Running
+      if (lastStatus === VideoTaskStatus.Pending && 
+          (status.status === VideoTaskStatus.Processing || status.status === VideoTaskStatus.Running)) {
         if (pollingOptions?.onStarted) {
           try {
             pollingOptions.onStarted(status.estimated_time_to_completion);
@@ -206,7 +207,9 @@ export class VideoPollingService {
           throw new ConduitError('Task timed out');
 
         case VideoTaskStatus.Pending:
+        case VideoTaskStatus.Processing:
         case VideoTaskStatus.Running:
+        case VideoTaskStatus.Queued:
           // Continue polling
           break;
 

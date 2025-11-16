@@ -28,5 +28,5 @@ Limited Redis/cache metrics available:
 
 - The vast majority of monitoring, analytics, and management functionality is available through the SDK
 - Most "missing" functionality listed in previous versions of this document actually exists
-- The WebUI has comprehensive SDK integration with 95%+ feature coverage
+- The WebAdmin has comprehensive SDK integration with 95%+ feature coverage
 - Where minor functionality gaps exist, the UI gracefully handles missing data with appropriate fallbacks

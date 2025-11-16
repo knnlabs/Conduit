@@ -1,14 +1,22 @@
 import { FetchBasedClient } from './client/FetchBasedClient';
 import { FetchChatService } from './services/FetchChatService';
-import { AudioService } from './services/AudioService';
 import { AuthService } from './services/AuthService';
 import { HealthService } from './services/HealthService';
 import { ImagesService } from './services/ImagesService';
 import { VideosService } from './services/VideosService';
 import { DiscoveryService } from './services/DiscoveryService';
 import { ProviderModelsService } from './services/ProviderModelsService';
+import { MediaService } from './services/MediaService';
 import type { ClientConfig } from './client/types';
-import { ConduitError } from './utils/errors';
+import {
+  isConduitError,
+  isAuthError,
+  isRateLimitError,
+  isValidationError,
+  isNotFoundError,
+  isServerError,
+  isNetworkError
+} from '@knn_labs/conduit-common';
 
 /**
  * Type-safe Conduit Core Client using native fetch
@@ -32,79 +40,69 @@ import { ConduitError } from './utils/errors';
  */
 export class FetchConduitCoreClient extends FetchBasedClient {
   public readonly chat: FetchChatService;
-  public readonly audio: AudioService;
   public readonly auth: AuthService;
   public readonly health: HealthService;
   public readonly images: ImagesService;
   public readonly videos: VideosService;
   public readonly discovery: DiscoveryService;
   public readonly providerModels: ProviderModelsService;
+  public readonly media: MediaService;
 
   constructor(config: ClientConfig) {
     super(config);
 
     // Initialize services
     this.chat = new FetchChatService(config);
-    this.audio = new AudioService(this);
     this.auth = new AuthService(this);
     this.health = new HealthService(this);
     this.images = new ImagesService(this);
     this.videos = new VideosService(this);
     this.discovery = new DiscoveryService(this);
     this.providerModels = new ProviderModelsService(this);
+    this.media = new MediaService(this);
   }
 
   /**
    * Type guard for checking if an error is a ConduitError
+   * Re-exported from @knn_labs/conduit-common for convenience
    */
-  isConduitError(error: unknown): error is ConduitError {
-    return error instanceof ConduitError;
-  }
+  isConduitError = isConduitError;
 
   /**
    * Type guard for checking if an error is an authentication error
+   * Re-exported from @knn_labs/conduit-common for convenience
    */
-  isAuthError(error: unknown): error is ConduitError {
-    return this.isConduitError(error) && error.statusCode === 401;
-  }
+  isAuthError = isAuthError;
 
   /**
    * Type guard for checking if an error is a rate limit error
+   * Re-exported from @knn_labs/conduit-common for convenience
    */
-  isRateLimitError(error: unknown): error is ConduitError {
-    return this.isConduitError(error) && error.statusCode === 429;
-  }
+  isRateLimitError = isRateLimitError;
 
   /**
    * Type guard for checking if an error is a validation error
+   * Re-exported from @knn_labs/conduit-common for convenience
    */
-  isValidationError(error: unknown): error is ConduitError {
-    return this.isConduitError(error) && error.statusCode === 400;
-  }
+  isValidationError = isValidationError;
 
   /**
    * Type guard for checking if an error is a not found error
+   * Re-exported from @knn_labs/conduit-common for convenience
    */
-  isNotFoundError(error: unknown): error is ConduitError {
-    return this.isConduitError(error) && error.statusCode === 404;
-  }
+  isNotFoundError = isNotFoundError;
 
   /**
    * Type guard for checking if an error is a server error
+   * Re-exported from @knn_labs/conduit-common for convenience
    */
-  isServerError(error: unknown): error is ConduitError {
-    return this.isConduitError(error) && 
-           error.statusCode !== undefined && 
-           error.statusCode >= 500;
-  }
+  isServerError = isServerError;
 
   /**
    * Type guard for checking if an error is a network error
+   * Re-exported from @knn_labs/conduit-common for convenience
    */
-  isNetworkError(error: unknown): error is ConduitError {
-    return this.isConduitError(error) && 
-           (error.code === 'ECONNABORTED' || error.code === 'network_error');
-  }
+  isNetworkError = isNetworkError;
 }
 
 // Export the fetch-based client as the default

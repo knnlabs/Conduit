@@ -1,6 +1,5 @@
 import type { ChatCompletionChunk } from './chat';
 import type { ImageGenerationChunk } from './images';
-import type { AudioTranscriptionChunk, AudioTranslationChunk } from './audio';
 import type { EmbeddingChunk } from './embeddings';
 
 export interface SSEMessage {
@@ -82,8 +81,6 @@ export interface StreamingResponse<T extends BaseStreamChunk> {
 export enum StreamEventType {
   ChatCompletion = 'chat.completion.chunk',
   ImageGeneration = 'image.generation.chunk',
-  AudioTranscription = 'audio.transcription.chunk',
-  AudioTranslation = 'audio.translation.chunk',
   Embedding = 'embedding.chunk',
   Error = 'error',
   Done = 'done',
@@ -95,8 +92,6 @@ export enum StreamEventType {
 export type AnyStreamChunk = 
   | ChatCompletionChunk
   | ImageGenerationChunk
-  | AudioTranscriptionChunk
-  | AudioTranslationChunk
   | EmbeddingChunk;
 
 /**

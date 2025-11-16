@@ -1,0 +1,31 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'conduit-monitor'
+
+scrape_configs:
+  # Scrape Core API metrics
+  - job_name: 'conduit-api'
+    static_configs:
+      - targets: ['conduit-api:5000']
+        labels:
+          service: 'core-api'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Scrape Admin API metrics
+  - job_name: 'conduit-admin'
+    static_configs:
+      - targets: ['conduit-admin:5002']
+        labels:
+          service: 'admin-api'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Scrape Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'

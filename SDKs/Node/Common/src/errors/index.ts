@@ -243,6 +243,12 @@ export function isTimeoutError(error: unknown): error is TimeoutError {
   return error instanceof TimeoutError;
 }
 
+export function isServerError(error: unknown): error is ConduitError {
+  return isConduitError(error) &&
+         error.statusCode !== undefined &&
+         error.statusCode >= 500;
+}
+
 // Helper to check if an error is serialized ConduitError
 export function isSerializedConduitError(data: unknown): data is ReturnType<ConduitError['toSerializable']> {
   return (

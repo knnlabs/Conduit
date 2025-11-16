@@ -1,15 +1,16 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { RequestConfig } from '../client/types';
 import type { ProviderSettings } from '../models/common-types';
-import type {
-  ProviderDto,
-  CreateProviderDto,
-  UpdateProviderDto,
-  StandardApiKeyTestResponse
+import {
+  type ProviderDto,
+  type CreateProviderDto,
+  type UpdateProviderDto,
+  type StandardApiKeyTestResponse,
+  ApiKeyTestResult
 } from '../models/provider';
 import { ENDPOINTS } from '../constants';
 import { ProviderType } from '../models/providerType';
-import { classifyApiKeyTestError, createSuccessResponse } from '../utils/error-classification';
+import { classifyApiKeyTestError } from '../utils/error-classification';
 import { FetchProvidersServiceHealth } from './FetchProvidersServiceHealth';
 import { FetchProvidersServiceKeys } from './FetchProvidersServiceKeys';
 
@@ -17,11 +18,6 @@ import { FetchProvidersServiceKeys } from './FetchProvidersServiceKeys';
 type ApiProviderDto = ProviderDto;
 type ApiCreateProviderDto = CreateProviderDto;
 type ApiUpdateProviderDto = UpdateProviderDto;
-type TestConnectionResult = {
-  success: boolean;
-  message?: string;
-  details?: Record<string, unknown>;
-};
 
 // Define inline types for responses that aren't in the generated schemas
 interface ProviderListResponseDto {
@@ -38,6 +34,80 @@ interface ProviderConfig {
   baseUrl?: string;
   organizationId?: string;
   additionalConfig?: ProviderSettings;
+}
+
+// Type for raw API response (handles both PascalCase and camelCase)
+interface RawApiKeyTestResponse {
+  result?: string;
+  Result?: string;
+  message?: string;
+  Message?: string;
+  details?: RawApiKeyTestDetails;
+  Details?: RawApiKeyTestDetails;
+}
+
+interface RawApiKeyTestDetails {
+  responseTimeMs?: number;
+  ResponseTimeMs?: number;
+  modelsAvailable?: number;
+  ModelsAvailable?: number;
+  providerMessage?: string;
+  ProviderMessage?: string;
+  errorCode?: string;
+  ErrorCode?: string;
+  statusCode?: number;
+  StatusCode?: number;
+}
+
+/**
+ * Normalizes the API response to handle case mismatches between C# PascalCase and TypeScript camelCase
+ */
+function normalizeApiKeyTestResponse(response: RawApiKeyTestResponse): StandardApiKeyTestResponse {
+  // Handle both PascalCase (from C#) and camelCase (expected by SDK)
+  const result = response.result ?? response.Result ?? '';
+  const message = response.message ?? response.Message ?? '';
+  const details = response.details ?? response.Details;
+
+  // Normalize the result enum value to lowercase with underscores
+  const normalizedResult = normalizeEnumValue(result);
+
+  return {
+    result: normalizedResult,
+    message: message,
+    details: details ? {
+      responseTimeMs: details.responseTimeMs ?? details.ResponseTimeMs,
+      modelsAvailable: details.modelsAvailable ?? details.ModelsAvailable,
+      providerMessage: details.providerMessage ?? details.ProviderMessage,
+      errorCode: details.errorCode ?? details.ErrorCode,
+      statusCode: details.statusCode ?? details.StatusCode,
+    } : undefined,
+  };
+}
+
+/**
+ * Normalizes enum values from PascalCase to snake_case
+ * Examples: "InvalidKey" -> "invalid_key", "Success" -> "success"
+ */
+function normalizeEnumValue(value: string): ApiKeyTestResult {
+  if (!value) return ApiKeyTestResult.UNKNOWN_ERROR;
+
+  // Convert PascalCase to snake_case
+  const snakeCase = value
+    .replace(/([A-Z])/g, '_$1')
+    .toLowerCase()
+    .replace(/^_/, '');
+
+  // Map to the enum
+  const enumMap: Record<string, ApiKeyTestResult> = {
+    'success': ApiKeyTestResult.SUCCESS,
+    'invalid_key': ApiKeyTestResult.INVALID_KEY,
+    'ignored': ApiKeyTestResult.IGNORED,
+    'provider_down': ApiKeyTestResult.PROVIDER_DOWN,
+    'rate_limited': ApiKeyTestResult.RATE_LIMITED,
+    'unknown_error': ApiKeyTestResult.UNKNOWN_ERROR,
+  };
+
+  return enumMap[snakeCase] ?? ApiKeyTestResult.UNKNOWN_ERROR;
 }
 
 /**
@@ -158,8 +228,7 @@ export class FetchProvidersService {
     config?: RequestConfig
   ): Promise<StandardApiKeyTestResponse> {
     try {
-      const startTime = Date.now();
-      const result = await this.client['post']<TestConnectionResult>(
+      const result = await this.client['post']<RawApiKeyTestResponse>(
         ENDPOINTS.PROVIDERS.TEST_BY_ID(id),
         undefined,
         {
@@ -168,23 +237,9 @@ export class FetchProvidersService {
           headers: config?.headers,
         }
       );
-      
-      const responseTimeMs = Date.now() - startTime;
-      
-      // Convert old response format to new standardized format
-      if (result.success) {
-        return createSuccessResponse(
-          responseTimeMs,
-          (result.details as Record<string, unknown>)?.modelsAvailable as string[] | undefined
-        );
-      } else {
-        // Get provider info to determine type
-        const provider = await this.getById(id, config);
-        return classifyApiKeyTestError(
-          { message: result.message, status: 400 },
-          provider.providerType
-        );
-      }
+
+      // Normalize the response to handle C# PascalCase and enum mismatches
+      return normalizeApiKeyTestResponse(result);
     } catch (error) {
       // Get provider info to determine type for error classification
       try {
@@ -205,8 +260,7 @@ export class FetchProvidersService {
     config?: RequestConfig
   ): Promise<StandardApiKeyTestResponse> {
     try {
-      const startTime = Date.now();
-      const result = await this.client['post']<TestConnectionResult, ProviderConfig>(
+      const result = await this.client['post']<RawApiKeyTestResponse, ProviderConfig>(
         `${ENDPOINTS.PROVIDERS.BASE}/test`,
         providerConfig,
         {
@@ -215,21 +269,9 @@ export class FetchProvidersService {
           headers: config?.headers,
         }
       );
-      
-      const responseTimeMs = Date.now() - startTime;
-      
-      // Convert old response format to new standardized format
-      if (result.success) {
-        return createSuccessResponse(
-          responseTimeMs,
-          (result.details as Record<string, unknown>)?.modelsAvailable as string[] | undefined
-        );
-      } else {
-        return classifyApiKeyTestError(
-          { message: result.message, status: 400 },
-          providerConfig.providerType
-        );
-      }
+
+      // Normalize the response to handle C# PascalCase and enum mismatches
+      return normalizeApiKeyTestResponse(result);
     } catch (error) {
       return classifyApiKeyTestError(error, providerConfig.providerType);
     }

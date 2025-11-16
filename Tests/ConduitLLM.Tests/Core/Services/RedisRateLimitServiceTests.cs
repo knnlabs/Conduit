@@ -1,0 +1,380 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Moq;
+using StackExchange.Redis;
+using Xunit;
+using ConduitLLM.Core.Services;
+using Xunit.Abstractions;
+
+namespace ConduitLLM.Tests.Core.Services
+{
+    /// <summary>
+    /// Integration tests for Redis-based distributed rate limiting
+    /// Verifies that rate limits are properly enforced across multiple instances
+    /// NOTE: Requires Redis to be running. Tests will be skipped if Redis is not available.
+    /// </summary>
+    public class RedisRateLimitServiceTests : IDisposable
+    {
+        private readonly ConnectionMultiplexer _redis;
+        private readonly IDatabase _db;
+        private readonly Mock<ILogger<RedisVirtualKeyRateLimitService>> _mockLogger;
+        private readonly Mock<ILogger<RedisSignalRRateLimitService>> _mockSignalRLogger;
+        private readonly RedisVirtualKeyRateLimitService _rateLimitService;
+        private readonly RedisSignalRRateLimitService _signalRService;
+        private readonly string _testKeyPrefix = $"test:{Guid.NewGuid()}:";
+
+        public RedisRateLimitServiceTests()
+        {
+            // Use TestContainers or local Redis for testing
+            var redisConnectionString = Environment.GetEnvironmentVariable("TEST_REDIS_CONNECTION") ?? "localhost:6379,allowAdmin=true";
+            
+            try
+            {
+                var options = ConfigurationOptions.Parse(redisConnectionString);
+                options.ConnectTimeout = 1000; // 1 second timeout for tests
+                options.SyncTimeout = 1000;
+                options.AbortOnConnectFail = false;
+                
+                _redis = ConnectionMultiplexer.Connect(options);
+                _db = _redis.GetDatabase();
+                
+                // Test connection
+                _db.Ping();
+            }
+            catch (Exception)
+            {
+                // If Redis is not available, mark for skipping
+                _redis = null;
+                _db = null;
+                return;
+            }
+
+            _mockLogger = new Mock<ILogger<RedisVirtualKeyRateLimitService>>();
+            _mockSignalRLogger = new Mock<ILogger<RedisSignalRRateLimitService>>();
+            
+            if (_redis != null && _redis.IsConnected)
+            {
+                _rateLimitService = new RedisVirtualKeyRateLimitService(_redis, _mockLogger.Object);
+                _signalRService = new RedisSignalRRateLimitService(_redis, _mockSignalRLogger.Object);
+            }
+        }
+
+        private void SkipIfRedisNotAvailable()
+        {
+            if (_redis == null || !_redis.IsConnected || _rateLimitService == null)
+            {
+                throw new SkipException("Redis is not available for testing. Set TEST_REDIS_CONNECTION environment variable or ensure Redis is running.");
+            }
+        }
+
+        [Fact]
+        public async Task CheckRateLimitAsync_RPM_ShouldEnforceMinuteLimit()
+        {
+            SkipIfRedisNotAvailable();
+            
+            // Arrange
+            var virtualKeyHash = _testKeyPrefix + "rpm-test";
+            var rpmLimit = 5;
+            var allowedRequests = 0;
+            var deniedRequests = 0;
+
+            // Act - Make 10 requests, only 5 should succeed
+            for (int i = 0; i < 10; i++)
+            {
+                var result = await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, rpmLimit, null);
+                
+                if (result.IsAllowed)
+                    allowedRequests++;
+                else
+                    deniedRequests++;
+            }
+
+            // Assert
+            Assert.Equal(rpmLimit, allowedRequests);
+            Assert.Equal(5, deniedRequests);
+        }
+
+        [Fact]
+        public async Task CheckRateLimitAsync_RPD_ShouldEnforceDailyLimit()
+        {
+            SkipIfRedisNotAvailable();
+            
+            // Arrange
+            var virtualKeyHash = _testKeyPrefix + "rpd-test";
+            var rpdLimit = 10;
+            var allowedRequests = 0;
+            var deniedRequests = 0;
+
+            // Act - Make 15 requests, only 10 should succeed
+            for (int i = 0; i < 15; i++)
+            {
+                var result = await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, null, rpdLimit);
+                
+                if (result.IsAllowed)
+                    allowedRequests++;
+                else
+                    deniedRequests++;
+            }
+
+            // Assert
+            Assert.Equal(rpdLimit, allowedRequests);
+            Assert.Equal(5, deniedRequests);
+        }
+
+        [Fact]
+        public async Task CheckRateLimitAsync_MultipleInstances_ShouldShareRateLimitState()
+        {
+            SkipIfRedisNotAvailable();
+            
+            // Arrange
+            var virtualKeyHash = _testKeyPrefix + "multi-instance-test";
+            var rpmLimit = 10;
+            
+            // Create multiple service instances (simulating multiple servers)
+            var service1 = new RedisVirtualKeyRateLimitService(_redis, _mockLogger.Object);
+            var service2 = new RedisVirtualKeyRateLimitService(_redis, _mockLogger.Object);
+            var service3 = new RedisVirtualKeyRateLimitService(_redis, _mockLogger.Object);
+
+            var totalAllowed = 0;
+            var totalDenied = 0;
+
+            // Act - Each instance makes 5 requests (15 total), only 10 should succeed
+            var tasks = new List<Task>();
+            
+            // Instance 1
+            tasks.Add(Task.Run(async () =>
+            {
+                for (int i = 0; i < 5; i++)
+                {
+                    var result = await service1.CheckRateLimitAsync(virtualKeyHash, rpmLimit, null);
+                    if (result.IsAllowed)
+                        Interlocked.Increment(ref totalAllowed);
+                    else
+                        Interlocked.Increment(ref totalDenied);
+                }
+            }));
+
+            // Instance 2
+            tasks.Add(Task.Run(async () =>
+            {
+                for (int i = 0; i < 5; i++)
+                {
+                    var result = await service2.CheckRateLimitAsync(virtualKeyHash, rpmLimit, null);
+                    if (result.IsAllowed)
+                        Interlocked.Increment(ref totalAllowed);
+                    else
+                        Interlocked.Increment(ref totalDenied);
+                }
+            }));
+
+            // Instance 3
+            tasks.Add(Task.Run(async () =>
+            {
+                for (int i = 0; i < 5; i++)
+                {
+                    var result = await service3.CheckRateLimitAsync(virtualKeyHash, rpmLimit, null);
+                    if (result.IsAllowed)
+                        Interlocked.Increment(ref totalAllowed);
+                    else
+                        Interlocked.Increment(ref totalDenied);
+                }
+            }));
+
+            await Task.WhenAll(tasks);
+
+            // Assert
+            Assert.Equal(rpmLimit, totalAllowed);
+            Assert.Equal(5, totalDenied);
+        }
+
+        [Fact]
+        public async Task SignalRRateLimitService_ConnectionTracking_ShouldBeDistributed()
+        {
+            SkipIfRedisNotAvailable();
+            
+            // Arrange
+            var virtualKeyHash = _testKeyPrefix + "signalr-conn-test";
+            
+            // Create multiple service instances
+            var service1 = new RedisSignalRRateLimitService(_redis, _mockSignalRLogger.Object);
+            var service2 = new RedisSignalRRateLimitService(_redis, _mockSignalRLogger.Object);
+
+            // Act
+            var count1 = await service1.IncrementConnectionCountAsync(virtualKeyHash);
+            var count2 = await service2.IncrementConnectionCountAsync(virtualKeyHash);
+            var count3 = await service1.IncrementConnectionCountAsync(virtualKeyHash);
+            
+            var currentCount = await service2.GetConnectionCountAsync(virtualKeyHash);
+            
+            await service1.DecrementConnectionCountAsync(virtualKeyHash);
+            var afterDecrement = await service2.GetConnectionCountAsync(virtualKeyHash);
+
+            // Assert
+            Assert.Equal(1, count1);
+            Assert.Equal(2, count2);
+            Assert.Equal(3, count3);
+            Assert.Equal(3, currentCount);
+            Assert.Equal(2, afterDecrement);
+        }
+
+        [Fact]
+        public async Task SignalRRateLimitService_MethodInvocation_ShouldEnforceRPMLimit()
+        {
+            SkipIfRedisNotAvailable();
+            
+            // Arrange
+            var virtualKeyHash = _testKeyPrefix + "signalr-rpm-test";
+            var rpmLimit = 3;
+            var service = new RedisSignalRRateLimitService(_redis, _mockSignalRLogger.Object);
+
+            // Act
+            var results = new List<SignalRRateLimitResult>();
+            for (int i = 0; i < 5; i++)
+            {
+                var result = await service.CheckMethodInvocationAsync(virtualKeyHash, rpmLimit, null);
+                results.Add(result);
+            }
+
+            // Assert
+            Assert.Equal(3, results.Count(r => r.IsAllowed));
+            Assert.Equal(2, results.Count(r => !r.IsAllowed));
+            Assert.All(results.Where(r => !r.IsAllowed), r => 
+            {
+                Assert.Equal("RPM", r.LimitType);
+                Assert.Contains("Rate limit exceeded", r.DenialReason);
+            });
+        }
+
+        [Fact]
+        public async Task SlidingWindow_ShouldExpireOldRequests()
+        {
+            SkipIfRedisNotAvailable();
+            
+            // Arrange
+            var virtualKeyHash = _testKeyPrefix + "sliding-window-test";
+            var rpmLimit = 2;
+            
+            // Act
+            // Make 2 requests (should succeed)
+            var result1 = await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, rpmLimit, null);
+            var result2 = await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, rpmLimit, null);
+            
+            // Third request should be denied
+            var result3 = await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, rpmLimit, null);
+            
+            // Wait for window to expire (simplified test - in production this is 60 seconds)
+            // For testing, we can manually clear the key to simulate expiration
+            await _db.KeyDeleteAsync($"rate:vk:{virtualKeyHash}:rpm");
+            
+            // Request after window expiration should succeed
+            var result4 = await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, rpmLimit, null);
+
+            // Assert
+            Assert.True(result1.IsAllowed);
+            Assert.True(result2.IsAllowed);
+            Assert.False(result3.IsAllowed);
+            Assert.True(result4.IsAllowed);
+        }
+
+        [Fact]
+        public async Task RateLimitUsage_ShouldReturnAccurateStatistics()
+        {
+            SkipIfRedisNotAvailable();
+            
+            // Arrange
+            var virtualKeyHash = _testKeyPrefix + "usage-stats-test"; // Use unique key with test prefix
+            var rpmLimit = 5;
+            var rpdLimit = 20;
+
+            // Act
+            // Make some requests and verify they succeed
+            for (int i = 0; i < 3; i++)
+            {
+                var result = await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, rpmLimit, rpdLimit);
+                Assert.True(result.IsAllowed, $"Request {i+1} should be allowed");
+                // Verify the request was counted
+                Assert.True(result.RequestsRemaining >= 0, $"Request {i+1} should have remaining count");
+            }
+
+            var usage = await _rateLimitService.GetUsageAsync(virtualKeyHash);
+
+            // Debug info if test fails
+            if (usage.RequestsThisMinute != 3)
+            {
+                // Try to get the raw data from Redis to understand what's happening
+                var db = _redis.GetDatabase();
+                var rpmKey = $"rate:vk:{virtualKeyHash}:rpm";
+                var rpmCount = await db.SortedSetLengthAsync(rpmKey);
+                Assert.Equal(3, rpmCount); // This will fail with more info
+            }
+
+            // Assert
+            Assert.Equal(3, usage.RequestsThisMinute);
+            Assert.Equal(3, usage.RequestsToday);
+            Assert.True(usage.MinuteWindowStart <= DateTime.UtcNow);
+            Assert.True(usage.DayWindowStart <= DateTime.UtcNow);
+        }
+
+        [Fact]
+        public async Task RemoveRateLimits_ShouldClearAllData()
+        {
+            SkipIfRedisNotAvailable();
+            
+            // Arrange
+            var virtualKeyHash = _testKeyPrefix + "remove-test";
+            
+            // Make some requests to populate data
+            await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, 10, 100);
+            await _rateLimitService.UpdateRateLimitsAsync(virtualKeyHash, 10, 100);
+            
+            // Act
+            await _rateLimitService.RemoveRateLimitsAsync(virtualKeyHash);
+            
+            // Verify data is removed
+            var usage = await _rateLimitService.GetUsageAsync(virtualKeyHash);
+
+            // Assert
+            Assert.Equal(0, usage.RequestsThisMinute);
+            Assert.Equal(0, usage.RequestsToday);
+        }
+
+        public void Dispose()
+        {
+            // Clean up test data
+            if (_redis?.IsConnected == true)
+            {
+                var server = _redis.GetServer(_redis.GetEndPoints().First());
+                var keys = server.Keys(pattern: $"{_testKeyPrefix}*");
+                foreach (var key in keys)
+                {
+                    _db.KeyDelete(key);
+                }
+                
+                _redis.Dispose();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Helper class for conditional test skipping
+    /// </summary>
+    public static class Skip
+    {
+        public static void IfNot(bool condition, string reason)
+        {
+            if (!condition)
+            {
+                throw new SkipException(reason);
+            }
+        }
+    }
+
+    public class SkipException : Exception
+    {
+        public SkipException(string reason) : base(reason) { }
+    }
+}

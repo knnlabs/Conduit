@@ -37,6 +37,9 @@ export interface VideoGenerationRequest {
   
   /** The number of videos to generate. Defaults to 1 */
   n?: number;
+  
+  /** Allow additional dynamic parameters for model-specific requirements */
+  [key: string]: unknown;
 }
 
 /**
@@ -167,6 +170,9 @@ export interface AsyncVideoGenerationResponse {
   /** When the task was last updated */
   updated_at: string;
   
+  /** URL to check the status of the task */
+  check_status_url?: string;
+  
   /** The generation result, available when status is Completed */
   result?: VideoGenerationResponse;
   
@@ -179,22 +185,28 @@ export interface AsyncVideoGenerationResponse {
  */
 export enum VideoTaskStatus {
   /** Task is waiting to be processed */
-  Pending = 'Pending',
+  Pending = 'pending',
   
   /** Task is currently being processed */
-  Running = 'Running',
+  Processing = 'processing',
+  
+  /** Task is running (alternative status for processing) */
+  Running = 'running',
   
   /** Task completed successfully */
-  Completed = 'Completed',
+  Completed = 'completed',
   
   /** Task failed with an error */
-  Failed = 'Failed',
+  Failed = 'failed',
   
   /** Task was cancelled */
-  Cancelled = 'Cancelled',
+  Cancelled = 'cancelled',
   
   /** Task timed out */
-  TimedOut = 'TimedOut'
+  TimedOut = 'timedout',
+  
+  /** Task is queued (initial status from some endpoints) */
+  Queued = 'queued'
 }
 
 /**

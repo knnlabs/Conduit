@@ -28,6 +28,8 @@ export interface VideoApiRequest {
   seed?: number;
   /** Number of videos to generate */
   n: number;
+  /** Allow additional dynamic parameters for model-specific requirements */
+  [key: string]: unknown;
 }
 
 /**

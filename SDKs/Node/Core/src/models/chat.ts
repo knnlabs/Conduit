@@ -101,9 +101,25 @@ export interface ChatCompletionResponse {
   performance?: PerformanceMetrics;
 }
 
+/**
+ * Delta content in streaming chunks, includes support for reasoning models
+ */
+export interface DeltaContent {
+  role?: 'system' | 'user' | 'assistant' | 'tool';
+  content?: string;
+  tool_calls?: ToolCall[];
+  tool_call_id?: string;
+  /** Reasoning content for models like gpt-oss-120b */
+  reasoning?: string;
+  /** Channel indicator (e.g., "analysis" for reasoning) */
+  channel?: string;
+  /** Extension data for provider-specific fields */
+  [key: string]: unknown;
+}
+
 export interface ChatCompletionChunkChoice {
   index: number;
-  delta: Partial<ChatCompletionMessage>;
+  delta: DeltaContent;
   logprobs?: unknown;
   finish_reason: FinishReason;
 }

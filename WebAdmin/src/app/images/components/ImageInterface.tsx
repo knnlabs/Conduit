@@ -1,0 +1,204 @@
+'use client';
+
+import { useEffect } from 'react';
+import {
+  Stack,
+  Title,
+  Text,
+  Group,
+  Button,
+  Alert,
+  LoadingOverlay,
+  Paper,
+} from '@mantine/core';
+import { IconSettings } from '@tabler/icons-react';
+import { useImageStore } from '../hooks/useImageStore';
+import { ErrorDisplay } from '@/components/common/ErrorDisplay';
+import { createEnhancedError } from '@/lib/utils/error-enhancement';
+import { DynamicParameters } from '@/components/parameters/DynamicParameters';
+import { useParameterState } from '@/components/parameters/hooks/useParameterState';
+import { useDiscoveryModels } from '@/app/chat/hooks/useDiscoveryModels';
+import { ModelCapability } from '@knn_labs/conduit-core-client';
+import ImageSettings from './ImageSettings';
+import ImagePromptInput from './ImagePromptInput';
+import ImageGallery from './ImageGallery';
+import { MediaGenerationStatus } from '@/app/types/media';
+
+export default function ImageInterface() {
+  const {
+    status,
+    error,
+    settingsVisible,
+    settings,
+    updateSettings,
+    toggleSettings,
+    setError,
+  } = useImageStore();
+
+  // Fetch models with image generation capability from discovery endpoint
+  const { data: discoveryData, isLoading: modelsLoading, error: modelsError } = useDiscoveryModels(ModelCapability.ImageGeneration);
+  
+  // Find the selected model with parameters
+  const selectedDiscoveryModel = discoveryData?.data?.find(m => m.id === settings.model);
+  
+  // Initialize parameter state with the model's parameters
+  const parameterState = useParameterState({
+    parameters: selectedDiscoveryModel?.parameters ?? '{}',
+    persistKey: `image-params-${settings.model ?? 'default'}`,
+  });
+
+  // Auto-select first available model
+  useEffect(() => {
+    if (discoveryData?.data && discoveryData.data.length > 0 && !settings.model) {
+      updateSettings({ model: discoveryData.data[0].id });
+    }
+  }, [discoveryData, settings.model, updateSettings]);
+
+  // Handle models loading error
+  useEffect(() => {
+    if (modelsError) {
+      setError(`Failed to load models: ${modelsError.message}`);
+    }
+  }, [modelsError, setError]);
+
+  if (modelsLoading) {
+    return (
+      <Stack gap="xl">
+        <Paper p="md" withBorder>
+          <LoadingOverlay visible={true} overlayProps={{ radius: 'sm', blur: 2 }} />
+          <Text c="dimmed">Loading image generation models...</Text>
+        </Paper>
+      </Stack>
+    );
+  }
+
+  if (modelsError || !discoveryData?.data || discoveryData.data.length === 0) {
+    const errorInstance = modelsError 
+      ? new Error(`Error loading models: ${modelsError.message}`)
+      : new Error('No image generation models available. Please configure providers and add image generation models.');
+    
+    if (modelsError) {
+      errorInstance.name = 'ModelLoadError';
+    } else {
+      errorInstance.name = 'ConfigurationError';
+    }
+
+    return (
+      <Stack gap="xl">
+        <ErrorDisplay 
+          error={errorInstance}
+          variant="card"
+          showDetails={!!modelsError}
+          actions={[
+            {
+              label: 'Configure Providers',
+              onClick: () => window.location.href = '/llm-providers',
+              color: 'blue',
+              variant: 'filled',
+            },
+            {
+              label: 'Add Model Mappings', 
+              onClick: () => window.location.href = '/model-mappings',
+              color: 'blue',
+              variant: 'light',
+            }
+          ]}
+        />
+        {!modelsError && (
+          <Alert color="blue" variant="light">
+            <Text size="sm">To use image generation, you need to:</Text>
+            <ol style={{ marginLeft: '1rem', marginTop: '0.5rem' }}>
+              <li>Configure providers (OpenAI, MiniMax, etc.) in <strong>LLM Providers</strong></li>
+              <li>Add image generation models in <strong>Model Mappings</strong></li>
+              <li>Enable the <strong>&quot;Supports Image Generation&quot;</strong> checkbox for those models</li>
+            </ol>
+            <Text size="sm" mt="sm">
+              Example models: <code>dall-e-2</code>, <code>dall-e-3</code>, <code>minimax-image</code>
+            </Text>
+          </Alert>
+        )}
+      </Stack>
+    );
+  }
+
+  return (
+    <Stack gap="xl">
+      {/* Header */}
+      <Group justify="space-between">
+        <div>
+          <Title order={1}>Image Generation</Title>
+          <Text c="dimmed">Create AI-generated images from text prompts</Text>
+        </div>
+        <Button 
+          variant="light"
+          leftSection={<IconSettings size={16} />}
+          onClick={toggleSettings}
+        >
+          Settings
+        </Button>
+      </Group>
+
+      {/* Error Display */}
+      {error && (
+        <ErrorDisplay 
+          error={createEnhancedError(error)}
+          variant="inline"
+          showDetails={true}
+          onRetry={() => setError(null)}
+          actions={[
+            {
+              label: 'Configure Providers',
+              onClick: () => window.location.href = '/llm-providers',
+              color: 'blue',
+              variant: 'light',
+            }
+          ]}
+        />
+      )}
+
+      {/* Status Display */}
+      {status !== MediaGenerationStatus.Idle && (
+        <Alert
+          color={(() => {
+            if (status === MediaGenerationStatus.Generating) return 'blue';
+            if (status === MediaGenerationStatus.Completed) return 'green';
+            return 'red';
+          })()}
+          title={(() => {
+            if (status === MediaGenerationStatus.Generating) return 'Generating images...';
+            if (status === MediaGenerationStatus.Completed) return 'Images generated successfully!';
+            return 'Generation failed';
+          })()}
+        />
+      )}
+
+      {/* Settings Panel */}
+      {settingsVisible && (
+        <Paper p="md" withBorder>
+          <ImageSettings models={discoveryData?.data || []} />
+        </Paper>
+      )}
+
+      {/* Dynamic Parameters from Model */}
+      {selectedDiscoveryModel?.parameters && selectedDiscoveryModel.parameters !== '{}' && (
+        <DynamicParameters
+          parameters={selectedDiscoveryModel.parameters}
+          values={parameterState.values}
+          onChange={parameterState.updateValues}
+          context="image"
+          title="Image Generation Parameters"
+          collapsible={true}
+          defaultExpanded={false}
+        />
+      )}
+
+      {/* Prompt Input */}
+      <Paper p="md" withBorder>
+        <ImagePromptInput dynamicParameters={parameterState.getSubmitValues()} />
+      </Paper>
+
+      {/* Image Gallery */}
+      <ImageGallery />
+    </Stack>
+  );
+}

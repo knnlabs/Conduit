@@ -2,6 +2,6 @@
 export {
   HttpMethod,
   isHttpMethod,
-  RequestOptions,
-  ApiResponse
+  type RequestOptions,
+  type ApiResponse
 } from '@knn_labs/conduit-common';

@@ -178,12 +178,12 @@ generate_openapi_cli() {
     
     # Build the projects
     log "${BLUE}🔨 Building .NET projects...${NC}"
-    if ! dotnet build ConduitLLM.Http/ConduitLLM.Http.csproj --verbosity quiet; then
+    if ! dotnet build Services/ConduitLLM.Http/ConduitLLM.Http.csproj --verbosity quiet; then
         log "${RED}❌ Failed to build Core API project${NC}"
         return 1
     fi
-    
-    if ! dotnet build ConduitLLM.Admin/ConduitLLM.Admin.csproj --verbosity quiet; then
+
+    if ! dotnet build Services/ConduitLLM.Admin/ConduitLLM.Admin.csproj --verbosity quiet; then
         log "${RED}❌ Failed to build Admin API project${NC}"
         return 1
     fi
@@ -199,7 +199,7 @@ generate_openapi_cli() {
     fi
     
     log "${BLUE}📄 Generating Admin API OpenAPI spec...${NC}"
-    if $swagger_tool tofile --output ConduitLLM.Admin/openapi-admin.json ConduitLLM.Admin/bin/Debug/net9.0/ConduitLLM.Admin.dll v1 2>/dev/null; then
+    if $swagger_tool tofile --output Services/ConduitLLM.Admin/openapi-admin.json Services/ConduitLLM.Admin/bin/Debug/net9.0/ConduitLLM.Admin.dll v1 2>/dev/null; then
         log "${GREEN}✅ Generated Admin API spec using CLI${NC}"
     else
         log "${YELLOW}⚠️  CLI generation failed, but continuing...${NC}"
@@ -208,8 +208,8 @@ generate_openapi_cli() {
 
 # Function to check if existing OpenAPI files are usable
 check_existing_files() {
-    local core_file="$PROJECT_ROOT/ConduitLLM.Http/openapi-core.json"
-    local admin_file="$PROJECT_ROOT/ConduitLLM.Admin/openapi-admin.json"
+    local core_file="$PROJECT_ROOT/Services/ConduitLLM.Http/openapi-core.json"
+    local admin_file="$PROJECT_ROOT/Services/ConduitLLM.Admin/openapi-admin.json"
     
     local core_valid=false
     local admin_valid=false
@@ -285,14 +285,14 @@ main() {
         
         local core_success=false
         local admin_success=false
-        
+
         # Download Core API spec
-        if download_openapi_spec "Core API" $CORE_API_PORT "$PROJECT_ROOT/ConduitLLM.Http/openapi-core.json"; then
+        if download_openapi_spec "Core API" $CORE_API_PORT "$PROJECT_ROOT/Services/ConduitLLM.Http/openapi-core.json"; then
             core_success=true
         fi
-        
+
         # Download Admin API spec
-        if download_openapi_spec "Admin API" $ADMIN_API_PORT "$PROJECT_ROOT/ConduitLLM.Admin/openapi-admin.json"; then
+        if download_openapi_spec "Admin API" $ADMIN_API_PORT "$PROJECT_ROOT/Services/ConduitLLM.Admin/openapi-admin.json"; then
             admin_success=true
         fi
         
@@ -335,8 +335,8 @@ main() {
         # Show summary
         echo
         log "${GREEN}📋 Summary:${NC}"
-        log "${GREEN}   - Core API: ConduitLLM.Http/openapi-core.json${NC}"
-        log "${GREEN}   - Admin API: ConduitLLM.Admin/openapi-admin.json${NC}"
+        log "${GREEN}   - Core API: Services/ConduitLLM.Http/openapi-core.json${NC}"
+        log "${GREEN}   - Admin API: Services/ConduitLLM.Admin/openapi-admin.json${NC}"
         log "${GREEN}   - Core SDK: SDKs/Node/Core/src/generated/core-api.ts${NC}"
         log "${GREEN}   - Admin SDK: SDKs/Node/Admin/src/generated/admin-api.ts${NC}"
         

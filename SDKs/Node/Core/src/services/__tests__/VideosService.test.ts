@@ -47,13 +47,13 @@ describe('VideosService', () => {
         model: 'minimax-video',
       };
 
-      const expectedResponse = {
-        task_id: 'task_123',
-        status: VideoTaskStatus.Pending,
-        progress: 0,
+      const mockApiResponse = {
+        TaskId: 'task_123',
+        Status: 'pending',
+        Progress: 0
       };
 
-      mockClientAdapter.post.mockResolvedValueOnce(expectedResponse);
+      mockClientAdapter.post.mockResolvedValueOnce(mockApiResponse);
 
       const result = await service.generateAsync(request);
 
@@ -66,7 +66,11 @@ describe('VideosService', () => {
         }),
         undefined
       );
-      expect(result).toEqual(expectedResponse);
+      expect(result).toMatchObject({
+        task_id: 'task_123',
+        status: VideoTaskStatus.Pending,
+        progress: 0
+      });
     });
 
     it('should throw error for invalid request', async () => {

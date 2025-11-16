@@ -52,18 +52,19 @@ export interface ProviderModelsDiscoveryResponse {
 
 /**
  * Specific model capabilities to test.
+ * Values match the backend API's expected format (snake_case).
  */
 export enum ModelCapability {
-  Chat = 'Chat',
-  ChatStream = 'ChatStream',
-  Embeddings = 'Embeddings',
-  ImageGeneration = 'ImageGeneration',
-  Vision = 'Vision',
-  VideoGeneration = 'VideoGeneration',
-  VideoUnderstanding = 'VideoUnderstanding',
-  FunctionCalling = 'FunctionCalling',
-  ToolUse = 'ToolUse',
-  JsonMode = 'JsonMode'
+  Chat = 'chat',
+  ChatStream = 'chat_stream',
+  Embeddings = 'embeddings',
+  ImageGeneration = 'image_generation',
+  Vision = 'vision',
+  VideoGeneration = 'video_generation',
+  VideoUnderstanding = 'video_understanding',
+  FunctionCalling = 'function_calling',
+  ToolUse = 'tool_use',
+  JsonMode = 'json_mode'
 }
 
 /**
