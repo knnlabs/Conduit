@@ -2,7 +2,7 @@
 [![CodeQL](https://github.com/knnlabs/Conduit/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/knnlabs/Conduit/actions/workflows/codeql-analysis.yml)
 [![Build & Test](https://github.com/knnlabs/Conduit/actions/workflows/ci.yml/badge.svg)](https://github.com/knnlabs/Conduit/actions/workflows/ci.yml)
 [![OpenAI Compatible](https://img.shields.io/badge/OpenAI-Compatible-brightgreen.svg)](https://platform.openai.com/docs/api-reference)
-[![Built with .NET](https://img.shields.io/badge/.NET-9.0-512BD4)](https://dotnet.microsoft.com/)
+[![Built with .NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 [![Docker Ready](https://img.shields.io/badge/Docker-Ready-2496ED)](https://www.docker.com/)
 
 > A unified API gateway for multiple LLM providers with OpenAI-compatible endpoints
@@ -34,7 +34,6 @@ Built with .NET and designed for containerization (Docker), ConduitLLM streamlin
 - **SDKs**: Stable APIs for Node.js and other platforms
 
 ### ⚠️ **In Development**
-- **Audio Support**: Not feature complete - expect significant changes in upcoming releases
 - **Core & Admin APIs**: May evolve without backward compatibility - use SDKs instead
 
 ### 💡 **Recommended Integration**
@@ -51,7 +50,6 @@ npm install @knn_labs/conduit-admin-client
 - **Model Routing & Mapping**: Define custom model aliases (e.g., `my-gpt4`) and map them to specific provider models (e.g., `openai/gpt-4`)
 - **Virtual API Key Management**: Create and manage Conduit-specific API keys (`condt_...`) with built-in spend tracking
 - **Streaming Support**: Real-time token streaming for responsive applications
-- **Audio API Support**: Audio capabilities including transcription (STT), text-to-speech (TTS), and real-time audio streaming ⚠️ *In Development*
 - **Web-Based User Interface**: Administrative dashboard for configuration and monitoring
 - **Enterprise Security Features**: IP filtering, rate limiting, failed login protection, and security headers
 - **Security Dashboard**: Real-time monitoring of security events and access attempts
@@ -80,7 +78,7 @@ ConduitLLM follows a modular architecture with distinct components handling spec
 
 ```mermaid
 flowchart LR
-    WebUI["ConduitLLM.WebUI(Admin Dashboard)"]
+    WebUI["WebAdmin(Admin Dashboard)"]
     AdminAPI["ConduitLLM.Admin(Admin API)"]
     Http["ConduitLLM.Http(API Gateway)"]
     Core["ConduitLLM.Core(Orchestration)"]
@@ -104,7 +102,7 @@ flowchart LR
 ### Components
 
 - **ConduitLLM.Http**: OpenAI-compatible REST API gateway handling authentication and request forwarding
-- **ConduitLLM.WebUI**: Next.js-based admin interface for configuration and monitoring
+- **WebAdmin**: Next.js-based admin interface for configuration and monitoring
 - **ConduitLLM.Core**: Central orchestration logic, interfaces, and routing strategies
 - **ConduitLLM.Providers**: Provider-specific implementations for different LLM services
 - **ConduitLLM.Configuration**: Configuration management across various sources
@@ -143,7 +141,7 @@ Key features:
 
 As of May 2025, ConduitLLM is distributed as three separate Docker images:
 
-- **WebUI Image**: The Next.js-based admin dashboard (`ConduitLLM.WebUI`)
+- **WebUI Image**: The Next.js-based admin dashboard (`WebAdmin`)
 - **Admin API Image**: The administrative API service (`ConduitLLM.Admin`) 
 - **Http Image**: The OpenAI-compatible REST API gateway (`ConduitLLM.Http`)
 
@@ -232,7 +230,7 @@ For more details, see the per-service README files.
 
 ### Prerequisites
 
-- .NET 9.0 SDK
+- .NET 10.0 SDK
 - (Optional) Docker Desktop for containerized deployment
 
 ### Installation
@@ -240,7 +238,7 @@ For more details, see the per-service README files.
 1. **Clone the repository**
    ```bash
    git clone https://github.com/knnlabs/Conduit.git
-   cd Conduit/ConduitLLM.WebUI
+   cd Conduit/WebAdmin
    ```
 
 2. **Configure LLM Providers**
@@ -450,10 +448,6 @@ ConduitLLM includes automatic circuit breaker protection for Redis operations:
 - [Troubleshooting Guide](docs/troubleshooting/TROUBLESHOOTING-GUIDE.md)
 
 ### Feature Documentation
-- [Audio API Guide](docs/Audio-API-Guide.md)
-- [Audio Architecture](docs/Audio-Architecture.md)
-- [Real-time Architecture](docs/Realtime-Architecture.md)
-- [Audio Implementation Status](docs/Audio-Implementation-Status.md)
 - [Budget Management](docs/Budget-Management.md)
 - [Dashboard Features](docs/Dashboard-Features.md)
 - [LLM Routing](docs/LLM-Routing.md)

@@ -41,6 +41,9 @@ export interface MetricsEventData {
   tokens_per_second?: number;
   provider?: string;
   model?: string;
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
 }
 
 
@@ -99,6 +102,9 @@ export interface ChatCompletionChunk {
     delta: {
       role?: string;
       content?: string;
+      reasoning?: string;
+      channel?: string;
+      [key: string]: unknown;
     };
     finish_reason?: string;
   }>;
@@ -119,6 +125,8 @@ export interface MessageMetadata {
   completionTokens?: number;
   timeToFirstToken?: number;
   streaming?: boolean;
+  hasReasoning?: boolean;
+  reasoning?: string;
 }
 
 /**

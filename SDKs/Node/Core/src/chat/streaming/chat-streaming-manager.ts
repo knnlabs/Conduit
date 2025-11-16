@@ -3,7 +3,7 @@
  * Extracted and refactored from WebUI ChatStreamingLogic
  */
 
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { parseSSEStream, buildMessageContent, SSEEventType, type SSEEvent, type ImageAttachment } from '../utils';
 import type {
   StreamingConfig,
@@ -27,7 +27,9 @@ import type { MessageContent } from '../../models/chat';
  */
 export class ChatStreamingManager {
   private config: Required<StreamingConfig>;
-  private state: StreamState;
+  private state: StreamState & {
+    totalReasoning: string;
+  };
 
   constructor(config: StreamingConfig) {
     this.config = {
@@ -42,6 +44,7 @@ export class ChatStreamingManager {
     this.state = {
       isStreaming: false,
       totalContent: '',
+      totalReasoning: '',
       startTime: 0,
       metrics: {},
       abortController: null
@@ -91,8 +94,11 @@ export class ChatStreamingManager {
 
     this.state.isStreaming = true;
     this.state.totalContent = '';
+    this.state.totalReasoning = '';
     this.state.startTime = Date.now();
     this.state.metrics = {};
+    
+    let timeoutId: NodeJS.Timeout | undefined;
 
     try {
       // Create abort controller for this request
@@ -100,7 +106,7 @@ export class ChatStreamingManager {
       this.state.abortController = controller;
 
       // Set timeout
-      const timeoutId = setTimeout(() => {
+      timeoutId = setTimeout(() => {
         controller.abort();
         this.log('Request timed out after', this.config.timeoutMs, 'ms');
       }, this.config.timeoutMs);
@@ -119,6 +125,7 @@ export class ChatStreamingManager {
       
       // Clear timeout once we get a response
       clearTimeout(timeoutId);
+      timeoutId = undefined;
 
       if (!response.ok) {
         throw this.createStreamingError(`HTTP ${response.status}: ${response.statusText}`, response.status);
@@ -136,6 +143,10 @@ export class ChatStreamingManager {
       callbacks.onError?.(streamingError);
       throw streamingError;
     } finally {
+      // Always clear timeout if it's still active
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
       this.state.isStreaming = false;
       this.state.abortController = null;
     }
@@ -250,14 +261,20 @@ export class ChatStreamingManager {
       throw new Error('No response body reader available');
     }
 
+    let completeCalled = false;
     try {
       for await (const event of parseSSEStream(reader)) {
         if (event.data === '[DONE]') {
           await this.handleStreamComplete(callbacks);
+          completeCalled = true;
           break;
         }
 
         await this.processSSEEvent(event, callbacks);
+      }
+      // If we exit the loop without [DONE], still complete
+      if (!completeCalled) {
+        await this.handleStreamComplete(callbacks);
       }
     } finally {
       reader.releaseLock();
@@ -271,26 +288,52 @@ export class ChatStreamingManager {
     switch (event.event) {
       case SSEEventType.Content: {
         const contentData = event.data as { 
-          choices?: Array<{ delta?: { content?: string } }>;
+          choices?: Array<{ 
+            delta?: { 
+              content?: string;
+              reasoning?: string;
+              channel?: string;
+              role?: string;
+              [key: string]: unknown;
+            } 
+          }>;
           performance?: StreamingPerformanceMetrics;
           usage?: UsageData;
         };
         
         // Handle content chunks
         const delta = contentData?.choices?.[0]?.delta;
-        if (delta?.content) {
-          this.state.totalContent += delta.content;
-          callbacks.onContent?.(delta.content, this.state.totalContent);
+        if (delta) {
+          let hasContent = false;
           
-          // Create chunk for callback
-          const chunk: ChatCompletionChunk = {
-            id: uuidv4(),
-            object: 'chat.completion.chunk',
-            created: Math.floor(Date.now() / 1000),
-            model: 'unknown',
-            choices: [{ index: 0, delta, finish_reason: undefined }]
-          };
-          callbacks.onChunk?.(chunk);
+          // Handle regular content
+          if (delta.content !== undefined && delta.content !== null && delta.content !== '') {
+            this.state.totalContent += delta.content;
+            callbacks.onContent?.(delta.content, this.state.totalContent);
+            hasContent = true;
+          }
+          
+          // Handle reasoning content (for models like gpt-oss-120b on Groq)
+          // ACCUMULATE EVERYTHING IN ORDER FOR DISPLAY
+          if (delta.reasoning !== undefined && delta.reasoning !== null && delta.reasoning !== '') {
+            this.state.totalReasoning += delta.reasoning;
+            // ADD TO TOTAL CONTENT TOO SO IT DISPLAYS IMMEDIATELY
+            this.state.totalContent += delta.reasoning;
+            callbacks.onContent?.(delta.reasoning, this.state.totalContent);
+            hasContent = true;
+          }
+          
+          // Create chunk for callback if there's any meaningful content
+          if (hasContent || delta.role !== undefined || delta.channel !== undefined) {
+            const chunk: ChatCompletionChunk = {
+              id: randomUUID(),
+              object: 'chat.completion.chunk',
+              created: Math.floor(Date.now() / 1000),
+              model: 'unknown',
+              choices: [{ index: 0, delta, finish_reason: undefined }]
+            };
+            callbacks.onChunk?.(chunk);
+          }
         }
 
         // Handle inline performance metrics
@@ -367,10 +410,19 @@ export class ChatStreamingManager {
     } : { streaming: true };
 
     this.log('Final metrics collected:', this.state.metrics);
+    this.log('Final content length:', this.state.totalContent?.length || 0);
+    this.log('Final reasoning length:', this.state.totalReasoning?.length || 0);
+    this.log('Final content:', this.state.totalContent);
+    this.log('Final reasoning:', this.state.totalReasoning);
 
+    // totalContent already has everything (reasoning + content) in the right order
     callbacks.onComplete?.({
       content: this.state.totalContent,
-      metadata
+      metadata: {
+        ...metadata,
+        hasReasoning: this.state.totalReasoning.length > 0,
+        reasoning: this.state.totalReasoning || undefined
+      }
     });
   }
 

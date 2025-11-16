@@ -2,9 +2,9 @@
 export {
   HttpMethod,
   isHttpMethod,
-  RequestOptions,
-  ApiResponse,
-  ExtendedRequestInit
+  type RequestOptions,
+  type ApiResponse,
+  type ExtendedRequestInit
 } from './types';
 
 export { ResponseParser } from './parser';

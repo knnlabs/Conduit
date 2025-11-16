@@ -92,6 +92,23 @@ export class FetchSystemService implements ISystemService {
   }
 
   /**
+   * Invalidates all discovery cache entries
+   * @returns Promise with cache invalidation result
+   */
+  async invalidateDiscoveryCache(config?: RequestConfig): Promise<{ message: string; timestamp: string; note?: string }> {
+    const response = await this.client['post']<{ message: string; timestamp: string; note?: string }>(
+      '/api/SystemInfo/cache/invalidate-discovery',
+      {},
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+    return response;
+  }
+
+  /**
    * Get comprehensive system health status and metrics.
    * Delegates to FetchSystemHealthService
    */

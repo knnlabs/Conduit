@@ -4,47 +4,37 @@ import { ProviderReferenceDto } from './provider';
 export interface ModelProviderMappingDto {
   id: number;
   modelAlias: string;  // The alias used by clients
-  modelId: number;     // Reference to canonical Model entity
   providerId: number;
   provider?: ProviderReferenceDto;
   providerModelId: string;
+  modelProviderTypeAssociationId: number;  // REQUIRED: Links to provider-specific model metadata
   isEnabled: boolean;
   priority: number;
   createdAt: string;
   updatedAt: string;
   notes?: string;
-  
-  // Provider-specific overrides
-  maxContextTokensOverride?: number;
-  
-  // Provider metadata
-  providerVariation?: string;  // e.g., "Q4_K_M", "GGUF", "instruct"
-  qualityScore?: number;        // 1.0 = identical to original
-  
-  // Advanced Routing Fields
-  isDefault: boolean;
-  defaultCapabilityType?: string;
+  capabilities?: ModelCapabilitiesDto;
+}
+
+export interface ModelCapabilitiesDto {
+  supportsVision: boolean;
+  supportsImageGeneration: boolean;
+  supportsVideoGeneration: boolean;
+  supportsEmbeddings: boolean;
+  supportsChat: boolean;
+  supportsFunctionCalling: boolean;
+  supportsStreaming: boolean;
+  maxInputTokens?: number | null;
+  maxOutputTokens?: number | null;
 }
 
 export interface CreateModelProviderMappingDto {
   modelAlias: string;   // The alias used by clients
-  modelId: number;      // Reference to canonical Model entity (required)
   providerId: number;
   providerModelId: string;
+  modelProviderTypeAssociationId: number;  // REQUIRED: Links to provider-specific model metadata
   isEnabled?: boolean;
   priority?: number;
-  
-  // Provider-specific overrides
-  maxContextTokensOverride?: number;
-  
-  // Provider metadata
-  providerVariation?: string;
-  qualityScore?: number;
-  
-  // Advanced Routing Fields
-  isDefault?: boolean;
-  defaultCapabilityType?: string;
-  
   notes?: string;
 }
 
@@ -55,23 +45,11 @@ export interface UpdateModelProviderMappingDto {
    */
   id?: number;
   modelAlias?: string;
-  modelId?: number;
   providerId?: number;
   providerModelId?: string;
+  modelProviderTypeAssociationId?: number;  // Links to provider-specific model metadata
   isEnabled?: boolean;
   priority?: number;
-  
-  // Provider-specific overrides
-  maxContextTokensOverride?: number;
-  
-  // Provider metadata
-  providerVariation?: string;
-  qualityScore?: number;
-  
-  // Advanced Routing Fields
-  isDefault?: boolean;
-  defaultCapabilityType?: string;
-  
   notes?: string;
 }
 
@@ -91,6 +69,24 @@ export interface BulkMappingRequest {
 
 // For bulk mapping responses
 export type BulkMappingResponse = BulkMappingResult;
+
+// For bulk delete operations
+export interface BulkDeleteResult {
+  deletedIds: number[];
+  errors: string[];
+  totalProcessed: number;
+  successCount: number;
+  failureCount: number;
+}
+
+// For bulk update operations
+export interface BulkUpdateResult {
+  updated: ModelProviderMappingDto[];
+  errors: string[];
+  totalProcessed: number;
+  successCount: number;
+  failureCount: number;
+}
 
 // For discovered models
 export interface DiscoveredModel {
@@ -140,16 +136,6 @@ export interface ModelMappingFilterOptions extends FilterOptions {
    * Filter by enabled status
    */
   isEnabled?: boolean;
-  
-  /**
-   * Filter by default status
-   */
-  isDefault?: boolean;
-  
-  /**
-   * Filter by capability type
-   */
-  capabilityType?: string;
   
   /**
    * Filter by minimum priority

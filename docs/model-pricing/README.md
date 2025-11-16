@@ -10,7 +10,7 @@ This directory contains pricing information for various LLM providers integrated
 
 ## Import Process
 
-1. Navigate to the Conduit WebUI at `/model-costs/`
+1. Navigate to the Conduit WebAdmin at `/model-costs/`
 2. Click "Import from CSV"
 3. Upload the CSV file generated from the pricing documentation
 4. Review the preview to ensure accuracy
@@ -39,7 +39,7 @@ When provider pricing changes:
 
 1. Update the markdown documentation in this directory
 2. Regenerate the CSV file based on the updated markdown
-3. Import the new CSV through the WebUI
+3. Import the new CSV through the WebAdmin
 4. The system will update existing entries based on the model pattern
 
 ## Decimal Precision
