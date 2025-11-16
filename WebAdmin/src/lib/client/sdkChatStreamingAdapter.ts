@@ -1,11 +1,12 @@
 import { getBrowserCoreClient } from './browserCoreClient';
-import { 
+import {
   isChatCompletionChunk,
   isStreamingMetrics,
   isFinalMetrics,
   buildMessageContent,
-  type StreamingCallbacks, 
-  type StreamMessageOptions
+  type StreamingCallbacks,
+  type StreamMessageOptions,
+  type StreamingError
 } from '@knn_labs/conduit-core-client';
 
 
@@ -76,6 +77,7 @@ export class SDKChatStreamingAdapter {
 
       // Track content and performance
       let totalContent = '';
+      let partialContent = '';
       const startTime = Date.now();
       let firstTokenTime: number | null = null;
 
@@ -106,7 +108,8 @@ export class SDKChatStreamingAdapter {
           const content = data.choices?.[0]?.delta?.content;
           if (content) {
             totalContent += content;
-            
+            partialContent = totalContent; // Track for error recovery
+
             if (callbacks.onContent) {
               callbacks.onContent(content, totalContent);
             }
@@ -188,9 +191,28 @@ export class SDKChatStreamingAdapter {
         }
       } else {
         if (callbacks.onError) {
-          // Convert error to expected format
-          const errorMessage = error instanceof Error ? error : new Error(String(error));
-          callbacks.onError(errorMessage);
+          // Convert error to StreamingError with partial content
+          let streamingError: StreamingError;
+
+          if (error && typeof error === 'object' && 'partialContent' in error) {
+            // Already a StreamingError from SDK
+            streamingError = error as StreamingError;
+          } else {
+            // Create enhanced error with partial content
+            const baseError = error instanceof Error ? error : new Error(String(error));
+            streamingError = Object.assign(baseError, {
+              partialContent,
+              errorType: undefined,
+              statusCode: undefined,
+              code: undefined,
+              retryAfter: undefined,
+              suggestions: undefined,
+              technical: baseError.message,
+              recoverable: false
+            } as Partial<StreamingError>);
+          }
+
+          callbacks.onError(streamingError);
         }
       }
     } finally {

@@ -16,6 +16,7 @@ export type {
   StreamMessageOptions,
   StreamingCallbacks,
   StreamingError,
+  ChatErrorType,
   StreamState,
   ChatCompletionRequest,
   ChatCompletionResponse,

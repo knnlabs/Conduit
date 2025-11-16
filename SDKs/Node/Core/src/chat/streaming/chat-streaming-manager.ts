@@ -14,6 +14,7 @@ import type {
   ChatCompletionResponse,
   ChatCompletionChunk,
   StreamingError,
+  ChatErrorType,
   StreamState,
   StreamingPerformanceMetrics,
   UsageData,
@@ -369,14 +370,23 @@ export class ChatStreamingManager {
 
       case SSEEventType.Error: {
         this.log('Received SSE error event:', event);
-        const errorData = event.data as { 
-          error?: string; 
-          message?: string; 
-          statusCode?: number; 
+        const errorData = event.data as {
+          error?: string;
+          message?: string;
+          statusCode?: number;
+          code?: string;
+          type?: string;
+          retryAfter?: number;
+          suggestions?: string[];
+          technical?: string;
         };
-        
+
         const message = errorData.error ?? errorData.message ?? 'Unknown streaming error';
-        const error = this.createStreamingError(`Stream error: ${message}`, errorData.statusCode);
+        const error = this.createEnhancedStreamingError(
+          `Stream error: ${message}`,
+          errorData,
+          this.state.totalContent
+        );
         callbacks.onError?.(error);
         throw error;
       }
@@ -452,9 +462,84 @@ export class ChatStreamingManager {
   private createStreamingError(message: string, status?: number, context?: string): StreamingError {
     const error = new Error(message) as StreamingError;
     error.status = status;
+    error.statusCode = status;
     error.context = context;
     error.retryable = this.isRetryableStatus(status);
+    error.recoverable = this.isRetryableStatus(status);
     return error;
+  }
+
+  /**
+   * Create enhanced StreamingError from SSE error data with detailed metadata
+   */
+  private createEnhancedStreamingError(
+    message: string,
+    errorData: {
+      statusCode?: number;
+      code?: string;
+      type?: string;
+      retryAfter?: number;
+      suggestions?: string[];
+      technical?: string;
+    },
+    partialContent: string
+  ): StreamingError {
+    const error = new Error(message) as StreamingError;
+    const statusCode = errorData.statusCode;
+
+    // Map error type
+    error.errorType = this.mapErrorType(errorData.type, errorData.code, statusCode);
+    error.statusCode = statusCode;
+    error.status = statusCode;
+    error.code = errorData.code;
+    error.retryAfter = errorData.retryAfter;
+    error.suggestions = errorData.suggestions ?? this.getDefaultSuggestions(error.errorType);
+    error.technical = errorData.technical;
+    error.recoverable = this.isRetryableStatus(statusCode);
+    error.retryable = error.recoverable;
+    error.partialContent = partialContent;
+
+    return error;
+  }
+
+  /**
+   * Map error type string to ChatErrorType
+   */
+  private mapErrorType(type?: string, code?: string, statusCode?: number): ChatErrorType {
+    // Check explicit type first
+    if (type === 'rate_limit' || code?.includes('rate_limit')) return 'rate_limit';
+    if (type === 'model_not_found' || code?.includes('model_not_found')) return 'model_not_found';
+    if (type === 'auth_error' || code?.includes('auth') || code?.includes('unauthorized')) return 'auth_error';
+    if (type === 'network_error' || code?.includes('network')) return 'network_error';
+
+    // Fallback to status code mapping
+    if (statusCode === 401 || statusCode === 403) return 'auth_error';
+    if (statusCode === 404) return 'model_not_found';
+    if (statusCode === 429) return 'rate_limit';
+    if (statusCode && statusCode >= 500) return 'server_error';
+    if (!statusCode || statusCode === 0) return 'network_error';
+
+    return 'server_error';
+  }
+
+  /**
+   * Get default suggestions based on error type
+   */
+  private getDefaultSuggestions(errorType: ChatErrorType): string[] {
+    switch (errorType) {
+      case 'rate_limit':
+        return ['Wait a moment before trying again', 'Consider upgrading your plan for higher limits'];
+      case 'auth_error':
+        return ['Check your API key configuration', 'Verify you are logged in'];
+      case 'model_not_found':
+        return ['Check the model name is correct', 'Verify the model is available'];
+      case 'network_error':
+        return ['Check your internet connection', 'Try refreshing the page'];
+      case 'server_error':
+        return ['Try again in a moment', 'Contact support if the problem persists'];
+      default:
+        return ['Try again in a moment'];
+    }
   }
 
   /**
