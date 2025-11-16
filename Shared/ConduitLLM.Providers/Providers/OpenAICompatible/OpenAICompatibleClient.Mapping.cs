@@ -132,7 +132,9 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 openAiRequest["response_format"] = new ResponseFormat { Type = request.ResponseFormat.Type ?? "text" };
             if (request.Stream != null)
                 openAiRequest["stream"] = request.Stream;
-                
+            if (request.StreamOptions != null)
+                openAiRequest["stream_options"] = new { include_usage = request.StreamOptions.IncludeUsage };
+
             // Pass through any extension data (model-specific parameters)
             if (request.ExtensionData != null)
             {

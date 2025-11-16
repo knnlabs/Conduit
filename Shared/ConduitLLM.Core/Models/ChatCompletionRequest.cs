@@ -74,6 +74,18 @@ public class ChatCompletionRequest
     public bool? Stream { get; set; }
 
     /// <summary>
+    /// Options for streaming responses. Allows requesting usage data in the final chunk.
+    /// </summary>
+    /// <remarks>
+    /// Set stream_options.include_usage to true to receive token usage information in streaming mode.
+    /// Supported by OpenAI and OpenAI-compatible providers (Groq, SambaNova, Cerebras, etc.).
+    /// This is critical for accurate billing and performance metrics.
+    /// </remarks>
+    [JsonPropertyName("stream_options")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public StreamOptions? StreamOptions { get; set; }
+
+    /// <summary>
     /// Up to 4 sequences where the API will stop generating further tokens.
     /// </summary>
     [JsonPropertyName("stop")]

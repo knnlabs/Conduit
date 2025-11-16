@@ -107,7 +107,7 @@ namespace ConduitLLM.Core.Services
         public PerformanceMetrics GetFinalMetrics(Usage? usage = null)
         {
             _stopwatch.Stop();
-            
+
             var totalSeconds = _stopwatch.Elapsed.TotalSeconds;
             var metrics = new PerformanceMetrics
             {
@@ -118,7 +118,14 @@ namespace ConduitLLM.Core.Services
                 Streaming = true
             };
 
-            // Use actual token count from usage if available, otherwise use our count
+            // ⚠️ IMPORTANT: Token counting fallback logic
+            // ===========================================
+            // PREFERRED: Use actual token count from provider usage data (accurate)
+            // FALLBACK: Use _tokensGenerated (INACCURATE - counts chunks, not tokens!)
+            //
+            // With stream_options.include_usage=true, most providers now return usage data.
+            // If usage is null here, it means the provider doesn't support stream_options
+            // or there was an error capturing the usage from the final chunk.
             var completionTokens = usage?.CompletionTokens ?? _tokensGenerated;
             
             // For streaming metrics, we always calculate if we have tokens

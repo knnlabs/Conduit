@@ -164,8 +164,32 @@ namespace ConduitLLM.Http.Controllers
                             
                             // Write content event
                             await sseWriter.WriteContentEventAsync(chunk);
-                            
-                            // Track metrics for token counting
+
+                            // ⚠️ LEGACY FALLBACK TOKEN COUNTING (INACCURATE)
+                            // =================================================
+                            // This code attempts to count tokens by tracking chunks, but this is fundamentally flawed:
+                            // - Each chunk typically contains MULTIPLE tokens, not one token
+                            // - RecordToken() is called once per chunk, severely undercounting actual tokens
+                            // - This causes wildly inaccurate tokensPerSecond metrics (e.g., 1.1 when actual is 20+)
+                            //
+                            // WHY THIS EXISTS:
+                            // - Historically, providers didn't return usage data in streaming responses
+                            // - This fallback was meant to provide "some" metrics when usage data was unavailable
+                            //
+                            // CURRENT STATUS:
+                            // - Now using stream_options.include_usage=true to request usage from providers
+                            // - Most OpenAI-compatible providers (OpenAI, Groq, SambaNova, Cerebras) support this
+                            // - When usage data is available, GetFinalMetrics() uses actual token counts (line 240)
+                            // - This fallback only runs when providers don't return usage data
+                            //
+                            // OPTIONS FOR IMPROVEMENT:
+                            // 1. Remove this entirely and rely on provider usage data (requires all providers support it)
+                            // 2. Implement proper tokenization using tiktoken or similar (adds dependency + latency)
+                            // 3. Keep as-is but log warnings when usage data is missing and fallback is used
+                            // 4. Use content length estimation (chars / 4 ≈ tokens) as a better fallback
+                            //
+                            // RECOMMENDATION: Option 3 - Keep for backward compatibility but warn when used
+                            // =================================================
                             if (chunk?.Choices?.Count > 0)
                             {
                                 var hasContent = chunk.Choices.Any(c => !string.IsNullOrEmpty(c.Delta?.Content));
@@ -180,7 +204,7 @@ namespace ConduitLLM.Http.Controllers
                                         metricsCollector.RecordToken();
                                     }
                                 }
-                                
+
                                 // Emit metrics periodically
                                 if (metricsCollector.ShouldEmitMetrics())
                                 {

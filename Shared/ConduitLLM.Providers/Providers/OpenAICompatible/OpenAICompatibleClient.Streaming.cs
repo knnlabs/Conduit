@@ -164,21 +164,31 @@ namespace ConduitLLM.Providers.OpenAICompatible
 
         /// <summary>
         /// Prepares a request for streaming by ensuring the stream parameter is set to true
+        /// and stream_options includes usage data if not already set
         /// </summary>
         /// <param name="request">The original chat completion request</param>
-        /// <returns>A request object with stream=true set</returns>
+        /// <returns>A request object with stream=true and stream_options configured</returns>
         private object PrepareStreamingRequest(CoreModels.ChatCompletionRequest request)
         {
+            // Ensure stream_options is set to request usage data if not already configured
+            // This is critical for accurate token counting and billing in streaming mode
+            request.StreamOptions ??= new CoreModels.StreamOptions { IncludeUsage = true };
+
             var openAiRequest = MapToOpenAIRequest(request);
 
             // Force stream parameter to true based on the request's type
             if (openAiRequest is JsonElement jsonElement)
             {
-                return ForceStreamParameterInJsonElement(jsonElement);
+                return ForceStreamParametersInJsonElement(jsonElement);
             }
             else if (openAiRequest is Dictionary<string, object> dictObj)
             {
                 dictObj["stream"] = true;
+                // Ensure stream_options is present
+                if (!dictObj.ContainsKey("stream_options"))
+                {
+                    dictObj["stream_options"] = new { include_usage = true };
+                }
                 return dictObj;
             }
             else if (openAiRequest is OpenAIChatCompletionRequest reqObj)
@@ -192,17 +202,22 @@ namespace ConduitLLM.Providers.OpenAICompatible
         }
 
         /// <summary>
-        /// Forces the stream parameter to true in a JsonElement
+        /// Forces the stream parameter to true and ensures stream_options is set in a JsonElement
         /// </summary>
         /// <param name="jsonElement">The JsonElement to modify</param>
-        /// <returns>An object with stream=true set</returns>
-        private object ForceStreamParameterInJsonElement(JsonElement jsonElement)
+        /// <returns>An object with stream=true and stream_options configured</returns>
+        private object ForceStreamParametersInJsonElement(JsonElement jsonElement)
         {
             var jsonObject = jsonElement.GetRawText();
             var tempObj = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonObject, DefaultJsonOptions);
             if (tempObj != null)
             {
                 tempObj["stream"] = true;
+                // Ensure stream_options is present for usage data
+                if (!tempObj.ContainsKey("stream_options"))
+                {
+                    tempObj["stream_options"] = new { include_usage = true };
+                }
                 return tempObj;
             }
 
