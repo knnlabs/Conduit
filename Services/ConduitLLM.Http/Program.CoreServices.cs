@@ -215,9 +215,17 @@ public partial class Program
         builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IBatchOperationHistoryService, ConduitLLM.Http.Services.BatchOperationHistoryService>();
         builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IBatchOperationNotificationService, ConduitLLM.Http.Services.BatchOperationNotificationService>();
         builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IBatchOperationService, ConduitLLM.Core.Services.BatchOperationService>();
+
+        // Register Batch Operation Idempotency Service (Redis-based)
+        builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IBatchOperationIdempotencyService, ConduitLLM.Http.Services.BatchOperationIdempotencyService>();
+
+        // Register legacy batch operations
         builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IBatchSpendUpdateOperation, ConduitLLM.Core.Services.BatchOperations.BatchSpendUpdateOperation>();
         builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IBatchVirtualKeyUpdateOperation, ConduitLLM.Core.Services.BatchOperations.BatchVirtualKeyUpdateOperation>();
         builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IBatchWebhookSendOperation, ConduitLLM.Core.Services.BatchOperations.BatchWebhookSendOperation>();
+
+        // Register new base class-based batch operations (V2)
+        builder.Services.AddScoped<ConduitLLM.Core.Services.BatchOperations.BatchSpendUpdateOperationV2>();
 
         // Register Webhook Delivery Service
         builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IWebhookDeliveryService, ConduitLLM.Http.Services.WebhookDeliveryService>();
