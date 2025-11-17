@@ -79,6 +79,7 @@ __export(index_exports, {
   isNotFoundError: () => isNotFoundError,
   isRateLimitError: () => isRateLimitError,
   isSerializedConduitError: () => isSerializedConduitError,
+  isServerError: () => isServerError,
   isStreamError: () => isStreamError,
   isTimeoutError: () => isTimeoutError,
   isValidationError: () => isValidationError,
@@ -321,6 +322,9 @@ function isStreamError(error) {
 }
 function isTimeoutError(error) {
   return error instanceof TimeoutError;
+}
+function isServerError(error) {
+  return isConduitError(error) && error.statusCode !== void 0 && error.statusCode >= 500;
 }
 function isSerializedConduitError(data) {
   return typeof data === "object" && data !== null && "isConduitError" in data && data.isConduitError === true;
@@ -892,6 +896,7 @@ var HttpError = class extends Error {
   isNotFoundError,
   isRateLimitError,
   isSerializedConduitError,
+  isServerError,
   isStreamError,
   isTimeoutError,
   isValidationError,

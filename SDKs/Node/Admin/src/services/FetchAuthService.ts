@@ -1,4 +1,3 @@
-import { ServiceBase } from './ServiceBase';
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 
 export interface MasterEphemeralKeyMetadata {
@@ -20,11 +19,10 @@ export interface MasterEphemeralKeyResponse {
 
 /**
  * Service for authentication-related operations in the Admin API
+ * Uses composition pattern with FetchBaseApiClient
  */
-export class FetchAuthService extends ServiceBase {
-  constructor(client: FetchBaseApiClient) {
-    super(client);
-  }
+export class FetchAuthService {
+  constructor(private readonly client: FetchBaseApiClient) {}
 
   /**
    * Generate a request ID for tracking
@@ -72,17 +70,14 @@ export class FetchAuthService extends ServiceBase {
     };
 
     // Make the request with the master key in header
-    const response = await this.post<MasterEphemeralKeyResponse, GenerateMasterEphemeralKeyRequest>(
+    return this.client['post']<MasterEphemeralKeyResponse, GenerateMasterEphemeralKeyRequest>(
       '/api/admin/auth/ephemeral-master-key',
       body,
-      undefined,
       {
         headers: {
           'X-Master-Key': masterKey
         }
       }
     );
-
-    return response;
   }
 }

@@ -66,6 +66,9 @@ export const ENDPOINTS = {
     BY_ID: (id: number) => `/api/ModelProviderMapping/${id}`,
     PROVIDERS: '/api/ModelProviderMapping/providers',
     BULK: '/api/ModelProviderMapping/bulk',
+    BULK_DELETE: '/api/ModelProviderMapping/bulk/delete',
+    BULK_ENABLE: '/api/ModelProviderMapping/bulk/enable',
+    BULK_DISABLE: '/api/ModelProviderMapping/bulk/disable',
   },
 
   // IP Filters
@@ -206,6 +209,8 @@ export const ENDPOINTS = {
       ENTRIES: (regionId: string) => `/api/config/caching/${regionId}/entries`,
       REFRESH: (regionId: string) => `/api/config/caching/${regionId}/refresh`,
       POLICY: (regionId: string) => `/api/config/caching/${regionId}/policy`,
+      LLM_STATUS: '/api/config/caching/llm-status',
+      LLM_TOGGLE: '/api/config/caching/llm-toggle',
     },
   },
 

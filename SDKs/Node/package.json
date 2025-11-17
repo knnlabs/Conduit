@@ -11,6 +11,7 @@
   "scripts": {
     "build": "npm run build --workspaces",
     "test": "npm test --workspaces",
+    "test:ci": "npm run test:ci --workspaces --if-present",
     "clean": "npm run clean --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "type-check": "npm run type-check --workspaces --if-present"

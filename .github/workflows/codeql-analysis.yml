@@ -131,7 +131,7 @@ jobs:
           SDKs/Node/Admin/package-lock.json
           SDKs/Node/Core/package-lock.json
           SDKs/Node/Common/package-lock.json
-          ConduitLLM.WebUI/package-lock.json
+          WebAdmin/package-lock.json
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3

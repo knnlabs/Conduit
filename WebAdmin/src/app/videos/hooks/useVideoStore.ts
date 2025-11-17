@@ -1,0 +1,27 @@
+import { create } from 'zustand';
+import { createMediaStore, type MediaStore } from '@/app/hooks/createMediaStore';
+import type { VideoTask, VideoSettings } from '../types';
+import { MediaGenerationStatus } from '@/app/types/media';
+
+const LOCAL_STORAGE_KEY = 'conduit-video-generation';
+
+// Create the base store configuration
+const videoStoreConfig = createMediaStore<VideoTask, VideoSettings>({
+  name: LOCAL_STORAGE_KEY,
+  initialSettings: {
+    model: '',
+  },
+  persistHistory: true,
+  partializeState: (state) => ({
+    settings: state.settings,
+    taskHistory: state.taskHistory.filter(
+      (task) => task.status === MediaGenerationStatus.Completed || task.status === MediaGenerationStatus.Failed
+    ),
+  }),
+});
+
+// Extend the base store type with any video-specific functionality if needed
+export type VideoStoreState = MediaStore<VideoTask, VideoSettings>;
+
+// Create the actual store
+export const useVideoStore = create<VideoStoreState>()(videoStoreConfig);

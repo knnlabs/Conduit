@@ -1,0 +1,201 @@
+using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Extensions;
+using ConduitLLM.Http.Services;
+using ConduitLLM.Http.Interfaces;
+using Microsoft.AspNetCore.SignalR;
+
+public partial class Program
+{
+    public static void ConfigureSignalRServices(WebApplicationBuilder builder)
+    {
+        // Get Redis connection string from environment
+        var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
+        var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
+
+        if (!string.IsNullOrEmpty(redisUrl))
+        {
+            try
+            {
+                redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ParseRedisUrl(redisUrl);
+            }
+            catch
+            {
+                // Failed to parse REDIS_URL, will use legacy connection string if available
+            }
+        }
+
+        // Register VirtualKeyHubFilter for SignalR authentication
+        builder.Services.AddScoped<ConduitLLM.Http.Authentication.VirtualKeyHubFilter>();
+
+        // Register rate limit cache service for SignalR - with leader election
+        builder.Services.AddSingleton<ConduitLLM.Http.Services.VirtualKeyRateLimitCache>();
+        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Http.Services.VirtualKeyRateLimitCache>(
+            provider => provider.GetRequiredService<ConduitLLM.Http.Services.VirtualKeyRateLimitCache>(),
+            "VirtualKeyRateLimitCache");
+
+        // Register Redis-based distributed rate limiting services
+        // Check if Redis is available
+        if (!string.IsNullOrEmpty(redisConnectionString))
+        {
+            // Register the Redis-based virtual key rate limit service
+            builder.Services.AddSingleton<ConduitLLM.Core.Services.IVirtualKeyRateLimitService, ConduitLLM.Core.Services.RedisVirtualKeyRateLimitService>();
+            
+            // Register the Redis-based SignalR rate limit service
+            builder.Services.AddSingleton<ConduitLLM.Core.Services.ISignalRRateLimitService, ConduitLLM.Core.Services.RedisSignalRRateLimitService>();
+            
+            // Register webhook metrics service (required for distributed tracking)
+            builder.Services.AddSingleton<ConduitLLM.Core.Services.IWebhookMetricsService, ConduitLLM.Core.Services.RedisWebhookMetricsService>();
+            
+            Console.WriteLine("[Conduit] SignalR configured with Redis-based distributed rate limiting");
+        }
+        else
+        {
+            // If no Redis, create a warning and provide a fallback
+            builder.Services.AddSingleton<ConduitLLM.Core.Services.ISignalRRateLimitService>(sp =>
+            {
+                var logger = sp.GetRequiredService<ILogger<Program>>();
+                logger.LogWarning("No Redis connection configured. SignalR rate limiting will fall back to local memory (security risk in multi-instance deployments)");
+                // For now, throw an exception to enforce Redis requirement for rate limiting
+                throw new InvalidOperationException("Redis is required for secure distributed rate limiting. Please configure REDIS_URL or CONDUIT_REDIS_CONNECTION_STRING.");
+            });
+            
+            builder.Services.AddSingleton<ConduitLLM.Core.Services.IVirtualKeyRateLimitService>(sp =>
+            {
+                throw new InvalidOperationException("Redis is required for secure distributed rate limiting. Please configure REDIS_URL or CONDUIT_REDIS_CONNECTION_STRING.");
+            });
+        }
+
+        // Register SignalR rate limit filter
+        builder.Services.AddSingleton<ConduitLLM.Http.Authentication.VirtualKeySignalRRateLimitFilter>();
+
+        // Register SignalR metrics
+        builder.Services.AddSingleton<ConduitLLM.Http.Metrics.SignalRMetrics>();
+        builder.Services.AddSingleton<ConduitLLM.Http.Interfaces.ISignalRMetrics>(sp => sp.GetRequiredService<ConduitLLM.Http.Metrics.SignalRMetrics>());
+
+        // Register SignalR metrics filter
+        builder.Services.AddSingleton<ConduitLLM.Http.Filters.SignalRMetricsFilter>();
+
+        // Register SignalR error handling filter
+        builder.Services.AddSingleton<ConduitLLM.Http.Filters.SignalRErrorHandlingFilter>();
+
+        // Register SignalR authentication service
+        builder.Services.AddScoped<ConduitLLM.Http.Authentication.ISignalRAuthenticationService, ConduitLLM.Http.Authentication.SignalRAuthenticationService>();
+
+        // Register Metrics Aggregation Service and Hub - with leader election
+        builder.Services.AddSingleton<ConduitLLM.Http.Hubs.IMetricsAggregationService, ConduitLLM.Http.Services.MetricsAggregationService>();
+        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Http.Services.MetricsAggregationService>(
+            sp => (ConduitLLM.Http.Services.MetricsAggregationService)sp.GetRequiredService<ConduitLLM.Http.Hubs.IMetricsAggregationService>(),
+            "MetricsAggregationService");
+
+        // Register Business Metrics Background Service - with leader election
+        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Http.Services.BusinessMetricsService>("BusinessMetricsService");
+
+        // Add SignalR for real-time navigation state updates
+        var signalRBuilder = builder.Services.AddSignalR(options =>
+        {
+            options.EnableDetailedErrors = builder.Environment.IsDevelopment();
+            options.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
+            options.KeepAliveInterval = TimeSpan.FromSeconds(30);
+            options.MaximumReceiveMessageSize = 32 * 1024; // 32KB
+            options.StreamBufferCapacity = 10;
+            
+            // Add global filters
+            options.AddFilter<ConduitLLM.Http.Filters.SignalRMetricsFilter>();
+            options.AddFilter<ConduitLLM.Http.Filters.SignalRErrorHandlingFilter>();
+            options.AddFilter<ConduitLLM.Http.Authentication.VirtualKeyHubFilter>();
+            options.AddFilter<ConduitLLM.Http.Authentication.VirtualKeySignalRRateLimitFilter>();
+        });
+
+        // Configure SignalR Redis backplane for horizontal scaling
+        // Use dedicated Redis connection string if available, otherwise fall back to main Redis connection
+        var signalRRedisConnectionString = builder.Configuration.GetConnectionString("RedisSignalR") ?? redisConnectionString;
+        if (!string.IsNullOrEmpty(signalRRedisConnectionString))
+        {
+            signalRBuilder.AddStackExchangeRedis(signalRRedisConnectionString, options =>
+            {
+                options.Configuration.ChannelPrefix = new StackExchange.Redis.RedisChannel("conduit_signalr:", StackExchange.Redis.RedisChannel.PatternMode.Literal);
+                options.Configuration.DefaultDatabase = 2; // Separate database for SignalR
+            });
+            Console.WriteLine("[Conduit] SignalR configured with Redis backplane for horizontal scaling");
+        }
+        else
+        {
+            Console.WriteLine("[Conduit] SignalR configured without Redis backplane (single-instance mode)");
+        }
+
+        // Register navigation state notification service
+        builder.Services.AddSingleton<INavigationStateNotificationService, NavigationStateNotificationService>();
+
+        // Register settings refresh service for runtime configuration updates
+        builder.Services.AddSingleton<ISettingsRefreshService, SettingsRefreshService>();
+
+        // MediaLifecycleRepository removed - consolidated into MediaRecordRepository
+        // Migration: 20250827194408_ConsolidateMediaTables.cs
+
+        // Register video generation notification service
+        builder.Services.AddSingleton<IVideoGenerationNotificationService, VideoGenerationNotificationService>();
+
+        // Register image generation notification service
+        builder.Services.AddSingleton<IImageGenerationNotificationService, ImageGenerationNotificationService>();
+
+        // Register unified task notification service
+        builder.Services.AddSingleton<ITaskNotificationService, TaskNotificationService>();
+
+        // Register virtual key management notification service
+        builder.Services.AddSingleton<IVirtualKeyManagementNotificationService, VirtualKeyManagementNotificationService>();
+
+        // Register usage analytics notification service
+        builder.Services.AddSingleton<IUsageAnalyticsNotificationService, UsageAnalyticsNotificationService>();
+
+        // Model discovery notification services removed - capabilities now come from ModelProviderMapping
+
+        // Register billing alerting service for critical failure notifications
+        builder.Services.AddSingleton<ConduitLLM.Configuration.Interfaces.IBillingAlertingService, ConduitLLM.Configuration.Services.BillingAlertingService>();
+
+        // Register Redis circuit breaker configuration
+        builder.Services.Configure<ConduitLLM.Configuration.Options.RedisCircuitBreakerOptions>(
+            builder.Configuration.GetSection("RedisCircuitBreaker"));
+
+        // Register Redis circuit breaker service
+        builder.Services.AddSingleton<ConduitLLM.Configuration.Interfaces.IRedisCircuitBreaker, ConduitLLM.Configuration.Services.RedisCircuitBreaker>();
+
+        // Register batch spend update service for optimized Virtual Key operations
+        builder.Services.AddSingleton<ConduitLLM.Configuration.Services.BatchSpendUpdateService>(serviceProvider =>
+        {
+            var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Configuration.Services.BatchSpendUpdateService>>();
+            var serviceScopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
+            var redisConnectionFactory = serviceProvider.GetRequiredService<ConduitLLM.Configuration.Services.RedisConnectionFactory>();
+            var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<ConduitLLM.Configuration.Options.BatchSpendingOptions>>();
+            var alertingService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IBillingAlertingService>();
+            var circuitBreaker = serviceProvider.GetService<ConduitLLM.Configuration.Interfaces.IRedisCircuitBreaker>();
+            var batchService = new ConduitLLM.Configuration.Services.BatchSpendUpdateService(serviceScopeFactory, redisConnectionFactory, options, logger, alertingService, circuitBreaker);
+            
+            // Wire up cache invalidation event if Redis cache is available
+            var cache = serviceProvider.GetService<ConduitLLM.Core.Interfaces.IVirtualKeyCache>();
+            if (cache != null)
+            {
+                batchService.SpendUpdatesCompleted += async (keyHashes) =>
+                {
+                    try
+                    {
+                        await cache.InvalidateVirtualKeysAsync(keyHashes);
+                        logger.LogDebug("Cache invalidated for {Count} Virtual Keys after batch spend update", keyHashes.Length);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogWarning(ex, "Failed to invalidate cache after batch spend update");
+                    }
+                };
+            }
+            
+            return batchService;
+        });
+        builder.Services.AddSingleton<IBatchSpendUpdateService>(serviceProvider =>
+            serviceProvider.GetRequiredService<ConduitLLM.Configuration.Services.BatchSpendUpdateService>());
+        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Configuration.Services.BatchSpendUpdateService>(
+            serviceProvider => serviceProvider.GetRequiredService<ConduitLLM.Configuration.Services.BatchSpendUpdateService>(),
+            "BatchSpendUpdateService");
+    }
+}

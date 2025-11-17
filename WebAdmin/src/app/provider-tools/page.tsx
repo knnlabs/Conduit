@@ -1,0 +1,113 @@
+'use client';
+
+import { useState } from 'react';
+import { Container, Title, Text, Button, Group, Stack } from '@mantine/core';
+import { IconPlus, IconRefresh } from '@tabler/icons-react';
+import { ProviderToolsTable } from '@/components/provider-tools/ProviderToolsTable';
+import { CreateProviderToolModal } from '@/components/provider-tools/CreateProviderToolModal';
+import { notifications } from '@mantine/notifications';
+import { useAdminClient } from '@/lib/client/adminClient';
+
+export default function ProviderToolsPage() {
+  const { executeWithAdmin } = useAdminClient();
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [createToolOpen, setCreateToolOpen] = useState(false);
+
+  const handleRefresh = () => {
+    setRefreshKey(prev => prev + 1);
+  };
+
+  const handleImport = async () => {
+    // TODO: Implement import functionality
+    notifications.show({
+      title: 'Import Coming Soon',
+      message: 'Bulk import functionality will be available soon',
+      color: 'blue',
+    });
+  };
+
+  const handleExport = async () => {
+    try {
+      const tools = await executeWithAdmin(client =>
+        client.providerTools.exportProviderTools()
+      );
+      
+      const blob = new Blob([JSON.stringify(tools, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `provider-tools-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      notifications.show({
+        title: 'Export Successful',
+        message: `Exported ${(tools as unknown[]).length} provider tools`,
+        color: 'green',
+      });
+    } catch (error) {
+      console.error('Failed to export tools:', error);
+      notifications.show({
+        title: 'Export Failed',
+        message: error instanceof Error ? error.message : 'Failed to export provider tools',
+        color: 'red',
+      });
+    }
+  };
+
+  return (
+    <Container size="xl">
+      <Stack gap="md">
+        <Group justify="space-between" align="flex-end">
+          <div>
+            <Title order={2}>Provider Tools</Title>
+            <Text c="dimmed" size="sm" mt={4}>
+              Configure tool costs for different providers
+            </Text>
+          </div>
+          <Group gap="xs">
+            <Button
+              variant="subtle"
+              onClick={() => void handleExport()}
+            >
+              Export
+            </Button>
+            <Button
+              variant="subtle"
+              onClick={() => void handleImport()}
+            >
+              Import
+            </Button>
+            <Button
+              leftSection={<IconRefresh size={16} />}
+              variant="subtle"
+              onClick={handleRefresh}
+            >
+              Refresh
+            </Button>
+            <Button
+              leftSection={<IconPlus size={16} />}
+              onClick={() => setCreateToolOpen(true)}
+            >
+              Add Tool
+            </Button>
+          </Group>
+        </Group>
+
+        <ProviderToolsTable 
+          key={`tools-${refreshKey}`}
+          onRefresh={handleRefresh}
+        />
+      </Stack>
+
+      <CreateProviderToolModal
+        isOpen={createToolOpen}
+        onClose={() => setCreateToolOpen(false)}
+        onSuccess={() => {
+          setCreateToolOpen(false);
+          handleRefresh();
+        }}
+      />
+    </Container>
+  );
+}

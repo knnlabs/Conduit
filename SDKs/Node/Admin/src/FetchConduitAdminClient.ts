@@ -10,17 +10,26 @@ import { FetchAnalyticsService } from './services/FetchAnalyticsService';
 import { FetchSecurityService } from './services/FetchSecurityService';
 import { FetchConfigurationService } from './services/FetchConfigurationService';
 import { FetchMonitoringService } from './services/FetchMonitoringService';
-import { AudioConfigurationService } from './services/AudioConfigurationService';
 import { FetchIpFilterService } from './services/FetchIpFilterService';
 import { FetchModelCostService } from './services/FetchModelCostService';
 import { FetchMediaService } from './services/FetchMediaService';
 import { FetchModelService } from './services/FetchModelService';
 import { FetchModelSeriesService } from './services/FetchModelSeriesService';
 import { FetchModelAuthorService } from './services/FetchModelAuthorService';
-import { FetchModelCapabilitiesService } from './services/FetchModelCapabilitiesService';
+// import { FetchModelCapabilitiesService } from './services/FetchModelCapabilitiesService'; // Disabled - capabilities now embedded in Model
 import { FetchProviderErrorsService } from './services/FetchProviderErrorsService';
+import { ProviderToolsService } from './services/ProviderToolsService';
+import { FetchMetricsService } from './services/FetchMetricsService';
+import { FetchNotificationsService } from './services/FetchNotificationsService';
 import type { ApiClientConfig } from './client/types';
-import { ConduitError } from './utils/errors';
+import {
+  isConduitError,
+  isAuthError,
+  isRateLimitError,
+  isValidationError,
+  isNotFoundError,
+  isServerError
+} from '@knn_labs/conduit-common';
 
 /**
  * Type-safe Conduit Admin Client using native fetch
@@ -51,15 +60,17 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
   public readonly security: FetchSecurityService;
   public readonly configuration: FetchConfigurationService;
   public readonly monitoring: FetchMonitoringService;
-  public readonly audio: AudioConfigurationService;
   public readonly ipFilters: FetchIpFilterService;
   public readonly modelCosts: FetchModelCostService;
   public readonly media: FetchMediaService;
   public readonly models: FetchModelService;
   public readonly modelSeries: FetchModelSeriesService;
   public readonly modelAuthors: FetchModelAuthorService;
-  public readonly modelCapabilities: FetchModelCapabilitiesService;
+  // public readonly modelCapabilities: FetchModelCapabilitiesService; // Disabled - capabilities now embedded in Model
   public readonly providerErrors: FetchProviderErrorsService;
+  public readonly providerTools: ProviderToolsService;
+  public readonly metrics: FetchMetricsService;
+  public readonly notifications: FetchNotificationsService;
 
   constructor(config: ApiClientConfig) {
     super(config);
@@ -76,60 +87,54 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
     this.security = new FetchSecurityService(this);
     this.configuration = new FetchConfigurationService(this);
     this.monitoring = new FetchMonitoringService(this);
-    this.audio = new AudioConfigurationService(this);
     this.ipFilters = new FetchIpFilterService(this);
     this.modelCosts = new FetchModelCostService(this);
     this.media = new FetchMediaService(this);
     this.models = new FetchModelService(this);
     this.modelSeries = new FetchModelSeriesService(this);
     this.modelAuthors = new FetchModelAuthorService(this);
-    this.modelCapabilities = new FetchModelCapabilitiesService(this);
+    // this.modelCapabilities = new FetchModelCapabilitiesService(this); // Disabled - capabilities now embedded in Model
     this.providerErrors = new FetchProviderErrorsService(this);
+    this.providerTools = new ProviderToolsService(this);
+    this.metrics = new FetchMetricsService(this);
+    this.notifications = new FetchNotificationsService(this);
   }
 
   /**
    * Type guard for checking if an error is a ConduitError
+   * Re-exported from @knn_labs/conduit-common for convenience
    */
-  isConduitError(error: unknown): error is ConduitError {
-    return error instanceof ConduitError;
-  }
+  isConduitError = isConduitError;
 
   /**
    * Type guard for checking if an error is an authentication error
+   * Re-exported from @knn_labs/conduit-common for convenience
    */
-  isAuthError(error: unknown): error is ConduitError {
-    return this.isConduitError(error) && error.statusCode === 401;
-  }
+  isAuthError = isAuthError;
 
   /**
    * Type guard for checking if an error is a rate limit error
+   * Re-exported from @knn_labs/conduit-common for convenience
    */
-  isRateLimitError(error: unknown): error is ConduitError {
-    return this.isConduitError(error) && error.statusCode === 429;
-  }
+  isRateLimitError = isRateLimitError;
 
   /**
    * Type guard for checking if an error is a validation error
+   * Re-exported from @knn_labs/conduit-common for convenience
    */
-  isValidationError(error: unknown): error is ConduitError {
-    return this.isConduitError(error) && error.statusCode === 400;
-  }
+  isValidationError = isValidationError;
 
   /**
    * Type guard for checking if an error is a not found error
+   * Re-exported from @knn_labs/conduit-common for convenience
    */
-  isNotFoundError(error: unknown): error is ConduitError {
-    return this.isConduitError(error) && error.statusCode === 404;
-  }
+  isNotFoundError = isNotFoundError;
 
   /**
    * Type guard for checking if an error is a server error
+   * Re-exported from @knn_labs/conduit-common for convenience
    */
-  isServerError(error: unknown): error is ConduitError {
-    return this.isConduitError(error) && 
-           error.statusCode !== undefined && 
-           error.statusCode >= 500;
-  }
+  isServerError = isServerError;
 }
 
 // Export the fetch-based client as the default

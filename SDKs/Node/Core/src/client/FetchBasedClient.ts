@@ -179,10 +179,16 @@ export abstract class FetchBasedClient {
   }
 
   private buildHeaders(additionalHeaders?: Record<string, string>): Record<string, string> {
-    return {
-      [HTTP_HEADERS.AUTHORIZATION]: `Bearer ${this.config.apiKey}`,
+    const headers: Record<string, string> = {
       [HTTP_HEADERS.CONTENT_TYPE]: CONTENT_TYPES.JSON,
       [HTTP_HEADERS.USER_AGENT]: CLIENT_INFO.USER_AGENT,
+    };
+
+    // Always use Authorization Bearer header for all keys (including ephemeral)
+    headers[HTTP_HEADERS.AUTHORIZATION] = `Bearer ${this.config.apiKey}`;
+
+    return {
+      ...headers,
       ...this.config.headers,
       ...additionalHeaders,
     };
@@ -304,11 +310,32 @@ export abstract class FetchBasedClient {
   }
 
   private handleError(error: unknown): Error {
+    // If it's already a ConduitError (or subclass), preserve it as-is
+    // This includes AuthError, ValidationError, InsufficientBalanceError, etc.
+    if (error instanceof ConduitError) {
+      if (this.config.onError) {
+        this.config.onError(error);
+      }
+      return error;
+    }
+    
     if (error instanceof Error) {
       if (error.name === 'AbortError') {
         const networkError = new NetworkError(
           'Request timeout',
           { code: ERROR_CODES.CONNECTION_ABORTED }
+        );
+        if (this.config.onError) {
+          this.config.onError(networkError);
+        }
+        return networkError;
+      }
+      
+      // Only convert to NetworkError for actual fetch failures
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        const networkError = new NetworkError(
+          'Failed to connect to server',
+          { code: ERROR_CODES.CONNECTION_REFUSED, originalError: error }
         );
         if (this.config.onError) {
           this.config.onError(networkError);

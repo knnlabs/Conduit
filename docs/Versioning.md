@@ -40,7 +40,7 @@ The version in `Directory.Build.props` flows through to:
 - Assembly version information
 - Docker image tags
 - NuGet packages (if any)
-- WebUI version display
+- WebAdmin version display
 
 ## Automated Version Checking
 
@@ -48,7 +48,7 @@ Conduit includes an automated version checking system that:
 
 1. Reads the current version from assembly metadata
 2. Periodically checks GitHub releases API to see if a newer version is available
-3. Displays a notification in the WebUI when a new version is detected
+3. Displays a notification in the WebAdmin when a new version is detected
 
 ### Configuration
 
@@ -72,7 +72,7 @@ CONDUIT_VERSION_CHECK_INTERVAL_HOURS=24
 
 ### Manual Version Check
 
-Users can manually check for updates on the About page in the WebUI, which will show the current version and provide a button to check for updates.
+Users can manually check for updates on the About page in the WebAdmin, which will show the current version and provide a button to check for updates.
 
 ## Docker Image Versioning
 
@@ -90,7 +90,7 @@ When building Docker images through GitHub Actions:
 
 The current version is displayed in several places:
 
-1. The About page in the WebUI
+1. The About page in the WebAdmin
 2. Startup logs
 3. API responses include a version header
 4. Docker image tags

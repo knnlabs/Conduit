@@ -14,33 +14,49 @@ import {
   IpFilterValidationResult,
 } from '../models/ipFilter';
 import { ValidationError, NotImplementedError } from '../utils/errors';
-import { z } from 'zod';
+import { validateRequired, validateStringLength, validateEnum } from '../utils/validation';
 
-const createFilterSchema = z.object({
-  name: z.string().min(1).max(100),
-  ipAddressOrCidr: z.string().regex(
-    /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/,
-    'Invalid IP address or CIDR format (e.g., 192.168.1.1 or 192.168.1.0/24)'
-  ),
-  filterType: z.enum(['whitelist', 'blacklist']),
-  isEnabled: z.boolean().optional(),
-  description: z.string().max(500).optional(),
-});
+/**
+ * Validates IP address or CIDR notation
+ */
+function validateIpAddressOrCidr(value: string): void {
+  const ipCidrRegex = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/;
+  if (!ipCidrRegex.test(value)) {
+    throw new ValidationError('Invalid IP address or CIDR format (e.g., 192.168.1.1 or 192.168.1.0/24)');
+  }
+}
 
-const ipCheckSchema = z.object({
-  ipAddress: z.string().ipv4().or(z.string().ipv6()),
-  endpoint: z.string().optional(),
-});
+/**
+ * Validates IPv4 or IPv6 address
+ */
+function validateIpAddress(value: string): void {
+  const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
+  const ipv6Regex = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/;
+
+  if (!ipv4Regex.test(value) && !ipv6Regex.test(value)) {
+    throw new ValidationError('Invalid IP address format');
+  }
+}
+
+/**
+ * Validates create IP filter request
+ */
+function validateCreateIpFilterRequest(request: CreateIpFilterDto): void {
+  validateRequired(request, ['name', 'ipAddressOrCidr', 'filterType']);
+  validateStringLength(request.name, 1, 100, 'name');
+  validateIpAddressOrCidr(request.ipAddressOrCidr);
+  validateEnum(request.filterType, ['whitelist', 'blacklist'] as const, 'filterType');
+
+  if (request.description) {
+    validateStringLength(request.description, 0, 500, 'description');
+  }
+}
 
 export class FetchIpFilterService {
   constructor(private readonly client: FetchBaseApiClient) {}
 
   async create(request: CreateIpFilterDto): Promise<IpFilterDto> {
-    try {
-      createFilterSchema.parse(request);
-    } catch (error) {
-      throw new ValidationError('Invalid IP filter request', { validationError: error });
-    }
+    validateCreateIpFilterRequest(request);
 
     const response = await this.client['post']<IpFilterDto>(
       ENDPOINTS.IP_FILTERS.BASE,
@@ -119,12 +135,7 @@ export class FetchIpFilterService {
   }
 
   async checkIp(ipAddress: string): Promise<IpCheckResult> {
-    try {
-      ipCheckSchema.parse({ ipAddress });
-    } catch (error) {
-      throw new ValidationError('Invalid IP check request', { validationError: error });
-    }
-
+    validateIpAddress(ipAddress);
     return this.client['get']<IpCheckResult>(ENDPOINTS.IP_FILTERS.CHECK(ipAddress));
   }
 

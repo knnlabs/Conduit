@@ -9,7 +9,7 @@ import {
   calculateCosineSimilarity
 } from '../models/embeddings';
 import { ConduitError } from '../utils/errors';
-import { API_ENDPOINTS } from '../constants/endpoints';
+import { API_ENDPOINTS } from '../constants';
 
 /**
  * Service for creating text embeddings using the Conduit Core API
