@@ -110,21 +110,18 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelsByProvider(provider);
 
             // Assert
-            result.Should().BeOfType<OkObjectResult>();
-            var okResult = result as OkObjectResult;
-            okResult.Should().NotBeNull();
-            
-            var dtos = okResult!.Value as IEnumerable<ModelWithProviderIdDto>;
-            dtos.Should().NotBeNull();
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            okResult.Value.Should().BeAssignableTo<IEnumerable<ModelWithProviderIdDto>>();
+            var dtos = (IEnumerable<ModelWithProviderIdDto>)okResult.Value;
             dtos.Should().HaveCount(2);
 
-            var firstDto = dtos!.First();
+            var firstDto = dtos.First();
             firstDto.Id.Should().Be(1);
             firstDto.Name.Should().Be("llama-3.1-8b");
             firstDto.ProviderModelId.Should().Be("llama-3.1-8b-instant");
             firstDto.SupportsChat.Should().BeTrue();
 
-            var secondDto = dtos!.Last();
+            var secondDto = dtos.Last();
             secondDto.Id.Should().Be(2);
             secondDto.Name.Should().Be("mixtral-8x7b");
             secondDto.ProviderModelId.Should().Be("mixtral-8x7b-32768");
@@ -142,9 +139,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelsByProvider(provider);
 
             // Assert
-            result.Should().BeOfType<BadRequestObjectResult>();
-            var badRequestResult = result as BadRequestObjectResult;
-            badRequestResult!.Value.Should().Be("Provider name is required");
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            badRequestResult.Value.Should().Be("Provider name is required");
 
             _mockRepository.Verify(r => r.GetByProviderAsync(It.IsAny<ProviderType>()), Times.Never);
         }
@@ -159,9 +155,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelsByProvider(provider);
 
             // Assert
-            result.Should().BeOfType<BadRequestObjectResult>();
-            var badRequestResult = result as BadRequestObjectResult;
-            badRequestResult!.Value.Should().Be("Provider name is required");
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            badRequestResult.Value.Should().Be("Provider name is required");
 
             _mockRepository.Verify(r => r.GetByProviderAsync(It.IsAny<ProviderType>()), Times.Never);
         }
@@ -176,9 +171,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelsByProvider(provider);
 
             // Assert
-            result.Should().BeOfType<BadRequestObjectResult>();
-            var badRequestResult = result as BadRequestObjectResult;
-            badRequestResult!.Value.Should().Be("Provider name is required");
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            badRequestResult.Value.Should().Be("Provider name is required");
 
             _mockRepository.Verify(r => r.GetByProviderAsync(It.IsAny<ProviderType>()), Times.Never);
         }
@@ -222,11 +216,11 @@ namespace ConduitLLM.Tests.Admin.Controllers
                     Identifiers = new List<ModelProviderTypeAssociation>
                     {
                         // Identifier for groq provider
-                        new ModelProviderTypeAssociation 
-                        { 
-                            Id = 1, 
-                            ModelId = 1, 
-                            Identifier = "test-model-groq", 
+                        new ModelProviderTypeAssociation
+                        {
+                            Id = 1,
+                            ModelId = 1,
+                            Identifier = "test-model-groq",
                             Provider = ProviderType.Groq,
                             IsPrimary = true
                         }
@@ -241,11 +235,11 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelsByProvider(provider);
 
             // Assert
-            result.Should().BeOfType<OkObjectResult>();
-            var okResult = result as OkObjectResult;
-            var dtos = okResult!.Value as IEnumerable<ModelWithProviderIdDto>;
-            var dto = dtos!.First();
-            
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            okResult.Value.Should().BeAssignableTo<IEnumerable<ModelWithProviderIdDto>>();
+            var dtos = (IEnumerable<ModelWithProviderIdDto>)okResult.Value;
+            var dto = dtos.First();
+
             // Should use the groq-specific identifier
             dto.ProviderModelId.Should().Be("test-model-groq");
         }
@@ -288,11 +282,11 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelsByProvider(provider);
 
             // Assert
-            result.Should().BeOfType<OkObjectResult>();
-            var okResult = result as OkObjectResult;
-            var dtos = okResult!.Value as IEnumerable<ModelWithProviderIdDto>;
-            var dto = dtos!.First();
-            
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            okResult.Value.Should().BeAssignableTo<IEnumerable<ModelWithProviderIdDto>>();
+            var dtos = (IEnumerable<ModelWithProviderIdDto>)okResult.Value;
+            var dto = dtos.First();
+
             // Should match case-insensitively
             dto.ProviderModelId.Should().Be("test-model-groq");
         }
@@ -311,9 +305,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelsByProvider(provider);
 
             // Assert
-            result.Should().BeOfType<ObjectResult>();
-            var objectResult = result as ObjectResult;
-            objectResult!.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
             objectResult.Value.Should().Be("An error occurred while retrieving models");
 
             // Verify logging occurred
@@ -366,11 +359,11 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelsByProvider(provider);
 
             // Assert
-            result.Should().BeOfType<OkObjectResult>();
-            var okResult = result as OkObjectResult;
-            var dtos = okResult!.Value as IEnumerable<ModelWithProviderIdDto>;
-            var dto = dtos!.First();
-            
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            okResult.Value.Should().BeAssignableTo<IEnumerable<ModelWithProviderIdDto>>();
+            var dtos = (IEnumerable<ModelWithProviderIdDto>)okResult.Value;
+            var dto = dtos.First();
+
             // After consolidation, capability fields have default values
             dto.SupportsChat.Should().BeFalse();
             dto.SupportsVision.Should().BeFalse();

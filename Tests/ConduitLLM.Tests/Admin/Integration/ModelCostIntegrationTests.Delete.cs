@@ -31,10 +31,11 @@ namespace ConduitLLM.Tests.Admin.Integration
             };
             
             var createResult = await _controller.CreateModelCost(createDto);
-            var createdCost = (createResult as CreatedAtActionResult)?.Value as ModelCostDto;
+            var createdResult = Assert.IsType<CreatedAtActionResult>(createResult);
+            var createdCost = Assert.IsType<ModelCostDto>(createdResult.Value);
 
             // Act
-            var deleteResult = await _controller.DeleteModelCost(createdCost!.Id);
+            var deleteResult = await _controller.DeleteModelCost(createdCost.Id);
 
             // Assert
             Assert.IsType<NoContentResult>(deleteResult);

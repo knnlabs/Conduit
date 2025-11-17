@@ -45,10 +45,11 @@ namespace ConduitLLM.Tests.Admin.Integration
             };
             
             var createResult = await _controller.CreateModelCost(createDto);
-            var createdCost = (createResult as CreatedAtActionResult)?.Value as ModelCostDto;
+            var createdResult = Assert.IsType<CreatedAtActionResult>(createResult);
+            var createdCost = Assert.IsType<ModelCostDto>(createdResult.Value);
 
             // Act
-            var getResult = await _controller.GetModelCostById(createdCost!.Id);
+            var getResult = await _controller.GetModelCostById(createdCost.Id);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(getResult);
