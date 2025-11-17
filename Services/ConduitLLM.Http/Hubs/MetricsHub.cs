@@ -152,19 +152,6 @@ namespace ConduitLLM.Http.Hubs
         }
 
         /// <summary>
-        /// Requests a detailed provider health check.
-        /// </summary>
-        /// <param name="providerType">Optional provider type to check. If null, checks all providers.</param>
-        /// <returns>Provider health details.</returns>
-        public async Task<List<ProviderHealthStatus>> CheckProviderHealth(ProviderType? providerType = null)
-        {
-            _logger.LogInformation("Client {ConnectionId} requesting provider health check for: {Provider}", 
-                Context.ConnectionId, providerType?.ToString() ?? "all");
-            
-            return await _metricsService.CheckProviderHealthAsync(providerType);
-        }
-
-        /// <summary>
         /// Gets top N virtual keys by various metrics.
         /// </summary>
         /// <param name="metric">Metric to sort by (requests, spend, errors).</param>
@@ -245,11 +232,6 @@ namespace ConduitLLM.Http.Hubs
         /// Gets currently active alerts.
         /// </summary>
         Task<List<MetricAlert>> GetActiveAlertsAsync();
-
-        /// <summary>
-        /// Checks provider health status.
-        /// </summary>
-        Task<List<ProviderHealthStatus>> CheckProviderHealthAsync(ProviderType? providerType);
 
         /// <summary>
         /// Gets top virtual keys by metric.

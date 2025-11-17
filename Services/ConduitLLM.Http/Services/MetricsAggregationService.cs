@@ -167,21 +167,6 @@ namespace ConduitLLM.Http.Services
             return alerts;
         }
 
-        public async Task<List<ProviderHealthStatus>> CheckProviderHealthAsync(string? providerName)
-        {
-            var snapshot = await GetCurrentSnapshotAsync();
-            
-            if (string.IsNullOrEmpty(providerName))
-            {
-                return snapshot.ProviderHealth;
-            }
-
-            return [
-                ..snapshot.ProviderHealth
-                    .Where(p => p.ProviderType.ToString().Equals(providerName, StringComparison.OrdinalIgnoreCase))
-            ];
-        }
-
         public async Task<List<VirtualKeyStats>> GetTopVirtualKeysAsync(string metric, int count)
         {
             var snapshot = await GetCurrentSnapshotAsync();
@@ -205,52 +190,6 @@ namespace ConduitLLM.Http.Services
                 ],
                 _ => [..snapshot.Business.TopVirtualKeys.Take(count)]
             };
-        }
-
-
-        /// <summary>
-        /// Checks provider health status.
-        /// </summary>
-        /// <remarks>
-        /// Provider health monitoring has been removed. This method now returns
-        /// all enabled providers as healthy.
-        /// </remarks>
-        public async Task<List<ProviderHealthStatus>> CheckProviderHealthAsync(ProviderType? providerType)
-        {
-            using var scope = _serviceProvider.CreateScope();
-            var providerRepository = scope.ServiceProvider.GetRequiredService<IProviderRepository>();
-            
-            var healthStatuses = new List<ProviderHealthStatus>();
-            
-            // Get all providers
-            var providers = await providerRepository.GetAllAsync();
-            
-            // Group providers by type
-            var providersByType = providers
-                .Where(p => p.IsEnabled)
-                .GroupBy(p => p.ProviderType)
-                .ToDictionary(g => g.Key, g => g.ToList());
-            
-            foreach (var typeGroup in providersByType)
-            {
-                // Skip if filtering by type and this isn't the requested type
-                if (providerType.HasValue && typeGroup.Key != providerType.Value)
-                    continue;
-                
-                // All enabled providers are considered healthy
-                healthStatuses.Add(new ProviderHealthStatus
-                {
-                    ProviderType = typeGroup.Key,
-                    Status = "healthy",
-                    AverageLatency = 0,
-                    LastSuccessfulRequest = DateTime.UtcNow,
-                    ErrorRate = 0,
-                    IsEnabled = true,
-                    AvailableModels = 0
-                });
-            }
-            
-            return healthStatuses;
         }
     }
 }

@@ -21,12 +21,9 @@ namespace ConduitLLM.Http.Services
             
             await _hubContext.Clients.Group("metrics-infrastructure")
                 .SendAsync("InfrastructureMetricsUpdate", snapshot.Infrastructure, cancellationToken);
-            
+
             await _hubContext.Clients.Group("metrics-business")
                 .SendAsync("BusinessMetricsUpdate", snapshot.Business, cancellationToken);
-            
-            await _hubContext.Clients.Group("metrics-providers")
-                .SendAsync("ProviderHealthUpdate", snapshot.ProviderHealth, cancellationToken);
         }
 
         /// <summary>
