@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Core.Services;
 
 namespace ConduitLLM.Admin.Extensions
 {
@@ -28,7 +29,16 @@ namespace ConduitLLM.Admin.Extensions
             
             // Add Configuration services
             services.AddScoped<IProviderService, ProviderService>();
-            services.AddScoped<IModelProviderMappingService, ModelProviderMappingService>();
+
+            // Register model provider mapping service with caching decorator pattern
+            services.AddScoped<ModelProviderMappingService>(); // Inner service
+            services.AddScoped<IModelProviderMappingService>(provider =>
+            {
+                var innerService = provider.GetRequiredService<ModelProviderMappingService>();
+                var cacheManager = provider.GetRequiredService<ConduitLLM.Core.Interfaces.ICacheManager>();
+                var logger = provider.GetRequiredService<ILogger<CachedModelProviderMappingService>>();
+                return new CachedModelProviderMappingService(innerService, cacheManager, logger);
+            });
 
             return services;
         }
