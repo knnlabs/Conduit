@@ -49,49 +49,25 @@ namespace ConduitLLM.Providers.OpenAICompatible
             // Map messages with their content - handle multimodal content for vision models
             var messages = request.Messages.Select(m =>
             {
-                // Check if this is a multimodal message
-                if (ProviderHelpers.ContentHelper.IsTextOnly(m.Content))
+                return new OpenAIMessage
                 {
-                    // Simple text-only message
-                    return new OpenAIMessage
+                    Role = m.Role,
+                    Content = ProviderHelpers.ContentHelper.IsTextOnly(m.Content)
+                        ? ProviderHelpers.ContentHelper.GetContentAsString(m.Content)
+                        : MapMultimodalContent(m.Content),
+                    Name = m.Name,
+                    ToolCalls = m.ToolCalls?.Select(tc => new
                     {
-                        Role = m.Role,
-                        Content = ProviderHelpers.ContentHelper.GetContentAsString(m.Content),
-                        Name = m.Name,
-                        ToolCalls = m.ToolCalls?.Select(tc => new
+                        id = tc.Id,
+                        type = tc.Type ?? "function",
+                        function = new
                         {
-                            id = tc.Id,
-                            type = tc.Type ?? "function",
-                            function = new
-                            {
-                                name = tc.Function?.Name,
-                                arguments = tc.Function?.Arguments
-                            }
-                        }).Cast<object>().ToList(),
-                        ToolCallId = m.ToolCallId
-                    };
-                }
-                else
-                {
-                    // Multimodal message with potential images
-                    return new OpenAIMessage
-                    {
-                        Role = m.Role,
-                        Content = MapMultimodalContent(m.Content),
-                        Name = m.Name,
-                        ToolCalls = m.ToolCalls?.Select(tc => new
-                        {
-                            id = tc.Id,
-                            type = tc.Type ?? "function",
-                            function = new
-                            {
-                                name = tc.Function?.Name,
-                                arguments = tc.Function?.Arguments
-                            }
-                        }).Cast<object>().ToList(),
-                        ToolCallId = m.ToolCallId
-                    };
-                }
+                            name = tc.Function?.Name,
+                            arguments = tc.Function?.Arguments
+                        }
+                    }).Cast<object>().ToList(),
+                    ToolCallId = m.ToolCallId
+                };
             }).ToList();
 
             // Create the OpenAI request as a dictionary to support extension data
@@ -209,7 +185,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
             }
 
             // If no parts were added, return an empty string
-            if (contentParts.Count() == 0)
+            if (contentParts.Count == 0)
                 return "";
 
             return contentParts;

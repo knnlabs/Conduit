@@ -19,7 +19,7 @@ namespace ConduitLLM.Tests.Admin.Integration
         public async Task UpdateModelCost_ChangeMappings_ShouldUpdateCorrectly()
         {
             // Arrange
-            var providerId = await SetupTestDataAsync();
+            await SetupTestDataAsync();
             
             // Create Models
             _dbContext.Models.AddRange(
@@ -80,7 +80,7 @@ namespace ConduitLLM.Tests.Admin.Integration
         public async Task UpdateModelCost_RemoveAllMappings_ShouldClearAssociations()
         {
             // Arrange
-            var providerId = await SetupTestDataAsync();
+            await SetupTestDataAsync();
             var mappings = await _modelMappingRepository.GetAllAsync();
             var mappingIds = mappings.Select(m => m.Id).ToList();
 
