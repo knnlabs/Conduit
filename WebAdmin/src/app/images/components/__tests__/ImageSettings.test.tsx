@@ -1,6 +1,7 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@/app/test-utils';
+import { render, screen, fireEvent } from '@/app/test-utils';
 import '@testing-library/jest-dom';
+import type { UseQueryResult } from '@tanstack/react-query';
 import ImageSettings from '../ImageSettings';
 import { useImageStore } from '../../hooks/useImageStore';
 import { useModelMetadata } from '../../hooks/useModelMetadata';
@@ -19,9 +20,10 @@ jest.mock('../../hooks/useModelMetadata');
 
 // Mock core library
 jest.mock('@mantine/core', () => {
-  const React = require('react');
+  const ReactActual = jest.requireActual<typeof import('react')>('react');
+  const mantineCore = jest.requireActual<typeof import('@mantine/core')>('@mantine/core');
   return {
-    ...jest.requireActual('@mantine/core'),
+    ...mantineCore,
     getDefaultZIndex: () => 100,
     Select: ({ label, value, onChange, data, required }: {
     label: string;
@@ -29,26 +31,29 @@ jest.mock('@mantine/core', () => {
     onChange: (value: string | null) => void;
     data: Array<{ value: string; label: string }>;
     required?: boolean;
-  }) => React.createElement('div', {},
-    React.createElement('span', {}, label),
-    required && React.createElement('span', {}, ' *'),
-    React.createElement('select', {
-      value: value ?? '',
-      onChange: (e: any) => onChange(e.target.value || null),
-      'data-testid': `select-${label.toLowerCase()}`
-    },
-      // Add empty option if value is empty
-      (value === '' || value === undefined || value === null) ? 
-        [React.createElement('option', { key: '', value: '' }, '')].concat(
-          data.map((item) => 
-            React.createElement('option', { key: item.value, value: item.value }, item.label)
+  }) => {
+      const testId = `select-${label.toLowerCase()}`;
+      return ReactActual.createElement('div', {},
+        ReactActual.createElement('span', {}, label),
+        required && ReactActual.createElement('span', {}, ' *'),
+        ReactActual.createElement('select', {
+          value: value ?? '',
+          onChange: (e: React.ChangeEvent<HTMLSelectElement>) => onChange(e.target.value ?? null),
+          ['data-testid']: testId
+        },
+        // Add empty option if value is empty
+        (value === '' || value === undefined || value === null) ?
+          [ReactActual.createElement('option', { key: '', value: '' }, '')].concat(
+            data.map((item) =>
+              ReactActual.createElement('option', { key: item.value, value: item.value }, item.label)
+            )
+          ) :
+          data.map((item) =>
+            ReactActual.createElement('option', { key: item.value, value: item.value }, item.label)
           )
-        ) :
-        data.map((item) => 
-          React.createElement('option', { key: item.value, value: item.value }, item.label)
-        )
-    )
-  ),
+      )
+    );
+  },
   Grid: Object.assign(
     ({ children }: { children: React.ReactNode }) => <div data-testid="grid">{children}</div>,
     {
@@ -139,7 +144,7 @@ describe('ImageSettings', () => {
       isLoading: false,
       error: null,
       refetch: jest.fn()
-    } as any);
+    } as unknown as UseQueryResult<null, Error>);
   });
 
   describe('Basic Rendering', () => {
@@ -171,7 +176,7 @@ describe('ImageSettings', () => {
     it('should show current model selection', () => {
       render(<ImageSettings models={mockModels} />);
       
-      const select = screen.getByTestId('select-model') as HTMLSelectElement;
+      const select = screen.getByTestId<HTMLSelectElement>('select-model');
       expect(select.value).toBe('dall-e-3');
     });
   });
@@ -221,7 +226,7 @@ describe('ImageSettings', () => {
         isLoading: false,
         error: null,
         refetch: jest.fn()
-      } as any);
+      } as unknown as UseQueryResult<null, Error>);
 
       render(<ImageSettings models={mockModels} />);
       
@@ -241,7 +246,7 @@ describe('ImageSettings', () => {
         isLoading: false,
         error: null,
         refetch: jest.fn()
-      } as any);
+      } as unknown as UseQueryResult<null, Error>);
 
       render(<ImageSettings models={mockModels} />);
       
@@ -260,7 +265,7 @@ describe('ImageSettings', () => {
         isLoading: false,
         error: null,
         refetch: jest.fn()
-      } as any);
+      } as unknown as UseQueryResult<null, Error>);
 
       render(<ImageSettings models={mockModels} />);
       
@@ -282,7 +287,7 @@ describe('ImageSettings', () => {
         isLoading: false,
         error: null,
         refetch: jest.fn()
-      } as any);
+      } as unknown as UseQueryResult<null, Error>);
 
       render(<ImageSettings models={mockModels} />);
       
@@ -307,7 +312,7 @@ describe('ImageSettings', () => {
         isLoading: false,
         error: null,
         refetch: jest.fn()
-      } as any);
+      } as unknown as UseQueryResult<null, Error>);
 
       render(<ImageSettings models={mockModels} />);
       
@@ -327,7 +332,7 @@ describe('ImageSettings', () => {
         isLoading: false,
         error: null,
         refetch: jest.fn()
-      } as any);
+      } as unknown as UseQueryResult<null, Error>);
 
       render(<ImageSettings models={mockModels} />);
       
@@ -346,7 +351,7 @@ describe('ImageSettings', () => {
         isLoading: false,
         error: null,
         refetch: jest.fn()
-      } as any);
+      } as unknown as UseQueryResult<null, Error>);
 
       render(<ImageSettings models={mockModels} />);
       
@@ -364,7 +369,7 @@ describe('ImageSettings', () => {
         isLoading: false,
         error: null,
         refetch: jest.fn()
-      } as any);
+      } as unknown as UseQueryResult<null, Error>);
 
       render(<ImageSettings models={mockModels} />);
       
@@ -378,7 +383,7 @@ describe('ImageSettings', () => {
         isLoading: false,
         error: null,
         refetch: jest.fn()
-      } as any);
+      } as unknown as UseQueryResult<null, Error>);
 
       render(<ImageSettings models={mockModels} />);
       
@@ -392,7 +397,7 @@ describe('ImageSettings', () => {
         isLoading: true,
         error: null,
         refetch: jest.fn()
-      } as any);
+      } as unknown as UseQueryResult<null, Error>);
 
       render(<ImageSettings models={mockModels} />);
       
@@ -406,7 +411,7 @@ describe('ImageSettings', () => {
         isLoading: false,
         error: new Error('Failed to fetch metadata'),
         refetch: jest.fn()
-      } as any);
+      } as unknown as UseQueryResult<null, Error>);
 
       render(<ImageSettings models={mockModels} />);
       
@@ -453,11 +458,11 @@ describe('ImageSettings', () => {
         isLoading: false,
         error: null,
         refetch: jest.fn()
-      } as any));
+      } as unknown as UseQueryResult<null, Error>));
 
       render(<ImageSettings models={mockModels} />);
-      
-      const select = screen.getByTestId('select-model') as HTMLSelectElement;
+
+      const select = screen.getByTestId<HTMLSelectElement>('select-model');
       expect(select.value).toBe('');
     });
 
@@ -474,7 +479,7 @@ describe('ImageSettings', () => {
         isLoading: false,
         error: null,
         refetch: jest.fn()
-      } as any);
+      } as unknown as UseQueryResult<null, Error>);
 
       render(<ImageSettings models={mockModels} />);
       
@@ -498,7 +503,7 @@ describe('ImageSettings', () => {
         isLoading: false,
         error: null,
         refetch: jest.fn()
-      } as any);
+      } as unknown as UseQueryResult<null, Error>);
 
       render(<ImageSettings models={mockModels} />);
       
@@ -530,7 +535,7 @@ describe('ImageSettings', () => {
         isLoading: false,
         error: null,
         refetch: jest.fn()
-      } as any);
+      } as unknown as UseQueryResult<null, Error>);
 
       render(<ImageSettings models={mockModels} />);
       
