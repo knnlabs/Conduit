@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using ConduitLLM.Core.Extensions;
 
 namespace ConduitLLM.Http.Middleware
 {

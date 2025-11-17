@@ -1,4 +1,5 @@
 using System.Text;
+using ConduitLLM.Core.Extensions;
 
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;

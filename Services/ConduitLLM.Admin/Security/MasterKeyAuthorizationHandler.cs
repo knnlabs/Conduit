@@ -122,15 +122,15 @@ public class MasterKeyAuthorizationHandler : AuthorizationHandler<MasterKeyRequi
                         // Log when query string auth is used for SignalR
                         if (httpContext.Request.Path.StartsWithSegments("/hubs"))
                         {
-                            _logger.LogDebug("Authorized SignalR hub connection via query string: {Path}", 
-                                httpLoggingSanitizer.S(Context.Request.Path.ToString()));
+                            _logger.LogDebug("Authorized SignalR hub connection via query string: {Path}",
+                                LoggingSanitizer.S(httpContext.Request.Path.ToString()));
                         }
                         context.Succeed(requirement);
                         return Task.CompletedTask;
                     }
                 }
 
-_logger.LogWarning("Invalid master key provided for {Path}", httpLoggingSanitizer.S(Context.Request.Path.ToString()));
+                _logger.LogWarning("Invalid master key provided for {Path}", LoggingSanitizer.S(httpContext.Request.Path.ToString()));
             }
             else
             {

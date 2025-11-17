@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 using Microsoft.Extensions.Logging;
 

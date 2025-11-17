@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using ConduitLLM.Core.Extensions;
 using Microsoft.AspNetCore.Mvc.Filters;
 using ConduitLLM.Core.Interfaces;
 
