@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Controllers;
+using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
@@ -22,6 +23,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
         private readonly Mock<IVirtualKeyGroupRepository> _mockGroupRepository;
         private readonly Mock<IVirtualKeyRepository> _mockKeyRepository;
         private readonly Mock<IConfigurationDbContext> _mockContext;
+        private readonly Mock<IRefundService> _mockRefundService;
         private readonly Mock<ILogger<VirtualKeyGroupsController>> _mockLogger;
         private readonly VirtualKeyGroupsController _controller;
         private readonly ITestOutputHelper _output;
@@ -32,12 +34,14 @@ namespace ConduitLLM.Tests.Admin.Controllers
             _mockGroupRepository = new Mock<IVirtualKeyGroupRepository>();
             _mockKeyRepository = new Mock<IVirtualKeyRepository>();
             _mockContext = new Mock<IConfigurationDbContext>();
+            _mockRefundService = new Mock<IRefundService>();
             _mockLogger = new Mock<ILogger<VirtualKeyGroupsController>>();
-            
+
             _controller = new VirtualKeyGroupsController(
                 _mockGroupRepository.Object,
                 _mockKeyRepository.Object,
                 _mockContext.Object,
+                _mockRefundService.Object,
                 _mockLogger.Object);
         }
 

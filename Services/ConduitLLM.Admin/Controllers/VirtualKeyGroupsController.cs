@@ -5,6 +5,8 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
+using ConduitLLM.Core.Models;
+using ConduitLLM.Admin.Interfaces;
 
 namespace ConduitLLM.Admin.Controllers
 {
@@ -19,6 +21,7 @@ namespace ConduitLLM.Admin.Controllers
         private readonly IVirtualKeyGroupRepository _groupRepository;
         private readonly IVirtualKeyRepository _keyRepository;
         private readonly IConfigurationDbContext _context;
+        private readonly IRefundService _refundService;
         private readonly ILogger<VirtualKeyGroupsController> _logger;
 
         /// <summary>
@@ -28,11 +31,13 @@ namespace ConduitLLM.Admin.Controllers
             IVirtualKeyGroupRepository groupRepository,
             IVirtualKeyRepository keyRepository,
             IConfigurationDbContext context,
+            IRefundService refundService,
             ILogger<VirtualKeyGroupsController> logger)
         {
             _groupRepository = groupRepository;
             _keyRepository = keyRepository;
             _context = context;
+            _refundService = refundService;
             _logger = logger;
         }
 
@@ -379,6 +384,165 @@ namespace ConduitLLM.Admin.Controllers
                 _logger.LogError(ex, "Error retrieving keys for virtual key group {GroupId}", id);
                 return StatusCode(500, new { message = "An error occurred while retrieving the keys" });
             }
+        }
+
+        /// <summary>
+        /// Process a refund for a virtual key group
+        /// </summary>
+        /// <param name="id">The virtual key group ID</param>
+        /// <param name="request">The refund request details</param>
+        /// <returns>The refund result with transaction details</returns>
+        [HttpPost("{id}/refund")]
+        [ProducesResponseType(typeof(RefundResultDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<RefundResultDto>> ProcessRefund(int id, [FromBody] ProcessRefundRequestDto request)
+        {
+            try
+            {
+                // Validate request
+                if (string.IsNullOrEmpty(request.ModelId))
+                {
+                    return BadRequest(new { message = "Model ID is required" });
+                }
+
+                if (string.IsNullOrEmpty(request.RefundReason))
+                {
+                    return BadRequest(new { message = "Refund reason is required" });
+                }
+
+                // Get user info for audit trail
+                var initiatedBy = User.Identity?.Name ?? "System";
+                var initiatedByUserId = User.FindFirst("sub")?.Value; // Clerk user ID from JWT
+
+                // Convert DTOs to core models
+                var originalUsage = MapToUsage(request.OriginalUsage);
+                var refundUsage = MapToUsage(request.RefundUsage);
+
+                // Process the refund
+                var refundResult = await _refundService.ProcessRefundAsync(
+                    id,
+                    request.ModelId,
+                    originalUsage,
+                    refundUsage,
+                    request.RefundReason,
+                    request.OriginalTransactionId,
+                    initiatedBy,
+                    initiatedByUserId);
+
+                // Get updated group info for balance
+                var group = await _groupRepository.GetByIdAsync(id);
+                if (group == null)
+                {
+                    return NotFound(new { message = "Group not found" });
+                }
+
+                // Map to response DTO
+                var responseDto = MapToRefundResultDto(refundResult, group.Balance);
+
+                _logger.LogInformation(
+                    "Refund processed for group {GroupId}: {RefundAmount:C}, Transaction ID: {TransactionId}",
+                    id,
+                    refundResult.RefundAmount,
+                    refundResult.OriginalTransactionId);
+
+                return Ok(responseDto);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Invalid operation while processing refund for group {GroupId}", id);
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Invalid refund request for group {GroupId}", id);
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing refund for virtual key group {GroupId}", id);
+                return StatusCode(500, new { message = "An error occurred while processing the refund" });
+            }
+        }
+
+        /// <summary>
+        /// Maps UsageDto to Usage core model
+        /// </summary>
+        private static Usage MapToUsage(UsageDto dto)
+        {
+            return new Usage
+            {
+                PromptTokens = dto.PromptTokens,
+                CompletionTokens = dto.CompletionTokens,
+                TotalTokens = dto.TotalTokens,
+                CachedInputTokens = dto.CachedInputTokens,
+                CachedWriteTokens = dto.CachedWriteTokens,
+                ReasoningTokens = dto.ReasoningTokens,
+                ImageCount = dto.ImageCount,
+                ImageQuality = dto.ImageQuality,
+                ImageResolution = dto.ImageResolution,
+                VideoDurationSeconds = dto.VideoDurationSeconds,
+                VideoResolution = dto.VideoResolution,
+                SearchUnits = dto.SearchUnits,
+                InferenceSteps = dto.InferenceSteps,
+                IsBatch = dto.IsBatch
+            };
+        }
+
+        /// <summary>
+        /// Maps RefundResult core model to RefundResultDto
+        /// </summary>
+        private static RefundResultDto MapToRefundResultDto(RefundResult result, decimal balanceAfter)
+        {
+            return new RefundResultDto
+            {
+                TransactionId = long.Parse(result.OriginalTransactionId ?? "0"),
+                ModelId = result.ModelId,
+                OriginalUsage = MapToUsageDto(result.OriginalUsage),
+                RefundUsage = MapToUsageDto(result.RefundUsage),
+                RefundAmount = result.RefundAmount,
+                BalanceAfter = balanceAfter,
+                OriginalTransactionId = result.OriginalTransactionId,
+                RefundReason = result.RefundReason,
+                RefundedAt = result.RefundedAt,
+                IsPartialRefund = result.IsPartialRefund,
+                ValidationMessages = result.ValidationMessages,
+                Breakdown = result.Breakdown != null ? new RefundBreakdownDto
+                {
+                    InputTokenRefund = result.Breakdown.InputTokenRefund,
+                    OutputTokenRefund = result.Breakdown.OutputTokenRefund,
+                    ImageRefund = result.Breakdown.ImageRefund,
+                    VideoRefund = result.Breakdown.VideoRefund,
+                    EmbeddingRefund = result.Breakdown.EmbeddingRefund,
+                    SearchUnitRefund = result.Breakdown.SearchUnitRefund,
+                    InferenceStepRefund = result.Breakdown.InferenceStepRefund
+                } : null
+            };
+        }
+
+        /// <summary>
+        /// Maps Usage core model to UsageDto
+        /// </summary>
+        private static UsageDto MapToUsageDto(Usage usage)
+        {
+            return new UsageDto
+            {
+                PromptTokens = usage.PromptTokens,
+                CompletionTokens = usage.CompletionTokens,
+                TotalTokens = usage.TotalTokens,
+                CachedInputTokens = usage.CachedInputTokens,
+                CachedWriteTokens = usage.CachedWriteTokens,
+                ReasoningTokens = usage.ReasoningTokens,
+                ImageCount = usage.ImageCount,
+                ImageQuality = usage.ImageQuality,
+                ImageResolution = usage.ImageResolution,
+                VideoDurationSeconds = usage.VideoDurationSeconds,
+                VideoResolution = usage.VideoResolution,
+                SearchUnits = usage.SearchUnits,
+                InferenceSteps = usage.InferenceSteps,
+                IsBatch = usage.IsBatch
+            };
         }
     }
 }

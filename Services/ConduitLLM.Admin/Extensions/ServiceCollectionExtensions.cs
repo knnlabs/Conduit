@@ -141,7 +141,10 @@ public static class ServiceCollectionExtensions
         // Register cost calculation dependencies
         services.AddScoped<ConduitLLM.Configuration.Interfaces.IModelCostService, ConduitLLM.Configuration.Services.ModelCostService>();
         services.AddScoped<ConduitLLM.Core.Interfaces.ICostCalculationService, ConduitLLM.Core.Services.CostCalculationService>();
-        
+
+        // Register refund service
+        services.AddScoped<ConduitLLM.Admin.Interfaces.IRefundService, ConduitLLM.Admin.Services.RefundService>();
+
         // Register media management service (requires IMediaLifecycleService to be registered)
         services.AddScoped<IAdminMediaService>(serviceProvider =>
         {
