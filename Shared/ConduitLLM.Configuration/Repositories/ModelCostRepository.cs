@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Utilities;
+using ConduitLLM.Configuration.Utilities;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -252,20 +253,20 @@ namespace ConduitLLM.Configuration.Repositories
                     // Rollback the transaction on error
                     await transaction.RollbackAsync(cancellationToken);
                     _logger.LogError(ex, "Transaction rolled back while creating model cost '{CostName}'",
-                        LogSanitizer.SanitizeObject(modelCost.CostName.Replace(Environment.NewLine, "")));
+                        LogSanitizer.SanitizeObject(LoggingSanitizer.S(modelCost.CostName)));
                     throw;
                 }
             }
             catch (DbUpdateException ex)
             {
                 _logger.LogError(ex, "Database error creating model cost '{CostName}'",
-                    LogSanitizer.SanitizeObject(modelCost.CostName.Replace(Environment.NewLine, "")));
+                    LogSanitizer.SanitizeObject(LoggingSanitizer.S(modelCost.CostName)));
                 throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating model cost '{CostName}'",
-                    LogSanitizer.SanitizeObject(modelCost.CostName.Replace(Environment.NewLine, "")));
+                    LogSanitizer.SanitizeObject(LoggingSanitizer.S(modelCost.CostName)));
                 throw;
             }
         }

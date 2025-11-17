@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
@@ -99,7 +100,7 @@ namespace ConduitLLM.Admin.Services
                     {
                         _logger.LogWarning(ex,
                 "Error importing model cost with name '{CostName}'",
-                modelCost.CostName.Replace(Environment.NewLine, ""));
+                LoggingSanitizer.S(modelCost.CostName));
                         // Continue with next model cost
                     }
                 }

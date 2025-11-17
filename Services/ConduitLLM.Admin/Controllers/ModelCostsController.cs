@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Extensions;
 using System.Text;
 
 using ConduitLLM.Admin.Interfaces;
@@ -153,7 +154,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost with name '{CostName}'", costName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error getting model cost with name '{CostName}'", LoggingSanitizer.S(costName));
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }

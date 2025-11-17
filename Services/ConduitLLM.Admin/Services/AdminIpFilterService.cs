@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.DTOs.IpFilter;
@@ -98,7 +99,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     {
         try
         {
-            _logger.LogInformation("Creating new IP filter for {IpAddress}", (createFilter.IpAddressOrCidr ?? "").Replace(Environment.NewLine, ""));
+            _logger.LogInformation("Creating new IP filter for {IpAddress}", (LoggingSanitizer.S(createFilter.IpAddressOrCidr ?? "")));
 
             // Validate the IP address format
             if (string.IsNullOrWhiteSpace(createFilter.IpAddressOrCidr) || !IsValidIpAddressOrCidr(createFilter.IpAddressOrCidr))
@@ -141,7 +142,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating IP filter for {IpAddress}", (createFilter.IpAddressOrCidr ?? "").Replace(Environment.NewLine, ""));
+            _logger.LogError(ex, "Error creating IP filter for {IpAddress}", (LoggingSanitizer.S(createFilter.IpAddressOrCidr ?? "")));
             return (false, "An unexpected error occurred", null);
         }
     }
@@ -359,7 +360,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     {
         try
         {
-            _logger.LogInformation("Checking if IP address is allowed: {IpAddress}", ipAddress.Replace(Environment.NewLine, ""));
+            _logger.LogInformation("Checking if IP address is allowed: {IpAddress}", LoggingSanitizer.S(ipAddress));
 
             // Get current IP filter settings
             var settings = await GetIpFilterSettingsAsync();
@@ -416,7 +417,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking if IP address is allowed: {IpAddress}", ipAddress.Replace(Environment.NewLine, ""));
+            _logger.LogError(ex, "Error checking if IP address is allowed: {IpAddress}", LoggingSanitizer.S(ipAddress));
 
             // On error, default to allowing the request (safer than potentially blocking all traffic)
             return new IpCheckResult
@@ -494,7 +495,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error validating IP address or CIDR: {IpAddressOrCidr}", ipAddressOrCidr.Replace(Environment.NewLine, ""));
+            _logger.LogWarning(ex, "Error validating IP address or CIDR: {IpAddressOrCidr}", LoggingSanitizer.S(ipAddressOrCidr));
             return false;
         }
     }
@@ -535,7 +536,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Error checking IP {IpAddress} against CIDR {CidrRange}", ipAddress.Replace(Environment.NewLine, ""), filterValue.Replace(Environment.NewLine, ""));
+                _logger.LogWarning(ex, "Error checking IP {IpAddress} against CIDR {CidrRange}", LoggingSanitizer.S(ipAddress), LoggingSanitizer.S(filterValue));
                 return false;
             }
         }

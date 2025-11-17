@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Utilities;
 
 using Microsoft.Extensions.Logging;
 
@@ -33,7 +34,7 @@ namespace ConduitLLM.Configuration
 
             try
             {
-_logger.LogInformation("Adding mapping: {ModelAlias}", mapping.ModelAlias.Replace(Environment.NewLine, ""));
+                _logger.LogInformation("Adding mapping: {ModelAlias}", LoggingSanitizer.S(mapping.ModelAlias));
 
                 // Get the provider credential
                 Provider? credential = null;
@@ -62,7 +63,7 @@ _logger.LogInformation("Adding mapping: {ModelAlias}", mapping.ModelAlias.Replac
             }
             catch (Exception ex)
             {
-_logger.LogError(ex, "Error adding mapping for model alias {ModelAlias}".Replace(Environment.NewLine, ""), mapping.ModelAlias.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error adding mapping for model alias {ModelAlias}", LoggingSanitizer.S(mapping.ModelAlias));
                 throw;
             }
         }
@@ -118,12 +119,12 @@ _logger.LogError(ex, "Error adding mapping for model alias {ModelAlias}".Replace
 
             try
             {
-_logger.LogInformation("Getting mapping by model alias: {ModelAlias}", modelAlias.Replace(Environment.NewLine, ""));
+                _logger.LogInformation("Getting mapping by model alias: {ModelAlias}", LoggingSanitizer.S(modelAlias));
                 return await _repository.GetByModelNameAsync(modelAlias);
             }
             catch (Exception ex)
             {
-_logger.LogError(ex, "Error getting mapping for model alias {ModelAlias}".Replace(Environment.NewLine, ""), modelAlias.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error getting mapping for model alias {ModelAlias}", LoggingSanitizer.S(modelAlias));
                 throw;
             }
         }
@@ -137,13 +138,13 @@ _logger.LogError(ex, "Error getting mapping for model alias {ModelAlias}".Replac
 
             try
             {
-_logger.LogInformation("Updating mapping: {ModelAlias}", mapping.ModelAlias.Replace(Environment.NewLine, ""));
+                _logger.LogInformation("Updating mapping: {ModelAlias}", LoggingSanitizer.S(mapping.ModelAlias));
 
                 // Get the existing entity
                 var existingEntity = await _repository.GetByModelNameAsync(mapping.ModelAlias);
                 if (existingEntity == null)
                 {
-_logger.LogWarning("Mapping not found for model alias {ModelAlias}", mapping.ModelAlias.Replace(Environment.NewLine, ""));
+                    _logger.LogWarning("Mapping not found for model alias {ModelAlias}", LoggingSanitizer.S(mapping.ModelAlias));
                     throw new InvalidOperationException("Mapping not found for the specified model alias");
                 }
 
@@ -178,7 +179,7 @@ _logger.LogWarning("Mapping not found for model alias {ModelAlias}", mapping.Mod
             }
             catch (Exception ex)
             {
-_logger.LogError(ex, "Error updating mapping for model alias {ModelAlias}".Replace(Environment.NewLine, ""), mapping.ModelAlias.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error updating mapping for model alias {ModelAlias}", LoggingSanitizer.S(mapping.ModelAlias));
                 throw;
             }
         }
@@ -216,7 +217,7 @@ _logger.LogError(ex, "Error updating mapping for model alias {ModelAlias}".Repla
                 var existingMapping = await GetMappingByModelAliasAsync(mapping.ModelAlias);
                 if (existingMapping != null)
                 {
-                    _logger.LogWarning("Mapping already exists for model alias {ModelAlias}", mapping.ModelAlias.Replace(Environment.NewLine, ""));
+                    _logger.LogWarning("Mapping already exists for model alias {ModelAlias}", LoggingSanitizer.S(mapping.ModelAlias));
                     return (false, $"A mapping for this model alias already exists: {mapping.ModelAlias}", null);
                 }
 
@@ -229,7 +230,7 @@ _logger.LogError(ex, "Error updating mapping for model alias {ModelAlias}".Repla
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating model provider mapping for alias {ModelAlias}", mapping.ModelAlias.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error creating model provider mapping for alias {ModelAlias}", LoggingSanitizer.S(mapping.ModelAlias));
                 return (false, $"An error occurred while creating the model provider mapping: {ex.Message}", null);
             }
         }

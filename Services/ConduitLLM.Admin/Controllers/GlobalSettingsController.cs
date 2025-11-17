@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 
@@ -104,7 +105,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting global setting with key {Key}", key.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error getting global setting with key {Key}", LoggingSanitizer.S(key));
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -213,7 +214,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating global setting with key {Key}", setting.Key.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error updating global setting with key {Key}", LoggingSanitizer.S(setting.Key));
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -271,7 +272,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting global setting with key {Key}", key.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error deleting global setting with key {Key}", LoggingSanitizer.S(key));
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }

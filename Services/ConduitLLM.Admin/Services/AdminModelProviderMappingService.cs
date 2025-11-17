@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Extensions;
 using System.Text.Json;
 
 using ConduitLLM.Admin.Interfaces;
@@ -80,7 +81,7 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
     {
         try
         {
-            _logger.LogInformation("Adding new model provider mapping for model ID: {ModelId}", mapping.ModelAlias.Replace(Environment.NewLine, ""));
+            _logger.LogInformation("Adding new model provider mapping for model ID: {ModelId}", LoggingSanitizer.S(mapping.ModelAlias));
 
             // Validate provider exists by ID
             var provider = await _providerRepository.GetByIdAsync(mapping.ProviderId);
@@ -94,7 +95,7 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
             var existingMapping = await _mappingRepository.GetByModelNameAsync(mapping.ModelAlias);
             if (existingMapping != null)
             {
-                _logger.LogWarning("A mapping for model ID already exists: {ModelId}", mapping.ModelAlias.Replace(Environment.NewLine, ""));
+                _logger.LogWarning("A mapping for model ID already exists: {ModelId}", LoggingSanitizer.S(mapping.ModelAlias));
                 return false;
             }
 
@@ -123,7 +124,7 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error adding model provider mapping for model ID: {ModelId}", mapping.ModelAlias.Replace(Environment.NewLine, ""));
+            _logger.LogError(ex, "Error adding model provider mapping for model ID: {ModelId}", LoggingSanitizer.S(mapping.ModelAlias));
             return false;
         }
     }
@@ -318,7 +319,7 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing bulk mapping at index {Index} for model {ModelId}", 
-                    i, mapping.ModelAlias.Replace(Environment.NewLine, ""));
+                    i, LoggingSanitizer.S(mapping.ModelAlias));
                 errors.Add($"Index {i}: System error: {ex.Message}");
             }
         }

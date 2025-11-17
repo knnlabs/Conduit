@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using ConduitLLM.Core.Extensions;
 
 namespace ConduitLLM.Http.Middleware
 {
@@ -76,7 +77,7 @@ namespace ConduitLLM.Http.Middleware
 
                 _logger.LogDebug("Processing request with correlation ID: {CorrelationId}, Path: {Path}",
                 correlationId,
-                context.Request.Path.ToString().Replace(Environment.NewLine, ""));
+                LoggingSanitizer.S(context.Request.Path.ToString()));
 
                 try
                 {
@@ -102,7 +103,7 @@ namespace ConduitLLM.Http.Middleware
                     if (!string.IsNullOrWhiteSpace(correlationId))
                     {
                         _logger.LogDebug("Using incoming correlation ID from header {HeaderName}: {CorrelationId}",
-                headerName.Replace(Environment.NewLine, ""),
+                LoggingSanitizer.S(headerName),
                 correlationId);
                         return correlationId;
                     }

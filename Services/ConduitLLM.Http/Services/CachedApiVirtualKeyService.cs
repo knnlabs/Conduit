@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Events;
@@ -198,7 +199,7 @@ namespace ConduitLLM.Http.Services
                     var created = await _virtualKeyRepository.GetByIdAsync(createdId);
                     if (created != null)
                     {
-                        _logger.LogInformation("Created new virtual key: {KeyName} (ID: {KeyId})", created.KeyName.Replace(Environment.NewLine, ""), created.Id);
+                        _logger.LogInformation("Created new virtual key: {KeyName} (ID: {KeyId})", LoggingSanitizer.S(created.KeyName), created.Id);
                         
                         // Return the response with the actual key (only shown once)
                         return new CreateVirtualKeyResponseDto
@@ -299,7 +300,7 @@ namespace ConduitLLM.Http.Services
                 {
                     // SECURITY CRITICAL: Immediately invalidate cache
                     await _cache.InvalidateVirtualKeyAsync(virtualKey.KeyHash);
-                    _logger.LogInformation("Updated virtual key: {KeyName} (ID: {KeyId})", virtualKey.KeyName.Replace(Environment.NewLine, ""), id);
+                    _logger.LogInformation("Updated virtual key: {KeyName} (ID: {KeyId})", LoggingSanitizer.S(virtualKey.KeyName), id);
                 }
                 
                 return success;
@@ -329,7 +330,7 @@ namespace ConduitLLM.Http.Services
                 {
                     // SECURITY CRITICAL: Immediately invalidate cache
                     await _cache.InvalidateVirtualKeyAsync(virtualKey.KeyHash);
-                    _logger.LogInformation("Deleted virtual key: {KeyName} (ID: {KeyId})", virtualKey.KeyName.Replace(Environment.NewLine, ""), id);
+                    _logger.LogInformation("Deleted virtual key: {KeyName} (ID: {KeyId})", LoggingSanitizer.S(virtualKey.KeyName), id);
                 }
                 
                 return success;

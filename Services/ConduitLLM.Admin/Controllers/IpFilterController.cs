@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs.IpFilter;
 
@@ -307,7 +308,7 @@ public class IpFilterController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking IP address {IpAddress}", ipAddress.Replace(Environment.NewLine, ""));
+            _logger.LogError(ex, "Error checking IP address {IpAddress}", LoggingSanitizer.S(ipAddress));
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }

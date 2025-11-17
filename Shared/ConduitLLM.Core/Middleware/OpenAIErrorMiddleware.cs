@@ -1,6 +1,7 @@
 using System.Text.Json;
 
 using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 
@@ -64,8 +65,8 @@ namespace ConduitLLM.Core.Middleware
             _logger.LogError(exception,
                 "Exception handled by OpenAIErrorMiddleware {TraceId} {Method} {Path}",
                 traceId,
-                context.Request.Method.Replace(Environment.NewLine, ""),
-                context.Request.Path.ToString().Replace(Environment.NewLine, ""));
+                LoggingSanitizer.S(context.Request.Method),
+                LoggingSanitizer.S(context.Request.Path.ToString()));
 
             // Map exception to OpenAI error response
             var (statusCode, errorResponse) = MapExceptionToResponse(exception, traceId);

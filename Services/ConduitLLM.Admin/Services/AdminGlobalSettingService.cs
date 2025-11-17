@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
@@ -75,14 +76,14 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformation("Getting global setting with key: {Key}", key.Replace(Environment.NewLine, ""));
+                _logger.LogInformation("Getting global setting with key: {Key}", LoggingSanitizer.S(key));
 
                 var setting = await _globalSettingRepository.GetByKeyAsync(key);
                 return setting?.ToDto();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting global setting with key {Key}", key.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error getting global setting with key {Key}", LoggingSanitizer.S(key));
                 throw;
             }
         }
@@ -92,7 +93,7 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformation("Creating new global setting with key: {Key}", setting.Key.Replace(Environment.NewLine, ""));
+                _logger.LogInformation("Creating new global setting with key: {Key}", LoggingSanitizer.S(setting.Key));
 
                 // Check if a setting with the same key already exists
                 var existingSetting = await _globalSettingRepository.GetByKeyAsync(setting.Key);
@@ -131,7 +132,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating global setting with key {Key}", setting.Key.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error creating global setting with key {Key}", LoggingSanitizer.S(setting.Key));
                 throw;
             }
         }
@@ -209,7 +210,7 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformation("Updating global setting with key: {Key}", setting.Key.Replace(Environment.NewLine, ""));
+                _logger.LogInformation("Updating global setting with key: {Key}", LoggingSanitizer.S(setting.Key));
 
                 // Get existing setting to determine if this is an update or create
                 var existingSetting = await _globalSettingRepository.GetByKeyAsync(setting.Key);
@@ -243,7 +244,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating global setting with key {Key}", setting.Key.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error updating global setting with key {Key}", LoggingSanitizer.S(setting.Key));
                 throw;
             }
         }
@@ -295,13 +296,13 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformation("Deleting global setting with key: {Key}", key.Replace(Environment.NewLine, ""));
+                _logger.LogInformation("Deleting global setting with key: {Key}", LoggingSanitizer.S(key));
 
                 // Get the setting before deleting for event publishing
                 var setting = await _globalSettingRepository.GetByKeyAsync(key);
                 if (setting == null)
                 {
-                    _logger.LogWarning("Global setting with key {Key} not found", key.Replace(Environment.NewLine, ""));
+                    _logger.LogWarning("Global setting with key {Key} not found", LoggingSanitizer.S(key));
                     return false;
                 }
 
@@ -327,7 +328,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting global setting with key {Key}", key.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error deleting global setting with key {Key}", LoggingSanitizer.S(key));
                 throw;
             }
         }

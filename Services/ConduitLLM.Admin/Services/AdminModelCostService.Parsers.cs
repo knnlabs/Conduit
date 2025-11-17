@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Extensions;
 using System.Text;
 using System.Text.Json;
 
@@ -115,7 +116,7 @@ namespace ConduitLLM.Admin.Services
                 var parts = lines[i].Split(',');
                 if (parts.Length < 2)
                 {
-                    _logger.LogWarning("Skipping invalid CSV line: {Line}", lines[i].Replace(Environment.NewLine, ""));
+                    _logger.LogWarning("Skipping invalid CSV line: {Line}", LoggingSanitizer.S(lines[i]));
                     continue;
                 }
 
@@ -144,7 +145,7 @@ namespace ConduitLLM.Admin.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to parse CSV line: {Line}", lines[i].Replace(Environment.NewLine, ""));
+                    _logger.LogError(ex, "Failed to parse CSV line: {Line}", LoggingSanitizer.S(lines[i]));
                     throw new ArgumentException($"Invalid CSV data at line {i + 1}", ex);
                 }
             }

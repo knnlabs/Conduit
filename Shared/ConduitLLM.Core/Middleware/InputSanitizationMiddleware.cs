@@ -1,5 +1,7 @@
 using System.Text.RegularExpressions;
 
+using ConduitLLM.Core.Extensions;
+
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -75,7 +77,7 @@ namespace ConduitLLM.Core.Middleware
                         if (sanitized != stringValue)
                         {
                             context.Request.RouteValues[kvp.Key] = sanitized;
-_logger.LogDebug("Sanitized route value {Key}", kvp.Key.Replace(Environment.NewLine, ""));
+                            _logger.LogDebug("Sanitized route value {Key}", LoggingSanitizer.S(kvp.Key));
                         }
                     }
                 }
@@ -99,7 +101,7 @@ _logger.LogDebug("Sanitized route value {Key}", kvp.Key.Replace(Environment.NewL
                     if (!kvp.Value.SequenceEqual(sanitizedValues))
                     {
                         modified = true;
-_logger.LogDebug("Sanitized query parameter {Key}", kvp.Key.Replace(Environment.NewLine, ""));
+                        _logger.LogDebug("Sanitized query parameter {Key}", LoggingSanitizer.S(kvp.Key));
                     }
 
                     newQuery[kvp.Key] = new Microsoft.Extensions.Primitives.StringValues(sanitizedValues);

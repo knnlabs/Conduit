@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
@@ -45,7 +46,7 @@ namespace ConduitLLM.Admin.Services
                             {
                                 keysDisabled++;
                                 _logger.LogInformation("Disabled expired virtual key {KeyId} ({KeyName})",
-                                    key.Id, key.KeyName.Replace(Environment.NewLine, ""));
+                                    key.Id, LoggingSanitizer.S(key.KeyName));
                             }
                         }
                     }

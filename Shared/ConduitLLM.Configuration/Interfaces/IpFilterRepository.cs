@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Utilities;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -97,14 +98,14 @@ public class IpFilterRepository : IIpFilterRepository
             await dbContext.SaveChangesAsync();
 
             _logger.LogInformation("Added new IP filter: {FilterType} {IpAddressOrCidr}",
-                filter.FilterType.Replace(Environment.NewLine, ""),
-                filter.IpAddressOrCidr.Replace(Environment.NewLine, ""));
+                LoggingSanitizer.S(filter.FilterType),
+                LoggingSanitizer.S(filter.IpAddressOrCidr));
 
             return filter;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error adding IP filter for {IpAddressOrCidr}", filter.IpAddressOrCidr.Replace(Environment.NewLine, ""));
+            _logger.LogError(ex, "Error adding IP filter for {IpAddressOrCidr}", LoggingSanitizer.S(filter.IpAddressOrCidr));
             throw;
         }
     }
@@ -135,8 +136,8 @@ public class IpFilterRepository : IIpFilterRepository
 
             _logger.LogInformation("Updated IP filter ID {Id}: {FilterType} {IpAddressOrCidr}",
                 filter.Id,
-                filter.FilterType.Replace(Environment.NewLine, ""),
-                filter.IpAddressOrCidr.Replace(Environment.NewLine, ""));
+                LoggingSanitizer.S(filter.FilterType),
+                LoggingSanitizer.S(filter.IpAddressOrCidr));
 
             return true;
         }
@@ -169,8 +170,8 @@ public class IpFilterRepository : IIpFilterRepository
 
             _logger.LogInformation("Deleted IP filter ID {Id}: {FilterType} {IpAddressOrCidr}",
                 id,
-                filter.FilterType.Replace(Environment.NewLine, ""),
-                filter.IpAddressOrCidr.Replace(Environment.NewLine, ""));
+                LoggingSanitizer.S(filter.FilterType),
+                LoggingSanitizer.S(filter.IpAddressOrCidr));
 
             return true;
         }

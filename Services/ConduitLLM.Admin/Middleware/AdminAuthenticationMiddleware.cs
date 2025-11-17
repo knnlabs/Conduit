@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Extensions;
 namespace ConduitLLM.Admin.Middleware;
 
 /// <summary>
@@ -68,7 +69,7 @@ public class AdminAuthenticationMiddleware
 
         if (!context.Request.Headers.TryGetValue(MASTER_KEY_HEADER, out var providedKey))
         {
-_logger.LogWarning("No API key provided for {Path}", context.Request.Path.ToString().Replace(Environment.NewLine, ""));
+_logger.LogWarning("No API key provided for {Path}", LoggingSanitizer.S(context.Request.Path.ToString()));
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             await context.Response.WriteAsJsonAsync(new { error = "API key is required" });
             return;
@@ -76,7 +77,7 @@ _logger.LogWarning("No API key provided for {Path}", context.Request.Path.ToStri
 
         if (providedKey != masterKey)
         {
-_logger.LogWarning("Invalid API key provided for {Path}", context.Request.Path.ToString().Replace(Environment.NewLine, ""));
+_logger.LogWarning("Invalid API key provided for {Path}", LoggingSanitizer.S(context.Request.Path.ToString()));
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             await context.Response.WriteAsJsonAsync(new { error = "Invalid API key" });
             return;

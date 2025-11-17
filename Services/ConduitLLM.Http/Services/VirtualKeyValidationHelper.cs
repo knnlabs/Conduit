@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -29,7 +30,7 @@ namespace ConduitLLM.Http.Services
             if (!virtualKey.IsEnabled)
             {
                 logger.LogWarning("Virtual key is disabled: {KeyName} (ID: {KeyId})", 
-                    virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id);
+                    LoggingSanitizer.S(virtualKey.KeyName), virtualKey.Id);
                 return new ValidationResult { IsValid = false, Reason = "Key is disabled" };
             }
 
@@ -37,7 +38,7 @@ namespace ConduitLLM.Http.Services
             if (virtualKey.ExpiresAt.HasValue && virtualKey.ExpiresAt.Value < DateTime.UtcNow)
             {
                 logger.LogWarning("Virtual key has expired: {KeyName} (ID: {KeyId}), expired at {ExpiryDate}",
-                    virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id, virtualKey.ExpiresAt);
+                    LoggingSanitizer.S(virtualKey.KeyName), virtualKey.Id, virtualKey.ExpiresAt);
                 return new ValidationResult { IsValid = false, Reason = "Key has expired" };
             }
 
@@ -48,7 +49,7 @@ namespace ConduitLLM.Http.Services
                 if (group != null && group.Balance <= 0)
                 {
                     logger.LogWarning("Virtual key group budget depleted: {KeyName} (ID: {KeyId}), group {GroupId} has balance {Balance}",
-                        virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id, group.Id, group.Balance);
+                        LoggingSanitizer.S(virtualKey.KeyName), virtualKey.Id, group.Id, group.Balance);
                     
                     return new ValidationResult 
                     { 
@@ -66,7 +67,7 @@ namespace ConduitLLM.Http.Services
                 if (!isModelAllowed)
                 {
                     logger.LogWarning("Virtual key {KeyName} (ID: {KeyId}) attempted to access restricted model: {RequestedModel}",
-                        virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id, requestedModel.Replace(Environment.NewLine, ""));
+                        LoggingSanitizer.S(virtualKey.KeyName), virtualKey.Id, LoggingSanitizer.S(requestedModel));
                     return new ValidationResult { IsValid = false, Reason = "Model not allowed" };
                 }
             }
@@ -76,12 +77,12 @@ namespace ConduitLLM.Http.Services
             if (logLevel == LogLevel.Information)
             {
                 logger.LogInformation("Validated virtual key successfully: {KeyName} (ID: {KeyId})",
-                    virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id);
+                    LoggingSanitizer.S(virtualKey.KeyName), virtualKey.Id);
             }
             else
             {
                 logger.LogDebug("Virtual key authenticated successfully: {KeyName} (ID: {KeyId})",
-                    virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id);
+                    LoggingSanitizer.S(virtualKey.KeyName), virtualKey.Id);
             }
 
             return new ValidationResult { IsValid = true };
