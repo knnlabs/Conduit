@@ -40,29 +40,76 @@ jest.mock('@/app/config/mediaGeneration', () => ({
   }
 }));
 
+// Import types for Mantine mocks
+import type { ButtonProps, GroupProps, BadgeProps, BoxProps, TextProps } from '@mantine/core';
+
 // Mock Mantine components
 jest.mock('@mantine/core', () => {
-  const React = require('react');
+  const actualMantine = jest.requireActual<typeof import('@mantine/core')>('@mantine/core');
   return {
-    ...jest.requireActual('@mantine/core'),
+    ...actualMantine,
     getDefaultZIndex: () => 100,
-    Button: ({ children, onClick, color, variant, size, fullWidth, leftSection, disabled }: any) =>
-      React.createElement('button', {
-        onClick,
-        'data-color': color,
-        'data-variant': variant,
-        'data-size': size,
-        'data-fullwidth': fullWidth,
-        disabled
-      }, leftSection, children),
-    Group: ({ children, gap, wrap, grow }: any) =>
-      React.createElement('div', { 'data-gap': gap, 'data-wrap': wrap, 'data-grow': grow }, children),
-    Badge: ({ children, variant, size, color }: any) =>
-      React.createElement('span', { 'data-variant': variant, 'data-size': size, 'data-color': color }, children),
-    Box: ({ children, mt }: any) =>
-      React.createElement('div', { 'data-mt': mt }, children),
-    Text: ({ children, size, fw, lineClamp }: any) =>
-      React.createElement('span', { 'data-size': size, 'data-fw': fw, 'data-lineclamp': lineClamp }, children)
+    Button: (props: ButtonProps) => {
+      const { children, leftSection, disabled, color, variant, size, fullWidth, onClick } = props;
+      const handleClick = onClick as React.MouseEventHandler<HTMLButtonElement> | undefined;
+      return (
+        <button
+          onClick={handleClick}
+          disabled={disabled}
+          data-testid="mantine-button"
+          className={`button ${color ?? ''} ${variant ?? ''} ${size ?? ''} ${fullWidth ? 'fullwidth' : ''}`}
+        >
+          {leftSection}
+          {children}
+        </button>
+      );
+    },
+    Group: (props: GroupProps) => {
+      const { children, gap, wrap, grow } = props;
+      return (
+        <div
+          data-testid="mantine-group"
+          className={`group ${gap ?? ''} ${wrap ?? ''} ${grow ? 'grow' : ''}`}
+        >
+          {children}
+        </div>
+      );
+    },
+    Badge: (props: BadgeProps) => {
+      const { children, variant, size, color } = props;
+      return (
+        <span
+          data-testid="mantine-badge"
+          className={`badge ${variant ?? ''} ${size ?? ''} ${color ?? ''}`}
+        >
+          {children}
+        </span>
+      );
+    },
+    Box: (props: BoxProps) => {
+      const { children, mt } = props;
+      const mtClass = typeof mt === 'string' || typeof mt === 'number' ? String(mt) : '';
+      return (
+        <div
+          data-testid="mantine-box"
+          className={`box ${mtClass}`}
+        >
+          {children}
+        </div>
+      );
+    },
+    Text: (props: TextProps) => {
+      const { children, size, fw, lineClamp } = props;
+      const fwClass = typeof fw === 'string' || typeof fw === 'number' ? String(fw) : '';
+      return (
+        <span
+          data-testid="mantine-text"
+          className={`text ${size ?? ''} ${fwClass} ${lineClamp ?? ''}`}
+        >
+          {children}
+        </span>
+      );
+    }
   };
 });
 
@@ -72,9 +119,55 @@ jest.mock('@tabler/icons-react', () => ({
   IconX: () => null
 }));
 
+// Define types for media component mocks
+interface MediaGalleryProps<T> {
+  items: T[];
+  renderCard: (item: T) => React.ReactNode;
+  onClearAll?: () => void;
+  emptyTitle?: string;
+  emptyMessage?: string;
+  title?: string | ((count: number) => string);
+  cols?: Record<string, number>;
+  clearButtonText?: string;
+}
+
+interface MediaCardProps {
+  children?: React.ReactNode;
+  prompt?: string;
+  status?: string;
+  progress?: number;
+  error?: string | null;
+  actions?: React.ReactNode;
+}
+
+interface MediaContentProps {
+  children: React.ReactNode;
+  backgroundColor?: string;
+}
+
+interface MediaPlaceholderProps {
+  message: string;
+}
+
+interface VideoMetadata {
+  duration: number;
+  resolution: string;
+  fps: number;
+  file_size_bytes: number;
+  codec: string;
+}
+
+interface VideoObject {
+  url?: string | null;
+  b64_json?: string | null;
+  metadata?: VideoMetadata;
+  video?: unknown;
+}
+
 // Mock media components
 jest.mock('@/app/components/media', () => ({
-  MediaGallery: ({ items, renderCard, onClearAll, emptyTitle, emptyMessage, title, cols, clearButtonText }: any) => {
+  MediaGallery: <T,>(props: MediaGalleryProps<T>) => {
+    const { items, renderCard, onClearAll, emptyTitle, emptyMessage, title, clearButtonText } = props;
     const itemCount = items.length;
     if (itemCount === 0) {
       return (
@@ -87,29 +180,38 @@ jest.mock('@/app/components/media', () => ({
     return (
       <div data-testid="media-gallery">
         <h2>{typeof title === 'function' ? title(itemCount) : title}</h2>
-        {items.map((item: any) => renderCard(item))}
+        {items.map((item) => renderCard(item))}
         <button onClick={onClearAll} data-testid="clear-all-button">
           {clearButtonText}
         </button>
       </div>
     );
   },
-  MediaCard: ({ children, prompt, status, progress, error, actions }: any) => (
-    <div data-testid="media-card" data-status={status}>
-      {prompt && <div data-testid="card-prompt">{prompt}</div>}
-      {status && <div data-testid="card-status">{status}</div>}
-      {progress !== undefined && <div data-testid="card-progress">{progress}</div>}
-      {error && <div data-testid="card-error">{error}</div>}
-      {children}
-      {actions && <div data-testid="card-actions">{actions}</div>}
-    </div>
-  ),
-  MediaContent: ({ children, backgroundColor }: any) => (
-    <div data-testid="media-content" style={{ backgroundColor }}>{children}</div>
-  ),
-  MediaPlaceholder: ({ message }: any) => (
-    <div data-testid="media-placeholder">{message}</div>
-  ),
+  MediaCard: (props: MediaCardProps) => {
+    const { children, prompt, status, progress, error, actions } = props;
+    return (
+      <div data-testid="media-card" data-status={status}>
+        {prompt && <div data-testid="card-prompt">{prompt}</div>}
+        {status && <div data-testid="card-status">{status}</div>}
+        {progress !== undefined && <div data-testid="card-progress">{progress}</div>}
+        {error && <div data-testid="card-error">{error}</div>}
+        {children}
+        {actions && <div data-testid="card-actions">{actions}</div>}
+      </div>
+    );
+  },
+  MediaContent: (props: MediaContentProps) => {
+    const { children, backgroundColor } = props;
+    return (
+      <div data-testid="media-content" style={{ backgroundColor }}>{children}</div>
+    );
+  },
+  MediaPlaceholder: (props: MediaPlaceholderProps) => {
+    const { message } = props;
+    return (
+      <div data-testid="media-placeholder">{message}</div>
+    );
+  },
   downloadMedia: jest.fn().mockResolvedValue({ success: true }),
   formatFileSize: jest.fn((bytes: number) => `${Math.round(bytes / 1024)} KB`),
   VideoMetadataExtractor: class {
@@ -126,16 +228,27 @@ jest.mock('@/app/components/media', () => ({
     get = jest.fn();
     set = jest.fn();
   },
-  extractVideoFromTaskResult: jest.fn((result: any) => result?.video || result),
-  createVideoCacheKey: jest.fn((video: any, taskId: string) => taskId)
+  extractVideoFromTaskResult: jest.fn((result: VideoObject) => result?.video ?? result),
+  createVideoCacheKey: jest.fn((video: VideoObject, taskId: string) => taskId)
 }));
 
-const mockUseVideoStore = useVideoStore as jest.MockedFunction<typeof useVideoStore>;
+// Define video store type
+interface VideoStore {
+  taskHistory: VideoTask[];
+  removeTask: (taskId: string) => void;
+  clearHistory: () => void;
+  addTask: (task: VideoTask) => void;
+  updateTask: (taskId: string, updates: Partial<VideoTask>) => void;
+  currentTask: VideoTask | null;
+  setCurrentTask: (task: VideoTask | null) => void;
+}
+
+const mockUseVideoStore = useVideoStore as jest.MockedFunction<() => VideoStore>;
 
 describe('VideoGallery', () => {
-  const mockRemoveTask = jest.fn();
-  const mockClearHistory = jest.fn();
-  
+  const mockRemoveTask = jest.fn<void, [string]>();
+  const mockClearHistory = jest.fn<void, []>();
+
   const createMockTask = (overrides?: Partial<VideoTask>): VideoTask => ({
     id: 'task-1',
     prompt: 'Generate a video of a sunset',
@@ -160,17 +273,19 @@ describe('VideoGallery', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset the extractVideoFromTaskResult mock to default behavior
-    const { extractVideoFromTaskResult } = jest.requireMock('@/app/components/media');
-    extractVideoFromTaskResult.mockImplementation((result: any) => result?.video || result);
+    const mediaModule = jest.requireMock('@/app/components/media') as {
+      extractVideoFromTaskResult: jest.Mock<VideoObject, [VideoObject]>;
+    };
+    mediaModule.extractVideoFromTaskResult.mockImplementation((result: VideoObject) => result?.video ?? result);
     mockUseVideoStore.mockReturnValue({
       taskHistory: [],
       removeTask: mockRemoveTask,
       clearHistory: mockClearHistory,
-      addTask: jest.fn(),
-      updateTask: jest.fn(),
+      addTask: jest.fn<void, [VideoTask]>(),
+      updateTask: jest.fn<void, [string, Partial<VideoTask>]>(),
       currentTask: null,
-      setCurrentTask: jest.fn()
-    } as any);
+      setCurrentTask: jest.fn<void, [VideoTask | null]>()
+    });
   });
 
   describe('Empty State', () => {
@@ -198,7 +313,7 @@ describe('VideoGallery', () => {
         updateTask: jest.fn(),
         currentTask: null,
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoGallery />);
       
@@ -217,7 +332,7 @@ describe('VideoGallery', () => {
         updateTask: jest.fn(),
         currentTask: null,
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoGallery />);
       
@@ -240,7 +355,7 @@ describe('VideoGallery', () => {
         updateTask: jest.fn(),
         currentTask: null,
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoGallery />);
       
@@ -251,7 +366,9 @@ describe('VideoGallery', () => {
     });
 
     it('should handle download button click', async () => {
-      const { downloadMedia } = jest.requireMock('@/app/components/media');
+      const mediaModule = jest.requireMock('@/app/components/media') as {
+        downloadMedia: jest.Mock;
+      };
       const task = createMockTask();
       mockUseVideoStore.mockReturnValue({
         taskHistory: [task],
@@ -261,7 +378,7 @@ describe('VideoGallery', () => {
         updateTask: jest.fn(),
         currentTask: null,
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoGallery />);
       
@@ -269,10 +386,10 @@ describe('VideoGallery', () => {
       fireEvent.click(downloadButton);
       
       await waitFor(() => {
-        expect(downloadMedia).toHaveBeenCalledWith({
+        expect(mediaModule.downloadMedia).toHaveBeenCalledWith({
           url: 'https://example.com/video.mp4',
           b64_json: undefined,
-          filename: expect.stringContaining('video-'),
+          filename: expect.stringContaining('video-') as string,
           mimeType: 'video/mp4'
         });
       });
@@ -288,7 +405,7 @@ describe('VideoGallery', () => {
         updateTask: jest.fn(),
         currentTask: null,
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoGallery />);
       
@@ -313,7 +430,7 @@ describe('VideoGallery', () => {
         updateTask: jest.fn(),
         currentTask: null,
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoGallery />);
       
@@ -337,7 +454,7 @@ describe('VideoGallery', () => {
         updateTask: jest.fn(),
         currentTask: null,
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoGallery />);
       
@@ -361,7 +478,7 @@ describe('VideoGallery', () => {
         updateTask: jest.fn(),
         currentTask: null,
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoGallery />);
       
@@ -387,7 +504,7 @@ describe('VideoGallery', () => {
         updateTask: jest.fn(),
         currentTask: null,
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoGallery />);
       
@@ -412,7 +529,7 @@ describe('VideoGallery', () => {
         updateTask: jest.fn(),
         currentTask: null,
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoGallery />);
       
@@ -441,11 +558,13 @@ describe('VideoGallery', () => {
         updateTask: jest.fn(),
         currentTask: null,
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       // Mock extractVideoFromTaskResult to return b64_json video with a dummy URL
-      const { extractVideoFromTaskResult } = jest.requireMock('@/app/components/media');
-      extractVideoFromTaskResult.mockReturnValue({
+      const mediaModule = jest.requireMock('@/app/components/media') as {
+        extractVideoFromTaskResult: jest.Mock<VideoObject, [VideoObject]>;
+      };
+      mediaModule.extractVideoFromTaskResult.mockReturnValue({
         b64_json: 'base64encodedvideo',
         url: 'dummy' // Need this to pass the !video?.url check
       });
@@ -474,11 +593,13 @@ describe('VideoGallery', () => {
         updateTask: jest.fn(),
         currentTask: null,
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       // Mock extractVideoFromTaskResult to return only b64_json
-      const { extractVideoFromTaskResult } = jest.requireMock('@/app/components/media');
-      extractVideoFromTaskResult.mockReturnValue({
+      const mediaModule = jest.requireMock('@/app/components/media') as {
+        extractVideoFromTaskResult: jest.Mock<VideoObject, [VideoObject]>;
+      };
+      mediaModule.extractVideoFromTaskResult.mockReturnValue({
         b64_json: 'base64encodedvideo',
         url: null
       });
@@ -509,11 +630,13 @@ describe('VideoGallery', () => {
         updateTask: jest.fn(),
         currentTask: null,
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       // Mock extractVideoFromTaskResult to return an object with null values
-      const { extractVideoFromTaskResult } = jest.requireMock('@/app/components/media');
-      extractVideoFromTaskResult.mockReturnValue({
+      const mediaModule = jest.requireMock('@/app/components/media') as {
+        extractVideoFromTaskResult: jest.Mock<VideoObject, [VideoObject]>;
+      };
+      mediaModule.extractVideoFromTaskResult.mockReturnValue({
         url: null,
         b64_json: null
       });
@@ -528,14 +651,16 @@ describe('VideoGallery', () => {
 
   describe('Metadata Extraction', () => {
     it('should extract and cache video metadata', async () => {
-      const { extractVideoFromTaskResult } = jest.requireMock('@/app/components/media');
-      
+      const mediaModule1 = jest.requireMock('@/app/components/media') as {
+        extractVideoFromTaskResult: jest.Mock<VideoObject, [VideoObject]>;
+      };
+
       // Mock the video object that extractVideoFromTaskResult returns
       const mockVideo = {
         url: 'https://example.com/video.mp4'
       };
-      
-      extractVideoFromTaskResult.mockReturnValue(mockVideo);
+
+      mediaModule1.extractVideoFromTaskResult.mockReturnValue(mockVideo);
       
       // Create mock instances with the necessary methods
       const mockExtract = jest.fn().mockResolvedValue({
@@ -550,11 +675,14 @@ describe('VideoGallery', () => {
       const mockSet = jest.fn();
       
       // Mock the constructors directly on the media module
-      const mediaModule = jest.requireMock('@/app/components/media');
+      const mediaModule = jest.requireMock('@/app/components/media') as {
+        VideoMetadataExtractor: jest.Mock;
+        MetadataCache: jest.Mock;
+      };
       mediaModule.VideoMetadataExtractor = jest.fn(() => ({
         extract: mockExtract
       }));
-      
+
       mediaModule.MetadataCache = jest.fn(() => ({
         has: mockHas,
         get: jest.fn(),
@@ -575,7 +703,7 @@ describe('VideoGallery', () => {
         updateTask: jest.fn(),
         currentTask: null,
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoGallery />);
       
@@ -611,7 +739,7 @@ describe('VideoGallery', () => {
         updateTask: jest.fn(),
         currentTask: null,
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoGallery />);
       
