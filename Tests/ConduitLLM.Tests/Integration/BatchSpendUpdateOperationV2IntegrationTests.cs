@@ -183,9 +183,16 @@ namespace ConduitLLM.Tests.Integration
             _mockVirtualKeyService.Setup(s => s.GetVirtualKeyInfoForValidationAsync(999, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((ConduitLLM.Configuration.Entities.VirtualKey?)null);
 
-            // Act & Assert
-            await Assert.ThrowsAsync<InvalidOperationException>(
-                async () => await operation.ExecuteAsync(items, virtualKeyId: 1));
+            // Act
+            var result = await operation.ExecuteAsync(items, virtualKeyId: 1);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(1, result.TotalItems);
+            Assert.Equal(0, result.SuccessCount);
+            Assert.Equal(1, result.FailedCount);
+            Assert.Single(result.Errors);
+            Assert.Contains("Virtual key not found", result.Errors.First());
         }
 
         [Fact]

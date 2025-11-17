@@ -277,7 +277,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         // Test implementation of BatchOperationBase
-        private class TestBatchOperation : BatchOperationBase<TestItem>
+        public class TestBatchOperation : BatchOperationBase<TestItem>
         {
             public bool ShouldFailValidation { get; set; }
             public Func<TestItem, CancellationToken, Task<BatchItemResult>>? ProcessItemHandler { get; set; }
@@ -328,7 +328,7 @@ namespace ConduitLLM.Tests.Core.Services
             protected override string GetItemIdentifier(TestItem item) => $"Item-{item.Id}";
         }
 
-        private class TestItem
+        public class TestItem
         {
             public int Id { get; set; }
             public string Value { get; set; } = string.Empty;

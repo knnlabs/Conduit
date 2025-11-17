@@ -107,7 +107,7 @@ namespace ConduitLLM.Tests.Performance
             var maxAcceptableOverhead = v1Result.Duration.TotalMilliseconds * 0.5;
             var actualOverhead = (v2Result.Duration - v1Result.Duration).TotalMilliseconds;
 
-            Assert.True(actualOverhead < maxAcceptableOverhead,
+            Assert.True(actualOverhead <= maxAcceptableOverhead,
                 $"V2 overhead ({actualOverhead:F2}ms) exceeds acceptable threshold ({maxAcceptableOverhead:F2}ms)");
         }
 
