@@ -313,9 +313,9 @@ describe('VideoGallery', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset the extractVideoFromTaskResult mock to default behavior
-    const mediaModule = jest.requireMock('@/app/components/media') as {
+    const mediaModule: {
       extractVideoFromTaskResult: jest.Mock;
-    };
+    } = jest.requireMock('@/app/components/media');
     mediaModule.extractVideoFromTaskResult.mockImplementation((result: unknown) => {
       // Extract video data from VideoGenerationResult
       if (result && typeof result === 'object' && 'data' in result) {
@@ -413,9 +413,9 @@ describe('VideoGallery', () => {
     });
 
     it('should handle download button click', async () => {
-      const mediaModule = jest.requireMock('@/app/components/media') as {
+      const mediaModule: {
         downloadMedia: jest.Mock;
-      };
+      } = jest.requireMock('@/app/components/media');
       const task = createMockTask();
       mockUseVideoStore.mockReturnValue({
         taskHistory: [task],
@@ -611,9 +611,9 @@ describe('VideoGallery', () => {
       });
 
       // Mock extractVideoFromTaskResult to return b64_json video with a dummy URL
-      const mediaModule = jest.requireMock('@/app/components/media') as {
+      const mediaModule: {
         extractVideoFromTaskResult: jest.Mock<VideoObject, [VideoObject]>;
-      };
+      } = jest.requireMock('@/app/components/media');
       mediaModule.extractVideoFromTaskResult.mockReturnValue({
         b64_json: 'base64encodedvideo',
         url: 'dummy' // Need this to pass the !video?.url check
@@ -648,9 +648,9 @@ describe('VideoGallery', () => {
       });
 
       // Mock extractVideoFromTaskResult to return only b64_json
-      const mediaModule = jest.requireMock('@/app/components/media') as {
+      const mediaModule: {
         extractVideoFromTaskResult: jest.Mock<VideoObject, [VideoObject]>;
-      };
+      } = jest.requireMock('@/app/components/media');
       mediaModule.extractVideoFromTaskResult.mockReturnValue({
         b64_json: 'base64encodedvideo',
         url: null
@@ -685,9 +685,9 @@ describe('VideoGallery', () => {
       });
 
       // Mock extractVideoFromTaskResult to return an object with null values
-      const mediaModule = jest.requireMock('@/app/components/media') as {
+      const mediaModule: {
         extractVideoFromTaskResult: jest.Mock<VideoObject, [VideoObject]>;
-      };
+      } = jest.requireMock('@/app/components/media');
       mediaModule.extractVideoFromTaskResult.mockReturnValue({
         url: null,
         b64_json: null
@@ -703,9 +703,9 @@ describe('VideoGallery', () => {
 
   describe('Metadata Extraction', () => {
     it('should extract and cache video metadata', async () => {
-      const mediaModule1 = jest.requireMock('@/app/components/media') as {
+      const mediaModule1: {
         extractVideoFromTaskResult: jest.Mock<VideoObject, [VideoObject]>;
-      };
+      } = jest.requireMock('@/app/components/media');
 
       // Mock the video object that extractVideoFromTaskResult returns
       const mockVideo = {
@@ -727,10 +727,10 @@ describe('VideoGallery', () => {
       const mockSet = jest.fn();
       
       // Mock the constructors directly on the media module
-      const mediaModule = jest.requireMock('@/app/components/media') as {
+      const mediaModule: {
         VideoMetadataExtractor: jest.Mock;
         MetadataCache: jest.Mock;
-      };
+      } = jest.requireMock('@/app/components/media');
       mediaModule.VideoMetadataExtractor = jest.fn(() => ({
         extract: mockExtract
       }));
