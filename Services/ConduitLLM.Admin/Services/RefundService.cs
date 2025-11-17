@@ -5,7 +5,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Configuration.Services;
+namespace ConduitLLM.Admin.Services;
 
 /// <summary>
 /// Service for processing refunds for virtual key group usage

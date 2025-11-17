@@ -1,6 +1,6 @@
 using ConduitLLM.Core.Models;
 
-namespace ConduitLLM.Configuration.Interfaces;
+namespace ConduitLLM.Admin.Interfaces;
 
 /// <summary>
 /// Service for processing refunds for virtual key group usage

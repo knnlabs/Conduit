@@ -6,6 +6,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Admin.Interfaces;
 
 namespace ConduitLLM.Admin.Controllers
 {

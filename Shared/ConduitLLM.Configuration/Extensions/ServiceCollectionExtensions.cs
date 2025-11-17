@@ -56,9 +56,6 @@ namespace ConduitLLM.Configuration.Extensions
             // Register cache configuration service
             services.AddScoped<ICacheConfigurationService, CacheConfigurationService>();
 
-            // Register refund service
-            services.AddScoped<IRefundService, RefundService>();
-
             return services;
         }
 
