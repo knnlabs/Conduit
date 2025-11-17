@@ -95,8 +95,7 @@ stable-diffusion-xl,stable-diffusion-xl,image,,,,,,,,0.00013,30,false,,"{""stand
     expect(result[0].batchProcessingMultiplier).toBe(0.5);
     
     // Cohere embedding
-    // TODO: Fix embeddingCostPerMillion parsing - currently undefined instead of 100
-    // expect(result[1].embeddingCostPerMillion).toBe(100);
+    expect(result[1].embeddingCostPerMillion).toBe(100);
     expect(result[1].modelType).toBe('embedding');
     
     // SDXL with inference steps
