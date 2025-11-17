@@ -1,6 +1,6 @@
 import { useCallback, useRef, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { 
+import {
   createToastErrorHandler,
   type ImageAttachment,
   type StreamingCallbacks,
@@ -170,7 +170,32 @@ export function useChatStreamingLogic({
           console.error('Streaming error:', error);
           handleError(error, 'chat streaming');
           setError(error);
-          // Clean up on error
+
+          // Create error message with partial content if available
+          const partialContent = error.partialContent ?? '';
+
+          // Only create an error message if there's partial content or we want to show the error
+          if (partialContent || error.errorType) {
+            const errorMessage: ChatMessage = {
+              id: uuidv4(),
+              role: 'assistant',
+              content: partialContent || 'An error occurred during streaming.',
+              timestamp: new Date(),
+              error: {
+                type: error.errorType ?? 'server_error',
+                code: error.code,
+                statusCode: error.statusCode,
+                retryAfter: error.retryAfter,
+                suggestions: error.suggestions,
+                technical: error.technical ?? error.message,
+                recoverable: error.recoverable ?? false
+              }
+            };
+
+            setMessages(prev => [...prev, errorMessage]);
+          }
+
+          // Clear streaming state
           setStreamingContent('');
           setStreamingChannel?.(null);
           setTokensPerSecond(null);

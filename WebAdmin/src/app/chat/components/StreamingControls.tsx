@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Group, ActionIcon, Text, Progress, Paper, Tooltip } from '@mantine/core';
+import { Group, ActionIcon, Text, Progress, Paper, Tooltip, Alert } from '@mantine/core';
 import {
   IconPlayerPause,
   IconPlayerPlay,
   IconPlayerStop,
   IconClock,
   IconGauge,
+  IconAlertTriangle,
 } from '@tabler/icons-react';
 
 interface StreamingControlsProps {
@@ -16,6 +17,7 @@ interface StreamingControlsProps {
   tokenCount: number;
   tps: number;
   elapsedTime: number;
+  error?: Error | null;
   onPause: () => void;
   onResume: () => void;
   onCancel: () => void;
@@ -27,6 +29,7 @@ export function StreamingControls({
   tokenCount,
   tps,
   elapsedTime,
+  error,
   onPause,
   onResume,
   onCancel,
@@ -122,30 +125,69 @@ export function StreamingControls({
           )}
         </Group>
 
-        {isPaused && (
+        {isPaused && !error && (
           <Text size="xs" c="yellow" fw={500}>
             PAUSED
           </Text>
         )}
+        {error && (
+          <Group gap={4}>
+            <IconAlertTriangle size={14} style={{ color: 'var(--mantine-color-red-6)' }} />
+            <Text size="xs" c="red" fw={500}>
+              ERROR
+            </Text>
+          </Group>
+        )}
       </Group>
 
       {/* Progress indicator */}
-      {isPaused ? (
-        <Progress
-          value={50}
-          color="yellow"
-          size="xs"
-          mt={4}
-        />
-      ) : (
-        <Progress
-          value={100}
-          color="blue"
-          size="xs"
-          mt={4}
-          striped
-          animated
-        />
+      {(() => {
+        if (error) {
+          return (
+            <Progress
+              value={100}
+              color="red"
+              size="xs"
+              mt={4}
+            />
+          );
+        }
+        if (isPaused) {
+          return (
+            <Progress
+              value={50}
+              color="yellow"
+              size="xs"
+              mt={4}
+            />
+          );
+        }
+        return (
+          <Progress
+            value={100}
+            color="blue"
+            size="xs"
+            mt={4}
+            striped
+            animated
+          />
+        );
+      })()}
+
+      {/* Error message */}
+      {error && (
+        <Alert
+          icon={<IconAlertTriangle size={16} />}
+          color="red"
+          variant="light"
+          mt="xs"
+          styles={{
+            root: { padding: '8px 12px' },
+            message: { fontSize: '0.875rem' }
+          }}
+        >
+          Streaming failed: {error.message}
+        </Alert>
       )}
     </Paper>
   );

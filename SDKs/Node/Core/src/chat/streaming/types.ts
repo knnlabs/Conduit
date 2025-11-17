@@ -190,13 +190,32 @@ export interface StreamingCallbacks {
 }
 
 /**
- * Enhanced error type for streaming
+ * Error types for chat operations
+ */
+export type ChatErrorType = 'rate_limit' | 'model_not_found' | 'auth_error' | 'network_error' | 'server_error';
+
+/**
+ * Enhanced error type for streaming with detailed metadata
  */
 export interface StreamingError extends Error {
   status?: number;
   code?: string;
   context?: string;
   retryable?: boolean;
+  /** Error type for UI categorization */
+  errorType?: ChatErrorType;
+  /** HTTP status code */
+  statusCode?: number;
+  /** Seconds until retry is allowed (for rate limits) */
+  retryAfter?: number;
+  /** Actionable suggestions for the user */
+  suggestions?: string[];
+  /** Technical details for developers */
+  technical?: string;
+  /** Whether the error can be automatically retried */
+  recoverable?: boolean;
+  /** Partial content accumulated before error */
+  partialContent?: string;
 }
 
 /**
@@ -205,6 +224,7 @@ export interface StreamingError extends Error {
 export interface StreamState {
   isStreaming: boolean;
   totalContent: string;
+  totalReasoning: string;
   startTime: number;
   metrics: Partial<StreamingPerformanceMetrics & UsageData>;
   abortController: AbortController | null;
