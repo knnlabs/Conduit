@@ -90,13 +90,6 @@ namespace ConduitLLM.Http.Services
                 });
 
         // Provider metrics
-        private static readonly Gauge ProviderHealth = Prometheus.Metrics
-            .CreateGauge("conduit_provider_health", "Provider health status (1=healthy, 0=unhealthy)",
-                new GaugeConfiguration
-                {
-                    LabelNames = new[] { "provider" }
-                });
-
         private static readonly Counter ProviderErrors = Prometheus.Metrics
             .CreateCounter("conduit_provider_errors_total", "Total provider errors",
                 new CounterConfiguration
@@ -180,7 +173,6 @@ namespace ConduitLLM.Http.Services
                 CollectVirtualKeyMetrics(scope),
                 CollectModelUsageMetrics(scope),
                 CollectCostMetrics(scope),
-                CollectProviderMetrics(scope),
                 CollectActiveEntityMetrics(scope)
             };
 
@@ -314,32 +306,6 @@ namespace ConduitLLM.Http.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error collecting cost metrics");
-            }
-        }
-
-        private async Task CollectProviderMetrics(IServiceScope scope)
-        {
-            try
-            {
-                var ProviderService = scope.ServiceProvider.GetRequiredService<IProviderService>();
-                var providers = await ProviderService.GetAllProvidersAsync();
-
-                foreach (var provider in providers.Where(p => p.IsEnabled))
-                {
-                    // Set provider health based on enabled status
-                    // In a real implementation, this would check actual provider health
-                    ProviderHealth.WithLabels(provider.Id.ToString()).Set(1);
-                }
-
-                // Disabled providers
-                foreach (var provider in providers.Where(p => !p.IsEnabled))
-                {
-                    ProviderHealth.WithLabels(provider.Id.ToString()).Set(0);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error collecting provider metrics");
             }
         }
 

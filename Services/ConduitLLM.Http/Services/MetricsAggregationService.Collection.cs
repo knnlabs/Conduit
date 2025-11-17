@@ -229,32 +229,5 @@ namespace ConduitLLM.Http.Services
             }
         }
 
-        /// <summary>
-        /// Collect provider health metrics
-        /// </summary>
-        private async void CollectProviderHealth(MetricsSnapshot snapshot)
-        {
-            try
-            {
-                using var scope = _serviceProvider.CreateScope();
-                var providerService = scope.ServiceProvider.GetRequiredService<IProviderService>();
-                var providers = await providerService.GetAllProvidersAsync();
-                
-                snapshot.ProviderHealth = providers.Select(p => new ProviderHealthStatus
-                {
-                    ProviderType = p.ProviderType,
-                    Status = GetMetricValue($"conduit_provider_health{{provider=\"{p.Id}\"}}") > 0 ? "healthy" : "unhealthy",
-                    IsEnabled = p.IsEnabled,
-                    ErrorRate = GetMetricValue($"conduit_provider_errors_total{{provider=\"{p.Id}\"}}") / 
-                               GetMetricValue($"conduit_model_requests_total{{provider=\"{p.Id}\"}}") * 100,
-                    AverageLatency = GetMetricValue($"conduit_provider_latency_seconds{{provider=\"{p.Id}\"}}") * 1000,
-                    AvailableModels = (int)GetMetricValue($"conduit_models_active_count{{provider=\"{p.Id}\"}}")
-                }).ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error collecting provider health");
-            }
-        }
     }
 }

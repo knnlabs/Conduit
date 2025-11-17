@@ -94,8 +94,7 @@ namespace ConduitLLM.Http.Services
                 Task.Run(() => CollectHttpMetrics(snapshot)),
                 Task.Run(() => CollectInfrastructureMetrics(snapshot)),
                 Task.Run(() => CollectBusinessMetrics(snapshot)),
-                Task.Run(() => CollectSystemMetrics(snapshot)),
-                Task.Run(() => CollectProviderHealth(snapshot))
+                Task.Run(() => CollectSystemMetrics(snapshot))
             };
 
             await Task.WhenAll(tasks);

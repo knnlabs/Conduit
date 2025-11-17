@@ -82,19 +82,6 @@ export interface ModelDiscoveredEvent {
 }
 
 /**
- * Provider health change event
- */
-export interface ProviderHealthChangeEvent {
-  providerId: number;
-  providerType: ProviderType;
-  previousStatus: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
-  currentStatus: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
-  healthScore: number;
-  issues?: string[];
-  timestamp: string;
-}
-
-/**
  * Virtual key event types
  */
 export type VirtualKeyEventType = 'created' | 'updated' | 'deleted' | 'enabled' | 'disabled' | 'spend_updated';
@@ -164,7 +151,6 @@ export interface INavigationStateHubServer {
 export interface INavigationStateHubClient {
   onNavigationStateUpdate(callback: (event: NavigationStateUpdateEvent) => void): void;
   onModelDiscovered(callback: (event: ModelDiscoveredEvent) => void): void;
-  onProviderHealthChange(callback: (event: ProviderHealthChangeEvent) => void): void;
 }
 
 // AdminNotificationHub interfaces removed - hub has been deprecated

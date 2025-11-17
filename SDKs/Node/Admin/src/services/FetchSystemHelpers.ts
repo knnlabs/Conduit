@@ -31,7 +31,6 @@ export class FetchSystemHelpers implements ISystemHelpers {
       systemTime: new Date().toISOString(),
       features: {
         ipFiltering: false,
-        providerHealth: true,
         costTracking: false,
         audioSupport: false
       },

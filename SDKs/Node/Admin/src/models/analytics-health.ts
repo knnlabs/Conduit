@@ -36,32 +36,6 @@ export interface SystemAlert {
   service?: string;
 }
 
-export interface ProviderHealthDetails {
-  provider: string;
-  status: 'healthy' | 'degraded' | 'unhealthy';
-  uptime: number; // percentage
-  averageLatency: number; // ms
-  errorRate: number; // percentage
-  lastChecked: string;
-  endpoints: EndpointHealth[];
-  history?: HealthHistoryPoint[];
-}
-
-export interface EndpointHealth {
-  endpoint: string;
-  status: 'healthy' | 'degraded' | 'unhealthy';
-  responseTime: number;
-  successRate: number;
-  lastError?: string;
-}
-
-export interface HealthHistoryPoint {
-  timestamp: string;
-  status: 'healthy' | 'degraded' | 'unhealthy';
-  uptime: number;
-  errorRate: number;
-}
-
 export interface ProviderIncident {
   id: string;
   provider: string;
