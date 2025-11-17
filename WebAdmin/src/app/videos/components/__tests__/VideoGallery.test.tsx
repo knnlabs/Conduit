@@ -40,8 +40,43 @@ jest.mock('@/app/config/mediaGeneration', () => ({
   }
 }));
 
-// Import types for Mantine mocks
-import type { ButtonProps, GroupProps, BadgeProps, BoxProps, TextProps } from '@mantine/core';
+// Define simple mock props interfaces
+interface MockButtonProps {
+  children?: React.ReactNode;
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
+  leftSection?: React.ReactNode;
+  disabled?: boolean;
+  color?: string;
+  variant?: string;
+  size?: string;
+  fullWidth?: boolean;
+}
+
+interface MockGroupProps {
+  children?: React.ReactNode;
+  gap?: string | number;
+  wrap?: string;
+  grow?: boolean;
+}
+
+interface MockBadgeProps {
+  children?: React.ReactNode;
+  variant?: string;
+  size?: string;
+  color?: string;
+}
+
+interface MockBoxProps {
+  children?: React.ReactNode;
+  mt?: string | number | Record<string, unknown>;
+}
+
+interface MockTextProps {
+  children?: React.ReactNode;
+  size?: string;
+  fw?: string | number | Record<string, unknown>;
+  lineClamp?: number;
+}
 
 // Mock Mantine components
 jest.mock('@mantine/core', () => {
@@ -49,12 +84,11 @@ jest.mock('@mantine/core', () => {
   return {
     ...actualMantine,
     getDefaultZIndex: () => 100,
-    Button: (props: ButtonProps) => {
+    Button: (props: MockButtonProps) => {
       const { children, leftSection, disabled, color, variant, size, fullWidth, onClick } = props;
-      const handleClick = onClick as React.MouseEventHandler<HTMLButtonElement> | undefined;
       return (
         <button
-          onClick={handleClick}
+          onClick={onClick}
           disabled={disabled}
           data-testid="mantine-button"
           className={`button ${color ?? ''} ${variant ?? ''} ${size ?? ''} ${fullWidth ? 'fullwidth' : ''}`}
@@ -64,7 +98,7 @@ jest.mock('@mantine/core', () => {
         </button>
       );
     },
-    Group: (props: GroupProps) => {
+    Group: (props: MockGroupProps) => {
       const { children, gap, wrap, grow } = props;
       return (
         <div
@@ -75,7 +109,7 @@ jest.mock('@mantine/core', () => {
         </div>
       );
     },
-    Badge: (props: BadgeProps) => {
+    Badge: (props: MockBadgeProps) => {
       const { children, variant, size, color } = props;
       return (
         <span
@@ -86,7 +120,7 @@ jest.mock('@mantine/core', () => {
         </span>
       );
     },
-    Box: (props: BoxProps) => {
+    Box: (props: MockBoxProps) => {
       const { children, mt } = props;
       const mtClass = typeof mt === 'string' || typeof mt === 'number' ? String(mt) : '';
       return (
@@ -98,7 +132,7 @@ jest.mock('@mantine/core', () => {
         </div>
       );
     },
-    Text: (props: TextProps) => {
+    Text: (props: MockTextProps) => {
       const { children, size, fw, lineClamp } = props;
       const fwClass = typeof fw === 'string' || typeof fw === 'number' ? String(fw) : '';
       return (
@@ -243,7 +277,7 @@ interface VideoStore {
   setCurrentTask: (task: VideoTask | null) => void;
 }
 
-const mockUseVideoStore = useVideoStore as jest.MockedFunction<() => VideoStore>;
+const mockUseVideoStore = useVideoStore as unknown as jest.MockedFunction<() => VideoStore>;
 
 describe('VideoGallery', () => {
   const mockRemoveTask = jest.fn<void, [string]>();
@@ -254,29 +288,42 @@ describe('VideoGallery', () => {
     prompt: 'Generate a video of a sunset',
     status: MediaGenerationStatus.Completed,
     result: {
-      url: 'https://example.com/video.mp4',
-      metadata: {
-        duration: 5,
-        resolution: '1920x1080',
-        fps: 30,
-        file_size_bytes: 1048576,
-        codec: 'h264'
-      }
+      created: Date.now(),
+      data: [{
+        url: 'https://example.com/video.mp4',
+        metadata: {
+          duration: 5,
+          resolution: '1920x1080',
+          fps: 30,
+          file_size_bytes: 1048576,
+          codec: 'h264'
+        }
+      }]
     },
     progress: 100,
-    error: null,
+    error: undefined,
+    settings: { model: 'test-model' },
+    retryCount: 0,
+    retryHistory: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...overrides
-  } as VideoTask);
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset the extractVideoFromTaskResult mock to default behavior
     const mediaModule = jest.requireMock('@/app/components/media') as {
-      extractVideoFromTaskResult: jest.Mock<VideoObject, [VideoObject]>;
+      extractVideoFromTaskResult: jest.Mock;
     };
-    mediaModule.extractVideoFromTaskResult.mockImplementation((result: VideoObject) => result?.video ?? result);
+    mediaModule.extractVideoFromTaskResult.mockImplementation((result: unknown) => {
+      // Extract video data from VideoGenerationResult
+      if (result && typeof result === 'object' && 'data' in result) {
+        const vgr = result as { data: unknown[] };
+        return vgr.data[0] ?? null;
+      }
+      return null;
+    });
     mockUseVideoStore.mockReturnValue({
       taskHistory: [],
       removeTask: mockRemoveTask,
@@ -443,7 +490,7 @@ describe('VideoGallery', () => {
     it('should not show pending videos in gallery', () => {
       const task = createMockTask({
         status: MediaGenerationStatus.Pending,
-        result: null
+        result: undefined
       });
 
       mockUseVideoStore.mockReturnValue({
@@ -467,7 +514,7 @@ describe('VideoGallery', () => {
       const task = createMockTask({
         status: MediaGenerationStatus.Generating,
         progress: 50,
-        result: null
+        result: undefined
       });
 
       mockUseVideoStore.mockReturnValue({
@@ -493,7 +540,7 @@ describe('VideoGallery', () => {
       const task = createMockTask({
         status: MediaGenerationStatus.Failed,
         error: 'Generation failed: API error',
-        result: null
+        result: undefined
       });
 
       mockUseVideoStore.mockReturnValue({
@@ -545,8 +592,11 @@ describe('VideoGallery', () => {
     it('should render base64 encoded video', () => {
       const task = createMockTask({
         result: {
-          b64_json: 'base64encodedvideo',
-          url: 'dummy' // Component checks for url existence, not if it's valid
+          created: Date.now(),
+          data: [{
+            b64_json: 'base64encodedvideo',
+            url: 'dummy' // Component checks for url existence, not if it's valid
+          }]
         }
       });
 
@@ -580,8 +630,10 @@ describe('VideoGallery', () => {
     it('should handle video with only b64_json as simple card', () => {
       const task = createMockTask({
         result: {
-          b64_json: 'base64encodedvideo',
-          url: null
+          created: Date.now(),
+          data: [{
+            b64_json: 'base64encodedvideo'
+          }]
         }
       });
 
@@ -617,8 +669,8 @@ describe('VideoGallery', () => {
     it('should show simplified card when completed video has no URL or base64', () => {
       const task = createMockTask({
         result: {
-          url: null,
-          b64_json: null
+          created: Date.now(),
+          data: [{}]
         }
       });
 
@@ -691,7 +743,10 @@ describe('VideoGallery', () => {
 
       const task = createMockTask({
         result: {
-          url: 'https://example.com/video.mp4'
+          created: Date.now(),
+          data: [{
+            url: 'https://example.com/video.mp4'
+          }]
         }
       });
 
@@ -726,8 +781,10 @@ describe('VideoGallery', () => {
     it('should display completed badge when no metadata available', () => {
       const task = createMockTask({
         result: {
-          url: 'https://example.com/video.mp4',
-          metadata: undefined
+          created: Date.now(),
+          data: [{
+            url: 'https://example.com/video.mp4'
+          }]
         }
       });
 
