@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
+using CoreVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 
 namespace ConduitLLM.Tests.Integration
 {
@@ -18,7 +19,7 @@ namespace ConduitLLM.Tests.Integration
     public class BatchSpendUpdateOperationV2IntegrationTests : TestBase
     {
         private readonly IServiceProvider _serviceProvider;
-        private readonly Mock<IVirtualKeyService> _mockVirtualKeyService;
+        private readonly Mock<CoreVirtualKeyService> _mockVirtualKeyService;
         private readonly Mock<ISpendNotificationService> _mockSpendNotificationService;
         private readonly Mock<IBatchOperationIdempotencyService> _mockIdempotencyService;
 
@@ -36,7 +37,7 @@ namespace ConduitLLM.Tests.Integration
             // Add required services
             services.AddScoped<IBatchOperationService, ConduitLLM.Core.Services.BatchOperationService>();
             services.AddSingleton<ITaskHub>(_ => new Mock<ITaskHub>().Object);
-            services.AddSingleton<IVirtualKeyService>(_ => _mockVirtualKeyService.Object);
+            services.AddSingleton<CoreVirtualKeyService>(_ => _mockVirtualKeyService.Object);
             services.AddSingleton<ISpendNotificationService>(_ => _mockSpendNotificationService.Object);
             services.AddSingleton<IBatchOperationIdempotencyService>(_ => _mockIdempotencyService.Object);
             services.AddScoped<BatchSpendUpdateOperationV2>();
@@ -316,10 +317,13 @@ namespace ConduitLLM.Tests.Integration
             Assert.True(result.ItemsPerSecond > 5, $"Processing rate was {result.ItemsPerSecond} items/sec, expected > 5");
         }
 
-        public override void Dispose()
+        protected override void Dispose(bool disposing)
         {
-            (_serviceProvider as IDisposable)?.Dispose();
-            base.Dispose();
+            if (disposing)
+            {
+                (_serviceProvider as IDisposable)?.Dispose();
+            }
+            base.Dispose(disposing);
         }
     }
 }

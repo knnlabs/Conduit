@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
+using CoreVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 
 namespace ConduitLLM.Tests.Performance
 {
@@ -15,12 +16,12 @@ namespace ConduitLLM.Tests.Performance
     /// These tests measure throughput, latency, and resource usage.
     /// </summary>
     [Trait("Category", "Performance")]
-    [Trait("Component", "Core")]
+    [Trait("Component", "Performance")]
     [Trait("Phase", "2")]
     public class BatchOperationPerformanceBenchmarks : TestBase
     {
         private readonly IServiceProvider _serviceProvider;
-        private readonly Mock<IVirtualKeyService> _mockVirtualKeyService;
+        private readonly Mock<CoreVirtualKeyService> _mockVirtualKeyService;
         private readonly Mock<ISpendNotificationService> _mockSpendNotificationService;
         private readonly Mock<IBatchOperationIdempotencyService> _mockIdempotencyService;
 
@@ -34,7 +35,7 @@ namespace ConduitLLM.Tests.Performance
             services.AddLogging(builder => builder.AddXUnit(output));
             services.AddScoped<IBatchOperationService, ConduitLLM.Core.Services.BatchOperationService>();
             services.AddSingleton<ITaskHub>(_ => new Mock<ITaskHub>().Object);
-            services.AddSingleton<IVirtualKeyService>(_ => _mockVirtualKeyService.Object);
+            services.AddSingleton<CoreVirtualKeyService>(_ => _mockVirtualKeyService.Object);
             services.AddSingleton<ISpendNotificationService>(_ => _mockSpendNotificationService.Object);
             services.AddSingleton<IBatchOperationIdempotencyService>(_ => _mockIdempotencyService.Object);
             services.AddScoped<BatchSpendUpdateOperation>();
@@ -209,7 +210,7 @@ namespace ConduitLLM.Tests.Performance
             services.AddLogging();
             services.AddScoped<IBatchOperationService, ConduitLLM.Core.Services.BatchOperationService>();
             services.AddSingleton<ITaskHub>(_ => new Mock<ITaskHub>().Object);
-            services.AddSingleton<IVirtualKeyService>(_ => _mockVirtualKeyService.Object);
+            services.AddSingleton<CoreVirtualKeyService>(_ => _mockVirtualKeyService.Object);
             services.AddSingleton<ISpendNotificationService>(_ => _mockSpendNotificationService.Object);
             services.AddSingleton<IBatchOperationIdempotencyService>(_ => _mockIdempotencyService.Object);
             services.AddScoped<TestBatchOperationWithParallelism>(sp =>
@@ -327,10 +328,13 @@ namespace ConduitLLM.Tests.Performance
             }
         }
 
-        public override void Dispose()
+        protected override void Dispose(bool disposing)
         {
-            (_serviceProvider as IDisposable)?.Dispose();
-            base.Dispose();
+            if (disposing)
+            {
+                (_serviceProvider as IDisposable)?.Dispose();
+            }
+            base.Dispose(disposing);
         }
     }
 }
