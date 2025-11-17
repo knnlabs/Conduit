@@ -1,18 +1,20 @@
 'use client';
 
-import React from 'react';
-import { 
-  SimpleGrid, 
-  Paper, 
-  Center, 
-  Stack, 
-  Title, 
-  Text, 
-  Group, 
+import React, { useRef } from 'react';
+import {
+  SimpleGrid,
+  Paper,
+  Center,
+  Stack,
+  Title,
+  Text,
+  Group,
   Button,
-  Modal
+  Modal,
+  Box
 } from '@mantine/core';
 import { IconTrash } from '@tabler/icons-react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 /**
  * Generic media gallery component that can handle any type of media items
@@ -35,6 +37,10 @@ export interface MediaGalleryProps<T> {
   onModalClose?: () => void;
   modalTitle?: string;
   modalSize?: string;
+  // Virtualization props for performance with large lists
+  enableVirtualization?: boolean;
+  virtualizationThreshold?: number;
+  estimatedItemHeight?: number;
 }
 
 export function MediaGallery<T>({
@@ -52,8 +58,25 @@ export function MediaGallery<T>({
   modalOpened = false,
   onModalClose,
   modalTitle = 'Media Details',
-  modalSize = 'xl'
+  modalSize = 'xl',
+  enableVirtualization,
+  virtualizationThreshold = 50,
+  estimatedItemHeight = 350
 }: MediaGalleryProps<T>) {
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  // Determine if virtualization should be enabled
+  const shouldVirtualize = enableVirtualization ?? items.length >= virtualizationThreshold;
+
+  // Setup virtualizer for large lists
+  const virtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => estimatedItemHeight,
+    overscan: 5,
+    enabled: shouldVirtualize
+  });
+
   // Handle empty state
   if (items.length === 0) {
     return (
@@ -89,11 +112,47 @@ export function MediaGallery<T>({
             )}
           </Group>
         )}
-        
-        {/* Grid of media cards */}
-        <SimpleGrid cols={cols} spacing={spacing}>
-          {items.map((item, index) => renderCard(item, index))}
-        </SimpleGrid>
+
+        {/* Grid of media cards - virtualized or standard */}
+        {shouldVirtualize ? (
+          <Box
+            ref={parentRef}
+            style={{
+              height: '600px',
+              overflow: 'auto',
+              contain: 'strict'
+            }}
+          >
+            <div
+              style={{
+                height: `${virtualizer.getTotalSize()}px`,
+                width: '100%',
+                position: 'relative'
+              }}
+            >
+              {virtualizer.getVirtualItems().map((virtualItem) => (
+                <div
+                  key={virtualItem.key}
+                  data-index={virtualItem.index}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: `${virtualItem.size}px`,
+                    transform: `translateY(${virtualItem.start}px)`
+                  }}
+                >
+                  {renderCard(items[virtualItem.index], virtualItem.index)}
+                </div>
+              ))}
+            </div>
+          </Box>
+        ) : (
+          <SimpleGrid cols={cols} spacing={spacing}>
+            {items.map((item, index) => renderCard(item, index))}
+          </SimpleGrid>
+        )}
       </Stack>
 
       {/* Optional modal for preview */}
