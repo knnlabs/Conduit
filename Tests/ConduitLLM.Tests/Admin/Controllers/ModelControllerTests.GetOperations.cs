@@ -81,14 +81,11 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetAllModels();
 
             // Assert
-            result.Should().BeOfType<OkObjectResult>();
-            var okResult = result as OkObjectResult;
-            
-            var dtos = okResult!.Value as IEnumerable<ModelDto>;
-            dtos.Should().NotBeNull();
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var dtos = Assert.IsType<IEnumerable<ModelDto>>(okResult.Value);
             dtos.Should().HaveCount(2);
 
-            var firstDto = dtos!.First();
+            var firstDto = dtos.First();
             firstDto.Id.Should().Be(1);
             firstDto.Name.Should().Be("test-model-1");
             firstDto.IsActive.Should().BeTrue();
@@ -109,11 +106,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetAllModels();
 
             // Assert
-            result.Should().BeOfType<OkObjectResult>();
-            var okResult = result as OkObjectResult;
-            
-            var dtos = okResult!.Value as IEnumerable<ModelDto>;
-            dtos.Should().NotBeNull();
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var dtos = Assert.IsType<IEnumerable<ModelDto>>(okResult.Value);
             dtos.Should().BeEmpty();
 
             _mockRepository.Verify(r => r.GetAllWithDetailsAsync(), Times.Once);
@@ -131,9 +125,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetAllModels();
 
             // Assert
-            result.Should().BeOfType<ObjectResult>();
-            var objectResult = result as ObjectResult;
-            objectResult!.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
             objectResult.Value.Should().Be("An error occurred while retrieving models");
 
             // Verify logging occurred
@@ -177,12 +170,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelById(modelId);
 
             // Assert
-            result.Should().BeOfType<OkObjectResult>();
-            var okResult = result as OkObjectResult;
-            
-            var dto = okResult!.Value as ModelDto;
-            dto.Should().NotBeNull();
-            dto!.Id.Should().Be(modelId);
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var dto = Assert.IsType<ModelDto>(okResult.Value);
+            dto.Id.Should().Be(modelId);
             dto.Name.Should().Be("test-model");
             dto.IsActive.Should().BeTrue();
             // Capabilities are now flat fields on the model - verify the Id exists
@@ -203,9 +193,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelById(modelId);
 
             // Assert
-            result.Should().BeOfType<NotFoundObjectResult>();
-            var notFoundResult = result as NotFoundObjectResult;
-            notFoundResult!.Value.Should().Be($"Model with ID {modelId} not found");
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            notFoundResult.Value.Should().Be($"Model with ID {modelId} not found");
 
             _mockRepository.Verify(r => r.GetByIdWithDetailsAsync(modelId), Times.Once);
         }
@@ -223,9 +212,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelById(modelId);
 
             // Assert
-            result.Should().BeOfType<ObjectResult>();
-            var objectResult = result as ObjectResult;
-            objectResult!.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
             objectResult.Value.Should().Be("An error occurred while retrieving the model");
 
             // Verify logging occurred
@@ -294,11 +282,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelIdentifiers(modelId);
 
             // Assert
-            result.Should().BeOfType<OkObjectResult>();
-            var okResult = result as OkObjectResult;
-            
-            var identifiers = okResult!.Value as IEnumerable<object>;
-            identifiers.Should().NotBeNull();
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var identifiers = Assert.IsType<IEnumerable<object>>(okResult.Value);
             identifiers.Should().HaveCount(3);
 
             // Verify the structure by serializing to JSON and deserializing
@@ -344,11 +329,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelIdentifiers(modelId);
 
             // Assert
-            result.Should().BeOfType<OkObjectResult>();
-            var okResult = result as OkObjectResult;
-            
-            var identifiers = okResult!.Value as IEnumerable<object>;
-            identifiers.Should().NotBeNull();
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var identifiers = Assert.IsType<IEnumerable<object>>(okResult.Value);
             identifiers.Should().BeEmpty();
 
             _mockRepository.Verify(r => r.GetByIdWithDetailsAsync(modelId), Times.Once);
@@ -366,9 +348,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelIdentifiers(modelId);
 
             // Assert
-            result.Should().BeOfType<NotFoundObjectResult>();
-            var notFoundResult = result as NotFoundObjectResult;
-            notFoundResult!.Value.Should().Be($"Model with ID {modelId} not found");
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            notFoundResult.Value.Should().Be($"Model with ID {modelId} not found");
 
             _mockRepository.Verify(r => r.GetByIdWithDetailsAsync(modelId), Times.Once);
         }
@@ -386,9 +367,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.GetModelIdentifiers(modelId);
 
             // Assert
-            result.Should().BeOfType<ObjectResult>();
-            var objectResult = result as ObjectResult;
-            objectResult!.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
             objectResult.Value.Should().Be("An error occurred while retrieving model identifiers");
 
             // Verify logging occurred

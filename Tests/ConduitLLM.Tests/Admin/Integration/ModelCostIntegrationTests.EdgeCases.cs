@@ -67,12 +67,13 @@ namespace ConduitLLM.Tests.Admin.Integration
             };
             
             var createResult = await _controller.CreateModelCost(createDto);
-            var createdCost = (createResult as CreatedAtActionResult)?.Value as ModelCostDto;
+            var createdResult = Assert.IsType<CreatedAtActionResult>(createResult);
+            var createdCost = Assert.IsType<ModelCostDto>(createdResult.Value);
 
             // Prepare two concurrent updates
             var update1 = new UpdateModelCostDto
             {
-                Id = createdCost!.Id,
+                Id = createdCost.Id,
                 CostName = "Update 1",
                 InputCostPerMillionTokens = 15.00m,
                 OutputCostPerMillionTokens = 25.00m

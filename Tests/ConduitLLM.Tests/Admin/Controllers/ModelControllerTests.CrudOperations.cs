@@ -82,15 +82,13 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CreateModel(createDto);
 
             // Assert
-            result.Should().BeOfType<CreatedAtActionResult>();
-            var createdResult = result as CreatedAtActionResult;
-            createdResult!.StatusCode.Should().Be(StatusCodes.Status201Created);
+            var createdResult = Assert.IsType<CreatedAtActionResult>(result);
+            createdResult.StatusCode.Should().Be(StatusCodes.Status201Created);
             createdResult.ActionName.Should().Be(nameof(ModelController.GetModelById));
             createdResult.RouteValues!["id"].Should().Be(1);
 
-            var dto = createdResult.Value as ModelDto;
-            dto.Should().NotBeNull();
-            dto!.Id.Should().Be(1);
+            var dto = Assert.IsType<ModelDto>(createdResult.Value);
+            dto.Id.Should().Be(1);
             dto.Name.Should().Be("new-test-model");
             dto.IsActive.Should().BeTrue();
 
@@ -142,11 +140,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CreateModel(createDto);
 
             // Assert
-            result.Should().BeOfType<CreatedAtActionResult>();
-            var createdResult = result as CreatedAtActionResult;
-            var dto = createdResult!.Value as ModelDto;
-            dto.Should().NotBeNull();
-            dto!.ModelParameters.Should().Be("{\"temperature\": {\"min\": 0, \"max\": 1.5}}");
+            var createdResult = Assert.IsType<CreatedAtActionResult>(result);
+            var dto = Assert.IsType<ModelDto>(createdResult.Value);
+            dto.ModelParameters.Should().Be("{\"temperature\": {\"min\": 0, \"max\": 1.5}}");
 
             _mockRepository.Verify(r => r.CreateAsync(It.Is<Model>(m => 
                 m.ModelParameters == createDto.ModelParameters)), Times.Once);
@@ -162,9 +158,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CreateModel(createDto);
 
             // Assert
-            result.Should().BeOfType<BadRequestObjectResult>();
-            var badRequestResult = result as BadRequestObjectResult;
-            badRequestResult!.Value.Should().Be("Model data is required");
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            badRequestResult.Value.Should().Be("Model data is required");
 
             _mockRepository.Verify(r => r.CreateAsync(It.IsAny<Model>()), Times.Never);
         }
@@ -185,9 +180,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CreateModel(createDto);
 
             // Assert
-            result.Should().BeOfType<BadRequestObjectResult>();
-            var badRequestResult = result as BadRequestObjectResult;
-            badRequestResult!.Value.Should().Be("Model name is required");
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            badRequestResult.Value.Should().Be("Model name is required");
 
             _mockRepository.Verify(r => r.CreateAsync(It.IsAny<Model>()), Times.Never);
         }
@@ -217,9 +211,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CreateModel(createDto);
 
             // Assert
-            result.Should().BeOfType<ConflictObjectResult>();
-            var conflictResult = result as ConflictObjectResult;
-            conflictResult!.Value.Should().Be("A model with name 'existing-model' already exists");
+            var conflictResult = Assert.IsType<ConflictObjectResult>(result);
+            conflictResult.Value.Should().Be("A model with name 'existing-model' already exists");
 
             _mockRepository.Verify(r => r.CreateAsync(It.IsAny<Model>()), Times.Never);
         }
@@ -244,9 +237,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.CreateModel(createDto);
 
             // Assert
-            result.Should().BeOfType<ObjectResult>();
-            var objectResult = result as ObjectResult;
-            objectResult!.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
             objectResult.Value.Should().Be("An error occurred while creating the model");
 
             _mockLogger.Verify(
@@ -308,12 +300,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.UpdateModel(modelId, updateDto);
 
             // Assert
-            result.Should().BeOfType<OkObjectResult>();
-            var okResult = result as OkObjectResult;
-            
-            var dto = okResult!.Value as ModelDto;
-            dto.Should().NotBeNull();
-            dto!.Id.Should().Be(modelId);
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var dto = Assert.IsType<ModelDto>(okResult.Value);
+            dto.Id.Should().Be(modelId);
             dto.Name.Should().Be("updated-model-name");
             dto.IsActive.Should().BeFalse();
 
@@ -342,9 +331,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.UpdateModel(modelId, updateDto);
 
             // Assert
-            result.Should().BeOfType<NotFoundObjectResult>();
-            var notFoundResult = result as NotFoundObjectResult;
-            notFoundResult!.Value.Should().Be($"Model with ID {modelId} not found");
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            notFoundResult.Value.Should().Be($"Model with ID {modelId} not found");
 
             _mockRepository.Verify(r => r.GetByIdWithDetailsAsync(modelId), Times.Once);
             _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Model>()), Times.Never);
@@ -396,11 +384,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.UpdateModel(modelId, updateDto);
 
             // Assert
-            result.Should().BeOfType<OkObjectResult>();
-            var okResult = result as OkObjectResult;
-            var dto = okResult!.Value as ModelDto;
-            dto.Should().NotBeNull();
-            dto!.ModelParameters.Should().Be("{\"temperature\": {\"min\": 0, \"max\": 2}}");
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var dto = Assert.IsType<ModelDto>(okResult.Value);
+            dto.ModelParameters.Should().Be("{\"temperature\": {\"min\": 0, \"max\": 2}}");
 
             _mockRepository.Verify(r => r.UpdateAsync(It.Is<Model>(m => 
                 m.ModelParameters == updateDto.ModelParameters)), Times.Once);
@@ -452,11 +438,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.UpdateModel(modelId, updateDto);
 
             // Assert
-            result.Should().BeOfType<OkObjectResult>();
-            var okResult = result as OkObjectResult;
-            var dto = okResult!.Value as ModelDto;
-            dto.Should().NotBeNull();
-            dto!.ModelParameters.Should().BeNull();
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var dto = Assert.IsType<ModelDto>(okResult.Value);
+            dto.ModelParameters.Should().BeNull();
 
             _mockRepository.Verify(r => r.UpdateAsync(It.Is<Model>(m => 
                 m.ModelParameters == null)), Times.Once);
@@ -473,9 +457,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.UpdateModel(modelId, updateDto);
 
             // Assert
-            result.Should().BeOfType<BadRequestObjectResult>();
-            var badRequestResult = result as BadRequestObjectResult;
-            badRequestResult!.Value.Should().Be("Update data is required");
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            badRequestResult.Value.Should().Be("Update data is required");
 
             _mockRepository.Verify(r => r.GetByIdWithDetailsAsync(It.IsAny<int>()), Times.Never);
             _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Model>()), Times.Never);
@@ -500,9 +483,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.UpdateModel(modelId, updateDto);
 
             // Assert
-            result.Should().BeOfType<ObjectResult>();
-            var objectResult = result as ObjectResult;
-            objectResult!.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
             objectResult.Value.Should().Be("An error occurred while updating the model");
 
             _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Model>()), Times.Never);
@@ -527,9 +509,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.UpdateModel(modelId, updateDto);
 
             // Assert
-            result.Should().BeOfType<ObjectResult>();
-            var objectResult = result as ObjectResult;
-            objectResult!.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
             objectResult.Value.Should().Be("An error occurred while updating the model");
 
             _mockLogger.Verify(
@@ -593,9 +574,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.DeleteModel(modelId);
 
             // Assert
-            result.Should().BeOfType<NotFoundObjectResult>();
-            var notFoundResult = result as NotFoundObjectResult;
-            notFoundResult!.Value.Should().Be($"Model with ID {modelId} not found");
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            notFoundResult.Value.Should().Be($"Model with ID {modelId} not found");
 
             _mockRepository.Verify(r => r.GetByIdAsync(modelId), Times.Once);
             _mockRepository.Verify(r => r.DeleteAsync(It.IsAny<int>()), Times.Never);
@@ -614,9 +594,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
             var result = await _controller.DeleteModel(modelId);
 
             // Assert
-            result.Should().BeOfType<ObjectResult>();
-            var objectResult = result as ObjectResult;
-            objectResult!.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
             objectResult.Value.Should().Be("An error occurred while deleting the model");
 
             _mockLogger.Verify(

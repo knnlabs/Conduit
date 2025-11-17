@@ -47,13 +47,13 @@ namespace ConduitLLM.Tests.Admin.Integration
             };
             
             var createResult = await _controller.CreateModelCost(createDto);
-            var createdCost = (createResult as CreatedAtActionResult)?.Value as ModelCostDto;
-            createdCost.Should().NotBeNull();
+            var createdResult = Assert.IsType<CreatedAtActionResult>(createResult);
+            var createdCost = Assert.IsType<ModelCostDto>(createdResult.Value);
 
             // Update with different mappings
             var updateDto = new UpdateModelCostDto
             {
-                Id = createdCost!.Id,
+                Id = createdCost.Id,
                 CostName = "Updated Pricing",
                 InputCostPerMillionTokens = 15.00m,
                 OutputCostPerMillionTokens = 25.00m,
@@ -94,12 +94,13 @@ namespace ConduitLLM.Tests.Admin.Integration
             };
             
             var createResult = await _controller.CreateModelCost(createDto);
-            var createdCost = (createResult as CreatedAtActionResult)?.Value as ModelCostDto;
+            var createdResult = Assert.IsType<CreatedAtActionResult>(createResult);
+            var createdCost = Assert.IsType<ModelCostDto>(createdResult.Value);
 
             // Update to remove all mappings
             var updateDto = new UpdateModelCostDto
             {
-                Id = createdCost!.Id,
+                Id = createdCost.Id,
                 CostName = createdCost.CostName,
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 20.00m,
