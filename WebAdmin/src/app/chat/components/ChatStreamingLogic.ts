@@ -7,9 +7,10 @@ import {
   type StreamMessageOptions
 } from '@knn_labs/conduit-core-client';
 import { SDKChatStreamingAdapter } from '@/lib/client/sdkChatStreamingAdapter';
-import { 
-  ChatParameters, 
-  ChatMessage
+import {
+  ChatParameters,
+  ChatMessage,
+  ChatErrorType
 } from '../types';
 import { notifications } from '@mantine/notifications';
 
@@ -173,29 +174,33 @@ export function useChatStreamingLogic({
           handleError(error, 'chat streaming');
           setError(error);
 
-          // Create error message with partial content if available
-          const partialContent = error.partialContent ?? '';
-
-          // Only create an error message if there's partial content or we want to show the error
-          if (partialContent || error.errorType) {
-            const errorMessage: ChatMessage = {
-              id: uuidv4(),
-              role: 'assistant',
-              content: partialContent || 'An error occurred during streaming.',
-              timestamp: new Date(),
-              error: {
-                type: error.errorType ?? 'server_error',
-                code: error.code,
-                statusCode: error.statusCode,
-                retryAfter: error.retryAfter,
-                suggestions: error.suggestions,
-                technical: error.technical ?? error.message,
-                recoverable: error.recoverable ?? false
-              }
-            };
-
-            setMessages(prev => [...prev, errorMessage]);
+          // Map StreamingError to ChatErrorType
+          let errorType: ChatErrorType = 'server_error';
+          if (error.status === 429 || error.code === 'rate_limit_exceeded') {
+            errorType = 'rate_limit';
+          } else if (error.status === 401 || error.status === 403) {
+            errorType = 'auth_error';
+          } else if (error.status !== undefined && error.status >= 400 && error.status < 500) {
+            errorType = 'model_not_found';
+          } else if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
+            errorType = 'network_error';
           }
+
+          const errorMessage: ChatMessage = {
+            id: uuidv4(),
+            role: 'assistant',
+            content: error.context ?? 'An error occurred during streaming.',
+            timestamp: new Date(),
+            error: {
+              type: errorType,
+              code: error.code,
+              statusCode: error.status,
+              technical: error.message,
+              recoverable: error.retryable ?? false
+            }
+          };
+
+          setMessages(prev => [...prev, errorMessage]);
 
           // Clear streaming state
           setStreamingContent('');

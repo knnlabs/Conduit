@@ -136,14 +136,15 @@ export default function SystemInfoPage() {
       ),
       labels: { confirm: 'Confirm', cancel: 'Cancel' },
       confirmProps: { color: newValue ? 'green' : 'red' },
-      onConfirm: async () => {
-        setIsTogglingCache(true);
-        try {
-          const updatedStatus = await withAdminClient(client =>
-            client.configuration.toggleLLMCache({ enabled: newValue })
-          );
+      onConfirm: () => {
+        void (async () => {
+          setIsTogglingCache(true);
+          try {
+            const updatedStatus = await withAdminClient(client =>
+              client.configuration.toggleLLMCache({ enabled: newValue })
+            );
 
-          setCacheStatus(updatedStatus);
+            setCacheStatus(updatedStatus);
 
           notifications.show({
             title: 'Success',
@@ -162,6 +163,7 @@ export default function SystemInfoPage() {
         } finally {
           setIsTogglingCache(false);
         }
+        })();
       },
     });
   };

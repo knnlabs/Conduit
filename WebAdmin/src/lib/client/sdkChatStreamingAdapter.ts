@@ -35,6 +35,9 @@ export class SDKChatStreamingAdapter {
     options: StreamMessageOptions,
     callbacks: StreamingCallbacks
   ): Promise<void> {
+    // Track content for callbacks (declared outside try to be accessible in catch)
+    let totalContent = '';
+
     try {
       // Get the SDK client with ephemeral key
       const client = await getBrowserCoreClient();
@@ -75,12 +78,6 @@ export class SDKChatStreamingAdapter {
         signal: this.abortController.signal
       });
 
-      // Track content for callbacks
-      let totalContent = '';
-      let partialContent = '';
-      const startTime = Date.now();
-      let firstTokenTime: number | null = null;
-
       // Process the stream
       for await (const data of stream) {
         // Handle different event types from the stream
@@ -103,7 +100,6 @@ export class SDKChatStreamingAdapter {
           const content = data.choices?.[0]?.delta?.content;
           if (content) {
             totalContent += content;
-            partialContent = totalContent; // Track for error recovery
 
             if (callbacks.onContent) {
               callbacks.onContent(content, totalContent);
@@ -184,24 +180,18 @@ export class SDKChatStreamingAdapter {
         }
       } else {
         if (callbacks.onError) {
-          // Convert error to StreamingError with partial content
+          // Convert error to StreamingError
           let streamingError: StreamingError;
 
-          if (error && typeof error === 'object' && 'partialContent' in error) {
+          if (error && typeof error === 'object' && 'status' in error && 'code' in error) {
             // Already a StreamingError from SDK
             streamingError = error as StreamingError;
           } else {
-            // Create enhanced error with partial content
+            // Create StreamingError from generic error
             const baseError = error instanceof Error ? error : new Error(String(error));
             streamingError = Object.assign(baseError, {
-              partialContent,
-              errorType: undefined,
-              statusCode: undefined,
-              code: undefined,
-              retryAfter: undefined,
-              suggestions: undefined,
-              technical: baseError.message,
-              recoverable: false
+              context: totalContent.length > 0 ? `Partial content: ${totalContent.slice(0, 100)}...` : undefined,
+              retryable: false
             } as Partial<StreamingError>);
           }
 
