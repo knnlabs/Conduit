@@ -52,81 +52,227 @@ jest.mock('@/components/common/TimeDisplay', () => ({
 
 // Mock Mantine components
 jest.mock('@mantine/core', () => {
-  const React = require('react');
-  return {
-    ...jest.requireActual('@mantine/core'),
-    getDefaultZIndex: () => 100,
-    Paper: ({ children, shadow, p, radius, withBorder }: any) =>
-      React.createElement('div', { 'data-testid': 'paper', 'data-shadow': shadow }, children),
-    Stack: ({ children, gap }: any) =>
-      React.createElement('div', { 'data-testid': 'stack', 'data-gap': gap }, children),
-    Group: ({ children, gap, onClick, style }: any) =>
-      React.createElement('div', { 
-        'data-testid': 'group', 
-        'data-gap': gap,
-        onClick,
-        style
-      }, children),
-    Text: ({ children, fw, size, c, lineClamp, component }: any) =>
-      React.createElement(component || 'span', { 
-        'data-testid': 'text',
-        'data-fw': fw,
-        'data-size': size,
-        'data-c': c,
-        'data-lineclamp': lineClamp
-      }, children),
-    Button: ({ children, onClick, variant, color, size, leftSection, disabled }: any) =>
-      React.createElement('button', {
-        onClick,
-        disabled,
-        'data-testid': 'button',
-        'data-variant': variant,
-        'data-color': color,
-        'data-size': size
-      }, leftSection, children),
-    Badge: ({ children, variant, size }: any) =>
-      React.createElement('span', { 
-        'data-testid': 'badge',
-        'data-variant': variant,
-        'data-size': size
-      }, children),
-    Progress: ({ value, size, animated, color }: any) =>
-      React.createElement('div', { 
-        'data-testid': 'progress',
-        'data-value': value,
-        'data-size': size,
-        'data-animated': animated,
-        'data-color': color
-      }),
-    Collapse: ({ children, in: inProp }: any) =>
-      inProp ? React.createElement('div', { 'data-testid': 'collapse' }, children) : null,
-    ActionIcon: ({ children, variant, size }: any) =>
-      React.createElement('button', { 
-        'data-testid': 'action-icon',
-        'data-variant': variant,
-        'data-size': size
-      }, children),
-    Alert: ({ children, icon, color, variant }: any) =>
-      React.createElement('div', { 
-        'data-testid': 'alert',
-        'data-color': color,
-        'data-variant': variant
-      }, icon, children),
-    List: Object.assign(
-      ({ children, size, mt, spacing }: any) =>
-        React.createElement('ul', { 
-          'data-testid': 'list',
-          'data-size': size,
-          'data-mt': mt,
-          'data-spacing': spacing
-        }, children),
-      {
-        Item: ({ children }: any) =>
-          React.createElement('li', { 'data-testid': 'list-item' }, children)
-      }
+  interface PaperProps {
+    children: React.ReactNode;
+    shadow?: string;
+  }
+
+  interface StackProps {
+    children: React.ReactNode;
+    gap?: string | number;
+  }
+
+  interface GroupProps {
+    children: React.ReactNode;
+    gap?: string | number;
+    onClick?: () => void;
+    style?: React.CSSProperties;
+  }
+
+  interface TextProps {
+    children: React.ReactNode;
+    fw?: string | number;
+    size?: string;
+    c?: string;
+    lineClamp?: number;
+    component?: string;
+  }
+
+  interface ButtonProps {
+    children: React.ReactNode;
+    onClick?: () => void;
+    variant?: string;
+    color?: string;
+    size?: string;
+    leftSection?: React.ReactNode;
+    disabled?: boolean;
+  }
+
+  interface BadgeProps {
+    children: React.ReactNode;
+    variant?: string;
+    size?: string;
+  }
+
+  interface ProgressProps {
+    value?: number;
+    size?: string;
+    animated?: boolean;
+    color?: string;
+  }
+
+  interface CollapseProps {
+    children: React.ReactNode;
+    in?: boolean;
+  }
+
+  interface ActionIconProps {
+    children: React.ReactNode;
+    variant?: string;
+    size?: string;
+  }
+
+  interface AlertProps {
+    children: React.ReactNode;
+    icon?: React.ReactNode;
+    color?: string;
+    variant?: string;
+  }
+
+  interface ListProps {
+    children: React.ReactNode;
+    size?: string;
+    mt?: string | number;
+    spacing?: string | number;
+  }
+
+  interface ListItemProps {
+    children: React.ReactNode;
+  }
+
+  interface BoxProps {
+    children: React.ReactNode;
+  }
+
+  const Paper = ({ children, shadow }: PaperProps) => (
+    <div
+      data-testid="paper"
+      data-shadow={shadow}
+    >
+      {children}
+    </div>
+  );
+
+  const Stack = ({ children, gap }: StackProps) => (
+    <div
+      data-testid="stack"
+      data-gap={gap}
+    >
+      {children}
+    </div>
+  );
+
+  const Group = ({ children, gap, onClick, style }: GroupProps) => (
+    <div
+      data-testid="group"
+      data-gap={gap}
+      onClick={onClick}
+      style={style}
+    >
+      {children}
+    </div>
+  );
+
+  const Text = ({ children, fw, size, c, lineClamp, component }: TextProps) => {
+    const Component = component ?? 'span';
+    return (
+      <Component
+        data-testid="text"
+        data-fw={fw}
+        data-size={size}
+        data-c={c}
+        data-lineclamp={lineClamp}
+      >
+        {children}
+      </Component>
+    );
+  };
+
+  const Button = ({ children, onClick, variant, color, size, leftSection, disabled }: ButtonProps) => (
+    <button
+      data-testid="button"
+      data-variant={variant}
+      data-color={color}
+      data-size={size}
+      onClick={onClick}
+      disabled={disabled}
+    >
+      {leftSection}
+      {children}
+    </button>
+  );
+
+  const Badge = ({ children, variant, size }: BadgeProps) => (
+    <span
+      data-testid="badge"
+      data-variant={variant}
+      data-size={size}
+    >
+      {children}
+    </span>
+  );
+
+  const Progress = ({ value, size, animated, color }: ProgressProps) => (
+    <div
+      data-testid="progress"
+      data-value={value}
+      data-size={size}
+      data-animated={animated}
+      data-color={color}
+    />
+  );
+
+  const Collapse = ({ children, in: inProp }: CollapseProps) =>
+    inProp ? <div data-testid="collapse">{children}</div> : null;
+
+  const ActionIcon = ({ children, variant, size }: ActionIconProps) => (
+    <button
+      data-testid="action-icon"
+      data-variant={variant}
+      data-size={size}
+    >
+      {children}
+    </button>
+  );
+
+  const Alert = ({ children, icon, color, variant }: AlertProps) => (
+    <div
+      data-testid="alert"
+      data-color={color}
+      data-variant={variant}
+    >
+      {icon}
+      {children}
+    </div>
+  );
+
+  const List = Object.assign(
+    ({ children, size, mt, spacing }: ListProps) => (
+      <ul
+        data-testid="list"
+        data-size={size}
+        data-mt={mt}
+        data-spacing={spacing}
+      >
+        {children}
+      </ul>
     ),
-    Box: ({ children }: any) =>
-      React.createElement('div', { 'data-testid': 'box' }, children)
+    {
+      Item: ({ children }: ListItemProps) => <li data-testid="list-item">{children}</li>
+    }
+  );
+
+  const Box = ({ children }: BoxProps) => <div data-testid="box">{children}</div>;
+
+  const MantineProvider = ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="mantine-provider">{children}</div>
+  );
+
+  return {
+    getDefaultZIndex: () => 100,
+    MantineProvider,
+    Paper,
+    Stack,
+    Group,
+    Text,
+    Button,
+    Badge,
+    Progress,
+    Collapse,
+    ActionIcon,
+    Alert,
+    List,
+    Box
   };
 });
 
@@ -178,15 +324,18 @@ describe('VideoQueue', () => {
       addTask: jest.fn(),
       updateTask: jest.fn(),
       setCurrentTask: jest.fn()
-    } as any);
-    
+    });
+
     mockUseEnhancedVideoGeneration.mockReturnValue({
       cancelGeneration: mockCancelGeneration,
       retryGeneration: mockRetryGeneration,
       generateVideo: jest.fn(),
       isGenerating: false,
-      currentVideoTask: null
-    } as any);
+      currentVideoTask: null,
+      isRetrying: false,
+      signalRConnected: false,
+      isProgressTrackingEnabled: false
+    });
   });
 
   describe('No Current Task', () => {
@@ -208,7 +357,7 @@ describe('VideoQueue', () => {
         addTask: jest.fn(),
         updateTask: jest.fn(),
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoQueue />);
       
@@ -227,7 +376,7 @@ describe('VideoQueue', () => {
         addTask: jest.fn(),
         updateTask: jest.fn(),
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoQueue />);
       
@@ -246,7 +395,7 @@ describe('VideoQueue', () => {
         addTask: jest.fn(),
         updateTask: jest.fn(),
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoQueue />);
       
@@ -263,7 +412,7 @@ describe('VideoQueue', () => {
         addTask: jest.fn(),
         updateTask: jest.fn(),
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoQueue />);
       
@@ -289,7 +438,7 @@ describe('VideoQueue', () => {
         addTask: jest.fn(),
         updateTask: jest.fn(),
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoQueue />);
       
@@ -310,7 +459,7 @@ describe('VideoQueue', () => {
         addTask: jest.fn(),
         updateTask: jest.fn(),
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoQueue />);
       
@@ -331,7 +480,7 @@ describe('VideoQueue', () => {
         addTask: jest.fn(),
         updateTask: jest.fn(),
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoQueue />);
       
@@ -351,7 +500,7 @@ describe('VideoQueue', () => {
         addTask: jest.fn(),
         updateTask: jest.fn(),
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoQueue />);
       
@@ -388,7 +537,7 @@ describe('VideoQueue', () => {
         addTask: jest.fn(),
         updateTask: jest.fn(),
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoQueue />);
       
@@ -413,7 +562,7 @@ describe('VideoQueue', () => {
         addTask: jest.fn(),
         updateTask: jest.fn(),
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoQueue />);
       
@@ -443,7 +592,7 @@ describe('VideoQueue', () => {
         addTask: jest.fn(),
         updateTask: jest.fn(),
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoQueue />);
       
@@ -460,7 +609,7 @@ describe('VideoQueue', () => {
         addTask: jest.fn(),
         updateTask: jest.fn(),
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoQueue />);
       
@@ -468,7 +617,7 @@ describe('VideoQueue', () => {
     });
 
     it('should display correct status for cancelled task', () => {
-      const task = createMockTask({ 
+      const task = createMockTask({
         status: MediaGenerationStatus.Cancelled,
         error: 'User cancelled generation'
       });
@@ -480,7 +629,7 @@ describe('VideoQueue', () => {
         addTask: jest.fn(),
         updateTask: jest.fn(),
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoQueue />);
       
@@ -500,7 +649,7 @@ describe('VideoQueue', () => {
         addTask: jest.fn(),
         updateTask: jest.fn(),
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoQueue />);
       
@@ -517,7 +666,7 @@ describe('VideoQueue', () => {
         addTask: jest.fn(),
         updateTask: jest.fn(),
         setCurrentTask: jest.fn()
-      } as any);
+      });
 
       render(<VideoQueue />);
       
