@@ -15,7 +15,7 @@ namespace ConduitLLM.Tests.Integration
     [Trait("Category", "Integration")]
     [Trait("Component", "Core")]
     [Trait("Phase", "2")]
-    public class BatchSpendUpdateOperationV2IntegrationTests : IntegrationTestBase
+    public class BatchSpendUpdateOperationV2IntegrationTests : TestBase
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly Mock<IVirtualKeyService> _mockVirtualKeyService;
