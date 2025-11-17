@@ -82,7 +82,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var dtos = Assert.IsType<IEnumerable<ModelDto>>(okResult.Value);
+            okResult.Value.Should().BeAssignableTo<IEnumerable<ModelDto>>();
+            var dtos = (IEnumerable<ModelDto>)okResult.Value;
             dtos.Should().HaveCount(2);
 
             var firstDto = dtos.First();
@@ -107,7 +108,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var dtos = Assert.IsType<IEnumerable<ModelDto>>(okResult.Value);
+            okResult.Value.Should().BeAssignableTo<IEnumerable<ModelDto>>();
+            var dtos = (IEnumerable<ModelDto>)okResult.Value;
             dtos.Should().BeEmpty();
 
             _mockRepository.Verify(r => r.GetAllWithDetailsAsync(), Times.Once);
@@ -283,7 +285,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var identifiers = Assert.IsType<IEnumerable<object>>(okResult.Value);
+            okResult.Value.Should().BeAssignableTo<IEnumerable<object>>();
+            var identifiers = (IEnumerable<object>)okResult.Value;
             identifiers.Should().HaveCount(3);
 
             // Verify the structure by serializing to JSON and deserializing
@@ -330,7 +333,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var identifiers = Assert.IsType<IEnumerable<object>>(okResult.Value);
+            okResult.Value.Should().BeAssignableTo<IEnumerable<object>>();
+            var identifiers = (IEnumerable<object>)okResult.Value;
             identifiers.Should().BeEmpty();
 
             _mockRepository.Verify(r => r.GetByIdWithDetailsAsync(modelId), Times.Once);

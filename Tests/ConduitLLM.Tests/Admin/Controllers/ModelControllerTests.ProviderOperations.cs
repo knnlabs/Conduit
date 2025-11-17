@@ -111,7 +111,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var dtos = Assert.IsType<IEnumerable<ModelWithProviderIdDto>>(okResult.Value);
+            okResult.Value.Should().BeAssignableTo<IEnumerable<ModelWithProviderIdDto>>();
+            var dtos = (IEnumerable<ModelWithProviderIdDto>)okResult.Value;
             dtos.Should().HaveCount(2);
 
             var firstDto = dtos.First();
@@ -235,7 +236,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var dtos = Assert.IsType<IEnumerable<ModelWithProviderIdDto>>(okResult.Value);
+            okResult.Value.Should().BeAssignableTo<IEnumerable<ModelWithProviderIdDto>>();
+            var dtos = (IEnumerable<ModelWithProviderIdDto>)okResult.Value;
             var dto = dtos.First();
 
             // Should use the groq-specific identifier
@@ -281,7 +283,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var dtos = Assert.IsType<IEnumerable<ModelWithProviderIdDto>>(okResult.Value);
+            okResult.Value.Should().BeAssignableTo<IEnumerable<ModelWithProviderIdDto>>();
+            var dtos = (IEnumerable<ModelWithProviderIdDto>)okResult.Value;
             var dto = dtos.First();
 
             // Should match case-insensitively
@@ -357,7 +360,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var dtos = Assert.IsType<IEnumerable<ModelWithProviderIdDto>>(okResult.Value);
+            okResult.Value.Should().BeAssignableTo<IEnumerable<ModelWithProviderIdDto>>();
+            var dtos = (IEnumerable<ModelWithProviderIdDto>)okResult.Value;
             var dto = dtos.First();
 
             // After consolidation, capability fields have default values
