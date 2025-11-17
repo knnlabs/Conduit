@@ -170,18 +170,6 @@ curl http://localhost:5000/health | jq '.checks[] | select(.name=="rabbitmq_comp
    - Monitor active vs idle connections
    - Alert if pool exhausted
 
-### RabbitMQ Management API
-
-Access metrics via: `http://rabbitmq-host:15672/api/overview`
-
-```bash
-# Get queue statistics
-curl -u conduit:password http://localhost:15672/api/queues | jq '.[].messages'
-
-# Monitor specific queue
-curl -u conduit:password http://localhost:15672/api/queues/%2F/webhook-delivery
-```
-
 ## Operational Procedures
 
 ### Scaling Up
