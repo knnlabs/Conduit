@@ -2,7 +2,7 @@ namespace ConduitLLM.Core.Constants
 {
     /// <summary>
     /// Centralized constants for SignalR communication to ensure consistency
-    /// between Core API hubs and WebUI clients
+    /// between Core API hubs and WebAdmin clients
     /// </summary>
     public static class SignalRConstants
     {

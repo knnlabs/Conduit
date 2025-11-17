@@ -20,16 +20,16 @@ RUN dotnet restore Conduit.sln
 # Copy the rest of the source code
 COPY . .
 
-# Publish the WebUI project first
+# Publish the WebAdmin project first
 WORKDIR /src/WebAdmin
 RUN dotnet restore WebAdmin.csproj # Ensure project-specific restore before publish
-RUN dotnet publish WebAdmin.csproj -c Release -o /app/publish/webui --no-restore
+RUN dotnet publish WebAdmin.csproj -c Release -o /app/publish/webadmin --no-restore
 
 # Publish the Http API project
 WORKDIR /src/Services/ConduitLLM.Http
 RUN dotnet restore ConduitLLM.Http.csproj # Ensure project-specific restore before publish
-# Temporarily remove conflicting file from WebUI source *before* publishing Http
-# The WebUI project is already published correctly with its appsettings.json
+# Temporarily remove conflicting file from WebAdmin source *before* publishing Http
+# The WebAdmin project is already published correctly with its appsettings.json
 RUN rm ../../WebAdmin/appsettings.json
 RUN dotnet publish ConduitLLM.Http.csproj -c Release -o /app/publish/http --no-restore
 
@@ -38,8 +38,8 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 
 # Copy published application files from the build stage
-# Copy WebUI first, then Http API (Http's appsettings.json will overwrite WebUI's if present)
-COPY --from=build /app/publish/webui .
+# Copy WebAdmin first, then Http API (Http's appsettings.json will overwrite WebAdmin's if present)
+COPY --from=build /app/publish/webadmin .
 COPY --from=build /app/publish/http .
 
 # Define default environment variables
@@ -49,13 +49,13 @@ ENV ASPNETCORE_URLS=http://+:80
 ENV DB_PROVIDER=sqlite
 # Recommend mounting /data as a volume for persistent storage
 ENV CONDUIT_SQLITE_PATH=/data/conduit.db
-# Base URL for the HTTP API, used by WebUI. Set to public HTTPS URL in deployment.
+# Base URL for the HTTP API, used by WebAdmin. Set to public HTTPS URL in deployment.
 ENV CONDUIT_API_BASE_URL=http://localhost:5000
 
 # Expose the port the application listens on
 EXPOSE 80
 
-# Set the entrypoint to the WebUI application
+# Set the entrypoint to the WebAdmin application
 ENTRYPOINT ["dotnet", "WebAdmin.dll"]
 
 # Optional: Add healthcheck if needed

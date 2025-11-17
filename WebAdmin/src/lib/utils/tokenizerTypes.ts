@@ -1,5 +1,5 @@
 /**
- * TokenizerType enum mapping and utilities for WebUI display
+ * TokenizerType enum mapping and utilities for WebAdmin display
  * Matches the backend TokenizerType enum values
  */
 

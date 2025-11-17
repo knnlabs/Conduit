@@ -4,15 +4,15 @@ public partial class Program
 {
     public static void ConfigureSecurityServices(WebApplicationBuilder builder)
     {
-        // Add CORS support for WebUI requests
+        // Add CORS support for WebAdmin requests
         builder.Services.AddCors(options =>
         {
             options.AddDefaultPolicy(policy =>
             {
                 policy.WithOrigins(
-                        "http://localhost:3000",  // WebUI development server
-                        "http://localhost:5001",  // WebUI access
-                        "http://webui:8080",      // Docker internal
+                        "http://localhost:3000",  // WebAdmin development server
+                        "http://localhost:5001",  // WebAdmin access
+                        "http://webadmin:8080",      // Docker internal
                         "http://localhost:8080",  // Alternative local access
                         "http://127.0.0.1:5001"   // Alternative localhost format
                     )

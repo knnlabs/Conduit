@@ -15,8 +15,8 @@ import './globals.css';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Conduit WebUI',
-  description: 'Next.js WebUI for Conduit LLM Platform',
+  title: 'Conduit WebAdmin',
+  description: 'Next.js WebAdmin for Conduit LLM Platform',
 };
 
 export const viewport: Viewport = {

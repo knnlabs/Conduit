@@ -1,5 +1,5 @@
 /**
- * Centralized environment configuration for the Conduit WebUI
+ * Centralized environment configuration for the Conduit WebAdmin
  * This module validates and provides typed access to all environment variables
  */
 

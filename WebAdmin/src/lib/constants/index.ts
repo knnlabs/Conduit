@@ -1,5 +1,5 @@
 /**
- * Centralized constants export for the WebUI
+ * Centralized constants export for the WebAdmin
  * This file re-exports all constants for convenient importing
  */
 

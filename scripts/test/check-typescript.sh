@@ -51,7 +51,7 @@ Options:
   --help      Show this help message
 
 This script checks all TypeScript projects:
-- WebUI (Next.js application)
+- WebAdmin (Next.js application)
 - Admin SDK (Node.js)
 - Core SDK (Node.js)
 - Common SDK (Node.js)
@@ -136,13 +136,13 @@ count_errors() {
     echo "${error_count:-0} ${warning_count:-0}"
 }
 
-# Check WebUI
-check_webui() {
-    local project_name="WebUI"
-    log_section "Checking WebUI (Next.js Application)"
+# Check WebAdmin
+check_webadmin() {
+    local project_name="WebAdmin"
+    log_section "Checking WebAdmin (Next.js Application)"
     
     if [[ ! -d "WebAdmin" ]]; then
-        log_error "WebUI directory not found"
+        log_error "WebAdmin directory not found"
         PROJECT_ERRORS["$project_name"]="Directory not found"
         FAILED_PROJECTS+=("$project_name")
         return 1
@@ -157,7 +157,7 @@ check_webui() {
     
     # Check for package.json
     if [[ ! -f "package.json" ]]; then
-        log_error "package.json not found in WebUI"
+        log_error "package.json not found in WebAdmin"
         PROJECT_ERRORS["$project_name"]="package.json missing"
         cd ..
         return 1
@@ -165,12 +165,12 @@ check_webui() {
     
     # Install dependencies if needed
     if [[ ! -d "node_modules" ]]; then
-        log_task "Installing WebUI dependencies..."
+        log_task "Installing WebAdmin dependencies..."
         npm install > /dev/null 2>&1 || true
     fi
     
     # Run ESLint
-    log_task "Running ESLint on WebUI..."
+    log_task "Running ESLint on WebAdmin..."
     
     if [[ "$ATTEMPT_FIX" == "true" ]]; then
         log_task "Attempting ESLint auto-fix..."
@@ -184,16 +184,16 @@ check_webui() {
     read -r lint_errors lint_warnings <<< $(count_errors "$lint_output")
     
     if [[ $lint_errors -gt 0 ]]; then
-        log_error "WebUI ESLint: $lint_errors errors, $lint_warnings warnings"
+        log_error "WebAdmin ESLint: $lint_errors errors, $lint_warnings warnings"
         # Capture specific errors for report
-        echo "\n--- WebUI ESLint Errors ---" >> "$LOG_FILE"
+        echo "\n--- WebAdmin ESLint Errors ---" >> "$LOG_FILE"
         echo "$lint_output" | grep -E "error|Error" | head -50 >> "$LOG_FILE"
     else
-        log_info "WebUI ESLint: No errors found"
+        log_info "WebAdmin ESLint: No errors found"
     fi
     
     # Run TypeScript type checking
-    log_task "Running TypeScript type check on WebUI..."
+    log_task "Running TypeScript type check on WebAdmin..."
     
     local type_output
     type_output=$(npm run type-check 2>&1 || true)
@@ -201,15 +201,15 @@ check_webui() {
     
     if echo "$type_output" | grep -q "error TS"; then
         type_errors=$(echo "$type_output" | grep -c "error TS" || echo "0")
-        log_error "WebUI TypeScript: $type_errors type errors"
-        echo "\n--- WebUI TypeScript Errors ---" >> "$LOG_FILE"
+        log_error "WebAdmin TypeScript: $type_errors type errors"
+        echo "\n--- WebAdmin TypeScript Errors ---" >> "$LOG_FILE"
         echo "$type_output" | grep "error TS" | head -50 >> "$LOG_FILE"
     else
-        log_info "WebUI TypeScript: No type errors found"
+        log_info "WebAdmin TypeScript: No type errors found"
     fi
     
-    # Note: We do NOT run build for WebUI in development
-    log_warn "WebUI build check skipped (breaks development container)"
+    # Note: We do NOT run build for WebAdmin in development
+    log_warn "WebAdmin build check skipped (breaks development container)"
     
     # Store results
     PROJECT_ERRORS["$project_name"]=$((lint_errors + type_errors))
@@ -362,7 +362,7 @@ EOF
         printf "%-20s │ %-10s │ %-10s │ %-15s\n" "Project" "Errors" "Warnings" "Build Status"
         echo "─────────────────────┼────────────┼────────────┼─────────────────"
         
-        for project in "WebUI" "Admin SDK" "Core SDK" "Common SDK"; do
+        for project in "WebAdmin" "Admin SDK" "Core SDK" "Common SDK"; do
             if [[ -n "${PROJECT_ERRORS[$project]}" ]]; then
                 local error_color="$GREEN"
                 [[ ${PROJECT_ERRORS[$project]} -gt 0 ]] && error_color="$RED"
@@ -404,8 +404,8 @@ EOF
             echo -e "${YELLOW}═══════════════════════════════════════════════════════${NC}"
             echo ""
             
-            if [[ ${PROJECT_ERRORS["WebUI"]:-0} -gt 0 ]]; then
-                echo "WebUI fixes:"
+            if [[ ${PROJECT_ERRORS["WebAdmin"]:-0} -gt 0 ]]; then
+                echo "WebAdmin fixes:"
                 echo "  ./scripts/fix-webadmin-errors.sh --lint-only"
                 echo ""
             fi
@@ -448,8 +448,8 @@ main() {
         echo ""
     fi
     
-    # Check WebUI
-    check_webui
+    # Check WebAdmin
+    check_webadmin
     
     # Check SDKs
     check_sdk "SDKs/Node/Admin" "Admin SDK"

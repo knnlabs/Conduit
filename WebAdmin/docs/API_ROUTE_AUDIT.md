@@ -1,6 +1,6 @@
-# Conduit WebUI API Route Audit
+# Conduit WebAdmin API Route Audit
 
-This document provides a comprehensive audit of all API routes in the Conduit WebUI application, documenting their compliance with the API Route Standards defined in `API_ROUTE_STANDARD.md`.
+This document provides a comprehensive audit of all API routes in the Conduit WebAdmin application, documenting their compliance with the API Route Standards defined in `API_ROUTE_STANDARD.md`.
 
 **Audit Date**: January 11, 2025  
 **Phase 4 Reference**: Issue #368  

@@ -18,7 +18,7 @@ if [ $? -ne 0 ]; then
   echo "⚠️  You cannot push code with lint errors. This causes CI/CD failures."
   echo ""
   echo "To fix:"
-  echo "1. Run './scripts/dev/fix-webui-errors.sh' to automatically fix what's possible"
+  echo "1. Run './scripts/dev/fix-webadmin-errors.sh' to automatically fix what's possible"
   echo "2. Manually fix any remaining errors"
   echo "3. Test locally with './scripts/test/validate-eslint.sh'"
   echo ""

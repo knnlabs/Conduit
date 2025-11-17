@@ -1,49 +1,49 @@
-# WebUI Authentication with Clerk
+# WebAdmin Authentication with Clerk
 
 ## Overview
 
-The Conduit WebUI uses Clerk for user authentication. Human administrators authenticate through Clerk to access the WebUI dashboard. Server-to-server communication between the WebUI backend and other services (Core API, Admin API) uses the `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`.
+The Conduit WebAdmin uses Clerk for user authentication. Human administrators authenticate through Clerk to access the WebAdmin dashboard. Server-to-server communication between the WebAdmin backend and other services (Core API, Admin API) uses the `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`.
 
 ## Authentication Model
 
 ### 1. Human Administrator Authentication (Clerk)
 - **Provider**: Clerk (https://clerk.com)
-- **Purpose**: Authenticates administrators to access the WebUI dashboard
-- **Scope**: WebUI access only
+- **Purpose**: Authenticates administrators to access the WebAdmin dashboard
+- **Scope**: WebAdmin access only
 - **Requirements**: Users must have `siteadmin: true` in their Clerk public metadata
 
 ### 2. Backend Service Authentication
 - **Key**: `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`
-- **Purpose**: Authenticates server-to-server requests between WebUI backend and APIs
+- **Purpose**: Authenticates server-to-server requests between WebAdmin backend and APIs
 - **Scope**: Backend service communication only
-- **Usage**: Configured on the WebUI service for API calls
+- **Usage**: Configured on the WebAdmin service for API calls
 
 ## Authentication Flow
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant WebUI
+    participant WebAdmin
     participant Clerk
     participant AdminSDK
     participant AdminAPI
     participant CoreAPI
 
-    User->>WebUI: Access dashboard
-    WebUI->>Clerk: Redirect to authentication
+    User->>WebAdmin: Access dashboard
+    WebAdmin->>Clerk: Redirect to authentication
     Clerk->>User: Login prompt
     User->>Clerk: Provide credentials
-    Clerk->>WebUI: Return auth token + user metadata
-    WebUI->>WebUI: Check siteadmin: true
+    Clerk->>WebAdmin: Return auth token + user metadata
+    WebAdmin->>WebAdmin: Check siteadmin: true
     
-    Note over WebUI: User is now authenticated
+    Note over WebAdmin: User is now authenticated
     
-    User->>WebUI: Perform admin action
-    WebUI->>AdminSDK: Initialize with CONDUIT_API_TO_API_BACKEND_AUTH_KEY
+    User->>WebAdmin: Perform admin action
+    WebAdmin->>AdminSDK: Initialize with CONDUIT_API_TO_API_BACKEND_AUTH_KEY
     AdminSDK->>AdminAPI: API request with backend auth key
     AdminAPI->>AdminSDK: Response
-    AdminSDK->>WebUI: Data
-    WebUI->>User: Display result
+    AdminSDK->>WebAdmin: Data
+    WebAdmin->>User: Display result
 ```
 
 ## Implementation Guide
@@ -74,7 +74,7 @@ ACCESS_DENIED_REDIRECT=https://your-main-site.com
    - Configure authentication methods (email, OAuth, etc.)
 
 2. **Set User Metadata**:
-   Users must have `siteadmin: true` in their public metadata to access the WebUI:
+   Users must have `siteadmin: true` in their public metadata to access the WebAdmin:
    
    ```javascript
    // Using Clerk Dashboard or API
@@ -272,7 +272,7 @@ If migrating from the old `CONDUIT_ADMIN_LOGIN_PASSWORD` system:
 
 ## Summary
 
-The Conduit WebUI uses:
+The Conduit WebAdmin uses:
 - **Clerk** for human administrator authentication
 - **Public metadata** (`siteadmin: true`) for access control  
 - **Backend auth key** for server-to-server API communication

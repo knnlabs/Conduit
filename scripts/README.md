@@ -21,20 +21,20 @@ Scripts are organized into the following subdirectories:
   ./scripts/dev/start-dev.sh              # Standard startup
   ./scripts/dev/start-dev.sh --clean      # Clean restart
   ./scripts/dev/start-dev.sh --build      # Force rebuild
-  ./scripts/dev/start-dev.sh --webui      # Rebuild WebUI container
+  ./scripts/dev/start-dev.sh --webadmin      # Rebuild WebAdmin container
   ```
-- **`dev-workflow.sh`** - Advanced development workflow commands (logs, shell, build-webui, lint-fix-webui)
+- **`dev-workflow.sh`** - Advanced development workflow commands (logs, shell, build-webadmin, lint-fix-webadmin)
 - **`fix-sdk-errors.sh`** - **CONSOLIDATED**: Fix ESLint errors and build SDK clients
   - All SDKs: `./scripts/dev/fix-sdk-errors.sh`
   - Admin only: `./scripts/dev/fix-sdk-errors.sh admin`
   - Core only: `./scripts/dev/fix-sdk-errors.sh core`
-- **`fix-webadmin-errors.sh`** - Fix WebUI-specific lint and build errors
+- **`fix-webadmin-errors.sh`** - Fix WebAdmin-specific lint and build errors
 - **`setup-r2-dev.sh`** - Setup Cloudflare R2 storage for development
 
 ### 🔑 Virtual Key Management (`dev/`)
 
-- **`get-webadmin-virtual-key.sh`** - **PRIMARY**: Get existing WebUI key or regenerate if needed
-- **`create-webadmin-key.sh`** - Create new WebUI virtual key (if none exists)
+- **`get-webadmin-virtual-key.sh`** - **PRIMARY**: Get existing WebAdmin key or regenerate if needed
+- **`create-webadmin-key.sh`** - Create new WebAdmin virtual key (if none exists)
 - **`create-test-virtual-key.sh`** - Create temporary virtual keys for testing
 - **`clear-blocked-ips.sh`** - Clear blocked IP addresses from Redis and database
 
@@ -101,8 +101,8 @@ Scripts are organized into the following subdirectories:
 # Force rebuild
 ./scripts/dev/start-dev.sh --build
 
-# Rebuild WebUI container only
-./scripts/dev/start-dev.sh --webui
+# Rebuild WebAdmin container only
+./scripts/dev/start-dev.sh --webadmin
 ```
 
 ### Code Quality Checks
@@ -133,7 +133,7 @@ Scripts are organized into the following subdirectories:
 
 ### Virtual Key Management
 
-**WebUI key management flow:**
+**WebAdmin key management flow:**
 ```bash
 # Get existing key (or regenerate if missing)
 ./scripts/dev/get-webadmin-virtual-key.sh

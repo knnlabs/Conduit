@@ -1,6 +1,6 @@
 # SDK Integration Fixes
 
-This document summarizes the fixes made to integrate the completed Admin SDK with the WebUI.
+This document summarizes the fixes made to integrate the completed Admin SDK with the WebAdmin.
 
 **Date**: January 11, 2025
 
@@ -17,12 +17,12 @@ This document summarizes the fixes made to integrate the completed Admin SDK wit
 **Fix**: Updated code to access `providersResponse.items` instead of using the response directly.
 
 ### 3. Admin Client Configuration
-**Issue**: The WebUI was using `adminApiUrl` property which doesn't exist in the SDK's `ApiClientConfig`.
+**Issue**: The WebAdmin was using `adminApiUrl` property which doesn't exist in the SDK's `ApiClientConfig`.
 
 **Fix**: Changed to use the correct `baseUrl` property and removed unnecessary `options.signalR` configuration.
 
 ### 4. Virtual Key Service Methods
-**Issue**: The WebUI was using non-existent methods like `getById` and `deleteById`.
+**Issue**: The WebAdmin was using non-existent methods like `getById` and `deleteById`.
 
 **Fix**: Changed to use the correct methods: `get` and `delete`, which expect string IDs.
 
@@ -32,13 +32,13 @@ This document summarizes the fixes made to integrate the completed Admin SDK wit
 **Fix**: Used the parsed ID from the route parameter instead of the model's string ID.
 
 ### 6. Missing Core SDK Services
-**Issue**: The WebUI expected `images` and `videos` services in the Core SDK which don't exist.
+**Issue**: The WebAdmin expected `images` and `videos` services in the Core SDK which don't exist.
 
 **Fix**: Temporarily stubbed these endpoints to return 501 Not Implemented errors with TODO comments.
 
 ## Build Status
 
-✅ The WebUI now builds successfully with the completed Admin SDK!
+✅ The WebAdmin now builds successfully with the completed Admin SDK!
 
 ## Next Steps
 
@@ -46,7 +46,7 @@ This document summarizes the fixes made to integrate the completed Admin SDK wit
 
 2. **Remove Type Augmentation**: Once all SDK services are verified to be working correctly, the `sdk-augmentation.d.ts` file can be removed entirely.
 
-3. **Test Integration**: Run the WebUI with the Admin API to ensure all endpoints work correctly with real data.
+3. **Test Integration**: Run the WebAdmin with the Admin API to ensure all endpoints work correctly with real data.
 
 4. **Update Mock Data**: Several endpoints still use mock data generation. These should be updated to use real data from the Admin API once available.
 
@@ -63,4 +63,4 @@ This document summarizes the fixes made to integrate the completed Admin SDK wit
 
 ## Warnings During Build
 
-The WebUI now uses Clerk for authentication. Administrator access is controlled through Clerk user metadata (`siteadmin: true`).
+The WebAdmin now uses Clerk for authentication. Administrator access is controlled through Clerk user metadata (`siteadmin: true`).

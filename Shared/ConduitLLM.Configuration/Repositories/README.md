@@ -45,7 +45,7 @@ public class VirtualKeyService
     }
 }
 
-// In controllers, you can use either direct DB access (WebUI admin pages)
+// In controllers, you can use either direct DB access (WebAdmin admin pages)
 // or API calls (external applications) without changing service logic
 ```
 

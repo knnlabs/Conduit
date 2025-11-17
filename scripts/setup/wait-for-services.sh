@@ -24,7 +24,7 @@ check_service() {
 }
 
 # Wait for each service
-services=("postgres" "redis" "rabbitmq" "api" "admin" "webui")
+services=("postgres" "redis" "rabbitmq" "api" "admin" "webadmin")
 max_attempts=60
 attempt=0
 

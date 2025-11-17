@@ -1,6 +1,6 @@
 /**
  * Comprehensive formatting utilities for consistent data presentation
- * across the ConduitLLM WebUI application.
+ * across the ConduitLLM WebAdmin application.
  */
 
 export interface DateFormatOptions extends Intl.DateTimeFormatOptions {

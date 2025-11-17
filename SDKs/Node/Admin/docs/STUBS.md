@@ -4,7 +4,7 @@ This document lists all stub functions in the Conduit Admin Client library that 
 
 ## Overview
 
-Stub functions are placeholders for functionality that currently exists only in the WebUI or requires new Admin API endpoints. Each stub throws a `NotImplementedError` with a descriptive message.
+Stub functions are placeholders for functionality that currently exists only in the WebAdmin or requires new Admin API endpoints. Each stub throws a `NotImplementedError` with a descriptive message.
 
 ## Virtual Keys
 
@@ -12,7 +12,7 @@ Stub functions are placeholders for functionality that currently exists only in 
 
 **Purpose**: Retrieve aggregated statistics about virtual keys.
 
-**Current Implementation**: The WebUI calculates statistics client-side by fetching all keys.
+**Current Implementation**: The WebAdmin calculates statistics client-side by fetching all keys.
 
 **Suggested API Endpoint**: `GET /api/virtualkeys/statistics`
 
@@ -38,7 +38,7 @@ Stub functions are placeholders for functionality that currently exists only in 
 
 **Purpose**: Create multiple virtual keys in a single request.
 
-**Current Implementation**: Not available in WebUI.
+**Current Implementation**: Not available in WebAdmin.
 
 **Suggested API Endpoint**: `POST /api/virtualkeys/bulk`
 
@@ -65,7 +65,7 @@ Stub functions are placeholders for functionality that currently exists only in 
 
 **Purpose**: Export virtual keys to CSV or JSON format.
 
-**Current Implementation**: Not available in WebUI.
+**Current Implementation**: Not available in WebAdmin.
 
 **Suggested API Endpoint**: `GET /api/virtualkeys/export?format={csv|json}`
 
@@ -85,7 +85,7 @@ Stub functions are placeholders for functionality that currently exists only in 
 
 **Purpose**: Test multiple provider connections simultaneously.
 
-**Current Implementation**: Not available in WebUI.
+**Current Implementation**: Not available in WebAdmin.
 
 **Suggested API Endpoint**: `POST /api/providercredentials/test/bulk`
 
@@ -95,7 +95,7 @@ Stub functions are placeholders for functionality that currently exists only in 
 
 **Purpose**: Import model mappings from CSV/JSON file.
 
-**Current Implementation**: Not available in WebUI.
+**Current Implementation**: Not available in WebAdmin.
 
 **Suggested API Endpoint**: `POST /api/modelprovidermapping/import`
 

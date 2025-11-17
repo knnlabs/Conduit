@@ -1,4 +1,4 @@
-# Actual Request Flow in ConduitLLM WebUI
+# Actual Request Flow in ConduitLLM WebAdmin
 
 This document explains how requests actually flow through the system, without the marketing bullshit.
 
@@ -65,7 +65,7 @@ Browser → Next.js Route → Admin SDK → Admin API (port 5002) → Database
 
 3. **Check Docker logs**
    ```bash
-   docker logs conduit-webui-1
+   docker logs conduit-webadmin-1
    docker logs conduit-admin-1
    ```
 
@@ -77,7 +77,7 @@ Browser → Next.js Route → Admin SDK → Admin API (port 5002) → Database
 
 ## Services and Ports
 
-- **WebUI**: http://localhost:3000 (Next.js)
+- **WebAdmin**: http://localhost:3000 (Next.js)
 - **Admin API**: http://localhost:5002 (.NET)
 - **Core API**: http://localhost:5000 (.NET)
 - **PostgreSQL**: localhost:5432
@@ -86,7 +86,7 @@ Browser → Next.js Route → Admin SDK → Admin API (port 5002) → Database
 
 ## Environment Variables
 
-### WebUI (.env.local)
+### WebAdmin (.env.local)
 ```
 NEXT_PUBLIC_ADMIN_API_URL=http://localhost:5002
 NEXT_PUBLIC_CORE_API_URL=http://localhost:5000
@@ -114,10 +114,10 @@ DATABASE_URL=postgresql://conduit:conduitpass@postgres:5432/conduitdb
    docker compose up -d
    ```
 
-2. **Rebuild the WebUI**
+2. **Rebuild the WebAdmin**
    ```bash
-   docker compose build webui
-   docker compose up -d webui
+   docker compose build webadmin
+   docker compose up -d webadmin
    ```
 
 3. **Check if services are healthy**

@@ -1,6 +1,6 @@
 # API Route Consolidation Decisions
 
-This document records decisions about API route consolidation in the Conduit WebUI application. It identifies routes that can be merged, removed, or simplified to reduce complexity and maintenance burden.
+This document records decisions about API route consolidation in the Conduit WebAdmin application. It identifies routes that can be merged, removed, or simplified to reduce complexity and maintenance burden.
 
 **Created**: January 11, 2025  
 **Phase 4 Reference**: Issue #368

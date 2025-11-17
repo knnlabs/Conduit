@@ -1,10 +1,9 @@
 import { HubConnection } from '@microsoft/signalr';
 import { BaseSignalRConnection } from './BaseSignalRConnection';
-import { 
-  SignalREndpoints, 
+import {
+  SignalREndpoints,
   NavigationStateUpdateEvent,
   ModelDiscoveredEvent,
-  ProviderHealthChangeEvent,
   INavigationStateHubClient
 } from '../models/signalr';
 
@@ -18,7 +17,6 @@ export class NavigationStateHubClient extends BaseSignalRConnection implements I
 
   private navigationStateCallbacks: ((event: NavigationStateUpdateEvent) => void)[] = [];
   private modelDiscoveredCallbacks: ((event: ModelDiscoveredEvent) => void)[] = [];
-  private providerHealthCallbacks: ((event: ProviderHealthChangeEvent) => void)[] = [];
 
   /**
    * Configures event handlers for the navigation state hub
@@ -45,17 +43,6 @@ export class NavigationStateHubClient extends BaseSignalRConnection implements I
         }
       });
     });
-
-    // Provider health change handler
-    connection.on('ProviderHealthChanged', (event: ProviderHealthChangeEvent) => {
-      this.providerHealthCallbacks.forEach(callback => {
-        try {
-          callback(event);
-        } catch (error) {
-          console.error('Error in provider health change callback:', error);
-        }
-      });
-    });
   }
 
   /**
@@ -70,13 +57,6 @@ export class NavigationStateHubClient extends BaseSignalRConnection implements I
    */
   onModelDiscovered(callback: (event: ModelDiscoveredEvent) => void): void {
     this.modelDiscoveredCallbacks.push(callback);
-  }
-
-  /**
-   * Subscribe to provider health changes
-   */
-  onProviderHealthChange(callback: (event: ProviderHealthChangeEvent) => void): void {
-    this.providerHealthCallbacks.push(callback);
   }
 
   /**
@@ -99,7 +79,6 @@ export class NavigationStateHubClient extends BaseSignalRConnection implements I
   clearCallbacks(): void {
     this.navigationStateCallbacks = [];
     this.modelDiscoveredCallbacks = [];
-    this.providerHealthCallbacks = [];
   }
 
   /**
@@ -123,22 +102,11 @@ export class NavigationStateHubClient extends BaseSignalRConnection implements I
   }
 
   /**
-   * Remove a specific provider health callback
-   */
-  removeProviderHealthCallback(callback: (event: ProviderHealthChangeEvent) => void): void {
-    const index = this.providerHealthCallbacks.indexOf(callback);
-    if (index > -1) {
-      this.providerHealthCallbacks.splice(index, 1);
-    }
-  }
-
-  /**
    * Get the number of active callbacks
    */
   getActiveCallbackCount(): number {
-    return this.navigationStateCallbacks.length + 
-           this.modelDiscoveredCallbacks.length + 
-           this.providerHealthCallbacks.length;
+    return this.navigationStateCallbacks.length +
+           this.modelDiscoveredCallbacks.length;
   }
 
   /**

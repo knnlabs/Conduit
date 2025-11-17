@@ -2,14 +2,14 @@
 
 ## Overview
 
-`ConduitLLM.Http` is the HTTP API backend for the Conduit solution (`Conduit.sln`). It exposes a unified, OpenAI-compatible REST API for interacting with multiple Large Language Model (LLM) providers such as OpenAI, Anthropic, Azure OpenAI, Gemini, Cohere, and others. It acts as the main programmatic interface for client applications and the ConduitLLM WebUI frontend.
+`ConduitLLM.Http` is the HTTP API backend for the Conduit solution (`Conduit.sln`). It exposes a unified, OpenAI-compatible REST API for interacting with multiple Large Language Model (LLM) providers such as OpenAI, Anthropic, Azure OpenAI, Gemini, Cohere, and others. It acts as the main programmatic interface for client applications and the ConduitLLM WebAdmin frontend.
 
 ## Role in the Conduit Solution
 
 - **Conduit.sln**: The overall solution file tying together all Conduit sub-projects.
 - **ConduitLLM.Http**: This project. Provides the HTTP API for LLM access, model routing, API key/virtual key management, and provider abstraction.
 - **WebAdmin**: The web-based frontend for interactive LLM usage, configuration, and administration. Communicates with this API.
-- **ConduitLLM.Core**: Shared logic, models, and interfaces for LLM operations, used by both Http and WebUI.
+- **ConduitLLM.Core**: Shared logic, models, and interfaces for LLM operations, used by both Http and WebAdmin.
 - **ConduitLLM.Configuration**: Handles configuration persistence (database, environment, files) and settings management.
 - **ConduitLLM.Providers**: Implements provider-specific logic for different LLM backends.
 - **ConduitLLM.Tests**: Unit and integration tests for all components.
@@ -98,7 +98,7 @@ This will store the database at `/data/conduit.db` inside the container, mapped 
 - **Database is read-only**: The file or directory may be mounted as read-only or lack write permissions.
 - **App uses wrong database file**: Double-check environment variable spelling and container/service environment.
 
-For more help, see the Database Status page in the WebUI.
+For more help, see the Database Status page in the WebAdmin.
 
 ## Running the API
 
@@ -192,7 +192,7 @@ livenessProbe:
 
 - Uses ASP.NET Core Minimal APIs
 - Configuration is loaded from both `appsettings.json` and the configuration database
-- Provider credentials and model mappings can be managed via the WebUI or directly in the database
+- Provider credentials and model mappings can be managed via the WebAdmin or directly in the database
 
 ## Troubleshooting
 

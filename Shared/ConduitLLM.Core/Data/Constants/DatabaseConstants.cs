@@ -43,9 +43,9 @@ namespace ConduitLLM.Core.Data.Constants
         public const int ADMIN_API_MIN_POOL_SIZE = 5;
         public const int ADMIN_API_MAX_POOL_SIZE = 75;
         
-        // WebUI - Low traffic (uses Admin API, but keeping for consistency)
-        public const int WEBUI_MIN_POOL_SIZE = 2;
-        public const int WEBUI_MAX_POOL_SIZE = 20;
+        // WebAdmin - Low traffic (uses Admin API, but keeping for consistency)
+        public const int WEBADMIN_MIN_POOL_SIZE = 2;
+        public const int WEBADMIN_MAX_POOL_SIZE = 20;
         
         // Connection idle lifetime (new in Npgsql 6+)
         public const int CONNECTION_IDLE_LIFETIME_SECONDS = 60;

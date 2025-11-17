@@ -5,7 +5,7 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 # IMPORTANT: This is a monorepo where packages depend on each other via file: references
-# The WebUI package.json contains:
+# The WebAdmin package.json contains:
 #   "@knn_labs/conduit-admin-client": "file:../SDKs/Node/Admin"
 #   "@knn_labs/conduit-core-client": "file:../SDKs/Node/Core"
 # Therefore, we MUST copy the entire monorepo structure before running npm install
@@ -33,8 +33,8 @@ WORKDIR /app/SDKs/Node/Core
 RUN npm install --no-audit --no-fund --verbose || (cat /root/.npm/_logs/*.log 2>/dev/null && exit 1)
 RUN npm run build
 
-# Build WebUI last (depends on Admin and Core SDKs via file: references)
-# The WebUI's npm install will symlink to the local Admin and Core packages
+# Build WebAdmin last (depends on Admin and Core SDKs via file: references)
+# The WebAdmin's npm install will symlink to the local Admin and Core packages
 WORKDIR /app/WebAdmin
 # Create public directory if it doesn't exist (Next.js 15 doesn't require it)
 RUN mkdir -p public
@@ -62,7 +62,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/WebAdmin/.next ./.next
 COPY --from=builder --chown=nextjs:nodejs /app/WebAdmin/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/WebAdmin/public ./public
 
-# IMPORTANT: We must also copy the SDK packages because WebUI's node_modules contains
+# IMPORTANT: We must also copy the SDK packages because WebAdmin's node_modules contains
 # symlinks to these local packages (due to file: references in package.json)
 # Without these, the runtime will fail to resolve the packages
 COPY --from=builder --chown=nextjs:nodejs /app/SDKs/Node/Common /app/SDKs/Node/Common

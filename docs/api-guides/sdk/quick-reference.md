@@ -22,7 +22,7 @@ import { createCoreClient } from '@conduit/core-client';
 
 export const adminClient = createAdminClient({
   baseUrl: process.env.CONDUIT_API_URL!,
-  apiKey: process.env.CONDUIT_WEBUI_AUTH_KEY!
+  apiKey: process.env.CONDUIT_WEBADMIN_AUTH_KEY!
 });
 
 export const coreClient = createCoreClient({

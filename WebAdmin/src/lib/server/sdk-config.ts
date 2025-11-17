@@ -43,7 +43,7 @@ export const SDK_CONFIG = {
 // Singleton instances
 let adminClient: ConduitAdminClient | null = null;
 let coreClient: InstanceType<typeof ConduitCoreClient> | null = null;
-let webuiVirtualKey: string | null = null;
+let webAdminVirtualKey: string | null = null;
 
 export function getServerAdminClient(): ConduitAdminClient {
   if (!adminClient) {
@@ -61,26 +61,26 @@ export function getServerAdminClient(): ConduitAdminClient {
 }
 
 export async function getServerCoreClient(): Promise<InstanceType<typeof ConduitCoreClient>> {
-  if (!coreClient || !webuiVirtualKey) {
+  if (!coreClient || !webAdminVirtualKey) {
     // Validate environment at runtime
     validateEnvironment();
     
-    // Get the WebUI's virtual key - this will auto-create it with $1000 if it doesn't exist
-    if (!webuiVirtualKey) {
+    // Get the WebAdmin's virtual key - this will auto-create it with $1000 if it doesn't exist
+    if (!webAdminVirtualKey) {
       try {
-        console.warn('[SDK] Getting or creating WebUI virtual key...');
+        console.warn('[SDK] Getting or creating WebAdmin virtual key...');
         const adminClient = getServerAdminClient();
-        // Use the SystemService's getWebUIVirtualKey method which auto-creates with $1000
-        webuiVirtualKey = await adminClient.system.getWebUIVirtualKey();
-        console.warn('[SDK] WebUI virtual key obtained successfully');
+        // Use the SystemService's getWebAdminVirtualKey method which auto-creates with $1000
+        webAdminVirtualKey = await adminClient.system.getWebAdminVirtualKey();
+        console.warn('[SDK] WebAdmin virtual key obtained successfully');
       } catch (error) {
-        console.error('[SDK] Failed to get or create WebUI virtual key:', error);
-        throw new Error('Failed to retrieve or create WebUI virtual key. Ensure the database is accessible and the Admin API is running.');
+        console.error('[SDK] Failed to get or create WebAdmin virtual key:', error);
+        throw new Error('Failed to retrieve or create WebAdmin virtual key. Ensure the database is accessible and the Admin API is running.');
       }
     }
     
     coreClient = new ConduitCoreClient({
-      apiKey: webuiVirtualKey,
+      apiKey: webAdminVirtualKey,
       baseURL: SDK_CONFIG.coreBaseURL,
       signalR: SDK_CONFIG.signalR,
     });
@@ -110,6 +110,6 @@ export async function initializeSDKClients(): Promise<void> {
 export async function cleanupSDKClients(): Promise<void> {
   adminClient = null;
   coreClient = null;
-  webuiVirtualKey = null;
+  webAdminVirtualKey = null;
   console.error('[SDK] Clients cleaned up successfully');
 }

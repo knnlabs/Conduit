@@ -1,6 +1,6 @@
 /**
  * Server-Sent Events parser for chat streaming
- * Extracted from WebUI for reuse in other applications
+ * Extracted from WebAdmin for reuse in other applications
  */
 
 /**

@@ -27,11 +27,11 @@ RESPONSE=$(curl -s -X GET "http://localhost:5002/api/GlobalSettings/by-key/WebAd
 # Check if request was successful and key exists
 if [ $? -eq 0 ] && [ ! -z "$RESPONSE" ] && ! echo "$RESPONSE" | grep -q '"error"' && ! echo "$RESPONSE" | grep -q 'null'; then
     # Extract the virtual key from GlobalSettings
-    WEBUI_KEY=$(echo "$RESPONSE" | jq -r '.value // empty' 2>/dev/null)
+    WEBADMIN_KEY=$(echo "$RESPONSE" | jq -r '.value // empty' 2>/dev/null)
     
-    if [ ! -z "$WEBUI_KEY" ]; then
+    if [ ! -z "$WEBADMIN_KEY" ]; then
         echo "Found WebAdmin virtual key in GlobalSettings" >&2
-        echo "$WEBUI_KEY"
+        echo "$WEBADMIN_KEY"
         exit 0
     fi
 fi
@@ -87,9 +87,9 @@ if [ $? -ne 0 ] || echo "$CREATE_RESPONSE" | grep -q '"error"'; then
 fi
 
 # Extract the new key
-WEBUI_KEY=$(echo "$CREATE_RESPONSE" | jq -r '.virtualKey // empty')
+WEBADMIN_KEY=$(echo "$CREATE_RESPONSE" | jq -r '.virtualKey // empty')
 
-if [ -z "$WEBUI_KEY" ]; then
+if [ -z "$WEBADMIN_KEY" ]; then
     echo "Error: Failed to extract new key from API response." >&2
     echo "$CREATE_RESPONSE" >&2
     exit 1
@@ -100,7 +100,7 @@ echo "Storing WebAdmin key in GlobalSettings..." >&2
 STORE_PAYLOAD=$(cat <<EOF
 {
     "key": "WebAdmin_VirtualKey",
-    "value": "$WEBUI_KEY",
+    "value": "$WEBADMIN_KEY",
     "description": "Virtual key for WebAdmin Core API access"
 }
 EOF
@@ -117,4 +117,4 @@ else
     echo "Warning: Failed to store key in GlobalSettings, but key was created." >&2
 fi
 
-echo "$WEBUI_KEY"
+echo "$WEBADMIN_KEY"

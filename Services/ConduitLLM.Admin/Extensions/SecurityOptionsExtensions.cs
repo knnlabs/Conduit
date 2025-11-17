@@ -51,7 +51,7 @@ namespace ConduitLLM.Admin.Extensions
                 options.FailedAuth.MaxAttempts = configuration.GetValue<int>("CONDUIT_ADMIN_MAX_FAILED_AUTH_ATTEMPTS", 5);
                 options.FailedAuth.BanDurationMinutes = configuration.GetValue<int>("CONDUIT_ADMIN_AUTH_BAN_DURATION_MINUTES", 30);
 
-                // Distributed Tracking (shared with WebUI)
+                // Distributed Tracking (shared with WebAdmin)
                 options.UseDistributedTracking = configuration.GetValue<bool>("CONDUIT_SECURITY_USE_DISTRIBUTED_TRACKING", true);
 
                 // Security Headers

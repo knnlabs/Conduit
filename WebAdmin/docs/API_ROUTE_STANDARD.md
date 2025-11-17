@@ -1,6 +1,6 @@
-# Conduit WebUI API Route Standards
+# Conduit WebAdmin API Route Standards
 
-This document defines the standard patterns and requirements for all API routes in the Conduit WebUI application. All routes must follow these patterns to ensure consistency, maintainability, and proper SDK usage.
+This document defines the standard patterns and requirements for all API routes in the Conduit WebAdmin application. All routes must follow these patterns to ensure consistency, maintainability, and proper SDK usage.
 
 **Last Updated**: January 11, 2025  
 **Status**: Active Standard  

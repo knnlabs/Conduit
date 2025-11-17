@@ -1,6 +1,6 @@
 /**
  * Conversation export and import utilities
- * Extracted from WebUI for framework-agnostic reuse
+ * Extracted from WebAdmin for framework-agnostic reuse
  */
 
 /**

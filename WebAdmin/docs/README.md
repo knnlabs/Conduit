@@ -1,20 +1,20 @@
-# Conduit WebUI Documentation
+# Conduit WebAdmin Documentation
 
 ## Overview
 
-This directory contains comprehensive documentation for the Conduit WebUI, including architecture details, migration guides, and security considerations.
+This directory contains comprehensive documentation for the Conduit WebAdmin, including architecture details, migration guides, and security considerations.
 
 ## Documentation Index
 
 ### 📐 [Architecture](./ARCHITECTURE.md)
-Detailed overview of the WebUI architecture, including:
+Detailed overview of the WebAdmin architecture, including:
 - Architecture evolution from proxy-based to direct SDK
 - Component architecture and data flow
 - Authentication and security architecture
 - Deployment architecture with Docker
 
 ### 🔑 [Virtual Key Management](./VIRTUAL-KEY-MANAGEMENT.md)
-Complete guide to WebUI virtual key system:
+Complete guide to WebAdmin virtual key system:
 - How virtual keys work
 - Automatic key creation and management
 - Security model and best practices
@@ -68,7 +68,7 @@ Technical security implementation details:
 
 ## Getting Started
 
-1. **New to WebUI?** Start with [Architecture](./ARCHITECTURE.md)
+1. **New to WebAdmin?** Start with [Architecture](./ARCHITECTURE.md)
 2. **Migrating code?** Read the [Migration Guide](./MIGRATION-GUIDE.md)
 3. **Having issues?** Check [Troubleshooting](./TROUBLESHOOTING.md)
 4. **Security concerns?** Review [Security Considerations](./SECURITY-CONSIDERATIONS.md)
@@ -84,6 +84,6 @@ When adding new documentation:
 
 ## Additional Resources
 
-- [WebUI README](../README.md) - Main project documentation
+- [WebAdmin README](../README.md) - Main project documentation
 - [Conduit Documentation](https://github.com/knnlabs/Conduit/docs) - Platform documentation
 - [SDK Documentation](https://www.npmjs.com/package/@knn_labs/conduit-core-client) - SDK reference

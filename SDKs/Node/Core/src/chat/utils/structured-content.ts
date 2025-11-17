@@ -1,7 +1,7 @@
 /**
  * Preprocesses structured content tags from AI responses into markdown-friendly formats
  * This handles common XML-like tags used by modern LLMs and converts them to enhanced markdown
- * Extracted from WebUI for reuse in other applications
+ * Extracted from WebAdmin for reuse in other applications
  */
 
 export interface ProcessedBlockQuote {

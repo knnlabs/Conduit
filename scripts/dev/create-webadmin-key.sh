@@ -69,7 +69,7 @@ echo "$VIRTUAL_KEY" >&2
 echo "==========================================" >&2
 echo "" >&2
 echo "To configure the WebAdmin, set this environment variable:" >&2
-echo "export CONDUIT_WEBUI_VIRTUAL_KEY=\"$VIRTUAL_KEY\"" >&2
+echo "export CONDUIT_WEBADMIN_VIRTUAL_KEY=\"$VIRTUAL_KEY\"" >&2
 
 # Save to a temporary file for testing
 echo "$VIRTUAL_KEY" > /tmp/webadmin-virtual-key.txt

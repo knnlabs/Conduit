@@ -1,6 +1,6 @@
-# SDK Services Required for WebUI
+# SDK Services Required for WebAdmin
 
-This document outlines all the services and methods that need to be added to the Conduit Admin SDK (`@knn_labs/conduit-admin-client`) to fully support the WebUI functionality.
+This document outlines all the services and methods that need to be added to the Conduit Admin SDK (`@knn_labs/conduit-admin-client`) to fully support the WebAdmin functionality.
 
 **Generated**: January 11, 2025
 
@@ -87,8 +87,8 @@ interface SystemService {
   getSystemInfo(): Promise<SystemInfoDto>;
   getHealth(): Promise<SystemHealthDto>;
   
-  // WebUI specific
-  getWebUIVirtualKey(): Promise<string>;
+  // WebAdmin specific
+  getWebAdminVirtualKey(): Promise<string>;
   
   // Performance
   getPerformanceMetrics(params?: MetricsParams): Promise<PerformanceMetrics>;
@@ -97,7 +97,7 @@ interface SystemService {
 ```
 
 **Used in API routes**:
-- `/api/auth/login` - Get WebUI virtual key for authentication
+- `/api/auth/login` - Get WebAdmin virtual key for authentication
 - `/api/auth/validate` - Validate sessions
 - `/api/admin/system/*` - System information endpoints
 - `/api/settings/system-info` - System configuration
@@ -311,7 +311,7 @@ export interface UsageAnalytics {
 
 ## Notes
 
-- The WebUI was built expecting a fully-featured SDK, but the SDK only provides basic functionality
+- The WebAdmin was built expecting a fully-featured SDK, but the SDK only provides basic functionality
 - Many API routes are using mock data or hardcoded responses due to missing SDK methods
 - The type augmentation file is a temporary workaround and should be removed once the SDK is complete
 - Some routes have TODO comments indicating where SDK methods should be used

@@ -1,6 +1,6 @@
 # Chat Interface Features
 
-This document summarizes all the new features added to the ConduitLLM WebUI chat interface.
+This document summarizes all the new features added to the ConduitLLM WebAdmin chat interface.
 
 ## Core SDK Extensions
 

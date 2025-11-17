@@ -15,9 +15,9 @@ regex = '''(?i)(conduit[_-]?master[_-]?key\s*[:=]\s*)["']?([a-zA-Z0-9+/]{32,})["
 secretGroup = 2
 
 [[rules]]
-id = "conduit-webui-auth-key"
-description = "Conduit WebUI Auth Key"
-regex = '''(?i)(conduit[_-]?webui[_-]?auth[_-]?key\s*[:=]\s*)["']?([a-zA-Z0-9+/]{32,})["']?'''
+id = "conduit-webadmin-auth-key"
+description = "Conduit WebAdmin Auth Key"
+regex = '''(?i)(conduit[_-]?webadmin[_-]?auth[_-]?key\s*[:=]\s*)["']?([a-zA-Z0-9+/]{32,})["']?'''
 secretGroup = 2
 
 [[rules]]
@@ -71,7 +71,7 @@ regexes = [
 # Conduit-specific sample values (safe to commit)
 commits = [
     '''alpha''', # Sample CONDUIT_MASTER_KEY in docker-compose.yml
-    '''conduit123''', # Sample CONDUIT_WEBUI_AUTH_KEY in docker-compose.yml
+    '''conduit123''', # Sample CONDUIT_WEBADMIN_AUTH_KEY in docker-compose.yml
 ]
 
 # Entropy settings

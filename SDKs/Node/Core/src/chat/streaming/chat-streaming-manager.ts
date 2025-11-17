@@ -1,6 +1,6 @@
 /**
  * Framework-agnostic chat streaming manager
- * Extracted and refactored from WebUI ChatStreamingLogic
+ * Extracted and refactored from WebAdmin ChatStreamingLogic
  */
 
 import { randomUUID } from 'crypto';

@@ -24,7 +24,7 @@ Previous dependency challenges have been successfully resolved:
 2. ✅ **Eliminated Duplicate DTOs**: All DTOs centralized with domain-specific organization
 3. ✅ **Proper Extension Methods**: All shared functionality properly abstracted
 
-**Current Architecture**: The Admin project now maintains clean dependencies on Configuration and Core projects only, with no WebUI dependencies required.
+**Current Architecture**: The Admin project now maintains clean dependencies on Configuration and Core projects only, with no WebAdmin dependencies required.
 
 ## Features
 
@@ -139,9 +139,9 @@ dotnet build ConduitLLM.Admin
 dotnet test ConduitLLM.Admin.Tests
 ```
 
-## Integration with WebUI
+## Integration with WebAdmin
 
-The WebUI project can be configured to use the Admin API for administrative functions instead of direct database access. This improves separation of concerns and maintainability.
+The WebAdmin project can be configured to use the Admin API for administrative functions instead of direct database access. This improves separation of concerns and maintainability.
 
 ## API Documentation
 

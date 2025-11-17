@@ -1,15 +1,15 @@
-# Conduit WebUI Architecture
+# Conduit WebAdmin Architecture
 
 ## Overview
 
-The Conduit WebUI has been migrated from a proxy-based architecture to direct SDK usage, significantly simplifying the codebase and improving performance.
+The Conduit WebAdmin has been migrated from a proxy-based architecture to direct SDK usage, significantly simplifying the codebase and improving performance.
 
 ## Architecture Evolution
 
 ### Previous Architecture (Proxy-Based)
 ```mermaid
 graph LR
-    A[Browser] -->|React Query| B[WebUI Hooks]
+    A[Browser] -->|React Query| B[WebAdmin Hooks]
     B -->|HTTP| C[Next.js API Routes]
     C -->|SDK Client| D[Conduit APIs]
     
@@ -80,9 +80,9 @@ sequenceDiagram
     participant S as SDK
     participant C as Conduit API
     
-    U->>B: Enter WebUI Auth Key
+    U->>B: Enter WebAdmin Auth Key
     B->>A: POST /api/auth/validate
-    A->>A: Validate CONDUIT_WEBUI_AUTH_KEY
+    A->>A: Validate CONDUIT_WEBADMIN_AUTH_KEY
     A->>C: Check/Create Virtual Key
     C->>A: Return Virtual Key
     A->>B: Session + Virtual Key
@@ -141,7 +141,7 @@ Located in `/lib/providers/ConduitProviders.tsx`
 
 ```mermaid
 graph TB
-    A[WebUI Auth Key<br/>Server-Only] --> B[Admin Login]
+    A[WebAdmin Auth Key<br/>Server-Only] --> B[Admin Login]
     B --> C[Create/Get Virtual Key]
     C --> D[Virtual Key<br/>Client-Side]
     
@@ -159,7 +159,7 @@ graph TB
 
 ```mermaid
 graph TB
-    A[Docker Compose] --> B[WebUI Container<br/>Port 3000]
+    A[Docker Compose] --> B[WebAdmin Container<br/>Port 3000]
     A --> C[Core API Container<br/>Port 5000]
     A --> D[Admin API Container<br/>Port 5002]
     A --> E[Redis<br/>Session Storage]
@@ -194,6 +194,6 @@ graph TB
    - Standard React Query patterns
 
 4. **Security**
-   - Virtual keys scoped for WebUI
+   - Virtual keys scoped for WebAdmin
    - Rate limiting per key
    - Automatic key management

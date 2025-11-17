@@ -46,7 +46,7 @@ jobs:
       packages: write
     strategy:
       matrix:
-        service: [webui, http, admin]
+        service: [webadmin, http, admin]
     
     steps:
       - uses: actions/checkout@v4
@@ -65,7 +65,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ConduitLLM.${{ matrix.service == 'webui' && 'WebUI' || (matrix.service == 'http' && 'Http' || 'Admin') }}/Dockerfile
+          file: ConduitLLM.${{ matrix.service == 'webadmin' && 'WebAdmin' || (matrix.service == 'http' && 'Http' || 'Admin') }}/Dockerfile
           platforms: linux/amd64
           push: true
           tags: |

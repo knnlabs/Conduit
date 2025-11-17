@@ -1,7 +1,7 @@
 # SDK Migration Phase 1 Complete
 
 ## Overview
-This document summarizes the completion of Phase 1 of the SDK migration for the Conduit WebUI. All 9 API hooks have been created to provide a clean interface for components to interact with the backend through the WebUI's API routes.
+This document summarizes the completion of Phase 1 of the SDK migration for the Conduit WebAdmin. All 9 API hooks have been created to provide a clean interface for components to interact with the backend through the WebAdmin's API routes.
 
 ## Architecture
 ```
@@ -16,7 +16,7 @@ Handles authentication operations:
 - `logout()` - Clear session
 - `validate()` - Check session validity
 - `refresh()` - Refresh session
-- `createVirtualKey(name)` - Create API key for WebUI
+- `createVirtualKey(name)` - Create API key for WebAdmin
 
 ### 2. **useCoreApi** (`/src/hooks/useCoreApi.ts`)
 Handles core LLM operations:
@@ -158,7 +158,7 @@ All hooks have been tested with:
 - ✅ No runtime errors
 
 ## Notes
-- All hooks use fetch() to call WebUI's own API routes
+- All hooks use fetch() to call WebAdmin's own API routes
 - API routes use SDK clients server-side
 - Authentication remains cookie-based for security
 - Master key never exposed to frontend

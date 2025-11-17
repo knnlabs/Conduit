@@ -2,7 +2,7 @@ import { ConduitAdminClient } from '@knn_labs/conduit-admin-client';
 import { useCallback } from 'react';
 
 /**
- * Ephemeral master key response from WebUI backend
+ * Ephemeral master key response from WebAdmin backend
  */
 interface EphemeralMasterKeyResponse {
   ephemeralMasterKey: string;
@@ -16,7 +16,7 @@ interface EphemeralMasterKeyResponse {
  * Each call generates a new single-use ephemeral key for maximum security
  */
 export async function createAdminClient(): Promise<ConduitAdminClient> {
-  // Generate fresh ephemeral master key from WebUI backend
+  // Generate fresh ephemeral master key from WebAdmin backend
   const response = await fetch('/api/auth/ephemeral-master-key', {
     method: 'POST',
     headers: {

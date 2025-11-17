@@ -158,7 +158,7 @@ export function useChatStreamingLogic({
             role: 'assistant',
             content: finalContent,
             timestamp: new Date(),
-            metadata: metadata as ChatMessage['metadata'] // Convert SDK metadata to WebUI format
+            metadata: metadata as ChatMessage['metadata'] // Convert SDK metadata to WebAdmin format
           };
 
           setMessages(prev => [...prev, assistantMessage]);

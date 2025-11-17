@@ -104,10 +104,10 @@ export function createAdminRoute<TResponse = unknown, TBody = JsonValue>(
 
   return async (request: NextRequest, context: RouteContext) => {
     try {
-      const authKey = process.env.CONDUIT_WEBUI_AUTH_KEY;
+      const authKey = process.env.CONDUIT_WEBADMIN_AUTH_KEY;
       if (!authKey) {
         throw new Error(
-          'CONDUIT_WEBUI_AUTH_KEY environment variable is not set. ' +
+          'CONDUIT_WEBADMIN_AUTH_KEY environment variable is not set. ' +
           'This is required for admin authentication.'
         );
       }

@@ -1,6 +1,6 @@
 /**
  * SSE Error Handler for OpenAI-compatible error responses
- * Extracted from WebUI and made framework-agnostic
+ * Extracted from WebAdmin and made framework-agnostic
  */
 
 /**

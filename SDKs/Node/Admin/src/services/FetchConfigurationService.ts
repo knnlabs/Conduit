@@ -120,7 +120,7 @@ export class FetchConfigurationService {
     );
   }
 
-  // This is what the WebUI expects
+  // This is what the WebAdmin expects
   async clearCacheByRegion(cacheId: string, config?: RequestConfig): Promise<unknown> {
     return this.client['post']<unknown>(
       ENDPOINTS.CONFIG.CACHING.CLEAR(cacheId),

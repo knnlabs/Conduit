@@ -63,7 +63,7 @@ npm install @knn_labs/conduit-admin-client
 Conduit uses Semantic Versioning (MAJOR.MINOR.PATCH):
 
 - **Docker Tags**: Images are tagged with semantic versions (e.g., `v1.0.0`), branch names, and the `latest` tag.
-- **Version Checking**: The WebUI displays the current version and can check for updates automatically.
+- **Version Checking**: The WebAdmin displays the current version and can check for updates automatically.
 - **Configuration**: Version checking can be controlled via environment variables:
   ```
   CONDUIT_VERSION_CHECK_ENABLED=true
@@ -78,7 +78,7 @@ ConduitLLM follows a modular architecture with distinct components handling spec
 
 ```mermaid
 flowchart LR
-    WebUI["WebAdmin(Admin Dashboard)"]
+    WebAdmin["WebAdmin(Admin Dashboard)"]
     AdminAPI["ConduitLLM.Admin(Admin API)"]
     Http["ConduitLLM.Http(API Gateway)"]
     Core["ConduitLLM.Core(Orchestration)"]
@@ -86,7 +86,7 @@ flowchart LR
     Config["ConduitLLM.Configuration(Entities & DTOs)"]
     LLM["LLM Backends(OpenAI, Anthropic, etc.)"]
     
-    WebUI -->|Admin API Client| AdminAPI
+    WebAdmin -->|Admin API Client| AdminAPI
     AdminAPI --> Config
     
     Client["Client App"] --> Http
@@ -110,7 +110,7 @@ flowchart LR
 
 ### Admin API Client
 
-The Admin API client provides a way for the WebUI to interact with the Admin API service without direct project references. This breaks the circular dependency between the projects and improves the architecture.
+The Admin API client provides a way for the WebAdmin to interact with the Admin API service without direct project references. This breaks the circular dependency between the projects and improves the architecture.
 
 To configure the Admin API client in your deployment:
 
@@ -125,14 +125,14 @@ environment:
 
 > **Important**: Direct database access mode (`CONDUIT_USE_ADMIN_API=false`) is deprecated and will be removed after October 2025. See [Migration Guide](docs/admin-api-migration-guide.md) for details.
 
-The WebUI includes a built-in health check indicator that monitors the connection to the Admin API:
+The WebAdmin includes a built-in health check indicator that monitors the connection to the Admin API:
 
 - A green checkmark indicates the Admin API is healthy
 - A red warning icon indicates connection issues
 - Click the icon to view detailed status and troubleshooting options
 
 Key features:
-- **Decoupled Architecture**: WebUI and Admin projects are fully decoupled
+- **Decoupled Architecture**: WebAdmin and Admin projects are fully decoupled
 - **Flexible Deployment**: Services can be deployed separately in distributed environments
 - **Clean API Contracts**: API contracts explicitly defined through interfaces and DTOs
 - **Configuration Control**: Toggle between direct DB access and API access with a simple flag
@@ -141,13 +141,13 @@ Key features:
 
 As of May 2025, ConduitLLM is distributed as three separate Docker images:
 
-- **WebUI Image**: The Next.js-based admin dashboard (`WebAdmin`)
+- **WebAdmin Image**: The Next.js-based admin dashboard (`WebAdmin`)
 - **Admin API Image**: The administrative API service (`ConduitLLM.Admin`) 
 - **Http Image**: The OpenAI-compatible REST API gateway (`ConduitLLM.Http`)
 
 Each service is built, tagged, and published as an independent container:
 
-- `ghcr.io/knnlabs/conduit-webui:latest` (WebUI)
+- `ghcr.io/knnlabs/conduit-webadmin:latest` (WebAdmin)
 - `ghcr.io/knnlabs/conduit-admin:latest` (Admin API)
 - `ghcr.io/knnlabs/conduit-http:latest` (API Gateway)
 
@@ -165,8 +165,8 @@ With Docker Compose:
 docker-compose.yml
 
 services:
-  webui:
-    image: ghcr.io/knnlabs/conduit-webui:latest
+  webadmin:
+    image: ghcr.io/knnlabs/conduit-webadmin:latest
     ports:
       - "5001:8080"
     environment:
@@ -245,7 +245,7 @@ For more details, see the per-service README files.
    - Add your provider API keys via:
      - Environment variables (see `docs/Environment-Variables.md`)
      - Edit `appsettings.json`
-     - Use the WebUI after startup
+     - Use the WebAdmin after startup
 
 3. **Start the Services**
    ```bash
@@ -254,7 +254,7 @@ For more details, see the per-service README files.
 
 4. **Access ConduitLLM**
    - **Local API**: `http://localhost:5000`
-   - **Local WebUI**: `http://localhost:5001`
+   - **Local WebAdmin**: `http://localhost:5001`
    - **Local API Docs**: `http://localhost:5000/swagger` (Development Mode)
    
    *Note: When running locally via `./scripts/start-dev.sh`, these are the default ports. When deployed using Docker or other methods, access is typically via an HTTPS reverse proxy. Configure the `CONDUIT_API_BASE_URL` environment variable to the public-facing URL (e.g., `https://conduit.yourdomain.com`) for correct link generation.*
@@ -305,13 +305,13 @@ AdminApi__MasterKey=your-secure-master-key
 ```
 
 **CRITICAL SECURITY:** Authentication in Conduit:
-- **CONDUIT_API_TO_API_BACKEND_AUTH_KEY**: Used for backend service-to-service authentication between WebUI backend and API services
-- **WebUI Authentication**: Human administrators authenticate exclusively via Clerk (OAuth/SAML)
-  - Users must have `siteadmin: true` in their Clerk public metadata to access the WebUI
+- **CONDUIT_API_TO_API_BACKEND_AUTH_KEY**: Used for backend service-to-service authentication between WebAdmin backend and API services
+- **WebAdmin Authentication**: Human administrators authenticate exclusively via Clerk (OAuth/SAML)
+  - Users must have `siteadmin: true` in their Clerk public metadata to access the WebAdmin
   - Configure with `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`
 - **Virtual Keys**: Used by Core API for client LLM access (created via Admin API)
 
-#### Next.js WebUI Configuration
+#### Next.js WebAdmin Configuration
 ```bash
 # Server-side URLs (for API routes only - never exposed to browser)
 CONDUIT_ADMIN_API_BASE_URL=http://localhost:5002
@@ -330,7 +330,7 @@ NEXT_PUBLIC_ENABLE_ANALYTICS=true
 NEXT_PUBLIC_ENABLE_DEBUG_MODE=false
 ```
 
-#### Security Configuration (WebUI)
+#### Security Configuration (WebAdmin)
 ```bash
 # IP Filtering
 CONDUIT_IP_FILTERING_ENABLED=true
@@ -349,17 +349,17 @@ CONDUIT_MAX_FAILED_ATTEMPTS=5
 CONDUIT_IP_BAN_DURATION_MINUTES=30
 ```
 
-#### WebUI Configuration Notes
+#### WebAdmin Configuration Notes
 
 **Security Architecture:**
 - All API calls are made server-side through Next.js API routes
 - No API keys or sensitive URLs are exposed to the browser
-- WebUI authenticates administrators separately from API consumers
+- WebAdmin authenticates administrators separately from API consumers
 - SignalR connections use server-side authentication
 
 **Required Configuration:**
 1. **Server-side API URLs** - Configure `CONDUIT_ADMIN_API_BASE_URL` and `CONDUIT_API_BASE_URL` for internal communication
-2. **Clerk Authentication** - Configure Clerk publishable and secret keys for WebUI authentication
+2. **Clerk Authentication** - Configure Clerk publishable and secret keys for WebAdmin authentication
 3. **Session security** - Use a strong `SESSION_SECRET` for production deployments
 
 For a complete migration guide from old to new environment variables, see [Environment Variable Migration Guide](docs/MIGRATION_ENV_VARS.md).
@@ -454,11 +454,11 @@ ConduitLLM includes automatic circuit breaker protection for Redis operations:
 - [Multimodal Vision Support](docs/Multimodal-Vision-Support.md)
 - [Provider Integration](docs/Provider-Integration.md)
 - [Virtual Keys](docs/Virtual-Keys.md)
-- [WebUI Guide](docs/WebUI-Guide.md)
+- [WebAdmin Guide](docs/WebAdmin-Guide.md)
 
 ### Project Documentation
 - [SDK Integration Epic](docs/epics/sdk-integration.md)
-- [Archived Documentation](docs/archive/webui-migration/)
+- [Archived Documentation](docs/archive/webadmin-migration/)
 
 ## Contributing
 

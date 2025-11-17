@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Conduit Admin SDK (`@knn_labs/conduit-admin-client`) requires significant expansion to support all WebUI functionality. Currently, only 2 out of 10+ required services are implemented.
+The Conduit Admin SDK (`@knn_labs/conduit-admin-client`) requires significant expansion to support all WebAdmin functionality. Currently, only 2 out of 10+ required services are implemented.
 
 ## Current State
 
@@ -34,14 +34,14 @@ The Conduit Admin SDK (`@knn_labs/conduit-admin-client`) requires significant ex
 - **Provider Management**: Cannot add, edit, or remove providers
 - **Model Discovery**: Cannot see available models
 - **Model Routing**: Cannot configure model mappings
-- **Authentication**: Login uses workaround due to missing `system.getWebUIVirtualKey()`
+- **Authentication**: Login uses workaround due to missing `system.getWebAdminVirtualKey()`
 
 ### High Impact (Degraded Features)
 - **Analytics**: All analytics endpoints return mock data
 - **Health Monitoring**: Provider health checks use mock data
 - **Settings**: Configuration management is limited
 
-### WebUI Workarounds
+### WebAdmin Workarounds
 - 44 API routes use mock data or hardcoded responses
 - Type augmentation file masks TypeScript errors
 - Many features show loading states indefinitely
@@ -80,7 +80,7 @@ Instead of implementing all services, create a minimal viable SDK:
    }
    
    system: {
-     getWebUIVirtualKey(): Promise<string>;
+     getWebAdminVirtualKey(): Promise<string>;
      getSystemInfo(): Promise<any>;
    }
    ```
@@ -91,7 +91,7 @@ Instead of implementing all services, create a minimal viable SDK:
    - Add types later
 
 3. **Benefits**:
-   - WebUI becomes functional quickly
+   - WebAdmin becomes functional quickly
    - Remove type augmentation file
    - Iterate on types later
 
@@ -122,7 +122,7 @@ Instead of implementing all services, create a minimal viable SDK:
 ### Short Term (Next 2 Weeks)
 1. Implement Phase 1 critical services
 2. Remove type augmentation file
-3. Test WebUI with updated SDK
+3. Test WebAdmin with updated SDK
 
 ### Long Term (Month)
 1. Complete all SDK services
@@ -151,4 +151,4 @@ Instead of implementing all services, create a minimal viable SDK:
 
 ## Conclusion
 
-The SDK is currently incomplete and blocks critical WebUI functionality. The recommended approach is a hybrid implementation that delivers minimal functionality quickly while building towards a complete, type-safe SDK over 4-6 weeks.
+The SDK is currently incomplete and blocks critical WebAdmin functionality. The recommended approach is a hybrid implementation that delivers minimal functionality quickly while building towards a complete, type-safe SDK over 4-6 weeks.

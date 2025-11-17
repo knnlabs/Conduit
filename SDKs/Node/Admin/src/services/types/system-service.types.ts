@@ -88,7 +88,7 @@ export interface ISystemService {
   getHealth(config?: RequestConfig): Promise<HealthStatusDto>;
   getPerformanceMetrics(params?: MetricsParams, config?: RequestConfig): Promise<PerformanceMetrics>;
   exportPerformanceData(params: ExportParams, config?: RequestConfig): Promise<ExportResult>;
-  getWebUIVirtualKey(config?: RequestConfig): Promise<string>;
+  getWebAdminVirtualKey(config?: RequestConfig): Promise<string>;
 }
 
 // Service interface for health operations

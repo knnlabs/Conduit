@@ -45,7 +45,7 @@ fi
 
 echo ""
 echo "3. Restarting services to clear in-memory blocks..."
-docker restart conduit-api-1 conduit-admin-1 conduit-webui-1
+docker restart conduit-api-1 conduit-admin-1 conduit-webadmin-1
 
 echo ""
 echo "✅ All blocked IPs have been cleared!"

@@ -73,7 +73,7 @@ export function HomePageClient() {
     <Stack gap="xl">
       <div>
         <Title order={1} mb="sm">
-          Welcome to Conduit WebUI
+          Welcome to Conduit WebAdmin
         </Title>
         <Text size="lg" c="dimmed">
           Your centralized platform for managing AI providers and services

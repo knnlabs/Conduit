@@ -2,7 +2,7 @@ namespace ConduitLLM.Http.Services
 {
     public partial class SecurityService
     {
-        // Data structures for Redis storage (compatible with WebUI/Admin)
+        // Data structures for Redis storage (compatible with WebAdmin/Admin)
         private class FailedAuthData
         {
             public int Attempts { get; set; }

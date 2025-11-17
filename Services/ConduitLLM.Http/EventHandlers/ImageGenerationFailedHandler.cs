@@ -82,7 +82,7 @@ namespace ConduitLLM.Http.EventHandlers
                 // Analyze error patterns for common issues
                 AnalyzeErrorPattern(message);
                 
-                // Send failure notification to WebUI
+                // Send failure notification to WebAdmin
                 await _notificationService.NotifyImageGenerationFailedAsync(
                     message.TaskId,
                     message.Error,

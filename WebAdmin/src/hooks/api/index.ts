@@ -1,6 +1,6 @@
 // API Hooks for SDK integration
 // These hooks provide a clean interface for components to interact with the backend
-// through the WebUI's API routes, which in turn use the SDK clients.
+// through the WebAdmin's API routes, which in turn use the SDK clients.
 
 export { useCoreApi } from '../useCoreApi';
 export { useSecurityApi } from '../useSecurityApi';

@@ -31,7 +31,7 @@ X-Virtual-Key: condt_xxxx (legacy)
 **Features**:
 - Bans IP after 10 failed attempts (configurable)
 - Ban duration: 30 minutes (configurable)
-- Shared tracking with Admin API and WebUI via Redis
+- Shared tracking with Admin API and WebAdmin via Redis
 - Automatic clearing on successful authentication
 
 **Protection Against**:
@@ -99,13 +99,13 @@ CONDUIT_CORE_ENFORCE_VKEY_RATE_LIMITS=true
 CONDUIT_CORE_ENFORCE_VKEY_BUDGETS=true
 CONDUIT_CORE_ENFORCE_VKEY_MODELS=true
 
-# Distributed Tracking (shared with Admin/WebUI)
+# Distributed Tracking (shared with Admin/WebAdmin)
 CONDUIT_SECURITY_USE_DISTRIBUTED_TRACKING=true
 ```
 
 ## Shared Security Tracking
 
-The Core API shares security data with Admin API and WebUI through Redis:
+The Core API shares security data with Admin API and WebAdmin through Redis:
 
 ### Redis Key Structure
 ```
@@ -117,7 +117,7 @@ vkey_rate:rpd:{keyId}         - Virtual Key RPD tracking
 ```
 
 ### Shared Ban List
-When an IP is banned by any service (Core, Admin, WebUI), all services respect the ban.
+When an IP is banned by any service (Core, Admin, WebAdmin), all services respect the ban.
 
 ## Request Flow
 

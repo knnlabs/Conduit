@@ -82,11 +82,11 @@ Error: Request failed with status code 401
 ```typescript
 // .env.local
 CONDUIT_API_URL=http://localhost:5074
-CONDUIT_WEBUI_AUTH_KEY=your-admin-key-here
+CONDUIT_WEBADMIN_AUTH_KEY=your-admin-key-here
 
 // Verify in your code
 console.log('API URL:', process.env.CONDUIT_API_URL);
-console.log('Has auth key:', !!process.env.CONDUIT_WEBUI_AUTH_KEY);
+console.log('Has auth key:', !!process.env.CONDUIT_WEBADMIN_AUTH_KEY);
 ```
 
 **Solution 2: Verify key format**
@@ -108,7 +108,7 @@ const adminClient = createAdminClient({
 ```typescript
 // ❌ Wrong - Using admin key in client component
 'use client';
-const client = createAdminClient({ apiKey: process.env.CONDUIT_WEBUI_AUTH_KEY });
+const client = createAdminClient({ apiKey: process.env.CONDUIT_WEBADMIN_AUTH_KEY });
 
 // ✅ Correct - Use in API route only
 // app/api/admin/providers/route.ts
@@ -156,7 +156,7 @@ export async function GET(
   const path = params.path.join('/');
   const response = await fetch(`${process.env.CONDUIT_API_URL}/${path}`, {
     headers: {
-      'Authorization': `Bearer ${process.env.CONDUIT_WEBUI_AUTH_KEY}`,
+      'Authorization': `Bearer ${process.env.CONDUIT_WEBADMIN_AUTH_KEY}`,
     },
   });
   
@@ -192,7 +192,7 @@ Error: timeout of 60000ms exceeded
 // Increase timeout in client configuration
 const adminClient = createAdminClient({
   baseUrl: process.env.CONDUIT_API_URL!,
-  apiKey: process.env.CONDUIT_WEBUI_AUTH_KEY!,
+  apiKey: process.env.CONDUIT_WEBADMIN_AUTH_KEY!,
   timeout: 120000, // 2 minutes
 });
 

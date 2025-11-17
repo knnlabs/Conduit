@@ -40,12 +40,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Add metadata for the WebUI image
-      - name: Extract metadata for WebUI
-        id: meta-webui
+      # Add metadata for the WebAdmin image
+      - name: Extract metadata for WebAdmin
+        id: meta-webadmin
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/knnlabs/conduit-webui
+          images: ghcr.io/knnlabs/conduit-webadmin
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -53,15 +53,15 @@ jobs:
             type=sha,format=long
             type=raw,value=latest,enable=${{ github.ref_name == 'master' }}
 
-      # Build and push WebUI Docker image
-      - name: Build and push WebUI Docker image
+      # Build and push WebAdmin Docker image
+      - name: Build and push WebAdmin Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./ConduitLLM.WebUI/Dockerfile
+          file: ./ConduitLLM.WebAdmin/Dockerfile
           push: true
-          tags: ${{ steps.meta-webui.outputs.tags }}
-          labels: ${{ steps.meta-webui.outputs.labels }}
+          tags: ${{ steps.meta-webadmin.outputs.tags }}
+          labels: ${{ steps.meta-webadmin.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           # Add build args for better diagnostics

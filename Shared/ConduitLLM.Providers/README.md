@@ -17,7 +17,7 @@ This project is part of the larger `Conduit.sln` solution, which is composed of 
 The Providers library is consumed by both the API and UI layers. It allows the Conduit solution to support multiple LLM backends (e.g., OpenAI, Azure OpenAI, HuggingFace, local models) without requiring changes in the API or UI code. New providers can be added by implementing the appropriate interfaces.
 
 ```
-[WebUI] <---> [Http API] <---> [Providers] <---> [LLM Backends]
+[WebAdmin] <---> [Http API] <---> [Providers] <---> [LLM Backends]
                              ^
                              |
                     [Configuration]

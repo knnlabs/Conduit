@@ -31,7 +31,7 @@ class EphemeralKeyClient {
   }
 
   /**
-   * Request a new ephemeral key from the WebUI backend
+   * Request a new ephemeral key from the WebAdmin backend
    */
   private async requestNewKey(purpose?: string): Promise<EphemeralKeyCache> {
     const response = await fetch('/api/auth/ephemeral-key', {

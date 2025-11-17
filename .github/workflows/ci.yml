@@ -80,7 +80,7 @@ jobs:
           npm run build
           npm run test:ci
       
-      - name: WebUI Type Check
+      - name: WebAdmin Type Check
         run: |
           cd WebAdmin
           npm ci
@@ -99,7 +99,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - service: webui
+          - service: webadmin
             context: .
             dockerfile: WebAdmin/Dockerfile
           - service: http

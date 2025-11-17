@@ -150,7 +150,7 @@ export interface ErrorHandlerOptions {
 }
 
 /**
- * Comprehensive error handler that can be used across the WebUI
+ * Comprehensive error handler that can be used across the WebAdmin
  */
 export function handleConduitError(error: unknown, options: ErrorHandlerOptions = {}): string {
   const {

@@ -44,7 +44,7 @@ A single `SecurityMiddleware` handles all security checks in one pass:
 
 - Automatic IP banning after threshold
 - Configurable ban duration
-- Shared tracking with WebUI via Redis
+- Shared tracking with WebAdmin via Redis
 
 ### 6. Security Headers
 
@@ -55,7 +55,7 @@ A single `SecurityMiddleware` handles all security checks in one pass:
 
 ### 7. Ephemeral Master Key (EMK)
 
-Provides one-time, short-lived authentication for Admin API operations and secure WebUI flows.
+Provides one-time, short-lived authentication for Admin API operations and secure WebAdmin flows.
 
 Key properties:
 - Single-use tokens with 5-minute TTL
@@ -115,7 +115,7 @@ CONDUIT_ADMIN_IP_BANNING_ENABLED=true
 CONDUIT_ADMIN_MAX_FAILED_AUTH_ATTEMPTS=5
 CONDUIT_ADMIN_AUTH_BAN_DURATION_MINUTES=30
 
-# Distributed Tracking (shared with WebUI)
+# Distributed Tracking (shared with WebAdmin)
 CONDUIT_SECURITY_USE_DISTRIBUTED_TRACKING=true
 
 # Security Headers
@@ -131,7 +131,7 @@ CONDUIT_ADMIN_API_KEY_ALT_HEADERS=X-Master-Key
 
 ## Shared Security Tracking
 
-The Admin API shares security tracking data with WebUI through Redis:
+The Admin API shares security tracking data with WebAdmin through Redis:
 
 ### Redis Key Structure
 
@@ -152,9 +152,9 @@ ban:{ip} - Banned IPs
 }
 ```
 
-## Integration with WebUI Security Dashboard
+## Integration with WebAdmin Security Dashboard
 
-The WebUI Security Dashboard can display:
+The WebAdmin Security Dashboard can display:
 - Combined banned IPs from both services
 - Failed authentication attempts across services
 - Rate limiting statistics per service

@@ -110,8 +110,8 @@ namespace ConduitLLM.Core.Services
                 case "ADMINAPI":
                     // Warm 5 connections for Admin API (medium traffic)
                     return 5;
-                case "WEBUI":
-                    // WebUI doesn't use database directly
+                case "WEBADMIN":
+                    // WebAdmin doesn't use database directly
                     return 0;
                 default:
                     // Default to 5 connections

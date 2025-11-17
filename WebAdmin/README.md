@@ -1,10 +1,10 @@
-# Conduit WebUI
+# Conduit WebAdmin
 
 Next.js-based web interface for the Conduit LLM Platform, built with React, TypeScript, and Mantine.
 
 ## Architecture Overview
 
-The WebUI uses SDK React Query hooks directly for all API operations:
+The WebAdmin uses SDK React Query hooks directly for all API operations:
 
 ### Client-Side SDK Usage
 - **Core SDK**: Used for LLM operations (chat, images, video, audio) with virtual key authentication
@@ -12,7 +12,7 @@ The WebUI uses SDK React Query hooks directly for all API operations:
 
 ### Authentication Flow
 1. Admin logs in through Clerk authentication
-2. WebUI verifies user has `siteadmin: true` in Clerk metadata
+2. WebAdmin verifies user has `siteadmin: true` in Clerk metadata
 3. Server uses `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` for backend API calls
 4. All admin operations use master key authentication server-side
 
@@ -108,7 +108,7 @@ src/
 
 ### Using SDK React Query Hooks
 
-The WebUI now uses SDK React Query hooks directly in components:
+The WebAdmin now uses SDK React Query hooks directly in components:
 
 ```typescript
 // Using Core SDK hooks
@@ -163,7 +163,7 @@ SignalR connections are managed centrally and provide real-time updates for:
 
 ## Video Generation
 
-The WebUI provides a comprehensive video generation interface with real-time progress tracking through the SDK's unified interface.
+The WebAdmin provides a comprehensive video generation interface with real-time progress tracking through the SDK's unified interface.
 
 ### Features
 - ✨ Real-time progress updates via SignalR
@@ -226,7 +226,7 @@ const { generateVideo } = useVideoGeneration({
 
 ### Video Queue
 
-The WebUI maintains a queue of video generation tasks:
+The WebAdmin maintains a queue of video generation tasks:
 - View all pending, running, and completed videos
 - Cancel in-progress generations
 - Download completed videos
@@ -234,13 +234,13 @@ The WebUI maintains a queue of video generation tasks:
 
 ## Docker Deployment
 
-The WebUI is configured to run as part of the ConduitLLM Docker stack:
+The WebAdmin is configured to run as part of the ConduitLLM Docker stack:
 
 ```bash
 # Build and start all services from the root directory
 docker-compose up -d
 
-# The WebUI will be available at http://localhost:3000
+# The WebAdmin will be available at http://localhost:3000
 ```
 
 ### Docker Environment Variables

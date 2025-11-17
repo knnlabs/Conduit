@@ -74,7 +74,7 @@ namespace ConduitLLM.Http.EventHandlers
                         message.ImagesCompleted + 1, message.TotalImages, message.TaskId);
                 }
                 
-                // Send real-time updates to WebUI
+                // Send real-time updates to WebAdmin
                 await _notificationService.NotifyImageGenerationProgressAsync(
                     message.TaskId,
                     message.ProgressPercentage,

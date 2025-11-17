@@ -20,7 +20,7 @@ namespace ConduitLLM.Admin.Services
         private readonly IDistributedCache? _distributedCache;
         private readonly IServiceScopeFactory _serviceScopeFactory;
 
-        // Cache keys - same as WebUI for shared tracking
+        // Cache keys - same as WebAdmin for shared tracking
         private const string RATE_LIMIT_PREFIX = "rate_limit:";
         private const string FAILED_LOGIN_PREFIX = "failed_login:";
         private const string BAN_PREFIX = "ban:";
@@ -552,7 +552,7 @@ namespace ConduitLLM.Admin.Services
             }
         }
 
-        // Data structures for Redis storage (compatible with WebUI)
+        // Data structures for Redis storage (compatible with WebAdmin)
         private class FailedAuthData
         {
             public int Attempts { get; set; }

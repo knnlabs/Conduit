@@ -6,7 +6,7 @@ The Bulk Mapping feature allows administrators to quickly add multiple model map
 ## How to Use
 
 1. **Navigate to Model Mappings**
-   - Go to the Model Mappings page in the WebUI
+   - Go to the Model Mappings page in the WebAdmin
    - Click the "Bulk Import" button in the top right
 
 2. **Select a Provider**

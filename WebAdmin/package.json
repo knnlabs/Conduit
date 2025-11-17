@@ -1,7 +1,7 @@
 {
-  "name": "conduit-webui",
+  "name": "conduit-webadmin",
   "version": "1.0.0",
-  "description": "Next.js WebUI for Conduit LLM Platform",
+  "description": "Next.js WebAdmin for Conduit LLM Platform",
   "private": true,
   "scripts": {
     "dev": "next dev",

@@ -30,7 +30,7 @@ The pre-commit hooks scan for:
 
 ### Conduit-Specific Secrets
 - `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` values (except sample values)
-- `CONDUIT_WEBUI_AUTH_KEY` values (except sample values)
+- `CONDUIT_WEBADMIN_AUTH_KEY` values (except sample values)
 - JWT signing keys
 - Webhook secrets
 
@@ -78,7 +78,7 @@ Configures Gitleaks behavior:
 These sample values are allowlisted and won't trigger secret detection:
 
 - `CONDUIT_API_TO_API_BACKEND_AUTH_KEY: alpha` (from docker-compose.yml)
-- `CONDUIT_WEBUI_AUTH_KEY: conduit123` (from docker-compose.yml)
+- `CONDUIT_WEBADMIN_AUTH_KEY: conduit123` (from docker-compose.yml)
 
 **Important**: These are for Docker testing only. Use strong, unique keys in production.
 

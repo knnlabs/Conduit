@@ -103,7 +103,7 @@ namespace ConduitLLM.Http.Services
         private readonly IServiceProvider _serviceProvider;
         private readonly ISecurityEventMonitoringService? _securityEventMonitoring;
 
-        // Cache keys - same as WebUI/Admin for shared tracking
+        // Cache keys - same as WebAdmin/Admin for shared tracking
         private const string RATE_LIMIT_PREFIX = "rate_limit:";
         private const string FAILED_LOGIN_PREFIX = "failed_login:";
         private const string BAN_PREFIX = "ban:";

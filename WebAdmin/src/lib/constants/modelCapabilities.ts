@@ -1,5 +1,5 @@
 /**
- * Model capability constants for the WebUI
+ * Model capability constants for the WebAdmin
  * Defines model capabilities locally to avoid importing SDK on client side
  */
 

@@ -6,7 +6,7 @@ This document provides instructions for testing the SignalR Redis backplane impl
 
 1. Redis instance running and accessible
 2. Multiple Core API instances running
-3. WebUI or test client with SignalR connection
+3. WebAdmin or test client with SignalR connection
 
 ## Test Scenarios
 
@@ -45,7 +45,7 @@ redis-cli
 
 ### 3. Client Connection Test
 
-1. Connect WebUI or test client to instance 1 (port 5000)
+1. Connect WebAdmin or test client to instance 1 (port 5000)
 2. Connect another client to instance 2 (port 5001)
 3. Trigger an event (e.g., update model mapping via Admin API)
 4. Verify both clients receive the update

@@ -69,7 +69,7 @@ namespace ConduitLLM.Http.EventHandlers
                 // - Metadata extraction
                 // - CDN cache warming
                 
-                // Send completion notification to WebUI
+                // Send completion notification to WebAdmin
                 await _notificationService.NotifyImageGenerationCompletedAsync(
                     message.TaskId,
                     message.Images.Select(img => img.Url ?? string.Empty).ToArray(),

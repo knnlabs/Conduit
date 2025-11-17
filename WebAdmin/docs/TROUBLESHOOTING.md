@@ -17,9 +17,9 @@
    console.log(authStore?.getState());
    ```
 
-2. Verify WebUI virtual key exists:
+2. Verify WebAdmin virtual key exists:
    - Navigate to Virtual Keys page
-   - Look for "WebUI Admin Access" key
+   - Look for "WebAdmin Admin Access" key
    - If missing, log out and log back in
 
 3. Force key recreation:
@@ -32,18 +32,18 @@
 
 #### Problem: "Invalid admin key" on login
 **Symptoms:**
-- Cannot log into WebUI
+- Cannot log into WebAdmin
 - 401 error on login attempt
 
 **Solutions:**
-1. Verify `CONDUIT_WEBUI_AUTH_KEY` is set:
+1. Verify `CONDUIT_WEBADMIN_AUTH_KEY` is set:
    ```bash
    # Check environment variable
-   echo $CONDUIT_WEBUI_AUTH_KEY
+   echo $CONDUIT_WEBADMIN_AUTH_KEY
    ```
 
 2. Ensure keys are different:
-   - `CONDUIT_WEBUI_AUTH_KEY` ≠ `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`
+   - `CONDUIT_WEBADMIN_AUTH_KEY` ≠ `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`
    - These must be different values
 
 3. Check for trailing spaces or quotes in env file
@@ -145,7 +145,7 @@
    NEXT_PUBLIC_CONDUIT_CORE_API_URL=https://api.example.com
    ```
 
-2. Check API CORS configuration allows WebUI origin
+2. Check API CORS configuration allows WebAdmin origin
 
 3. Use proxy in development:
    ```javascript

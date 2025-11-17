@@ -35,7 +35,7 @@ namespace ConduitLLM.Core.Data
         /// <summary>
         /// Gets the database provider name and connection string based on environment configuration.
         /// </summary>
-        /// <param name="serviceType">Optional service type to apply service-specific connection pool settings (e.g., "CoreAPI", "AdminAPI", "WebUI")</param>
+        /// <param name="serviceType">Optional service type to apply service-specific connection pool settings (e.g., "CoreAPI", "AdminAPI", "WebAdmin")</param>
         /// <param name="logger">Optional logger action for database connection operations.</param>
         /// <returns>A tuple containing the provider name and connection string.</returns>
         public (string ProviderName, string ConnectionStringValue) GetProviderAndConnectionString(string? serviceType, Action<string>? logger = null)
@@ -141,7 +141,7 @@ namespace ConduitLLM.Core.Data
         /// Parses a PostgreSQL URL into a standard .NET connection string format.
         /// </summary>
         /// <param name="postgresUrl">The PostgreSQL URL to parse (e.g., postgres://user:pass@host:port/database).</param>
-        /// <param name="serviceType">Optional service type to apply service-specific connection pool settings (e.g., "CoreAPI", "AdminAPI", "WebUI")</param>
+        /// <param name="serviceType">Optional service type to apply service-specific connection pool settings (e.g., "CoreAPI", "AdminAPI", "WebAdmin")</param>
         /// <returns>A properly formatted PostgreSQL connection string.</returns>
         /// <exception cref="ArgumentNullException">Thrown when postgresUrl is null or empty.</exception>
         /// <exception cref="InvalidOperationException">Thrown when the URL format is invalid.</exception>
@@ -194,9 +194,9 @@ namespace ConduitLLM.Core.Data
                         minPoolSize = DatabaseConstants.ADMIN_API_MIN_POOL_SIZE;
                         maxPoolSize = DatabaseConstants.ADMIN_API_MAX_POOL_SIZE;
                         break;
-                    case "WEBUI":
-                        minPoolSize = DatabaseConstants.WEBUI_MIN_POOL_SIZE;
-                        maxPoolSize = DatabaseConstants.WEBUI_MAX_POOL_SIZE;
+                    case "WEBADMIN":
+                        minPoolSize = DatabaseConstants.WEBADMIN_MIN_POOL_SIZE;
+                        maxPoolSize = DatabaseConstants.WEBADMIN_MAX_POOL_SIZE;
                         break;
                     default:
                         minPoolSize = DatabaseConstants.MIN_POOL_SIZE;

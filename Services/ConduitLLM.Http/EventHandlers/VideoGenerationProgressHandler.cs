@@ -87,7 +87,7 @@ namespace ConduitLLM.Http.EventHandlers
                 // Log significant progress milestones
                 LogProgressMilestone(message);
                 
-                // Send real-time updates to WebUI via SignalR
+                // Send real-time updates to WebAdmin via SignalR
                 await _hubContext.Clients.Group($"video-{message.RequestId}").SendAsync("VideoGenerationProgress", new
                 {
                     taskId = message.RequestId,

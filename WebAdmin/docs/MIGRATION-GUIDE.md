@@ -1,8 +1,8 @@
-# WebUI SDK Migration Guide
+# WebAdmin SDK Migration Guide
 
 ## Overview
 
-This guide helps developers understand the migration from API routes to direct SDK hook usage in the Conduit WebUI.
+This guide helps developers understand the migration from API routes to direct SDK hook usage in the Conduit WebAdmin.
 
 ## Architecture Changes
 

@@ -1,7 +1,7 @@
 /**
  * Access Denied Page
  * 
- * This page is shown when a user without admin privileges attempts to access the admin WebUI.
+ * This page is shown when a user without admin privileges attempts to access the admin WebAdmin.
  * 
  * Feature: External Redirect
  * If the ACCESS_DENIED_REDIRECT environment variable is set, users will be automatically
@@ -38,7 +38,7 @@ export default function AccessDeniedPage() {
         
         <Text ta="center" mb="xl" c="dimmed">
           You don&apos;t have permission to access this application. 
-          Only administrators with proper authorization can use the Conduit WebUI.
+          Only administrators with proper authorization can use the Conduit WebAdmin.
         </Text>
         
         <Text ta="center" mb="xl" size="sm" c="dimmed">

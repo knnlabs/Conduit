@@ -260,7 +260,7 @@ In a Docker environment, services are typically deployed in separate containers:
 
 ```yaml
 services:
-  webui:
+  webadmin:
     image: conduit-webadmin:latest
     environment:
       CONDUIT_ADMIN_API_URL: http://admin:8080

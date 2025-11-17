@@ -1,6 +1,6 @@
 /**
  * Types for chat streaming functionality
- * Framework-agnostic types extracted from WebUI
+ * Framework-agnostic types extracted from WebAdmin
  */
 
 import type { ImageAttachment } from '../utils';

@@ -39,17 +39,17 @@
 
   <!-- Exclude files with compilation errors from compilation temporarily -->
   <ItemGroup>
-    <Compile Remove="WebUI\RepositoryServices\**" />
+    <Compile Remove="WebAdmin\RepositoryServices\**" />
     <Compile Remove="RepositoryServices\**" />
     <Compile Remove="Services\CostDashboardServiceTests.cs" />
     <Compile Remove="Services\VirtualKeyAdapterTests.cs" />
     <Compile Remove="Controllers\LogsControllerNewTests.cs" />
     <Compile Remove="Controllers\ModelProviderMappingControllerTests.cs" />
-    <Compile Remove="WebUI\Providers\VirtualKeyServiceProviderTests.cs" />
-    <Compile Remove="WebUI\Providers\IpFilterServiceProviderTests.cs" />
-    <Compile Remove="WebUI\Providers\ProviderCredentialServiceProviderTests.cs" />
-    <Compile Remove="WebUI\Providers\RequestLogServiceProviderTests.cs" />
-    <Compile Remove="Extensions\LogsSummaryDtoToWebUIDtoExtensions.cs" />
+    <Compile Remove="WebAdmin\Providers\VirtualKeyServiceProviderTests.cs" />
+    <Compile Remove="WebAdmin\Providers\IpFilterServiceProviderTests.cs" />
+    <Compile Remove="WebAdmin\Providers\ProviderCredentialServiceProviderTests.cs" />
+    <Compile Remove="WebAdmin\Providers\RequestLogServiceProviderTests.cs" />
+    <Compile Remove="Extensions\LogsSummaryDtoToWebAdminDtoExtensions.cs" />
     <Compile Remove="Extensions\LogsSummaryDtoExtensions.cs" />
     <!-- Temporarily exclude audio load testing files until implementations are complete -->
     <Compile Remove="LoadTesting\AudioPerformanceBenchmarks.cs" />

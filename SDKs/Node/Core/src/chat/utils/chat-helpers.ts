@@ -1,6 +1,6 @@
 /**
  * Chat utility functions for building message content
- * Extracted from WebUI for reuse in other applications
+ * Extracted from WebAdmin for reuse in other applications
  */
 
 import { ContentHelpers, type TextContent, type ImageContent, type MessageContent } from '../../models/chat';

@@ -49,7 +49,7 @@ CONDUIT_ADMIN_API_URL=http://localhost:5002
 CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your-master-key
 
 # Optional: WebAdmin Virtual Key for core operations
-CONDUIT_WEBUI_VIRTUAL_KEY=your-webadmin-virtual-key
+CONDUIT_WEBADMIN_VIRTUAL_KEY=your-webadmin-virtual-key
 ```
 
 ### Basic App Structure
@@ -275,7 +275,7 @@ export function getServerCoreClient(): ConduitCoreClient {
   if (!coreClient) {
     coreClient = new ConduitCoreClient({
       baseURL: process.env.CONDUIT_CORE_API_URL!,
-      virtualKey: process.env.CONDUIT_WEBUI_VIRTUAL_KEY!,
+      virtualKey: process.env.CONDUIT_WEBADMIN_VIRTUAL_KEY!,
     });
   }
   return coreClient;
@@ -639,7 +639,7 @@ NEXTAUTH_URL=https://yourdomain.com
 CONDUIT_CORE_API_URL=https://core-api.yourdomain.com
 CONDUIT_ADMIN_API_URL=https://admin-api.yourdomain.com
 CONDUIT_API_TO_API_BACKEND_AUTH_KEY=production-master-key
-CONDUIT_WEBUI_VIRTUAL_KEY=production-webadmin-key
+CONDUIT_WEBADMIN_VIRTUAL_KEY=production-webadmin-key
 ```
 
 ### Docker Configuration

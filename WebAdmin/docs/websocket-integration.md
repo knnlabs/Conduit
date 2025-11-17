@@ -1,6 +1,6 @@
 # WebSocket Integration Guide
 
-This document outlines the WebSocket integration for real-time chat features in ConduitLLM WebUI.
+This document outlines the WebSocket integration for real-time chat features in ConduitLLM WebAdmin.
 
 ## Overview
 

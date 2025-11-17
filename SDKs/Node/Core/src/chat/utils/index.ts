@@ -1,6 +1,6 @@
 /**
  * Chat utilities for building and processing chat messages
- * Framework-agnostic utilities extracted from WebUI
+ * Framework-agnostic utilities extracted from WebAdmin
  */
 
 // Chat helpers

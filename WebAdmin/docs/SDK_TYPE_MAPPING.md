@@ -1,10 +1,10 @@
-# SDK to WebUI Type Mappings
+# SDK to WebAdmin Type Mappings
 
-This document tracks the differences between SDK types and WebUI types that need mapping functions.
+This document tracks the differences between SDK types and WebAdmin types that need mapping functions.
 
 ## VirtualKey
 
-| SDK Field (VirtualKeyDto) | WebUI Field (VirtualKey) | Type | Notes |
+| SDK Field (VirtualKeyDto) | WebAdmin Field (VirtualKey) | Type | Notes |
 |---------------------------|--------------------------|------|-------|
 | keyName | name | string | Display name |
 | apiKey | key | string | API key value |
@@ -21,26 +21,26 @@ This document tracks the differences between SDK types and WebUI types that need
 | rateLimitRpd | (not used) | number | SDK only |
 | keyPrefix | (not used) | string | SDK only |
 | metadata | metadata | string vs Record<string,unknown> | Type differs |
-| (not present) | allowedProviders | string[] \| null | WebUI only |
+| (not present) | allowedProviders | string[] \| null | WebAdmin only |
 
 ## Provider
 
-| SDK Field (ProviderCredentialDto) | WebUI Field (Provider) | Type | Notes |
+| SDK Field (ProviderCredentialDto) | WebAdmin Field (Provider) | Type | Notes |
 |-----------------------------------|------------------------|------|-------|
 | id | id | number vs string | Type differs |
 | providerName | name | string | Display name |
-| (combined) | type | string | WebUI derives from name |
+| (combined) | type | string | WebAdmin derives from name |
 | isEnabled | isEnabled | boolean | Same |
 | apiEndpoint | endpoint | string | API endpoint |
-| organizationId | (in configuration) | string | Part of config in WebUI |
+| organizationId | (in configuration) | string | Part of config in WebAdmin |
 | additionalConfig | configuration | string vs Record<string,unknown> | Type differs |
 | createdAt | createdDate | string | Creation timestamp |
 | updatedAt | modifiedDate | string | Last modified |
-| (not present) | supportedModels | string[] | WebUI only |
+| (not present) | supportedModels | string[] | WebAdmin only |
 
 ## ModelMapping
 
-| SDK Field (ModelProviderMappingDto) | WebUI Field (ModelMapping) | Type | Notes |
+| SDK Field (ModelProviderMappingDto) | WebAdmin Field (ModelMapping) | Type | Notes |
 |-------------------------------------|---------------------------|------|-------|
 | id | id | number vs string | Type differs |
 | modelAlias | sourceModel | string | Model identifier |
@@ -56,7 +56,7 @@ This document tracks the differences between SDK types and WebUI types that need
 
 ## ProviderHealth
 
-| SDK Field (ProviderHealthStatusDto) | WebUI Field (ProviderHealth) | Type | Notes |
+| SDK Field (ProviderHealthStatusDto) | WebAdmin Field (ProviderHealth) | Type | Notes |
 |-------------------------------------|------------------------------|------|-------|
 | providerId | providerId | number vs string | Type differs |
 | providerName | providerName | string | Same |
@@ -64,24 +64,24 @@ This document tracks the differences between SDK types and WebUI types that need
 | lastCheckTime | lastChecked | string | Check timestamp |
 | responseTimeMs | responseTime | number | Same |
 | errorMessage | lastError | string | Error details |
-| (not present) | uptime | number | WebUI only |
-| (not present) | errorRate | number | WebUI only |
-| (not present) | incidents | ProviderIncident[] | WebUI only |
+| (not present) | uptime | number | WebAdmin only |
+| (not present) | errorRate | number | WebAdmin only |
+| (not present) | incidents | ProviderIncident[] | WebAdmin only |
 
 ## SystemHealth
 
-| SDK Field (HealthStatusDto) | WebUI Field (SystemHealth) | Type | Notes |
+| SDK Field (HealthStatusDto) | WebAdmin Field (SystemHealth) | Type | Notes |
 |-----------------------------|----------------------------|------|-------|
 | isHealthy | status | boolean vs 'healthy'\|'degraded'\|'unhealthy' | Type differs |
 | version | version | string | Same |
 | timestamp | timestamp | string | Same |
 | services | services | Array structure differs | Different shape |
-| (not present) | uptime | number | WebUI only |
-| (not present) | dependencies | DependencyHealth[] | WebUI only |
+| (not present) | uptime | number | WebAdmin only |
+| (not present) | dependencies | DependencyHealth[] | WebAdmin only |
 
 ## RequestLog
 
-| SDK Field (RequestLogDto) | WebUI Field (RequestLog) | Type | Notes |
+| SDK Field (RequestLogDto) | WebAdmin Field (RequestLog) | Type | Notes |
 |---------------------------|--------------------------|------|-------|
 | id | id | string | Same |
 | timestamp | timestamp | string | Same |
@@ -98,15 +98,15 @@ This document tracks the differences between SDK types and WebUI types that need
 | errorMessage | error | string | Field name differs |
 | ipAddress | clientIp | string | Field name differs |
 | userAgent | userAgent | string | Same |
-| (not present) | virtualKeyName | string | WebUI only |
+| (not present) | virtualKeyName | string | WebAdmin only |
 
 ## Common Type Differences
 
-1. **ID Types**: SDK uses `number` for IDs, WebUI uses `string`
-2. **Metadata**: SDK uses `string`, WebUI uses `Record<string, unknown>`
-3. **Timestamps**: SDK uses `createdAt/updatedAt`, WebUI uses `createdDate/modifiedDate`
-4. **Boolean Names**: SDK uses `isEnabled/isActive`, WebUI varies
-5. **Enums**: SDK uses PascalCase ('Daily'), WebUI uses lowercase ('daily')
+1. **ID Types**: SDK uses `number` for IDs, WebAdmin uses `string`
+2. **Metadata**: SDK uses `string`, WebAdmin uses `Record<string, unknown>`
+3. **Timestamps**: SDK uses `createdAt/updatedAt`, WebAdmin uses `createdDate/modifiedDate`
+4. **Boolean Names**: SDK uses `isEnabled/isActive`, WebAdmin varies
+5. **Enums**: SDK uses PascalCase ('Daily'), WebAdmin uses lowercase ('daily')
 
 ## Next Steps
 

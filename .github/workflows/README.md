@@ -13,7 +13,7 @@ This repository uses a simplified, industry-standard CI/CD pipeline.
 - Publishes NPM packages with `next` tag (only from `master`)
 
 **Artifacts produced from `master`:**
-- Docker: `ghcr.io/knnlabs/conduit-{webui,http,admin}:latest`
+- Docker: `ghcr.io/knnlabs/conduit-{webadmin,http,admin}:latest`
 - NPM: `@conduitllm/{admin,core}@next`
 
 ### 2. Release (`release.yml`)
@@ -25,7 +25,7 @@ This repository uses a simplified, industry-standard CI/CD pipeline.
 - Publishes versioned NPM packages
 
 **Artifacts produced:**
-- Docker: `ghcr.io/knnlabs/conduit-{webui,http,admin}:1.2.3`
+- Docker: `ghcr.io/knnlabs/conduit-{webadmin,http,admin}:1.2.3`
 - NPM: `@conduitllm/{admin,core}@1.2.3`
 - GitHub Release with changelog
 

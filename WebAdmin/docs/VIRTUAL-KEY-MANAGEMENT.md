@@ -2,22 +2,22 @@
 
 ## Overview
 
-The WebUI automatically manages a virtual key for Core API operations. This key is created on first login and reused for all subsequent sessions.
+The WebAdmin automatically manages a virtual key for Core API operations. This key is created on first login and reused for all subsequent sessions.
 
 ## How It Works
 
 ### 1. Initial Setup
-When an admin first logs into the WebUI:
-- System checks for existing "WebUI Admin Access" virtual key
+When an admin first logs into the WebAdmin:
+- System checks for existing "WebAdmin Admin Access" virtual key
 - If not found, creates a new virtual key automatically
 - Key is stored in encrypted storage when available
 
 ### 2. Key Configuration
-The WebUI virtual key is configured with:
+The WebAdmin virtual key is configured with:
 ```typescript
 {
-  name: "WebUI Admin Access",
-  description: "Automatically managed virtual key for WebUI Core API access",
+  name: "WebAdmin Admin Access",
+  description: "Automatically managed virtual key for WebAdmin Core API access",
   providers: ["*"], // Access to all providers
   rateLimits: {
     requestsPerMinute: 100,
@@ -26,7 +26,7 @@ The WebUI virtual key is configured with:
     tokensPerHour: 2000000
   },
   metadata: {
-    source: "WebUI",
+    source: "WebAdmin",
     autoCreated: true,
     createdAt: new Date().toISOString()
   }
@@ -54,13 +54,13 @@ const storedAuth = {
 #### Server-Side Management
 ```typescript
 // utils/virtualKeyManagement.ts
-export async function ensureWebUIVirtualKey(adminClient: ConduitAdminClient) {
+export async function ensureWebAdminVirtualKey(adminClient: ConduitAdminClient) {
   // Check for existing key
-  const existing = await getWebUIVirtualKey(adminClient);
+  const existing = await getWebAdminVirtualKey(adminClient);
   if (existing) return { key: existing, isNew: false };
   
   // Create new key
-  const newKey = await createWebUIVirtualKey(adminClient);
+  const newKey = await createWebAdminVirtualKey(adminClient);
   return { key: newKey.key, isNew: true };
 }
 ```
@@ -123,17 +123,17 @@ If you need to rotate the virtual key:
 ### Programmatic Rotation
 ```typescript
 // In a server-side API route
-export async function rotateWebUIVirtualKey() {
+export async function rotateWebAdminVirtualKey() {
   const adminClient = getServerAdminClient();
   
   // Delete existing key
-  const existing = await getWebUIVirtualKey(adminClient);
+  const existing = await getWebAdminVirtualKey(adminClient);
   if (existing) {
     await adminClient.virtualKeys.delete(existing.id);
   }
   
   // Create new key
-  const newKey = await createWebUIVirtualKey(adminClient);
+  const newKey = await createWebAdminVirtualKey(adminClient);
   return newKey;
 }
 ```
@@ -149,7 +149,7 @@ console.log('Virtual Key:', authStore.getState().virtualKey);
 
 ### View Key in Admin UI
 1. Navigate to Virtual Keys page
-2. Look for "WebUI Admin Access" key
+2. Look for "WebAdmin Admin Access" key
 3. Check usage statistics and rate limit status
 
 ### Common Issues
@@ -168,7 +168,7 @@ console.log('Virtual Key:', authStore.getState().virtualKey);
 
 ## Best Practices
 
-1. **Don't Share Keys**: Virtual keys are tied to the WebUI instance
+1. **Don't Share Keys**: Virtual keys are tied to the WebAdmin instance
 2. **Monitor Usage**: Regularly check key usage in the admin panel
 3. **Rotate Periodically**: Consider rotating keys monthly
 4. **Handle Errors**: Implement proper error handling for key failures
@@ -179,16 +179,16 @@ console.log('Virtual Key:', authStore.getState().virtualKey);
 ### Environment Variables
 ```bash
 # Optional: Custom rate limits (defaults shown)
-WEBUI_VIRTUAL_KEY_RPM=100
-WEBUI_VIRTUAL_KEY_RPH=2000
-WEBUI_VIRTUAL_KEY_TPM=100000
-WEBUI_VIRTUAL_KEY_TPH=2000000
+WEBADMIN_VIRTUAL_KEY_RPM=100
+WEBADMIN_VIRTUAL_KEY_RPH=2000
+WEBADMIN_VIRTUAL_KEY_TPM=100000
+WEBADMIN_VIRTUAL_KEY_TPH=2000000
 ```
 
 ### Custom Key Name
 ```typescript
 // In virtualKeyManagement.ts
-const WEBUI_VIRTUAL_KEY_NAME = process.env.WEBUI_KEY_NAME || "WebUI Admin Access";
+const WEBADMIN_VIRTUAL_KEY_NAME = process.env.WEBADMIN_KEY_NAME || "WebAdmin Admin Access";
 ```
 
 ## Future Enhancements

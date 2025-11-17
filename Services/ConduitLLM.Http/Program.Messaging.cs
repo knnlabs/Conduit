@@ -308,8 +308,8 @@ public partial class Program
                 Console.WriteLine("  - Spend updates (ordered processing with race condition prevention)");
                 Console.WriteLine("  - Provider credential changes (automatic capability refresh)");
                 Console.WriteLine("  - Model capability discovery (shared across all instances)");
-                Console.WriteLine("  - Model mapping changes (real-time WebUI updates via SignalR)");
-                Console.WriteLine("  - Provider health changes (real-time WebUI updates via SignalR)");
+                Console.WriteLine("  - Model mapping changes (real-time WebAdmin updates via SignalR)");
+                Console.WriteLine("  - Provider health changes (real-time WebAdmin updates via SignalR)");
                 Console.WriteLine("  - Global settings changes (system-wide configuration updates)");
                 Console.WriteLine("  - IP filter changes (security policy updates)");
                 Console.WriteLine("  - Model cost changes (pricing updates)");

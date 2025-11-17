@@ -18,16 +18,16 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as EphemeralKeyRequest;
     
-    // Get the WebUI's virtual key from Admin API
+    // Get the WebAdmin's virtual key from Admin API
     const adminClient = getServerAdminClient();
-    let webuiVirtualKey: string;
+    let webAdminVirtualKey: string;
     
     try {
-      webuiVirtualKey = await adminClient.system.getWebUIVirtualKey();
+      webAdminVirtualKey = await adminClient.system.getWebAdminVirtualKey();
     } catch (error) {
-      console.error('Failed to get WebUI virtual key:', error);
+      console.error('Failed to get WebAdmin virtual key:', error);
       return NextResponse.json(
-        { error: 'Failed to get WebUI virtual key' },
+        { error: 'Failed to get WebAdmin virtual key' },
         { status: 500 }
       );
     }
@@ -40,11 +40,11 @@ export async function POST(request: NextRequest) {
     
     // Use Core SDK to generate ephemeral key
     const coreClient = await getServerCoreClient();
-    const response = await coreClient.auth.generateEphemeralKey(webuiVirtualKey, {
+    const response = await coreClient.auth.generateEphemeralKey(webAdminVirtualKey, {
       metadata: {
         sourceIP,
         userAgent,
-        purpose: body.purpose ?? 'web-ui-request'
+        purpose: body.purpose ?? 'web-admin-request'
       }
     });
     

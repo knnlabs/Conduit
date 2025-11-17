@@ -58,7 +58,7 @@ Development Commands (Container):
   exec <cmd>           - Execute any command in WebAdmin container
 
 Local Build Commands (No Container Required):
-  install-local        - Install all dependencies locally (SDKs + WebUI)
+  install-local        - Install all dependencies locally (SDKs + WebAdmin)
   build-local          - Build all TypeScript projects locally
   install-and-build-local - Install and build everything locally (fresh clone)
 
@@ -68,7 +68,7 @@ Utility Commands:
   help                 - Show this help message
 
 Examples:
-  $0 build-webadmin               # Build WebUI
+  $0 build-webadmin               # Build WebAdmin
   $0 build-sdk admin           # Build Admin SDK only
   $0 lint-fix-webadmin           # Fix ESLint errors in WebAdmin
   $0 shell                     # Open shell in WebAdmin container
@@ -101,7 +101,7 @@ exec_in_webadmin() {
     $compose_cmd -f docker-compose.yml -f docker-compose.dev.yml exec "$WEBADMIN_SERVICE" "$@"
 }
 
-# Build WebUI
+# Build WebAdmin
 build_webadmin() {
     log_info "Building WebAdmin in container's isolated .next directory..."
     log_warn "This production build is separate from host .next directory"
@@ -147,25 +147,25 @@ build_sdk() {
     log_info "$sdk_name SDK build completed"
 }
 
-# Lint WebUI
+# Lint WebAdmin
 lint_webadmin() {
     log_info "Running ESLint on WebAdmin..."
     exec_in_webadmin sh -c "cd /app/WebAdmin && npm run lint"
 }
 
-# Lint fix WebUI
+# Lint fix WebAdmin
 lint_fix_webadmin() {
     log_info "Running ESLint with --fix on WebAdmin..."
     exec_in_webadmin sh -c "cd /app/WebAdmin && npm run lint:fix"
 }
 
-# Type check WebUI
+# Type check WebAdmin
 type_check_webadmin() {
     log_info "Running TypeScript type checking on WebAdmin..."
     exec_in_webadmin sh -c "cd /app/WebAdmin && npm run type-check"
 }
 
-# Test WebUI
+# Test WebAdmin
 test_webadmin() {
     log_info "Running WebAdmin tests..."
     exec_in_webadmin sh -c "cd /app/WebAdmin && npm run test"
@@ -292,7 +292,7 @@ build_local() {
     cd "$PROJECT_ROOT/SDKs/Node/Admin"
     npm run build
     
-    # Build WebUI (depends on all SDKs)
+    # Build WebAdmin (depends on all SDKs)
     log_task "Building WebAdmin..."
     cd "$PROJECT_ROOT/WebAdmin"
     npm run build
@@ -312,7 +312,7 @@ install_and_build_local() {
     build_local
 
     log_info "Installation and build completed successfully!"
-    log_info "The WebUI production build is in: $PROJECT_ROOT/WebAdmin/.next (host build)"
+    log_info "The WebAdmin production build is in: $PROJECT_ROOT/WebAdmin/.next (host build)"
     log_warn "Note: Container has its own isolated .next directory when running in Docker"
 }
 

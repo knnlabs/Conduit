@@ -45,7 +45,7 @@ export function Header({
         />
         
         <Text size="lg" fw={600} c="blue">
-          Conduit WebUI
+          Conduit WebAdmin
         </Text>
       </Group>
 

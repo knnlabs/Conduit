@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Conduit WebUI implements multiple security layers to protect administrative operations while enabling efficient client-side API access.
+The Conduit WebAdmin implements multiple security layers to protect administrative operations while enabling efficient client-side API access.
 
 ## Key Security Principles
 
@@ -11,11 +11,11 @@ The Conduit WebUI implements multiple security layers to protect administrative 
 
 | Key | Purpose | Visibility | Used By |
 |-----|---------|------------|---------|
-| `CONDUIT_WEBUI_AUTH_KEY` | Admin login | Server-only | Login endpoint |
+| `CONDUIT_WEBADMIN_AUTH_KEY` | Admin login | Server-only | Login endpoint |
 | `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` | Admin API access | Server-only | Admin SDK |
 | Virtual Key | Core API access | Client-side | Core SDK |
 
-**Security Rule**: Never use the same value for `CONDUIT_WEBUI_AUTH_KEY` and `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`.
+**Security Rule**: Never use the same value for `CONDUIT_WEBADMIN_AUTH_KEY` and `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`.
 
 ### 2. Virtual Key Exposure
 
@@ -120,14 +120,14 @@ function validateMasterKeyFormat(key: string) {
 #### Development
 ```bash
 # .env.local (git ignored)
-CONDUIT_WEBUI_AUTH_KEY=dev-auth-key-change-me
+CONDUIT_WEBADMIN_AUTH_KEY=dev-auth-key-change-me
 CONDUIT_API_TO_API_BACKEND_AUTH_KEY=dev-master-key-change-me
 ```
 
 #### Production
 ```bash
 # Use strong, unique keys
-CONDUIT_WEBUI_AUTH_KEY=$(openssl rand -hex 32)
+CONDUIT_WEBADMIN_AUTH_KEY=$(openssl rand -hex 32)
 CONDUIT_API_TO_API_BACKEND_AUTH_KEY=$(openssl rand -hex 32)
 
 # Never commit production keys
@@ -137,7 +137,7 @@ CONDUIT_API_TO_API_BACKEND_AUTH_KEY=$(openssl rand -hex 32)
 ### 2. Key Management
 
 #### Regular Rotation
-1. Rotate `CONDUIT_WEBUI_AUTH_KEY` monthly
+1. Rotate `CONDUIT_WEBADMIN_AUTH_KEY` monthly
 2. Update all admin users after rotation
 3. Monitor for unauthorized access attempts
 
@@ -145,8 +145,8 @@ CONDUIT_API_TO_API_BACKEND_AUTH_KEY=$(openssl rand -hex 32)
 ```typescript
 // Check key usage regularly
 const keys = await adminClient.virtualKeys.list();
-const webuiKey = keys.find(k => k.name === 'WebUI Admin Access');
-console.log('Usage:', webuiKey.usage);
+const webadminKey = keys.find(k => k.name === 'WebAdmin Admin Access');
+console.log('Usage:', webadminKey.usage);
 ```
 
 ### 3. Access Control
@@ -214,8 +214,8 @@ console.log('Login attempt:', {
 5. Investigate how compromise occurred
 
 ### If Admin Key is Compromised
-1. Change `CONDUIT_WEBUI_AUTH_KEY` immediately
-2. Restart WebUI service
+1. Change `CONDUIT_WEBADMIN_AUTH_KEY` immediately
+2. Restart WebAdmin service
 3. Notify all administrators
 4. Review authentication logs
 5. Consider additional security measures

@@ -523,7 +523,7 @@ main() {
         esac
     done
     
-    print_section_header "WEBUI LINT AND BUILD VALIDATION"
+    print_section_header "WEBADMIN LINT AND BUILD VALIDATION"
     
     # Always run basic checks
     check_project_root
