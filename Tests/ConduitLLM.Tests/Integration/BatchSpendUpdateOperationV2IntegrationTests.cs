@@ -192,7 +192,7 @@ namespace ConduitLLM.Tests.Integration
             Assert.Equal(0, result.SuccessCount);
             Assert.Equal(1, result.FailedCount);
             Assert.Single(result.Errors);
-            Assert.Contains("Virtual key not found", result.Errors.First());
+            Assert.Contains("Virtual key not found", result.Errors.First().Error);
         }
 
         [Fact]
