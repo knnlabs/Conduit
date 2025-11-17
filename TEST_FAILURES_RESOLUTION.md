@@ -213,10 +213,12 @@ After the initial fixes, additional compilation errors were discovered:
 ## Summary
 
 ✅ **All compilation errors have been resolved**
+⚠️ **Runtime test failures fixed** (Round 3)
 
-**Total errors fixed**: 13
+**Total errors fixed**: 14
 - Round 1: 3 errors (base class, ambiguous reference, Dispose pattern)
 - Round 2: 10 errors (mock constructor, logging extension, Task return types)
+- Round 3: 1 error (retry logic not working due to exception catching)
 
 **Resolution approach**:
 1. Incorrect base class inheritance → Changed to TestBase
@@ -225,5 +227,64 @@ After the initial fixes, additional compilation errors were discovered:
 4. Mock constructor ambiguity → Use alias in constructor
 5. Missing AddXUnit extension → Use AddDebug instead
 6. Task/Task<bool> type mismatch → Return Task.FromResult(true)
+7. Retry logic broken → Remove try-catch from ProcessItemAsync to allow exceptions to propagate
 
 All fixes have been committed and pushed. The branch is now ready for CI validation.
+
+---
+
+## Additional Errors Found (Round 3)
+
+After fixing all compilation errors, runtime test failures were discovered related to retry logic.
+
+### 10. Retry Logic Not Working (Runtime Test Failure)
+**Affected Tests**:
+1. `ExecuteAsync_WithRetryableError_ShouldRetryAutomatically` - Expected 1 success after retry, got 0
+2. `Benchmark_V2_RetryOverhead_WithFailures` - Expected 50 successes after retries, got 40
+
+**Root Cause**:
+`BatchSpendUpdateOperationV2.ProcessItemAsync` had a try-catch block that caught ALL exceptions and converted them to failed `BatchItemResult` objects. This prevented exceptions from propagating to the base class retry logic in `BatchOperationBase.ProcessItemWithRetryAsync`.
+
+**Expected Pattern**:
+- `ProcessItemAsync` should throw exceptions for retryable errors
+- Base class `ProcessItemWithRetryAsync` catches exceptions and applies retry logic
+- Only non-retryable exceptions or exhausted retries result in failed results
+
+**Incorrect Implementation** (lines 91-133):
+```csharp
+protected override async Task<BatchItemResult> ProcessItemAsync(...)
+{
+    try
+    {
+        await _virtualKeyService.UpdateSpendAsync(...);
+        await _spendNotificationService.NotifySpendUpdatedAsync(...);
+        return new BatchItemResult { Success = true, ... };
+    }
+    catch (Exception ex)  // ❌ Catches ALL exceptions, prevents retry
+    {
+        return new BatchItemResult { Success = false, Error = ex.Message };
+    }
+}
+```
+
+**Correct Implementation**:
+```csharp
+protected override async Task<BatchItemResult> ProcessItemAsync(...)
+{
+    // Apply spend update (exceptions will propagate to base class retry logic)
+    await _virtualKeyService.UpdateSpendAsync(...);
+    await _spendNotificationService.NotifySpendUpdatedAsync(...);
+    return new BatchItemResult { Success = true, ... };
+}
+```
+
+**Evidence from Test Code**:
+The test helper class `TestBatchOperation` in BatchOperationBaseTests.cs (lines 313-326) demonstrates the correct pattern - no try-catch block in ProcessItemAsync, allowing exceptions to propagate.
+
+**File Modified**:
+- `Shared/ConduitLLM.Core/Services/BatchOperations/BatchSpendUpdateOperationV2.cs` (lines 91-117)
+- Removed try-catch block
+- Added comment explaining exception propagation
+
+**Expected Result**:
+Retry tests should now pass as TimeoutException will propagate to base class, triggering exponential backoff retry logic.

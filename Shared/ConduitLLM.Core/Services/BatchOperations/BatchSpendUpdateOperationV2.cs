@@ -92,44 +92,28 @@ namespace ConduitLLM.Core.Services.BatchOperations
             SpendUpdateItem item,
             CancellationToken cancellationToken)
         {
-            try
+            // Apply spend update (exceptions will propagate to base class retry logic)
+            await _virtualKeyService.UpdateSpendAsync(item.VirtualKeyId, item.Amount);
+
+            // Send real-time notification
+            await _spendNotificationService.NotifySpendUpdatedAsync(
+                item.VirtualKeyId,
+                item.Amount,
+                item.Model,
+                item.Provider);
+
+            return new BatchItemResult
             {
-                // Apply spend update
-                await _virtualKeyService.UpdateSpendAsync(item.VirtualKeyId, item.Amount);
-
-                // Send real-time notification
-                await _spendNotificationService.NotifySpendUpdatedAsync(
-                    item.VirtualKeyId,
-                    item.Amount,
-                    item.Model,
-                    item.Provider);
-
-                return new BatchItemResult
+                Success = true,
+                ItemIdentifier = $"VKey-{item.VirtualKeyId}",
+                Data = new
                 {
-                    Success = true,
-                    ItemIdentifier = $"VKey-{item.VirtualKeyId}",
-                    Data = new
-                    {
-                        VirtualKeyId = item.VirtualKeyId,
-                        Amount = item.Amount,
-                        Model = item.Model,
-                        Provider = item.Provider
-                    }
-                };
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex,
-                    "Failed to process spend update for virtual key {VirtualKeyId}",
-                    item.VirtualKeyId);
-
-                return new BatchItemResult
-                {
-                    Success = false,
-                    ItemIdentifier = $"VKey-{item.VirtualKeyId}",
-                    Error = ex.Message
-                };
-            }
+                    VirtualKeyId = item.VirtualKeyId,
+                    Amount = item.Amount,
+                    Model = item.Model,
+                    Provider = item.Provider
+                }
+            };
         }
 
         protected override string GetItemIdentifier(SpendUpdateItem item) => $"VKey-{item.VirtualKeyId}";
