@@ -5,8 +5,19 @@ using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 namespace ConduitLLM.Core.Services.BatchOperations
 {
     /// <summary>
-    /// Batch operation for updating spend amounts across multiple virtual keys
+    /// Batch operation for updating spend amounts across multiple virtual keys.
+    /// DEPRECATED: Use BatchSpendUpdateOperationV2 instead for idempotency support and retry logic.
     /// </summary>
+    /// <remarks>
+    /// This implementation is maintained for backward compatibility but lacks:
+    /// - Idempotency tracking (risk of duplicate processing)
+    /// - Automatic retry logic for transient failures
+    /// - Standardized error handling patterns
+    ///
+    /// Migration: Use BatchSpendUpdateOperationV2 and provide X-Idempotency-Token header.
+    /// Scheduled for removal: TBD (after all clients migrate to V2)
+    /// </remarks>
+    [Obsolete("Use BatchSpendUpdateOperationV2 instead. This version lacks idempotency support and will be removed in a future release.", false)]
     public class BatchSpendUpdateOperation : IBatchSpendUpdateOperation
     {
         private readonly ILogger<BatchSpendUpdateOperation> _logger;
