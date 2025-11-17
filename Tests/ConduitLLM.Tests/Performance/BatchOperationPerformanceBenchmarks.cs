@@ -27,12 +27,12 @@ namespace ConduitLLM.Tests.Performance
 
         public BatchOperationPerformanceBenchmarks(ITestOutputHelper output) : base(output)
         {
-            _mockVirtualKeyService = new Mock<IVirtualKeyService>();
+            _mockVirtualKeyService = new Mock<CoreVirtualKeyService>();
             _mockSpendNotificationService = new Mock<ISpendNotificationService>();
             _mockIdempotencyService = new Mock<IBatchOperationIdempotencyService>();
 
             var services = new ServiceCollection();
-            services.AddLogging(builder => builder.AddXUnit(output));
+            services.AddLogging(builder => builder.AddDebug());
             services.AddScoped<IBatchOperationService, ConduitLLM.Core.Services.BatchOperationService>();
             services.AddSingleton<ITaskHub>(_ => new Mock<ITaskHub>().Object);
             services.AddSingleton<CoreVirtualKeyService>(_ => _mockVirtualKeyService.Object);
@@ -48,7 +48,7 @@ namespace ConduitLLM.Tests.Performance
                 .ReturnsAsync(new ConduitLLM.Configuration.Entities.VirtualKey { Id = 1, KeyName = "Test" });
 
             _mockVirtualKeyService.Setup(s => s.UpdateSpendAsync(It.IsAny<int>(), It.IsAny<decimal>()))
-                .Returns(Task.CompletedTask);
+                .Returns(Task.FromResult(true));
 
             _mockSpendNotificationService.Setup(s => s.NotifySpendUpdatedAsync(
                     It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>()))
@@ -167,7 +167,7 @@ namespace ConduitLLM.Tests.Performance
                         throw new TimeoutException("Simulated transient error");
                     }
 
-                    return Task.CompletedTask;
+                    return Task.FromResult(true);
                 });
 
             // Act
@@ -227,7 +227,11 @@ namespace ConduitLLM.Tests.Performance
 
             // Simulate some processing time
             _mockVirtualKeyService.Setup(s => s.UpdateSpendAsync(It.IsAny<int>(), It.IsAny<decimal>()))
-                .Returns(async () => await Task.Delay(10)); // 10ms per item
+                .Returns(async () =>
+                {
+                    await Task.Delay(10); // 10ms per item
+                    return true;
+                });
 
             // Act
             var stopwatch = Stopwatch.StartNew();

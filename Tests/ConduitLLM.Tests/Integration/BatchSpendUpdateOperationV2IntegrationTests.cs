@@ -25,14 +25,14 @@ namespace ConduitLLM.Tests.Integration
 
         public BatchSpendUpdateOperationV2IntegrationTests(ITestOutputHelper output) : base(output)
         {
-            _mockVirtualKeyService = new Mock<IVirtualKeyService>();
+            _mockVirtualKeyService = new Mock<CoreVirtualKeyService>();
             _mockSpendNotificationService = new Mock<ISpendNotificationService>();
             _mockIdempotencyService = new Mock<IBatchOperationIdempotencyService>();
 
             var services = new ServiceCollection();
 
             // Add logging
-            services.AddLogging(builder => builder.AddXUnit(output));
+            services.AddLogging(builder => builder.AddDebug());
 
             // Add required services
             services.AddScoped<IBatchOperationService, ConduitLLM.Core.Services.BatchOperationService>();
@@ -60,7 +60,7 @@ namespace ConduitLLM.Tests.Integration
                 .ReturnsAsync(new ConduitLLM.Configuration.Entities.VirtualKey { Id = 1, KeyName = "Test" });
 
             _mockVirtualKeyService.Setup(s => s.UpdateSpendAsync(It.IsAny<int>(), It.IsAny<decimal>()))
-                .Returns(Task.CompletedTask);
+                .Returns(Task.FromResult(true));
 
             _mockSpendNotificationService.Setup(s => s.NotifySpendUpdatedAsync(
                     It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>()))
@@ -105,7 +105,7 @@ namespace ConduitLLM.Tests.Integration
                 .ReturnsAsync(new ConduitLLM.Configuration.Entities.VirtualKey { Id = 1, KeyName = "Test" });
 
             _mockVirtualKeyService.Setup(s => s.UpdateSpendAsync(It.IsAny<int>(), It.IsAny<decimal>()))
-                .Returns(Task.CompletedTask);
+                .Returns(Task.FromResult(true));
 
             _mockSpendNotificationService.Setup(s => s.NotifySpendUpdatedAsync(
                     It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>()))
@@ -210,7 +210,7 @@ namespace ConduitLLM.Tests.Integration
                 .ReturnsAsync((ConduitLLM.Configuration.Entities.VirtualKey?)null);
 
             _mockVirtualKeyService.Setup(s => s.UpdateSpendAsync(It.IsAny<int>(), It.IsAny<decimal>()))
-                .Returns(Task.CompletedTask);
+                .Returns(Task.FromResult(true));
 
             _mockSpendNotificationService.Setup(s => s.NotifySpendUpdatedAsync(
                     It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>()))
@@ -257,7 +257,7 @@ namespace ConduitLLM.Tests.Integration
                     {
                         throw new TimeoutException("Transient error");
                     }
-                    return Task.CompletedTask;
+                    return Task.FromResult(true);
                 });
 
             _mockSpendNotificationService.Setup(s => s.NotifySpendUpdatedAsync(
@@ -294,7 +294,7 @@ namespace ConduitLLM.Tests.Integration
                 .ReturnsAsync(new ConduitLLM.Configuration.Entities.VirtualKey { Id = 1, KeyName = "Test" });
 
             _mockVirtualKeyService.Setup(s => s.UpdateSpendAsync(It.IsAny<int>(), It.IsAny<decimal>()))
-                .Returns(Task.CompletedTask);
+                .Returns(Task.FromResult(true));
 
             _mockSpendNotificationService.Setup(s => s.NotifySpendUpdatedAsync(
                     It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>()))
