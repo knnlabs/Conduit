@@ -6,6 +6,7 @@ import ImageSettings from '../ImageSettings';
 import { useImageStore } from '../../hooks/useImageStore';
 import { useModelMetadata } from '../../hooks/useModelMetadata';
 import type { DiscoveryModel } from '@/app/chat/hooks/useDiscoveryModels';
+import { ProviderType } from '@knn_labs/conduit-core-client';
 
 // Mock Mantine notifications first
 jest.mock('@mantine/notifications', () => ({
@@ -77,41 +78,56 @@ describe('ImageSettings', () => {
     {
       id: 'dall-e-3',
       display_name: 'DALL-E 3',
-      provider: 'openai',
-      category: 'image',
-      capabilities: [],
-      context_window: 0,
-      max_output_tokens: 0,
-      input_cost_per_million: 0,
-      output_cost_per_million: 0,
-      cache_write_cost_per_million: 0,
-      cache_read_cost_per_million: 0
+      provider: ProviderType.OpenAI,
+      capabilities: {
+        chat: false,
+        chat_stream: false,
+        embeddings: false,
+        image_generation: true,
+        vision: false,
+        video_generation: false,
+        video_understanding: false,
+        function_calling: false,
+        tool_use: false,
+        json_mode: false
+      },
+      last_verified: new Date().toISOString()
     },
     {
       id: 'dall-e-2',
       display_name: 'DALL-E 2',
-      provider: 'openai',
-      category: 'image',
-      capabilities: [],
-      context_window: 0,
-      max_output_tokens: 0,
-      input_cost_per_million: 0,
-      output_cost_per_million: 0,
-      cache_write_cost_per_million: 0,
-      cache_read_cost_per_million: 0
+      provider: ProviderType.OpenAI,
+      capabilities: {
+        chat: false,
+        chat_stream: false,
+        embeddings: false,
+        image_generation: true,
+        vision: false,
+        video_generation: false,
+        video_understanding: false,
+        function_calling: false,
+        tool_use: false,
+        json_mode: false
+      },
+      last_verified: new Date().toISOString()
     },
     {
       id: 'stable-diffusion',
       display_name: 'Stable Diffusion',
-      provider: 'stability',
-      category: 'image',
-      capabilities: [],
-      context_window: 0,
-      max_output_tokens: 0,
-      input_cost_per_million: 0,
-      output_cost_per_million: 0,
-      cache_write_cost_per_million: 0,
-      cache_read_cost_per_million: 0
+      provider: ProviderType.Replicate,
+      capabilities: {
+        chat: false,
+        chat_stream: false,
+        embeddings: false,
+        image_generation: true,
+        vision: false,
+        video_generation: false,
+        video_understanding: false,
+        function_calling: false,
+        tool_use: false,
+        json_mode: false
+      },
+      last_verified: new Date().toISOString()
     }
   ];
 

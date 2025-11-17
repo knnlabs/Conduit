@@ -4,16 +4,27 @@ import { useState, useCallback } from 'react';
 import { notifications } from '@mantine/notifications';
 import { useQuery } from '@tanstack/react-query';
 
-import type { 
-  ProviderDto, 
-  CreateProviderDto, 
+import type {
+  ProviderDto,
+  CreateProviderDto,
   UpdateProviderDto,
-  ProviderHealthStatusDto,
   ProviderKeyCredentialDto,
   CreateProviderKeyCredentialDto
 } from '@knn_labs/conduit-admin-client';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { getErrorMessage } from '@/lib/utils/error-utils';
+import { ProviderType } from '@knn_labs/conduit-core-client';
+
+// Local type definition for provider health status (not available in SDK)
+interface ProviderHealthStatusDto {
+  providerType: ProviderType;
+  isHealthy: boolean;
+  lastCheckTime: string;
+  consecutiveFailures: number;
+  consecutiveSuccesses: number;
+  averageResponseTimeMs: number;
+  uptime: number;
+}
 
 // Type guard for health data response
 interface HealthDataResponse {

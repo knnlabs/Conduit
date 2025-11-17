@@ -163,10 +163,9 @@ jest.mock('@mantine/core', () => {
     </div>
   );
 
-  const Text = ({ children, fw, size, c, lineClamp, component }: TextProps) => {
-    const Component = component ?? 'span';
+  const Text = ({ children, fw, size, c, lineClamp }: TextProps) => {
     return (
-      <Component
+      <span
         data-testid="text"
         data-fw={fw}
         data-size={size}
@@ -174,7 +173,7 @@ jest.mock('@mantine/core', () => {
         data-lineclamp={lineClamp}
       >
         {children}
-      </Component>
+      </span>
     );
   };
 
@@ -331,7 +330,6 @@ describe('VideoQueue', () => {
       retryGeneration: mockRetryGeneration,
       generateVideo: jest.fn(),
       isGenerating: false,
-      currentVideoTask: null,
       isRetrying: false,
       signalRConnected: false,
       isProgressTrackingEnabled: false

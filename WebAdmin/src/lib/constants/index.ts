@@ -10,8 +10,7 @@ export * from './modelCapabilities';
 
 
 // Re-export commonly used SDK constants
-export { 
+export {
   BUDGET_DURATION,
   HTTP_STATUS,
-  StatusType,
 } from '@knn_labs/conduit-admin-client';

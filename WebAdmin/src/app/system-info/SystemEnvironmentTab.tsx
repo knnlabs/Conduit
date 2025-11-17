@@ -84,23 +84,6 @@ export function SystemEnvironmentTab({ systemInfo }: SystemEnvironmentTabProps) 
             </Table.Tr>
             <Table.Tr>
               <Table.Td>
-                <Code>Provider Health</Code>
-              </Table.Td>
-              <Table.Td>
-                <Code>{systemInfo?.features?.providerHealth ? 'Enabled' : 'Disabled'}</Code>
-              </Table.Td>
-              <Table.Td>
-                <Badge 
-                  variant="light" 
-                  size="sm" 
-                  color={systemInfo?.features?.providerHealth ? 'green' : 'gray'}
-                >
-                  Feature
-                </Badge>
-              </Table.Td>
-            </Table.Tr>
-            <Table.Tr>
-              <Table.Td>
                 <Code>Cost Tracking</Code>
               </Table.Td>
               <Table.Td>
