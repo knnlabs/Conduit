@@ -266,11 +266,12 @@ export function useProviderApi() {
       }
 
       // Safely extract uptime value
-      const uptimeValue = typeof healthData.uptime === 'number'
-        ? healthData.uptime
-        : typeof healthData.uptime === 'object' && healthData.uptime?.percentage !== undefined
-          ? healthData.uptime.percentage
-          : 0;
+      let uptimeValue = 0;
+      if (typeof healthData.uptime === 'number') {
+        uptimeValue = healthData.uptime;
+      } else if (typeof healthData.uptime === 'object' && healthData.uptime?.percentage !== undefined) {
+        uptimeValue = healthData.uptime.percentage;
+      }
 
       // Map to ProviderHealthStatusDto format with proper type narrowing
       const result: ProviderHealthStatusDto = {
