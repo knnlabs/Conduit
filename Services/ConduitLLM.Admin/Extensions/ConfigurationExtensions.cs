@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Core.Services;
 
 namespace ConduitLLM.Admin.Extensions
 {

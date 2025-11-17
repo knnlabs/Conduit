@@ -5,7 +5,7 @@ using ConduitLLM.Core.Models;
 
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Configuration
+namespace ConduitLLM.Core.Services
 {
     /// <summary>
     /// Caching decorator for IModelProviderMappingService that reduces database load

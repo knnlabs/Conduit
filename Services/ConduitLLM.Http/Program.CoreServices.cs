@@ -203,8 +203,8 @@ public partial class Program
         {
             var innerService = provider.GetRequiredService<ConduitLLM.Configuration.ModelProviderMappingService>();
             var cacheManager = provider.GetRequiredService<ConduitLLM.Core.Interfaces.ICacheManager>();
-            var logger = provider.GetRequiredService<ILogger<ConduitLLM.Configuration.CachedModelProviderMappingService>>();
-            return new ConduitLLM.Configuration.CachedModelProviderMappingService(innerService, cacheManager, logger);
+            var logger = provider.GetRequiredService<ILogger<ConduitLLM.Core.Services.CachedModelProviderMappingService>>();
+            return new ConduitLLM.Core.Services.CachedModelProviderMappingService(innerService, cacheManager, logger);
         });
         Console.WriteLine("[Conduit] Model provider mapping service registered with caching - reduces database queries by 80-95%");
 

@@ -35,8 +35,4 @@
     <PackageReference Include="MassTransit" Version="8.5.5" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\ConduitLLM.Core\ConduitLLM.Core.csproj" />
-  </ItemGroup>
-
 </Project>
