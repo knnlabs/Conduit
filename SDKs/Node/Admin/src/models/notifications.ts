@@ -1,7 +1,6 @@
 import type {
   NavigationStateUpdateEvent,
   ModelDiscoveredEvent,
-  ProviderHealthChangeEvent,
   VirtualKeyEvent,
   ConfigurationChangeEvent,
   AdminNotificationEvent
@@ -12,7 +11,6 @@ import type {
  */
 export type NavigationStateUpdateCallback = (event: NavigationStateUpdateEvent) => void;
 export type ModelDiscoveredCallback = (event: ModelDiscoveredEvent) => void;
-export type ProviderHealthChangeCallback = (event: ProviderHealthChangeEvent) => void;
 export type VirtualKeyEventCallback = (event: VirtualKeyEvent) => void;
 export type ConfigurationChangeCallback = (event: ConfigurationChangeEvent) => void;
 export type AdminNotificationCallback = (event: AdminNotificationEvent) => void;
@@ -29,7 +27,7 @@ export interface NotificationSubscription {
   /**
    * The event type this subscription is for
    */
-  eventType: 'navigationStateUpdate' | 'modelDiscovered' | 'providerHealthChange' | 
+  eventType: 'navigationStateUpdate' | 'modelDiscovered' |
              'virtualKeyEvent' | 'configurationChange' | 'adminNotification';
   
   /**
@@ -87,15 +85,7 @@ export interface IRealtimeNotificationService {
     callback: ModelDiscoveredCallback,
     options?: AdminNotificationOptions
   ): Promise<NotificationSubscription>;
-  
-  /**
-   * Subscribe to provider health changes
-   */
-  onProviderHealthChange(
-    callback: ProviderHealthChangeCallback,
-    options?: AdminNotificationOptions
-  ): Promise<NotificationSubscription>;
-  
+
   /**
    * Subscribe to virtual key events
    */

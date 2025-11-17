@@ -3,7 +3,6 @@ import { NavigationStateHubClient } from '../signalr/NavigationStateHubClient';
 import type {
   NavigationStateUpdateCallback,
   ModelDiscoveredCallback,
-  ProviderHealthChangeCallback,
   VirtualKeyEventCallback,
   ConfigurationChangeCallback,
   AdminNotificationCallback,
@@ -13,8 +12,7 @@ import type {
 } from '../models/notifications';
 import type {
   NavigationStateUpdateEvent,
-  ModelDiscoveredEvent,
-  ProviderHealthChangeEvent
+  ModelDiscoveredEvent
 } from '../models/signalr';
 
 /**
@@ -106,44 +104,6 @@ export class RealtimeNotificationsService implements IRealtimeNotificationServic
 
     return subscription;
   }
-
-  /**
-   * Subscribe to provider health changes
-   */
-  async onProviderHealthChange(
-    callback: ProviderHealthChangeCallback,
-    options?: AdminNotificationOptions
-  ): Promise<NotificationSubscription> {
-    this.navigationStateHub ??= this.signalRService.getOrCreateNavigationStateHub();
-
-    const subscriptionId = this.generateSubscriptionId();
-
-    this.navigationStateHub.onProviderHealthChange((event: ProviderHealthChangeEvent) => {
-      // Apply filters
-      if (options?.filter?.providers && !options.filter.providers.includes(event.providerType.toString())) {
-        return;
-      }
-
-      callback(event);
-    });
-
-    const subscription: NotificationSubscription = {
-      id: subscriptionId,
-      eventType: 'providerHealthChange',
-      unsubscribe: () => this.unsubscribe(subscriptionId),
-    };
-
-    this.subscriptions.set(subscriptionId, subscription);
-
-    if (options?.onConnectionStateChange) {
-      this.connectionStateCallbacks.add(options.onConnectionStateChange);
-    }
-
-    return subscription;
-  }
-
-
-
 
   /**
    * Unsubscribe from all notifications

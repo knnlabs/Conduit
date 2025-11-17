@@ -11,7 +11,6 @@ import {
 import { ENDPOINTS } from '../constants';
 import { ProviderType } from '../models/providerType';
 import { classifyApiKeyTestError } from '../utils/error-classification';
-import { FetchProvidersServiceHealth } from './FetchProvidersServiceHealth';
 import { FetchProvidersServiceKeys } from './FetchProvidersServiceKeys';
 
 // Type aliases for API compatibility - using existing DTO types since generated schemas are missing
@@ -114,11 +113,9 @@ function normalizeEnumValue(value: string): ApiKeyTestResult {
  * Type-safe Providers service using native fetch
  */
 export class FetchProvidersService {
-  private readonly healthService: FetchProvidersServiceHealth;
   private readonly keysService: FetchProvidersServiceKeys;
 
   constructor(private readonly client: FetchBaseApiClient) {
-    this.healthService = new FetchProvidersServiceHealth(client);
     this.keysService = new FetchProvidersServiceKeys(client);
   }
 
@@ -275,27 +272,6 @@ export class FetchProvidersService {
     } catch (error) {
       return classifyApiKeyTestError(error, providerConfig.providerType);
     }
-  }
-
-  // Health-related methods are delegated to the health service
-  async getHealthStatus(...args: Parameters<FetchProvidersServiceHealth['getHealthStatus']>) {
-    return this.healthService.getHealthStatus(...args);
-  }
-
-  async exportHealthData(...args: Parameters<FetchProvidersServiceHealth['exportHealthData']>) {
-    return this.healthService.exportHealthData(...args);
-  }
-
-  async getHealth(...args: Parameters<FetchProvidersServiceHealth['getHealth']>) {
-    return this.healthService.getHealth(...args);
-  }
-
-  async listWithHealth(...args: Parameters<FetchProvidersServiceHealth['listWithHealth']>) {
-    return this.healthService.listWithHealth(...args);
-  }
-
-  async getHealthMetrics(...args: Parameters<FetchProvidersServiceHealth['getHealthMetrics']>) {
-    return this.healthService.getHealthMetrics(...args);
   }
 
   /**

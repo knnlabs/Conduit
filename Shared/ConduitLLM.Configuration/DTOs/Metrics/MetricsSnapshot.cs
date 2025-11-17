@@ -26,11 +26,6 @@ namespace ConduitLLM.Configuration.DTOs.Metrics
         public BusinessMetrics Business { get; set; } = new();
 
         /// <summary>
-        /// Provider health status.
-        /// </summary>
-        public List<ProviderHealthStatus> ProviderHealth { get; set; } = new();
-
-        /// <summary>
         /// System resource metrics.
         /// </summary>
         public SystemMetrics System { get; set; } = new();
