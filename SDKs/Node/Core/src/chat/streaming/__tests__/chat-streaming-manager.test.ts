@@ -9,11 +9,6 @@ import type { StreamingConfig, StreamingCallbacks, StreamMessageOptions } from '
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
-// Mock UUID
-jest.mock('uuid', () => ({
-  v4: () => 'test-uuid-123'
-}));
-
 // Mock SSE stream parser
 jest.mock('../../utils', () => ({
   parseSSEStream: jest.fn(),
