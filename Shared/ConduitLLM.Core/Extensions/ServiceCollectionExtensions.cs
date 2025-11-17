@@ -31,12 +31,27 @@ namespace ConduitLLM.Core.Extensions
             // Register model capability service - use database-backed implementation
             services.TryAddScoped<IModelCapabilityService, DatabaseModelCapabilityService>();
 
-            // Register token counter - changed to Scoped to match IModelCapabilityService lifetime
-            services.AddScoped<ITokenCounter, TiktokenCounter>();
-            
+            // Register token counter factory for multi-provider tokenization support
+            services.AddScoped<TokenCounterFactory>();
+
+            // Register individual token counters
+            services.AddScoped<TiktokenCounter>();
+            services.AddScoped<FallbackTokenCounter>();
+            services.AddScoped<LlamaTokenCounter>();
+
+            // Register default token counter (for backward compatibility)
+            services.AddScoped<ITokenCounter>(serviceProvider =>
+            {
+                var factory = serviceProvider.GetRequiredService<TokenCounterFactory>();
+                // Return fallback counter as default - factory method will be used for model-specific selection
+                return new FallbackTokenCounter(
+                    serviceProvider.GetRequiredService<ILogger<FallbackTokenCounter>>(),
+                    serviceProvider.GetService<IModelCapabilityService>());
+            });
+
             // Register image token calculator for accurate vision model billing
             services.AddScoped<IImageTokenCalculator, ImageTokenCalculator>();
-            
+
             // Register usage estimation service for streaming responses without usage data
             services.AddScoped<IUsageEstimationService, UsageEstimationService>();
 
