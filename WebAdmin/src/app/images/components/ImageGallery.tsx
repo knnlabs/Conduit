@@ -75,15 +75,29 @@ export default function ImageGallery() {
 
   // Extract metadata for all images when they change
   useEffect(() => {
+    const abortController = new AbortController();
+    let isMounted = true;
+
     const extractAllMetadata = async () => {
       const extractor = new ImageMetadataExtractor();
       const metadataMap: Record<string, MediaMetadata> = {};
-      
+
       for (const image of results) {
+        // Check if component is still mounted and not aborted
+        if (!isMounted || abortController.signal.aborted) {
+          return;
+        }
+
         const imageKey = image.url ?? image.b64_json ?? '';
-        
+
         if (imageKey && !metadataCache.has(image)) {
           const metadata = await extractor.extract(image);
+
+          // Check again if still mounted before updating cache
+          if (!isMounted || abortController.signal.aborted) {
+            return;
+          }
+
           metadataCache.set(image, metadata);
           metadataMap[imageKey] = metadata;
         } else if (imageKey) {
@@ -93,13 +107,20 @@ export default function ImageGallery() {
           }
         }
       }
-      
-      if (Object.keys(metadataMap).length > 0) {
+
+      // Only update state if component is still mounted
+      if (isMounted && !abortController.signal.aborted && Object.keys(metadataMap).length > 0) {
         setImageMetadata(prev => ({ ...prev, ...metadataMap }));
       }
     };
 
     void extractAllMetadata();
+
+    // Cleanup function to prevent memory leaks
+    return () => {
+      isMounted = false;
+      abortController.abort();
+    };
   }, [results, metadataCache]);
 
   const renderImageCard = (image: GeneratedImage, index: number) => {

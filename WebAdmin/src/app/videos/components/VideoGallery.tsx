@@ -53,22 +53,36 @@ export default function VideoGallery() {
 
   // Extract metadata for completed videos
   useEffect(() => {
+    const abortController = new AbortController();
+    let isMounted = true;
+
     const extractAllMetadata = async () => {
       const extractor = new VideoMetadataExtractor();
       const metadataMap: Record<string, MediaMetadata> = {};
-      
+
       for (const task of completedVideos) {
+        // Check if component is still mounted and not aborted
+        if (!isMounted || abortController.signal.aborted) {
+          return;
+        }
+
         if (!task.result) continue;
-        
+
         // Use the new response normalizer to extract video data
         const video = extractVideoFromTaskResult(task.result);
-        
+
         if (video) {
           const cacheKey = createVideoCacheKey(video, task.id);
-          
+
           // Check if we already have metadata for this video
           if (!metadataCache.has(video)) {
             const metadata = await extractor.extract(video);
+
+            // Check again if still mounted before updating state
+            if (!isMounted || abortController.signal.aborted) {
+              return;
+            }
+
             metadataCache.set(video, metadata);
             metadataMap[cacheKey] = metadata;
           } else {
@@ -79,13 +93,20 @@ export default function VideoGallery() {
           }
         }
       }
-      
-      if (Object.keys(metadataMap).length > 0) {
+
+      // Only update state if component is still mounted
+      if (isMounted && !abortController.signal.aborted && Object.keys(metadataMap).length > 0) {
         setVideoMetadata(prev => ({ ...prev, ...metadataMap }));
       }
     };
 
     void extractAllMetadata();
+
+    // Cleanup function to prevent memory leaks
+    return () => {
+      isMounted = false;
+      abortController.abort();
+    };
   }, [completedVideos, metadataCache]);
 
   const renderVideoCard = (task: VideoTask) => {
