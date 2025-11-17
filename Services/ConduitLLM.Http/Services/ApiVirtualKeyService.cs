@@ -80,7 +80,7 @@ namespace ConduitLLM.Http.Services
                     var created = await _virtualKeyRepository.GetByIdAsync(createdId);
                     if (created != null)
                     {
-                        _logger.LogInformation("Created new virtual key: {KeyName} (ID: {KeyId})", created.KeyName.Replace(Environment.NewLine, ""), created.Id);
+                        _logger.LogInformation("Created new virtual key: {KeyName} (ID: {KeyId})", LoggingSanitizer.S(created.KeyName), created.Id);
                         
                         // Return the response with the actual key (only shown once)
                         return new CreateVirtualKeyResponseDto
@@ -184,7 +184,7 @@ namespace ConduitLLM.Http.Services
                 
                 if (success)
                 {
-                    _logger.LogInformation("Updated virtual key: {KeyName} (ID: {KeyId})", virtualKey.KeyName.Replace(Environment.NewLine, ""), id);
+                    _logger.LogInformation("Updated virtual key: {KeyName} (ID: {KeyId})", LoggingSanitizer.S(virtualKey.KeyName), id);
                 }
                 
                 return success;
@@ -215,7 +215,7 @@ namespace ConduitLLM.Http.Services
                 
                 if (success)
                 {
-                    _logger.LogInformation("Deleted virtual key: {KeyName} (ID: {KeyId})", virtualKey.KeyName.Replace(Environment.NewLine, ""), id);
+                    _logger.LogInformation("Deleted virtual key: {KeyName} (ID: {KeyId})", LoggingSanitizer.S(virtualKey.KeyName), id);
                 }
                 
                 return success;
@@ -306,7 +306,7 @@ namespace ConduitLLM.Http.Services
             if (!virtualKey.IsEnabled)
             {
                 _logger.LogWarning("Virtual key is disabled: {KeyName} (ID: {KeyId})", 
-                    virtualKey.KeyName?.Replace(Environment.NewLine, "") ?? "Unknown", virtualKey.Id);
+                    LoggingSanitizer.S(virtualKey.KeyName) ?? "Unknown", virtualKey.Id);
                 return null;
             }
 
@@ -314,7 +314,7 @@ namespace ConduitLLM.Http.Services
             if (virtualKey.ExpiresAt.HasValue && virtualKey.ExpiresAt.Value < DateTime.UtcNow)
             {
                 _logger.LogWarning("Virtual key has expired: {KeyName} (ID: {KeyId}), expired at {ExpiryDate}",
-                    virtualKey.KeyName?.Replace(Environment.NewLine, "") ?? "Unknown", virtualKey.Id, virtualKey.ExpiresAt);
+                    LoggingSanitizer.S(virtualKey.KeyName) ?? "Unknown", virtualKey.Id, virtualKey.ExpiresAt);
                 return null;
             }
 
@@ -325,15 +325,15 @@ namespace ConduitLLM.Http.Services
                 if (!isModelAllowed)
                 {
                     _logger.LogWarning("Virtual key {KeyName} (ID: {KeyId}) attempted to access restricted model: {RequestedModel}",
-                        virtualKey.KeyName?.Replace(Environment.NewLine, "") ?? "Unknown", virtualKey.Id, 
-                        requestedModel.Replace(Environment.NewLine, ""));
+                        LoggingSanitizer.S(virtualKey.KeyName) ?? "Unknown", virtualKey.Id, 
+                        LoggingSanitizer.S(requestedModel));
                     return null;
                 }
             }
 
             // Authentication validation passed
             _logger.LogDebug("Virtual key authenticated successfully: {KeyName} (ID: {KeyId})",
-                virtualKey.KeyName?.Replace(Environment.NewLine, "") ?? "Unknown", virtualKey.Id);
+                LoggingSanitizer.S(virtualKey.KeyName) ?? "Unknown", virtualKey.Id);
             return virtualKey;
         }
 
@@ -361,7 +361,7 @@ namespace ConduitLLM.Http.Services
             // Check if key is enabled
             if (!virtualKey.IsEnabled)
             {
-                _logger.LogWarning("Virtual key is disabled: {KeyName} (ID: {KeyId})", virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id);
+                _logger.LogWarning("Virtual key is disabled: {KeyName} (ID: {KeyId})", LoggingSanitizer.S(virtualKey.KeyName), virtualKey.Id);
                 return null;
             }
 
@@ -369,7 +369,7 @@ namespace ConduitLLM.Http.Services
             if (virtualKey.ExpiresAt.HasValue && virtualKey.ExpiresAt.Value < DateTime.UtcNow)
             {
                 _logger.LogWarning("Virtual key has expired: {KeyName} (ID: {KeyId}), expired at {ExpiryDate}",
-                    virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id, virtualKey.ExpiresAt);
+                    LoggingSanitizer.S(virtualKey.KeyName), virtualKey.Id, virtualKey.ExpiresAt);
                 return null;
             }
 
@@ -378,7 +378,7 @@ namespace ConduitLLM.Http.Services
             if (group != null && group.Balance <= 0)
             {
                 _logger.LogWarning("Virtual key group budget depleted: {KeyName} (ID: {KeyId}), group {GroupId} has balance {Balance}",
-                    virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id, group.Id, group.Balance);
+                    LoggingSanitizer.S(virtualKey.KeyName), virtualKey.Id, group.Id, group.Balance);
                 return null;
             }
 
@@ -390,14 +390,14 @@ namespace ConduitLLM.Http.Services
                 if (!isModelAllowed)
                 {
                     _logger.LogWarning("Virtual key {KeyName} (ID: {KeyId}) attempted to access restricted model: {RequestedModel}",
-                        virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id, requestedModel.Replace(Environment.NewLine, ""));
+                        LoggingSanitizer.S(virtualKey.KeyName), virtualKey.Id, LoggingSanitizer.S(requestedModel));
                     return null;
                 }
             }
 
             // All validations passed
             _logger.LogInformation("Validated virtual key successfully: {KeyName} (ID: {KeyId})",
-                virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id);
+                LoggingSanitizer.S(virtualKey.KeyName), virtualKey.Id);
             return virtualKey;
         }
 

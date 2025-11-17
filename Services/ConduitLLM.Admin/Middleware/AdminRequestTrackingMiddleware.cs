@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Extensions;
 using System.Diagnostics;
 
 namespace ConduitLLM.Admin.Middleware;
@@ -35,7 +36,7 @@ public class AdminRequestTrackingMiddleware
 
         try
         {
-_logger.LogInformation("Admin API Request: {Method} {Path} started", requestMethod.Replace(Environment.NewLine, ""), requestPath.ToString().Replace(Environment.NewLine, ""));
+_logger.LogInformation("Admin API Request: {Method} {Path} started", LoggingSanitizer.S(requestMethod), LoggingSanitizer.S(requestPath.ToString()));
 
             // Call the next middleware in the pipeline
             await _next(context);
@@ -44,7 +45,7 @@ _logger.LogInformation("Admin API Request: {Method} {Path} started", requestMeth
 
             _logger.LogInformation(
                 "Admin API Request: {Method} {Path} completed with status {StatusCode} in {ElapsedMs}ms",
-                requestMethod.Replace(Environment.NewLine, ""), requestPath.ToString().Replace(Environment.NewLine, ""), context.Response.StatusCode, stopwatch.ElapsedMilliseconds);
+                LoggingSanitizer.S(requestMethod), LoggingSanitizer.S(requestPath.ToString()), context.Response.StatusCode, stopwatch.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {
@@ -53,7 +54,7 @@ _logger.LogInformation("Admin API Request: {Method} {Path} started", requestMeth
             _logger.LogError(
                 ex,
                 "Admin API Request: {Method} {Path} failed after {ElapsedMs}ms",
-                requestMethod.Replace(Environment.NewLine, ""), requestPath.ToString().Replace(Environment.NewLine, ""), stopwatch.ElapsedMilliseconds);
+                LoggingSanitizer.S(requestMethod), LoggingSanitizer.S(requestPath.ToString()), stopwatch.ElapsedMilliseconds);
 
             // Re-throw the exception to be handled by the exception handler middleware
             throw;

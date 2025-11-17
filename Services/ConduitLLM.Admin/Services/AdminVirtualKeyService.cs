@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Extensions;
 using System.Security.Cryptography;
 
 using ConduitLLM.Admin.Interfaces;
@@ -74,7 +75,7 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc />
         public async Task<CreateVirtualKeyResponseDto> GenerateVirtualKeyAsync(CreateVirtualKeyRequestDto request)
         {
-            _logger.LogInformation("Generating new virtual key with name: {KeyName}", (request.KeyName ?? "").Replace(Environment.NewLine, ""));
+            _logger.LogInformation("Generating new virtual key with name: {KeyName}", (LoggingSanitizer.S(request.KeyName ?? "")));
 
             // Generate a secure random key
             var keyBytes = new byte[KeyLengthBytes];

@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Middleware;
 
@@ -363,9 +364,9 @@ namespace ConduitLLM.Core.Services
                 _ => LogLevel.Information
             };
 
-            _logger.Log(logLevel, 
+            _logger.Log(logLevel,
                 "Security Event: {EventType} - {Description} [VirtualKey: {VirtualKey}, IP: {IpAddress}]",
-                evt.EventType, evt.Description.Replace(Environment.NewLine, ""), (evt.VirtualKey ?? "N/A").Replace(Environment.NewLine, ""), evt.IpAddress ?? "N/A");
+                evt.EventType, LoggingSanitizer.S(evt.Description), LoggingSanitizer.S(evt.VirtualKey ?? "N/A"), evt.IpAddress ?? "N/A");
         }
     }
 }

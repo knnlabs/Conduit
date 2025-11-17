@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Extensions;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
@@ -74,7 +75,7 @@ namespace ConduitLLM.Admin.Security
                 if (!string.IsNullOrEmpty(providedKey))
                 {
                     Logger.LogDebug("Using query string authentication for SignalR hub: {Path}", 
-                        Context.Request.Path.ToString().Replace(Environment.NewLine, ""));
+                        LoggingSanitizer.S(Context.Request.Path.ToString()));
                 }
             }
             // If not a hub request or no query string token, check headers

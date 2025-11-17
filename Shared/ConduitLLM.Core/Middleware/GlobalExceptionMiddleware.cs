@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 
 using Microsoft.AspNetCore.Builder;
@@ -64,8 +65,8 @@ namespace ConduitLLM.Core.Middleware
             _logger.LogError(exception,
                 "Unhandled exception occurred {TraceId} {Method} {Path}",
                 traceId,
-                context.Request.Method.Replace(Environment.NewLine, ""),
-                context.Request.Path.ToString().Replace(Environment.NewLine, ""));
+                LoggingSanitizer.S(context.Request.Method),
+                LoggingSanitizer.S(context.Request.Path.ToString()));
 
             // Determine the response based on exception type
             var (statusCode, errorResponse) = GetErrorResponse(exception, traceId);

@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -178,8 +179,8 @@ namespace ConduitLLM.Configuration.Services
                 _logger.LogError(ex,
                 "Error logging request for VirtualKeyId={VirtualKeyId}, Model={Model}, RequestType={RequestType}",
                 request.VirtualKeyId,
-                request.ModelName.Replace(Environment.NewLine, ""),
-                request.RequestType.Replace(Environment.NewLine, ""));
+                LoggingSanitizer.S(request.ModelName),
+                LoggingSanitizer.S(request.RequestType));
                 throw;
             }
         }
@@ -224,8 +225,8 @@ namespace ConduitLLM.Configuration.Services
                 _logger.LogError(ex,
                 "Error logging request for VirtualKeyId={VirtualKeyId}, Model={Model}, RequestType={RequestType}",
                 request.VirtualKeyId,
-                request.ModelName.Replace(Environment.NewLine, ""),
-                request.RequestType.Replace(Environment.NewLine, ""));
+                LoggingSanitizer.S(request.ModelName),
+                LoggingSanitizer.S(request.RequestType));
                 throw;
             }
         }

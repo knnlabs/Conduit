@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.Utilities;
 
 using Microsoft.EntityFrameworkCore;
@@ -162,12 +163,12 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (DbUpdateException ex)
             {
-_logger.LogError(ex, "Database error creating virtual key '{KeyName}'", virtualKey.KeyName.Replace(Environment.NewLine, ""));
+_logger.LogError(ex, "Database error creating virtual key '{KeyName}'", LoggingSanitizer.S(virtualKey.KeyName));
                 throw;
             }
             catch (Exception ex)
             {
-_logger.LogError(ex, "Error creating virtual key '{KeyName}'", virtualKey.KeyName.Replace(Environment.NewLine, ""));
+_logger.LogError(ex, "Error creating virtual key '{KeyName}'", LoggingSanitizer.S(virtualKey.KeyName));
                 throw;
             }
         }

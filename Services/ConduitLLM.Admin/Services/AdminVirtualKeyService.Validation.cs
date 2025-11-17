@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Extensions;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -14,7 +15,7 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc />
         public async Task<VirtualKeyValidationResult> ValidateVirtualKeyAsync(string key, string? requestedModel = null)
         {
-            _logger.LogInformation("Validating virtual key and checking if model {Model} is allowed", (requestedModel ?? "any").Replace(Environment.NewLine, ""));
+            _logger.LogInformation("Validating virtual key and checking if model {Model} is allowed", (LoggingSanitizer.S(requestedModel ?? "any")));
 
             var result = new VirtualKeyValidationResult { IsValid = false };
 

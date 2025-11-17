@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
@@ -57,12 +58,12 @@ public class VirtualKeysController : ControllerBase
         }
         catch (DbUpdateException dbEx)
         {
-            _logger.LogError(dbEx, "Database update error creating virtual key named {KeyName}. Check for constraint violations.", request.KeyName.Replace(Environment.NewLine, ""));
+            _logger.LogError(dbEx, "Database update error creating virtual key named {KeyName}. Check for constraint violations.", LoggingSanitizer.S(request.KeyName));
             return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An error occurred while saving the key. It might violate a unique constraint (e.g., duplicate name)." });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error generating virtual key for '{KeyName}'", request.KeyName.Replace(Environment.NewLine, ""));
+            _logger.LogError(ex, "Error generating virtual key for '{KeyName}'", LoggingSanitizer.S(request.KeyName));
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }

@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Core.Extensions;
 using ModelProviderMappingEntity = ConduitLLM.Configuration.Entities.ModelProviderMapping;
 
 using Microsoft.EntityFrameworkCore;
@@ -72,7 +73,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model provider mapping for model {ModelName}", modelName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error getting model provider mapping for model {ModelName}", LoggingSanitizer.S(modelName));
                 throw;
             }
         }
@@ -157,7 +158,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating model provider mapping for {ModelAlias}", modelProviderMapping.ModelAlias.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error creating model provider mapping for {ModelAlias}", LoggingSanitizer.S(modelProviderMapping.ModelAlias));
                 throw;
             }
         }

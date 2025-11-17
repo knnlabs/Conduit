@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration;
@@ -105,12 +106,12 @@ namespace ConduitLLM.Admin.Services
                     },
                     "CreateModelCost");
 
-                _logger.LogInformation("Created model cost with name '{CostName}'", modelCost.CostName.Replace(Environment.NewLine, ""));
+                _logger.LogInformation("Created model cost with name '{CostName}'", LoggingSanitizer.S(modelCost.CostName));
                 return createdModelCost.ToDto();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating model cost with name '{CostName}'", modelCost.CostName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error creating model cost with name '{CostName}'", LoggingSanitizer.S(modelCost.CostName));
                 throw;
             }
         }
@@ -210,7 +211,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost with name '{CostName}'", costName.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error getting model cost with name '{CostName}'", LoggingSanitizer.S(costName));
                 throw;
             }
         }

@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Extensions;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -61,7 +62,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting global setting with key {SettingKey}", key.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error getting global setting with key {SettingKey}", LoggingSanitizer.S(key));
                 throw;
             }
         }
@@ -111,13 +112,13 @@ namespace ConduitLLM.Configuration.Repositories
             catch (DbUpdateException ex)
             {
                 _logger.LogError(ex, "Database error creating global setting with key '{SettingKey}'",
-                    globalSetting.Key.Replace(Environment.NewLine, ""));
+                    LoggingSanitizer.S(globalSetting.Key));
                 throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating global setting with key '{SettingKey}'",
-                    globalSetting.Key.Replace(Environment.NewLine, ""));
+                    LoggingSanitizer.S(globalSetting.Key));
                 throw;
             }
         }
@@ -211,7 +212,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error upserting global setting with key '{SettingKey}'", key.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error upserting global setting with key '{SettingKey}'", LoggingSanitizer.S(key));
                 throw;
             }
         }
@@ -265,7 +266,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting global setting with key {SettingKey}", key.Replace(Environment.NewLine, ""));
+                _logger.LogError(ex, "Error deleting global setting with key {SettingKey}", LoggingSanitizer.S(key));
                 throw;
             }
         }

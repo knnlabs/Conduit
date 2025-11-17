@@ -78,14 +78,14 @@ namespace ConduitLLM.Http.Authorization
                 if (isEphemeralKey)
                 {
                     logger.LogDebug("Balance check passed for ephemeral key using virtual key: {KeyName} (ID: {KeyId}), Balance: {Balance}", 
-                        keyEntity.KeyName?.Replace(Environment.NewLine, "") ?? "Unknown", 
+                        LoggingSanitizer.S(keyEntity.KeyName) ?? "Unknown", 
                         keyEntity.Id,
                         keyEntity.VirtualKeyGroup?.Balance ?? 0);
                 }
                 else
                 {
                     logger.LogDebug("Balance check passed for virtual key: {KeyName} (ID: {KeyId})", 
-                        keyEntity.KeyName?.Replace(Environment.NewLine, "") ?? "Unknown", keyEntity.Id);
+                        LoggingSanitizer.S(keyEntity.KeyName) ?? "Unknown", keyEntity.Id);
                 }
             }
             catch (Exception ex)
