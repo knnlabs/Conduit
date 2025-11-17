@@ -8,8 +8,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  DOTNET_VERSION: '9.0.x'
-  NODE_VERSION: '20'
+  DOTNET_VERSION: '10.0.x'
+  NODE_VERSION: '22'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -80,12 +80,13 @@ jobs:
           npm run build
           npm run test:ci
       
-      - name: WebAdmin Type Check
+      - name: WebAdmin Lint & Type Check
         run: |
           cd WebAdmin
           npm ci
           # Clean any stale .next directory before type checking
           rm -rf .next
+          npm run lint
           npm run type-check
 
   # Build Docker images (push only from master)
