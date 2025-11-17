@@ -1,5 +1,5 @@
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Core.Extensions;
+using ConduitLLM.Configuration.Utilities;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;

@@ -1,5 +1,5 @@
 using ConduitLLM.Configuration.Interfaces;
-using ConduitLLM.Core.Extensions;
+using ConduitLLM.Configuration.Utilities;
 using ModelProviderMappingEntity = ConduitLLM.Configuration.Entities.ModelProviderMapping;
 
 using Microsoft.EntityFrameworkCore;
