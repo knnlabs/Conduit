@@ -29,8 +29,15 @@ namespace ConduitLLM.Core.Extensions
             services.Configure<ContextManagementOptions>(
                 configuration.GetSection("ConduitLLM:ContextManagement"));
 
+            // Register tokenization configuration options
+            services.Configure<TokenizationOptions>(
+                configuration.GetSection(TokenizationOptions.SectionName));
+
             // Register model capability service - use database-backed implementation
             services.TryAddScoped<IModelCapabilityService, DatabaseModelCapabilityService>();
+
+            // Register tokenizer model loader for automatic downloading
+            services.AddSingleton<TokenizerModelLoader>();
 
             // Register token counter factory for multi-provider tokenization support
             services.AddScoped<TokenCounterFactory>();

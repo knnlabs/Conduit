@@ -30,21 +30,32 @@ namespace ConduitLLM.Core.Services
         private static readonly object _lock = new();
         private readonly ILogger<LlamaTokenCounter> _logger;
         private readonly IModelCapabilityService? _capabilityService;
+        private readonly TokenizerModelLoader? _tokenizerLoader;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="LlamaTokenCounter"/> class.
         /// </summary>
         /// <param name="logger">The logger for recording diagnostic information.</param>
         /// <param name="capabilityService">Service for retrieving model capabilities from configuration.</param>
+        /// <param name="tokenizerLoader">Optional loader for automatic tokenizer downloading.</param>
         /// <exception cref="ArgumentNullException">Thrown when logger is null.</exception>
-        public LlamaTokenCounter(ILogger<LlamaTokenCounter> logger, IModelCapabilityService? capabilityService = null)
+        public LlamaTokenCounter(
+            ILogger<LlamaTokenCounter> logger,
+            IModelCapabilityService? capabilityService = null,
+            TokenizerModelLoader? tokenizerLoader = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _capabilityService = capabilityService;
+            _tokenizerLoader = tokenizerLoader;
 
             if (capabilityService == null)
             {
                 _logger.LogWarning("ModelCapabilityService not available, using default LLaMA tokenizer");
+            }
+
+            if (tokenizerLoader == null)
+            {
+                _logger.LogWarning("TokenizerModelLoader not available, LLaMA tokenizer will use fallback estimation");
             }
         }
 
@@ -207,23 +218,54 @@ namespace ConduitLLM.Core.Services
 
                     try
                     {
-                        // Create appropriate LLaMA tokenizer
-                        // Note: In production, you would load the tokenizer model file from a known location
-                        // For now, we'll use the default LLaMA tokenizer
-                        // This would need to be enhanced to load specific tokenizer model files
+                        // Try to load the tokenizer using the loader
+                        if (_tokenizerLoader != null)
+                        {
+                            _logger.LogInformation("Loading LLaMA tokenizer for model {ModelName} with key {TokenizerKey}",
+                                modelName, tokenizerKey);
 
-                        _logger.LogInformation("Creating LLaMA tokenizer for model {ModelName} with key {TokenizerKey}",
-                            modelName, tokenizerKey);
+                            // Get tokenizer stream (will download if needed)
+                            // Note: This is synchronous, which is not ideal but necessary for the ITokenCounter interface
+                            // The loader handles async internally and caching makes this fast after first load
+                            var stream = _tokenizerLoader.GetTokenizerStreamAsync(tokenizerKey).GetAwaiter().GetResult();
 
-                        // Microsoft.ML.Tokenizers requires a tokenizer model file
-                        // For now, return null to trigger fallback
-                        // TODO: Implement proper LLaMA tokenizer model file loading
-                        _logger.LogWarning("LLaMA tokenizer model file loading not yet implemented. Using fallback.");
-                        return null;
+                            if (stream != null)
+                            {
+                                try
+                                {
+                                    // Load the LLaMA tokenizer from the stream
+                                    // Microsoft.ML.Tokenizers supports loading from streams
+                                    var tokenizer = Tokenizer.CreateLlama(stream);
+
+                                    // Cache the tokenizer
+                                    _tokenizers[tokenizerKey] = tokenizer;
+                                    _tokenizers[modelName] = tokenizer;
+
+                                    _logger.LogInformation("Successfully loaded LLaMA tokenizer for {ModelName}", modelName);
+                                    return tokenizer;
+                                }
+                                finally
+                                {
+                                    stream.Dispose();
+                                }
+                            }
+                            else
+                            {
+                                _logger.LogWarning(
+                                    "Tokenizer stream for {TokenizerKey} is null. Will use fallback estimation.",
+                                    tokenizerKey);
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogDebug("TokenizerModelLoader not available. Using fallback estimation.");
+                        }
+
+                        return null; // Trigger fallback to character-based estimation
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to create LLaMA tokenizer for model {ModelName}", modelName);
+                        _logger.LogError(ex, "Failed to load LLaMA tokenizer for model {ModelName}. Using fallback.", modelName);
                         return null;
                     }
                 }

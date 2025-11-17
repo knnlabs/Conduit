@@ -102,22 +102,73 @@ Default                       → 4.0 chars/token
 - ✅ Conservative estimates (uses ceiling)
 - ⚠️ Not as accurate as native tokenizers
 
-### 4. LlamaTokenCounter (Future Enhancement)
+### 4. LlamaTokenCounter (With Auto-Download)
 
 **Location**: `Shared/ConduitLLM.Core/Services/LlamaTokenCounter.cs`
 
-Placeholder for future Microsoft.ML.Tokenizers integration with LLaMA tokenizer model files.
+Native LLaMA tokenizer implementation using Microsoft.ML.Tokenizers with automatic model file downloading.
 
-**Current Status**:
-- ⚠️ Implementation incomplete
-- ⚠️ Requires tokenizer model file loading
-- ⚠️ Falls back to character-based estimation
+**Supported Models**:
+- LLaMA 2 (SentencePiece, ~500 KB)
+- LLaMA 3 (Tiktoken/BPE, ~2.18 MB)
+- LLaMA 3.1 (Tiktoken/BPE, ~2.18 MB)
 
-**Roadmap**:
-1. Download tokenizer model files from HuggingFace
-2. Bundle with application or implement on-demand loading
-3. Integrate Microsoft.ML.Tokenizers LLaMA support
-4. Enable for Groq, Cerebras, Meta LLaMA models
+**Characteristics**:
+- ✅ **Automatic downloading** from HuggingFace (configurable)
+- ✅ **Local caching** for offline usage
+- ✅ **Graceful fallback** to character-based estimation if download fails
+- ✅ **Production-ready** with retry logic and error handling
+- ⚠️ First-run latency (2-4 seconds for initial download)
+
+**How It Works**:
+1. First request for LLaMA model triggers tokenizer check
+2. If not cached: Downloads ~2 MB file from HuggingFace (once)
+3. Caches locally in `~/.local/share/Conduit/tokenizers` (or custom location)
+4. Subsequent requests use cached file (instant)
+5. If download fails: Falls back to FallbackTokenCounter estimation
+
+### 5. TokenizerModelLoader (Auto-Download Service)
+
+**Location**: `Shared/ConduitLLM.Core/Services/TokenizerModelLoader.cs`
+
+Service that handles automatic downloading and caching of tokenizer model files.
+
+**Features**:
+- **Automatic downloading** from HuggingFace Hub
+- **Intelligent caching** to avoid repeated downloads
+- **Retry logic** with exponential backoff (2s, 4s, 8s)
+- **Graceful degradation** if HuggingFace is unavailable
+- **Configurable** via `TokenizationOptions`
+
+**File Sizes**:
+- LLaMA 2: ~500 KB (SentencePiece format)
+- LLaMA 3/3.1: ~2.18 MB (Tiktoken format)
+
+**Configuration**:
+See `docs/claude/tokenization-configuration-example.json` for full options.
+
+```json
+{
+  "ConduitLLM": {
+    "Tokenization": {
+      "AutoDownloadTokenizers": true,    // Enable auto-download
+      "CacheDirectory": null,             // Use default location
+      "DownloadTimeoutMs": 30000,        // 30 second timeout
+      "RetryAttempts": 3,                // Retry 3 times
+      "FallbackOnDownloadFailure": true  // Don't crash if download fails
+    }
+  }
+}
+```
+
+**Environment Variables** (override appsettings.json):
+```bash
+# Disable auto-download in air-gapped environments
+CONDUITLLM__TOKENIZATION__AUTODOWNLOADTOKENIZERS=false
+
+# Custom cache location (useful for Docker volumes)
+CONDUITLLM__TOKENIZATION__CACHEDIRECTORY=/app/tokenizers
+```
 
 ## Token Counting Flow
 
