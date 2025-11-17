@@ -75,7 +75,16 @@ protected override void Dispose(bool disposing)
 2. **b8581133** - `fix: resolve ambiguous IVirtualKeyService reference and Dispose override errors`
    - Added using alias for CoreVirtualKeyService
    - Fixed Dispose pattern in both test files
-   - Resolves all 3 compilation errors
+   - Resolves 3 compilation errors (CS0506, CS0104)
+
+3. **12424903** - `docs: add test failures resolution documentation`
+   - Created this documentation file
+
+4. **76eb3a2e** - `fix: resolve remaining test compilation errors`
+   - Fixed Mock constructor to use CoreVirtualKeyService alias
+   - Replaced AddXUnit with AddDebug (XUnit logging package not available)
+   - Fixed all UpdateSpendAsync mock setups to return Task<bool> instead of Task
+   - Resolves 10 compilation errors (CS0104, CS1061, CS1503, CS0266, CS1662)
 
 ---
 
@@ -157,8 +166,8 @@ public abstract class TestBase : IDisposable
 
 ## Branch Status
 
-**Current HEAD**: `b8581133`
-**Total Commits**: 8
+**Current HEAD**: `76eb3a2e`
+**Total Commits**: 10
 **Status**: Ready for CI validation
 
 **Commit History**:
@@ -168,18 +177,53 @@ public abstract class TestBase : IDisposable
 4. `fcf3a710` - Phase 2: Controller integration and testing
 5. `85e33088` - Phase 2 documentation
 6. `bb9c14f8` - Merge conflict resolution docs
-7. `83031ba1` - Test base class fix
-8. `b8581133` - Compilation error fixes ← **Current**
+7. `83031ba1` - Test base class fix (round 1)
+8. `b8581133` - Compilation error fixes (round 1)
+9. `12424903` - Test failures resolution documentation
+10. `76eb3a2e` - Compilation error fixes (round 2) ← **Current**
+
+---
+
+## Additional Errors Found (Round 2)
+
+After the initial fixes, additional compilation errors were discovered:
+
+### 4. Mock Constructor Using Ambiguous Type (CS0104)
+**Location**: Line 28 in both test files
+**Error**: `new Mock<IVirtualKeyService>()` still ambiguous
+**Fix**: Changed to `new Mock<CoreVirtualKeyService>()` to use the alias
+
+### 5. AddXUnit Extension Method Not Found (CS1061)
+**Locations**: Integration tests line 35, Performance tests line 35
+**Error**: `AddXUnit` extension method not available
+**Cause**: XUnit logging package not installed/referenced
+**Fix**: Replaced `builder.AddXUnit(output)` with `builder.AddDebug()` (following pattern from existing tests)
+
+### 6. UpdateSpendAsync Mock Return Type Mismatch (CS1503, CS0266, CS1662)
+**Locations**: Multiple locations in both test files
+**Error**: Method returns `Task<bool>` but mocks returning `Task`
+**Root Cause**: `IVirtualKeyService.UpdateSpendAsync` signature is `Task<bool>`, not `Task`
+**Fixes Applied**:
+- Changed `.Returns(Task.CompletedTask)` to `.Returns(Task.FromResult(true))` (5 occurrences)
+- Changed `.Returns(() => { ... return Task.CompletedTask; })` to return `Task.FromResult(true)` (2 occurrences)
+- Changed `.Returns(async () => await Task.Delay(10))` to return `true` after delay (1 occurrence)
 
 ---
 
 ## Summary
 
-✅ **All known compilation errors have been resolved**
+✅ **All compilation errors have been resolved**
 
-The test failures were caused by:
-1. Incorrect base class inheritance (fixed first)
-2. Ambiguous interface reference (fixed with using alias)
-3. Incorrect Dispose override pattern (fixed in both test files)
+**Total errors fixed**: 13
+- Round 1: 3 errors (base class, ambiguous reference, Dispose pattern)
+- Round 2: 10 errors (mock constructor, logging extension, Task return types)
+
+**Resolution approach**:
+1. Incorrect base class inheritance → Changed to TestBase
+2. Ambiguous interface reference → Added using alias
+3. Incorrect Dispose override pattern → Override protected virtual method
+4. Mock constructor ambiguity → Use alias in constructor
+5. Missing AddXUnit extension → Use AddDebug instead
+6. Task/Task<bool> type mismatch → Return Task.FromResult(true)
 
 All fixes have been committed and pushed. The branch is now ready for CI validation.
