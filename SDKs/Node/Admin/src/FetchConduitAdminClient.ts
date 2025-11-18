@@ -21,6 +21,12 @@ import { FetchProviderErrorsService } from './services/FetchProviderErrorsServic
 import { ProviderToolsService } from './services/ProviderToolsService';
 import { FetchMetricsService } from './services/FetchMetricsService';
 import { FetchNotificationsService } from './services/FetchNotificationsService';
+import {
+  FetchFunctionConfigurationsService,
+  FetchFunctionCredentialsService,
+  FetchFunctionCostsService,
+  FetchFunctionExecutionsService
+} from './services/FetchFunctionsService';
 import type { ApiClientConfig } from './client/types';
 import {
   isConduitError,
@@ -71,6 +77,10 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
   public readonly providerTools: ProviderToolsService;
   public readonly metrics: FetchMetricsService;
   public readonly notifications: FetchNotificationsService;
+  public readonly functionConfigurations: FetchFunctionConfigurationsService;
+  public readonly functionCredentials: FetchFunctionCredentialsService;
+  public readonly functionCosts: FetchFunctionCostsService;
+  public readonly functionExecutions: FetchFunctionExecutionsService;
 
   constructor(config: ApiClientConfig) {
     super(config);
@@ -98,6 +108,10 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
     this.providerTools = new ProviderToolsService(this);
     this.metrics = new FetchMetricsService(this);
     this.notifications = new FetchNotificationsService(this);
+    this.functionConfigurations = new FetchFunctionConfigurationsService(this);
+    this.functionCredentials = new FetchFunctionCredentialsService(this);
+    this.functionCosts = new FetchFunctionCostsService(this);
+    this.functionExecutions = new FetchFunctionExecutionsService(this);
   }
 
   /**

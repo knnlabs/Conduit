@@ -183,6 +183,12 @@ public static class ServiceCollectionExtensions
         // Register LLM cache management service (simple database + event publishing)
         services.AddScoped<ILLMCacheManagementService, LLMCacheManagementService>();
 
+        // Register Function services
+        services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionCostService, ConduitLLM.Functions.Services.FunctionCostService>();
+        services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionCostCalculationService, ConduitLLM.Functions.Services.FunctionCostCalculationService>();
+        services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionClientFactory, ConduitLLM.Functions.Services.FunctionClientFactory>();
+        services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionExecutionService, ConduitLLM.Functions.Services.FunctionExecutionService>();
+
         // NOTE: ICacheManagementService registration is commented out because it requires
         // cache infrastructure services (ICacheRegistry, ICacheStatisticsCollector, ICachePolicyEngine)
         // that are not currently implemented. General cache management endpoints will return 501.

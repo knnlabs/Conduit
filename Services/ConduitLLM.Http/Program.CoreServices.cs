@@ -473,6 +473,12 @@ public partial class Program
         // Register Model Capability services (capability detection and caching)
         builder.Services.AddModelCapabilityServices(builder.Configuration);
 
+        // Register Function services
+        builder.Services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionCostService, ConduitLLM.Functions.Services.FunctionCostService>();
+        builder.Services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionCostCalculationService, ConduitLLM.Functions.Services.FunctionCostCalculationService>();
+        builder.Services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionClientFactory, ConduitLLM.Functions.Services.FunctionClientFactory>();
+        builder.Services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionExecutionService, ConduitLLM.Functions.Services.FunctionExecutionService>();
+
         // Register Batch Cache Invalidation service
         builder.Services.AddBatchCacheInvalidation(builder.Configuration);
         

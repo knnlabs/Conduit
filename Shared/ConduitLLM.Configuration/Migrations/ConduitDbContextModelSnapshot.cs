@@ -1464,6 +1464,375 @@ namespace ConduitLLM.Configuration.Migrations
                     b.ToTable("VirtualKeySpendHistory");
                 });
 
+            modelBuilder.Entity("ConduitLLM.Functions.Entities.FunctionConfiguration", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BaseUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ConfigurationName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DefaultExecutionMode")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("MaxRetries")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ProviderSettings")
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("ProviderType")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Purpose")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TimeoutSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsEnabled")
+                        .HasDatabaseName("IX_FunctionConfiguration_IsEnabled");
+
+                    b.HasIndex("ProviderType")
+                        .HasDatabaseName("IX_FunctionConfiguration_ProviderType");
+
+                    b.HasIndex("Purpose")
+                        .HasDatabaseName("IX_FunctionConfiguration_Purpose");
+
+                    b.ToTable("FunctionConfigurations");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Functions.Entities.FunctionCost", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CostName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal?>("CostPerExecution")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<decimal?>("CostPerMinute")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<decimal?>("CostPerResult")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<decimal?>("CostPerToken")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("EffectiveDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ExpiryDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("PricingConfiguration")
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("PricingModel")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TieredPricing")
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive")
+                        .HasDatabaseName("IX_FunctionCost_IsActive");
+
+                    b.HasIndex("EffectiveDate", "ExpiryDate")
+                        .HasDatabaseName("IX_FunctionCost_EffectiveDates");
+
+                    b.ToTable("FunctionCosts");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Functions.Entities.FunctionCostMapping", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("FunctionConfigurationId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("FunctionCostId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("FunctionCostId1")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FunctionCostId");
+
+                    b.HasIndex("FunctionCostId1");
+
+                    b.HasIndex("FunctionConfigurationId", "FunctionCostId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_FunctionCostMapping_Unique");
+
+                    b.ToTable("FunctionCostMappings");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Functions.Entities.FunctionCredential", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ApiKey")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("BaseUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<short>("FunctionAccountGroup")
+                        .HasColumnType("smallint");
+
+                    b.Property<int>("FunctionConfigurationId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("KeyName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Organization")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FunctionConfigurationId")
+                        .HasDatabaseName("IX_FunctionCredential_FunctionConfigurationId");
+
+                    b.HasIndex("FunctionConfigurationId", "ApiKey")
+                        .IsUnique()
+                        .HasDatabaseName("IX_FunctionCredential_UniqueApiKeyPerConfiguration")
+                        .HasFilter("\"ApiKey\" IS NOT NULL");
+
+                    b.HasIndex("FunctionConfigurationId", "IsPrimary")
+                        .IsUnique()
+                        .HasDatabaseName("IX_FunctionCredential_OnePrimaryPerConfiguration")
+                        .HasFilter("\"IsPrimary\" = true");
+
+                    b.ToTable("FunctionCredentials", t =>
+                        {
+                            t.HasCheckConstraint("CK_FunctionCredential_AccountGroupRange", "\"FunctionAccountGroup\" >= 0 AND \"FunctionAccountGroup\" <= 32");
+
+                            t.HasCheckConstraint("CK_FunctionCredential_PrimaryMustBeEnabled", "\"IsPrimary\" = false OR \"IsEnabled\" = true");
+                        });
+                });
+
+            modelBuilder.Entity("ConduitLLM.Functions.Entities.FunctionExecution", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("ActualCost")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CostCalculationDetails")
+                        .HasColumnType("jsonb");
+
+                    b.Property<TimeSpan?>("Duration")
+                        .HasColumnType("interval");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<decimal?>("EstimatedCost")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<int>("ExecutionMode")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("FunctionConfigurationId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("LeaseExpiryTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LeasedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("NextRetryAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("ProgressPercentage")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RequestJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ResponseJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("State")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("StatusMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.Property<int>("VirtualKeyId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("WebhookDelivered")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("WebhookUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FunctionConfigurationId");
+
+                    b.HasIndex("RequestedAt")
+                        .HasDatabaseName("IX_FunctionExecution_RequestedAt");
+
+                    b.HasIndex("State")
+                        .HasDatabaseName("IX_FunctionExecution_State");
+
+                    b.HasIndex("VirtualKeyId")
+                        .HasDatabaseName("IX_FunctionExecution_VirtualKeyId");
+
+                    b.HasIndex("State", "NextRetryAt", "LeasedBy")
+                        .HasDatabaseName("IX_FunctionExecution_AsyncProcessing");
+
+                    b.ToTable("FunctionExecutions");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Functions.Entities.FunctionExecutionAudit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("Cost")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<string>("EventDetails")
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("EventType")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FailureReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid>("FunctionExecutionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("FunctionExecutionId1")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool?>("IsEstimated")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("VirtualKeyId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FunctionExecutionId1");
+
+                    b.HasIndex("FunctionExecutionId", "Timestamp")
+                        .HasDatabaseName("IX_FunctionExecutionAudit_ExecutionTimestamp");
+
+                    b.ToTable("FunctionExecutionAudits");
+                });
+
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.AsyncTask", b =>
                 {
                     b.HasOne("ConduitLLM.Configuration.Entities.VirtualKey", "VirtualKey")
@@ -1640,6 +2009,67 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Navigation("VirtualKey");
                 });
 
+            modelBuilder.Entity("ConduitLLM.Functions.Entities.FunctionCostMapping", b =>
+                {
+                    b.HasOne("ConduitLLM.Functions.Entities.FunctionConfiguration", "FunctionConfiguration")
+                        .WithMany("CostMappings")
+                        .HasForeignKey("FunctionConfigurationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ConduitLLM.Functions.Entities.FunctionCost", "FunctionCost")
+                        .WithMany()
+                        .HasForeignKey("FunctionCostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ConduitLLM.Functions.Entities.FunctionCost", null)
+                        .WithMany("FunctionMappings")
+                        .HasForeignKey("FunctionCostId1");
+
+                    b.Navigation("FunctionConfiguration");
+
+                    b.Navigation("FunctionCost");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Functions.Entities.FunctionCredential", b =>
+                {
+                    b.HasOne("ConduitLLM.Functions.Entities.FunctionConfiguration", "FunctionConfiguration")
+                        .WithMany("Credentials")
+                        .HasForeignKey("FunctionConfigurationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FunctionConfiguration");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Functions.Entities.FunctionExecution", b =>
+                {
+                    b.HasOne("ConduitLLM.Functions.Entities.FunctionConfiguration", "FunctionConfiguration")
+                        .WithMany("Executions")
+                        .HasForeignKey("FunctionConfigurationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FunctionConfiguration");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Functions.Entities.FunctionExecutionAudit", b =>
+                {
+                    b.HasOne("ConduitLLM.Functions.Entities.FunctionExecution", "FunctionExecution")
+                        .WithMany()
+                        .HasForeignKey("FunctionExecutionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ConduitLLM.Functions.Entities.FunctionExecution", null)
+                        .WithMany("AuditEvents")
+                        .HasForeignKey("FunctionExecutionId1")
+                        .HasConstraintName("FK_FunctionExecutionAudits_FunctionExecutions_FunctionExecuti~1");
+
+                    b.Navigation("FunctionExecution");
+                });
+
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.MediaRetentionPolicy", b =>
                 {
                     b.Navigation("VirtualKeyGroups");
@@ -1684,6 +2114,25 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Navigation("Transactions");
 
                     b.Navigation("VirtualKeys");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Functions.Entities.FunctionConfiguration", b =>
+                {
+                    b.Navigation("CostMappings");
+
+                    b.Navigation("Credentials");
+
+                    b.Navigation("Executions");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Functions.Entities.FunctionCost", b =>
+                {
+                    b.Navigation("FunctionMappings");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Functions.Entities.FunctionExecution", b =>
+                {
+                    b.Navigation("AuditEvents");
                 });
 #pragma warning restore 612, 618
         }

@@ -25,6 +25,7 @@ export * from './models/providerModels';
 export * from './models/settings';
 export * from './models/ipFilter';
 export * from './models/media';
+export * from './models/functions';
 // Re-export model types except ModelCapabilities (conflicts with providerModels)
 export {
   ModelType,
@@ -188,6 +189,12 @@ export type {
 } from './services/ProviderToolsService';
 export { SignalRService } from './services/SignalRService';
 export { RealtimeNotificationsService } from './services/RealtimeNotificationsService';
+export {
+  FetchFunctionConfigurationsService,
+  FetchFunctionCredentialsService,
+  FetchFunctionCostsService,
+  FetchFunctionExecutionsService
+} from './services/FetchFunctionsService';
 
 // SignalR Hub Clients
 export { NavigationStateHubClient } from './signalr/NavigationStateHubClient';

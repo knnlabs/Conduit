@@ -1,8 +1,8 @@
 'use client';
 
 import { ScrollArea, NavLink, Stack, ThemeIcon, Text, Divider } from '@mantine/core';
-import { 
-  IconDashboard, 
+import {
+  IconDashboard,
   IconKey,
   IconChartBar,
   IconRoute,
@@ -18,7 +18,9 @@ import {
   IconEye,
   IconUsers,
   IconBrain,
-  IconTool
+  IconTool,
+  IconSettings,
+  IconActivity
 } from '@tabler/icons-react';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -39,6 +41,15 @@ const navigationSections = [
       { id: 'llm-providers', label: 'LLM Providers', href: '/llm-providers', icon: IconServer },
       { id: 'model-mappings', label: 'Model Mappings', href: '/model-mappings', icon: IconRoute },
       { id: 'provider-tools', label: 'Provider Tools', href: '/provider-tools', icon: IconTool },
+    ]
+  },
+  {
+    title: 'Functions',
+    items: [
+      { id: 'functions-configurations', label: 'Configurations', href: '/functions/configurations', icon: IconSettings },
+      { id: 'functions-credentials', label: 'Credentials', href: '/functions/credentials', icon: IconKey },
+      { id: 'functions-costs', label: 'Cost Management', href: '/functions/costs', icon: IconCoin },
+      { id: 'functions-executions', label: 'Executions', href: '/functions/executions', icon: IconActivity },
     ]
   },
   {

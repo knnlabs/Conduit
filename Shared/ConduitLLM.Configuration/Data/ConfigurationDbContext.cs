@@ -153,6 +153,38 @@ namespace ConduitLLM.Configuration
         /// </summary>
         public virtual DbSet<CacheConfigurationAudit> CacheConfigurationAudits { get; set; } = null!;
 
+        // Function-related DbSets
+
+        /// <summary>
+        /// Database set for function configurations
+        /// </summary>
+        public virtual DbSet<ConduitLLM.Functions.Entities.FunctionConfiguration> FunctionConfigurations { get; set; } = null!;
+
+        /// <summary>
+        /// Database set for function credentials
+        /// </summary>
+        public virtual DbSet<ConduitLLM.Functions.Entities.FunctionCredential> FunctionCredentials { get; set; } = null!;
+
+        /// <summary>
+        /// Database set for function costs
+        /// </summary>
+        public virtual DbSet<ConduitLLM.Functions.Entities.FunctionCost> FunctionCosts { get; set; } = null!;
+
+        /// <summary>
+        /// Database set for function cost mappings
+        /// </summary>
+        public virtual DbSet<ConduitLLM.Functions.Entities.FunctionCostMapping> FunctionCostMappings { get; set; } = null!;
+
+        /// <summary>
+        /// Database set for function executions
+        /// </summary>
+        public virtual DbSet<ConduitLLM.Functions.Entities.FunctionExecution> FunctionExecutions { get; set; } = null!;
+
+        /// <summary>
+        /// Database set for function execution audits
+        /// </summary>
+        public virtual DbSet<ConduitLLM.Functions.Entities.FunctionExecutionAudit> FunctionExecutionAudits { get; set; } = null!;
+
         public bool IsTestEnvironment { get; set; } = false;
 
         /// <summary>
@@ -424,10 +456,13 @@ namespace ConduitLLM.Configuration
             });
 
             modelBuilder.ApplyConfigurationEntityConfigurations(IsTestEnvironment);
-            
+
             // Apply Model entity configurations with all indexes and relationships
             modelBuilder.ApplyModelConfigurations();
-            
+
+            // Apply Function entity configurations (mirrors Provider pattern)
+            modelBuilder.ApplyFunctionEntityConfigurations();
+
             // Apply BillingAuditEvent configuration
             modelBuilder.ApplyConfiguration(new EntityConfigurations.BillingAuditEventConfiguration());
 

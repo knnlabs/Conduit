@@ -283,6 +283,45 @@ export const ENDPOINTS = {
     REPLAY: (queueName: string) => `/api/admin/error-queues/${queueName}/replay`,
   },
 
+  // Functions
+  FUNCTION_CONFIGURATIONS: {
+    BASE: '/api/FunctionConfigurations',
+    BY_ID: (id: number) => `/api/FunctionConfigurations/${id}`,
+    BY_PROVIDER: (providerType: string) => `/api/FunctionConfigurations/provider/${providerType}`,
+    BY_PURPOSE: (purpose: string) => `/api/FunctionConfigurations/purpose/${purpose}`,
+  },
+
+  FUNCTION_CREDENTIALS: {
+    BASE: '/api/FunctionCredentials',
+    BY_ID: (id: number) => `/api/FunctionCredentials/${id}`,
+    BY_CONFIGURATION: (configId: number) => `/api/FunctionCredentials/configuration/${configId}`,
+    TEST: '/api/FunctionCredentials/test',
+  },
+
+  FUNCTION_COSTS: {
+    BASE: '/api/FunctionCosts',
+    BY_ID: (id: number) => `/api/FunctionCosts/${id}`,
+    BY_CONFIGURATION: (configId: number) => `/api/FunctionCosts/configuration/${configId}`,
+    CLEAR_CACHE: '/api/FunctionCosts/cache/clear',
+  },
+
+  FUNCTION_COST_MAPPINGS: {
+    BASE: '/api/FunctionCostMappings',
+    BY_ID: (id: number) => `/api/FunctionCostMappings/${id}`,
+    BY_CONFIGURATION: (configId: number) => `/api/FunctionCostMappings/configuration/${configId}`,
+  },
+
+  FUNCTION_EXECUTIONS: {
+    BASE: '/api/FunctionExecutions',
+    BY_ID: (id: string) => `/api/FunctionExecutions/${id}`,
+    BY_VIRTUAL_KEY: (virtualKeyId: number) => `/api/FunctionExecutions/virtualkey/${virtualKeyId}`,
+    BY_CONFIGURATION: (configId: number) => `/api/FunctionExecutions/configuration/${configId}`,
+    BY_STATE: (state: string) => `/api/FunctionExecutions/state/${state}`,
+    EXPIRED_LEASES: '/api/FunctionExecutions/expired-leases',
+    READY_FOR_RETRY: '/api/FunctionExecutions/ready-for-retry',
+    CLEANUP: '/api/FunctionExecutions/cleanup',
+  },
+
   // Settings
   SETTINGS: {
     GLOBAL: '/api/GlobalSettings',

@@ -3,6 +3,7 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Configuration.Services;
+using ConduitLLM.Functions.Interfaces;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -52,6 +53,13 @@ namespace ConduitLLM.Configuration.Extensions
 
             // Register media record repository
             services.AddScoped<IMediaRecordRepository, MediaRecordRepository>();
+
+            // Register Function repositories
+            services.AddScoped<IFunctionConfigurationRepository, FunctionConfigurationRepository>();
+            services.AddScoped<IFunctionCostRepository, FunctionCostRepository>();
+            services.AddScoped<IFunctionCostMappingRepository, FunctionCostMappingRepository>();
+            services.AddScoped<IFunctionCredentialRepository, FunctionCredentialRepository>();
+            services.AddScoped<IFunctionExecutionRepository, FunctionExecutionRepository>();
 
             // Register cache configuration service
             services.AddScoped<ICacheConfigurationService, CacheConfigurationService>();
