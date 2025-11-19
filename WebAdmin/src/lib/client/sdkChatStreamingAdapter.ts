@@ -35,8 +35,16 @@ export class SDKChatStreamingAdapter {
     options: StreamMessageOptions,
     callbacks: StreamingCallbacks
   ): Promise<void> {
-    // Track content for callbacks (declared outside try to be accessible in catch)
+    // Track content and tool calls for callbacks (declared outside try to be accessible in catch)
     let totalContent = '';
+    let toolCalls: Array<{
+      id: string;
+      type: 'function';
+      function: {
+        name: string;
+        arguments: string;
+      };
+    }> = [];
 
     try {
       // Get the SDK client with ephemeral key
@@ -48,9 +56,10 @@ export class SDKChatStreamingAdapter {
       // Prepare the chat request
       const chatRequest = {
         messages: [
+          ...(options.systemPrompt ? [{ role: 'system' as const, content: options.systemPrompt }] : []),
           ...(options.messages ?? []),
-          { 
-            role: 'user' as const, 
+          {
+            role: 'user' as const,
             content: buildMessageContent(message, options.images)
           }
         ],
@@ -64,6 +73,7 @@ export class SDKChatStreamingAdapter {
         stop: options.stop,
         response_format: options.responseFormat ? { type: options.responseFormat } : undefined,
         stream: true as const,
+        function_configuration_ids: options.functionConfigurationIds,
         // Include dynamic parameters
         ...(options.dynamicParameters ?? {})
       };
@@ -103,6 +113,46 @@ export class SDKChatStreamingAdapter {
 
             if (callbacks.onContent) {
               callbacks.onContent(content, totalContent);
+            }
+          }
+
+          // Handle tool calls in streaming response
+          const deltaToolCalls = data.choices?.[0]?.delta?.tool_calls as Array<{
+            index?: number;
+            id?: string;
+            type?: 'function';
+            function?: {
+              name?: string;
+              arguments?: string;
+            };
+          }> | undefined;
+
+          if (deltaToolCalls && Array.isArray(deltaToolCalls)) {
+            for (const toolCall of deltaToolCalls) {
+              const index = toolCall.index ?? 0;
+
+              // Initialize tool call if it doesn't exist
+              if (!toolCalls[index]) {
+                toolCalls[index] = {
+                  id: toolCall.id ?? `call_${index}`,
+                  type: 'function',
+                  function: {
+                    name: toolCall.function?.name ?? '',
+                    arguments: toolCall.function?.arguments ?? ''
+                  }
+                };
+              } else {
+                // Append to existing tool call
+                if (toolCall.id) {
+                  toolCalls[index].id = toolCall.id;
+                }
+                if (toolCall.function?.name) {
+                  toolCalls[index].function.name += toolCall.function.name;
+                }
+                if (toolCall.function?.arguments) {
+                  toolCalls[index].function.arguments += toolCall.function.arguments;
+                }
+              }
             }
           }
 
@@ -160,7 +210,8 @@ export class SDKChatStreamingAdapter {
             timeToFirstToken: finalMetrics.time_to_first_token_ms ?? undefined,
             tokensPerSecond: finalMetrics.tokens_per_second ?? finalMetrics.completion_tokens_per_second ?? undefined,
             streaming: true,
-            provider: finalMetrics.provider ?? undefined
+            provider: finalMetrics.provider ?? undefined,
+            toolCalls: toolCalls.length > 0 ? toolCalls : undefined
           };
 
           if (callbacks.onComplete) {

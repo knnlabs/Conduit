@@ -31,6 +31,8 @@ import { useChatStreamingLogic } from './ChatStreamingLogic';
 import { DynamicParameters } from '@/components/parameters/DynamicParameters';
 import { useParameterState } from '@/components/parameters/hooks/useParameterState';
 import Link from 'next/link';
+import { useAdminClient } from '@/lib/client/adminClient';
+import type { FunctionConfigurationDto } from '@knn_labs/conduit-admin-client';
 
 export function ChatInterface() {
   const { data: discoveryData, isLoading: modelsLoading } = useDiscoveryModels(ModelCapability.Chat); // Filter for chat-capable models only
@@ -47,13 +49,33 @@ export function ChatInterface() {
   const [currentInputText, setCurrentInputText] = useState('');
   const [currentInputImages, setCurrentInputImages] = useState(0);
   const [sendHistoryEnabled, setSendHistoryEnabled] = useState(true); // Default to sending history
-  
+  const [selectedFunctionIds, setSelectedFunctionIds] = useState<number[]>([]);
+  const [availableFunctions, setAvailableFunctions] = useState<FunctionConfigurationDto[]>([]);
+
   const performanceSettings = usePerformanceSettings();
+  const { executeWithAdmin } = useAdminClient();
   const { 
     getActiveSession, 
     createSession,
     activeSessionId 
   } = useChatStore();
+
+  // Load available functions on mount
+  useEffect(() => {
+    const loadFunctions = async () => {
+      try {
+        const functions = await executeWithAdmin(client =>
+          client.functionConfigurations.list()
+        );
+        // Filter to only enabled functions
+        setAvailableFunctions(functions.filter(f => f.isEnabled));
+      } catch (err) {
+        console.warn('Failed to load functions:', err);
+        // Don't show error to user - function calling is optional
+      }
+    };
+    void loadFunctions();
+  }, [executeWithAdmin]);
 
   // Set initial model when data loads
   useEffect(() => {
@@ -96,6 +118,7 @@ export function ChatInterface() {
     performanceSettings,
     dynamicParameters: parameterState.getSubmitValues(),
     sendHistoryEnabled,
+    functionConfigurationIds: selectedFunctionIds.length > 0 ? selectedFunctionIds : undefined,
   });
 
   // Cleanup on unmount - abort any pending requests
@@ -194,9 +217,12 @@ export function ChatInterface() {
             
             <Collapse in={showSettings}>
               <Stack gap="md">
-                <ChatSettings 
+                <ChatSettings
                   reasoningExpanded={reasoningExpanded}
                   onReasoningExpandedChange={setReasoningExpanded}
+                  availableFunctions={availableFunctions}
+                  selectedFunctionIds={selectedFunctionIds}
+                  onFunctionIdsChange={setSelectedFunctionIds}
                 />
                 
                 {/* Token Counter */}

@@ -32,6 +32,7 @@ interface ChatStreamingLogicParams {
   };
   dynamicParameters?: Record<string, unknown>;
   sendHistoryEnabled?: boolean;
+  functionConfigurationIds?: number[];
 }
 
 export function useChatStreamingLogic({
@@ -48,6 +49,7 @@ export function useChatStreamingLogic({
   performanceSettings,
   dynamicParameters = {},
   sendHistoryEnabled = true,
+  functionConfigurationIds,
 }: ChatStreamingLogicParams) {
   const streamingAdapterRef = useRef<SDKChatStreamingAdapter | null>(null);
   
@@ -122,6 +124,7 @@ export function useChatStreamingLogic({
         seed: sessionParams.seed,
         stop: sessionParams.stop && sessionParams.stop.length > 0 ? sessionParams.stop : undefined,
         responseFormat: sessionParams.responseFormat === 'json_object' ? 'json_object' : undefined,
+        functionConfigurationIds: functionConfigurationIds,
         dynamicParameters
       };
 
@@ -153,13 +156,17 @@ export function useChatStreamingLogic({
             // Still create a message even if empty to show something happened
             finalContent = '[No response received]';
           }
-          
+
           const assistantMessage: ChatMessage = {
             id: uuidv4(),
             role: 'assistant',
             content: finalContent,
             timestamp: new Date(),
-            metadata: metadata as ChatMessage['metadata'] // Convert SDK metadata to WebAdmin format
+            metadata: {
+              ...metadata,
+              toolCalls: undefined // Remove from metadata as we're adding to message root
+            } as ChatMessage['metadata'],
+            toolCalls: metadata?.toolCalls // Add tool calls to message root for UI display
           };
 
           setMessages(prev => [...prev, assistantMessage]);
@@ -231,7 +238,7 @@ export function useChatStreamingLogic({
       // Cleanup handled in callbacks
       setTokensPerSecond(null);
     }
-  }, [selectedModel, messages, isLoading, getActiveSession, performanceSettings, handleError, setMessages, setIsLoading, setStreamingContent, setStreamingChannel, setTokensPerSecond, setError, dynamicParameters, streamingAdapter, sendHistoryEnabled]);
+  }, [selectedModel, messages, isLoading, getActiveSession, performanceSettings, handleError, setMessages, setIsLoading, setStreamingContent, setStreamingChannel, setTokensPerSecond, setError, dynamicParameters, streamingAdapter, sendHistoryEnabled, functionConfigurationIds]);
 
   const abortMessage = useCallback(() => {
     if (streamingAdapterRef.current) {

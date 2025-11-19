@@ -1,34 +1,59 @@
-import { 
-  ActionIcon, 
-  Stack, 
-  Slider, 
-  Text, 
+import {
+  ActionIcon,
+  Stack,
+  Slider,
+  Text,
   NumberInput,
   Select,
   Textarea,
   Switch,
   Group,
   Divider,
-  Badge
+  Badge,
+  MultiSelect
 } from '@mantine/core';
 import { IconRefresh } from '@tabler/icons-react';
 import { useChatStore } from '../hooks/useChatStore';
 import { CHAT_PRESETS, findMatchingPreset } from '@knn_labs/conduit-core-client';
 import { getPresetIcon } from '../utils/presets';
 import { ChatParameters } from '../types';
+import type { FunctionConfigurationDto } from '@knn_labs/conduit-admin-client';
 
 interface ChatSettingsProps {
   reasoningExpanded?: boolean;
   onReasoningExpandedChange?: (expanded: boolean) => void;
+  availableFunctions?: FunctionConfigurationDto[];
+  selectedFunctionIds?: number[];
+  onFunctionIdsChange?: (ids: number[]) => void;
 }
 
-export function ChatSettings({ reasoningExpanded = true, onReasoningExpandedChange }: ChatSettingsProps = {}) {
+export function ChatSettings({
+  reasoningExpanded = true,
+  onReasoningExpandedChange,
+  availableFunctions = [],
+  selectedFunctionIds = [],
+  onFunctionIdsChange
+}: ChatSettingsProps) {
   const { getActiveSession, updateSessionParameters } = useChatStore();
   const activeSession = getActiveSession();
-  
+
   if (!activeSession) return null;
-  
+
   const parameters = activeSession.parameters;
+
+  // Helper to get provider type name
+  const getProviderTypeName = (providerType: number): string => {
+    switch (providerType) {
+      case 1:
+        return 'Exa';
+      case 2:
+        return 'Tavily';
+      case 3:
+        return 'Custom';
+      default:
+        return 'Unknown';
+    }
+  };
 
   const handleParameterChange = (updates: Partial<ChatParameters>) => {
     updateSessionParameters(activeSession.id, updates);
@@ -100,7 +125,38 @@ export function ChatSettings({ reasoningExpanded = true, onReasoningExpandedChan
               return undefined;
             })()}
           />
-          
+
+          {availableFunctions.length > 0 && (
+            <MultiSelect
+              label="Functions"
+              description="Enable AI function calling for web search, RAG, and more"
+              placeholder={selectedFunctionIds.length === 0 ? "No functions selected" : ""}
+              data={availableFunctions.map(f => ({
+                value: String(f.id),
+                label: f.configurationName || 'Unnamed Function',
+              }))}
+              value={selectedFunctionIds.map(String)}
+              onChange={(values) => {
+                if (onFunctionIdsChange) {
+                  onFunctionIdsChange(values.map(Number));
+                }
+              }}
+              searchable
+              clearable
+              maxDropdownHeight={300}
+              renderOption={({ option }) => {
+                const func = availableFunctions.find(f => String(f.id) === option.value);
+                if (!func) return option.label;
+                return (
+                  <div>
+                    <Text size="sm" fw={500}>{func.configurationName || 'Unnamed Function'}</Text>
+                    <Text size="xs" c="dimmed">{getProviderTypeName(func.providerType || 3)}</Text>
+                  </div>
+                );
+              }}
+            />
+          )}
+
           <Divider />
           
           <div>
