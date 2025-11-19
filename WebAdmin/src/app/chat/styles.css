@@ -401,3 +401,51 @@
   );
   border-left-color: var(--conduit-accent-blue-subtle);
 }
+
+/* Resize handle styling */
+.chat-resize-handle {
+  transition: opacity 0.2s ease;
+}
+
+.chat-resize-handle:hover {
+  opacity: 1 !important;
+}
+
+.chat-resize-handle:hover svg {
+  opacity: 0.6 !important;
+}
+
+.chat-resize-handle:active {
+  background: var(--mantine-color-blue-1);
+}
+
+[data-mantine-color-scheme="dark"] .chat-resize-handle:active {
+  background: rgba(33, 150, 243, 0.1);
+}
+
+/* Compact mode styles */
+.chat-compact-mode .mantine-Badge-root {
+  display: none;
+}
+
+.chat-compact-mode .chat-token-counter {
+  display: none;
+}
+
+/* Sticky header enhancement */
+.chat-sticky-header {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.2s ease;
+}
+
+.chat-sticky-header.is-stuck {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+[data-mantine-color-scheme="dark"] .chat-sticky-header {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+[data-mantine-color-scheme="dark"] .chat-sticky-header.is-stuck {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}

@@ -1,19 +1,26 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { 
-  Container, 
-  Paper, 
-  Stack, 
+import {
+  Container,
+  Paper,
+  Stack,
   Center,
   Loader,
   Alert,
   Group,
   Badge,
-  Collapse,
-  ActionIcon
+  ActionIcon,
+  Tooltip,
+  Modal
 } from '@mantine/core';
-import { IconAlertCircle, IconSettings, IconChevronUp } from '@tabler/icons-react';
+import {
+  IconAlertCircle,
+  IconSettings,
+  IconAdjustments,
+  IconLayoutSidebarLeftCollapse,
+  IconLayoutSidebarLeftExpand
+} from '@tabler/icons-react';
 import { ModelSelector } from './ModelSelector';
 import { ChatInput } from './ChatInput';
 import { ChatMessages } from './ChatMessages';
@@ -33,6 +40,7 @@ import { useParameterState } from '@/components/parameters/hooks/useParameterSta
 import Link from 'next/link';
 import { useAdminClient } from '@/lib/client/adminClient';
 import type { FunctionConfigurationDto } from '@knn_labs/conduit-admin-client';
+import { useChatLayout } from '../hooks/useChatLayout';
 
 export function ChatInterface() {
   const { data: discoveryData, isLoading: modelsLoading } = useDiscoveryModels(ModelCapability.Chat); // Filter for chat-capable models only
@@ -43,14 +51,19 @@ export function ChatInterface() {
   const [streamingContent, setStreamingContent] = useState('');
   const [streamingChannel, setStreamingChannel] = useState<string | null>(null);
   const [tokensPerSecond, setTokensPerSecond] = useState<number | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showParameters] = useState(false);
   const [reasoningExpanded, setReasoningExpanded] = useState(true); // Default to expanded
   const [currentInputText, setCurrentInputText] = useState('');
   const [currentInputImages, setCurrentInputImages] = useState(0);
   const [sendHistoryEnabled, setSendHistoryEnabled] = useState(true); // Default to sending history
   const [selectedFunctionIds, setSelectedFunctionIds] = useState<number[]>([]);
   const [availableFunctions, setAvailableFunctions] = useState<FunctionConfigurationDto[]>([]);
+
+  // Layout state management
+  const chatLayout = useChatLayout();
+
+  // Modal state
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [parametersModalOpen, setParametersModalOpen] = useState(false);
 
   const performanceSettings = usePerformanceSettings();
   const { executeWithAdmin } = useAdminClient();
@@ -176,87 +189,84 @@ export function ChatInterface() {
   }
 
   return (
-    <Container size="lg" py="md" style={{ height: 'calc(100vh - 32px)', display: 'flex', flexDirection: 'column' }}>
-      <Stack style={{ flex: 1, overflow: 'hidden' }}>
-        <Paper p="md" withBorder style={{ flexShrink: 0 }}>
-          <Stack gap="md">
-            <Group justify="space-between">
-              <Group style={{ flex: 1 }}>
-                <ModelSelector
-                  value={selectedModel}
-                  onChange={setSelectedModel}
-                  modelData={discoveryData?.data ?? []}
-                  style={{ flex: 1, maxWidth: 400 }}
-                />
-                {currentDiscoveryModel?.capabilities?.vision && (
-                  <Badge variant="light" color="blue">
-                    Vision Enabled
-                  </Badge>
-                )}
-                {currentDiscoveryModel && (
-                  <TokenCounter
-                    messages={messages}
-                    maxTokens={maxContextTokens}
-                    modelName={currentDiscoveryModel.display_name ?? currentDiscoveryModel.id}
-                    compact={true}
-                    showCost={false}
-                    currentInputText={currentInputText}
-                    currentInputImages={currentInputImages}
-                  />
-                )}
-              </Group>
-              <ActionIcon
-                size="lg"
-                variant="light"
-                onClick={() => setShowSettings(!showSettings)}
-                aria-label="Toggle advanced settings"
-              >
-                {showSettings ? <IconChevronUp size={20} /> : <IconSettings size={20} />}
-              </ActionIcon>
-            </Group>
-            
-            <Collapse in={showSettings}>
-              <Stack gap="md">
-                <ChatSettings
-                  reasoningExpanded={reasoningExpanded}
-                  onReasoningExpandedChange={setReasoningExpanded}
-                  availableFunctions={availableFunctions}
-                  selectedFunctionIds={selectedFunctionIds}
-                  onFunctionIdsChange={setSelectedFunctionIds}
-                />
-                
-                {/* Token Counter */}
-                {currentDiscoveryModel && (
-                  <TokenCounter
-                    messages={messages}
-                    maxTokens={maxContextTokens}
-                    modelName={currentDiscoveryModel.display_name ?? currentDiscoveryModel.id}
-                    compact={false}
-                    showCost={false}
-                    currentInputText={currentInputText}
-                    currentInputImages={currentInputImages}
-                  />
-                )}
-              </Stack>
-            </Collapse>
-            
-            {/* Dynamic Parameters UI */}
-            {currentDiscoveryModel?.parameters && currentDiscoveryModel.parameters !== '{}' && (
-              <DynamicParameters
-                parameters={currentDiscoveryModel.parameters}
-                values={parameterState.values}
-                onChange={parameterState.updateValues}
-                context="chat"
-                title="Model Parameters"
-                collapsible={true}
-                defaultExpanded={showParameters}
+    <Container size="lg" py="md">
+      <Stack gap="md">
+        {/* Header */}
+        <Paper p="md" withBorder>
+          <Group justify="space-between">
+            <Group style={{ flex: 1 }}>
+              <ModelSelector
+                value={selectedModel}
+                onChange={setSelectedModel}
+                modelData={discoveryData?.data ?? []}
+                style={{ flex: 1, maxWidth: 400 }}
               />
-            )}
-          </Stack>
+              {currentDiscoveryModel?.capabilities?.vision && (
+                <Badge variant="light" color="blue">
+                  Vision Enabled
+                </Badge>
+              )}
+              {!chatLayout.compactMode && currentDiscoveryModel && (
+                <TokenCounter
+                  messages={messages}
+                  maxTokens={maxContextTokens}
+                  modelName={currentDiscoveryModel.display_name ?? currentDiscoveryModel.id}
+                  compact={true}
+                  showCost={false}
+                  currentInputText={currentInputText}
+                  currentInputImages={currentInputImages}
+                />
+              )}
+            </Group>
+            <Group gap="xs">
+              <Tooltip label={chatLayout.compactMode ? 'Expand Controls' : 'Compact Mode'}>
+                <ActionIcon
+                  size="lg"
+                  variant="light"
+                  onClick={chatLayout.toggleCompactMode}
+                  aria-label="Toggle compact mode"
+                  color={chatLayout.compactMode ? 'blue' : undefined}
+                >
+                  {chatLayout.compactMode ? (
+                    <IconLayoutSidebarLeftExpand size={20} />
+                  ) : (
+                    <IconLayoutSidebarLeftCollapse size={20} />
+                  )}
+                </ActionIcon>
+              </Tooltip>
+              {!chatLayout.compactMode && (
+                <>
+                  <Tooltip label="Chat Settings">
+                    <ActionIcon
+                      size="lg"
+                      variant="light"
+                      onClick={() => setSettingsModalOpen(true)}
+                      aria-label="Open chat settings"
+                    >
+                      <IconSettings size={20} />
+                    </ActionIcon>
+                  </Tooltip>
+                  {currentDiscoveryModel?.parameters && currentDiscoveryModel.parameters !== '{}' && (
+                    <Tooltip label="Model Parameters">
+                      <ActionIcon
+                        size="lg"
+                        variant="light"
+                        onClick={() => setParametersModalOpen(true)}
+                        aria-label="Open model parameters"
+                      >
+                        <IconAdjustments size={20} />
+                      </ActionIcon>
+                    </Tooltip>
+                  )}
+                </>
+              )}
+            </Group>
+          </Group>
         </Paper>
 
-        <Paper p="md" withBorder style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <ChatMessages 
+        {/* Messages Section */}
+        <Paper p="md" withBorder style={{ minHeight: '500px', display: 'flex', flexDirection: 'column' }}>
+          <ChatMessages
             messages={messages}
             isLoading={isLoading}
             streamingContent={isLoading ? streamingContent : undefined}
@@ -266,7 +276,8 @@ export function ChatInterface() {
           />
         </Paper>
 
-        <Paper p="md" withBorder style={{ flexShrink: 0 }}>
+        {/* Input Section */}
+        <Paper p="md" withBorder>
           <ChatInput
             onSendMessage={(message, images) => {
               // Clear input state when message is sent
@@ -304,6 +315,55 @@ export function ChatInterface() {
             }}
           />
         </Paper>
+
+        {/* Chat Settings Modal */}
+        <Modal
+          opened={settingsModalOpen}
+          onClose={() => setSettingsModalOpen(false)}
+          title="Chat Settings"
+          size="lg"
+        >
+          <Stack gap="md">
+            <ChatSettings
+              reasoningExpanded={reasoningExpanded}
+              onReasoningExpandedChange={setReasoningExpanded}
+              availableFunctions={availableFunctions}
+              selectedFunctionIds={selectedFunctionIds}
+              onFunctionIdsChange={setSelectedFunctionIds}
+            />
+
+            {/* Token Counter */}
+            {currentDiscoveryModel && (
+              <TokenCounter
+                messages={messages}
+                maxTokens={maxContextTokens}
+                modelName={currentDiscoveryModel.display_name ?? currentDiscoveryModel.id}
+                compact={false}
+                showCost={false}
+                currentInputText={currentInputText}
+                currentInputImages={currentInputImages}
+              />
+            )}
+          </Stack>
+        </Modal>
+
+        {/* Model Parameters Modal */}
+        <Modal
+          opened={parametersModalOpen}
+          onClose={() => setParametersModalOpen(false)}
+          title="Model Parameters"
+          size="lg"
+        >
+          {currentDiscoveryModel?.parameters && currentDiscoveryModel.parameters !== '{}' && (
+            <DynamicParameters
+              parameters={currentDiscoveryModel.parameters}
+              values={parameterState.values}
+              onChange={parameterState.updateValues}
+              context="chat"
+              collapsible={false}
+            />
+          )}
+        </Modal>
       </Stack>
     </Container>
   );
