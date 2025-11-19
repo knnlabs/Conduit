@@ -28,7 +28,8 @@ import {
   IconEdit,
   IconTrash,
   IconFilter,
-  IconDots
+  IconDots,
+  IconTestPipe,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useAdminClient } from '@/lib/client/adminClient';
@@ -43,6 +44,7 @@ import {
   getPurposeName,
   getExecutionModeName,
 } from '../types';
+import { TestFunctionModal } from '@/components/functions/TestFunctionModal';
 
 export default function FunctionConfigurationsPage() {
   const { executeWithAdmin } = useAdminClient();
@@ -52,6 +54,8 @@ export default function FunctionConfigurationsPage() {
   const [editingConfig, setEditingConfig] = useState<FunctionConfigurationDto | null>(null);
   const [filterProvider, setFilterProvider] = useState<string>('all');
   const [filterPurpose, setFilterPurpose] = useState<string>('all');
+  const [testingConfig, setTestingConfig] = useState<FunctionConfigurationDto | null>(null);
+  const [showTestModal, setShowTestModal] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState<CreateFunctionConfigurationDto>({
@@ -218,6 +222,11 @@ export default function FunctionConfigurationsPage() {
     setShowModal(true);
   };
 
+  const openTestModal = (config: FunctionConfigurationDto) => {
+    setTestingConfig(config);
+    setShowTestModal(true);
+  };
+
   const resetForm = () => {
     setFormData({
       configurationName: '',
@@ -366,6 +375,12 @@ export default function FunctionConfigurationsPage() {
                         </Menu.Target>
                         <Menu.Dropdown>
                           <Menu.Item
+                            leftSection={<IconTestPipe size={14} />}
+                            onClick={() => openTestModal(config)}
+                          >
+                            Test
+                          </Menu.Item>
+                          <Menu.Item
                             leftSection={<IconEdit size={14} />}
                             onClick={() => openEditModal(config)}
                           >
@@ -496,6 +511,17 @@ export default function FunctionConfigurationsPage() {
           </Group>
         </Stack>
       </Modal>
+
+      {testingConfig && (
+        <TestFunctionModal
+          opened={showTestModal}
+          onClose={() => {
+            setShowTestModal(false);
+            setTestingConfig(null);
+          }}
+          configuration={testingConfig}
+        />
+      )}
     </Container>
   );
 }

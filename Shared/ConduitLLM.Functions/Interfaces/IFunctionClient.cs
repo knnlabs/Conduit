@@ -134,8 +134,9 @@ public class FunctionExecutionResult
 
     /// <summary>
     /// Response data from the provider (serialized as JSON).
+    /// Must be valid JSON or null. Empty strings are not allowed for JSONB columns.
     /// </summary>
-    public string ResponseJson { get; set; } = string.Empty;
+    public string? ResponseJson { get; set; }
 
     /// <summary>
     /// Error message if execution failed.

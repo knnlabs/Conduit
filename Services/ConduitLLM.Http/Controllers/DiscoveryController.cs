@@ -351,6 +351,207 @@ namespace ConduitLLM.Http.Controllers
             }
         }
 
+        /// <summary>
+        /// Gets all available function configurations for authenticated virtual keys.
+        /// </summary>
+        /// <param name="purpose">Optional purpose filter (e.g., "Search", "Answer", "RAG_Search")</param>
+        /// <param name="providerType">Optional provider type filter (e.g., "Exa", "Perplexity")</param>
+        /// <returns>List of available function configurations</returns>
+        [HttpGet("functions")]
+        public async Task<IActionResult> GetFunctions(
+            [FromQuery] string? purpose = null,
+            [FromQuery] string? providerType = null)
+        {
+            try
+            {
+                // Get virtual key from user claims
+                var virtualKeyValue = HttpContext.User.FindFirst("VirtualKey")?.Value;
+                if (string.IsNullOrEmpty(virtualKeyValue))
+                {
+                    return Unauthorized(new ErrorResponseDto("Virtual key not found"));
+                }
+
+                // Validate virtual key is active
+                var virtualKey = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKeyValue);
+                if (virtualKey == null)
+                {
+                    return Unauthorized(new ErrorResponseDto("Invalid virtual key"));
+                }
+
+                // Build cache key based on filters
+                var cacheKey = $"functions_discovery_{purpose ?? "all"}_{providerType ?? "all"}";
+
+                // Try to get from cache first
+                var cachedResult = await _discoveryCacheService.GetDiscoveryResultsAsync(cacheKey);
+                if (cachedResult != null)
+                {
+                    _logger.LogDebug("Returning cached function discovery results");
+                    return Ok(cachedResult.Data);
+                }
+
+                using var context = await _dbContextFactory.CreateDbContextAsync();
+
+                // Get all enabled function configurations
+                var query = context.FunctionConfigurations
+                    .Where(fc => fc.IsEnabled);
+
+                // Apply filters
+                if (!string.IsNullOrEmpty(purpose))
+                {
+                    if (Enum.TryParse<ConduitLLM.Functions.Enums.FunctionPurpose>(purpose, true, out var purposeEnum))
+                    {
+                        query = query.Where(fc => fc.Purpose == purposeEnum);
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(providerType))
+                {
+                    if (Enum.TryParse<ConduitLLM.Functions.Enums.FunctionProviderType>(providerType, true, out var providerEnum))
+                    {
+                        query = query.Where(fc => fc.ProviderType == providerEnum);
+                    }
+                }
+
+                var configurations = await query.ToListAsync();
+
+                var result = new ConduitLLM.Functions.DTOs.FunctionDiscoveryResponse
+                {
+                    Functions = configurations.Select(fc => new ConduitLLM.Functions.DTOs.FunctionDiscoveryDto
+                    {
+                        Id = fc.Id,
+                        ConfigurationName = fc.ConfigurationName,
+                        ProviderType = fc.ProviderType.ToString(),
+                        Purpose = fc.Purpose.ToString(),
+                        Description = fc.Description,
+                        DefaultExecutionMode = fc.DefaultExecutionMode.ToString(),
+                        IsEnabled = fc.IsEnabled,
+                        TimeoutSeconds = fc.TimeoutSeconds
+                    }).ToList(),
+                    Count = configurations.Count
+                };
+
+                // Cache the results
+                var discoveryResult = new DiscoveryModelsResult
+                {
+                    Data = new List<object> { result },
+                    Count = result.Count,
+                    CapabilityFilter = purpose
+                };
+
+                await _discoveryCacheService.SetDiscoveryResultsAsync(cacheKey, discoveryResult);
+
+                _logger.LogInformation("Cached function discovery results with {Count} functions", result.Count);
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving function discovery information");
+                return StatusCode(500, new ErrorResponseDto("Failed to retrieve function discovery information"));
+            }
+        }
+
+        /// <summary>
+        /// Gets parameter schema for a specific function configuration.
+        /// Enables dynamic UI generation for function execution.
+        /// </summary>
+        /// <param name="functionConfigurationId">The function configuration ID</param>
+        /// <returns>JSON schema defining required and optional parameters</returns>
+        [HttpGet("functions/{functionConfigurationId}/parameters")]
+        public async Task<IActionResult> GetFunctionParameters(int functionConfigurationId)
+        {
+            try
+            {
+                // Get virtual key from user claims
+                var virtualKeyValue = HttpContext.User.FindFirst("VirtualKey")?.Value;
+                if (string.IsNullOrEmpty(virtualKeyValue))
+                {
+                    return Unauthorized(new ErrorResponseDto("Virtual key not found"));
+                }
+
+                // Validate virtual key is active
+                var virtualKey = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKeyValue);
+                if (virtualKey == null)
+                {
+                    return Unauthorized(new ErrorResponseDto("Invalid virtual key"));
+                }
+
+                // Build cache key
+                var cacheKey = $"function_parameters_{functionConfigurationId}";
+
+                // Try to get from cache first
+                var cachedResult = await _discoveryCacheService.GetDiscoveryResultsAsync(cacheKey);
+                if (cachedResult != null)
+                {
+                    _logger.LogDebug("Returning cached function parameter schema for config {ConfigId}", functionConfigurationId);
+                    return Ok(cachedResult.Data);
+                }
+
+                using var context = await _dbContextFactory.CreateDbContextAsync();
+
+                // Find the function configuration
+                var configuration = await context.FunctionConfigurations
+                    .Where(fc => fc.Id == functionConfigurationId && fc.IsEnabled)
+                    .FirstOrDefaultAsync();
+
+                if (configuration == null)
+                {
+                    return NotFound(new ErrorResponseDto($"Function configuration {functionConfigurationId} not found or is disabled"));
+                }
+
+                // Parse the parameter schema
+                object? parameterSchema = null;
+                object? exampleRequest = null;
+
+                if (!string.IsNullOrEmpty(configuration.ParameterSchema))
+                {
+                    try
+                    {
+                        var schemaDoc = System.Text.Json.JsonDocument.Parse(configuration.ParameterSchema);
+                        parameterSchema = System.Text.Json.JsonSerializer.Deserialize<object>(configuration.ParameterSchema);
+
+                        // Try to extract example request if it's in the schema
+                        if (schemaDoc.RootElement.TryGetProperty("example", out var exampleElement))
+                        {
+                            exampleRequest = System.Text.Json.JsonSerializer.Deserialize<object>(exampleElement.GetRawText());
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to parse parameter schema for function config {ConfigId}", functionConfigurationId);
+                        parameterSchema = new { };
+                    }
+                }
+
+                var result = new ConduitLLM.Functions.DTOs.FunctionParametersResponseDto
+                {
+                    FunctionConfigurationId = configuration.Id,
+                    ConfigurationName = configuration.ConfigurationName,
+                    ProviderType = configuration.ProviderType.ToString(),
+                    Purpose = configuration.Purpose.ToString(),
+                    ParameterSchema = parameterSchema ?? new { },
+                    ExampleRequest = exampleRequest
+                };
+
+                // Cache the results
+                var discoveryResult = new DiscoveryModelsResult
+                {
+                    Data = new List<object> { result },
+                    Count = 1
+                };
+
+                await _discoveryCacheService.SetDiscoveryResultsAsync(cacheKey, discoveryResult);
+
+                _logger.LogInformation("Cached function parameter schema for config {ConfigId}", functionConfigurationId);
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving function parameters for config {ConfigId}", functionConfigurationId);
+                return StatusCode(500, new ErrorResponseDto("Failed to retrieve function parameters"));
+            }
+        }
     }
 
     // TODO: Add audit logging for discovery requests to track which virtual keys are querying model information

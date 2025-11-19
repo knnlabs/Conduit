@@ -55,9 +55,10 @@ public partial class ExaClient
             // Log cost reconciliation if available
             if (exaResponse.CostDollars != null)
             {
+                var searchCost = exaResponse.CostDollars.Search?.Values.Sum() ?? 0;
                 _logger.LogDebug("Exa reported cost: ${Total} (Search=${Search}, Text=${Text}, Highlights=${Highlights}, Summary=${Summary})",
-                    exaResponse.CostDollars.Total,
-                    exaResponse.CostDollars.Search,
+                    exaResponse.CostDollars.Total ?? 0,
+                    searchCost,
                     exaResponse.CostDollars.GetText ?? 0,
                     exaResponse.CostDollars.GetHighlights ?? 0,
                     exaResponse.CostDollars.GetSummary ?? 0);

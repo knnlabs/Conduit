@@ -19,6 +19,7 @@ import { ConversationService } from '../services/ConversationService';
 import { MessageService } from '../services/MessageService';
 import { UsageService } from '../services/UsageService';
 import { MediaService } from '../services/MediaService';
+import { FunctionsService } from '../services/FunctionsService';
 import type { VideoGenerationHubClient } from '../signalr/VideoGenerationHubClient';
 
 export class ConduitCoreClient extends FetchBasedClient {
@@ -41,6 +42,7 @@ export class ConduitCoreClient extends FetchBasedClient {
   public readonly messages: MessageService;
   public readonly usage: UsageService;
   public readonly media: MediaService;
+  public readonly functions: FunctionsService;
 
   constructor(config: ClientConfig) {
     super(config);
@@ -99,9 +101,12 @@ export class ConduitCoreClient extends FetchBasedClient {
     this.conversations = new ConversationService(this);
     this.messages = new MessageService(this);
     this.usage = new UsageService(this);
-    
+
     // Initialize media service
     this.media = new MediaService(this);
+
+    // Initialize functions service
+    this.functions = new FunctionsService(this);
     
     // Auto-connect SignalR if enabled
     if (signalRConfig.enabled !== false && signalRConfig.autoConnect !== false) {

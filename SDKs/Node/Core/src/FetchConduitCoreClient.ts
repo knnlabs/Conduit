@@ -7,6 +7,7 @@ import { VideosService } from './services/VideosService';
 import { DiscoveryService } from './services/DiscoveryService';
 import { ProviderModelsService } from './services/ProviderModelsService';
 import { MediaService } from './services/MediaService';
+import { FunctionsService } from './services/FunctionsService';
 import type { ClientConfig } from './client/types';
 import {
   isConduitError,
@@ -47,6 +48,7 @@ export class FetchConduitCoreClient extends FetchBasedClient {
   public readonly discovery: DiscoveryService;
   public readonly providerModels: ProviderModelsService;
   public readonly media: MediaService;
+  public readonly functions: FunctionsService;
 
   constructor(config: ClientConfig) {
     super(config);
@@ -60,6 +62,7 @@ export class FetchConduitCoreClient extends FetchBasedClient {
     this.discovery = new DiscoveryService(this);
     this.providerModels = new ProviderModelsService(this);
     this.media = new MediaService(this);
+    this.functions = new FunctionsService(this);
   }
 
   /**

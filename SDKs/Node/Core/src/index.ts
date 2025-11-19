@@ -299,6 +299,22 @@ export { EmbeddingsService, EmbeddingHelpers } from './services/EmbeddingsServic
 export { NotificationsService } from './services/NotificationsService';
 
 export type {
+  FunctionExecutionRequest,
+  FunctionExecutionResponse,
+  FunctionExecution,
+} from './models/functions';
+
+export { FunctionsService } from './services/FunctionsService';
+
+export type {
+  FunctionDiscoveryDto,
+  FunctionDiscoveryResponse,
+  FunctionParametersResponse,
+  FunctionParameterSchema,
+  ParameterDefinition,
+} from './models/function-discovery';
+
+export type {
   VideoProgressEvent,
   ImageProgressEvent,
   SpendUpdateEvent,

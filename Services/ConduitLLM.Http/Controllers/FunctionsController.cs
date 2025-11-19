@@ -22,6 +22,7 @@ public class FunctionsController : EventPublishingControllerBase
 {
     private readonly IFunctionExecutionService _executionService;
     private readonly IFunctionConfigurationRepository _configurationRepository;
+    private readonly ConduitLLM.Functions.Services.FunctionParameterValidationService _validationService;
     private readonly ILogger<FunctionsController> _logger;
 
     /// <summary>
@@ -30,12 +31,14 @@ public class FunctionsController : EventPublishingControllerBase
     public FunctionsController(
         IFunctionExecutionService executionService,
         IFunctionConfigurationRepository configurationRepository,
+        ConduitLLM.Functions.Services.FunctionParameterValidationService validationService,
         IPublishEndpoint publishEndpoint,
         ILogger<FunctionsController> logger)
         : base(publishEndpoint, logger)
     {
         _executionService = executionService ?? throw new ArgumentNullException(nameof(executionService));
         _configurationRepository = configurationRepository ?? throw new ArgumentNullException(nameof(configurationRepository));
+        _validationService = validationService ?? throw new ArgumentNullException(nameof(validationService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -79,6 +82,31 @@ public class FunctionsController : EventPublishingControllerBase
             if (!configuration.IsEnabled)
             {
                 return BadRequest(new ErrorResponseDto($"Function configuration {request.FunctionConfigurationId} is disabled"));
+            }
+
+            // Validate parameters against schema if available
+            var parameters = request.Parameters ?? new Dictionary<string, object>();
+            var validationResult = _validationService.ValidateParameters(parameters, configuration.ParameterSchema);
+
+            if (!validationResult.IsValid)
+            {
+                _logger.LogWarning(
+                    "Parameter validation failed for function {FunctionName} (config {ConfigId}): {Errors}",
+                    configuration.ConfigurationName,
+                    configuration.Id,
+                    string.Join(", ", validationResult.Errors));
+
+                return BadRequest(new ErrorResponseDto(
+                    $"Parameter validation failed: {string.Join("; ", validationResult.Errors)}"));
+            }
+
+            if (validationResult.Warnings.Count > 0)
+            {
+                _logger.LogWarning(
+                    "Parameter validation warnings for function {FunctionName} (config {ConfigId}): {Warnings}",
+                    configuration.ConfigurationName,
+                    configuration.Id,
+                    string.Join(", ", validationResult.Warnings));
             }
 
             // Store provider info for middleware usage tracking

@@ -1,9 +1,9 @@
 import type { FetchBasedClient } from '../client/FetchBasedClient';
 import { createClientAdapter, type IFetchBasedClientAdapter } from '../client/ClientAdapter';
 import type { RequestOptions } from '../client/types';
-import type { 
-  ModelsDiscoveryResponse, 
-  ProviderModelsDiscoveryResponse, 
+import type {
+  ModelsDiscoveryResponse,
+  ProviderModelsDiscoveryResponse,
   CapabilityTestResponse,
   BulkCapabilityTestRequest,
   BulkCapabilityTestResponse,
@@ -13,6 +13,10 @@ import type {
   CapabilityTest,
   DiscoveredModel
 } from '../models/discovery';
+import type {
+  FunctionDiscoveryResponse,
+  FunctionParametersResponse
+} from '../models/function-discovery';
 
 
 /**
@@ -156,6 +160,51 @@ export class DiscoveryService {
       undefined,
       options
     );
+  }
+
+  /**
+   * Gets all available function configurations.
+   * @param purpose - Optional purpose filter (e.g., "Search", "Answer", "RAG_Search")
+   * @param providerType - Optional provider type filter (e.g., "Exa", "Perplexity")
+   * @param options - Optional request options
+   */
+  async getFunctions(
+    purpose?: string,
+    providerType?: string,
+    options?: RequestOptions
+  ): Promise<FunctionDiscoveryResponse> {
+    const params = new URLSearchParams();
+    if (purpose) params.append('purpose', purpose);
+    if (providerType) params.append('providerType', providerType);
+
+    const queryString = params.toString();
+    const url = queryString
+      ? `${this.baseEndpoint}/functions?${queryString}`
+      : `${this.baseEndpoint}/functions`;
+
+    const response = await this.clientAdapter.get<FunctionDiscoveryResponse>(url, options);
+    return response;
+  }
+
+  /**
+   * Gets parameter schema for a specific function configuration.
+   * Enables dynamic UI generation for function execution.
+   * @param functionConfigurationId - The function configuration ID
+   * @param options - Optional request options
+   */
+  async getFunctionParameters(
+    functionConfigurationId: number,
+    options?: RequestOptions
+  ): Promise<FunctionParametersResponse> {
+    if (!functionConfigurationId || functionConfigurationId < 1) {
+      throw new Error('Function configuration ID is required and must be positive');
+    }
+
+    const response = await this.clientAdapter.get<FunctionParametersResponse>(
+      `${this.baseEndpoint}/functions/${functionConfigurationId}/parameters`,
+      options
+    );
+    return response;
   }
 
   /**

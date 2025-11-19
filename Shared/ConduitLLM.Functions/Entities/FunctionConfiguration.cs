@@ -77,6 +77,15 @@ public class FunctionConfiguration
     public string? ProviderSettings { get; set; }
 
     /// <summary>
+    /// JSON schema defining parameter requirements for this function (UI-focused).
+    /// Similar to Model.ModelParameters pattern for dynamic UI generation.
+    /// Defines required parameters, optional parameters with types, defaults, and validation rules.
+    /// Example: {"required":["query"],"optional":{"numResults":{"type":"number","min":1,"max":100,"default":10}}}
+    /// </summary>
+    [Column(TypeName = "jsonb")]
+    public string? ParameterSchema { get; set; }
+
+    /// <summary>
     /// Optional description of this function configuration
     /// </summary>
     [MaxLength(1000)]

@@ -38,18 +38,46 @@ export interface OpenAIErrorResponse {
  */
 export function parseErrorResponse(response: Response, body: unknown): ConduitError {
   const status = response.status;
-  
+
   // Try to extract error details from the response body
   let errorData: OpenAIErrorResponse | null = null;
-  
+  let message = 'An error occurred';
+  let code: string | undefined;
+  let param: string | undefined;
+
   if (body && typeof body === 'object' && 'error' in body) {
-    errorData = body as OpenAIErrorResponse;
+    const errorField = (body as { error: unknown }).error;
+
+    // Handle Conduit format: { error: "string message" }
+    if (typeof errorField === 'string') {
+      message = errorField;
+    }
+    // Handle Conduit detailed format: { error: { Message: "...", Type: "..." } }
+    else if (errorField && typeof errorField === 'object') {
+      if ('Message' in errorField && typeof (errorField as { Message: unknown }).Message === 'string') {
+        message = (errorField as { Message: string }).Message;
+        if ('Type' in errorField && typeof (errorField as { Type: unknown }).Type === 'string') {
+          code = (errorField as { Type: string }).Type;
+        }
+      }
+      // Handle OpenAI format: { error: { message: "...", type: "...", code: "...", param: "..." } }
+      else if ('message' in errorField) {
+        errorData = body as OpenAIErrorResponse;
+        const error = errorData.error;
+        message = error.message;
+        code = error.code;
+        param = error.param;
+      }
+    }
   }
-  
-  const error = errorData?.error;
-  const message = error?.message ?? 'An error occurred';
-  const code = error?.code;
-  const param = error?.param;
+
+  // If no error data was extracted, use the original OpenAI logic
+  if (!message || message === 'An error occurred') {
+    const error = errorData?.error;
+    message = error?.message ?? 'An error occurred';
+    code = error?.code;
+    param = error?.param;
+  }
   
   // Map status codes and error codes to specific error types
   switch (status) {

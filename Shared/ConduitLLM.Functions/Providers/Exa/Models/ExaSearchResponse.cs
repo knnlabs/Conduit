@@ -102,14 +102,17 @@ public class ExaResult
 
 /// <summary>
 /// Cost breakdown from Exa API response.
+/// All fields are nullable as Exa may not always include cost information.
 /// </summary>
 public class ExaCostBreakdown
 {
     /// <summary>
-    /// Search operation cost.
+    /// Search operation cost breakdown by search type (e.g., {"neural": 0.005}).
+    /// Exa returns this as an object with search-type-specific costs.
     /// </summary>
     [JsonPropertyName("search")]
-    public decimal Search { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, decimal>? Search { get; set; }
 
     /// <summary>
     /// Text extraction cost.
@@ -136,5 +139,6 @@ public class ExaCostBreakdown
     /// Total cost reported by Exa.
     /// </summary>
     [JsonPropertyName("total")]
-    public decimal Total { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public decimal? Total { get; set; }
 }
