@@ -65,15 +65,21 @@ export {
   FunctionPricingModel,
 };
 
+// Re-export function provider registry utilities from SDK
+export {
+  getAvailableFunctionProviders,
+  getFunctionProviderMetadata,
+  getFunctionProviderTypeName,
+  normalizeFunctionProviderType,
+  isValidFunctionProviderType,
+  FUNCTION_PROVIDER_REGISTRY,
+} from '@knn_labs/conduit-admin-client';
+export type { FunctionProviderMetadata } from '@knn_labs/conduit-admin-client';
+
 // Helper functions for enum display
-export function getProviderTypeName(providerType: FunctionProviderType): string {
-  switch (providerType) {
-    case FunctionProviderType.Exa:
-      return 'Exa';
-    default:
-      return `Unknown (${String(providerType)})`;
-  }
-}
+// Note: getProviderTypeName is now provided by SDK (getFunctionProviderTypeName)
+// Re-export with original name for backwards compatibility
+export { getFunctionProviderTypeName as getProviderTypeName } from '@knn_labs/conduit-admin-client';
 
 export function getPurposeName(purpose: FunctionPurpose): string {
   switch (purpose) {

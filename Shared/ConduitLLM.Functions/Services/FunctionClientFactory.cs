@@ -1,6 +1,7 @@
 using ConduitLLM.Functions.Enums;
 using ConduitLLM.Functions.Interfaces;
 using ConduitLLM.Functions.Providers.Exa;
+using ConduitLLM.Functions.Providers.Tavily;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Functions.Services;
@@ -56,6 +57,7 @@ public class FunctionClientFactory : IFunctionClientFactory
         return providerType switch
         {
             FunctionProviderType.Exa => CreateExaClient(configuration, credential),
+            FunctionProviderType.Tavily => CreateTavilyClient(configuration, credential),
             _ => throw new NotSupportedException($"Function provider type '{providerType}' is not supported")
         };
     }
@@ -70,6 +72,22 @@ public class FunctionClientFactory : IFunctionClientFactory
         var logger = _loggerFactory.CreateLogger<ExaClient>();
 
         return new ExaClient(
+            configuration,
+            credential,
+            _httpClientFactory,
+            logger);
+    }
+
+    /// <summary>
+    /// Creates a Tavily client instance.
+    /// </summary>
+    private TavilyClient CreateTavilyClient(
+        ConduitLLM.Functions.Entities.FunctionConfiguration configuration,
+        ConduitLLM.Functions.Entities.FunctionCredential credential)
+    {
+        var logger = _loggerFactory.CreateLogger<TavilyClient>();
+
+        return new TavilyClient(
             configuration,
             credential,
             _httpClientFactory,

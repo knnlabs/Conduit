@@ -1,5 +1,6 @@
 using System.Text.Json;
 using ConduitLLM.Functions.Entities;
+using ConduitLLM.Functions.Enums;
 using ConduitLLM.Functions.Models;
 using ConduitLLM.Functions.Models.Pricing;
 
@@ -45,7 +46,7 @@ public partial class FunctionCostCalculationService
         }
 
         // Try to detect configuration type from structure
-        // For now, we'll try Exa format first (most common initial use case)
+        // Try Exa format first
         try
         {
             var exaConfig = JsonSerializer.Deserialize<ExaHybridPricingConfig>(functionCost.PricingConfiguration);
@@ -56,8 +57,23 @@ public partial class FunctionCostCalculationService
         }
         catch (JsonException)
         {
-            // Not Exa format, could be another provider's hybrid pricing
-            _logger.LogDebug("Failed to parse as Exa hybrid pricing config, trying generic hybrid format...");
+            // Not Exa format, try next
+            _logger.LogDebug("Failed to parse as Exa hybrid pricing config, trying Tavily format...");
+        }
+
+        // Try Tavily format
+        try
+        {
+            var tavilyConfig = JsonSerializer.Deserialize<TavilySearchPricingConfig>(functionCost.PricingConfiguration);
+            if (tavilyConfig != null)
+            {
+                return CalculateTavilySearchCost(tavilyConfig, usage);
+            }
+        }
+        catch (JsonException)
+        {
+            // Not Tavily format either
+            _logger.LogDebug("Failed to parse as Tavily pricing config, trying generic hybrid format...");
         }
 
         // Future: Add other hybrid pricing formats here as needed
@@ -205,5 +221,81 @@ public partial class FunctionCostCalculationService
         }
 
         return totalContentCost;
+    }
+
+    /// <summary>
+    /// Calculates cost using Tavily search pricing rules.
+    /// </summary>
+    /// <param name="config">The Tavily pricing configuration.</param>
+    /// <param name="usage">The usage data.</param>
+    /// <returns>The calculated cost.</returns>
+    /// <remarks>
+    /// Tavily pricing breakdown:
+    /// 1. Base search cost: Depends on search depth (basic: 1 credit, advanced: 2 credits)
+    /// 2. Auto-parameters addon: 2 credits (if enabled)
+    /// 3. All content extraction included in base cost (images, answer, raw content)
+    ///
+    /// Example: Advanced search with auto-parameters:
+    /// - Advanced search: 2 credits × $0.008 = $0.016
+    /// - Auto-parameters: 2 credits × $0.008 = $0.016
+    /// - Total: $0.032
+    ///
+    /// Unlike Exa, Tavily does NOT charge per result or for content extraction.
+    /// </remarks>
+    private decimal CalculateTavilySearchCost(TavilySearchPricingConfig config, FunctionExecutionUsage usage)
+    {
+        decimal totalCost = 0m;
+        int totalCredits = 0;
+
+        // 1. Calculate base search cost
+        var searchDepth = usage.SearchType?.ToLowerInvariant() ?? "basic";
+        int searchCredits = searchDepth == "advanced"
+            ? config.AdvancedSearchCredits
+            : config.BasicSearchCredits;
+
+        totalCredits += searchCredits;
+        _logger.LogDebug("Tavily {SearchDepth} search: {Credits} credits",
+            searchDepth, searchCredits);
+
+        // 2. Add auto-parameters cost if enabled
+        if (usage.Metadata?.TryGetValue("autoParametersEnabled", out var autoParamsObj) == true)
+        {
+            if (autoParamsObj is bool autoParams && autoParams)
+            {
+                var autoParamsCredits = config.AutoParametersCredits ?? 0;
+                totalCredits += autoParamsCredits;
+                _logger.LogDebug("Tavily auto-parameters: {Credits} credits", autoParamsCredits);
+            }
+        }
+
+        // 3. Calculate base cost from credits
+        totalCost = totalCredits * config.CostPerCredit;
+
+        // 4. Optional: Charge for answer generation separately (future-proofing)
+        if (config.ChargeForAnswerGeneration &&
+            usage.Metadata?.ContainsKey("answerGenerated") == true)
+        {
+            var answerCost = config.AnswerGenerationCost ?? 0m;
+            totalCost += answerCost;
+            _logger.LogDebug("Tavily answer generation: ${Cost}", answerCost);
+        }
+
+        // 5. Optional: Charge for images separately (future-proofing)
+        if (config.ChargeForImageResults &&
+            usage.Metadata?.TryGetValue("imageResults", out var imageCountObj) == true)
+        {
+            if (imageCountObj is int imageCount && imageCount > 0)
+            {
+                var imageCost = imageCount * (config.CostPerImage ?? 0m);
+                totalCost += imageCost;
+                _logger.LogDebug("Tavily image results: {Count} images × ${CostPerImage} = ${Cost}",
+                    imageCount, config.CostPerImage ?? 0m, imageCost);
+            }
+        }
+
+        _logger.LogDebug("Tavily cost breakdown: {Credits} credits × ${CostPerCredit} = ${TotalCost}",
+            totalCredits, config.CostPerCredit, totalCost);
+
+        return totalCost;
     }
 }

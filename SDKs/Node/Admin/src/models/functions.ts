@@ -1,8 +1,12 @@
 import { FilterOptions } from './common';
 
-/** Function provider type (e.g., Exa) */
+/** Function provider type (e.g., Exa, Tavily) */
 export enum FunctionProviderType {
-  Exa = 1
+  Exa = 1,
+  Perplexity = 2,
+  CustomRAG = 3,
+  Tavily = 4,
+  Custom = 99
 }
 
 /** Function purpose category */
@@ -301,6 +305,21 @@ export interface ExaHybridPricingConfig extends BasePricingConfig {
   };
 }
 
+/** Tavily search pricing - credit-based model (Tavily-specific) */
+export interface TavilySearchPricingConfig extends BasePricingConfig {
+  pricingModel: FunctionPricingModel.Hybrid;
+  // Credit costs
+  costPerCredit: number; // Default: 0.008 USD
+  basicSearchCredits: number; // Default: 1
+  advancedSearchCredits: number; // Default: 2
+  autoParametersCredits?: number; // Default: 2
+  // Optional separate charges (future-proofing)
+  chargeForAnswerGeneration?: boolean; // Default: false
+  answerGenerationCost?: number; // Default: 0
+  chargeForImageResults?: boolean; // Default: false
+  costPerImage?: number; // Default: 0
+}
+
 /** Union type for all pricing configurations */
 export type FunctionPricingConfig =
   | FlatRatePricingConfig
@@ -308,7 +327,8 @@ export type FunctionPricingConfig =
   | PerTokenPricingConfig
   | TimeBasedPricingConfig
   | TieredPricingConfig
-  | ExaHybridPricingConfig;
+  | ExaHybridPricingConfig
+  | TavilySearchPricingConfig;
 
 // ============================================================================
 // List Responses with Pagination

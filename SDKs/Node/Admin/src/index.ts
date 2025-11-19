@@ -13,6 +13,7 @@ export * from './models/common';
 
 // Provider types and validation
 export * from './types/providers';
+export * from './types/function-providers';
 export * from './types/models';
 export * from './validation/modelValidation';
 export * from './errors/modelErrors';

@@ -43,6 +43,7 @@ import {
   getProviderTypeName,
   getPurposeName,
   getExecutionModeName,
+  getAvailableFunctionProviders,
 } from '../types';
 import { TestFunctionModal } from '@/components/functions/TestFunctionModal';
 
@@ -290,7 +291,10 @@ export default function FunctionConfigurationsPage() {
                 onChange={(value) => setFilterProvider(value ?? 'all')}
                 data={[
                   { value: 'all', label: 'All Providers' },
-                  { value: FunctionProviderType.Exa.toString(), label: 'Exa' },
+                  ...getAvailableFunctionProviders().map(p => ({
+                    value: p.value.toString(),
+                    label: p.label
+                  }))
                 ]}
                 style={{ flex: 1 }}
               />
@@ -427,9 +431,10 @@ export default function FunctionConfigurationsPage() {
             label="Provider Type"
             value={formData.providerType.toString()}
             onChange={(value) => setFormData({ ...formData, providerType: Number(value) as FunctionProviderType })}
-            data={[
-              { value: FunctionProviderType.Exa.toString(), label: 'Exa' },
-            ]}
+            data={getAvailableFunctionProviders().map(p => ({
+              value: p.value.toString(),
+              label: p.label
+            }))}
             disabled={!!editingConfig}
             required
           />

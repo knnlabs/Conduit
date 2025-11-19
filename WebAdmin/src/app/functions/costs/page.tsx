@@ -44,6 +44,7 @@ import {
   getProviderTypeName,
   getPurposeName,
   getPricingModelName,
+  getAvailableFunctionProviders,
 } from '../types';
 
 // Pricing config templates
@@ -485,9 +486,10 @@ export default function FunctionCostsPage() {
                 label="Provider Type"
                 value={formData.providerType.toString()}
                 onChange={(value) => setFormData({ ...formData, providerType: Number(value) as FunctionProviderType })}
-                data={[
-                  { value: FunctionProviderType.Exa.toString(), label: 'Exa' },
-                ]}
+                data={getAvailableFunctionProviders().map(p => ({
+                  value: p.value.toString(),
+                  label: p.label
+                }))}
                 required
               />
 

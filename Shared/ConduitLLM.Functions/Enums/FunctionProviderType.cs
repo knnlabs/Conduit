@@ -22,7 +22,7 @@ public enum FunctionProviderType
     CustomRAG = 3,
 
     /// <summary>
-    /// Tavily search API (future)
+    /// Tavily search API - RAG-optimized search with structured results
     /// </summary>
     Tavily = 4,
 
