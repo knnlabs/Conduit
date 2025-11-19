@@ -265,16 +265,19 @@ namespace ConduitLLM.Admin.Controllers
 
                 foreach (var association in model.Identifiers)
                 {
+                    // Skip associations without a provider type - they're not properly configured
+                    if (association.Provider == null)
+                    {
+                        _logger.LogWarning(
+                            "ModelIdentifier {AssociationId} for model {ModelId} has null Provider field - skipping",
+                            association.Id, id);
+                        continue;
+                    }
+
                     // Find matching providers for this association
                     var matchingProviders = enabledProviders.Where(p =>
-                    {
-                        // If association has no provider specified, it's universal
-                        if (association.Provider == null)
-                            return true;
-
-                        // Match provider type enum values
-                        return p.ProviderType == association.Provider;
-                    }).ToList();
+                        p.ProviderType == association.Provider
+                    ).ToList();
 
                     if (matchingProviders.Any())
                     {
