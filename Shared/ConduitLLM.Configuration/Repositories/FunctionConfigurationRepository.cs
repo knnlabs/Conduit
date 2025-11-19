@@ -31,7 +31,6 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
             using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
             return await dbContext.FunctionConfigurations
                 .AsNoTracking()
-                .Include(f => f.Credentials)
                 .Include(f => f.CostMappings)
                     .ThenInclude(cm => cm.FunctionCost)
                 .FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
@@ -55,7 +54,6 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
             using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
             return await dbContext.FunctionConfigurations
                 .AsNoTracking()
-                .Include(f => f.Credentials)
                 .Include(f => f.CostMappings)
                     .ThenInclude(cm => cm.FunctionCost)
                 .Where(f => ids.Contains(f.Id))
@@ -80,7 +78,6 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
             using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
             return await dbContext.FunctionConfigurations
                 .AsNoTracking()
-                .Include(f => f.Credentials)
                 .Include(f => f.CostMappings)
                     .ThenInclude(cm => cm.FunctionCost)
                 .FirstOrDefaultAsync(f => f.ConfigurationName == configurationName, cancellationToken);
@@ -100,7 +97,6 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
             using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
             return await dbContext.FunctionConfigurations
                 .AsNoTracking()
-                .Include(f => f.Credentials)
                 .Include(f => f.CostMappings)
                     .ThenInclude(cm => cm.FunctionCost)
                 .OrderBy(f => f.ConfigurationName)
@@ -120,7 +116,6 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
             using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
             return await dbContext.FunctionConfigurations
                 .AsNoTracking()
-                .Include(f => f.Credentials)
                 .Include(f => f.CostMappings)
                     .ThenInclude(cm => cm.FunctionCost)
                 .Where(f => f.IsEnabled)
@@ -141,7 +136,6 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
             using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
             return await dbContext.FunctionConfigurations
                 .AsNoTracking()
-                .Include(f => f.Credentials)
                 .Include(f => f.CostMappings)
                     .ThenInclude(cm => cm.FunctionCost)
                 .Where(f => f.ProviderType == providerType)
@@ -163,7 +157,6 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
             using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
             return await dbContext.FunctionConfigurations
                 .AsNoTracking()
-                .Include(f => f.Credentials)
                 .Include(f => f.CostMappings)
                     .ThenInclude(cm => cm.FunctionCost)
                 .Where(f => f.Purpose == purpose)

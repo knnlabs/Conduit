@@ -42,15 +42,15 @@ public class FunctionClientFactory : IFunctionClientFactory
             throw new InvalidOperationException($"Function configuration {functionConfigurationId} not found");
         }
 
-        // Get credentials
-        var credentials = _credentialRepository.GetByFunctionConfigurationIdAsync(functionConfigurationId)
+        // Get credentials for this provider type
+        var credentials = _credentialRepository.GetByProviderTypeAsync(configuration.ProviderType)
             .GetAwaiter().GetResult();
 
         var credential = credentials.FirstOrDefault(c => c.IsEnabled);
         if (credential == null)
         {
             throw new InvalidOperationException(
-                $"No enabled credentials found for function configuration {functionConfigurationId}");
+                $"No enabled credentials found for provider type {configuration.ProviderType}");
         }
 
         // Create provider-specific client

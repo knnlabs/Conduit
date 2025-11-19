@@ -106,12 +106,6 @@ public class FunctionConfiguration
     // Navigation properties
 
     /// <summary>
-    /// API credentials associated with this function configuration
-    /// </summary>
-    [JsonIgnore]
-    public ICollection<FunctionCredential> Credentials { get; set; } = new List<FunctionCredential>();
-
-    /// <summary>
     /// Cost mappings for this function configuration
     /// </summary>
     [JsonIgnore]

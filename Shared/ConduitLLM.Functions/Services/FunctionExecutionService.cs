@@ -119,14 +119,14 @@ public class FunctionExecutionService : IFunctionExecutionService
             _logger.LogInformation("Created execution record {ExecutionId} for function {ConfigName}",
                 execution.Id, configuration.ConfigurationName);
 
-            // 4. Get credentials
-            var credentials = await _credentialRepository.GetByFunctionConfigurationIdAsync(
-                functionConfigurationId, cancellationToken);
+            // 4. Get credentials for this provider type
+            var credentials = await _credentialRepository.GetByProviderTypeAsync(
+                configuration.ProviderType, cancellationToken);
 
             if (!credentials.Any())
             {
                 throw new InvalidOperationException(
-                    $"No credentials configured for function configuration {functionConfigurationId}");
+                    $"No credentials configured for provider type {configuration.ProviderType}");
             }
 
             // Use first enabled credential for now (could implement rotation/load balancing later)
@@ -134,7 +134,7 @@ public class FunctionExecutionService : IFunctionExecutionService
             if (credential == null)
             {
                 throw new InvalidOperationException(
-                    $"No enabled credentials found for function configuration {functionConfigurationId}");
+                    $"No enabled credentials found for provider type {configuration.ProviderType}");
             }
 
             // 5. Execute function via provider client

@@ -1,12 +1,14 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
+using ConduitLLM.Functions.Enums;
 
 namespace ConduitLLM.Functions.Entities;
 
 /// <summary>
-/// Represents an API credential (key) for a function configuration.
-/// Supports multiple credentials per configuration for load balancing and failover.
+/// Represents an API credential (key) for a function provider type.
+/// Supports multiple credentials per provider type for load balancing and failover.
+/// Credentials are shared across all function configurations of the same provider type.
 /// </summary>
 [Table("FunctionCredentials")]
 public class FunctionCredential
@@ -19,17 +21,11 @@ public class FunctionCredential
     public int Id { get; set; }
 
     /// <summary>
-    /// Foreign key to the function configuration this credential belongs to
+    /// The provider type this credential belongs to (e.g., Exa, Tavily)
+    /// All function configurations with this provider type can use these credentials
     /// </summary>
     [Required]
-    public int FunctionConfigurationId { get; set; }
-
-    /// <summary>
-    /// Navigation property to the function configuration
-    /// </summary>
-    [ForeignKey(nameof(FunctionConfigurationId))]
-    [JsonIgnore]
-    public FunctionConfiguration? FunctionConfiguration { get; set; }
+    public FunctionProviderType ProviderType { get; set; }
 
     /// <summary>
     /// API key for authentication (stored encrypted at rest)
@@ -59,7 +55,7 @@ public class FunctionCredential
     public short FunctionAccountGroup { get; set; } = 0;
 
     /// <summary>
-    /// Whether this is the primary credential (only one per configuration should be primary)
+    /// Whether this is the primary credential (only one per provider type should be primary)
     /// Primary credential is used by default; non-primary are for failover
     /// </summary>
     [Required]

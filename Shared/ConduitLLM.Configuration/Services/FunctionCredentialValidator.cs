@@ -1,3 +1,4 @@
+using ConduitLLM.Functions.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace ConduitLLM.Configuration.Services;
@@ -9,7 +10,7 @@ namespace ConduitLLM.Configuration.Services;
 public class FunctionCredentialValidator
 {
     private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
-    private const int MaxCredentialsPerConfiguration = 32;
+    private const int MaxCredentialsPerProviderType = 32;
 
     public FunctionCredentialValidator(IDbContextFactory<ConduitDbContext> dbContextFactory)
     {
@@ -17,18 +18,18 @@ public class FunctionCredentialValidator
     }
 
     /// <summary>
-    /// Validates if a new credential can be added to a function configuration
+    /// Validates if a new credential can be added to a provider type
     /// </summary>
-    public async Task<CredentialValidationResult> ValidateAddCredentialAsync(int functionConfigurationId, CancellationToken cancellationToken = default)
+    public async Task<CredentialValidationResult> ValidateAddCredentialAsync(FunctionProviderType providerType, CancellationToken cancellationToken = default)
     {
         using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
         var currentCredentialCount = await dbContext.FunctionCredentials
-            .CountAsync(c => c.FunctionConfigurationId == functionConfigurationId, cancellationToken);
+            .CountAsync(c => c.ProviderType == providerType, cancellationToken);
 
-        if (currentCredentialCount >= MaxCredentialsPerConfiguration)
+        if (currentCredentialCount >= MaxCredentialsPerProviderType)
         {
-            return CredentialValidationResult.Failure($"Function configuration already has the maximum of {MaxCredentialsPerConfiguration} credentials");
+            return CredentialValidationResult.Failure($"Provider type already has the maximum of {MaxCredentialsPerProviderType} credentials");
         }
 
         return CredentialValidationResult.Success();
@@ -81,18 +82,18 @@ public class FunctionCredentialValidator
     }
 
     /// <summary>
-    /// Ensures at least one credential is enabled for a function configuration
+    /// Ensures at least one credential is enabled for a provider type
     /// </summary>
-    public async Task<CredentialValidationResult> ValidateConfigurationHasEnabledCredentialAsync(int functionConfigurationId, CancellationToken cancellationToken = default)
+    public async Task<CredentialValidationResult> ValidateProviderTypeHasEnabledCredentialAsync(FunctionProviderType providerType, CancellationToken cancellationToken = default)
     {
         using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
         var hasEnabledCredential = await dbContext.FunctionCredentials
-            .AnyAsync(c => c.FunctionConfigurationId == functionConfigurationId && c.IsEnabled, cancellationToken);
+            .AnyAsync(c => c.ProviderType == providerType && c.IsEnabled, cancellationToken);
 
         if (!hasEnabledCredential)
         {
-            return CredentialValidationResult.Failure("Function configuration must have at least one enabled credential");
+            return CredentialValidationResult.Failure("Provider type must have at least one enabled credential");
         }
 
         return CredentialValidationResult.Success();

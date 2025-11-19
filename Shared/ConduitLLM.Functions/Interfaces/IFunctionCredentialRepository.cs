@@ -1,4 +1,5 @@
 using ConduitLLM.Functions.Entities;
+using ConduitLLM.Functions.Enums;
 
 namespace ConduitLLM.Functions.Interfaces;
 
@@ -8,6 +9,13 @@ namespace ConduitLLM.Functions.Interfaces;
 public interface IFunctionCredentialRepository
 {
     /// <summary>
+    /// Gets all function credentials
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of all credentials</returns>
+    Task<List<FunctionCredential>> GetAllAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets a function credential by ID
     /// </summary>
     /// <param name="id">The credential ID</param>
@@ -16,37 +24,37 @@ public interface IFunctionCredentialRepository
     Task<FunctionCredential?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets all credentials for a specific function configuration
+    /// Gets all credentials for a specific provider type
     /// </summary>
-    /// <param name="functionConfigurationId">The function configuration ID</param>
+    /// <param name="providerType">The function provider type</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of credentials</returns>
-    Task<List<FunctionCredential>> GetByFunctionConfigurationIdAsync(int functionConfigurationId, CancellationToken cancellationToken = default);
+    Task<List<FunctionCredential>> GetByProviderTypeAsync(FunctionProviderType providerType, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets all enabled credentials for a specific function configuration
+    /// Gets all enabled credentials for a specific provider type
     /// </summary>
-    /// <param name="functionConfigurationId">The function configuration ID</param>
+    /// <param name="providerType">The function provider type</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of enabled credentials</returns>
-    Task<List<FunctionCredential>> GetEnabledByFunctionConfigurationIdAsync(int functionConfigurationId, CancellationToken cancellationToken = default);
+    Task<List<FunctionCredential>> GetEnabledByProviderTypeAsync(FunctionProviderType providerType, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets the primary credential for a function configuration
+    /// Gets the primary credential for a provider type
     /// </summary>
-    /// <param name="functionConfigurationId">The function configuration ID</param>
+    /// <param name="providerType">The function provider type</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The primary credential or null if not found</returns>
-    Task<FunctionCredential?> GetPrimaryCredentialAsync(int functionConfigurationId, CancellationToken cancellationToken = default);
+    Task<FunctionCredential?> GetPrimaryCredentialAsync(FunctionProviderType providerType, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets credentials by function account group
+    /// Gets credentials by function account group for a provider type
     /// </summary>
-    /// <param name="functionConfigurationId">The function configuration ID</param>
+    /// <param name="providerType">The function provider type</param>
     /// <param name="functionAccountGroup">The function account group number (0-32)</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of credentials in the specified group</returns>
-    Task<List<FunctionCredential>> GetByCredentialGroupAsync(int functionConfigurationId, short functionAccountGroup, CancellationToken cancellationToken = default);
+    Task<List<FunctionCredential>> GetByCredentialGroupAsync(FunctionProviderType providerType, short functionAccountGroup, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Creates a new function credential
@@ -71,10 +79,10 @@ public interface IFunctionCredentialRepository
     Task DeleteAsync(int id, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Sets a credential as primary and unsets any existing primary credential
+    /// Sets a credential as primary and unsets any existing primary credential for the provider type
     /// </summary>
     /// <param name="credentialId">The credential ID to set as primary</param>
-    /// <param name="functionConfigurationId">The function configuration ID</param>
+    /// <param name="providerType">The function provider type</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    Task SetAsPrimaryAsync(int credentialId, int functionConfigurationId, CancellationToken cancellationToken = default);
+    Task SetAsPrimaryAsync(int credentialId, FunctionProviderType providerType, CancellationToken cancellationToken = default);
 }

@@ -42,7 +42,7 @@ function validateCreateConfiguration(data: CreateFunctionConfigurationDto): void
 }
 
 function validateCreateCredential(data: CreateFunctionCredentialDto): void {
-  validateRequired(data, ['functionConfigurationId', 'keyName', 'apiKey']);
+  validateRequired(data, ['providerType', 'keyName', 'apiKey']);
   validateStringLength(data.keyName, 1, 255, 'keyName');
   validateStringLength(data.apiKey, 1, 1000, 'apiKey');
 }
@@ -155,6 +155,17 @@ export class FetchFunctionConfigurationsService {
 
 export class FetchFunctionCredentialsService {
   constructor(private readonly client: FetchBaseApiClient) {}
+
+  async list(config?: RequestConfig): Promise<FunctionCredentialDto[]> {
+    return this.client['get']<FunctionCredentialDto[]>(
+      ENDPOINTS.FUNCTION_CREDENTIALS.BASE,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
 
   async getById(id: number, config?: RequestConfig): Promise<FunctionCredentialDto> {
     return this.client['get']<FunctionCredentialDto>(

@@ -1,8 +1,7 @@
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Utilities;
-using ConduitLLM.Configuration;
-using ConduitLLM.Configuration.Utilities;
 using ConduitLLM.Functions.Entities;
+using ConduitLLM.Functions.Enums;
 using ConduitLLM.Functions.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -25,6 +24,25 @@ public class FunctionCredentialRepository : IFunctionCredentialRepository
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    public async Task<List<FunctionCredential>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+            return await dbContext.FunctionCredentials
+                .AsNoTracking()
+                .OrderBy(c => c.ProviderType)
+                .ThenByDescending(c => c.IsPrimary)
+                .ThenBy(c => c.KeyName)
+                .ToListAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting all function credentials");
+            throw;
+        }
+    }
+
     public async Task<FunctionCredential?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         try
@@ -32,7 +50,6 @@ public class FunctionCredentialRepository : IFunctionCredentialRepository
             using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
             return await dbContext.FunctionCredentials
                 .AsNoTracking()
-                .Include(c => c.FunctionConfiguration)
                 .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
         }
         catch (Exception ex)
@@ -42,80 +59,80 @@ public class FunctionCredentialRepository : IFunctionCredentialRepository
         }
     }
 
-    public async Task<List<FunctionCredential>> GetByFunctionConfigurationIdAsync(int functionConfigurationId, CancellationToken cancellationToken = default)
+    public async Task<List<FunctionCredential>> GetByProviderTypeAsync(FunctionProviderType providerType, CancellationToken cancellationToken = default)
     {
         try
         {
             using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
             return await dbContext.FunctionCredentials
                 .AsNoTracking()
-                .Where(c => c.FunctionConfigurationId == functionConfigurationId)
+                .Where(c => c.ProviderType == providerType)
                 .OrderByDescending(c => c.IsPrimary)
                 .ThenBy(c => c.KeyName)
                 .ToListAsync(cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting credentials for function configuration {ConfigId}",
-                LogSanitizer.SanitizeObject(functionConfigurationId));
+            _logger.LogError(ex, "Error getting credentials for provider type {ProviderType}",
+                LogSanitizer.SanitizeObject(providerType));
             throw;
         }
     }
 
-    public async Task<List<FunctionCredential>> GetEnabledByFunctionConfigurationIdAsync(int functionConfigurationId, CancellationToken cancellationToken = default)
+    public async Task<List<FunctionCredential>> GetEnabledByProviderTypeAsync(FunctionProviderType providerType, CancellationToken cancellationToken = default)
     {
         try
         {
             using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
             return await dbContext.FunctionCredentials
                 .AsNoTracking()
-                .Where(c => c.FunctionConfigurationId == functionConfigurationId && c.IsEnabled)
+                .Where(c => c.ProviderType == providerType && c.IsEnabled)
                 .OrderByDescending(c => c.IsPrimary)
                 .ThenBy(c => c.KeyName)
                 .ToListAsync(cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting enabled credentials for function configuration {ConfigId}",
-                LogSanitizer.SanitizeObject(functionConfigurationId));
+            _logger.LogError(ex, "Error getting enabled credentials for provider type {ProviderType}",
+                LogSanitizer.SanitizeObject(providerType));
             throw;
         }
     }
 
-    public async Task<FunctionCredential?> GetPrimaryCredentialAsync(int functionConfigurationId, CancellationToken cancellationToken = default)
+    public async Task<FunctionCredential?> GetPrimaryCredentialAsync(FunctionProviderType providerType, CancellationToken cancellationToken = default)
     {
         try
         {
             using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
             return await dbContext.FunctionCredentials
                 .AsNoTracking()
-                .Where(c => c.FunctionConfigurationId == functionConfigurationId && c.IsPrimary && c.IsEnabled)
+                .Where(c => c.ProviderType == providerType && c.IsPrimary && c.IsEnabled)
                 .FirstOrDefaultAsync(cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting primary credential for function configuration {ConfigId}",
-                LogSanitizer.SanitizeObject(functionConfigurationId));
+            _logger.LogError(ex, "Error getting primary credential for provider type {ProviderType}",
+                LogSanitizer.SanitizeObject(providerType));
             throw;
         }
     }
 
-    public async Task<List<FunctionCredential>> GetByCredentialGroupAsync(int functionConfigurationId, short functionAccountGroup, CancellationToken cancellationToken = default)
+    public async Task<List<FunctionCredential>> GetByCredentialGroupAsync(FunctionProviderType providerType, short functionAccountGroup, CancellationToken cancellationToken = default)
     {
         try
         {
             using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
             return await dbContext.FunctionCredentials
                 .AsNoTracking()
-                .Where(c => c.FunctionConfigurationId == functionConfigurationId && c.FunctionAccountGroup == functionAccountGroup)
+                .Where(c => c.ProviderType == providerType && c.FunctionAccountGroup == functionAccountGroup)
                 .OrderByDescending(c => c.IsPrimary)
                 .ThenBy(c => c.KeyName)
                 .ToListAsync(cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting credentials for group {Group} in function configuration {ConfigId}",
-                LogSanitizer.SanitizeObject(functionAccountGroup), LogSanitizer.SanitizeObject(functionConfigurationId));
+            _logger.LogError(ex, "Error getting credentials for group {Group} in provider type {ProviderType}",
+                LogSanitizer.SanitizeObject(functionAccountGroup), LogSanitizer.SanitizeObject(providerType));
             throw;
         }
     }
@@ -142,14 +159,14 @@ public class FunctionCredentialRepository : IFunctionCredentialRepository
                 if (credential.IsEnabled && !credential.IsPrimary)
                 {
                     var enabledCredentialsCount = await dbContext.FunctionCredentials
-                        .CountAsync(c => c.FunctionConfigurationId == credential.FunctionConfigurationId && c.IsEnabled, cancellationToken);
+                        .CountAsync(c => c.ProviderType == credential.ProviderType && c.IsEnabled, cancellationToken);
 
                     // If this will be the only enabled credential, set it as primary
                     if (enabledCredentialsCount == 0)
                     {
                         credential.IsPrimary = true;
-                        _logger.LogInformation("Automatically setting credential as primary since it's the only enabled credential for function configuration {ConfigId}",
-                            LogSanitizer.SanitizeObject(credential.FunctionConfigurationId));
+                        _logger.LogInformation("Automatically setting credential as primary since it's the only enabled credential for provider type {ProviderType}",
+                            LogSanitizer.SanitizeObject(credential.ProviderType));
                     }
                 }
 
@@ -157,7 +174,7 @@ public class FunctionCredentialRepository : IFunctionCredentialRepository
                 if (credential.IsPrimary)
                 {
                     var existingPrimary = await dbContext.FunctionCredentials
-                        .Where(c => c.FunctionConfigurationId == credential.FunctionConfigurationId && c.IsPrimary)
+                        .Where(c => c.ProviderType == credential.ProviderType && c.IsPrimary)
                         .ToListAsync(cancellationToken);
 
                     foreach (var existing in existingPrimary)
@@ -236,7 +253,7 @@ public class FunctionCredentialRepository : IFunctionCredentialRepository
                 if (!wasEnabled && willBeEnabled && !existingCredential.IsPrimary)
                 {
                     var enabledCredentialsCount = await dbContext.FunctionCredentials
-                        .CountAsync(c => c.FunctionConfigurationId == existingCredential.FunctionConfigurationId
+                        .CountAsync(c => c.ProviderType == existingCredential.ProviderType
                             && c.IsEnabled
                             && c.Id != existingCredential.Id, cancellationToken);
 
@@ -244,8 +261,8 @@ public class FunctionCredentialRepository : IFunctionCredentialRepository
                     if (enabledCredentialsCount == 0)
                     {
                         existingCredential.IsPrimary = true;
-                        _logger.LogInformation("Automatically setting credential {CredentialId} as primary since it's the only enabled credential for function configuration {ConfigId}",
-                            LogSanitizer.SanitizeObject(existingCredential.Id), LogSanitizer.SanitizeObject(existingCredential.FunctionConfigurationId));
+                        _logger.LogInformation("Automatically setting credential {CredentialId} as primary since it's the only enabled credential for provider type {ProviderType}",
+                            LogSanitizer.SanitizeObject(existingCredential.Id), LogSanitizer.SanitizeObject(existingCredential.ProviderType));
                     }
                 }
 
@@ -253,7 +270,7 @@ public class FunctionCredentialRepository : IFunctionCredentialRepository
                 if (existingCredential.IsPrimary)
                 {
                     var existingPrimary = await dbContext.FunctionCredentials
-                        .Where(c => c.FunctionConfigurationId == existingCredential.FunctionConfigurationId
+                        .Where(c => c.ProviderType == existingCredential.ProviderType
                             && c.IsPrimary
                             && c.Id != existingCredential.Id)
                         .ToListAsync(cancellationToken);
@@ -322,7 +339,7 @@ public class FunctionCredentialRepository : IFunctionCredentialRepository
         }
     }
 
-    public async Task SetAsPrimaryAsync(int credentialId, int functionConfigurationId, CancellationToken cancellationToken = default)
+    public async Task SetAsPrimaryAsync(int credentialId, FunctionProviderType providerType, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -331,9 +348,9 @@ public class FunctionCredentialRepository : IFunctionCredentialRepository
 
             try
             {
-                // Unset all existing primary credentials for this function configuration
+                // Unset all existing primary credentials for this provider type
                 var existingPrimary = await dbContext.FunctionCredentials
-                    .Where(c => c.FunctionConfigurationId == functionConfigurationId && c.IsPrimary)
+                    .Where(c => c.ProviderType == providerType && c.IsPrimary)
                     .ToListAsync(cancellationToken);
 
                 foreach (var existing in existingPrimary)
@@ -344,12 +361,12 @@ public class FunctionCredentialRepository : IFunctionCredentialRepository
 
                 // Set the specified credential as primary
                 var credential = await dbContext.FunctionCredentials
-                    .FirstOrDefaultAsync(c => c.Id == credentialId && c.FunctionConfigurationId == functionConfigurationId,
+                    .FirstOrDefaultAsync(c => c.Id == credentialId && c.ProviderType == providerType,
                         cancellationToken);
 
                 if (credential == null)
                 {
-                    throw new InvalidOperationException($"Credential {credentialId} not found for function configuration {functionConfigurationId}");
+                    throw new InvalidOperationException($"Credential {credentialId} not found for provider type {providerType}");
                 }
 
                 credential.IsPrimary = true;

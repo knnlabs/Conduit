@@ -15,6 +15,7 @@ namespace ConduitLLM.Admin.Controllers;
 public class FunctionCredentialsController : ControllerBase
 {
     private readonly IFunctionCredentialRepository _credentialRepository;
+    private readonly IFunctionConfigurationRepository _configurationRepository;
     private readonly IFunctionClientFactory _clientFactory;
     private readonly ILogger<FunctionCredentialsController> _logger;
 
@@ -23,28 +24,60 @@ public class FunctionCredentialsController : ControllerBase
     /// </summary>
     public FunctionCredentialsController(
         IFunctionCredentialRepository credentialRepository,
+        IFunctionConfigurationRepository configurationRepository,
         IFunctionClientFactory clientFactory,
         ILogger<FunctionCredentialsController> logger)
     {
         _credentialRepository = credentialRepository ?? throw new ArgumentNullException(nameof(credentialRepository));
+        _configurationRepository = configurationRepository ?? throw new ArgumentNullException(nameof(configurationRepository));
         _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
-    /// Gets credentials for a specific function configuration.
+    /// Gets all function credentials.
+    /// </summary>
+    /// <returns>List of all credentials</returns>
+    [HttpGet]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetAllCredentials()
+    {
+        try
+        {
+            var credentials = await _credentialRepository.GetAllAsync();
+            return Ok(credentials);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting all function credentials");
+            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+        }
+    }
+
+    /// <summary>
+    /// Gets credentials for a specific function configuration (returns all credentials for the configuration's provider type).
     /// </summary>
     /// <param name="functionConfigurationId">The function configuration ID</param>
-    /// <returns>List of credentials for the function configuration</returns>
+    /// <returns>List of credentials for the configuration's provider type</returns>
     [HttpGet("configuration/{functionConfigurationId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetCredentialsByConfiguration(int functionConfigurationId)
     {
         try
         {
-            var credentials = await _credentialRepository.GetByFunctionConfigurationIdAsync(
-                functionConfigurationId);
+            // Get the configuration to determine its provider type
+            var configuration = await _configurationRepository.GetByIdAsync(functionConfigurationId);
+            if (configuration == null)
+            {
+                return NotFound($"Function configuration {functionConfigurationId} not found");
+            }
+
+            // Get credentials for this provider type
+            var credentials = await _credentialRepository.GetByProviderTypeAsync(
+                configuration.ProviderType);
 
             return Ok(credentials);
         }
@@ -210,17 +243,25 @@ public class FunctionCredentialsController : ControllerBase
                 return BadRequest(new ErrorResponseDto("Test request data is required"));
             }
 
-            // Get the function configuration to determine provider type
+            // Get the credential
             var credential = await _credentialRepository.GetByIdAsync(testRequest.CredentialId);
             if (credential == null)
             {
                 return NotFound(new ErrorResponseDto("Function credential not found"));
             }
 
+            // Get any configuration that uses this provider type (for client factory)
+            var configurations = await _configurationRepository.GetByProviderTypeAsync(credential.ProviderType);
+            var configuration = configurations.FirstOrDefault();
+            if (configuration == null)
+            {
+                return NotFound(new ErrorResponseDto($"No function configuration found for provider type {credential.ProviderType}"));
+            }
+
             // Create client and test authentication
             var client = _clientFactory.GetClient(
-                credential.FunctionConfiguration!.ProviderType,
-                credential.FunctionConfigurationId);
+                credential.ProviderType,
+                configuration.Id);
 
             var authResult = await client.VerifyAuthenticationAsync(
                 testRequest.ApiKeyOverride ?? credential.ApiKey);

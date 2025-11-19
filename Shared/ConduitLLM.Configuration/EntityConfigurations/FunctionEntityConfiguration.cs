@@ -37,27 +37,21 @@ public static class FunctionEntityConfiguration
         {
             entity.HasKey(e => e.Id);
 
-            // Foreign key relationship with cascade delete
-            entity.HasOne(e => e.FunctionConfiguration)
-                .WithMany(e => e.Credentials)
-                .HasForeignKey(e => e.FunctionConfigurationId)
-                .OnDelete(DeleteBehavior.Cascade);
+            // Index for performance when querying by provider type
+            entity.HasIndex(e => e.ProviderType)
+                .HasDatabaseName("IX_FunctionCredential_ProviderType");
 
-            // Index for performance when querying by configuration
-            entity.HasIndex(e => e.FunctionConfigurationId)
-                .HasDatabaseName("IX_FunctionCredential_FunctionConfigurationId");
-
-            // Unique constraint: Only one primary credential per function configuration
-            // This mirrors the ProviderKeyCredential pattern exactly
-            entity.HasIndex(e => new { e.FunctionConfigurationId, e.IsPrimary })
+            // Unique constraint: Only one primary credential per provider type
+            // This allows all function configurations of the same provider type to share credentials
+            entity.HasIndex(e => new { e.ProviderType, e.IsPrimary })
                 .IsUnique()
                 .HasFilter("\"IsPrimary\" = true")
-                .HasDatabaseName("IX_FunctionCredential_OnePrimaryPerConfiguration");
+                .HasDatabaseName("IX_FunctionCredential_OnePrimaryPerProviderType");
 
-            // Unique constraint: Prevent duplicate API keys for the same function configuration
-            entity.HasIndex(e => new { e.FunctionConfigurationId, e.ApiKey })
+            // Unique constraint: Prevent duplicate API keys for the same provider type
+            entity.HasIndex(e => new { e.ProviderType, e.ApiKey })
                 .IsUnique()
-                .HasDatabaseName("IX_FunctionCredential_UniqueApiKeyPerConfiguration")
+                .HasDatabaseName("IX_FunctionCredential_UniqueApiKeyPerProviderType")
                 .HasFilter("\"ApiKey\" IS NOT NULL");
 
             // Configure check constraints

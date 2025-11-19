@@ -88,26 +88,23 @@ export interface UpdateFunctionConfigurationDto {
 
 export interface FunctionCredentialDto {
   id: number;
-  functionConfigurationId: number;
+  providerType: FunctionProviderType;
   keyName: string;
   apiKey: string;
   functionAccountGroup: number;
   isPrimary: boolean;
   isEnabled: boolean;
-  metadata?: string; // JSON
   createdAt: string;
   updatedAt: string;
-  functionConfiguration?: FunctionConfigurationDto;
 }
 
 export interface CreateFunctionCredentialDto {
-  functionConfigurationId: number;
+  providerType: FunctionProviderType;
   keyName: string;
   apiKey: string;
   functionAccountGroup?: number; // Default: 0
   isPrimary?: boolean; // Default: false
   isEnabled?: boolean; // Default: true
-  metadata?: string; // JSON
 }
 
 export interface UpdateFunctionCredentialDto {
@@ -117,7 +114,6 @@ export interface UpdateFunctionCredentialDto {
   functionAccountGroup?: number;
   isPrimary?: boolean;
   isEnabled?: boolean;
-  metadata?: string; // JSON
 }
 
 export interface TestCredentialRequestDto {
