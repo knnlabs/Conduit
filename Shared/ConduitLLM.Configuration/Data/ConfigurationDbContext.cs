@@ -185,6 +185,11 @@ namespace ConduitLLM.Configuration
         /// </summary>
         public virtual DbSet<ConduitLLM.Functions.Entities.FunctionExecutionAudit> FunctionExecutionAudits { get; set; } = null!;
 
+        /// <summary>
+        /// Database set for function call audits (tracking function calls in chat completions)
+        /// </summary>
+        public virtual DbSet<ConduitLLM.Functions.Entities.FunctionCallAudit> FunctionCallAudits { get; set; } = null!;
+
         public bool IsTestEnvironment { get; set; } = false;
 
         /// <summary>

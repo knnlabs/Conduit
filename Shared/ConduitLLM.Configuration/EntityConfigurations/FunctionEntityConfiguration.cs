@@ -156,5 +156,51 @@ public static class FunctionEntityConfiguration
             entity.HasIndex(e => new { e.FunctionExecutionId, e.Timestamp })
                 .HasDatabaseName("IX_FunctionExecutionAudit_ExecutionTimestamp");
         });
+
+        // Configure FunctionCallAudit entity
+        modelBuilder.Entity<FunctionCallAudit>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            // Relationship with FunctionExecution (optional)
+            entity.HasOne(e => e.FunctionExecution)
+                .WithMany()
+                .HasForeignKey(e => e.FunctionExecutionId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Relationship with FunctionConfiguration
+            entity.HasOne(e => e.FunctionConfiguration)
+                .WithMany()
+                .HasForeignKey(e => e.FunctionConfigurationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Index for querying by chat completion ID (parent request)
+            entity.HasIndex(e => e.ChatCompletionId)
+                .HasDatabaseName("IX_FunctionCallAudit_ChatCompletionId");
+
+            // Index for querying by function execution
+            entity.HasIndex(e => e.FunctionExecutionId)
+                .HasDatabaseName("IX_FunctionCallAudit_FunctionExecutionId");
+
+            // Index for querying by function configuration
+            entity.HasIndex(e => e.FunctionConfigurationId)
+                .HasDatabaseName("IX_FunctionCallAudit_FunctionConfigurationId");
+
+            // Index for querying by virtual key
+            entity.HasIndex(e => e.VirtualKeyId)
+                .HasDatabaseName("IX_FunctionCallAudit_VirtualKeyId");
+
+            // Index for timestamp and event type queries (most common query pattern)
+            entity.HasIndex(e => new { e.Timestamp, e.EventType })
+                .HasDatabaseName("IX_FunctionCallAudit_TimestampEventType");
+
+            // Index for request correlation
+            entity.HasIndex(e => e.RequestId)
+                .HasDatabaseName("IX_FunctionCallAudit_RequestId");
+
+            // Composite index for querying calls by key and date range
+            entity.HasIndex(e => new { e.VirtualKeyId, e.Timestamp })
+                .HasDatabaseName("IX_FunctionCallAudit_VirtualKeyTimestamp");
+        });
     }
 }

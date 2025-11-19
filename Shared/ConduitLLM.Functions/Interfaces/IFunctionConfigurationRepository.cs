@@ -17,6 +17,14 @@ public interface IFunctionConfigurationRepository
     Task<FunctionConfiguration?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets multiple function configurations by their IDs
+    /// </summary>
+    /// <param name="ids">The function configuration IDs</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of function configurations matching the provided IDs</returns>
+    Task<List<FunctionConfiguration>> GetByIdsAsync(List<int> ids, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets a function configuration by name
     /// </summary>
     /// <param name="configurationName">The configuration name</param>

@@ -473,12 +473,26 @@ public partial class Program
         // Register Model Capability services (capability detection and caching)
         builder.Services.AddModelCapabilityServices(builder.Configuration);
 
+        // Register Function repositories
+        builder.Services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionConfigurationRepository, ConduitLLM.Configuration.Repositories.FunctionConfigurationRepository>();
+
         // Register Function services
         builder.Services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionCostService, ConduitLLM.Functions.Services.FunctionCostService>();
         builder.Services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionCostCalculationService, ConduitLLM.Functions.Services.FunctionCostCalculationService>();
         builder.Services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionClientFactory, ConduitLLM.Functions.Services.FunctionClientFactory>();
         builder.Services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionExecutionService, ConduitLLM.Functions.Services.FunctionExecutionService>();
         builder.Services.AddScoped<ConduitLLM.Functions.Services.FunctionParameterValidationService>();
+
+        // Register Function Call Audit service with leader election
+        builder.Services.AddSingleton<ConduitLLM.Functions.Interfaces.IFunctionCallAuditService, ConduitLLM.Configuration.Services.FunctionCallAuditService>();
+        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Configuration.Services.FunctionCallAuditService>(
+            provider => provider.GetRequiredService<ConduitLLM.Functions.Interfaces.IFunctionCallAuditService>() as ConduitLLM.Configuration.Services.FunctionCallAuditService
+            ?? throw new InvalidOperationException("FunctionCallAuditService must implement IHostedService"),
+            "FunctionCallAuditService");
+
+        // Register Agentic Function Calling services
+        builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IFunctionDiscoveryService, ConduitLLM.Core.Services.FunctionDiscoveryService>();
+        builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IAgenticOrchestrationService, ConduitLLM.Core.Services.AgenticOrchestrationService>();
 
         // Register Batch Cache Invalidation service
         builder.Services.AddBatchCacheInvalidation(builder.Configuration);

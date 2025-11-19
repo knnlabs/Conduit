@@ -71,4 +71,12 @@ public class ChatCompletionResponse
     [JsonPropertyName("performance_metrics")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public PerformanceMetrics? PerformanceMetrics { get; set; }
+
+    /// <summary>
+    /// Metrics for agentic execution, if function calling was used.
+    /// Contains iteration count, function call summaries, and aggregated costs.
+    /// </summary>
+    [JsonPropertyName("agentic_metrics")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AgenticExecutionMetrics? AgenticMetrics { get; set; }
 }

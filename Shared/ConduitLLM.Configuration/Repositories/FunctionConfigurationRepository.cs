@@ -43,6 +43,31 @@ public class FunctionConfigurationRepository : IFunctionConfigurationRepository
         }
     }
 
+    public async Task<List<FunctionConfiguration>> GetByIdsAsync(List<int> ids, CancellationToken cancellationToken = default)
+    {
+        if (ids == null || ids.Count == 0)
+        {
+            return new List<FunctionConfiguration>();
+        }
+
+        try
+        {
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+            return await dbContext.FunctionConfigurations
+                .AsNoTracking()
+                .Include(f => f.Credentials)
+                .Include(f => f.CostMappings)
+                    .ThenInclude(cm => cm.FunctionCost)
+                .Where(f => ids.Contains(f.Id))
+                .ToListAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting function configurations with IDs {ConfigIds}", LogSanitizer.SanitizeObject(ids));
+            throw;
+        }
+    }
+
     public async Task<FunctionConfiguration?> GetByNameAsync(string configurationName, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(configurationName))

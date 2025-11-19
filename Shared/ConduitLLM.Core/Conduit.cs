@@ -19,6 +19,8 @@ namespace ConduitLLM.Core
         private readonly IContextManager? _contextManager;
         private readonly IModelProviderMappingService? _modelProviderMappingService;
         private readonly IOptions<ContextManagementOptions>? _contextOptions;
+        private readonly IFunctionDiscoveryService? _functionDiscoveryService;
+        private readonly IAgenticOrchestrationService? _agenticOrchestrationService;
         private readonly ILogger<Conduit> _logger;
 
         /// <summary>
@@ -29,19 +31,25 @@ namespace ConduitLLM.Core
         /// <param name="contextManager">Optional context manager for handling token limits.</param>
         /// <param name="modelProviderMappingService">Optional service to retrieve model mappings.</param>
         /// <param name="contextOptions">Optional configuration for context management.</param>
+        /// <param name="functionDiscoveryService">Optional service for discovering and converting function configurations.</param>
+        /// <param name="agenticOrchestrationService">Optional service for orchestrating agentic function calling workflows.</param>
         /// <exception cref="ArgumentNullException">Thrown if clientFactory is null.</exception>
         public Conduit(
             ILLMClientFactory clientFactory,
             ILogger<Conduit> logger,
             IContextManager? contextManager = null,
             IModelProviderMappingService? modelProviderMappingService = null,
-            IOptions<ContextManagementOptions>? contextOptions = null)
+            IOptions<ContextManagementOptions>? contextOptions = null,
+            IFunctionDiscoveryService? functionDiscoveryService = null,
+            IAgenticOrchestrationService? agenticOrchestrationService = null)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _contextManager = contextManager;
             _modelProviderMappingService = modelProviderMappingService;
             _contextOptions = contextOptions;
+            _functionDiscoveryService = functionDiscoveryService;
+            _agenticOrchestrationService = agenticOrchestrationService;
         }
 
         /// <summary>
@@ -69,6 +77,12 @@ namespace ConduitLLM.Core
 
             // Apply context management if enabled
             request = await ApplyContextManagementAsync(request);
+
+            // Check if function calling is requested
+            if (request.FunctionConfigurationIds?.Any() == true)
+            {
+                return await CreateChatCompletionWithFunctionsAsync(request, apiKey, cancellationToken);
+            }
 
             // Get the appropriate client from the factory based on the model alias in the request
             ILLMClient client = _clientFactory.GetClient(request.Model);
@@ -105,15 +119,384 @@ namespace ConduitLLM.Core
             // Apply context management if enabled
             request = await ApplyContextManagementAsync(request);
 
-            // Get the appropriate client from the factory based on the model alias in the request
-            ILLMClient client = _clientFactory.GetClient(request.Model);
+            // Check if function calling is requested
+            var hasFunctionConfigs = request.FunctionConfigurationIds != null && request.FunctionConfigurationIds.Count > 0;
 
-            // Call the client's streaming method, passing the optional apiKey
-            // Exceptions specific to providers (like communication errors) are expected to bubble up from the client.
-            // The factory handles ConfigurationException and UnsupportedProviderException.
-            await foreach (var chunk in client.StreamChatCompletionAsync(request, apiKey, cancellationToken))
+            if (hasFunctionConfigs)
             {
-                yield return chunk;
+                // Use streaming agentic loop
+                await foreach (var chunk in StreamChatCompletionWithFunctionsAsync(request, apiKey, cancellationToken))
+                {
+                    yield return chunk;
+                }
+            }
+            else
+            {
+                // Standard streaming without function calling
+                ILLMClient client = _clientFactory.GetClient(request.Model);
+                await foreach (var chunk in client.StreamChatCompletionAsync(request, apiKey, cancellationToken))
+                {
+                    yield return chunk;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Creates a chat completion with function calling support and optional agentic mode.
+        /// </summary>
+        private async Task<ChatCompletionResponse> CreateChatCompletionWithFunctionsAsync(
+            ChatCompletionRequest request,
+            string? apiKey,
+            CancellationToken cancellationToken)
+        {
+            if (_functionDiscoveryService == null || _agenticOrchestrationService == null)
+            {
+                throw new InvalidOperationException(
+                    "Function calling requires FunctionDiscoveryService and AgenticOrchestrationService to be configured.");
+            }
+
+            // NOTE: We need virtualKeyId for function execution, but it's not available in this layer
+            // The virtualKeyId will be obtained from HttpContext in the controller layer
+            // For now, we'll use a placeholder value of 0, which should be replaced by the controller
+            var virtualKeyId = 0; // This will be injected by the controller
+
+            var chatCompletionId = Guid.NewGuid();
+            var requestId = Guid.NewGuid().ToString();
+
+            // Load function definitions and create name-to-ID mapping
+            var tools = await _functionDiscoveryService.GetToolsForFunctionConfigurationsAsync(
+                request.FunctionConfigurationIds!,
+                virtualKeyId,
+                cancellationToken);
+
+            var functionNameToIdMap = await _functionDiscoveryService.GetFunctionNameToIdMappingAsync(
+                request.FunctionConfigurationIds!,
+                cancellationToken);
+
+            // Inject tools into request
+            request.Tools = tools;
+
+            // Initialize agentic metrics
+            var agenticMetrics = new AgenticExecutionMetrics
+            {
+                TotalIterations = 0
+            };
+
+            var iteration = 0;
+            var maxIterations = request.MaxAgenticIterations ?? 5;
+            var agenticModeEnabled = request.EnableAgenticMode ?? true;
+
+            ILLMClient client = _clientFactory.GetClient(request.Model);
+            ChatCompletionResponse? response = null;
+
+            while (iteration < maxIterations)
+            {
+                iteration++;
+                agenticMetrics.TotalIterations = iteration;
+
+                _logger.LogDebug("Agentic iteration {Iteration} for request {RequestId}", iteration, requestId);
+
+                // Call LLM
+                response = await client.CreateChatCompletionAsync(request, apiKey, cancellationToken).ConfigureAwait(false);
+
+                // Track LLM cost
+                if (response.Usage != null)
+                {
+                    // Cost calculation would happen in middleware, we just track iterations here
+                }
+
+                // Check if LLM wants to call functions
+                var choice = response.Choices.FirstOrDefault();
+                if (choice?.Message?.ToolCalls == null || choice.Message.ToolCalls.Count == 0 ||
+                    choice.FinishReason != FinishReason.ToolCalls)
+                {
+                    // No tool calls, we're done
+                    break;
+                }
+
+                // If agentic mode is disabled, return the response with tool calls for manual handling
+                if (!agenticModeEnabled)
+                {
+                    _logger.LogInformation("Tool calls detected but agentic mode is disabled. Returning for manual handling.");
+                    break;
+                }
+
+                // Execute tool calls
+                var executionResult = await _agenticOrchestrationService.ExecuteToolCallsAsync(
+                    choice.Message.ToolCalls,
+                    virtualKeyId,
+                    functionNameToIdMap,
+                    requestId,
+                    chatCompletionId,
+                    iteration,
+                    cancellationToken);
+
+                // Aggregate metrics
+                agenticMetrics.FunctionCalls.AddRange(executionResult.FunctionCallSummaries);
+                agenticMetrics.TotalFunctionCalls += executionResult.FunctionCallSummaries.Count;
+                agenticMetrics.TotalFunctionCost += executionResult.TotalFunctionCost;
+
+                // Append assistant's message with tool calls to conversation
+                request.Messages.Add(choice.Message);
+
+                // Append tool result messages to conversation
+                request.Messages.AddRange(executionResult.ToolResultMessages);
+
+                // If all functions failed, break the loop
+                if (!executionResult.AllSucceeded)
+                {
+                    _logger.LogWarning("Some function executions failed in iteration {Iteration}. Errors: {Errors}",
+                        iteration, string.Join("; ", executionResult.Errors));
+                    // Continue anyway - let the LLM handle the errors
+                }
+            }
+
+            // Check if we hit the iteration limit
+            if (iteration >= maxIterations && response?.Choices.FirstOrDefault()?.FinishReason == FinishReason.ToolCalls)
+            {
+                _logger.LogWarning("Reached maximum agentic iterations ({MaxIterations}) with pending tool calls", maxIterations);
+
+                // Append a system message explaining we hit the limit
+                request.Messages.Add(new Message
+                {
+                    Role = MessageRole.System,
+                    Content = $"Maximum iteration limit ({maxIterations}) reached. Please provide a response based on the information available."
+                });
+
+                // Make one final call to get a response
+                response = await client.CreateChatCompletionAsync(request, apiKey, cancellationToken).ConfigureAwait(false);
+            }
+
+            // Attach agentic metrics to response
+            if (response != null && agenticMetrics.TotalIterations > 0)
+            {
+                agenticMetrics.TotalCost = agenticMetrics.TotalLLMCost + agenticMetrics.TotalFunctionCost;
+                response.AgenticMetrics = agenticMetrics;
+            }
+
+            return response ?? throw new InvalidOperationException("No response generated from LLM");
+        }
+
+        /// <summary>
+        /// Streams a chat completion with function calling support and optional agentic mode.
+        /// Pauses streaming to execute functions, then resumes for the next iteration.
+        /// </summary>
+        private async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionWithFunctionsAsync(
+            ChatCompletionRequest request,
+            string? apiKey,
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            if (_functionDiscoveryService == null || _agenticOrchestrationService == null)
+            {
+                throw new InvalidOperationException(
+                    "Function calling requires FunctionDiscoveryService and AgenticOrchestrationService to be configured.");
+            }
+
+            // NOTE: Virtual key ID placeholder - should be set by controller
+            var virtualKeyId = 0;
+            var chatCompletionId = Guid.NewGuid();
+            var requestId = Guid.NewGuid().ToString();
+
+            // Load function definitions
+            var tools = await _functionDiscoveryService.GetToolsForFunctionConfigurationsAsync(
+                request.FunctionConfigurationIds!,
+                virtualKeyId,
+                cancellationToken);
+
+            var functionNameToIdMap = await _functionDiscoveryService.GetFunctionNameToIdMappingAsync(
+                request.FunctionConfigurationIds!,
+                cancellationToken);
+
+            // Inject tools into request
+            request.Tools = tools;
+
+            var agenticModeEnabled = request.EnableAgenticMode ?? true;
+            var maxIterations = Math.Min(request.MaxAgenticIterations ?? 5, 10);
+
+            ILLMClient client = _clientFactory.GetClient(request.Model);
+            var iteration = 0;
+
+            // Track tool calls outside the loop for iteration limit check
+            var accumulatedToolCalls = new Dictionary<int, ToolCall>();
+
+            while (iteration < maxIterations)
+            {
+                iteration++;
+
+                // Reset tool calls for each iteration
+                accumulatedToolCalls.Clear();
+                string? finishReason = null;
+                var assistantMessageContent = "";
+
+                // Stream the LLM response
+                await foreach (var chunk in client.StreamChatCompletionAsync(request, apiKey, cancellationToken))
+                {
+                    // Forward the chunk to the client
+                    yield return chunk;
+
+                    // Track finish reason
+                    if (chunk.Choices?.Count > 0 && !string.IsNullOrEmpty(chunk.Choices[0].FinishReason))
+                    {
+                        finishReason = chunk.Choices[0].FinishReason;
+                    }
+
+                    // Accumulate tool calls from chunks
+                    if (chunk.Choices?.Count > 0 && chunk.Choices[0].Delta?.ToolCalls != null)
+                    {
+                        foreach (var toolCallChunk in chunk.Choices[0].Delta.ToolCalls)
+                        {
+                            if (!accumulatedToolCalls.ContainsKey(toolCallChunk.Index))
+                            {
+                                accumulatedToolCalls[toolCallChunk.Index] = new ToolCall
+                                {
+                                    Id = toolCallChunk.Id ?? "",
+                                    Type = toolCallChunk.Type ?? "function",
+                                    Function = new FunctionCall
+                                    {
+                                        Name = toolCallChunk.Function?.Name ?? "",
+                                        Arguments = toolCallChunk.Function?.Arguments ?? ""
+                                    }
+                                };
+                            }
+                            else
+                            {
+                                // Append to existing tool call
+                                var existing = accumulatedToolCalls[toolCallChunk.Index];
+                                if (!string.IsNullOrEmpty(toolCallChunk.Id))
+                                    existing.Id = toolCallChunk.Id;
+                                if (toolCallChunk.Function?.Name != null)
+                                    existing.Function.Name += toolCallChunk.Function.Name;
+                                if (toolCallChunk.Function?.Arguments != null)
+                                    existing.Function.Arguments += toolCallChunk.Function.Arguments;
+                            }
+                        }
+                    }
+
+                    // Accumulate content
+                    if (chunk.Choices?.Count > 0 && chunk.Choices[0].Delta?.Content != null)
+                    {
+                        assistantMessageContent += chunk.Choices[0].Delta.Content;
+                    }
+                }
+
+                // Check if we have tool calls to execute
+                if (finishReason != FinishReason.ToolCalls || accumulatedToolCalls.Count == 0)
+                {
+                    // No tool calls, streaming is complete
+                    break;
+                }
+
+                // If agentic mode is disabled, stop here
+                if (!agenticModeEnabled)
+                {
+                    _logger.LogInformation("Tool calls detected but agentic mode is disabled. Streaming stopped.");
+                    break;
+                }
+
+                // Send function execution status chunks
+                var toolCallsList = accumulatedToolCalls.OrderBy(kv => kv.Key).Select(kv => kv.Value).ToList();
+
+                foreach (var toolCall in toolCallsList)
+                {
+                    yield return new FunctionExecutionStatusChunk
+                    {
+                        Id = chatCompletionId.ToString(),
+                        Object = "chat.completion.chunk",
+                        Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                        Model = request.Model,
+                        ChunkType = "function_execution",
+                        ToolCallId = toolCall.Id,
+                        FunctionName = toolCall.Function.Name,
+                        Status = "started"
+                    };
+                }
+
+                // Execute tool calls (this pauses streaming)
+                var executionResult = await _agenticOrchestrationService.ExecuteToolCallsAsync(
+                    toolCallsList,
+                    virtualKeyId,
+                    functionNameToIdMap,
+                    requestId,
+                    chatCompletionId,
+                    iteration,
+                    cancellationToken);
+
+                // Send completion status for each function
+                foreach (var summary in executionResult.FunctionCallSummaries)
+                {
+                    yield return new FunctionExecutionStatusChunk
+                    {
+                        Id = chatCompletionId.ToString(),
+                        Object = "chat.completion.chunk",
+                        Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                        Model = request.Model,
+                        ChunkType = "function_execution",
+                        ToolCallId = summary.ToolCallId,
+                        FunctionName = summary.FunctionName,
+                        Status = summary.Success ? "completed" : "failed",
+                        Cost = summary.Cost
+                    };
+                }
+
+                // Create the assistant message with tool calls
+                var assistantMessage = new Message
+                {
+                    Role = MessageRole.Assistant,
+                    Content = assistantMessageContent,
+                    ToolCalls = toolCallsList
+                };
+
+                // Append messages to conversation
+                request.Messages.Add(assistantMessage);
+                request.Messages.AddRange(executionResult.ToolResultMessages);
+
+                // If all functions failed, break
+                if (!executionResult.AllSucceeded)
+                {
+                    _logger.LogWarning("Some function executions failed in iteration {Iteration}", iteration);
+                }
+
+                // Continue to next iteration (will stream again)
+            }
+
+            // Check if we hit iteration limit with pending tool calls
+            if (iteration >= maxIterations && accumulatedToolCalls.Count > 0)
+            {
+                _logger.LogWarning("Reached maximum agentic iterations ({MaxIterations}) with pending tool calls", maxIterations);
+
+                // Send a final chunk indicating iteration limit reached
+                yield return new ChatCompletionChunk
+                {
+                    Id = chatCompletionId.ToString(),
+                    Object = "chat.completion.chunk",
+                    Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    Model = request.Model,
+                    Choices = new List<StreamingChoice>
+                    {
+                        new StreamingChoice
+                        {
+                            Index = 0,
+                            Delta = new DeltaContent
+                            {
+                                Role = MessageRole.System,
+                                Content = $"[System: Maximum iteration limit ({maxIterations}) reached. Providing response based on available information.]"
+                            },
+                            FinishReason = FinishReason.Stop
+                        }
+                    }
+                };
+
+                // Make one final streaming call
+                request.Messages.Add(new Message
+                {
+                    Role = MessageRole.System,
+                    Content = $"Maximum iteration limit ({maxIterations}) reached. Please provide a response based on the information available."
+                });
+
+                await foreach (var chunk in client.StreamChatCompletionAsync(request, apiKey, cancellationToken))
+                {
+                    yield return chunk;
+                }
             }
         }
 

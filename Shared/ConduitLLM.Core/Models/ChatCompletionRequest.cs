@@ -178,6 +178,48 @@ public class ChatCompletionRequest
     public string? SystemFingerprint { get; set; }
     
     /// <summary>
+    /// List of function configuration IDs to make available for this chat session.
+    /// When provided, these functions will be converted to Tools and made available for the LLM to call.
+    /// </summary>
+    /// <remarks>
+    /// This is a Conduit-specific extension that maps to internal function configurations.
+    /// The functions will be validated for availability and enabled status before being added to the Tools list.
+    /// </remarks>
+    [JsonPropertyName("function_configuration_ids")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<int>? FunctionConfigurationIds { get; set; }
+
+    /// <summary>
+    /// Whether to enable agentic mode, where function calls are automatically executed and results are fed back to the LLM.
+    /// If false, function calls will be returned to the caller for manual execution.
+    /// </summary>
+    /// <remarks>
+    /// When enabled, the system will:
+    /// 1. Detect tool_calls in LLM responses
+    /// 2. Execute the requested functions
+    /// 3. Append tool result messages to the conversation
+    /// 4. Make a new LLM request with the updated conversation
+    /// 5. Repeat until the LLM provides a final answer or max iterations reached
+    /// Default: true
+    /// </remarks>
+    [JsonPropertyName("enable_agentic_mode")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? EnableAgenticMode { get; set; } = true;
+
+    /// <summary>
+    /// Maximum number of agentic iterations (function call loops) allowed.
+    /// Prevents infinite loops in agentic workflows.
+    /// </summary>
+    /// <remarks>
+    /// Each iteration consists of: LLM response → function execution → LLM response.
+    /// Minimum: 1, Maximum: 10, Default: 5
+    /// If the limit is reached, the system will return the conversation state with an error message.
+    /// </remarks>
+    [JsonPropertyName("max_agentic_iterations")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? MaxAgenticIterations { get; set; } = 5;
+
+    /// <summary>
     /// Additional model-specific parameters that are passed through to the provider API.
     /// These parameters are populated based on the model's ApiParameters configuration.
     /// Examples include reasoning_effort, min_p, language, timestamp_granularities, etc.
