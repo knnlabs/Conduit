@@ -116,6 +116,12 @@ export function ChatInterface() {
     persistKey: `chat-params-${selectedModel ?? 'default'}`,
   });
 
+  // Only pass function IDs if the model supports function calling
+  const modelSupportsFunctionCalling = currentDiscoveryModel?.capabilities?.function_calling === true;
+  const effectiveFunctionIds = modelSupportsFunctionCalling && selectedFunctionIds.length > 0
+    ? selectedFunctionIds
+    : undefined;
+
   // Use streaming logic hook
   const { sendMessage, abortControllerRef } = useChatStreamingLogic({
     selectedModel,
@@ -131,7 +137,7 @@ export function ChatInterface() {
     performanceSettings,
     dynamicParameters: parameterState.getSubmitValues(),
     sendHistoryEnabled,
-    functionConfigurationIds: selectedFunctionIds.length > 0 ? selectedFunctionIds : undefined,
+    functionConfigurationIds: effectiveFunctionIds,
   });
 
   // Cleanup on unmount - abort any pending requests

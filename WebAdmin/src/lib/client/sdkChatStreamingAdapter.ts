@@ -37,7 +37,7 @@ export class SDKChatStreamingAdapter {
   ): Promise<void> {
     // Track content and tool calls for callbacks (declared outside try to be accessible in catch)
     let totalContent = '';
-    let toolCalls: Array<{
+    const toolCalls: Array<{
       id: string;
       type: 'function';
       function: {
