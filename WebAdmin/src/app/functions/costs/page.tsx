@@ -502,8 +502,11 @@ export default function FunctionCostsPage() {
                   { value: '', label: 'Any' },
                   { value: FunctionPurpose.Search.toString(), label: 'Search' },
                   { value: FunctionPurpose.Answer.toString(), label: 'Answer' },
-                  { value: FunctionPurpose.Enrich.toString(), label: 'Enrich' },
-                  { value: FunctionPurpose.Other.toString(), label: 'Other' },
+                  { value: FunctionPurpose.ContentRetrieval.toString(), label: 'Content Retrieval' },
+                  { value: FunctionPurpose.RAG_Search.toString(), label: 'RAG Search' },
+                  { value: FunctionPurpose.RAG_Save.toString(), label: 'RAG Save' },
+                  { value: FunctionPurpose.RAG_Delete.toString(), label: 'RAG Delete' },
+                  { value: FunctionPurpose.RAG_Update.toString(), label: 'RAG Update' },
                 ]}
               />
 

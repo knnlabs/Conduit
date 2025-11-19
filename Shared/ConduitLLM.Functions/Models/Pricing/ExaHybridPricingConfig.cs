@@ -11,6 +11,7 @@ namespace ConduitLLM.Functions.Models.Pricing;
 /// - Neural search (1-25 results): $0.005
 /// - Neural search (26-100 results): $0.025
 /// - Keyword search (any count): $0.0025
+/// - Content retrieval (get contents): $1.00 per 1000 pieces of content
 /// - Text extraction: $0.001 per page
 /// - Highlights extraction: $0.001 per page
 /// - Summary generation: $0.001 per page
@@ -23,7 +24,13 @@ public class ExaHybridPricingConfig
     /// Search operation costs, tiered by search type and result count.
     /// </summary>
     [JsonPropertyName("searchCosts")]
-    public required SearchCostTiers SearchCosts { get; set; }
+    public SearchCostTiers? SearchCosts { get; set; }
+
+    /// <summary>
+    /// Content retrieval costs (for get contents API).
+    /// </summary>
+    [JsonPropertyName("contentRetrievalCosts")]
+    public ContentRetrievalCosts? ContentRetrievalCosts { get; set; }
 
     /// <summary>
     /// Content extraction costs per page for various extraction types.
@@ -116,6 +123,19 @@ public class SearchCostTier
     /// </summary>
     [JsonPropertyName("cost")]
     public decimal Cost { get; set; }
+}
+
+/// <summary>
+/// Content retrieval costs for get contents API.
+/// </summary>
+public class ContentRetrievalCosts
+{
+    /// <summary>
+    /// Base cost per 1000 pieces of content retrieved (pages including subpages).
+    /// Default: $1.00 per 1000 pieces.
+    /// </summary>
+    [JsonPropertyName("costPer1000Pages")]
+    public decimal CostPer1000Pages { get; set; } = 1.00m;
 }
 
 /// <summary>

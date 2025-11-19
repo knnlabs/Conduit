@@ -11,8 +11,10 @@ namespace ConduitLLM.Functions.Providers.Exa;
 /// </summary>
 public partial class ExaClient
 {
-    /// <inheritdoc />
-    public async Task<FunctionExecutionResult> ExecuteAsync(
+    /// <summary>
+    /// Executes the search operation.
+    /// </summary>
+    protected async Task<FunctionExecutionResult> ExecuteSearchAsync(
         Dictionary<string, object> parameters,
         string? apiKey = null,
         CancellationToken cancellationToken = default)

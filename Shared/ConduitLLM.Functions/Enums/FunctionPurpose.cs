@@ -17,22 +17,27 @@ public enum FunctionPurpose
     Answer = 2,
 
     /// <summary>
+    /// Retrieve content from specific URLs (web scraping, content extraction)
+    /// </summary>
+    ContentRetrieval = 3,
+
+    /// <summary>
     /// Search a RAG (Retrieval-Augmented Generation) vector database
     /// </summary>
-    RAG_Search = 3,
+    RAG_Search = 4,
 
     /// <summary>
     /// Save all or part of LLM context to a vector database (reserved for future use)
     /// </summary>
-    RAG_Save = 4,
+    RAG_Save = 5,
 
     /// <summary>
     /// Delete from vector database (reserved for future use)
     /// </summary>
-    RAG_Delete = 5,
+    RAG_Delete = 6,
 
     /// <summary>
     /// Update vector database (reserved for future use)
     /// </summary>
-    RAG_Update = 6
+    RAG_Update = 7
 }

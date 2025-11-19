@@ -98,6 +98,20 @@ public class ExaResult
     [JsonPropertyName("summary")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Summary { get; set; }
+
+    /// <summary>
+    /// Subpages crawled from this result (for get contents API).
+    /// </summary>
+    [JsonPropertyName("subpages")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<ExaResult>? Subpages { get; set; }
+
+    /// <summary>
+    /// Additional extracted data like links and images (for get contents API).
+    /// </summary>
+    [JsonPropertyName("extras")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ExaExtras? Extras { get; set; }
 }
 
 /// <summary>
@@ -141,4 +155,24 @@ public class ExaCostBreakdown
     [JsonPropertyName("total")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public decimal? Total { get; set; }
+}
+
+/// <summary>
+/// Additional extracted data from get contents API.
+/// </summary>
+public class ExaExtras
+{
+    /// <summary>
+    /// Links extracted from the page.
+    /// </summary>
+    [JsonPropertyName("links")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<string>? Links { get; set; }
+
+    /// <summary>
+    /// Image links extracted from the page.
+    /// </summary>
+    [JsonPropertyName("imageLinks")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<string>? ImageLinks { get; set; }
 }

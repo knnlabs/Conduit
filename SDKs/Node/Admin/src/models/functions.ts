@@ -13,8 +13,11 @@ export enum FunctionProviderType {
 export enum FunctionPurpose {
   Search = 1,
   Answer = 2,
-  Enrich = 3,
-  Other = 99
+  ContentRetrieval = 3,
+  RAG_Search = 4,
+  RAG_Save = 5,
+  RAG_Delete = 6,
+  RAG_Update = 7
 }
 
 /** Function execution mode */

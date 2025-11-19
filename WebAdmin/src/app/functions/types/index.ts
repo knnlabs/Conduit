@@ -87,10 +87,16 @@ export function getPurposeName(purpose: FunctionPurpose): string {
       return 'Search';
     case FunctionPurpose.Answer:
       return 'Answer';
-    case FunctionPurpose.Enrich:
-      return 'Enrich';
-    case FunctionPurpose.Other:
-      return 'Other';
+    case FunctionPurpose.ContentRetrieval:
+      return 'Content Retrieval';
+    case FunctionPurpose.RAG_Search:
+      return 'RAG Search';
+    case FunctionPurpose.RAG_Save:
+      return 'RAG Save';
+    case FunctionPurpose.RAG_Delete:
+      return 'RAG Delete';
+    case FunctionPurpose.RAG_Update:
+      return 'RAG Update';
     default:
       return `Unknown (${String(purpose)})`;
   }

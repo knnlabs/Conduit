@@ -190,6 +190,31 @@ public partial class ExaClient : IFunctionClient
         return request;
     }
 
+    /// <inheritdoc />
+    public async Task<FunctionExecutionResult> ExecuteAsync(
+        Dictionary<string, object> parameters,
+        string? apiKey = null,
+        CancellationToken cancellationToken = default)
+    {
+        // Route based on operation type
+        if (parameters.ContainsKey("urls"))
+        {
+            // Get contents operation (requires 'urls' parameter)
+            return await ExecuteGetContentsAsync(parameters, apiKey, cancellationToken);
+        }
+        else if (parameters.ContainsKey("query"))
+        {
+            // Search operation (requires 'query' parameter)
+            return await ExecuteSearchAsync(parameters, apiKey, cancellationToken);
+        }
+        else
+        {
+            throw new ArgumentException(
+                "Either 'query' (for search) or 'urls' (for get contents) must be provided",
+                nameof(parameters));
+        }
+    }
+
     /// <summary>
     /// Handles HTTP errors and creates appropriate exception messages.
     /// </summary>
