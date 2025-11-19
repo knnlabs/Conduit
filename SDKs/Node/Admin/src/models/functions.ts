@@ -14,10 +14,7 @@ export enum FunctionPurpose {
   Search = 1,
   Answer = 2,
   ContentRetrieval = 3,
-  RAG_Search = 4,
-  RAG_Save = 5,
-  RAG_Delete = 6,
-  RAG_Update = 7
+  RAG = 4
 }
 
 /** Function execution mode */

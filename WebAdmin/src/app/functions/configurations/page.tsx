@@ -308,10 +308,7 @@ export default function FunctionConfigurationsPage() {
                   { value: FunctionPurpose.Search.toString(), label: 'Search' },
                   { value: FunctionPurpose.Answer.toString(), label: 'Answer' },
                   { value: FunctionPurpose.ContentRetrieval.toString(), label: 'Content Retrieval' },
-                  { value: FunctionPurpose.RAG_Search.toString(), label: 'RAG Search' },
-                  { value: FunctionPurpose.RAG_Save.toString(), label: 'RAG Save' },
-                  { value: FunctionPurpose.RAG_Delete.toString(), label: 'RAG Delete' },
-                  { value: FunctionPurpose.RAG_Update.toString(), label: 'RAG Update' },
+                  { value: FunctionPurpose.RAG.toString(), label: 'RAG' },
                 ]}
                 style={{ flex: 1 }}
               />
@@ -455,10 +452,7 @@ export default function FunctionConfigurationsPage() {
               { value: FunctionPurpose.Search.toString(), label: 'Search' },
               { value: FunctionPurpose.Answer.toString(), label: 'Answer' },
               { value: FunctionPurpose.ContentRetrieval.toString(), label: 'Content Retrieval' },
-              { value: FunctionPurpose.RAG_Search.toString(), label: 'RAG Search' },
-              { value: FunctionPurpose.RAG_Save.toString(), label: 'RAG Save' },
-              { value: FunctionPurpose.RAG_Delete.toString(), label: 'RAG Delete' },
-              { value: FunctionPurpose.RAG_Update.toString(), label: 'RAG Update' },
+              { value: FunctionPurpose.RAG.toString(), label: 'RAG' },
             ]}
             required
           />

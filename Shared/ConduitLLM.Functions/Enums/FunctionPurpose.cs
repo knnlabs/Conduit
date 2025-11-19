@@ -22,22 +22,7 @@ public enum FunctionPurpose
     ContentRetrieval = 3,
 
     /// <summary>
-    /// Search a RAG (Retrieval-Augmented Generation) vector database
+    /// RAG (Retrieval-Augmented Generation) operations including search, save, update, and delete for vector databases
     /// </summary>
-    RAG_Search = 4,
-
-    /// <summary>
-    /// Save all or part of LLM context to a vector database (reserved for future use)
-    /// </summary>
-    RAG_Save = 5,
-
-    /// <summary>
-    /// Delete from vector database (reserved for future use)
-    /// </summary>
-    RAG_Delete = 6,
-
-    /// <summary>
-    /// Update vector database (reserved for future use)
-    /// </summary>
-    RAG_Update = 7
+    RAG = 4
 }
