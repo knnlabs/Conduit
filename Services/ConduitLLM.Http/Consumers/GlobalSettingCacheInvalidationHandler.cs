@@ -1,29 +1,34 @@
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
-
+using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Http.Interfaces;
 using MassTransit;
 
 namespace ConduitLLM.Http.Consumers
 {
     /// <summary>
-    /// Handles GlobalSettingChanged events for future cache invalidation
-    /// Currently logs events for monitoring until cache implementation is added
+    /// Handles GlobalSettingChanged events for cache invalidation.
+    /// Invalidates both Redis cache (IGlobalSettingCache) and in-memory cache (IGlobalSettingsCacheService).
     /// </summary>
     public class GlobalSettingCacheInvalidationHandler : IConsumer<GlobalSettingChanged>
     {
         private readonly IGlobalSettingCache? _globalSettingCache;
+        private readonly IGlobalSettingsCacheService? _globalSettingsCacheService;
         private readonly ILogger<GlobalSettingCacheInvalidationHandler> _logger;
 
         /// <summary>
         /// Initializes a new instance of the GlobalSettingCacheInvalidationHandler
         /// </summary>
-        /// <param name="globalSettingCache">Optional global setting cache</param>
+        /// <param name="globalSettingCache">Optional global setting cache (Redis)</param>
+        /// <param name="globalSettingsCacheService">Optional global settings cache service (in-memory)</param>
         /// <param name="logger">Logger for diagnostics</param>
         public GlobalSettingCacheInvalidationHandler(
             IGlobalSettingCache? globalSettingCache,
+            IGlobalSettingsCacheService? globalSettingsCacheService,
             ILogger<GlobalSettingCacheInvalidationHandler> logger)
         {
             _globalSettingCache = globalSettingCache;
+            _globalSettingsCacheService = globalSettingsCacheService;
             _logger = logger;
         }
 
@@ -57,7 +62,7 @@ namespace ConduitLLM.Http.Consumers
                     string.Join(", ", @event.ChangedProperties));
             }
 
-            // Invalidate cache if available
+            // Invalidate Redis cache if available
             if (_globalSettingCache != null)
             {
                 try
@@ -68,21 +73,21 @@ namespace ConduitLLM.Http.Consumers
                         case "Created":
                         case "Updated":
                             await _globalSettingCache.InvalidateSettingAsync(@event.SettingKey);
-                            _logger.LogDebug("Global setting cache invalidated for key: {SettingKey}", @event.SettingKey);
+                            _logger.LogDebug("Global setting Redis cache invalidated for key: {SettingKey}", @event.SettingKey);
                             break;
-                            
+
                         case "Deleted":
                             await _globalSettingCache.InvalidateSettingAsync(@event.SettingKey);
-                            _logger.LogDebug("Global setting cache invalidated for deleted key: {SettingKey}", @event.SettingKey);
+                            _logger.LogDebug("Global setting Redis cache invalidated for deleted key: {SettingKey}", @event.SettingKey);
                             break;
-                            
+
                         case "BulkUpdate":
                             // For bulk updates, clear all settings to ensure consistency
                             await _globalSettingCache.ClearAllSettingsAsync();
-                            _logger.LogWarning("All global setting cache entries cleared due to bulk update");
+                            _logger.LogWarning("All global setting Redis cache entries cleared due to bulk update");
                             break;
                     }
-                    
+
                     // If it's an auth-related setting, invalidate all auth settings
                     if (@event.SettingKey.StartsWith("Auth", StringComparison.OrdinalIgnoreCase))
                     {
@@ -92,7 +97,33 @@ namespace ConduitLLM.Http.Consumers
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error invalidating global setting cache for key: {SettingKey}", @event.SettingKey);
+                    _logger.LogError(ex, "Error invalidating global setting Redis cache for key: {SettingKey}", @event.SettingKey);
+                }
+            }
+
+            // Invalidate in-memory cache service if available
+            if (_globalSettingsCacheService != null)
+            {
+                try
+                {
+                    switch (@event.ChangeType)
+                    {
+                        case "Created":
+                        case "Updated":
+                        case "Deleted":
+                            await _globalSettingsCacheService.InvalidateSettingAsync(@event.SettingKey);
+                            _logger.LogDebug("Global settings in-memory cache invalidated for key: {SettingKey}", @event.SettingKey);
+                            break;
+
+                        case "BulkUpdate":
+                            await _globalSettingsCacheService.ReloadAllSettingsAsync();
+                            _logger.LogWarning("All global settings in-memory cache reloaded due to bulk update");
+                            break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error invalidating global settings in-memory cache for key: {SettingKey}", @event.SettingKey);
                 }
             }
         }

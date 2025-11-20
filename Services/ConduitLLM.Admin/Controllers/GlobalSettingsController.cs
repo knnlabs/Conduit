@@ -1,6 +1,7 @@
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.Interfaces;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,18 +17,22 @@ namespace ConduitLLM.Admin.Controllers
     public class GlobalSettingsController : ControllerBase
     {
         private readonly IAdminGlobalSettingService _globalSettingService;
+        private readonly IGlobalSettingsCacheService _cacheService;
         private readonly ILogger<GlobalSettingsController> _logger;
 
         /// <summary>
         /// Initializes a new instance of the GlobalSettingsController
         /// </summary>
         /// <param name="globalSettingService">The global setting service</param>
+        /// <param name="cacheService">The global settings cache service</param>
         /// <param name="logger">The logger</param>
         public GlobalSettingsController(
             IAdminGlobalSettingService globalSettingService,
+            IGlobalSettingsCacheService cacheService,
             ILogger<GlobalSettingsController> logger)
         {
             _globalSettingService = globalSettingService ?? throw new ArgumentNullException(nameof(globalSettingService));
+            _cacheService = cacheService ?? throw new ArgumentNullException(nameof(cacheService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -273,6 +278,86 @@ namespace ConduitLLM.Admin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting global setting with key {Key}", LoggingSanitizer.S(key));
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            }
+        }
+
+        /// <summary>
+        /// Gets global settings cache statistics
+        /// </summary>
+        /// <returns>Cache statistics including hit rate, size, and invalidation count</returns>
+        [HttpGet("cache/stats")]
+        [ProducesResponseType(typeof(GlobalSettingCacheStatsDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetCacheStats()
+        {
+            try
+            {
+                var stats = await _cacheService.GetCacheStatsAsync();
+
+                var dto = new GlobalSettingCacheStatsDto
+                {
+                    CacheSize = (int)stats["CacheSize"],
+                    CacheHits = (long)stats["CacheHits"],
+                    CacheMisses = (long)stats["CacheMisses"],
+                    Invalidations = (long)stats["Invalidations"],
+                    HitRate = (double)stats["HitRate"],
+                    LastLoadTime = (DateTime)stats["LastLoadTime"],
+                    CachedKeys = (List<string>)stats["CachedKeys"]
+                };
+
+                return Ok(dto);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting cache statistics");
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            }
+        }
+
+        /// <summary>
+        /// Reloads all global settings from the database into the cache
+        /// </summary>
+        /// <returns>No content if successful</returns>
+        [HttpPost("cache/reload")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ReloadCache()
+        {
+            try
+            {
+                _logger.LogInformation("Manual cache reload requested");
+                await _cacheService.ReloadAllSettingsAsync();
+                _logger.LogInformation("Cache reload completed successfully");
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error reloading cache");
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            }
+        }
+
+        /// <summary>
+        /// Invalidates a specific cached setting, forcing it to be reloaded from database on next access
+        /// </summary>
+        /// <param name="key">The key of the setting to invalidate</param>
+        /// <returns>No content if successful</returns>
+        [HttpPost("cache/invalidate/{key}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> InvalidateCacheSetting(string key)
+        {
+            try
+            {
+                _logger.LogInformation("Manual cache invalidation requested for key {Key}", LoggingSanitizer.S(key));
+                await _cacheService.InvalidateSettingAsync(key);
+                _logger.LogInformation("Cache invalidation completed for key {Key}", LoggingSanitizer.S(key));
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error invalidating cached setting with key {Key}", LoggingSanitizer.S(key));
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }

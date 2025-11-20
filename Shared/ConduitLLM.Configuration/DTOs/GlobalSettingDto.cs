@@ -118,4 +118,45 @@ namespace ConduitLLM.Configuration.DTOs
         [MaxLength(500)]
         public string? Description { get; set; }
     }
+
+    /// <summary>
+    /// Data transfer object for global settings cache statistics
+    /// </summary>
+    public class GlobalSettingCacheStatsDto
+    {
+        /// <summary>
+        /// Number of settings currently in cache
+        /// </summary>
+        public int CacheSize { get; set; }
+
+        /// <summary>
+        /// Total number of cache hits
+        /// </summary>
+        public long CacheHits { get; set; }
+
+        /// <summary>
+        /// Total number of cache misses
+        /// </summary>
+        public long CacheMisses { get; set; }
+
+        /// <summary>
+        /// Total number of cache invalidations
+        /// </summary>
+        public long Invalidations { get; set; }
+
+        /// <summary>
+        /// Cache hit rate as a percentage (0-100)
+        /// </summary>
+        public double HitRate { get; set; }
+
+        /// <summary>
+        /// Timestamp of when the cache was last loaded from database
+        /// </summary>
+        public DateTime LastLoadTime { get; set; }
+
+        /// <summary>
+        /// List of all keys currently cached
+        /// </summary>
+        public List<string> CachedKeys { get; set; } = new();
+    }
 }

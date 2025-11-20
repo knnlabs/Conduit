@@ -1,5 +1,6 @@
 using ConduitLLM.Admin.Controllers;
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration.Interfaces;
 
 using FluentAssertions;
 
@@ -19,6 +20,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
     public partial class GlobalSettingsControllerTests
     {
         private readonly Mock<IAdminGlobalSettingService> _mockService;
+        private readonly Mock<IGlobalSettingsCacheService> _mockCacheService;
         private readonly Mock<ILogger<GlobalSettingsController>> _mockLogger;
         private readonly GlobalSettingsController _controller;
         private readonly ITestOutputHelper _output;
@@ -27,8 +29,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
         {
             _output = output;
             _mockService = new Mock<IAdminGlobalSettingService>();
+            _mockCacheService = new Mock<IGlobalSettingsCacheService>();
             _mockLogger = new Mock<ILogger<GlobalSettingsController>>();
-            _controller = new GlobalSettingsController(_mockService.Object, _mockLogger.Object);
+            _controller = new GlobalSettingsController(_mockService.Object, _mockCacheService.Object, _mockLogger.Object);
         }
 
         /// <summary>

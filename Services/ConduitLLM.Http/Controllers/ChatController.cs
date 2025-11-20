@@ -35,6 +35,7 @@ namespace ConduitLLM.Http.Controllers
         private readonly JsonSerializerOptions _jsonSerializerOptions;
         private readonly IUsageEstimationService? _usageEstimationService;
         private readonly ConduitLLM.Functions.Interfaces.IFunctionConfigurationRepository? _functionConfigRepository;
+        private readonly ConduitLLM.Configuration.Interfaces.IGlobalSettingsCacheService _globalSettingsCacheService;
 
         public ChatController(
             Conduit conduit,
@@ -43,6 +44,7 @@ namespace ConduitLLM.Http.Controllers
             IOptions<ConduitSettings> settings,
             JsonSerializerOptions jsonSerializerOptions,
             IPublishEndpoint publishEndpoint,
+            ConduitLLM.Configuration.Interfaces.IGlobalSettingsCacheService globalSettingsCacheService,
             IUsageEstimationService? usageEstimationService = null,
             ConduitLLM.Functions.Interfaces.IFunctionConfigurationRepository? functionConfigRepository = null) : base(publishEndpoint, logger)
         {
@@ -51,6 +53,7 @@ namespace ConduitLLM.Http.Controllers
             _modelMappingService = modelMappingService ?? throw new ArgumentNullException(nameof(modelMappingService));
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
             _jsonSerializerOptions = jsonSerializerOptions ?? throw new ArgumentNullException(nameof(jsonSerializerOptions));
+            _globalSettingsCacheService = globalSettingsCacheService ?? throw new ArgumentNullException(nameof(globalSettingsCacheService));
             _usageEstimationService = usageEstimationService;
             _functionConfigRepository = functionConfigRepository;
         }
@@ -97,6 +100,16 @@ namespace ConduitLLM.Http.Controllers
                 {
                     return validationError;
                 }
+            }
+
+            // Apply defaults from GlobalSettings for agentic mode if not explicitly set
+            if (!request.MaxAgenticIterations.HasValue)
+            {
+                request.MaxAgenticIterations = await _globalSettingsCacheService.GetMaxAgenticIterationsAsync();
+            }
+            if (!request.EnableAgenticMode.HasValue)
+            {
+                request.EnableAgenticMode = await _globalSettingsCacheService.GetDefaultAgenticModeEnabledAsync();
             }
 
             try
@@ -380,17 +393,21 @@ namespace ConduitLLM.Http.Controllers
                     });
                 }
 
-                // Validate iteration limit if provided
+                // Validate iteration limit if provided (using configurable limits from GlobalSettings)
                 if (request.MaxAgenticIterations.HasValue)
                 {
-                    if (request.MaxAgenticIterations.Value < 1 || request.MaxAgenticIterations.Value > 10)
+                    var minIterations = await _globalSettingsCacheService.GetMinAgenticIterationsAsync();
+                    var maxIterations = await _globalSettingsCacheService.GetMaxAgenticIterationsAsync();
+
+                    if (request.MaxAgenticIterations.Value < minIterations || request.MaxAgenticIterations.Value > maxIterations)
                     {
-                        _logger.LogWarning("Invalid MaxAgenticIterations value: {Value}", request.MaxAgenticIterations.Value);
+                        _logger.LogWarning("Invalid MaxAgenticIterations value: {Value}, valid range is {Min}-{Max}",
+                            request.MaxAgenticIterations.Value, minIterations, maxIterations);
                         return BadRequest(new OpenAIErrorResponse
                         {
                             Error = new OpenAIError
                             {
-                                Message = "MaxAgenticIterations must be between 1 and 10",
+                                Message = $"MaxAgenticIterations must be between {minIterations} and {maxIterations}",
                                 Type = "invalid_request_error",
                                 Code = "invalid_max_agentic_iterations"
                             }

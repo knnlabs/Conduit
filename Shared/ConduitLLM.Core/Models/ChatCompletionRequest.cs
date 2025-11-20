@@ -200,7 +200,7 @@ public class ChatCompletionRequest
     /// 3. Append tool result messages to the conversation
     /// 4. Make a new LLM request with the updated conversation
     /// 5. Repeat until the LLM provides a final answer or max iterations reached
-    /// Default: true
+    /// Default: Configurable via GlobalSetting 'Agentic.DefaultEnabled' (fallback: true)
     /// </remarks>
     [JsonPropertyName("enable_agentic_mode")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -212,7 +212,8 @@ public class ChatCompletionRequest
     /// </summary>
     /// <remarks>
     /// Each iteration consists of: LLM response → function execution → LLM response.
-    /// Minimum: 1, Maximum: 10, Default: 5
+    /// Default: Configurable via GlobalSetting 'Agentic.MaxIterations' (fallback: 5)
+    /// Valid Range: Configurable via GlobalSettings 'Agentic.MinIterations' and 'Agentic.MaxIterations' (fallback: 1-100)
     /// If the limit is reached, the system will return the conversation state with an error message.
     /// </remarks>
     [JsonPropertyName("max_agentic_iterations")]

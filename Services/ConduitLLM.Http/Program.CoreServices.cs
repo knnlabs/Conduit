@@ -24,6 +24,12 @@ public partial class Program
         builder.Services.AddLeaderElection();
         Console.WriteLine("[Conduit] Leader election service configured for background service coordination");
 
+        // Global settings cache service - loads settings at startup and provides fast access
+        builder.Services.AddSingleton<ConduitLLM.Configuration.Interfaces.IGlobalSettingsCacheService, GlobalSettingsCacheService>();
+        builder.Services.AddHostedService(provider => provider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IGlobalSettingsCacheService>() as GlobalSettingsCacheService
+            ?? throw new InvalidOperationException("GlobalSettingsCacheService must be registered as singleton"));
+        Console.WriteLine("[Conduit] Global settings cache service configured");
+
         // Rate Limiter registration
         builder.Services.AddRateLimiter(options =>
         {

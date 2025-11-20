@@ -24,16 +24,18 @@ import {
   IconLock,
   IconPackage,
   IconBolt,
+  IconSettings,
 } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
-import { SystemInfoDto, LLMCacheControlDto } from '@knn_labs/conduit-admin-client';
+import { SystemInfoDto, LLMCacheControlDto, GlobalSettingDto, GlobalSettingCacheStats } from '@knn_labs/conduit-admin-client';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { formatUptime } from './helpers';
 import { SystemOverviewTab } from './SystemOverviewTab';
 import { SystemServicesTab } from './SystemServicesTab';
 import { SystemEnvironmentTab } from './SystemEnvironmentTab';
 import { SystemDependenciesTab } from './SystemDependenciesTab';
+import { GlobalSettingsTab } from './GlobalSettingsTab';
 import { modals } from '@mantine/modals';
 
 
@@ -47,9 +49,13 @@ export default function SystemInfoPage() {
   const [isTogglingCache, setIsTogglingCache] = useState(false);
   const [activeTab, setActiveTab] = useState<string | null>('overview');
   const [error, setError] = useState<string | null>(null);
+  const [globalSettings, setGlobalSettings] = useState<GlobalSettingDto[]>([]);
+  const [globalSettingsCacheStats, setGlobalSettingsCacheStats] = useState<GlobalSettingCacheStats | null>(null);
+  const [isLoadingSettings, setIsLoadingSettings] = useState(false);
 
   useEffect(() => {
     void fetchSystemInfo();
+    void fetchGlobalSettings();
   }, []);
 
   const fetchSystemInfo = async () => {
@@ -166,6 +172,146 @@ export default function SystemInfoPage() {
         })();
       },
     });
+  };
+
+  const fetchGlobalSettings = async () => {
+    setIsLoadingSettings(true);
+    try {
+      const result = await withAdminClient(client => client.settings.getGlobalSettings());
+      setGlobalSettings(result.settings);
+
+      // Fetch cache stats separately
+      const stats = await withAdminClient(client => client.settings.getCacheStats());
+      setGlobalSettingsCacheStats(stats);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error fetching global settings:', errorMessage);
+      notifications.show({
+        title: 'Error',
+        message: `Failed to load global settings: ${errorMessage}`,
+        color: 'red',
+      });
+    } finally {
+      setIsLoadingSettings(false);
+    }
+  };
+
+  const handleUpdateSetting = async (id: number, value: string, description?: string) => {
+    try {
+      // Find the setting to get its key
+      const setting = globalSettings.find(s => s.id === id);
+      if (!setting) {
+        throw new Error('Setting not found');
+      }
+
+      await withAdminClient(client =>
+        client.settings.updateGlobalSetting(setting.key, value, description)
+      );
+
+      notifications.show({
+        title: 'Success',
+        message: `Setting "${setting.key}" updated successfully`,
+        color: 'green',
+      });
+
+      // Refresh settings
+      await fetchGlobalSettings();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      notifications.show({
+        title: 'Error',
+        message: `Failed to update setting: ${errorMessage}`,
+        color: 'red',
+      });
+      throw error;
+    }
+  };
+
+  const handleCreateSetting = async (key: string, value: string, description?: string) => {
+    try {
+      await withAdminClient(client =>
+        client.settings.createGlobalSetting({ key, value, description })
+      );
+
+      notifications.show({
+        title: 'Success',
+        message: `Setting "${key}" created successfully`,
+        color: 'green',
+      });
+
+      // Refresh settings
+      await fetchGlobalSettings();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      notifications.show({
+        title: 'Error',
+        message: `Failed to create setting: ${errorMessage}`,
+        color: 'red',
+      });
+      throw error;
+    }
+  };
+
+  const handleDeleteSetting = async (id: number, key: string) => {
+    modals.openConfirmModal({
+      title: 'Delete Global Setting',
+      children: (
+        <Text size="sm">
+          Are you sure you want to delete the setting <strong>{key}</strong>?
+          <br /><br />
+          This action cannot be undone and will affect all services using this setting.
+        </Text>
+      ),
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: () => {
+        void (async () => {
+          try {
+            await withAdminClient(client => client.settings.deleteGlobalSetting(key));
+
+            notifications.show({
+              title: 'Success',
+              message: `Setting "${key}" deleted successfully`,
+              color: 'green',
+            });
+
+            // Refresh settings
+            await fetchGlobalSettings();
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            notifications.show({
+              title: 'Error',
+              message: `Failed to delete setting: ${errorMessage}`,
+              color: 'red',
+            });
+          }
+        })();
+      },
+    });
+  };
+
+  const handleReloadCache = async () => {
+    try {
+      await withAdminClient(client => client.settings.reloadCache());
+
+      notifications.show({
+        title: 'Success',
+        message: 'Cache reloaded successfully',
+        color: 'green',
+      });
+
+      // Refresh cache stats
+      const stats = await withAdminClient(client => client.settings.getCacheStats());
+      setGlobalSettingsCacheStats(stats);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      notifications.show({
+        title: 'Error',
+        message: `Failed to reload cache: ${errorMessage}`,
+        color: 'red',
+      });
+      throw error;
+    }
   };
 
   if (isLoading) {
@@ -321,6 +467,9 @@ export default function SystemInfoPage() {
           <Tabs.Tab value="dependencies" leftSection={<IconPackage size={16} />}>
             Dependencies
           </Tabs.Tab>
+          <Tabs.Tab value="settings" leftSection={<IconSettings size={16} />}>
+            Global Settings
+          </Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="overview" pt="md">
@@ -342,6 +491,18 @@ export default function SystemInfoPage() {
 
         <Tabs.Panel value="dependencies" pt="md">
           <SystemDependenciesTab systemInfo={systemInfo} />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="settings" pt="md">
+          <GlobalSettingsTab
+            settings={globalSettings}
+            cacheStats={globalSettingsCacheStats}
+            onUpdate={handleUpdateSetting}
+            onCreate={handleCreateSetting}
+            onDelete={handleDeleteSetting}
+            onReloadCache={handleReloadCache}
+            isLoading={isLoadingSettings}
+          />
         </Tabs.Panel>
       </Tabs>
 

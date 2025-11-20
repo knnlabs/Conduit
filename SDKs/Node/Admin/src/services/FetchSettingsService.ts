@@ -5,6 +5,8 @@ import type {
   GlobalSettingDto,
   CreateGlobalSettingDto,
   UpdateGlobalSettingDto,
+  UpdateGlobalSettingByKeyDto,
+  GlobalSettingCacheStats,
   SettingCategory,
 } from '../models/settings';
 
@@ -119,15 +121,22 @@ export class FetchSettingsService {
   }
 
   /**
-   * Update a specific setting
+   * Update a specific setting by key
    */
   async updateGlobalSetting(
     key: string,
-    data: UpdateGlobalSettingDto,
+    value: string,
+    description?: string,
     config?: RequestConfig
   ): Promise<void> {
-    return this.client['put']<void, UpdateGlobalSettingDto>(
-      ENDPOINTS.SETTINGS.GLOBAL_BY_KEY(key),
+    const data: UpdateGlobalSettingByKeyDto = {
+      key,
+      value,
+      description,
+    };
+
+    return this.client['put']<void, UpdateGlobalSettingByKeyDto>(
+      ENDPOINTS.SETTINGS.GLOBAL_BY_KEY_SIMPLE,
       data,
       {
         signal: config?.signal,
@@ -237,7 +246,8 @@ export class FetchSettingsService {
 
     await this.updateGlobalSetting(
       key,
-      { value: stringValue, description },
+      stringValue,
+      description,
       config
     );
   }
@@ -278,7 +288,7 @@ export class FetchSettingsService {
     if (setting.isSecret) {
       return '********';
     }
-    
+
     switch (setting.dataType) {
       case 'json':
         try {
@@ -289,5 +299,49 @@ export class FetchSettingsService {
       default:
         return setting.value;
     }
+  }
+
+  /**
+   * Get global settings cache statistics
+   */
+  async getCacheStats(config?: RequestConfig): Promise<GlobalSettingCacheStats> {
+    return this.client['get']<GlobalSettingCacheStats>(
+      ENDPOINTS.SETTINGS.CACHE_STATS,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Reload all global settings from database into cache
+   */
+  async reloadCache(config?: RequestConfig): Promise<void> {
+    return this.client['post']<void, void>(
+      ENDPOINTS.SETTINGS.CACHE_RELOAD,
+      undefined,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
+  }
+
+  /**
+   * Invalidate a specific cached setting
+   */
+  async invalidateSetting(key: string, config?: RequestConfig): Promise<void> {
+    return this.client['post']<void, void>(
+      ENDPOINTS.SETTINGS.CACHE_INVALIDATE(key),
+      undefined,
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      }
+    );
   }
 }

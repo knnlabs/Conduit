@@ -328,6 +328,9 @@ export const ENDPOINTS = {
     GLOBAL_BY_ID: (id: number) => `/api/GlobalSettings/${id}`,
     GLOBAL_BY_KEY: (key: string) => `/api/GlobalSettings/by-key/${key}`,
     GLOBAL_BY_KEY_SIMPLE: '/api/GlobalSettings/by-key',
+    CACHE_STATS: '/api/GlobalSettings/cache/stats',
+    CACHE_RELOAD: '/api/GlobalSettings/cache/reload',
+    CACHE_INVALIDATE: (key: string) => `/api/GlobalSettings/cache/invalidate/${encodeURIComponent(key)}`,
     ROUTER: '/api/Router/config',
   },
 
