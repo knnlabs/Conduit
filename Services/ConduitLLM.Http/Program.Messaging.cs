@@ -39,7 +39,7 @@ public partial class Program
             x.AddConsumer<ConduitLLM.Http.EventHandlers.VideoGenerationFailedHandler>();
             
             // Add Admin API event consumers for cache invalidation
-            x.AddConsumer<ConduitLLM.Http.Consumers.GlobalSettingCacheInvalidationHandler>();
+            x.AddConsumer<ConduitLLM.Core.Consumers.GlobalSettingCacheInvalidationHandler>();
             x.AddConsumer<ConduitLLM.Http.Consumers.IpFilterCacheInvalidationHandler>();
 
             // Add LLM cache toggle consumer for runtime caching control

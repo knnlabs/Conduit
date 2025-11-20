@@ -53,6 +53,36 @@ var configurations = new List<FunctionConfiguration>();
 
 foreach (var config in configurationsNode.EnumerateArray())
 {
+    // Parse cost configuration if present
+    CostConfiguration? costConfig = null;
+    if (config.TryGetProperty("costConfiguration", out var costConfigElement))
+    {
+        costConfig = new CostConfiguration
+        {
+            CostName = costConfigElement.GetProperty("costName").GetString() ?? "",
+            PricingModel = costConfigElement.GetProperty("pricingModel").GetString() ?? "",
+            PricingModelId = costConfigElement.GetProperty("pricingModelId").GetInt32(),
+            CostPerExecution = costConfigElement.TryGetProperty("costPerExecution", out var costPerExec)
+                ? costPerExec.GetDecimal() : (decimal?)null,
+            CostPerResult = costConfigElement.TryGetProperty("costPerResult", out var costPerRes)
+                ? costPerRes.GetDecimal() : (decimal?)null,
+            CostPerToken = costConfigElement.TryGetProperty("costPerToken", out var costPerTok)
+                ? costPerTok.GetDecimal() : (decimal?)null,
+            CostPerMinute = costConfigElement.TryGetProperty("costPerMinute", out var costPerMin)
+                ? costPerMin.GetDecimal() : (decimal?)null,
+            TieredPricing = costConfigElement.TryGetProperty("tieredPricing", out var tiered)
+                ? tiered.GetRawText()
+                : null,
+            PricingConfiguration = costConfigElement.TryGetProperty("pricingConfiguration", out var pricingConfig)
+                ? pricingConfig.GetRawText()
+                : null,
+            IsActive = costConfigElement.TryGetProperty("isActive", out var isActive)
+                ? isActive.GetBoolean() : true,
+            Priority = costConfigElement.TryGetProperty("priority", out var priority)
+                ? priority.GetInt32() : 1
+        };
+    }
+
     var configuration = new FunctionConfiguration
     {
         ProviderType = config.GetProperty("providerType").GetString() ?? "Unknown",
@@ -74,7 +104,8 @@ foreach (var config in configurationsNode.EnumerateArray())
             : null,
         ParameterSchema = config.TryGetProperty("parameterSchema", out var schema)
             ? schema.GetRawText()
-            : null
+            : null,
+        CostConfiguration = costConfig
     };
 
     configurations.Add(configuration);
@@ -111,17 +142,24 @@ static async Task GenerateSQLOutput(List<FunctionConfiguration> configurations, 
 {
     var sql = new StringBuilder();
 
-    sql.AppendLine("-- Auto-generated SQL for Function Configurations");
+    sql.AppendLine("-- Auto-generated SQL for Function Configurations and Cost Management");
     sql.AppendLine($"-- Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
     sql.AppendLine($"-- Total Configurations: {configurations.Count}");
+    var configurationsWithCost = configurations.Count(c => c.CostConfiguration != null);
+    sql.AppendLine($"-- Configurations with Cost Data: {configurationsWithCost}");
     sql.AppendLine();
     sql.AppendLine("-- Providers:");
     sql.AppendLine("--   Exa (1): Neural Search, Keyword Search, Content Retrieval");
     sql.AppendLine("--   Tavily (4): General Search, News Search, Finance Search, Answer Generation");
-    sql.AppendLine("--   Perplexity (2): Sonar Search, Sonar Pro Search, Sonar Reasoning");
+    sql.AppendLine("--   Perplexity (3): Sonar Search, Sonar Pro Search, Sonar Reasoning");
+    sql.AppendLine();
+    sql.AppendLine("-- Pricing Models:");
+    sql.AppendLine("--   FlatRate (1): Fixed cost per execution");
+    sql.AppendLine("--   PerResult (2): Cost per result/page returned");
+    sql.AppendLine("--   Hybrid (6): Combined request fee + token costs");
     sql.AppendLine();
     sql.AppendLine("-- NOTE: This script uses upsert logic to preserve manual changes.");
-    sql.AppendLine("-- Existing configurations will be updated with new settings.");
+    sql.AppendLine("-- Existing configurations and costs will be updated with new settings.");
     sql.AppendLine();
     sql.AppendLine("BEGIN;");
     sql.AppendLine();
@@ -196,11 +234,118 @@ static async Task GenerateSQLOutput(List<FunctionConfiguration> configurations, 
 
         sql.AppendLine($"END $$;");
         sql.AppendLine();
+
+        // Generate cost configuration if present
+        if (config.CostConfiguration != null)
+        {
+            sql.AppendLine($"-- Cost Configuration: {config.CostConfiguration.CostName}");
+            sql.AppendLine($"-- Pricing Model: {config.CostConfiguration.PricingModel} ({config.CostConfiguration.PricingModelId})");
+            sql.AppendLine();
+
+            sql.AppendLine($"DO $$");
+            sql.AppendLine($"DECLARE");
+            sql.AppendLine($"  v_cost_id INTEGER;");
+            sql.AppendLine($"  v_function_config_id INTEGER;");
+            sql.AppendLine($"BEGIN");
+            sql.AppendLine();
+
+            // Get the function configuration ID
+            sql.AppendLine($"  -- Get function configuration ID");
+            sql.AppendLine($"  SELECT \"Id\" INTO v_function_config_id");
+            sql.AppendLine($"  FROM \"FunctionConfigurations\"");
+            sql.AppendLine($"  WHERE \"ConfigurationName\" = '{EscapeSqlString(config.ConfigurationName)}'");
+            sql.AppendLine($"    AND \"ProviderType\" = {config.ProviderTypeId};");
+            sql.AppendLine();
+
+            // Check if cost configuration exists
+            sql.AppendLine($"  -- Check if cost configuration exists");
+            sql.AppendLine($"  SELECT \"Id\" INTO v_cost_id");
+            sql.AppendLine($"  FROM \"FunctionCosts\"");
+            sql.AppendLine($"  WHERE \"CostName\" = '{EscapeSqlString(config.CostConfiguration.CostName)}';");
+            sql.AppendLine();
+
+            // Prepare nullable cost fields
+            var costPerExecution = config.CostConfiguration.CostPerExecution.HasValue
+                ? config.CostConfiguration.CostPerExecution.Value.ToString("F8")
+                : "NULL";
+            var costPerResult = config.CostConfiguration.CostPerResult.HasValue
+                ? config.CostConfiguration.CostPerResult.Value.ToString("F8")
+                : "NULL";
+            var costPerToken = config.CostConfiguration.CostPerToken.HasValue
+                ? config.CostConfiguration.CostPerToken.Value.ToString("F8")
+                : "NULL";
+            var costPerMinute = config.CostConfiguration.CostPerMinute.HasValue
+                ? config.CostConfiguration.CostPerMinute.Value.ToString("F8")
+                : "NULL";
+            var tieredPricing = config.CostConfiguration.TieredPricing != null
+                ? $"'{EscapeSqlString(config.CostConfiguration.TieredPricing)}'"
+                : "NULL";
+            var pricingConfiguration = config.CostConfiguration.PricingConfiguration != null
+                ? $"'{EscapeSqlString(config.CostConfiguration.PricingConfiguration)}'"
+                : "NULL";
+
+            // Insert or update cost configuration
+            sql.AppendLine($"  IF v_cost_id IS NULL THEN");
+            sql.AppendLine($"    -- Insert new cost configuration");
+            sql.AppendLine($"    INSERT INTO \"FunctionCosts\" (");
+            sql.AppendLine($"      \"CostName\", \"PricingModel\", \"CostPerExecution\", \"CostPerResult\",");
+            sql.AppendLine($"      \"CostPerToken\", \"CostPerMinute\", \"TieredPricing\", \"PricingConfiguration\",");
+            sql.AppendLine($"      \"IsActive\", \"EffectiveDate\", \"Priority\", \"CreatedAt\", \"UpdatedAt\"");
+            sql.AppendLine($"    ) VALUES (");
+            sql.AppendLine($"      '{EscapeSqlString(config.CostConfiguration.CostName)}', {config.CostConfiguration.PricingModelId},");
+            sql.AppendLine($"      {costPerExecution}, {costPerResult}, {costPerToken}, {costPerMinute},");
+            sql.AppendLine($"      {tieredPricing}::jsonb, {pricingConfiguration}::jsonb,");
+            sql.AppendLine($"      {FormatBool(config.CostConfiguration.IsActive)}, NOW(), {config.CostConfiguration.Priority},");
+            sql.AppendLine($"      NOW(), NOW()");
+            sql.AppendLine($"    )");
+            sql.AppendLine($"    RETURNING \"Id\" INTO v_cost_id;");
+            sql.AppendLine($"  ELSE");
+            sql.AppendLine($"    -- Update existing cost configuration");
+            sql.AppendLine($"    UPDATE \"FunctionCosts\" SET");
+            sql.AppendLine($"      \"PricingModel\" = {config.CostConfiguration.PricingModelId},");
+            sql.AppendLine($"      \"CostPerExecution\" = {costPerExecution},");
+            sql.AppendLine($"      \"CostPerResult\" = {costPerResult},");
+            sql.AppendLine($"      \"CostPerToken\" = {costPerToken},");
+            sql.AppendLine($"      \"CostPerMinute\" = {costPerMinute},");
+            sql.AppendLine($"      \"TieredPricing\" = {tieredPricing}::jsonb,");
+            sql.AppendLine($"      \"PricingConfiguration\" = {pricingConfiguration}::jsonb,");
+            sql.AppendLine($"      \"IsActive\" = {FormatBool(config.CostConfiguration.IsActive)},");
+            sql.AppendLine($"      \"Priority\" = {config.CostConfiguration.Priority},");
+            sql.AppendLine($"      \"UpdatedAt\" = NOW()");
+            sql.AppendLine($"    WHERE \"Id\" = v_cost_id;");
+            sql.AppendLine($"  END IF;");
+            sql.AppendLine();
+
+            // Create or update function cost mapping
+            sql.AppendLine($"  -- Create/update function cost mapping");
+            sql.AppendLine($"  IF NOT EXISTS (");
+            sql.AppendLine($"    SELECT 1 FROM \"FunctionCostMappings\"");
+            sql.AppendLine($"    WHERE \"FunctionConfigurationId\" = v_function_config_id");
+            sql.AppendLine($"      AND \"FunctionCostId\" = v_cost_id");
+            sql.AppendLine($"  ) THEN");
+            sql.AppendLine($"    -- Deactivate any existing mappings for this configuration");
+            sql.AppendLine($"    UPDATE \"FunctionCostMappings\"");
+            sql.AppendLine($"    SET \"IsActive\" = false");
+            sql.AppendLine($"    WHERE \"FunctionConfigurationId\" = v_function_config_id;");
+            sql.AppendLine();
+            sql.AppendLine($"    -- Insert new mapping");
+            sql.AppendLine($"    INSERT INTO \"FunctionCostMappings\" (");
+            sql.AppendLine($"      \"FunctionConfigurationId\", \"FunctionCostId\", \"IsActive\", \"CreatedAt\"");
+            sql.AppendLine($"    ) VALUES (");
+            sql.AppendLine($"      v_function_config_id, v_cost_id, true, NOW()");
+            sql.AppendLine($"    );");
+            sql.AppendLine($"  END IF;");
+            sql.AppendLine();
+
+            sql.AppendLine($"END $$;");
+            sql.AppendLine();
+        }
     }
 
     sql.AppendLine("COMMIT;");
     sql.AppendLine();
     sql.AppendLine($"-- Successfully generated SQL for {configurations.Count} function configurations");
+    sql.AppendLine($"-- Created {configurationsWithCost} cost configurations and mappings");
 
     // Write to file
     await File.WriteAllTextAsync(outputFilename, sql.ToString());
@@ -230,4 +375,20 @@ record FunctionConfiguration
     public int? MaxRetries { get; init; }
     public string? ProviderSettings { get; init; }
     public string? ParameterSchema { get; init; }
+    public CostConfiguration? CostConfiguration { get; init; }
+}
+
+record CostConfiguration
+{
+    public string CostName { get; init; } = "";
+    public string PricingModel { get; init; } = "";
+    public int PricingModelId { get; init; }
+    public decimal? CostPerExecution { get; init; }
+    public decimal? CostPerResult { get; init; }
+    public decimal? CostPerToken { get; init; }
+    public decimal? CostPerMinute { get; init; }
+    public string? TieredPricing { get; init; }
+    public string? PricingConfiguration { get; init; }
+    public bool IsActive { get; init; }
+    public int Priority { get; init; }
 }

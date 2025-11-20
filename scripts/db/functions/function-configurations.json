@@ -13,6 +13,14 @@
       "isEnabled": true,
       "timeoutSeconds": 30,
       "maxRetries": 3,
+      "costConfiguration": {
+        "costName": "Exa Neural Search - Standard Pricing (1-25 results)",
+        "pricingModel": "FlatRate",
+        "pricingModelId": 1,
+        "costPerExecution": 0.005,
+        "isActive": true,
+        "priority": 1
+      },
       "providerSettings": {
         "defaultSearchType": "neural",
         "defaultNumResults": 10,
@@ -111,6 +119,14 @@
       "isEnabled": true,
       "timeoutSeconds": 30,
       "maxRetries": 3,
+      "costConfiguration": {
+        "costName": "Exa Keyword Search - Standard Pricing (1-100 results)",
+        "pricingModel": "FlatRate",
+        "pricingModelId": 1,
+        "costPerExecution": 0.0025,
+        "isActive": true,
+        "priority": 1
+      },
       "providerSettings": {
         "defaultSearchType": "keyword",
         "defaultNumResults": 10,
@@ -204,6 +220,14 @@
       "isEnabled": true,
       "timeoutSeconds": 60,
       "maxRetries": 3,
+      "costConfiguration": {
+        "costName": "Exa Content Retrieval - Per Page Pricing",
+        "pricingModel": "PerResult",
+        "pricingModelId": 2,
+        "costPerResult": 0.001,
+        "isActive": true,
+        "priority": 1
+      },
       "providerSettings": {
         "defaultText": true,
         "defaultHighlights": false,
@@ -259,6 +283,14 @@
       "isEnabled": true,
       "timeoutSeconds": 30,
       "maxRetries": 3,
+      "costConfiguration": {
+        "costName": "Tavily General Search - Basic Depth (1 credit)",
+        "pricingModel": "FlatRate",
+        "pricingModelId": 1,
+        "costPerExecution": 0.0075,
+        "isActive": true,
+        "priority": 1
+      },
       "providerSettings": {
         "defaultTopic": "general",
         "defaultSearchDepth": "basic",
@@ -332,6 +364,14 @@
       "isEnabled": true,
       "timeoutSeconds": 30,
       "maxRetries": 3,
+      "costConfiguration": {
+        "costName": "Tavily News Search - Basic Depth (1 credit)",
+        "pricingModel": "FlatRate",
+        "pricingModelId": 1,
+        "costPerExecution": 0.0075,
+        "isActive": true,
+        "priority": 1
+      },
       "providerSettings": {
         "defaultTopic": "news",
         "defaultSearchDepth": "basic",
@@ -403,6 +443,14 @@
       "isEnabled": true,
       "timeoutSeconds": 30,
       "maxRetries": 3,
+      "costConfiguration": {
+        "costName": "Tavily Finance Search - Basic Depth (1 credit)",
+        "pricingModel": "FlatRate",
+        "pricingModelId": 1,
+        "costPerExecution": 0.0075,
+        "isActive": true,
+        "priority": 1
+      },
       "providerSettings": {
         "defaultTopic": "finance",
         "defaultSearchDepth": "basic",
@@ -471,6 +519,14 @@
       "isEnabled": true,
       "timeoutSeconds": 45,
       "maxRetries": 3,
+      "costConfiguration": {
+        "costName": "Tavily Answer Generation - Advanced Depth (2 credits)",
+        "pricingModel": "FlatRate",
+        "pricingModelId": 1,
+        "costPerExecution": 0.015,
+        "isActive": true,
+        "priority": 1
+      },
       "providerSettings": {
         "defaultIncludeAnswer": true,
         "defaultSearchDepth": "advanced",
@@ -544,6 +600,19 @@
       "isEnabled": true,
       "timeoutSeconds": 30,
       "maxRetries": 3,
+      "costConfiguration": {
+        "costName": "Perplexity Sonar - Hybrid Pricing",
+        "pricingModel": "Hybrid",
+        "pricingModelId": 6,
+        "pricingConfiguration": {
+          "baseRequestCost": 0.005,
+          "inputTokenCostPerMillion": 1.33,
+          "outputTokenCostPerMillion": 1.33,
+          "description": "$0.005/search + $1.33/M input tokens + $1.33/M output tokens"
+        },
+        "isActive": true,
+        "priority": 1
+      },
       "providerSettings": {
         "defaultModel": "sonar",
         "defaultReturnCitations": true,
@@ -616,6 +685,19 @@
       "isEnabled": true,
       "timeoutSeconds": 45,
       "maxRetries": 3,
+      "costConfiguration": {
+        "costName": "Perplexity Sonar Pro - Hybrid Pricing",
+        "pricingModel": "Hybrid",
+        "pricingModelId": 6,
+        "pricingConfiguration": {
+          "baseRequestCost": 0.005,
+          "inputTokenCostPerMillion": 4.0,
+          "outputTokenCostPerMillion": 20.0,
+          "description": "$0.005/search + $4/M input tokens + $20/M output tokens"
+        },
+        "isActive": true,
+        "priority": 1
+      },
       "providerSettings": {
         "defaultModel": "sonar-pro",
         "defaultReturnCitations": true,
@@ -689,6 +771,19 @@
       "isEnabled": true,
       "timeoutSeconds": 60,
       "maxRetries": 3,
+      "costConfiguration": {
+        "costName": "Perplexity Sonar Reasoning - Hybrid Pricing",
+        "pricingModel": "Hybrid",
+        "pricingModelId": 6,
+        "pricingConfiguration": {
+          "baseRequestCost": 0.018,
+          "inputTokenCostPerMillion": 1.0,
+          "outputTokenCostPerMillion": 5.0,
+          "description": "$0.018/search + $1/M input tokens + $5/M output tokens"
+        },
+        "isActive": true,
+        "priority": 1
+      },
       "providerSettings": {
         "defaultModel": "sonar-reasoning",
         "defaultReturnCitations": true,

@@ -142,9 +142,12 @@ public partial class Program
         // Register MassTransit event bus for Admin API
         builder.Services.AddMassTransit(x =>
         {
+            // Register consumers for Admin API cache invalidation
+            x.AddConsumer<ConduitLLM.Core.Consumers.GlobalSettingCacheInvalidationHandler>();
+
             // Register consumers for Admin API SignalR notifications
             // Provider health consumer removed
-            
+
             if (useRabbitMq)
             {
                 x.UsingRabbitMq((context, cfg) =>
@@ -176,7 +179,9 @@ public partial class Program
                 Console.WriteLine("  - VirtualKeyDeleted events (triggers cache cleanup in Core API)");
                 Console.WriteLine("  - ProviderUpdated events (triggers capability refresh)");
                 Console.WriteLine("  - ProviderDeleted events (triggers cache cleanup)");
+                Console.WriteLine("  - GlobalSettingChanged events (triggers cache invalidation in all instances)");
                 Console.WriteLine("[ConduitLLM.Admin] Event consuming ENABLED - Admin services will consume:");
+                Console.WriteLine("  - GlobalSettingChanged events (keeps Admin API cache synchronized)");
                 Console.WriteLine("  - ProviderHealthChanged events (forwards to Admin SignalR clients)");
             }
             else
@@ -202,6 +207,7 @@ public partial class Program
                 Console.WriteLine("  - This ensures Core API instances receive cache invalidation events");
                 Console.WriteLine("  - Without RabbitMQ, only the local Core API instance will be notified");
                 Console.WriteLine("[ConduitLLM.Admin] Event consuming ENABLED - Admin services will consume:");
+                Console.WriteLine("  - GlobalSettingChanged events (keeps Admin API cache synchronized)");
                 Console.WriteLine("  - ProviderHealthChanged events (forwards to Admin SignalR clients)");
             }
         });

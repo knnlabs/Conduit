@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Services;
 using ConduitLLM.Core.Services;
 
 namespace ConduitLLM.Admin.Extensions
@@ -26,7 +27,12 @@ namespace ConduitLLM.Admin.Extensions
 
             // Add database initialization
             services.AddDatabaseInitialization();
-            
+
+            // Global settings cache service - loads settings at startup and provides fast access
+            services.AddSingleton<IGlobalSettingsCacheService, GlobalSettingsCacheService>();
+            services.AddHostedService(provider => provider.GetRequiredService<IGlobalSettingsCacheService>() as GlobalSettingsCacheService
+                ?? throw new InvalidOperationException("GlobalSettingsCacheService must be registered as singleton"));
+
             // Add Configuration services
             services.AddScoped<IProviderService, ProviderService>();
 
