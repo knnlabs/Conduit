@@ -56,6 +56,7 @@ export interface FunctionConfigurationDto {
   timeoutSeconds: number;
   isEnabled: boolean;
   metadata?: string; // JSON
+  parameterSchema?: string; // JSON Schema
   createdAt: string;
   updatedAt: string;
 }
@@ -69,6 +70,7 @@ export interface CreateFunctionConfigurationDto {
   timeoutSeconds?: number; // Default: 30
   isEnabled?: boolean; // Default: true
   metadata?: string; // JSON
+  parameterSchema?: string; // JSON Schema
 }
 
 export interface UpdateFunctionConfigurationDto {
@@ -80,6 +82,7 @@ export interface UpdateFunctionConfigurationDto {
   timeoutSeconds?: number;
   isEnabled?: boolean;
   metadata?: string; // JSON
+  parameterSchema?: string; // JSON Schema
 }
 
 // ============================================================================

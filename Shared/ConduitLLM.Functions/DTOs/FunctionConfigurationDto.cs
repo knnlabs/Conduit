@@ -17,6 +17,7 @@ public class FunctionConfigurationDto
     public int? TimeoutSeconds { get; set; }
     public int? MaxRetries { get; set; }
     public string? ProviderSettings { get; set; }
+    public string? ParameterSchema { get; set; }
     public string? Description { get; set; }
     public int CredentialCount { get; set; }
     public DateTime CreatedAt { get; set; }

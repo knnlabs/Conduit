@@ -68,6 +68,7 @@ export default function FunctionConfigurationsPage() {
     timeoutSeconds: 30,
     isEnabled: true,
     metadata: '',
+    parameterSchema: '',
   });
 
   const loadConfigurations = useCallback(async () => {
@@ -134,6 +135,7 @@ export default function FunctionConfigurationsPage() {
         timeoutSeconds: formData.timeoutSeconds,
         isEnabled: formData.isEnabled,
         metadata: formData.metadata,
+        parameterSchema: formData.parameterSchema,
       };
       await executeWithAdmin(client =>
         client.functionConfigurations.update(editingConfig.id, updateData)
@@ -219,6 +221,7 @@ export default function FunctionConfigurationsPage() {
       timeoutSeconds: config.timeoutSeconds,
       isEnabled: config.isEnabled,
       metadata: config.metadata ?? '',
+      parameterSchema: config.parameterSchema ?? '',
     });
     setShowModal(true);
   };
@@ -238,6 +241,7 @@ export default function FunctionConfigurationsPage() {
       timeoutSeconds: 30,
       isEnabled: true,
       metadata: '',
+      parameterSchema: '',
     });
   };
 
@@ -495,6 +499,16 @@ export default function FunctionConfigurationsPage() {
             onChange={(e) => setFormData({ ...formData, metadata: e.target.value })}
             rows={4}
             styles={{ input: { fontFamily: 'monospace' } }}
+          />
+
+          <Textarea
+            label="Parameter Schema (JSON Schema)"
+            placeholder='{"type": "object", "properties": {...}, "required": [...]}'
+            value={formData.parameterSchema ?? ''}
+            onChange={(e) => setFormData({ ...formData, parameterSchema: e.target.value })}
+            rows={8}
+            styles={{ input: { fontFamily: 'monospace', fontSize: 12 } }}
+            description="JSON Schema defining the function parameters that the LLM can use"
           />
 
           <Group justify="flex-end" mt="md">

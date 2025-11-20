@@ -61,6 +61,11 @@ public class CreateFunctionConfigurationRequest
     public string? ProviderSettings { get; set; }
 
     /// <summary>
+    /// JSON Schema defining parameter requirements for this function
+    /// </summary>
+    public string? ParameterSchema { get; set; }
+
+    /// <summary>
     /// Optional description
     /// </summary>
     [MaxLength(1000)]
