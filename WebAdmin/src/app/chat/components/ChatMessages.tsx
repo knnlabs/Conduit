@@ -232,7 +232,7 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
       >
         <Stack gap="xs">
           <Group justify="space-between" wrap="nowrap">
-            <Group gap="xs">
+            <Group gap="xs" wrap="wrap">
               {isUser ? (
                 <IconUser size={16} />
               ) : (
@@ -241,8 +241,19 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
               <Text fw={600} size="sm">
                 {isUser ? 'You' : message.model ?? 'Assistant'}
               </Text>
+
+              {/* Function indicators for user messages */}
+              {isUser && message.metadata?.functionNames && message.metadata.functionNames.length > 0 && (
+                <Group gap={4}>
+                  {message.metadata.functionNames.map((name: string) => (
+                    <Badge key={name} size="xs" variant="light" color="violet">
+                      {name}
+                    </Badge>
+                  ))}
+                </Group>
+              )}
             </Group>
-            
+
             {!isUser && (message.metadata ?? (isStreaming && tokensPerSecond)) && (
               <Group gap="xs">
                 {/* Toggle Raw View Button */}

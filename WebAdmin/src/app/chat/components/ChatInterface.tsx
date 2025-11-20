@@ -138,6 +138,7 @@ export function ChatInterface() {
     dynamicParameters: parameterState.getSubmitValues(),
     sendHistoryEnabled,
     functionConfigurationIds: effectiveFunctionIds,
+    availableFunctions,
   });
 
   // Cleanup on unmount - abort any pending requests

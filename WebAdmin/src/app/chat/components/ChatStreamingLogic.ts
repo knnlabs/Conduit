@@ -6,6 +6,7 @@ import {
   type StreamingCallbacks,
   type StreamMessageOptions
 } from '@knn_labs/conduit-core-client';
+import type { FunctionConfigurationDto } from '@knn_labs/conduit-admin-client';
 import { SDKChatStreamingAdapter } from '@/lib/client/sdkChatStreamingAdapter';
 import {
   ChatParameters,
@@ -33,6 +34,7 @@ interface ChatStreamingLogicParams {
   dynamicParameters?: Record<string, unknown>;
   sendHistoryEnabled?: boolean;
   functionConfigurationIds?: number[];
+  availableFunctions?: FunctionConfigurationDto[];
 }
 
 export function useChatStreamingLogic({
@@ -50,6 +52,7 @@ export function useChatStreamingLogic({
   dynamicParameters = {},
   sendHistoryEnabled = true,
   functionConfigurationIds,
+  availableFunctions = [],
 }: ChatStreamingLogicParams) {
   const streamingAdapterRef = useRef<SDKChatStreamingAdapter | null>(null);
   
@@ -80,12 +83,21 @@ export function useChatStreamingLogic({
     if (!inputMessage.trim() && (!images || images.length === 0)) return;
     if (!selectedModel || isLoading) return;
 
+    // Build function metadata if functions are selected
+    const functionMetadata = functionConfigurationIds && functionConfigurationIds.length > 0 ? {
+      functionIds: functionConfigurationIds,
+      functionNames: availableFunctions
+        .filter(f => functionConfigurationIds.includes(f.id))
+        .map(f => f.configurationName)
+    } : undefined;
+
     const userMessage: ChatMessage = {
       id: uuidv4(),
       role: 'user',
       content: inputMessage.trim(),
       images,
-      timestamp: new Date()
+      timestamp: new Date(),
+      metadata: functionMetadata
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -238,7 +250,7 @@ export function useChatStreamingLogic({
       // Cleanup handled in callbacks
       setTokensPerSecond(null);
     }
-  }, [selectedModel, messages, isLoading, getActiveSession, performanceSettings, handleError, setMessages, setIsLoading, setStreamingContent, setStreamingChannel, setTokensPerSecond, setError, dynamicParameters, streamingAdapter, sendHistoryEnabled, functionConfigurationIds]);
+  }, [selectedModel, messages, isLoading, getActiveSession, performanceSettings, handleError, setMessages, setIsLoading, setStreamingContent, setStreamingChannel, setTokensPerSecond, setError, dynamicParameters, streamingAdapter, sendHistoryEnabled, functionConfigurationIds, availableFunctions]);
 
   const abortMessage = useCallback(() => {
     if (streamingAdapterRef.current) {

@@ -77,6 +77,8 @@ export interface ChatMessage {
     streaming?: boolean;
     hasReasoning?: boolean;
     reasoning?: string;
+    functionIds?: number[];
+    functionNames?: string[];
   };
   error?: {
     type: ChatErrorType;
