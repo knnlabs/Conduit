@@ -236,7 +236,13 @@ namespace ConduitLLM.Providers.OpenAICompatible
                         Message = c.Message != null ? new CoreModels.Message
                         {
                             Role = c.Message.Role ?? "assistant",
-                            Content = c.Message.Content
+                            Content = c.Message.Content,
+                            Name = c.Message.Name,
+                            ToolCalls = c.Message.ToolCalls != null
+                                ? System.Text.Json.JsonSerializer.Deserialize<List<CoreModels.ToolCall>>(
+                                    System.Text.Json.JsonSerializer.Serialize(c.Message.ToolCalls))
+                                : null,
+                            ToolCallId = c.Message.ToolCallId
                         } : new CoreModels.Message
                         {
                             Role = "assistant",

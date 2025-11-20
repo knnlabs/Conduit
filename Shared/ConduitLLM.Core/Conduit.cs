@@ -214,6 +214,28 @@ namespace ConduitLLM.Core
                     break;
                 }
 
+                // Edge case: Model returned tool_calls but no functions were configured in the request
+                // This can happen with some models (e.g., gpt-oss-20b) that try to call functions even when none are available
+                if (functionNameToIdMap.Count == 0)
+                {
+                    _logger.LogWarning(
+                        "Model returned finish_reason='tool_calls' but no functions were configured in the request. " +
+                        "Model: {Model}, Tool calls: {ToolCalls}",
+                        request.Model,
+                        string.Join(", ", choice.Message.ToolCalls.Select(tc => tc.Function?.Name ?? "unknown")));
+
+                    // Add a system message instructing the model to answer without functions
+                    request.Messages.Add(new Message
+                    {
+                        Role = MessageRole.System,
+                        Content = "No functions are available. Please provide a direct answer to the user's question without attempting to call any functions."
+                    });
+
+                    // Make one more call to get a proper response
+                    response = await client.CreateChatCompletionAsync(request, apiKey, cancellationToken).ConfigureAwait(false);
+                    break;
+                }
+
                 // If agentic mode is disabled, return the response with tool calls for manual handling
                 if (!agenticModeEnabled)
                 {
@@ -383,6 +405,37 @@ namespace ConduitLLM.Core
                 if (finishReason != FinishReason.ToolCalls || accumulatedToolCalls.Count == 0)
                 {
                     // No tool calls, streaming is complete
+                    break;
+                }
+
+                // Edge case: Model returned tool_calls but no functions were configured in the request
+                // This can happen with some models (e.g., gpt-oss-20b) that try to call functions even when none are available
+                if (functionNameToIdMap.Count == 0)
+                {
+                    _logger.LogWarning(
+                        "Model returned finish_reason='tool_calls' in streaming mode but no functions were configured in the request. " +
+                        "Model: {Model}, Tool calls: {ToolCalls}",
+                        request.Model,
+                        string.Join(", ", accumulatedToolCalls.Values.Select(tc => tc.Function?.Name ?? "unknown")));
+
+                    // Add a system message instructing the model to answer without functions
+                    request.Messages.Add(new Message
+                    {
+                        Role = MessageRole.Assistant,
+                        Content = assistantMessageContent,
+                        ToolCalls = accumulatedToolCalls.Values.ToList()
+                    });
+                    request.Messages.Add(new Message
+                    {
+                        Role = MessageRole.System,
+                        Content = "No functions are available. Please provide a direct answer to the user's question without attempting to call any functions."
+                    });
+
+                    // Stream one more response
+                    await foreach (var chunk in client.StreamChatCompletionAsync(request, apiKey, cancellationToken))
+                    {
+                        yield return chunk;
+                    }
                     break;
                 }
 
