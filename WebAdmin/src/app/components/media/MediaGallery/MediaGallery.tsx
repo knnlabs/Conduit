@@ -66,7 +66,7 @@ export function MediaGallery<T>({
   const parentRef = useRef<HTMLDivElement>(null);
 
   // Determine if virtualization should be enabled
-  const shouldVirtualize = enableVirtualization ?? items.length >= virtualizationThreshold;
+  const shouldVirtualize = enableVirtualization ?? items.length > virtualizationThreshold;
 
   // Setup virtualizer for large lists
   const virtualizer = useVirtualizer({

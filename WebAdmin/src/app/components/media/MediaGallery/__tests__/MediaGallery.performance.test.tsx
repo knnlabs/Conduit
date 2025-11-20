@@ -9,11 +9,31 @@ import { MediaGallery } from '../MediaGallery';
 
 // Mock @tanstack/react-virtual
 jest.mock('@tanstack/react-virtual', () => ({
-  useVirtualizer: jest.fn(() => ({
-    getTotalSize: () => 10000,
-    getVirtualItems: () => [],
-    scrollToIndex: jest.fn()
-  }))
+  useVirtualizer: jest.fn(({ count, enabled }) => {
+    // If virtualization is not enabled, return empty mock
+    if (!enabled) {
+      return {
+        getTotalSize: () => 0,
+        getVirtualItems: () => [],
+        scrollToIndex: jest.fn()
+      };
+    }
+
+    // Simulate rendering first 10 virtual items (as if they're visible)
+    const virtualItems = Array.from({ length: Math.min(10, count) }, (_, i) => ({
+      key: i,
+      index: i,
+      start: i * 350,
+      size: 350,
+      end: (i + 1) * 350
+    }));
+
+    return {
+      getTotalSize: () => count * 350,
+      getVirtualItems: () => virtualItems,
+      scrollToIndex: jest.fn()
+    };
+  })
 }));
 
 interface TestItem {
@@ -97,6 +117,10 @@ describe('MediaGallery Performance Tests', () => {
       const scrollContainer = container.querySelector('[style*="overflow"]');
       expect(scrollContainer).toBeInTheDocument();
 
+      // Should render only visible items (mocked to return first 10)
+      expect(screen.getByTestId('card-item-0')).toBeInTheDocument();
+      expect(screen.getByTestId('card-item-9')).toBeInTheDocument();
+
       console.warn('Virtualization enabled for 100+ items');
     });
 
@@ -114,6 +138,10 @@ describe('MediaGallery Performance Tests', () => {
       // Should enable virtualization since 30 > 25
       const scrollContainer = container.querySelector('[style*="overflow"]');
       expect(scrollContainer).toBeInTheDocument();
+
+      // Should render only visible items (mocked to return first 10)
+      expect(screen.getByTestId('card-item-0')).toBeInTheDocument();
+      expect(screen.getByTestId('card-item-9')).toBeInTheDocument();
 
       console.warn('Custom virtualization threshold respected');
     });
@@ -149,11 +177,11 @@ describe('MediaGallery Performance Tests', () => {
       );
 
       // With virtualization, should only render visible items
-      // The mock returns empty array, so no cards should be rendered
+      // The mock returns first 10 items
       const cards = container.querySelectorAll('[data-testid^="card-"]');
 
-      // In a real scenario with virtualization, this would be ~10-20 items
-      // With our mock, it should be 0
+      // Should render only ~10 items despite having 100 total
+      expect(cards.length).toBe(10);
       expect(cards.length).toBeLessThan(100);
 
       console.warn(`Virtualized gallery rendered ${cards.length} DOM nodes for 100 items`);
