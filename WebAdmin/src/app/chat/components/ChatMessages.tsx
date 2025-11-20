@@ -254,6 +254,23 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
               )}
             </Group>
 
+            {/* User message metadata (code icon) */}
+            {isUser && (
+              <Group gap="xs">
+                {/* Toggle Raw View Button for user messages */}
+                <Tooltip label={isRawView ? 'Show formatted view' : 'Show raw request'} withArrow>
+                  <ActionIcon
+                    variant="subtle"
+                    size="sm"
+                    onClick={() => toggleRawView(message.id)}
+                    color={isRawView ? 'blue' : 'gray'}
+                  >
+                    {isRawView ? <IconEye size={16} /> : <IconCode size={16} />}
+                  </ActionIcon>
+                </Tooltip>
+              </Group>
+            )}
+
             {!isUser && (message.metadata ?? (isStreaming && tokensPerSecond)) && (
               <Group gap="xs">
                 {/* Toggle Raw View Button */}
@@ -437,45 +454,103 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
           )}
           
           {/* Conditionally render normal view or raw JSON view */}
-          {isRawView && !isStreaming ? (
-            // Raw JSON View
-            <div style={{ maxHeight: '400px', overflow: 'auto' }}>
-              <SyntaxHighlighter
-                language="json"
-                style={vscDarkPlus}
-                customStyle={{
-                  margin: 0,
-                  fontSize: '0.85rem',
-                  borderRadius: '4px'
-                }}
-              >
-                {JSON.stringify({
-                  id: message.id,
-                  timestamp: message.timestamp,
-                  model: message.model ?? message.metadata?.model,
-                  content: message.content,
-                  metadata: message.metadata ? {
-                    ...(message.metadata.latency !== undefined && { latency_ms: message.metadata.latency }),
-                    ...(message.metadata.timeToFirstToken !== undefined && { time_to_first_token_ms: message.metadata.timeToFirstToken }),
-                    ...(message.metadata.tokensPerSecond !== undefined && { tokens_per_second: message.metadata.tokensPerSecond }),
-                    ...(message.metadata.promptTokens !== undefined && { prompt_tokens: message.metadata.promptTokens }),
-                    ...(message.metadata.completionTokens !== undefined && { completion_tokens: message.metadata.completionTokens }),
-                    ...(message.metadata.tokensUsed !== undefined && { total_tokens: message.metadata.tokensUsed }),
-                    ...(message.metadata.provider && { provider: message.metadata.provider }),
-                    ...(message.metadata.model && { model: message.metadata.model }),
-                    ...(message.metadata.streaming !== undefined && { streaming: message.metadata.streaming }),
-                    ...(message.metadata.finishReason && { finish_reason: message.metadata.finishReason }),
-                    ...(message.metadata.hasReasoning && { has_reasoning: message.metadata.hasReasoning }),
-                    ...(message.metadata.reasoning && { reasoning: message.metadata.reasoning })
-                  } : undefined,
-                  ...(message.functionCall && { function_call: message.functionCall }),
-                  ...(message.toolCalls && { tool_calls: message.toolCalls }),
-                  ...(message.images && message.images.length > 0 && { images: message.images })
-                }, null, 2)}
-              </SyntaxHighlighter>
-            </div>
-          ) : (
+          {(() => {
+            // Raw view for user messages
+            if (isRawView && !isStreaming && isUser) {
+              return (
+                <Stack gap="md">
+                  {/* Message Data Section */}
+                  <div>
+                    <Text size="xs" fw={600} mb={4} c="dimmed">Message Data:</Text>
+                    <div style={{ maxHeight: '300px', overflow: 'auto' }}>
+                      <SyntaxHighlighter
+                        language="json"
+                        style={vscDarkPlus}
+                        customStyle={{
+                          margin: 0,
+                          fontSize: '0.85rem',
+                          borderRadius: '4px'
+                        }}
+                      >
+                        {JSON.stringify({
+                          id: message.id,
+                          role: message.role,
+                          timestamp: message.timestamp,
+                          content: message.content,
+                          ...(message.images && message.images.length > 0 && { images: message.images }),
+                          ...(message.metadata?.functionIds && { function_ids: message.metadata.functionIds }),
+                          ...(message.metadata?.functionNames && { function_names: message.metadata.functionNames })
+                        }, null, 2)}
+                      </SyntaxHighlighter>
+                    </div>
+                  </div>
+
+                  {/* API Request Section */}
+                  {message.metadata?.apiRequest && (
+                    <div>
+                      <Text size="xs" fw={600} mb={4} c="dimmed">API Request Sent to Conduit:</Text>
+                      <div style={{ maxHeight: '400px', overflow: 'auto' }}>
+                        <SyntaxHighlighter
+                          language="json"
+                          style={vscDarkPlus}
+                          customStyle={{
+                            margin: 0,
+                            fontSize: '0.85rem',
+                            borderRadius: '4px'
+                          }}
+                        >
+                          {JSON.stringify(message.metadata.apiRequest, null, 2)}
+                        </SyntaxHighlighter>
+                      </div>
+                    </div>
+                  )}
+                </Stack>
+              );
+            }
+
+            // Raw view for assistant messages
+            if (isRawView && !isStreaming && !isUser) {
+              return (
+                <div style={{ maxHeight: '400px', overflow: 'auto' }}>
+                  <SyntaxHighlighter
+                    language="json"
+                    style={vscDarkPlus}
+                    customStyle={{
+                      margin: 0,
+                      fontSize: '0.85rem',
+                      borderRadius: '4px'
+                    }}
+                  >
+                    {JSON.stringify({
+                      id: message.id,
+                      timestamp: message.timestamp,
+                      model: message.model ?? message.metadata?.model,
+                      content: message.content,
+                      metadata: message.metadata ? {
+                        ...(message.metadata.latency !== undefined && { latency_ms: message.metadata.latency }),
+                        ...(message.metadata.timeToFirstToken !== undefined && { time_to_first_token_ms: message.metadata.timeToFirstToken }),
+                        ...(message.metadata.tokensPerSecond !== undefined && { tokens_per_second: message.metadata.tokensPerSecond }),
+                        ...(message.metadata.promptTokens !== undefined && { prompt_tokens: message.metadata.promptTokens }),
+                        ...(message.metadata.completionTokens !== undefined && { completion_tokens: message.metadata.completionTokens }),
+                        ...(message.metadata.tokensUsed !== undefined && { total_tokens: message.metadata.tokensUsed }),
+                        ...(message.metadata.provider && { provider: message.metadata.provider }),
+                        ...(message.metadata.model && { model: message.metadata.model }),
+                        ...(message.metadata.streaming !== undefined && { streaming: message.metadata.streaming }),
+                        ...(message.metadata.finishReason && { finish_reason: message.metadata.finishReason }),
+                        ...(message.metadata.hasReasoning && { has_reasoning: message.metadata.hasReasoning }),
+                        ...(message.metadata.reasoning && { reasoning: message.metadata.reasoning })
+                      } : undefined,
+                      ...(message.functionCall && { function_call: message.functionCall }),
+                      ...(message.toolCalls && { tool_calls: message.toolCalls }),
+                      ...(message.images && message.images.length > 0 && { images: message.images })
+                    }, null, 2)}
+                  </SyntaxHighlighter>
+                </div>
+              );
+            }
+
             // Normal Markdown View
+            return (
             <div className={`markdown-content ${isStreaming && streamingChannel === 'analysis' ? 'reasoning-content' : ''}`}>
               {/* JUST SHOW THE RAW CONTENT */}
               {isStreaming ? (
@@ -592,12 +667,31 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
               </ReactMarkdown>
               )}
             </div>
-          )}
+            );
+          })()}
           
           {/* Copy button */}
           {content && (
             <Group justify="flex-end" mt="xs">
-              <CopyButton value={isRawView ? JSON.stringify({
+              <CopyButton value={(() => {
+                if (!isRawView) {
+                  return content;
+                }
+                if (isUser) {
+                  return JSON.stringify({
+                    message_data: {
+                      id: message.id,
+                      role: message.role,
+                      timestamp: message.timestamp,
+                      content: message.content,
+                      images: message.images,
+                      function_ids: message.metadata?.functionIds,
+                      function_names: message.metadata?.functionNames
+                    },
+                    api_request: message.metadata?.apiRequest
+                  }, null, 2);
+                }
+                return JSON.stringify({
                   id: message.id,
                   timestamp: message.timestamp,
                   model: message.model ?? message.metadata?.model,
@@ -606,14 +700,15 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
                   function_call: message.functionCall,
                   tool_calls: message.toolCalls,
                   images: message.images
-                }, null, 2) : content} timeout={2000}>
+                }, null, 2);
+              })()} timeout={2000}>
                 {({ copied, copy }) => (
                   <Tooltip label={(() => {
                     if (copied) return 'Copied!';
                     return isRawView ? 'Copy JSON' : 'Copy message';
                   })()} withArrow position="left">
-                    <ActionIcon 
-                      color={copied ? 'teal' : 'gray'} 
+                    <ActionIcon
+                      color={copied ? 'teal' : 'gray'}
                       onClick={copy}
                       variant="subtle"
                       size="sm"

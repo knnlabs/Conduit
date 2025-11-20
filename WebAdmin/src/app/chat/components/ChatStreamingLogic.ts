@@ -83,6 +83,51 @@ export function useChatStreamingLogic({
     if (!inputMessage.trim() && (!images || images.length === 0)) return;
     if (!selectedModel || isLoading) return;
 
+    // Get session parameters early (needed for both metadata and streaming options)
+    const activeSession = getActiveSession();
+    const sessionParams = activeSession?.parameters ?? {} as Partial<ChatParameters>;
+
+    // Build conversation history for API request metadata
+    const allMessages = [...messages, {
+      id: uuidv4(),
+      role: 'user' as const,
+      content: inputMessage.trim(),
+      images,
+      timestamp: new Date()
+    }];
+    const conversationHistory = allMessages
+      .filter(m => m.role !== 'function') // Filter out function messages for API
+      .map(m => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+        images: m.images
+      }));
+
+    // Build the API request object that will be sent
+    const apiRequestData = {
+      messages: [
+        ...(sessionParams.systemPrompt ? [{ role: 'system' as const, content: sessionParams.systemPrompt }] : []),
+        ...(sendHistoryEnabled ? conversationHistory.slice(0, -1) : []), // Include history or send empty array
+        {
+          role: 'user' as const,
+          content: inputMessage.trim(),
+          images: images
+        }
+      ],
+      model: selectedModel,
+      temperature: sessionParams.temperature,
+      max_tokens: sessionParams.maxTokens,
+      top_p: sessionParams.topP,
+      frequency_penalty: sessionParams.frequencyPenalty,
+      presence_penalty: sessionParams.presencePenalty,
+      seed: sessionParams.seed,
+      stop: sessionParams.stop && sessionParams.stop.length > 0 ? sessionParams.stop : undefined,
+      response_format: sessionParams.responseFormat === 'json_object' ? { type: 'json_object' } : undefined,
+      stream: true,
+      function_configuration_ids: functionConfigurationIds,
+      ...dynamicParameters
+    };
+
     // Build function metadata if functions are selected
     const functionMetadata = functionConfigurationIds && functionConfigurationIds.length > 0 ? {
       functionIds: functionConfigurationIds,
@@ -97,7 +142,10 @@ export function useChatStreamingLogic({
       content: inputMessage.trim(),
       images,
       timestamp: new Date(),
-      metadata: functionMetadata
+      metadata: {
+        ...functionMetadata,
+        apiRequest: apiRequestData
+      }
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -107,19 +155,6 @@ export function useChatStreamingLogic({
     setError(null);
 
     try {
-      // Get session parameters
-      const activeSession = getActiveSession();
-      const sessionParams = activeSession?.parameters ?? {} as Partial<ChatParameters>;
-      
-      // Build conversation history for streaming manager
-      const allMessages = [...messages, userMessage];
-      const conversationHistory = allMessages
-        .filter(m => m.role !== 'function') // Filter out function messages for API
-        .map(m => ({
-          role: m.role as 'user' | 'assistant',
-          content: m.content,
-          images: m.images
-        }));
 
       // Prepare streaming options
       const streamingOptions: StreamMessageOptions = {

@@ -79,6 +79,26 @@ export interface ChatMessage {
     reasoning?: string;
     functionIds?: number[];
     functionNames?: string[];
+    // API request data (for user messages)
+    apiRequest?: {
+      messages: Array<{
+        role: 'system' | 'user' | 'assistant';
+        content: string;
+        images?: ImageAttachment[];
+      }>;
+      model: string;
+      temperature?: number;
+      max_tokens?: number;
+      top_p?: number;
+      frequency_penalty?: number;
+      presence_penalty?: number;
+      seed?: number;
+      stop?: string[];
+      response_format?: { type: string };
+      stream?: boolean;
+      function_configuration_ids?: number[];
+      [key: string]: unknown; // For dynamic parameters
+    };
   };
   error?: {
     type: ChatErrorType;
