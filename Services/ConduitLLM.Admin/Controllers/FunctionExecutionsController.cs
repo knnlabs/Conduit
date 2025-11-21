@@ -1,5 +1,7 @@
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Functions.DTOs;
+using ConduitLLM.Functions.Entities;
 using ConduitLLM.Functions.Interfaces;
 using ConduitLLM.Functions.Enums;
 using Microsoft.AspNetCore.Authorization;
@@ -49,7 +51,8 @@ public class FunctionExecutionsController : ControllerBase
                 return NotFound(new ErrorResponseDto("Function execution not found"));
             }
 
-            return Ok(execution);
+            var dto = MapToDto(execution);
+            return Ok(dto);
         }
         catch (Exception ex)
         {
@@ -71,7 +74,8 @@ public class FunctionExecutionsController : ControllerBase
         try
         {
             var executions = await _executionRepository.GetByVirtualKeyIdAsync(virtualKeyId);
-            return Ok(executions);
+            var dtos = executions.Select(MapToDto).ToList();
+            return Ok(dtos);
         }
         catch (Exception ex)
         {
@@ -96,7 +100,8 @@ public class FunctionExecutionsController : ControllerBase
         {
             var executions = await _executionRepository.GetByFunctionConfigurationIdAsync(
                 functionConfigurationId);
-            return Ok(executions);
+            var dtos = executions.Select(MapToDto).ToList();
+            return Ok(dtos);
         }
         catch (Exception ex)
         {
@@ -126,7 +131,8 @@ public class FunctionExecutionsController : ControllerBase
             }
 
             var executions = await _executionRepository.GetByStateAsync(stateEnum);
-            return Ok(executions);
+            var dtos = executions.Select(MapToDto).ToList();
+            return Ok(dtos);
         }
         catch (Exception ex)
         {
@@ -147,7 +153,8 @@ public class FunctionExecutionsController : ControllerBase
         try
         {
             var executions = await _executionRepository.GetExpiredLeasesAsync();
-            return Ok(executions);
+            var dtos = executions.Select(MapToDto).ToList();
+            return Ok(dtos);
         }
         catch (Exception ex)
         {
@@ -168,7 +175,8 @@ public class FunctionExecutionsController : ControllerBase
         try
         {
             var executions = await _executionRepository.GetReadyForRetryAsync();
-            return Ok(executions);
+            var dtos = executions.Select(MapToDto).ToList();
+            return Ok(dtos);
         }
         catch (Exception ex)
         {
@@ -209,5 +217,41 @@ public class FunctionExecutionsController : ControllerBase
             _logger.LogError(ex, "Error cleaning up old function executions");
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
+    }
+
+    // Mapping methods
+
+    /// <summary>
+    /// Maps FunctionExecution entity to DTO, converting TimeSpan to milliseconds
+    /// </summary>
+    private static FunctionExecutionDto MapToDto(FunctionExecution entity)
+    {
+        return new FunctionExecutionDto
+        {
+            Id = entity.Id,
+            FunctionConfigurationId = entity.FunctionConfigurationId,
+            VirtualKeyId = entity.VirtualKeyId,
+            ExecutionMode = entity.ExecutionMode,
+            State = entity.State,
+            RequestedAt = entity.RequestedAt,
+            StartedAt = entity.StartedAt,
+            CompletedAt = entity.CompletedAt,
+            Duration = entity.Duration?.TotalMilliseconds,
+            RequestJson = entity.RequestJson,
+            ResponseJson = entity.ResponseJson,
+            ErrorMessage = entity.ErrorMessage,
+            EstimatedCost = entity.EstimatedCost,
+            ActualCost = entity.ActualCost,
+            CostCalculationDetails = entity.CostCalculationDetails,
+            RetryCount = entity.RetryCount,
+            NextRetryAt = entity.NextRetryAt,
+            LeasedBy = entity.LeasedBy,
+            LeaseExpiryTime = entity.LeaseExpiryTime,
+            Version = entity.Version,
+            WebhookUrl = entity.WebhookUrl,
+            WebhookDelivered = entity.WebhookDelivered,
+            ProgressPercentage = entity.ProgressPercentage,
+            StatusMessage = entity.StatusMessage
+        };
     }
 }
