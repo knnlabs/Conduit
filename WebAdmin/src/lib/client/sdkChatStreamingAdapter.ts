@@ -37,6 +37,7 @@ export class SDKChatStreamingAdapter {
   ): Promise<void> {
     // Track content and tool calls for callbacks (declared outside try to be accessible in catch)
     let totalContent = '';
+    let totalReasoning = '';
     const toolCalls: Array<{
       id: string;
       type: 'function';
@@ -114,6 +115,12 @@ export class SDKChatStreamingAdapter {
             if (callbacks.onContent) {
               callbacks.onContent(content, totalContent);
             }
+          }
+
+          // Also handle reasoning content (for models like gpt-oss-20b that output to reasoning)
+          const reasoning = data.choices?.[0]?.delta?.reasoning;
+          if (reasoning) {
+            totalReasoning += reasoning;
           }
 
           // Handle tool calls in streaming response
@@ -215,8 +222,12 @@ export class SDKChatStreamingAdapter {
           };
 
           if (callbacks.onComplete) {
+            // Use reasoning as fallback if no regular content was received
+            // This handles models like gpt-oss-20b that non-deterministically output to reasoning
+            const finalContent = totalContent.length > 0 ? totalContent : totalReasoning;
+
             callbacks.onComplete({
-              content: totalContent,
+              content: finalContent,
               metadata
             });
           }
@@ -240,8 +251,9 @@ export class SDKChatStreamingAdapter {
           } else {
             // Create StreamingError from generic error
             const baseError = error instanceof Error ? error : new Error(String(error));
+            const partialContent = totalContent.length > 0 ? totalContent : totalReasoning;
             streamingError = Object.assign(baseError, {
-              context: totalContent.length > 0 ? `Partial content: ${totalContent.slice(0, 100)}...` : undefined,
+              context: partialContent.length > 0 ? `Partial content: ${partialContent.slice(0, 100)}...` : undefined,
               retryable: false
             } as Partial<StreamingError>);
           }
