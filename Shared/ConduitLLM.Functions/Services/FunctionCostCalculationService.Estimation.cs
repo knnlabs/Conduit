@@ -268,13 +268,13 @@ public partial class FunctionCostCalculationService
 
         // 1. Estimate search cost (assume neural for conservatism)
         decimal searchEstimate;
-        if (requestedResults <= (config.SearchCosts.Neural.Tier1.MaxResults ?? 25))
+        if (requestedResults <= (config.SearchCosts?.Neural?.Tier1.MaxResults ?? 25))
         {
-            searchEstimate = config.SearchCosts.Neural.Tier1.Cost;
+            searchEstimate = config.SearchCosts?.Neural?.Tier1.Cost ?? 0m;
         }
         else
         {
-            searchEstimate = config.SearchCosts.Neural.Tier2.Cost;
+            searchEstimate = config.SearchCosts?.Neural?.Tier2.Cost ?? 0m;
         }
         totalEstimate += searchEstimate;
 

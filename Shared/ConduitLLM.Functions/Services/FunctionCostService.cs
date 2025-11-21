@@ -320,7 +320,7 @@ public class FunctionCostService : IFunctionCostService
     /// <summary>
     /// Gets an item from the hybrid cache (L1 memory, L2 distributed).
     /// </summary>
-    private async Task<T?> GetFromHybridCacheAsync<T>(string key) where T : class
+    private async Task<T?> GetFromHybridCacheAsync<T>(string key) where T : class?
     {
         // Try L1 cache (memory) first
         if (_memoryCache.TryGetValue(key, out T? cachedValue))
@@ -360,7 +360,7 @@ public class FunctionCostService : IFunctionCostService
     /// <summary>
     /// Sets an item in the hybrid cache (L1 memory, L2 distributed).
     /// </summary>
-    private async Task SetInHybridCacheAsync<T>(string key, T? value) where T : class
+    private async Task SetInHybridCacheAsync<T>(string key, T? value) where T : class?
     {
         if (value == null)
         {

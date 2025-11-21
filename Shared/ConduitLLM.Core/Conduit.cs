@@ -365,9 +365,9 @@ namespace ConduitLLM.Core
                     }
 
                     // Accumulate tool calls from chunks
-                    if (chunk.Choices?.Count > 0 && chunk.Choices[0].Delta?.ToolCalls != null)
+                    if (chunk.Choices?.Count > 0 && chunk.Choices[0].Delta?.ToolCalls is { } toolCalls)
                     {
-                        foreach (var toolCallChunk in chunk.Choices[0].Delta.ToolCalls)
+                        foreach (var toolCallChunk in toolCalls)
                         {
                             if (!accumulatedToolCalls.ContainsKey(toolCallChunk.Index))
                             {

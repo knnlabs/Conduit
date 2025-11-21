@@ -143,43 +143,43 @@ public partial class FunctionCostCalculationService
         {
             case "neural":
                 // Determine tier based on result count
-                if (resultCount <= (config.SearchCosts.Neural.Tier1.MaxResults ?? 25))
+                if (resultCount <= (config.SearchCosts?.Neural?.Tier1.MaxResults ?? 25))
                 {
-                    searchCost = config.SearchCosts.Neural.Tier1.Cost;
+                    searchCost = config.SearchCosts?.Neural?.Tier1.Cost ?? 0m;
                     _logger.LogDebug("Neural search tier 1 (1-{Max} results): ${Cost}",
-                        config.SearchCosts.Neural.Tier1.MaxResults ?? 25, searchCost);
+                        config.SearchCosts?.Neural?.Tier1.MaxResults ?? 25, searchCost);
                 }
                 else
                 {
-                    searchCost = config.SearchCosts.Neural.Tier2.Cost;
+                    searchCost = config.SearchCosts?.Neural?.Tier2.Cost ?? 0m;
                     _logger.LogDebug("Neural search tier 2 ({Min}+ results): ${Cost}",
-                        (config.SearchCosts.Neural.Tier1.MaxResults ?? 25) + 1, searchCost);
+                        (config.SearchCosts?.Neural?.Tier1.MaxResults ?? 25) + 1, searchCost);
                 }
                 break;
 
             case "keyword":
-                searchCost = config.SearchCosts.Keyword.Cost;
+                searchCost = config.SearchCosts?.Keyword?.Cost ?? 0m;
                 _logger.LogDebug("Keyword search (any results): ${Cost}", searchCost);
                 break;
 
             case "auto":
                 // Auto mode: use conservative estimate (keyword pricing by default, or neural tier 1 if configured)
-                if (config.SearchCosts.Auto?.FallbackToKeyword == true)
+                if (config.SearchCosts?.Auto?.FallbackToKeyword == true)
                 {
-                    searchCost = config.SearchCosts.Keyword.Cost;
+                    searchCost = config.SearchCosts?.Keyword?.Cost ?? 0m;
                     _logger.LogDebug("Auto search (fallback to keyword pricing): ${Cost}", searchCost);
                 }
                 else
                 {
                     // Conservative: assume neural tier 1
-                    searchCost = config.SearchCosts.Neural.Tier1.Cost;
+                    searchCost = config.SearchCosts?.Neural?.Tier1.Cost ?? 0m;
                     _logger.LogDebug("Auto search (fallback to neural tier 1 pricing): ${Cost}", searchCost);
                 }
                 break;
 
             default:
                 _logger.LogWarning("Unknown search type '{SearchType}', defaulting to keyword pricing", searchType);
-                searchCost = config.SearchCosts.Keyword.Cost;
+                searchCost = config.SearchCosts?.Keyword?.Cost ?? 0m;
                 break;
         }
 

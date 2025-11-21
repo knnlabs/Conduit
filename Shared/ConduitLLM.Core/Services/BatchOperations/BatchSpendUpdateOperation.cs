@@ -34,7 +34,7 @@ namespace ConduitLLM.Core.Services.BatchOperations
         /// <param name="idempotencyToken">Optional token to prevent duplicate processing</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Result of the batch operation</returns>
-        public virtual async Task<BatchOperationResult> ExecuteAsync(
+        public new virtual async Task<BatchOperationResult> ExecuteAsync(
             List<SpendUpdateItem> spendUpdates,
             int virtualKeyId,
             string? idempotencyToken = null,

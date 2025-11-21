@@ -18,6 +18,12 @@ namespace ConduitLLM.Admin.Services
 
         private const string LLM_CACHE_SETTING_KEY = "LLM.Caching.Enabled";
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="LLMCacheManagementService"/> class.
+        /// </summary>
+        /// <param name="globalSettingRepository">Repository for managing global settings.</param>
+        /// <param name="publishEndpoint">MassTransit publish endpoint for broadcasting cache configuration changes.</param>
+        /// <param name="logger">Logger instance for diagnostics and monitoring.</param>
         public LLMCacheManagementService(
             IGlobalSettingRepository globalSettingRepository,
             IPublishEndpoint publishEndpoint,
