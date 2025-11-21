@@ -1,5 +1,7 @@
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Functions.DTOs;
+using ConduitLLM.Functions.Entities;
 using ConduitLLM.Functions.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -40,7 +42,8 @@ public class FunctionCostsController : ControllerBase
         try
         {
             var functionCosts = await _functionCostService.ListCostsAsync();
-            return Ok(functionCosts);
+            var dtos = functionCosts.Select(MapToDto).ToList();
+            return Ok(dtos);
         }
         catch (Exception ex)
         {
@@ -69,7 +72,8 @@ public class FunctionCostsController : ControllerBase
                 return NotFound(new ErrorResponseDto("Function cost not found"));
             }
 
-            return Ok(functionCost);
+            var dto = MapToDto(functionCost);
+            return Ok(dto);
         }
         catch (Exception ex)
         {
@@ -100,7 +104,8 @@ public class FunctionCostsController : ControllerBase
                     $"No active cost found for function configuration {functionConfigurationId}"));
             }
 
-            return Ok(functionCost);
+            var dto = MapToDto(functionCost);
+            return Ok(dto);
         }
         catch (Exception ex)
         {
@@ -114,31 +119,33 @@ public class FunctionCostsController : ControllerBase
     /// <summary>
     /// Creates a new function cost.
     /// </summary>
-    /// <param name="functionCost">The function cost to create</param>
+    /// <param name="createDto">The function cost to create</param>
     /// <returns>The created function cost</returns>
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> CreateFunctionCost(
-        [FromBody] ConduitLLM.Functions.Entities.FunctionCost functionCost)
+        [FromBody] CreateFunctionCostDto createDto)
     {
         try
         {
-            if (functionCost == null)
+            if (createDto == null)
             {
                 return BadRequest(new ErrorResponseDto("Function cost data is required"));
             }
 
-            int id = await _functionCostService.CreateCostAsync(functionCost);
+            var entity = MapToEntity(createDto);
+            int id = await _functionCostService.CreateCostAsync(entity);
 
-            // Fetch the created entity to return
+            // Fetch the created entity to return as DTO
             var created = await _functionCostService.GetCostByIdAsync(id);
+            var dto = created != null ? MapToDto(created) : null;
 
             return CreatedAtAction(
                 nameof(GetFunctionCostById),
                 new { id },
-                created);
+                dto);
         }
         catch (Exception ex)
         {
@@ -151,7 +158,7 @@ public class FunctionCostsController : ControllerBase
     /// Updates an existing function cost.
     /// </summary>
     /// <param name="id">The ID of the function cost to update</param>
-    /// <param name="functionCost">The updated function cost data</param>
+    /// <param name="updateDto">The updated function cost data</param>
     /// <returns>The updated function cost</returns>
     [HttpPut("{id}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -160,31 +167,36 @@ public class FunctionCostsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UpdateFunctionCost(
         int id,
-        [FromBody] ConduitLLM.Functions.Entities.FunctionCost functionCost)
+        [FromBody] UpdateFunctionCostDto updateDto)
     {
         try
         {
-            if (functionCost == null)
+            if (updateDto == null)
             {
                 return BadRequest(new ErrorResponseDto("Function cost data is required"));
             }
 
-            if (id != functionCost.Id)
+            if (id != updateDto.Id)
             {
                 return BadRequest(new ErrorResponseDto("ID mismatch"));
             }
 
-            await _functionCostService.UpdateCostAsync(functionCost);
-
-            // Fetch the updated entity to return
-            var updated = await _functionCostService.GetCostByIdAsync(id);
-
-            if (updated == null)
+            // Get existing entity to preserve fields not in update DTO
+            var existing = await _functionCostService.GetCostByIdAsync(id);
+            if (existing == null)
             {
                 return NotFound(new ErrorResponseDto("Function cost not found"));
             }
 
-            return Ok(updated);
+            // Map update DTO to entity, preserving ProviderType from existing
+            var entity = MapToEntity(updateDto, existing);
+            await _functionCostService.UpdateCostAsync(entity);
+
+            // Fetch the updated entity to return
+            var updated = await _functionCostService.GetCostByIdAsync(id);
+            var dto = updated != null ? MapToDto(updated) : null;
+
+            return Ok(dto);
         }
         catch (Exception ex)
         {
@@ -237,5 +249,70 @@ public class FunctionCostsController : ControllerBase
             _logger.LogError(ex, "Error clearing function cost cache");
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
+    }
+
+    // Mapping methods
+
+    private static FunctionCostDto MapToDto(FunctionCost entity)
+    {
+        return new FunctionCostDto
+        {
+            Id = entity.Id,
+            CostName = entity.CostName,
+            ProviderType = entity.ProviderType,
+            Purpose = entity.Purpose,
+            Description = entity.Description,
+            BaseCost = entity.BaseCost,
+            PricingModel = entity.PricingModel,
+            CostPerExecution = entity.CostPerExecution,
+            CostPerResult = entity.CostPerResult,
+            CostPerToken = entity.CostPerToken,
+            CostPerMinute = entity.CostPerMinute,
+            TieredPricing = entity.TieredPricing,
+            PricingConfiguration = entity.PricingConfiguration,
+            IsActive = entity.IsActive,
+            EffectiveDate = entity.EffectiveDate,
+            ExpiryDate = entity.ExpiryDate,
+            Priority = entity.Priority,
+            CreatedAt = entity.CreatedAt,
+            UpdatedAt = entity.UpdatedAt
+        };
+    }
+
+    private static FunctionCost MapToEntity(CreateFunctionCostDto dto)
+    {
+        return new FunctionCost
+        {
+            CostName = dto.CostName,
+            ProviderType = dto.ProviderType,
+            Purpose = dto.Purpose,
+            Description = dto.Description,
+            BaseCost = dto.BaseCost,
+            PricingModel = dto.PricingModel,
+            PricingConfiguration = dto.PricingConfiguration,
+            IsActive = dto.IsActive,
+            Priority = dto.Priority,
+            EffectiveDate = dto.EffectiveDate,
+            ExpiryDate = dto.ExpiryDate,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+    }
+
+    private static FunctionCost MapToEntity(UpdateFunctionCostDto dto, FunctionCost existing)
+    {
+        existing.CostName = dto.CostName;
+        existing.Purpose = dto.Purpose;
+        existing.Description = dto.Description;
+        existing.BaseCost = dto.BaseCost;
+        existing.PricingModel = dto.PricingModel;
+        existing.PricingConfiguration = dto.PricingConfiguration;
+        existing.IsActive = dto.IsActive;
+        existing.Priority = dto.Priority;
+        existing.EffectiveDate = dto.EffectiveDate;
+        existing.ExpiryDate = dto.ExpiryDate;
+        existing.UpdatedAt = DateTime.UtcNow;
+        // Note: ProviderType is not updated as it's set on creation and shouldn't change
+        return existing;
     }
 }

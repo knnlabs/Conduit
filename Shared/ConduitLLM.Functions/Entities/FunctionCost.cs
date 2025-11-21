@@ -26,6 +26,29 @@ public class FunctionCost
     public required string CostName { get; set; }
 
     /// <summary>
+    /// Provider type this cost applies to (e.g., Exa, Tavily, Perplexity)
+    /// </summary>
+    [Required]
+    public FunctionProviderType ProviderType { get; set; }
+
+    /// <summary>
+    /// Optional purpose filter (Search, Answer, etc.). Null means applies to any purpose.
+    /// </summary>
+    public FunctionPurpose? Purpose { get; set; }
+
+    /// <summary>
+    /// Optional description of this cost configuration
+    /// </summary>
+    [MaxLength(500)]
+    public string? Description { get; set; }
+
+    /// <summary>
+    /// Optional base cost added to all executions regardless of pricing model
+    /// </summary>
+    [Column(TypeName = "decimal(18,8)")]
+    public decimal? BaseCost { get; set; }
+
+    /// <summary>
     /// Pricing model strategy used for cost calculation
     /// </summary>
     [Required]
