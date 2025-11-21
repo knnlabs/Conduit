@@ -15,7 +15,7 @@
     <!-- AWS SDK for Bedrock removed - using direct HTTP calls with AWS Signature V4 -->
     <!-- AWS SDK still needed for Transcribe and Polly -->
     <PackageReference Include="AWSSDK.TranscribeService" Version="4.0.4.5" />
-    <PackageReference Include="AWSSDK.Polly" Version="4.0.3.4" />
+    <PackageReference Include="AWSSDK.Polly" Version="4.0.3.6" />
   </ItemGroup>
 
   <PropertyGroup>
