@@ -96,7 +96,7 @@ namespace ConduitLLM.Http.Services
                 var serialized = JsonSerializer.Serialize(result, _jsonOptions);
                 var expiry = ttl ?? DefaultTtl;
 
-                await db.StringSetAsync(key, serialized, expiry);
+                await db.StringSetAsync(key, serialized, expiry, false, When.Always, CommandFlags.None);
 
                 _logger.LogInformation(
                     "Stored idempotency result for token {Token} with TTL {TTL}",

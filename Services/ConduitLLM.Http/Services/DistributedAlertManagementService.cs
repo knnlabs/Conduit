@@ -158,7 +158,7 @@ namespace ConduitLLM.Http.Services
             
             // Use distributed lock to prevent duplicate alerts from multiple instances
             var lockValue = Guid.NewGuid().ToString();
-            var lockAcquired = await _database.StringSetAsync(lockKey, lockValue, TimeSpan.FromMinutes(5), When.NotExists);
+            var lockAcquired = await _database.StringSetAsync(lockKey, lockValue, TimeSpan.FromMinutes(5), false, When.NotExists, CommandFlags.None);
             
             if (!lockAcquired)
             {

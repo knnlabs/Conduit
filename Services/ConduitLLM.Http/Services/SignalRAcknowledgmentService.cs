@@ -147,7 +147,7 @@ namespace ConduitLLM.Http.Services
                 var pendingData = JsonSerializer.Serialize(pending);
                 var key = $"{_pendingAcknowledgmentsKey}:{message.MessageId}";
                 
-                var wasSet = await _redis.StringSetAsync(key, pendingData, effectiveTimeout, When.NotExists);
+                var wasSet = await _redis.StringSetAsync(key, pendingData, effectiveTimeout, false, When.NotExists, CommandFlags.None);
                 if (!wasSet)
                 {
                     _logger.LogWarning("Message {MessageId} already registered for acknowledgment", message.MessageId);

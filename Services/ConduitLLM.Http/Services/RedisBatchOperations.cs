@@ -219,7 +219,7 @@ namespace ConduitLLM.Http.Services
                 foreach (var kvp in keyValuePairs)
                 {
                     var serialized = JsonSerializer.Serialize(kvp.Value, _jsonOptions);
-                    setTasks.Add(batch.StringSetAsync(kvp.Key, serialized, expiry));
+                    setTasks.Add(batch.StringSetAsync(kvp.Key, serialized, expiry, false, When.Always, CommandFlags.None));
                 }
 
                 // Execute batch
