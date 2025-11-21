@@ -81,4 +81,4 @@ export interface FunctionExecutionResponse {
 /**
  * Get execution by ID response
  */
-export interface FunctionExecution extends FunctionExecutionResponse {}
+export type FunctionExecution = FunctionExecutionResponse;

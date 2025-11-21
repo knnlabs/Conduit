@@ -4,7 +4,6 @@ import { ENDPOINTS } from '../constants';
 import type {
   GlobalSettingDto,
   CreateGlobalSettingDto,
-  UpdateGlobalSettingDto,
   UpdateGlobalSettingByKeyDto,
   GlobalSettingCacheStats,
   SettingCategory,
