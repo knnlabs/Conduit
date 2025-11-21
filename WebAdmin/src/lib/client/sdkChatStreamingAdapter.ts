@@ -166,8 +166,46 @@ export class SDKChatStreamingAdapter {
           // Check for completion in chunk (some providers send finish_reason in a chunk)
           const finishReason = data.choices?.[0]?.finish_reason;
           if (finishReason) {
-            // Some providers send finish_reason without final metrics
-            // We'll handle completion here if needed
+            // IMPORTANT: finish_reason can appear in the middle of a stream!
+            // - finish_reason: "tool_calls" = tool invocation, backend will continue streaming with tool results
+            // - finish_reason: "stop" = actual end of stream
+            // - finish_reason: "length" = max tokens reached, actual end
+
+            if (finishReason === 'tool_calls') {
+              // Tool call completion - DO NOT end the stream!
+              // The backend will execute the tool and continue streaming the results
+              // Just continue processing chunks
+              continue;
+            } else {
+              // stop/length/other = actual completion, end the stream
+              const fallbackMetadata = {
+                model: options.model,
+                finishReason: finishReason,
+                tokensUsed: undefined,
+                completionTokens: undefined,
+                promptTokens: undefined,
+                latency: undefined,
+                timeToFirstToken: undefined,
+                tokensPerSecond: undefined,
+                streaming: true,
+                provider: undefined,
+                toolCalls: toolCalls.length > 0 ? toolCalls : undefined
+              };
+
+              if (callbacks.onComplete) {
+                // Use reasoning as fallback if no regular content was received
+                let finalContent = totalContent;
+                if (totalContent.length === 0 && totalReasoning.length > 0) {
+                  finalContent = totalReasoning;
+                }
+
+                callbacks.onComplete({
+                  content: finalContent,
+                  metadata: fallbackMetadata
+                });
+              }
+              break; // Exit stream processing
+            }
           }
         } else if (isStreamingMetrics(data)) {
           // Handle streaming metrics updates
