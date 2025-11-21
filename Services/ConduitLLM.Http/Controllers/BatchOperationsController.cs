@@ -19,28 +19,25 @@ namespace ConduitLLM.Http.Controllers
     {
         private readonly ILogger<BatchOperationsController> _logger;
         private readonly IBatchOperationService _batchOperationService;
-        private readonly IBatchSpendUpdateOperation _batchSpendUpdateOperation;
         private readonly IBatchVirtualKeyUpdateOperation _batchVirtualKeyUpdateOperation;
         private readonly IBatchWebhookSendOperation _batchWebhookSendOperation;
         private readonly IVirtualKeyService _virtualKeyService;
-        private readonly BatchSpendUpdateOperationV2? _batchSpendUpdateOperationV2;
+        private readonly BatchSpendUpdateOperation _batchSpendUpdateOperation;
 
         public BatchOperationsController(
             ILogger<BatchOperationsController> logger,
             IBatchOperationService batchOperationService,
-            IBatchSpendUpdateOperation batchSpendUpdateOperation,
             IBatchVirtualKeyUpdateOperation batchVirtualKeyUpdateOperation,
             IBatchWebhookSendOperation batchWebhookSendOperation,
             IVirtualKeyService virtualKeyService,
-            BatchSpendUpdateOperationV2? batchSpendUpdateOperationV2 = null)
+            BatchSpendUpdateOperation batchSpendUpdateOperation)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _batchOperationService = batchOperationService ?? throw new ArgumentNullException(nameof(batchOperationService));
-            _batchSpendUpdateOperation = batchSpendUpdateOperation ?? throw new ArgumentNullException(nameof(batchSpendUpdateOperation));
             _batchVirtualKeyUpdateOperation = batchVirtualKeyUpdateOperation ?? throw new ArgumentNullException(nameof(batchVirtualKeyUpdateOperation));
             _batchWebhookSendOperation = batchWebhookSendOperation ?? throw new ArgumentNullException(nameof(batchWebhookSendOperation));
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
-            _batchSpendUpdateOperationV2 = batchSpendUpdateOperationV2;
+            _batchSpendUpdateOperation = batchSpendUpdateOperation ?? throw new ArgumentNullException(nameof(batchSpendUpdateOperation));
         }
 
         /// <summary>
@@ -82,37 +79,15 @@ namespace ConduitLLM.Http.Controllers
                 RequestMetadata = u.Metadata
             }).ToList();
 
-            // Get idempotency token from header if provided
+            // Get idempotency token from header (optional)
             var idempotencyToken = HttpContext.Request.Headers["X-Idempotency-Token"].FirstOrDefault();
 
-            // Use V2 operation if available and idempotency token provided
-            BatchOperationResult result;
-            if (!string.IsNullOrWhiteSpace(idempotencyToken) && _batchSpendUpdateOperationV2 != null)
-            {
-                _logger.LogInformation(
-                    "Using V2 batch spend update operation with idempotency token {Token}",
-                    idempotencyToken);
-
-                result = await _batchSpendUpdateOperationV2.ExecuteAsync(
-                    spendUpdates,
-                    virtualKeyId,
-                    idempotencyToken,
-                    HttpContext.RequestAborted);
-            }
-            else
-            {
-                // Fall back to legacy V1 operation
-                if (!string.IsNullOrWhiteSpace(idempotencyToken))
-                {
-                    _logger.LogWarning(
-                        "Idempotency token provided but V2 operation not available. Using legacy operation.");
-                }
-
-                result = await _batchSpendUpdateOperation.ExecuteAsync(
-                    spendUpdates,
-                    virtualKeyId,
-                    HttpContext.RequestAborted);
-            }
+            // Execute batch spend update operation
+            var result = await _batchSpendUpdateOperation.ExecuteAsync(
+                spendUpdates,
+                virtualKeyId,
+                idempotencyToken,
+                HttpContext.RequestAborted);
 
             _logger.LogInformation(
                 "Started batch spend update operation {OperationId} with {Count} items (Idempotent: {Idempotent})",

@@ -77,18 +77,6 @@ namespace ConduitLLM.Admin.Extensions
         }
 
         /// <summary>
-        /// Gets the remaining budget for a virtual key
-        /// </summary>
-        /// <param name="virtualKey">The virtual key entity</param>
-        /// <returns>The remaining budget or null if no budget is set</returns>
-        [Obsolete("Budget tracking is now at the group level. Use VirtualKeyGroup.Balance instead.")]
-        public static decimal? GetRemainingBudget(this VirtualKey virtualKey)
-        {
-            // This method is deprecated - budget tracking is now at the group level
-            return null;
-        }
-
-        /// <summary>
         /// Maps a ModelProviderMapping entity to a ModelProviderMappingDto
         /// </summary>
         /// <param name="mapping">The entity to map</param>

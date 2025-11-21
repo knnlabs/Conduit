@@ -2,26 +2,15 @@ using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
+
 namespace ConduitLLM.Core.Services.BatchOperations
 {
     /// <summary>
     /// Batch operation for updating spend amounts across multiple virtual keys.
-    /// DEPRECATED: Use BatchSpendUpdateOperationV2 instead for idempotency support and retry logic.
+    /// Refactored implementation using BatchOperationBase for consistency and idempotency.
     /// </summary>
-    /// <remarks>
-    /// This implementation is maintained for backward compatibility but lacks:
-    /// - Idempotency tracking (risk of duplicate processing)
-    /// - Automatic retry logic for transient failures
-    /// - Standardized error handling patterns
-    ///
-    /// Migration: Use BatchSpendUpdateOperationV2 and provide X-Idempotency-Token header.
-    /// Scheduled for removal: TBD (after all clients migrate to V2)
-    /// </remarks>
-    [Obsolete("Use BatchSpendUpdateOperationV2 instead. This version lacks idempotency support and will be removed in a future release.", false)]
-    public class BatchSpendUpdateOperation : IBatchSpendUpdateOperation
+    public class BatchSpendUpdateOperation : BatchOperationBase<SpendUpdateItem>
     {
-        private readonly ILogger<BatchSpendUpdateOperation> _logger;
-        private readonly IBatchOperationService _batchOperationService;
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly ISpendNotificationService _spendNotificationService;
 
@@ -29,23 +18,109 @@ namespace ConduitLLM.Core.Services.BatchOperations
             ILogger<BatchSpendUpdateOperation> logger,
             IBatchOperationService batchOperationService,
             IVirtualKeyService virtualKeyService,
-            ISpendNotificationService spendNotificationService)
+            ISpendNotificationService spendNotificationService,
+            IBatchOperationIdempotencyService? idempotencyService = null)
+            : base(logger, batchOperationService, idempotencyService)
         {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _batchOperationService = batchOperationService ?? throw new ArgumentNullException(nameof(batchOperationService));
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
             _spendNotificationService = spendNotificationService ?? throw new ArgumentNullException(nameof(spendNotificationService));
         }
 
         /// <summary>
-        /// Execute batch spend update operation
+        /// Execute batch spend update operation with idempotency support
         /// </summary>
-        public async Task<BatchOperationResult> ExecuteAsync(
+        /// <param name="spendUpdates">List of spend updates to apply</param>
+        /// <param name="virtualKeyId">Virtual key ID for authorization and tracking</param>
+        /// <param name="idempotencyToken">Optional token to prevent duplicate processing</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Result of the batch operation</returns>
+        public virtual async Task<BatchOperationResult> ExecuteAsync(
             List<SpendUpdateItem> spendUpdates,
             int virtualKeyId,
+            string? idempotencyToken = null,
             CancellationToken cancellationToken = default)
         {
-            var options = new BatchOperationOptions
+            return await base.ExecuteAsync(
+                spendUpdates,
+                virtualKeyId,
+                idempotencyToken,
+                cancellationToken);
+        }
+
+        protected override string GetOperationType() => "spend_update";
+
+        protected override Task ValidateBatchAsync(List<SpendUpdateItem> items, CancellationToken cancellationToken)
+        {
+            if (items == null || items.Count == 0)
+            {
+                throw new ArgumentException("Spend updates list cannot be null or empty", nameof(items));
+            }
+
+            // Additional batch-level validation if needed
+            return Task.CompletedTask;
+        }
+
+        protected override async Task ValidateItemAsync(SpendUpdateItem item, CancellationToken cancellationToken)
+        {
+            if (item == null)
+            {
+                throw new ArgumentNullException(nameof(item));
+            }
+
+            if (item.VirtualKeyId <= 0)
+            {
+                throw new InvalidOperationException($"Invalid virtual key ID: {item.VirtualKeyId}");
+            }
+
+            if (item.Amount < 0)
+            {
+                throw new InvalidOperationException($"Spend amount cannot be negative: {item.Amount}");
+            }
+
+            // Validate virtual key exists
+            var virtualKey = await _virtualKeyService.GetVirtualKeyInfoForValidationAsync(
+                item.VirtualKeyId,
+                cancellationToken);
+
+            if (virtualKey == null)
+            {
+                throw new InvalidOperationException($"Virtual key not found: {item.VirtualKeyId}");
+            }
+        }
+
+        protected override async Task<BatchItemResult> ProcessItemAsync(
+            SpendUpdateItem item,
+            CancellationToken cancellationToken)
+        {
+            // Apply spend update (exceptions will propagate to base class retry logic)
+            await _virtualKeyService.UpdateSpendAsync(item.VirtualKeyId, item.Amount);
+
+            // Send real-time notification
+            await _spendNotificationService.NotifySpendUpdatedAsync(
+                item.VirtualKeyId,
+                item.Amount,
+                item.Model,
+                item.Provider);
+
+            return new BatchItemResult
+            {
+                Success = true,
+                ItemIdentifier = $"VKey-{item.VirtualKeyId}",
+                Data = new
+                {
+                    VirtualKeyId = item.VirtualKeyId,
+                    Amount = item.Amount,
+                    Model = item.Model,
+                    Provider = item.Provider
+                }
+            };
+        }
+
+        protected override string GetItemIdentifier(SpendUpdateItem item) => $"VKey-{item.VirtualKeyId}";
+
+        protected override BatchOperationOptions ConfigureBatchOptions(int virtualKeyId)
+        {
+            return new BatchOperationOptions
             {
                 VirtualKeyId = virtualKeyId,
                 MaxDegreeOfParallelism = 10, // Limit parallelism for database operations
@@ -55,75 +130,27 @@ namespace ConduitLLM.Core.Services.BatchOperations
                 Metadata = new Dictionary<string, object>
                 {
                     ["updateType"] = "spend_batch_update",
-                    ["source"] = "batch_operation"
+                    ["source"] = "batch_operation_v2",
+                    ["framework"] = "BatchOperationBase"
                 }
             };
-
-            return await _batchOperationService.StartBatchOperationAsync(
-                "spend_update",
-                spendUpdates,
-                ProcessSpendUpdateAsync,
-                options,
-                cancellationToken);
         }
 
-        private async Task<BatchItemResult> ProcessSpendUpdateAsync(
-            SpendUpdateItem item,
-            CancellationToken cancellationToken)
+        protected override RetryOptions RetryOptions => new()
         {
-            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-            
-            try
-            {
-                // Validate virtual key exists
-                var virtualKey = await _virtualKeyService.GetVirtualKeyInfoForValidationAsync(item.VirtualKeyId, cancellationToken);
-                if (virtualKey == null)
-                {
-                    return new BatchItemResult
-                    {
-                        Success = false,
-                        ItemIdentifier = $"VKey-{item.VirtualKeyId}",
-                        Error = "Virtual key not found",
-                        Duration = stopwatch.Elapsed
-                    };
-                }
+            MaxRetries = 3,
+            InitialDelay = TimeSpan.FromSeconds(1),
+            MaxDelay = TimeSpan.FromSeconds(10),
+            BackoffMultiplier = 2.0
+        };
 
-                // Apply spend update
-                await _virtualKeyService.UpdateSpendAsync(item.VirtualKeyId, item.Amount);
-
-                // Send real-time notification
-                await _spendNotificationService.NotifySpendUpdatedAsync(
-                    item.VirtualKeyId,
-                    item.Amount,
-                    item.Model,
-                    item.Provider);
-
-                return new BatchItemResult
-                {
-                    Success = true,
-                    ItemIdentifier = $"VKey-{item.VirtualKeyId}",
-                    Duration = stopwatch.Elapsed,
-                    Data = new
-                    {
-                        VirtualKeyId = item.VirtualKeyId,
-                        Amount = item.Amount
-                    }
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, 
-                    "Failed to process spend update for virtual key {VirtualKeyId}", 
-                    item.VirtualKeyId);
-
-                return new BatchItemResult
-                {
-                    Success = false,
-                    ItemIdentifier = $"VKey-{item.VirtualKeyId}",
-                    Error = ex.Message,
-                    Duration = stopwatch.Elapsed
-                };
-            }
+        protected override bool IsRetryableException(Exception exception)
+        {
+            // Retry on transient database errors and timeout
+            return exception is TimeoutException
+                || exception is TaskCanceledException
+                || (exception.Message?.Contains("timeout", StringComparison.OrdinalIgnoreCase) ?? false)
+                || base.IsRetryableException(exception);
         }
     }
 }

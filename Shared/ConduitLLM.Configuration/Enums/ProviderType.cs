@@ -39,18 +39,6 @@ namespace ConduitLLM.Configuration
         MiniMax = 6,
 
         /// <summary>
-        /// Ultravox (OBSOLETE - Audio functionality removed)
-        /// </summary>
-        [Obsolete("Audio functionality has been removed from the system")]
-        Ultravox = 7,
-
-        /// <summary>
-        /// ElevenLabs (OBSOLETE - Audio functionality removed)
-        /// </summary>
-        [Obsolete("Audio functionality has been removed from the system")]
-        ElevenLabs = 8,
-
-        /// <summary>
         /// Cerebras (high-performance inference)
         /// </summary>
         Cerebras = 9,

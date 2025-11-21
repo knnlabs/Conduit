@@ -16,14 +16,14 @@ namespace ConduitLLM.Tests.Integration
     [Trait("Category", "Integration")]
     [Trait("Component", "Core")]
     [Trait("Phase", "2")]
-    public class BatchSpendUpdateOperationV2IntegrationTests : TestBase
+    public class BatchSpendUpdateOperationIntegrationTests : TestBase
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly Mock<CoreVirtualKeyService> _mockVirtualKeyService;
         private readonly Mock<ISpendNotificationService> _mockSpendNotificationService;
         private readonly Mock<IBatchOperationIdempotencyService> _mockIdempotencyService;
 
-        public BatchSpendUpdateOperationV2IntegrationTests(ITestOutputHelper output) : base(output)
+        public BatchSpendUpdateOperationIntegrationTests(ITestOutputHelper output) : base(output)
         {
             _mockVirtualKeyService = new Mock<CoreVirtualKeyService>();
             _mockSpendNotificationService = new Mock<ISpendNotificationService>();
@@ -40,7 +40,7 @@ namespace ConduitLLM.Tests.Integration
             services.AddSingleton<CoreVirtualKeyService>(_ => _mockVirtualKeyService.Object);
             services.AddSingleton<ISpendNotificationService>(_ => _mockSpendNotificationService.Object);
             services.AddSingleton<IBatchOperationIdempotencyService>(_ => _mockIdempotencyService.Object);
-            services.AddScoped<BatchSpendUpdateOperationV2>();
+            services.AddScoped<BatchSpendUpdateOperation>();
 
             _serviceProvider = services.BuildServiceProvider();
         }
@@ -49,7 +49,7 @@ namespace ConduitLLM.Tests.Integration
         public async Task ExecuteAsync_WithValidUpdates_ShouldProcessSuccessfully()
         {
             // Arrange
-            var operation = _serviceProvider.GetRequiredService<BatchSpendUpdateOperationV2>();
+            var operation = _serviceProvider.GetRequiredService<BatchSpendUpdateOperation>();
             var items = new List<SpendUpdateItem>
             {
                 new() { VirtualKeyId = 1, Amount = 10.50m, Model = "gpt-4", Provider = "OpenAI" },
@@ -91,7 +91,7 @@ namespace ConduitLLM.Tests.Integration
         public async Task ExecuteAsync_WithIdempotencyToken_ShouldCheckForDuplicates()
         {
             // Arrange
-            var operation = _serviceProvider.GetRequiredService<BatchSpendUpdateOperationV2>();
+            var operation = _serviceProvider.GetRequiredService<BatchSpendUpdateOperation>();
             var items = new List<SpendUpdateItem>
             {
                 new() { VirtualKeyId = 1, Amount = 10.50m, Model = "gpt-4", Provider = "OpenAI" }
@@ -133,7 +133,7 @@ namespace ConduitLLM.Tests.Integration
         public async Task ExecuteAsync_WithDuplicateToken_ShouldReturnCachedResult()
         {
             // Arrange
-            var operation = _serviceProvider.GetRequiredService<BatchSpendUpdateOperationV2>();
+            var operation = _serviceProvider.GetRequiredService<BatchSpendUpdateOperation>();
             var items = new List<SpendUpdateItem>
             {
                 new() { VirtualKeyId = 1, Amount = 10.50m, Model = "gpt-4", Provider = "OpenAI" }
@@ -174,7 +174,7 @@ namespace ConduitLLM.Tests.Integration
         public async Task ExecuteAsync_WithInvalidVirtualKey_ShouldFailGracefully()
         {
             // Arrange
-            var operation = _serviceProvider.GetRequiredService<BatchSpendUpdateOperationV2>();
+            var operation = _serviceProvider.GetRequiredService<BatchSpendUpdateOperation>();
             var items = new List<SpendUpdateItem>
             {
                 new() { VirtualKeyId = 999, Amount = 10.50m, Model = "gpt-4", Provider = "OpenAI" }
@@ -199,7 +199,7 @@ namespace ConduitLLM.Tests.Integration
         public async Task ExecuteAsync_WithPartialFailures_ShouldContinueProcessing()
         {
             // Arrange
-            var operation = _serviceProvider.GetRequiredService<BatchSpendUpdateOperationV2>();
+            var operation = _serviceProvider.GetRequiredService<BatchSpendUpdateOperation>();
             var items = new List<SpendUpdateItem>
             {
                 new() { VirtualKeyId = 1, Amount = 10.50m, Model = "gpt-4", Provider = "OpenAI" },
@@ -245,7 +245,7 @@ namespace ConduitLLM.Tests.Integration
         public async Task ExecuteAsync_WithRetryableError_ShouldRetryAutomatically()
         {
             // Arrange
-            var operation = _serviceProvider.GetRequiredService<BatchSpendUpdateOperationV2>();
+            var operation = _serviceProvider.GetRequiredService<BatchSpendUpdateOperation>();
             var items = new List<SpendUpdateItem>
             {
                 new() { VirtualKeyId = 1, Amount = 10.50m, Model = "gpt-4", Provider = "OpenAI" }
@@ -288,7 +288,7 @@ namespace ConduitLLM.Tests.Integration
         public async Task ExecuteAsync_WithLargeBatch_ShouldProcessEfficiently()
         {
             // Arrange
-            var operation = _serviceProvider.GetRequiredService<BatchSpendUpdateOperationV2>();
+            var operation = _serviceProvider.GetRequiredService<BatchSpendUpdateOperation>();
             var items = Enumerable.Range(1, 100).Select(i => new SpendUpdateItem
             {
                 VirtualKeyId = i,

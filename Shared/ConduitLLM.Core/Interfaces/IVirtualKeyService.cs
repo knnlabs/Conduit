@@ -54,11 +54,6 @@ namespace ConduitLLM.Core.Interfaces
         Task<bool> UpdateSpendAsync(int keyId, decimal cost);
 
         /// <summary>
-        /// Resets budget if expired
-        /// </summary>
-        Task<bool> ResetBudgetIfExpiredAsync(int keyId, CancellationToken cancellationToken = default);
-
-        /// <summary>
         /// Gets virtual key information for validation purposes
         /// </summary>
         Task<VirtualKey?> GetVirtualKeyInfoForValidationAsync(int keyId, CancellationToken cancellationToken = default);

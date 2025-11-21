@@ -445,16 +445,6 @@ namespace ConduitLLM.Http.Services
         }
 
         /// <inheritdoc />
-        public Task<bool> ResetBudgetIfExpiredAsync(int keyId, CancellationToken cancellationToken = default)
-        {
-            // Budget duration and periodic resets are no longer supported in the bank account model
-            // Groups have a balance that is manually managed - there are no automatic resets
-            _logger.LogDebug("ResetBudgetIfExpiredAsync called for key {KeyId} - budget resets are not supported in bank account model", keyId);
-            
-            return Task.FromResult(false); // No reset performed
-        }
-
-        /// <inheritdoc />
         public async Task<VirtualKey?> GetVirtualKeyInfoForValidationAsync(int keyId, CancellationToken cancellationToken = default)
         {
             return await _virtualKeyRepository.GetByIdAsync(keyId, cancellationToken);

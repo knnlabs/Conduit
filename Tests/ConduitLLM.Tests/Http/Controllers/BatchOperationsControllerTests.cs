@@ -4,6 +4,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Http.Controllers;
 using ConduitLLM.Configuration.DTOs.BatchOperations;
+using ConduitLLM.Core.Services.BatchOperations;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -20,7 +21,7 @@ namespace ConduitLLM.Tests.Http.Controllers
     {
         private readonly Mock<ILogger<BatchOperationsController>> _mockLogger;
         private readonly Mock<IBatchOperationService> _mockBatchOperationService;
-        private readonly Mock<IBatchSpendUpdateOperation> _mockBatchSpendUpdateOperation;
+        private readonly Mock<BatchSpendUpdateOperation> _mockBatchSpendUpdateOperation;
         private readonly Mock<IBatchVirtualKeyUpdateOperation> _mockBatchVirtualKeyUpdateOperation;
         private readonly Mock<IBatchWebhookSendOperation> _mockBatchWebhookSendOperation;
         private readonly Mock<IVirtualKeyService> _mockVirtualKeyService;
@@ -30,19 +31,30 @@ namespace ConduitLLM.Tests.Http.Controllers
         {
             _mockLogger = CreateLogger<BatchOperationsController>();
             _mockBatchOperationService = new Mock<IBatchOperationService>();
-            _mockBatchSpendUpdateOperation = new Mock<IBatchSpendUpdateOperation>();
             _mockBatchVirtualKeyUpdateOperation = new Mock<IBatchVirtualKeyUpdateOperation>();
             _mockBatchWebhookSendOperation = new Mock<IBatchWebhookSendOperation>();
             _mockVirtualKeyService = new Mock<IVirtualKeyService>();
-            
+
+            // Create mock for BatchSpendUpdateOperation with required constructor parameters
+            var mockLogger = new Mock<ILogger<BatchSpendUpdateOperation>>();
+            var mockSpendNotificationService = new Mock<ISpendNotificationService>();
+            var mockIdempotencyService = new Mock<IBatchOperationIdempotencyService>();
+
+            _mockBatchSpendUpdateOperation = new Mock<BatchSpendUpdateOperation>(
+                mockLogger.Object,
+                _mockBatchOperationService.Object,
+                _mockVirtualKeyService.Object,
+                mockSpendNotificationService.Object,
+                mockIdempotencyService.Object);
+
             _controller = new BatchOperationsController(
                 _mockLogger.Object,
                 _mockBatchOperationService.Object,
-                _mockBatchSpendUpdateOperation.Object,
                 _mockBatchVirtualKeyUpdateOperation.Object,
                 _mockBatchWebhookSendOperation.Object,
-                _mockVirtualKeyService.Object);
-                
+                _mockVirtualKeyService.Object,
+                _mockBatchSpendUpdateOperation.Object);
+
             _controller.ControllerContext = CreateControllerContext();
         }
 
@@ -239,6 +251,7 @@ namespace ConduitLLM.Tests.Http.Controllers
             _mockBatchSpendUpdateOperation.Setup(x => x.ExecuteAsync(
                     It.IsAny<List<SpendUpdateItem>>(),
                     It.IsAny<int>(),
+                    It.IsAny<string>(),
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedResult);
 
@@ -293,10 +306,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var ex = Assert.Throws<ArgumentNullException>(() => new BatchOperationsController(
                 null,
                 _mockBatchOperationService.Object,
-                _mockBatchSpendUpdateOperation.Object,
                 _mockBatchVirtualKeyUpdateOperation.Object,
                 _mockBatchWebhookSendOperation.Object,
-                _mockVirtualKeyService.Object));
+                _mockVirtualKeyService.Object,
+                _mockBatchSpendUpdateOperation.Object));
             Assert.Equal("logger", ex.ParamName);
         }
 
@@ -307,25 +320,11 @@ namespace ConduitLLM.Tests.Http.Controllers
             var ex = Assert.Throws<ArgumentNullException>(() => new BatchOperationsController(
                 _mockLogger.Object,
                 null,
-                _mockBatchSpendUpdateOperation.Object,
                 _mockBatchVirtualKeyUpdateOperation.Object,
                 _mockBatchWebhookSendOperation.Object,
-                _mockVirtualKeyService.Object));
+                _mockVirtualKeyService.Object,
+                _mockBatchSpendUpdateOperation.Object));
             Assert.Equal("batchOperationService", ex.ParamName);
-        }
-
-        [Fact]
-        public void Constructor_WithNullBatchSpendUpdateOperation_ShouldThrowArgumentNullException()
-        {
-            // Arrange & Act & Assert
-            var ex = Assert.Throws<ArgumentNullException>(() => new BatchOperationsController(
-                _mockLogger.Object,
-                _mockBatchOperationService.Object,
-                null,
-                _mockBatchVirtualKeyUpdateOperation.Object,
-                _mockBatchWebhookSendOperation.Object,
-                _mockVirtualKeyService.Object));
-            Assert.Equal("batchSpendUpdateOperation", ex.ParamName);
         }
 
         [Fact]
@@ -335,10 +334,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var ex = Assert.Throws<ArgumentNullException>(() => new BatchOperationsController(
                 _mockLogger.Object,
                 _mockBatchOperationService.Object,
-                _mockBatchSpendUpdateOperation.Object,
                 null,
                 _mockBatchWebhookSendOperation.Object,
-                _mockVirtualKeyService.Object));
+                _mockVirtualKeyService.Object,
+                _mockBatchSpendUpdateOperation.Object));
             Assert.Equal("batchVirtualKeyUpdateOperation", ex.ParamName);
         }
 
@@ -349,10 +348,10 @@ namespace ConduitLLM.Tests.Http.Controllers
             var ex = Assert.Throws<ArgumentNullException>(() => new BatchOperationsController(
                 _mockLogger.Object,
                 _mockBatchOperationService.Object,
-                _mockBatchSpendUpdateOperation.Object,
                 _mockBatchVirtualKeyUpdateOperation.Object,
                 null,
-                _mockVirtualKeyService.Object));
+                _mockVirtualKeyService.Object,
+                _mockBatchSpendUpdateOperation.Object));
             Assert.Equal("batchWebhookSendOperation", ex.ParamName);
         }
 
@@ -363,11 +362,25 @@ namespace ConduitLLM.Tests.Http.Controllers
             var ex = Assert.Throws<ArgumentNullException>(() => new BatchOperationsController(
                 _mockLogger.Object,
                 _mockBatchOperationService.Object,
-                _mockBatchSpendUpdateOperation.Object,
                 _mockBatchVirtualKeyUpdateOperation.Object,
                 _mockBatchWebhookSendOperation.Object,
-                null));
+                null,
+                _mockBatchSpendUpdateOperation.Object));
             Assert.Equal("virtualKeyService", ex.ParamName);
+        }
+
+        [Fact]
+        public void Constructor_WithNullBatchSpendUpdateOperation_ShouldThrowArgumentNullException()
+        {
+            // Arrange & Act & Assert
+            var ex = Assert.Throws<ArgumentNullException>(() => new BatchOperationsController(
+                _mockLogger.Object,
+                _mockBatchOperationService.Object,
+                _mockBatchVirtualKeyUpdateOperation.Object,
+                _mockBatchWebhookSendOperation.Object,
+                _mockVirtualKeyService.Object,
+                null));
+            Assert.Equal("batchSpendUpdateOperation", ex.ParamName);
         }
 
         #endregion

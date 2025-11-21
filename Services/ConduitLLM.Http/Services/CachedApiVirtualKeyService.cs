@@ -438,36 +438,9 @@ namespace ConduitLLM.Http.Services
         }
 
         /// <inheritdoc />
-        [Obsolete("Budget resets are no longer supported in the bank account model")]
-        public async Task<bool> ResetBudgetIfExpiredAsync(int keyId, CancellationToken cancellationToken = default)
-        {
-            // Budget resets are no longer supported in the bank account model
-            // This method is kept for backward compatibility but always returns false
-            _logger.LogDebug("ResetBudgetIfExpiredAsync called for key {KeyId} - no action taken (bank account model)", keyId);
-            await Task.CompletedTask;
-            return false;
-        }
-
-        /// <inheritdoc />
         public async Task<VirtualKey?> GetVirtualKeyInfoForValidationAsync(int keyId, CancellationToken cancellationToken = default)
         {
             return await _virtualKeyRepository.GetByIdAsync(keyId, cancellationToken);
-        }
-
-        /// <summary>
-        /// Bulk update spend and invalidate affected keys
-        /// NOTE: This method is deprecated in the group-based model
-        /// </summary>
-        [Obsolete("Bulk spend updates are no longer supported. Spend is tracked at the group level.")]
-        public async Task<bool> BulkUpdateSpendAsync(Dictionary<string, decimal> spendUpdates)
-        {
-            _logger.LogWarning("BulkUpdateSpendAsync is deprecated. Spend tracking is now at the group level.");
-
-            // Still invalidate cache for the affected keys
-            string[] keyHashes = [..spendUpdates.Keys];
-            await _cache.InvalidateVirtualKeysAsync(keyHashes);
-            
-            return false;
         }
 
         /// <summary>

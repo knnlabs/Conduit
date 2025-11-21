@@ -122,18 +122,6 @@ namespace ConduitLLM.Admin.Hubs
         }
 
         /// <summary>
-        /// Subscribes to notifications for a specific provider by name (legacy).
-        /// </summary>
-        /// <param name="providerName">The provider name to subscribe to.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        [Obsolete("Use SubscribeToProvider(int providerId) instead")]
-        public async Task SubscribeToProviderByName(string providerName)
-        {
-            _logger.LogWarning("Legacy SubscribeToProviderByName called with {ProviderName}. Clients should use SubscribeToProvider(int) instead.", providerName);
-            await Clients.Caller.SendAsync("Error", new { message = "This method is deprecated. Please use SubscribeToProvider with provider ID." });
-        }
-
-        /// <summary>
         /// Subscribes to notifications for a specific provider.
         /// </summary>
         /// <param name="providerId">The provider ID to subscribe to.</param>
@@ -159,18 +147,6 @@ namespace ConduitLLM.Admin.Hubs
         }
 
         /// <summary>
-        /// Unsubscribes from notifications for a specific provider by name (legacy).
-        /// </summary>
-        /// <param name="providerName">The provider name to unsubscribe from.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        [Obsolete("Use UnsubscribeFromProvider(int providerId) instead")]
-        public async Task UnsubscribeFromProviderByName(string providerName)
-        {
-            _logger.LogWarning("Legacy UnsubscribeFromProviderByName called with {ProviderName}. Clients should use UnsubscribeFromProvider(int) instead.", providerName);
-            await Clients.Caller.SendAsync("Error", new { message = "This method is deprecated. Please use UnsubscribeFromProvider with provider ID." });
-        }
-
-        /// <summary>
         /// Unsubscribes from notifications for a specific provider.
         /// </summary>
         /// <param name="providerId">The provider ID to unsubscribe from.</param>
@@ -191,17 +167,6 @@ namespace ConduitLLM.Admin.Hubs
                 _logger.LogError(ex, "Error unsubscribing from provider {ProviderId}", providerId);
                 await Clients.Caller.SendAsync("Error", new { message = "Failed to unsubscribe from provider notifications" });
             }
-        }
-
-        /// <summary>
-        /// Requests a refresh of provider health status (deprecated).
-        /// </summary>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        [Obsolete("Provider health monitoring has been removed")]
-        public async Task RefreshProviderHealth()
-        {
-            _logger.LogWarning("RefreshProviderHealth called but provider health monitoring has been removed");
-            await Clients.Caller.SendAsync("Error", new { message = "Provider health monitoring has been removed" });
         }
 
     }

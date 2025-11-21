@@ -40,7 +40,6 @@ namespace ConduitLLM.Tests.Performance
             services.AddSingleton<ISpendNotificationService>(_ => _mockSpendNotificationService.Object);
             services.AddSingleton<IBatchOperationIdempotencyService>(_ => _mockIdempotencyService.Object);
             services.AddScoped<BatchSpendUpdateOperation>();
-            services.AddScoped<BatchSpendUpdateOperationV2>();
 
             _serviceProvider = services.BuildServiceProvider();
 
@@ -59,70 +58,12 @@ namespace ConduitLLM.Tests.Performance
                 .ReturnsAsync(false);
         }
 
-        [Theory(Skip = "Performance micro-benchmarks are flaky in CI due to timing variability. Run manually in isolation for accurate measurements.")]
-        [InlineData(10)]
-        [InlineData(50)]
-        [InlineData(100)]
-        [InlineData(500)]
-        public async Task Benchmark_V1VsV2_SmallToMediumBatches(int itemCount)
-        {
-            // Arrange
-            var items = GenerateTestItems(itemCount);
-            var v1Operation = _serviceProvider.GetRequiredService<BatchSpendUpdateOperation>();
-            var v2Operation = _serviceProvider.GetRequiredService<BatchSpendUpdateOperationV2>();
-
-            // Warm up
-            await v1Operation.ExecuteAsync(GenerateTestItems(5), virtualKeyId: 1);
-            await v2Operation.ExecuteAsync(GenerateTestItems(5), virtualKeyId: 1);
-
-            // Act - V1
-            var v1Stopwatch = Stopwatch.StartNew();
-            var v1Result = await v1Operation.ExecuteAsync(items, virtualKeyId: 1);
-            v1Stopwatch.Stop();
-
-            // Act - V2
-            var v2Stopwatch = Stopwatch.StartNew();
-            var v2Result = await v2Operation.ExecuteAsync(items, virtualKeyId: 1);
-            v2Stopwatch.Stop();
-
-            // Assert - Both should succeed
-            Assert.Equal(BatchOperationStatusEnum.Completed, v1Result.Status);
-            Assert.Equal(BatchOperationStatusEnum.Completed, v2Result.Status);
-            Assert.Equal(itemCount, v1Result.SuccessCount);
-            Assert.Equal(itemCount, v2Result.SuccessCount);
-
-            // Performance metrics
-            var v1Throughput = itemCount / v1Result.Duration.TotalSeconds;
-            var v2Throughput = itemCount / v2Result.Duration.TotalSeconds;
-            var throughputDiff = ((v2Throughput - v1Throughput) / v1Throughput) * 100;
-
-            Output.WriteLine($"=== Batch Size: {itemCount} Items ===");
-            Output.WriteLine($"V1 Duration: {v1Result.Duration.TotalMilliseconds:F2}ms ({v1Throughput:F1} items/sec)");
-            Output.WriteLine($"V2 Duration: {v2Result.Duration.TotalMilliseconds:F2}ms ({v2Throughput:F1} items/sec)");
-            Output.WriteLine($"Throughput Difference: {throughputDiff:F1}%");
-            Output.WriteLine($"V2 Overhead: {(v2Result.Duration - v1Result.Duration).TotalMilliseconds:F2}ms");
-            Output.WriteLine("");
-
-            // V2 should be reasonably close to V1 performance
-            // Allow up to 200% overhead due to additional features (idempotency, retry logic)
-            // For very small operations (< 10ms), use a minimum absolute threshold of 5ms
-            // to account for timing precision variability, JIT warm-up effects, system noise,
-            // and concurrent test execution. These benchmarks are informational and should be
-            // run in isolation for accurate measurements.
-            var percentageOverhead = v1Result.Duration.TotalMilliseconds * 2.0;
-            var maxAcceptableOverhead = Math.Max(percentageOverhead, 5.0);
-            var actualOverhead = (v2Result.Duration - v1Result.Duration).TotalMilliseconds;
-
-            Assert.True(actualOverhead <= maxAcceptableOverhead,
-                $"V2 overhead ({actualOverhead:F2}ms) exceeds acceptable threshold ({maxAcceptableOverhead:F2}ms)");
-        }
-
         [Fact]
         public async Task Benchmark_V2_IdempotencyOverhead()
         {
             // Arrange
             var items = GenerateTestItems(100);
-            var v2Operation = _serviceProvider.GetRequiredService<BatchSpendUpdateOperationV2>();
+            var v2Operation = _serviceProvider.GetRequiredService<BatchSpendUpdateOperation>();
 
             // Act - Without idempotency token
             var withoutTokenStopwatch = Stopwatch.StartNew();
@@ -157,7 +98,7 @@ namespace ConduitLLM.Tests.Performance
         {
             // Arrange
             var items = GenerateTestItems(50);
-            var v2Operation = _serviceProvider.GetRequiredService<BatchSpendUpdateOperationV2>();
+            var v2Operation = _serviceProvider.GetRequiredService<BatchSpendUpdateOperation>();
 
             var attemptCounts = new System.Collections.Concurrent.ConcurrentDictionary<int, int>();
 
@@ -264,7 +205,7 @@ namespace ConduitLLM.Tests.Performance
         {
             // Arrange
             var items = GenerateTestItems(1000);
-            var v2Operation = _serviceProvider.GetRequiredService<BatchSpendUpdateOperationV2>();
+            var v2Operation = _serviceProvider.GetRequiredService<BatchSpendUpdateOperation>();
 
             // Force GC before measurement
             GC.Collect();
@@ -314,7 +255,7 @@ namespace ConduitLLM.Tests.Performance
         }
 
         // Test helper class to control parallelism
-        private class TestBatchOperationWithParallelism : BatchSpendUpdateOperationV2
+        private class TestBatchOperationWithParallelism : BatchSpendUpdateOperation
         {
             private readonly int _parallelism;
 

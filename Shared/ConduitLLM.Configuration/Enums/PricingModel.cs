@@ -39,20 +39,6 @@ namespace ConduitLLM.Configuration
         /// Per-image pricing with quality and resolution multipliers.
         /// Used by image generation models (DALL-E, Stable Diffusion, etc.).
         /// </summary>
-        PerImage = 5,
-
-        /// <summary>
-        /// Audio pricing per minute of input/output.
-        /// OBSOLETE - Audio functionality removed
-        /// </summary>
-        [Obsolete("Audio functionality has been removed from the system")]
-        PerMinuteAudio = 6,
-
-        /// <summary>
-        /// Audio pricing per thousand characters.
-        /// OBSOLETE - Audio functionality removed
-        /// </summary>
-        [Obsolete("Audio functionality has been removed from the system")]
-        PerThousandCharacters = 7
+        PerImage = 5
     }
 }
