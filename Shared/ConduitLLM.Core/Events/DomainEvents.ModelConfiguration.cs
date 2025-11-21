@@ -210,4 +210,30 @@ namespace ConduitLLM.Core.Events
         /// </summary>
         public string PartitionKey => FilterId.ToString();
     }
+
+    // ===============================
+    // Discovery Cache Domain Events
+    // ===============================
+
+    /// <summary>
+    /// Raised when an admin explicitly requests invalidation of the discovery cache
+    /// Triggers cache invalidation across all Core API instances
+    /// </summary>
+    public record DiscoveryCacheInvalidationRequested : DomainEvent
+    {
+        /// <summary>
+        /// Reason for cache invalidation (for logging/auditing)
+        /// </summary>
+        public string Reason { get; init; } = "Manual invalidation";
+
+        /// <summary>
+        /// User or service that requested the invalidation
+        /// </summary>
+        public string RequestedBy { get; init; } = "System";
+
+        /// <summary>
+        /// Partition key - use constant since this is a system-wide operation
+        /// </summary>
+        public string PartitionKey => "discovery-cache";
+    }
 }

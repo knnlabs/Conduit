@@ -1,6 +1,7 @@
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs.Monitoring;
-using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Events;
+using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,23 +16,23 @@ namespace ConduitLLM.Admin.Controllers;
 public class SystemInfoController : ControllerBase
 {
     private readonly IAdminSystemInfoService _systemInfoService;
-    private readonly IDiscoveryCacheService? _discoveryCacheService;
+    private readonly IPublishEndpoint _publishEndpoint;
     private readonly ILogger<SystemInfoController> _logger;
 
     /// <summary>
     /// Initializes a new instance of the SystemInfoController
     /// </summary>
     /// <param name="systemInfoService">The system info service</param>
-    /// <param name="discoveryCacheService">The discovery cache service</param>
+    /// <param name="publishEndpoint">MassTransit publish endpoint for events</param>
     /// <param name="logger">The logger</param>
     public SystemInfoController(
         IAdminSystemInfoService systemInfoService,
-        ILogger<SystemInfoController> logger,
-        IDiscoveryCacheService? discoveryCacheService = null)
+        IPublishEndpoint publishEndpoint,
+        ILogger<SystemInfoController> logger)
     {
         _systemInfoService = systemInfoService ?? throw new ArgumentNullException(nameof(systemInfoService));
+        _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _discoveryCacheService = discoveryCacheService;
     }
 
     /// <summary>
@@ -77,45 +78,40 @@ public class SystemInfoController : ControllerBase
     }
 
     /// <summary>
-    /// Invalidates all discovery cache entries
+    /// Invalidates all discovery cache entries by publishing an event to all Core API instances
     /// </summary>
     /// <returns>Success response with cache invalidation details</returns>
     [HttpPost("cache/invalidate-discovery")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status501NotImplemented)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> InvalidateDiscoveryCache()
     {
         try
         {
-            if (_discoveryCacheService == null)
+            // Publish event to all Core API instances via MassTransit
+            await _publishEndpoint.Publish(new DiscoveryCacheInvalidationRequested
             {
-                _logger.LogWarning("Discovery cache service is not available");
-                return StatusCode(StatusCodes.Status501NotImplemented, new 
-                { 
-                    message = "Discovery cache service is not configured",
-                    hint = "Ensure IDiscoveryCacheService is registered in dependency injection"
-                });
-            }
+                Reason = "Manual invalidation via Admin API",
+                RequestedBy = "Admin User",
+                CorrelationId = Guid.NewGuid().ToString()
+            });
 
-            await _discoveryCacheService.InvalidateAllDiscoveryAsync();
-            
-            _logger.LogInformation("Discovery cache invalidated by admin user");
-            
-            return Ok(new 
-            { 
-                message = "Discovery cache invalidated successfully",
+            _logger.LogInformation("Published discovery cache invalidation event to all Core API instances");
+
+            return Ok(new
+            {
+                message = "Discovery cache invalidation request published successfully",
                 timestamp = DateTime.UtcNow,
-                note = "It may take a moment for all instances to clear their caches"
+                note = "Cache invalidation is being processed asynchronously across all Core API instances"
             });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error invalidating discovery cache");
-            return StatusCode(StatusCodes.Status500InternalServerError, new 
-            { 
-                message = "An error occurred while invalidating the discovery cache",
-                error = ex.Message 
+            _logger.LogError(ex, "Error publishing discovery cache invalidation event");
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                message = "An error occurred while requesting discovery cache invalidation",
+                error = ex.Message
             });
         }
     }

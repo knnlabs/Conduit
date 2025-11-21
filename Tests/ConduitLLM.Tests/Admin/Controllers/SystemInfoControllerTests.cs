@@ -1,7 +1,8 @@
 using System.Threading.Tasks;
 using ConduitLLM.Admin.Controllers;
 using ConduitLLM.Admin.Interfaces;
-using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Events;
+using MassTransit;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -13,29 +14,29 @@ namespace ConduitLLM.Tests.Admin.Controllers
     public class SystemInfoControllerTests
     {
         private readonly Mock<IAdminSystemInfoService> _mockSystemInfoService;
-        private readonly Mock<IDiscoveryCacheService> _mockDiscoveryCacheService;
+        private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
         private readonly Mock<ILogger<SystemInfoController>> _mockLogger;
         private readonly SystemInfoController _controller;
 
         public SystemInfoControllerTests()
         {
             _mockSystemInfoService = new Mock<IAdminSystemInfoService>();
-            _mockDiscoveryCacheService = new Mock<IDiscoveryCacheService>();
+            _mockPublishEndpoint = new Mock<IPublishEndpoint>();
             _mockLogger = new Mock<ILogger<SystemInfoController>>();
-            
+
             _controller = new SystemInfoController(
                 _mockSystemInfoService.Object,
-                _mockLogger.Object,
-                _mockDiscoveryCacheService.Object
+                _mockPublishEndpoint.Object,
+                _mockLogger.Object
             );
         }
 
         [Fact]
-        public async Task InvalidateDiscoveryCache_WhenServiceIsAvailable_ReturnsOkResult()
+        public async Task InvalidateDiscoveryCache_PublishesEventAndReturnsOkResult()
         {
             // Arrange
-            _mockDiscoveryCacheService
-                .Setup(x => x.InvalidateAllDiscoveryAsync(default))
+            _mockPublishEndpoint
+                .Setup(x => x.Publish(It.IsAny<DiscoveryCacheInvalidationRequested>(), default))
                 .Returns(Task.CompletedTask);
 
             // Act
@@ -44,36 +45,24 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
             Assert.Equal(StatusCodes.Status200OK, okResult.StatusCode);
-            
-            // Verify the service was called
-            _mockDiscoveryCacheService.Verify(x => x.InvalidateAllDiscoveryAsync(default), Times.Once);
+
+            // Verify the event was published
+            _mockPublishEndpoint.Verify(
+                x => x.Publish(
+                    It.Is<DiscoveryCacheInvalidationRequested>(e =>
+                        e.Reason == "Manual invalidation via Admin API" &&
+                        e.RequestedBy == "Admin User"),
+                    default),
+                Times.Once);
         }
 
         [Fact]
-        public async Task InvalidateDiscoveryCache_WhenServiceIsNull_ReturnsNotImplemented()
+        public async Task InvalidateDiscoveryCache_WhenPublishThrowsException_ReturnsInternalServerError()
         {
             // Arrange
-            var controllerWithoutCache = new SystemInfoController(
-                _mockSystemInfoService.Object,
-                _mockLogger.Object,
-                null // No discovery cache service
-            );
-
-            // Act
-            var result = await controllerWithoutCache.InvalidateDiscoveryCache();
-
-            // Assert
-            var statusResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(StatusCodes.Status501NotImplemented, statusResult.StatusCode);
-        }
-
-        [Fact]
-        public async Task InvalidateDiscoveryCache_WhenServiceThrowsException_ReturnsInternalServerError()
-        {
-            // Arrange
-            var exceptionMessage = "Cache service error";
-            _mockDiscoveryCacheService
-                .Setup(x => x.InvalidateAllDiscoveryAsync(default))
+            var exceptionMessage = "Event publishing failed";
+            _mockPublishEndpoint
+                .Setup(x => x.Publish(It.IsAny<DiscoveryCacheInvalidationRequested>(), default))
                 .ThrowsAsync(new System.Exception(exceptionMessage));
 
             // Act
@@ -82,7 +71,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Assert
             var statusResult = Assert.IsType<ObjectResult>(result);
             Assert.Equal(StatusCodes.Status500InternalServerError, statusResult.StatusCode);
-            
+
             // Verify error was logged
             _mockLogger.Verify(
                 x => x.Log(
@@ -98,8 +87,8 @@ namespace ConduitLLM.Tests.Admin.Controllers
         public async Task InvalidateDiscoveryCache_ReturnsProperResponseStructure()
         {
             // Arrange
-            _mockDiscoveryCacheService
-                .Setup(x => x.InvalidateAllDiscoveryAsync(default))
+            _mockPublishEndpoint
+                .Setup(x => x.Publish(It.IsAny<DiscoveryCacheInvalidationRequested>(), default))
                 .Returns(Task.CompletedTask);
 
             // Act
@@ -108,16 +97,16 @@ namespace ConduitLLM.Tests.Admin.Controllers
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
             Assert.NotNull(okResult.Value);
-            
+
             // Check the response structure using JSON serialization
             var json = System.Text.Json.JsonSerializer.Serialize(okResult.Value);
             var response = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(json);
-            
+
             Assert.NotNull(response);
             Assert.True(response.ContainsKey("message"));
             Assert.True(response.ContainsKey("timestamp"));
             Assert.True(response.ContainsKey("note"));
-            Assert.Equal("Discovery cache invalidated successfully", response["message"].ToString());
+            Assert.Equal("Discovery cache invalidation request published successfully", response["message"].ToString());
         }
     }
 }
