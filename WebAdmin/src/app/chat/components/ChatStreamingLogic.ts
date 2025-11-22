@@ -154,6 +154,18 @@ export function useChatStreamingLogic({
     setTokensPerSecond(null);
     setError(null);
 
+    // Track reasoning and tool executions during streaming
+    let totalReasoning = '';
+    const toolExecutions: Array<{
+      tool_call_id?: string;
+      function_name: string;
+      status: 'started' | 'completed' | 'failed';
+      result?: unknown;
+      cost?: number;
+      error_message?: string;
+      timestamp: number;
+    }> = [];
+
     try {
 
       // Prepare streaming options
@@ -192,6 +204,68 @@ export function useChatStreamingLogic({
         onContent: (content, totalContent) => {
           setStreamingContent(totalContent);
         },
+        onReasoning: (reasoning, totalReasoningText) => {
+          totalReasoning = totalReasoningText;
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('[Reasoning]', reasoning);
+          }
+        },
+        onToolExecuting: (event) => {
+          // Track tool execution events
+          if (event.status === 'started') {
+            toolExecutions.push({
+              tool_call_id: event.tool_call_id,
+              function_name: event.function_name ?? 'Unknown Function',
+              status: 'started',
+              timestamp: Date.now()
+            });
+            if (process.env.NODE_ENV === 'development') {
+              console.warn(`[Tool Executing] ${event.function_name} - ${event.status}`);
+            }
+          } else if (event.status === 'completed') {
+            // Update existing entry or add new one
+            const existing = toolExecutions.find(
+              t => t.tool_call_id === event.tool_call_id && t.status === 'started'
+            );
+            if (existing) {
+              existing.status = 'completed';
+              existing.result = event.result;
+              existing.cost = event.cost;
+            } else {
+              toolExecutions.push({
+                tool_call_id: event.tool_call_id,
+                function_name: event.function_name ?? 'Unknown Function',
+                status: 'completed',
+                result: event.result,
+                cost: event.cost,
+                timestamp: Date.now()
+              });
+            }
+            if (process.env.NODE_ENV === 'development') {
+              console.warn(`[Tool Executing] ${event.function_name} - ${event.status}`, event.result);
+            }
+          } else if (event.status === 'failed') {
+            // Update existing entry or add new one
+            const existing = toolExecutions.find(
+              t => t.tool_call_id === event.tool_call_id && t.status === 'started'
+            );
+            if (existing) {
+              existing.status = 'failed';
+              existing.error_message = event.error_message;
+            } else {
+              toolExecutions.push({
+                tool_call_id: event.tool_call_id,
+                function_name: event.function_name ?? 'Unknown Function',
+                status: 'failed',
+                error_message: event.error_message,
+                timestamp: Date.now()
+              });
+            }
+            if (process.env.NODE_ENV === 'development') {
+              console.warn(`[Tool Executing] ${event.function_name} - ${event.status}`, event.error_message);
+            }
+          }
+        },
         onTokensPerSecond: performanceSettings.showTokensPerSecond ? (tps) => {
           setTokensPerSecond(tps);
         } : undefined,
@@ -211,7 +285,10 @@ export function useChatStreamingLogic({
             timestamp: new Date(),
             metadata: {
               ...metadata,
-              toolCalls: undefined // Remove from metadata as we're adding to message root
+              toolCalls: undefined, // Remove from metadata as we're adding to message root
+              hasReasoning: totalReasoning.length > 0,
+              reasoning: totalReasoning.length > 0 ? totalReasoning : undefined,
+              toolExecutions: toolExecutions.length > 0 ? toolExecutions : undefined
             } as ChatMessage['metadata'],
             toolCalls: metadata?.toolCalls // Add tool calls to message root for UI display
           };

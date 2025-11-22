@@ -185,16 +185,42 @@ export interface StreamMessageOptions extends SendMessageOptions {
  * Callbacks for UI integration
  */
 export interface StreamingCallbacks {
+  /** Called for each chat completion chunk received */
   onChunk?: (chunk: ChatCompletionChunk) => void;
+  /** Called when content delta is received (cumulative content provided) */
   onContent?: (content: string, totalContent: string) => void;
+  /** Called when reasoning/thinking content is received */
+  onReasoning?: (reasoning: string, totalReasoning: string) => void;
+  /** Called when tool execution status updates are received */
+  onToolExecuting?: (event: {
+    tool_call_id?: string;
+    function_name?: string;
+    status: string;
+    result?: unknown;
+    cost?: number;
+    error_message?: string;
+    function_execution_id?: string;
+  }) => void;
+  /** Called when individual tool results are received (optional, for detailed logging) */
+  onToolResult?: (event: {
+    tool_call_id: string;
+    result: unknown;
+    error?: string;
+  }) => void;
+  /** Called when performance metrics are received */
   onMetrics?: (metrics: StreamingPerformanceMetrics | MetricsEventData) => void;
+  /** Called when tokens per second updates are available */
   onTokensPerSecond?: (tokensPerSecond: number) => void;
+  /** Called when an error occurs during streaming */
   onError?: (error: StreamingError) => void;
+  /** Called when streaming completes successfully */
   onComplete?: (response: {
     content: string;
     metadata?: MessageMetadata;
   }) => void;
+  /** Called when streaming starts */
   onStart?: () => void;
+  /** Called when streaming is aborted */
   onAbort?: () => void;
 }
 

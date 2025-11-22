@@ -2,22 +2,29 @@ import type { ChatCompletionChunk } from './chat';
 
 /**
  * Enhanced SSE (Server-Sent Events) event types supported by Conduit.
+ * Combines OpenAI-compatible standard events with Conduit-specific extensions.
  * These event types allow for richer streaming responses that include
  * performance metrics and other metadata alongside content.
- * 
+ *
  * @enum {string}
  * @since 0.3.0
  */
 export enum EnhancedSSEEventType {
-  /** Regular content event containing chat completion chunks */
+  /** Regular content event containing chat completion chunks (OpenAI compatible) */
   Content = 'content',
-  /** Live performance metrics during streaming */
-  Metrics = 'metrics', 
-  /** Final performance metrics at stream completion */
+  /** Conduit extension: Model reasoning/thinking content separate from main response */
+  Reasoning = 'reasoning',
+  /** Conduit extension: Tool/function execution status and progress updates */
+  ToolExecuting = 'tool-executing',
+  /** Conduit extension: Individual tool execution results (optional, for detailed logging) */
+  ToolResult = 'tool-result',
+  /** Conduit extension: Live performance metrics during streaming */
+  Metrics = 'metrics',
+  /** Conduit extension: Final performance metrics at stream completion */
   MetricsFinal = 'metrics-final',
-  /** Error events during streaming */
+  /** Conduit extension: Error events during streaming */
   Error = 'error',
-  /** Stream completion marker */
+  /** Stream completion marker (OpenAI compatible) */
   Done = 'done',
 }
 
@@ -135,7 +142,7 @@ export interface EnhancedStreamEvent {
   /** The type of SSE event */
   type: EnhancedSSEEventType;
   /** The event data, type depends on the event type */
-  data: ChatCompletionChunk | StreamingMetrics | FinalMetrics | string;
+  data: ChatCompletionChunk | StreamingMetrics | FinalMetrics | ReasoningEvent | ToolExecutingEvent | ToolResultEvent | string;
 }
 
 /**
@@ -187,11 +194,11 @@ export function isStreamingMetrics(data: unknown): data is StreamingMetrics {
 
 /**
  * Type guard to check if data is FinalMetrics.
- * 
+ *
  * @param {unknown} data - The data to check
  * @returns {boolean} True if data is FinalMetrics
  * @since 0.3.0
- * 
+ *
  * @example
  * ```typescript
  * if (isFinalMetrics(event.data)) {
@@ -206,5 +213,164 @@ export function isFinalMetrics(data: unknown): data is FinalMetrics {
     typeof data === 'object' &&
     data !== null &&
     ('tokens_per_second' in data || 'total_latency_ms' in data || 'completion_tokens' in data)
+  );
+}
+
+/**
+ * Reasoning event data - sent as "event: reasoning"
+ * Contains model thinking/reasoning content separate from main response.
+ *
+ * @interface ReasoningEvent
+ * @since 0.4.0
+ *
+ * @example
+ * ```typescript
+ * {
+ *   content: "Let me think through this step by step..."
+ * }
+ * ```
+ */
+export interface ReasoningEvent {
+  /** Reasoning content chunk */
+  content: string;
+}
+
+/**
+ * Tool execution status event - sent as "event: tool-executing"
+ * Provides real-time feedback during function calling.
+ *
+ * @interface ToolExecutingEvent
+ * @since 0.4.0
+ *
+ * @example
+ * ```typescript
+ * // Tool execution started
+ * {
+ *   tool_call_id: 'call_abc123',
+ *   function_name: 'get_weather',
+ *   status: 'started'
+ * }
+ *
+ * // Tool execution completed
+ * {
+ *   tool_call_id: 'call_abc123',
+ *   function_name: 'get_weather',
+ *   status: 'completed',
+ *   result: { temperature: 72, condition: 'sunny' },
+ *   cost: 0.001
+ * }
+ * ```
+ */
+export interface ToolExecutingEvent {
+  /** Tool call ID reference */
+  tool_call_id?: string;
+  /** Function name being executed */
+  function_name?: string;
+  /** Execution status: "started" | "completed" | "failed" */
+  status: string;
+  /** Function execution result (present when status = "completed") */
+  result?: unknown;
+  /** Cost of the function execution */
+  cost?: number;
+  /** Error message (present when status = "failed") */
+  error_message?: string;
+  /** Function execution ID for audit trail lookup */
+  function_execution_id?: string;
+}
+
+/**
+ * Tool result event - sent as "event: tool-result"
+ * Contains individual tool execution outcome (optional, for detailed logging).
+ *
+ * @interface ToolResultEvent
+ * @since 0.4.0
+ *
+ * @example
+ * ```typescript
+ * {
+ *   tool_call_id: 'call_abc123',
+ *   result: { temperature: 72, condition: 'sunny' }
+ * }
+ * ```
+ */
+export interface ToolResultEvent {
+  /** Tool call ID reference */
+  tool_call_id: string;
+  /** Tool execution result data */
+  result: unknown;
+  /** Error message if execution failed */
+  error?: string;
+}
+
+/**
+ * Type guard to check if data is a ReasoningEvent.
+ *
+ * @param {unknown} data - The data to check
+ * @returns {boolean} True if data is a ReasoningEvent
+ * @since 0.4.0
+ *
+ * @example
+ * ```typescript
+ * if (isReasoningEvent(event.data)) {
+ *   // TypeScript now knows event.data is ReasoningEvent
+ *   console.warn(`Reasoning: ${event.data.content}`);
+ * }
+ * ```
+ */
+export function isReasoningEvent(data: unknown): data is ReasoningEvent {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'content' in data &&
+    typeof (data as Record<string, unknown>).content === 'string'
+  );
+}
+
+/**
+ * Type guard to check if data is a ToolExecutingEvent.
+ *
+ * @param {unknown} data - The data to check
+ * @returns {boolean} True if data is a ToolExecutingEvent
+ * @since 0.4.0
+ *
+ * @example
+ * ```typescript
+ * if (isToolExecutingEvent(event.data)) {
+ *   // TypeScript now knows event.data is ToolExecutingEvent
+ *   console.warn(`Executing: ${event.data.function_name} - ${event.data.status}`);
+ * }
+ * ```
+ */
+export function isToolExecutingEvent(data: unknown): data is ToolExecutingEvent {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'status' in data &&
+    typeof (data as Record<string, unknown>).status === 'string'
+  );
+}
+
+/**
+ * Type guard to check if data is a ToolResultEvent.
+ *
+ * @param {unknown} data - The data to check
+ * @returns {boolean} True if data is a ToolResultEvent
+ * @since 0.4.0
+ *
+ * @example
+ * ```typescript
+ * if (isToolResultEvent(event.data)) {
+ *   // TypeScript now knows event.data is ToolResultEvent
+ *   console.warn(`Tool result for ${event.data.tool_call_id}:`, event.data.result);
+ * }
+ * ```
+ */
+export function isToolResultEvent(data: unknown): data is ToolResultEvent {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'tool_call_id' in data &&
+    'result' in data &&
+    typeof (data as Record<string, unknown>).tool_call_id === 'string'
   );
 }

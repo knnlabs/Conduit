@@ -45,11 +45,15 @@ npm install @knn_labs/conduit-admin-client
 
 ## Key Features
 
-- **OpenAI-Compatible REST API**: Exposes a standard `/v1/chat/completions` endpoint for seamless integration with existing tools and SDKs
+- **OpenAI-Compatible REST API**:
+  - ✅ **100% OpenAI compatible** - drop-in replacement for OpenAI API clients
+  - ✅ **Extended with Conduit features** - optional enhanced events for reasoning, tool execution, and metrics
+  - ✅ **Works with standard clients** - OpenAI SDKs and tools work without any modifications
+  - 📚 For enhanced features, use Conduit SDKs to access real-time tool execution, reasoning events, and performance metrics
 - **Multi-Provider Support**: Interact with various LLM providers through a single interface
 - **Model Routing & Mapping**: Define custom model aliases (e.g., `my-gpt4`) and map them to specific provider models (e.g., `openai/gpt-4`)
 - **Virtual API Key Management**: Create and manage Conduit-specific API keys (`condt_...`) with built-in spend tracking
-- **Streaming Support**: Real-time token streaming for responsive applications
+- **Streaming Support**: Real-time token streaming with optional enhanced events (reasoning, tool execution progress, metrics)
 - **Web-Based User Interface**: Administrative dashboard for configuration and monitoring
 - **Enterprise Security Features**: IP filtering, rate limiting, failed login protection, and security headers
 - **Security Dashboard**: Real-time monitoring of security events and access attempts
@@ -381,15 +385,17 @@ curl http://localhost:5000/v1/chat/completions \
 
 ### Using with OpenAI SDKs
 
+Conduit is **100% compatible with standard OpenAI SDKs** - simply point them to your Conduit instance:
+
 ```python
-# Python example
+# Python example with OpenAI SDK (fully compatible)
 from openai import OpenAI
 
 client = OpenAI(
     api_key="condt_yourvirtualkey",
     # Use http://localhost:5000/v1 for local testing,
     # or your configured CONDUIT_API_BASE_URL for deployed instances
-    base_url="http://localhost:5000/v1" 
+    base_url="http://localhost:5000/v1"
 )
 
 response = client.chat.completions.create(
@@ -397,6 +403,53 @@ response = client.chat.completions.create(
     messages=[{"role": "user", "content": "Hello, world!"}]
 )
 ```
+
+#### Enhanced Features with Conduit SDKs
+
+For access to Conduit-specific features like real-time tool execution progress, reasoning events, and performance metrics, use the official Conduit SDKs:
+
+```typescript
+// Node.js/TypeScript example with Conduit SDK
+import { ConduitCoreClient } from '@knn_labs/conduit-core-client';
+import {
+  isChatCompletionChunk,
+  isToolExecutingEvent,
+  isFinalMetrics
+} from '@knn_labs/conduit-core-client';
+
+const client = new ConduitCoreClient({
+  apiKey: 'condt_yourvirtualkey',
+  baseURL: 'http://localhost:5000'
+});
+
+const stream = await client.chat.create({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'What is the weather?' }],
+  stream: true,
+  function_configuration_ids: ['weather-functions']
+});
+
+for await (const event of stream) {
+  if (isChatCompletionChunk(event)) {
+    // Standard OpenAI content
+    const content = event.choices[0]?.delta?.content;
+  }
+  else if (isToolExecutingEvent(event)) {
+    // Conduit extension: real-time tool execution
+    console.log(`Executing ${event.function_name}...`);
+  }
+  else if (isFinalMetrics(event)) {
+    // Conduit extension: performance metrics
+    console.log(`Tokens: ${event.total_tokens}, Speed: ${event.tokens_per_second}`);
+  }
+}
+```
+
+**Key Differences:**
+- **OpenAI SDKs**: ✅ Full compatibility, ignores Conduit extensions
+- **Conduit SDKs**: ✅ Full compatibility + enhanced events (reasoning, tool execution, metrics)
+
+See [Streaming with Tools Guide](docs/api-guides/streaming-with-tools.md) for complete documentation.
 
 
 ## Documentation

@@ -3,6 +3,9 @@ import {
   isChatCompletionChunk,
   isStreamingMetrics,
   isFinalMetrics,
+  isReasoningEvent,
+  isToolExecutingEvent,
+  isToolResultEvent,
   buildMessageContent,
   type StreamingCallbacks,
   type StreamMessageOptions,
@@ -46,6 +49,10 @@ export class SDKChatStreamingAdapter {
         arguments: string;
       };
     }> = [];
+
+    // Track completion state to handle race condition between finish_reason and metrics-final
+    let completionTriggered = false;
+    let lastFinishReason: string | null = null;
 
     try {
       // Get the SDK client with ephemeral key
@@ -177,34 +184,11 @@ export class SDKChatStreamingAdapter {
               // Just continue processing chunks
               continue;
             } else {
-              // stop/length/other = actual completion, end the stream
-              const fallbackMetadata = {
-                model: options.model,
-                finishReason: finishReason,
-                tokensUsed: undefined,
-                completionTokens: undefined,
-                promptTokens: undefined,
-                latency: undefined,
-                timeToFirstToken: undefined,
-                tokensPerSecond: undefined,
-                streaming: true,
-                provider: undefined,
-                toolCalls: toolCalls.length > 0 ? toolCalls : undefined
-              };
-
-              if (callbacks.onComplete) {
-                // Use reasoning as fallback if no regular content was received
-                let finalContent = totalContent;
-                if (totalContent.length === 0 && totalReasoning.length > 0) {
-                  finalContent = totalReasoning;
-                }
-
-                callbacks.onComplete({
-                  content: finalContent,
-                  metadata: fallbackMetadata
-                });
-              }
-              break; // Exit stream processing
+              // stop/length/other = completion detected
+              // Note the finish_reason but DON'T end the stream yet
+              // Wait for metrics-final event which has the actual token counts and timing
+              lastFinishReason = finishReason;
+              // Continue processing to wait for metrics-final event
             }
           }
         } else if (isStreamingMetrics(data)) {
@@ -259,6 +243,9 @@ export class SDKChatStreamingAdapter {
             toolCalls: toolCalls.length > 0 ? toolCalls : undefined
           };
 
+          // Mark completion as triggered so we don't call it again in fallback
+          completionTriggered = true;
+
           if (callbacks.onComplete) {
             // Use reasoning as fallback if no regular content was received
             // This handles models like gpt-oss-20b that non-deterministically output to reasoning
@@ -270,7 +257,91 @@ export class SDKChatStreamingAdapter {
             });
           }
           break; // Stream is complete
+        } else if (isReasoningEvent(data as unknown)) {
+          // Handle reasoning event - sent as "event: reasoning"
+          // Cast through unknown to work with SDK stream type
+          const reasoningEvent = data as unknown as { content: string };
+          const reasoning = reasoningEvent.content;
+          if (reasoning) {
+            totalReasoning += reasoning;
+
+            // Call the reasoning callback if available
+            if (callbacks.onReasoning) {
+              callbacks.onReasoning(reasoning, totalReasoning);
+            }
+          }
+        } else if (isToolExecutingEvent(data as unknown)) {
+          // Handle tool execution status event - sent as "event: tool-executing"
+          // Provides real-time feedback during function calling
+          // Cast through unknown to work with SDK stream type
+          const toolEvent = data as unknown as {
+            tool_call_id?: string;
+            function_name?: string;
+            status: string;
+            result?: unknown;
+            cost?: number;
+            error_message?: string;
+            function_execution_id?: string;
+          };
+
+          if (callbacks.onToolExecuting) {
+            callbacks.onToolExecuting({
+              tool_call_id: toolEvent.tool_call_id,
+              function_name: toolEvent.function_name,
+              status: toolEvent.status,
+              result: toolEvent.result,
+              cost: toolEvent.cost,
+              error_message: toolEvent.error_message,
+              function_execution_id: toolEvent.function_execution_id
+            });
+          }
+        } else if (isToolResultEvent(data as unknown)) {
+          // Handle individual tool result event - sent as "event: tool-result"
+          // Optional detailed logging of tool execution outcomes
+          // Cast through unknown to work with SDK stream type
+          const toolResultEvent = data as unknown as {
+            tool_call_id: string;
+            result: unknown;
+            error?: string;
+          };
+
+          if (callbacks.onToolResult) {
+            callbacks.onToolResult({
+              tool_call_id: toolResultEvent.tool_call_id,
+              result: toolResultEvent.result,
+              error: toolResultEvent.error
+            });
+          }
         }
+      }
+
+      // If stream ended without receiving metrics-final event, use fallback metadata
+      // This can happen if:
+      // 1. Provider doesn't send metrics-final (shouldn't happen with our backend)
+      // 2. Stream was interrupted before metrics-final arrived
+      // 3. Race condition where finish_reason chunk was the last chunk
+      if (!completionTriggered && callbacks.onComplete) {
+        const fallbackMetadata = {
+          model: options.model,
+          finishReason: lastFinishReason ?? 'stop',
+          tokensUsed: undefined,
+          completionTokens: undefined,
+          promptTokens: undefined,
+          latency: undefined,
+          timeToFirstToken: undefined,
+          tokensPerSecond: undefined,
+          streaming: true,
+          provider: undefined,
+          toolCalls: toolCalls.length > 0 ? toolCalls : undefined
+        };
+
+        // Use reasoning as fallback if no regular content was received
+        const finalContent = totalContent.length > 0 ? totalContent : totalReasoning;
+
+        callbacks.onComplete({
+          content: finalContent,
+          metadata: fallbackMetadata
+        });
       }
     } catch (error) {
       // Handle abort separately

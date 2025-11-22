@@ -5,11 +5,22 @@
 
 /**
  * SSE event types from Core API
+ * Combines OpenAI-compatible standard events with Conduit-specific extensions
  */
 export enum SSEEventType {
+  /** Standard OpenAI content chunks containing delta updates */
   Content = 'content',
+  /** Conduit extension: Model reasoning/thinking content separate from main response */
+  Reasoning = 'reasoning',
+  /** Conduit extension: Tool/function execution status and progress updates */
+  ToolExecuting = 'tool-executing',
+  /** Conduit extension: Individual tool execution results (optional, for detailed logging) */
+  ToolResult = 'tool-result',
+  /** Conduit extension: Real-time performance metrics during streaming */
   Metrics = 'metrics',
+  /** Conduit extension: Final performance metrics at stream completion */
   MetricsFinal = 'metrics-final',
+  /** Conduit extension: Error events during streaming */
   Error = 'error'
 }
 

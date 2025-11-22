@@ -90,6 +90,33 @@ namespace ConduitLLM.Http.Services
         }
 
         /// <summary>
+        /// Writes a reasoning event containing model thinking/reasoning content.
+        /// Sent as "event: reasoning" for separate display from main content.
+        /// </summary>
+        public async Task WriteReasoningEventAsync(string reasoning, CancellationToken cancellationToken = default)
+        {
+            await WriteEventAsync("reasoning", new { content = reasoning }, cancellationToken);
+        }
+
+        /// <summary>
+        /// Writes a tool execution status event to provide real-time feedback during function calling.
+        /// Sent as "event: tool-executing" with status and progress information.
+        /// </summary>
+        public async Task WriteToolExecutingEventAsync<T>(T statusData, CancellationToken cancellationToken = default)
+        {
+            await WriteEventAsync("tool-executing", statusData, cancellationToken);
+        }
+
+        /// <summary>
+        /// Writes a tool result event for individual tool execution outcomes (optional, for detailed logging).
+        /// Sent as "event: tool-result" with tool call ID and result data.
+        /// </summary>
+        public async Task WriteToolResultEventAsync<T>(T resultData, CancellationToken cancellationToken = default)
+        {
+            await WriteEventAsync("tool-result", resultData, cancellationToken);
+        }
+
+        /// <summary>
         /// Writes a generic SSE event with specified event type and data.
         /// </summary>
         public async Task WriteEventAsync<T>(string eventType, T data, CancellationToken cancellationToken = default)

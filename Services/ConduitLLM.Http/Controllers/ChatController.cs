@@ -187,9 +187,39 @@ namespace ConduitLLM.Http.Controllers
                                 streamingModel = chunk.Model ?? request.Model;
                                 _logger.LogDebug("Captured streaming usage data: {Usage}", JsonSerializer.Serialize(streamingUsage));
                             }
-                            
-                            // Write content event
-                            await sseWriter.WriteContentEventAsync(chunk);
+
+                            // Route chunks to appropriate event types
+                            // 1. Check for function execution status (Conduit extension)
+                            if (chunk is FunctionExecutionStatusChunk functionStatusChunk)
+                            {
+                                // Send as typed "event: tool-executing" instead of content
+                                await sseWriter.WriteToolExecutingEventAsync(new
+                                {
+                                    tool_call_id = functionStatusChunk.ToolCallId,
+                                    function_name = functionStatusChunk.FunctionName,
+                                    status = functionStatusChunk.Status,
+                                    result = functionStatusChunk.Result,
+                                    cost = functionStatusChunk.Cost,
+                                    error_message = functionStatusChunk.ErrorMessage,
+                                    function_execution_id = functionStatusChunk.FunctionExecutionId
+                                });
+                            }
+                            // 2. Check for reasoning content (Conduit extension)
+                            else if (chunk.Choices?.Count > 0 && !string.IsNullOrEmpty(chunk.Choices[0].Delta?.Reasoning))
+                            {
+                                // Send reasoning as typed "event: reasoning"
+                                // Null-forgiving operator is safe here because we checked IsNullOrEmpty above
+                                await sseWriter.WriteReasoningEventAsync(chunk.Choices[0].Delta.Reasoning!);
+
+                                // Also send the chunk as content (for full compatibility)
+                                // Some clients may want the raw chunk with reasoning field
+                                await sseWriter.WriteContentEventAsync(chunk);
+                            }
+                            // 3. Regular content chunk (OpenAI standard)
+                            else
+                            {
+                                await sseWriter.WriteContentEventAsync(chunk);
+                            }
 
                             // ⚠️ LEGACY FALLBACK TOKEN COUNTING (INACCURATE)
                             // =================================================

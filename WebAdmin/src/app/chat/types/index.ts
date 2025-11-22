@@ -79,6 +79,16 @@ export interface ChatMessage {
     reasoning?: string;
     functionIds?: number[];
     functionNames?: string[];
+    // Tool execution tracking
+    toolExecutions?: Array<{
+      tool_call_id?: string;
+      function_name: string;
+      status: 'started' | 'completed' | 'failed';
+      result?: unknown;
+      cost?: number;
+      error_message?: string;
+      timestamp: number;
+    }>;
     // API request data (for user messages)
     apiRequest?: {
       messages: Array<{

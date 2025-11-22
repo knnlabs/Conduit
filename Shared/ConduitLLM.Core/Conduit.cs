@@ -184,7 +184,7 @@ namespace ConduitLLM.Core
 
             var iteration = 0;
             // Defaults are now applied in ChatController from GlobalSettings, so these are just safety fallbacks
-            var maxIterations = request.MaxAgenticIterations ?? 5;
+            var maxIterations = request.MaxAgenticIterations ?? 20;
             var agenticModeEnabled = request.EnableAgenticMode ?? true;
 
             ILLMClient client = _clientFactory.GetClient(request.Model);

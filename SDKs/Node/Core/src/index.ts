@@ -25,6 +25,9 @@ export type {
   EnhancedSSEEventType,
   StreamingMetrics,
   FinalMetrics,
+  ReasoningEvent,
+  ToolExecutingEvent,
+  ToolResultEvent,
 } from './models/enhanced-streaming';
 
 export type {
@@ -35,6 +38,9 @@ export {
   isChatCompletionChunk,
   isStreamingMetrics,
   isFinalMetrics,
+  isReasoningEvent,
+  isToolExecutingEvent,
+  isToolResultEvent,
 } from './models/enhanced-streaming';
 
 export type {

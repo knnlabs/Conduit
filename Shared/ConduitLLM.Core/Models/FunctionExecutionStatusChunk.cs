@@ -6,6 +6,13 @@ namespace ConduitLLM.Core.Models;
 /// Custom streaming chunk sent during function execution in agentic workflows.
 /// Allows clients to track function execution status in real-time during streaming.
 /// </summary>
+/// <remarks>
+/// DEPRECATED: This class is deprecated in favor of typed SSE events.
+/// The backend now sends tool execution status via "event: tool-executing" SSE events instead of custom chunk types.
+/// This provides better OpenAI compatibility while maintaining real-time function execution tracking.
+/// This class will be removed in a future version.
+/// </remarks>
+[Obsolete("FunctionExecutionStatusChunk is deprecated. The backend now sends tool execution status via typed SSE events (event: tool-executing). This class will be removed in a future version.")]
 public class FunctionExecutionStatusChunk : ChatCompletionChunk
 {
     /// <summary>

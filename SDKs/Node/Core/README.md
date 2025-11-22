@@ -93,6 +93,175 @@ for await (const chunk of stream) {
 }
 ```
 
+### Streaming with Function Calling
+
+Conduit extends the OpenAI streaming API with additional event types for richer real-time experiences. While maintaining full OpenAI compatibility, Conduit streams include:
+
+- 🧠 **Reasoning events** - Model thinking/reasoning content
+- 🔧 **Tool execution events** - Real-time function call progress
+- 📊 **Performance metrics** - Live and final metrics
+
+#### Enhanced Event Types
+
+```typescript
+import {
+  isChatCompletionChunk,
+  isFinalMetrics,
+  isReasoningEvent,
+  isToolExecutingEvent,
+  isStreamingMetrics
+} from '@conduit/core';
+
+const stream = await client.chat.completions.create({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'What is the weather in Paris?' }],
+  stream: true,
+  function_configuration_ids: ['weather-functions'], // Conduit managed functions
+});
+
+let totalContent = '';
+let totalReasoning = '';
+const toolCalls = [];
+
+for await (const event of stream) {
+  // Standard OpenAI chat chunks
+  if (isChatCompletionChunk(event)) {
+    const content = event.choices?.[0]?.delta?.content;
+    if (content) {
+      totalContent += content;
+      process.stdout.write(content);
+    }
+
+    // Handle streaming tool calls
+    const deltaToolCalls = event.choices?.[0]?.delta?.tool_calls;
+    if (deltaToolCalls) {
+      for (const toolCall of deltaToolCalls) {
+        const index = toolCall.index ?? 0;
+        if (!toolCalls[index]) {
+          toolCalls[index] = {
+            id: toolCall.id ?? '',
+            type: 'function',
+            function: {
+              name: toolCall.function?.name ?? '',
+              arguments: toolCall.function?.arguments ?? ''
+            }
+          };
+        } else {
+          // Append arguments incrementally
+          if (toolCall.function?.arguments) {
+            toolCalls[index].function.arguments += toolCall.function.arguments;
+          }
+        }
+      }
+    }
+
+    // Check finish_reason
+    const finishReason = event.choices?.[0]?.finish_reason;
+    if (finishReason === 'tool_calls') {
+      console.warn('\nExecuting tools...');
+      // DO NOT end the stream! Backend will execute tools and continue
+    } else if (finishReason === 'stop') {
+      console.warn('\nStream complete');
+    }
+  }
+
+  // Conduit extension: Reasoning events (model thinking)
+  else if (isReasoningEvent(event)) {
+    totalReasoning += event.content;
+    console.warn(`[Reasoning] ${event.content}`);
+  }
+
+  // Conduit extension: Tool execution progress
+  else if (isToolExecutingEvent(event)) {
+    if (event.status === 'started') {
+      console.warn(`\n🔧 Executing ${event.function_name}...`);
+    } else if (event.status === 'completed') {
+      console.warn(`✅ ${event.function_name} completed`);
+      console.warn(`   Result: ${JSON.stringify(event.result)}`);
+      console.warn(`   Cost: $${event.cost}`);
+    } else if (event.status === 'failed') {
+      console.warn(`❌ ${event.function_name} failed: ${event.error_message}`);
+    }
+  }
+
+  // Conduit extension: Live performance metrics
+  else if (isStreamingMetrics(event)) {
+    console.warn(`Speed: ${event.current_tokens_per_second} tokens/sec`);
+  }
+
+  // Conduit extension: Final metrics
+  else if (isFinalMetrics(event)) {
+    console.warn('\nFinal Metrics:');
+    console.warn(`  Total tokens: ${event.total_tokens}`);
+    console.warn(`  Latency: ${event.total_latency_ms}ms`);
+    console.warn(`  Speed: ${event.tokens_per_second} tokens/sec`);
+    console.warn(`  Provider: ${event.provider}`);
+  }
+}
+
+// Use reasoning as fallback if no content (some models output to reasoning)
+const finalContent = totalContent || totalReasoning;
+console.warn('\n\nFinal content:', finalContent);
+console.warn('Tool calls:', toolCalls);
+```
+
+#### Important: finish_reason Semantics
+
+When streaming with function calling, `finish_reason` has special semantics:
+
+- **`finish_reason: "tool_calls"`** - Tool execution in progress, stream **continues**
+- **`finish_reason: "stop"`** - Actual completion, stream ends
+- **`finish_reason: "length"`** - Max tokens reached, stream ends
+
+**Critical**: Do NOT end the stream when `finish_reason === "tool_calls"`. The backend executes tools and continues streaming the model's response with tool results.
+
+```typescript
+// ✅ Correct handling
+if (finishReason === 'tool_calls') {
+  // Tools executing, keep processing stream
+  continue;
+}
+
+if (finishReason === 'stop' || finishReason === 'length') {
+  // Actual completion
+  break;
+}
+
+// ❌ Wrong - ends too early!
+if (finishReason) {
+  break; // This breaks on "tool_calls" prematurely
+}
+```
+
+#### OpenAI Compatibility
+
+Standard OpenAI clients can consume Conduit streams by ignoring Conduit extensions:
+
+```typescript
+import OpenAI from 'openai';
+
+const openai = new OpenAI({
+  baseURL: 'https://your-conduit-instance.com/v1',
+  apiKey: 'your-virtual-key'
+});
+
+const stream = await openai.chat.completions.create({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Hello!' }],
+  stream: true,
+  tools: [{ type: 'function', function: { name: 'get_weather', ...} }]
+});
+
+for await (const chunk of stream) {
+  // Works exactly like OpenAI API
+  // Conduit extensions (reasoning, tool-executing, metrics) are ignored
+  const content = chunk.choices[0]?.delta?.content;
+  if (content) process.stdout.write(content);
+}
+```
+
+For more details, see the [Streaming with Tools API Guide](../../docs/api-guides/streaming-with-tools.md).
+
 ### React Query Hooks - Streaming
 
 The React Query integration now supports proper streaming with callbacks:

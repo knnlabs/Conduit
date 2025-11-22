@@ -1,5 +1,5 @@
 import { ScrollArea, Stack, Text, Group, Badge, Paper, Code, Collapse, ActionIcon, Alert, HoverCard, CopyButton, Tooltip } from '@mantine/core';
-import { IconUser, IconRobot, IconClock, IconBolt, IconAlertCircle, IconNetwork, IconLock, IconSearch, IconAlertTriangle, IconChevronDown, IconChevronUp, IconInfoCircle, IconCopy, IconCheck, IconCode, IconEye } from '@tabler/icons-react';
+import { IconUser, IconRobot, IconClock, IconBolt, IconAlertCircle, IconNetwork, IconLock, IconSearch, IconAlertTriangle, IconChevronDown, IconChevronUp, IconInfoCircle, IconCopy, IconCheck, IconCode, IconEye, IconTool, IconCircleCheck, IconCircleX, IconLoader } from '@tabler/icons-react';
 import { ChatMessage, ChatErrorType } from '../types';
 import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
@@ -386,7 +386,77 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
               ))}
             </Stack>
           )}
-          
+
+          {/* Tool Execution Progress */}
+          {message.metadata?.toolExecutions && message.metadata.toolExecutions.length > 0 && (
+            <Stack gap="xs">
+              <Group gap="xs">
+                <IconTool size={14} />
+                <Text size="xs" fw={600}>Tool Execution:</Text>
+              </Group>
+              {message.metadata.toolExecutions.map((execution, idx) => {
+                const isStarted = execution.status === 'started';
+                const isCompleted = execution.status === 'completed';
+                const isFailed = execution.status === 'failed';
+
+                return (
+                  <Paper
+                    key={execution.tool_call_id ?? `${execution.function_name}-${idx}`}
+                    p="xs"
+                    radius="sm"
+                    withBorder
+                    style={{
+                      backgroundColor: isFailed
+                        ? 'var(--mantine-color-red-light)'
+                        : isCompleted
+                        ? 'var(--mantine-color-green-light)'
+                        : 'var(--mantine-color-blue-light)'
+                    }}
+                  >
+                    <Group justify="space-between" wrap="nowrap">
+                      <Group gap="xs">
+                        {isStarted && <IconLoader size={14} className="rotating-icon" />}
+                        {isCompleted && <IconCircleCheck size={14} color="var(--mantine-color-green-6)" />}
+                        {isFailed && <IconCircleX size={14} color="var(--mantine-color-red-6)" />}
+                        <Text size="xs" fw={500}>{execution.function_name}</Text>
+                      </Group>
+                      <Badge
+                        size="xs"
+                        color={isFailed ? 'red' : isCompleted ? 'green' : 'blue'}
+                        variant="light"
+                      >
+                        {execution.status}
+                      </Badge>
+                    </Group>
+
+                    {execution.error_message && (
+                      <Text size="xs" c="red" mt={4}>
+                        Error: {execution.error_message}
+                      </Text>
+                    )}
+
+                    {execution.result !== undefined && (
+                      <Code block mt={4} style={{ fontSize: '0.7rem', maxHeight: '100px', overflow: 'auto' }}>
+                        {(() => {
+                          const result = execution.result as unknown;
+                          return typeof result === 'string'
+                            ? result
+                            : JSON.stringify(result, null, 2);
+                        })()}
+                      </Code>
+                    )}
+
+                    {execution.cost !== undefined && execution.cost > 0 && (
+                      <Text size="xs" c="dimmed" mt={4}>
+                        Cost: ${execution.cost.toFixed(4)}
+                      </Text>
+                    )}
+                  </Paper>
+                );
+              })}
+            </Stack>
+          )}
+
           {/* Show reasoning if present - collapsible (only in normal view) */}
           {reasoningText && !isRawView && (
             <Paper 

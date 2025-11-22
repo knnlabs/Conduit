@@ -368,6 +368,46 @@ export class ChatStreamingManager {
         break;
       }
 
+      case SSEEventType.Reasoning: {
+        const reasoningData = event.data as { content?: string };
+        const reasoning = reasoningData?.content;
+
+        if (reasoning !== undefined && reasoning !== null && reasoning !== '') {
+          this.state.totalReasoning += reasoning;
+          callbacks.onReasoning?.(reasoning, this.state.totalReasoning);
+          this.log('Reasoning content received:', reasoning.slice(0, 100));
+        }
+        break;
+      }
+
+      case SSEEventType.ToolExecuting: {
+        const toolData = event.data as {
+          tool_call_id?: string;
+          function_name?: string;
+          status: string;
+          result?: unknown;
+          cost?: number;
+          error_message?: string;
+          function_execution_id?: string;
+        };
+
+        this.log('Tool execution event:', toolData.function_name, toolData.status);
+        callbacks.onToolExecuting?.(toolData);
+        break;
+      }
+
+      case SSEEventType.ToolResult: {
+        const toolResultData = event.data as {
+          tool_call_id: string;
+          result: unknown;
+          error?: string;
+        };
+
+        this.log('Tool result received for:', toolResultData.tool_call_id);
+        callbacks.onToolResult?.(toolResultData);
+        break;
+      }
+
       case SSEEventType.Error: {
         this.log('Received SSE error event:', event);
         const errorData = event.data as {
