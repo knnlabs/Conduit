@@ -10,17 +10,21 @@ namespace ConduitLLM.Core.Services;
 
 /// <summary>
 /// Service for discovering function configurations and converting them to LLM-compatible Tool definitions.
+/// Supports caching via IFunctionDiscoveryCacheService for improved performance.
 /// </summary>
 public class FunctionDiscoveryService : IFunctionDiscoveryService
 {
     private readonly IFunctionConfigurationRepository _functionConfigRepository;
+    private readonly IFunctionDiscoveryCacheService? _cacheService;
     private readonly ILogger<FunctionDiscoveryService> _logger;
 
     public FunctionDiscoveryService(
         IFunctionConfigurationRepository functionConfigRepository,
+        IFunctionDiscoveryCacheService? cacheService,
         ILogger<FunctionDiscoveryService> logger)
     {
         _functionConfigRepository = functionConfigRepository ?? throw new ArgumentNullException(nameof(functionConfigRepository));
+        _cacheService = cacheService; // Nullable - caching is optional
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -37,7 +41,22 @@ public class FunctionDiscoveryService : IFunctionDiscoveryService
         _logger.LogDebug("Loading {Count} function configurations for virtual key {VirtualKeyId}",
             functionConfigurationIds.Count, virtualKeyId);
 
-        // Load all configurations
+        // Try to get from cache if caching is enabled
+        if (_cacheService != null)
+        {
+            var cachedTools = await _cacheService.GetCachedToolsAsync(functionConfigurationIds, cancellationToken);
+            if (cachedTools != null)
+            {
+                _logger.LogDebug("Cache hit: Loaded {Count} tools from cache for virtual key {VirtualKeyId}",
+                    cachedTools.Count, virtualKeyId);
+                return cachedTools;
+            }
+
+            _logger.LogDebug("Cache miss: Loading {Count} function configurations from database for virtual key {VirtualKeyId}",
+                functionConfigurationIds.Count, virtualKeyId);
+        }
+
+        // Load all configurations from database
         var configurations = await _functionConfigRepository.GetByIdsAsync(functionConfigurationIds, cancellationToken);
 
         // Validate all requested configurations were found
@@ -68,6 +87,23 @@ public class FunctionDiscoveryService : IFunctionDiscoveryService
             {
                 _logger.LogError(ex, "Failed to convert function configuration {ConfigId} to Tool", config.Id);
                 throw new InvalidOperationException($"Failed to convert function configuration {config.Id} to Tool", ex);
+            }
+        }
+
+        // Cache the tools if caching is enabled
+        if (_cacheService != null)
+        {
+            try
+            {
+                await _cacheService.SetCachedToolsAsync(functionConfigurationIds, tools, ttlMinutes: null, cancellationToken);
+                _logger.LogDebug("Cached {Count} tools for function configurations: {ConfigIds}",
+                    tools.Count, string.Join(", ", functionConfigurationIds));
+            }
+            catch (Exception ex)
+            {
+                // Log but don't fail if caching fails
+                _logger.LogWarning(ex, "Failed to cache tools for function configurations: {ConfigIds}",
+                    string.Join(", ", functionConfigurationIds));
             }
         }
 

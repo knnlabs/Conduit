@@ -505,9 +505,13 @@ public partial class Program
         
         // Register Discovery Cache service for model discovery endpoint caching
         builder.Services.AddDiscoveryCache(builder.Configuration);
-        
+
         // Register Discovery Cache warming as a hosted service (runs on startup)
         builder.Services.AddLeaderElectedHostedService<DiscoveryCacheWarmingService>("DiscoveryCacheWarmingService");
+
+        // Register Function Discovery Cache service for function tool definition caching
+        builder.Services.AddFunctionDiscoveryCache(builder.Configuration);
+        Console.WriteLine("[Conduit] Function Discovery Cache registered - function tool definitions will be cached based on per-function TTL");
 
         // Register Redis batch operations for optimized cache management
         builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IRedisBatchOperations, ConduitLLM.Http.Services.RedisBatchOperations>();

@@ -36,6 +36,14 @@ public class UpdateFunctionConfigurationRequest
     public bool? IsEnabled { get; set; }
 
     /// <summary>
+    /// Cache TTL in minutes for function discovery results (null = no caching for this function)
+    /// When set, this function's tool definition will be cached for the specified duration.
+    /// Requires global Functions.DiscoveryCacheEnabled setting to be true.
+    /// </summary>
+    [Range(1, 10080)] // 1 minute to 1 week
+    public int? CacheTtlMinutes { get; set; }
+
+    /// <summary>
     /// Maximum execution timeout in seconds
     /// </summary>
     [Range(1, 3600)]

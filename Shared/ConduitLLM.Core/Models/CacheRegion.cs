@@ -86,6 +86,14 @@ namespace ConduitLLM.Core.Models
         ModelDiscovery,
 
         /// <summary>
+        /// Function discovery results showing available function tools and their definitions.
+        /// Cached per-function with configurable TTL (from FunctionConfiguration.CacheTtlMinutes).
+        /// Requires global Functions.DiscoveryCacheEnabled setting to be true.
+        /// Invalidated immediately when function configurations change.
+        /// </summary>
+        FunctionDiscovery,
+
+        /// <summary>
         /// LLM completion responses cached for cost optimization.
         /// Configurable TTL based on use case (typically 15-60 minutes).
         /// Automatically bypassed for streaming requests.

@@ -65,6 +65,13 @@ public class FunctionConfiguration
     public int? TimeoutSeconds { get; set; }
 
     /// <summary>
+    /// Cache TTL in minutes for function discovery results (null = no caching for this function)
+    /// When set, this function's tool definition will be cached for the specified duration.
+    /// Requires global Functions.DiscoveryCacheEnabled setting to be true.
+    /// </summary>
+    public int? CacheTtlMinutes { get; set; }
+
+    /// <summary>
     /// Maximum number of retry attempts on transient failures
     /// </summary>
     public int? MaxRetries { get; set; } = 3;

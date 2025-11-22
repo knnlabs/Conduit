@@ -43,6 +43,10 @@ public partial class Program
             x.AddConsumer<ConduitLLM.Http.Consumers.IpFilterCacheInvalidationHandler>();
             x.AddConsumer<ConduitLLM.Http.EventHandlers.DiscoveryCacheInvalidationHandler>();
 
+            // Add Function Discovery Cache invalidation consumers
+            x.AddConsumer<ConduitLLM.Core.Consumers.FunctionConfigurationCacheInvalidationHandler>();
+            x.AddConsumer<ConduitLLM.Core.Consumers.FunctionDiscoveryCacheInvalidationRequestHandler>();
+
             // Add LLM cache toggle consumer for runtime caching control
             x.AddConsumer<ConduitLLM.Http.Consumers.LLMCacheToggleConsumer>();
             

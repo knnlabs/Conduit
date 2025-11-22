@@ -145,6 +145,10 @@ public partial class Program
             // Register consumers for Admin API cache invalidation
             x.AddConsumer<ConduitLLM.Core.Consumers.GlobalSettingCacheInvalidationHandler>();
 
+            // Add Function Discovery Cache invalidation consumers
+            x.AddConsumer<ConduitLLM.Core.Consumers.FunctionConfigurationCacheInvalidationHandler>();
+            x.AddConsumer<ConduitLLM.Core.Consumers.FunctionDiscoveryCacheInvalidationRequestHandler>();
+
             // Register consumers for Admin API SignalR notifications
             // Provider health consumer removed
 

@@ -1,6 +1,8 @@
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Core.Events;
 using ConduitLLM.Functions.Interfaces;
+using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,6 +17,7 @@ namespace ConduitLLM.Admin.Controllers;
 public class FunctionConfigurationsController : ControllerBase
 {
     private readonly IFunctionConfigurationRepository _configurationRepository;
+    private readonly IPublishEndpoint? _publishEndpoint;
     private readonly ILogger<FunctionConfigurationsController> _logger;
 
     /// <summary>
@@ -22,9 +25,11 @@ public class FunctionConfigurationsController : ControllerBase
     /// </summary>
     public FunctionConfigurationsController(
         IFunctionConfigurationRepository configurationRepository,
+        IPublishEndpoint? publishEndpoint,
         ILogger<FunctionConfigurationsController> logger)
     {
         _configurationRepository = configurationRepository ?? throw new ArgumentNullException(nameof(configurationRepository));
+        _publishEndpoint = publishEndpoint; // Nullable for in-memory mode
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -156,6 +161,37 @@ public class FunctionConfigurationsController : ControllerBase
             // Fetch the created entity to return
             var created = await _configurationRepository.GetByIdAsync(id);
 
+            // Publish FunctionConfigurationChanged event for cache invalidation
+            if (_publishEndpoint != null && created != null)
+            {
+                try
+                {
+                    await _publishEndpoint.Publish(new FunctionConfigurationChanged
+                    {
+                        FunctionConfigurationId = created.Id,
+                        ConfigurationName = created.ConfigurationName,
+                        ProviderType = created.ProviderType.ToString(),
+                        Purpose = created.Purpose.ToString(),
+                        ChangeType = "Created",
+                        ChangedProperties = new[] { "Created" },
+                        IsEnabledChanged = false,
+                        CacheTtlChanged = false,
+                        CorrelationId = Guid.NewGuid().ToString()
+                    });
+
+                    _logger.LogInformation(
+                        "Published FunctionConfigurationChanged event for created configuration '{ConfigName}' (ID: {ConfigId})",
+                        created.ConfigurationName, created.Id);
+                }
+                catch (Exception publishEx)
+                {
+                    // Log but don't fail the request if event publishing fails
+                    _logger.LogError(publishEx,
+                        "Failed to publish FunctionConfigurationChanged event for created configuration '{ConfigName}' (ID: {ConfigId})",
+                        created.ConfigurationName, created.Id);
+                }
+            }
+
             return CreatedAtAction(
                 nameof(GetConfigurationById),
                 new { id },
@@ -195,6 +231,28 @@ public class FunctionConfigurationsController : ControllerBase
                 return BadRequest(new ErrorResponseDto("ID mismatch"));
             }
 
+            // Get existing configuration to detect changes
+            var existing = await _configurationRepository.GetByIdAsync(id);
+            if (existing == null)
+            {
+                return NotFound(new ErrorResponseDto("Function configuration not found"));
+            }
+
+            // Detect changes for event publishing
+            bool isEnabledChanged = existing.IsEnabled != configuration.IsEnabled;
+            bool cacheTtlChanged = existing.CacheTtlMinutes != configuration.CacheTtlMinutes;
+            var changedProperties = new List<string>();
+            if (existing.ConfigurationName != configuration.ConfigurationName) changedProperties.Add("ConfigurationName");
+            if (existing.ProviderType != configuration.ProviderType) changedProperties.Add("ProviderType");
+            if (existing.Purpose != configuration.Purpose) changedProperties.Add("Purpose");
+            if (existing.IsEnabled != configuration.IsEnabled) changedProperties.Add("IsEnabled");
+            if (existing.BaseUrl != configuration.BaseUrl) changedProperties.Add("BaseUrl");
+            if (existing.TimeoutSeconds != configuration.TimeoutSeconds) changedProperties.Add("TimeoutSeconds");
+            if (existing.CacheTtlMinutes != configuration.CacheTtlMinutes) changedProperties.Add("CacheTtlMinutes");
+            if (existing.ProviderSettings != configuration.ProviderSettings) changedProperties.Add("ProviderSettings");
+            if (existing.ParameterSchema != configuration.ParameterSchema) changedProperties.Add("ParameterSchema");
+            if (existing.Description != configuration.Description) changedProperties.Add("Description");
+
             await _configurationRepository.UpdateAsync(configuration);
 
             // Fetch the updated entity to return
@@ -203,6 +261,37 @@ public class FunctionConfigurationsController : ControllerBase
             if (updated == null)
             {
                 return NotFound(new ErrorResponseDto("Function configuration not found"));
+            }
+
+            // Publish FunctionConfigurationChanged event for cache invalidation
+            if (_publishEndpoint != null && changedProperties.Count > 0)
+            {
+                try
+                {
+                    await _publishEndpoint.Publish(new FunctionConfigurationChanged
+                    {
+                        FunctionConfigurationId = updated.Id,
+                        ConfigurationName = updated.ConfigurationName,
+                        ProviderType = updated.ProviderType.ToString(),
+                        Purpose = updated.Purpose.ToString(),
+                        ChangeType = "Updated",
+                        ChangedProperties = changedProperties.ToArray(),
+                        IsEnabledChanged = isEnabledChanged,
+                        CacheTtlChanged = cacheTtlChanged,
+                        CorrelationId = Guid.NewGuid().ToString()
+                    });
+
+                    _logger.LogInformation(
+                        "Published FunctionConfigurationChanged event for updated configuration '{ConfigName}' (ID: {ConfigId}, Changed: {ChangedProps})",
+                        updated.ConfigurationName, updated.Id, string.Join(", ", changedProperties));
+                }
+                catch (Exception publishEx)
+                {
+                    // Log but don't fail the request if event publishing fails
+                    _logger.LogError(publishEx,
+                        "Failed to publish FunctionConfigurationChanged event for updated configuration '{ConfigName}' (ID: {ConfigId})",
+                        updated.ConfigurationName, updated.Id);
+                }
             }
 
             return Ok(updated);
@@ -227,7 +316,45 @@ public class FunctionConfigurationsController : ControllerBase
     {
         try
         {
+            // Get the configuration before deleting for event publishing
+            var toDelete = await _configurationRepository.GetByIdAsync(id);
+            if (toDelete == null)
+            {
+                return NotFound(new ErrorResponseDto("Function configuration not found"));
+            }
+
             await _configurationRepository.DeleteAsync(id);
+
+            // Publish FunctionConfigurationChanged event for cache invalidation
+            if (_publishEndpoint != null)
+            {
+                try
+                {
+                    await _publishEndpoint.Publish(new FunctionConfigurationChanged
+                    {
+                        FunctionConfigurationId = toDelete.Id,
+                        ConfigurationName = toDelete.ConfigurationName,
+                        ProviderType = toDelete.ProviderType.ToString(),
+                        Purpose = toDelete.Purpose.ToString(),
+                        ChangeType = "Deleted",
+                        ChangedProperties = new[] { "Deleted" },
+                        IsEnabledChanged = false,
+                        CacheTtlChanged = false,
+                        CorrelationId = Guid.NewGuid().ToString()
+                    });
+
+                    _logger.LogInformation(
+                        "Published FunctionConfigurationChanged event for deleted configuration '{ConfigName}' (ID: {ConfigId})",
+                        toDelete.ConfigurationName, toDelete.Id);
+                }
+                catch (Exception publishEx)
+                {
+                    // Log but don't fail the request if event publishing fails
+                    _logger.LogError(publishEx,
+                        "Failed to publish FunctionConfigurationChanged event for deleted configuration '{ConfigName}' (ID: {ConfigId})",
+                        toDelete.ConfigurationName, toDelete.Id);
+                }
+            }
 
             return NoContent();
         }

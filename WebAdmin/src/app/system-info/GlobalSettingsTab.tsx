@@ -28,25 +28,29 @@ import {
   IconChartBar,
 } from '@tabler/icons-react';
 import { useState } from 'react';
-import type { GlobalSettingDto, GlobalSettingCacheStats } from '@knn_labs/conduit-admin-client';
+import type { GlobalSettingDto, GlobalSettingCacheStats, FunctionDiscoveryCacheStatistics } from '@knn_labs/conduit-admin-client';
 
 interface GlobalSettingsTabProps {
   settings: GlobalSettingDto[];
   cacheStats: GlobalSettingCacheStats | null;
+  functionDiscoveryCacheStats: FunctionDiscoveryCacheStatistics | null;
   onUpdate: (id: number, value: string, description?: string) => Promise<void>;
   onCreate: (key: string, value: string, description?: string) => Promise<void>;
   onDelete: (id: number, key: string) => Promise<void>;
   onReloadCache: () => Promise<void>;
+  onInvalidateFunctionDiscoveryCache: () => Promise<void>;
   isLoading: boolean;
 }
 
 export function GlobalSettingsTab({
   settings,
   cacheStats,
+  functionDiscoveryCacheStats,
   onUpdate,
   onCreate,
   onDelete,
   onReloadCache,
+  onInvalidateFunctionDiscoveryCache,
   isLoading,
 }: GlobalSettingsTabProps) {
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -162,6 +166,63 @@ export function GlobalSettingsTab({
           <Text size="xs" c="dimmed" mt="md">
             Last loaded: {new Date(cacheStats.lastLoadTime).toLocaleString()}
           </Text>
+        </Card>
+      )}
+
+      {/* Function Discovery Cache Statistics */}
+      {functionDiscoveryCacheStats && (
+        <Card shadow="sm" p="md" radius="md" withBorder>
+          <Group justify="space-between" mb="md">
+            <Group gap="xs">
+              <IconChartBar size={20} />
+              <Title order={4}>Function Discovery Cache</Title>
+            </Group>
+            <Button
+              variant="light"
+              color="red"
+              leftSection={<IconTrash size={16} />}
+              onClick={() => void onInvalidateFunctionDiscoveryCache()}
+              loading={isLoading}
+              size="sm"
+            >
+              Invalidate Cache
+            </Button>
+          </Group>
+
+          <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
+            <Paper p="md" withBorder>
+              <Text size="xs" c="dimmed" mb={4}>Cache Enabled</Text>
+              <Badge color={functionDiscoveryCacheStats.isEnabled ? 'green' : 'gray'} size="lg" variant="light">
+                {functionDiscoveryCacheStats.isEnabled ? 'Enabled' : 'Disabled'}
+              </Badge>
+            </Paper>
+
+            <Paper p="md" withBorder>
+              <Text size="xs" c="dimmed" mb={4}>Cached Entries</Text>
+              <Text size="xl" fw={700}>{functionDiscoveryCacheStats.totalEntries}</Text>
+            </Paper>
+
+            <Paper p="md" withBorder>
+              <Text size="xs" c="dimmed" mb={4}>Cache Hits</Text>
+              <Text size="xl" fw={700}>{functionDiscoveryCacheStats.cacheHits.toLocaleString()}</Text>
+            </Paper>
+
+            <Paper p="md" withBorder>
+              <Text size="xs" c="dimmed" mb={4}>Cache Misses</Text>
+              <Text size="xl" fw={700}>{functionDiscoveryCacheStats.cacheMisses.toLocaleString()}</Text>
+            </Paper>
+          </SimpleGrid>
+
+          {functionDiscoveryCacheStats.isEnabled && (
+            <Text size="xs" c="dimmed" mt="md">
+              Configure per-function cache TTL in Function Configurations. Controlled by <Text span ff="monospace">Functions.DiscoveryCacheEnabled</Text> global setting.
+            </Text>
+          )}
+          {!functionDiscoveryCacheStats.isEnabled && (
+            <Text size="xs" c="orange" mt="md">
+              Function discovery caching is disabled. Enable it via the <Text span ff="monospace">Functions.DiscoveryCacheEnabled</Text> global setting below.
+            </Text>
+          )}
         </Card>
       )}
 

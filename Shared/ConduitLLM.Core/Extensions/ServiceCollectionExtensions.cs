@@ -103,13 +103,33 @@ namespace ConduitLLM.Core.Extensions
             // Register configuration options
             services.Configure<DiscoveryCacheOptions>(
                 configuration.GetSection("Discovery"));
-            
+
             // Register discovery cache service as singleton for better performance
             services.AddSingleton<IDiscoveryCacheService, DiscoveryCacheService>();
-            
+
             // Ensure memory cache is registered
             services.AddMemoryCache();
-            
+
+            return services;
+        }
+
+        /// <summary>
+        /// Adds the ConduitLLM Function Discovery Cache services to the service collection.
+        /// Caches function tool definitions with per-function TTL and global enable/disable toggle.
+        /// </summary>
+        /// <param name="services">The service collection to add services to.</param>
+        /// <param name="configuration">The configuration instance.</param>
+        /// <returns>The service collection for chaining.</returns>
+        public static IServiceCollection AddFunctionDiscoveryCache(
+            this IServiceCollection services,
+            IConfiguration configuration)
+        {
+            // Register function discovery cache service as scoped (depends on scoped repositories)
+            services.AddScoped<IFunctionDiscoveryCacheService, FunctionDiscoveryCacheService>();
+
+            // Ensure memory cache is registered
+            services.AddMemoryCache();
+
             return services;
         }
 

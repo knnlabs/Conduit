@@ -28,7 +28,7 @@ import {
 } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
-import { SystemInfoDto, LLMCacheControlDto, GlobalSettingDto, GlobalSettingCacheStats } from '@knn_labs/conduit-admin-client';
+import { SystemInfoDto, LLMCacheControlDto, GlobalSettingDto, GlobalSettingCacheStats, FunctionDiscoveryCacheStatistics } from '@knn_labs/conduit-admin-client';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { formatUptime } from './helpers';
 import { SystemOverviewTab } from './SystemOverviewTab';
@@ -51,6 +51,7 @@ export default function SystemInfoPage() {
   const [error, setError] = useState<string | null>(null);
   const [globalSettings, setGlobalSettings] = useState<GlobalSettingDto[]>([]);
   const [globalSettingsCacheStats, setGlobalSettingsCacheStats] = useState<GlobalSettingCacheStats | null>(null);
+  const [functionDiscoveryCacheStats, setFunctionDiscoveryCacheStats] = useState<FunctionDiscoveryCacheStatistics | null>(null);
   const [isLoadingSettings, setIsLoadingSettings] = useState(false);
 
   useEffect(() => {
@@ -183,6 +184,9 @@ export default function SystemInfoPage() {
       // Fetch cache stats separately
       const stats = await withAdminClient(client => client.settings.getCacheStats());
       setGlobalSettingsCacheStats(stats);
+
+      // Fetch function discovery cache stats
+      await fetchFunctionDiscoveryCache();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('Error fetching global settings:', errorMessage);
@@ -308,6 +312,40 @@ export default function SystemInfoPage() {
       notifications.show({
         title: 'Error',
         message: `Failed to reload cache: ${errorMessage}`,
+        color: 'red',
+      });
+      throw error;
+    }
+  };
+
+  const fetchFunctionDiscoveryCache = async () => {
+    try {
+      const stats = await withAdminClient(client => client.system.getFunctionDiscoveryCacheStats());
+      setFunctionDiscoveryCacheStats(stats);
+    } catch (error) {
+      // Silently fail - cache stats are optional
+      console.warn('Failed to fetch function discovery cache stats:', error);
+      setFunctionDiscoveryCacheStats(null);
+    }
+  };
+
+  const handleInvalidateFunctionDiscoveryCache = async () => {
+    try {
+      await withAdminClient(client => client.system.invalidateFunctionDiscoveryCache());
+
+      notifications.show({
+        title: 'Success',
+        message: 'Function discovery cache invalidated successfully',
+        color: 'green',
+      });
+
+      // Refresh cache stats
+      await fetchFunctionDiscoveryCache();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      notifications.show({
+        title: 'Error',
+        message: `Failed to invalidate function discovery cache: ${errorMessage}`,
         color: 'red',
       });
       throw error;
@@ -497,10 +535,12 @@ export default function SystemInfoPage() {
           <GlobalSettingsTab
             settings={globalSettings}
             cacheStats={globalSettingsCacheStats}
+            functionDiscoveryCacheStats={functionDiscoveryCacheStats}
             onUpdate={handleUpdateSetting}
             onCreate={handleCreateSetting}
             onDelete={handleDeleteSetting}
             onReloadCache={handleReloadCache}
+            onInvalidateFunctionDiscoveryCache={handleInvalidateFunctionDiscoveryCache}
             isLoading={isLoadingSettings}
           />
         </Tabs.Panel>

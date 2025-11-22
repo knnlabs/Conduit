@@ -14,6 +14,7 @@ public class FunctionConfigurationDto
     public ExecutionMode DefaultExecutionMode { get; set; }
     public string? BaseUrl { get; set; }
     public bool IsEnabled { get; set; }
+    public int? CacheTtlMinutes { get; set; }
     public int? TimeoutSeconds { get; set; }
     public int? MaxRetries { get; set; }
     public string? ProviderSettings { get; set; }

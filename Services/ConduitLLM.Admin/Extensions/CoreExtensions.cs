@@ -80,6 +80,10 @@ namespace ConduitLLM.Admin.Extensions
             // SystemInfoController has IDiscoveryCacheService? as nullable dependency
             // If needed in the future, must first register AddCacheManager(configuration)
 
+            // Add Function Discovery Cache for function tool definition caching
+            services.AddFunctionDiscoveryCache(configuration);
+            Console.WriteLine("[ConduitLLM.Admin] Function Discovery Cache registered - function tool definitions will be cached based on per-function TTL");
+
             // Add Provider Registry - single source of truth for provider metadata
             services.AddSingleton<IProviderMetadataRegistry, ProviderMetadataRegistry>();
             Console.WriteLine("[ConduitLLM.Admin] Provider Registry registered - centralized provider metadata management enabled");
