@@ -124,11 +124,14 @@ export class SDKChatStreamingAdapter {
             }
           }
 
-          // Also handle reasoning content (for models like gpt-oss-20b that output to reasoning)
-          const reasoning = data.choices?.[0]?.delta?.reasoning;
-          if (reasoning) {
-            totalReasoning += reasoning;
-          }
+          // Note: We do NOT accumulate delta.reasoning here because:
+          // 1. The backend sends reasoning via dedicated "event: reasoning" SSE events
+          // 2. It also includes delta.reasoning in chunks for compatibility
+          // 3. Accumulating from both sources causes text duplication
+          // 4. We only accumulate from the reasoning event (lines 260-272)
+          //
+          // If a provider sends ONLY delta.reasoning without reasoning events,
+          // that's a backend issue that should be fixed by emitting reasoning events.
 
           // Handle tool calls in streaming response
           const deltaToolCalls = data.choices?.[0]?.delta?.tool_calls as Array<{
