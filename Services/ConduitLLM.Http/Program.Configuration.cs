@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ConduitLLM.Configuration;
+using ConduitLLM.Core.Converters;
 
 public partial class Program
 {
@@ -27,7 +28,8 @@ public partial class Program
         var jsonSerializerOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            Converters = { new UtcDateTimeConverter(), new NullableUtcDateTimeConverter() }
         };
 
         // Store JsonSerializerOptions in the builder's services for later use

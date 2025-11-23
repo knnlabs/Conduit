@@ -3,6 +3,7 @@ using System.Reflection;
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Extensions;
+using ConduitLLM.Core.Converters;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Providers.Extensions;
 
@@ -41,6 +42,11 @@ public partial class Program
                 // IMPORTANT: Make JSON deserialization case-insensitive to prevent bugs
                 // This allows the API to accept both "initialBalance" and "InitialBalance"
                 options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+
+                // Ensure all DateTime values serialize as UTC with 'Z' suffix
+                // Fixes issue where EF Core loses DateTimeKind metadata from PostgreSQL
+                options.JsonSerializerOptions.Converters.Add(new UtcDateTimeConverter());
+                options.JsonSerializerOptions.Converters.Add(new NullableUtcDateTimeConverter());
             });
         builder.Services.AddEndpointsApiExplorer();
 
