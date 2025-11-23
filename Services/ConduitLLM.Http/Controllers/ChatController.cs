@@ -160,7 +160,14 @@ namespace ConduitLLM.Http.Controllers
                         var chunkCount = 0;
                         var firstChunkTime = DateTime.UtcNow;
                         
-                        await foreach (var chunk in _conduit.StreamChatCompletionAsync(request, null, cancellationToken))
+                        await foreach (var chunk in _conduit.StreamChatCompletionAsync(
+                            request,
+                            null,
+                            onToolExecutingEvent: async (eventData, ct) =>
+                            {
+                                await sseWriter.WriteToolExecutingEventAsync(eventData, ct);
+                            },
+                            cancellationToken))
                         {
                             chunkCount++;
                             if (chunkCount == 1)
@@ -189,23 +196,8 @@ namespace ConduitLLM.Http.Controllers
                             }
 
                             // Route chunks to appropriate event types
-                            // 1. Check for function execution status (Conduit extension)
-                            if (chunk is FunctionExecutionStatusChunk functionStatusChunk)
-                            {
-                                // Send as typed "event: tool-executing" instead of content
-                                await sseWriter.WriteToolExecutingEventAsync(new
-                                {
-                                    tool_call_id = functionStatusChunk.ToolCallId,
-                                    function_name = functionStatusChunk.FunctionName,
-                                    status = functionStatusChunk.Status,
-                                    result = functionStatusChunk.Result,
-                                    cost = functionStatusChunk.Cost,
-                                    error_message = functionStatusChunk.ErrorMessage,
-                                    function_execution_id = functionStatusChunk.FunctionExecutionId
-                                });
-                            }
-                            // 2. Check for reasoning content (Conduit extension)
-                            else if (chunk.Choices?.Count > 0 && !string.IsNullOrEmpty(chunk.Choices[0].Delta?.Reasoning))
+                            // 1. Check for reasoning content (Conduit extension)
+                            if (chunk.Choices?.Count > 0 && !string.IsNullOrEmpty(chunk.Choices[0].Delta?.Reasoning))
                             {
                                 // Send reasoning as typed "event: reasoning"
                                 // Null-forgiving operator is safe here because we checked IsNullOrEmpty above
@@ -215,7 +207,7 @@ namespace ConduitLLM.Http.Controllers
                                 // Some clients may want the raw chunk with reasoning field
                                 await sseWriter.WriteContentEventAsync(chunk);
                             }
-                            // 3. Regular content chunk (OpenAI standard)
+                            // 2. Regular content chunk (OpenAI standard)
                             else
                             {
                                 await sseWriter.WriteContentEventAsync(chunk);

@@ -98,6 +98,7 @@ namespace ConduitLLM.Core
         /// </summary>
         /// <param name="request">The chat completion request, including the target model alias.</param>
         /// <param name="apiKey">Optional API key to override the configured key for this request.</param>
+        /// <param name="onToolExecutingEvent">Optional callback invoked when tool execution status changes (started, completed, failed). Used to emit real-time SSE events for agentic workflows.</param>
         /// <param name="cancellationToken">A token to cancel the operation.</param>
         /// <returns>An asynchronous enumerable of chat completion chunks from the selected LLM provider.</returns>
         /// <exception cref="ArgumentNullException">Thrown if the request is null.</exception>
@@ -108,6 +109,7 @@ namespace ConduitLLM.Core
         public async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
             ChatCompletionRequest request,
             string? apiKey = null,
+            Func<object, CancellationToken, Task>? onToolExecutingEvent = null,
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(request);
@@ -125,7 +127,7 @@ namespace ConduitLLM.Core
             if (hasFunctionConfigs)
             {
                 // Use streaming agentic loop
-                await foreach (var chunk in StreamChatCompletionWithFunctionsAsync(request, apiKey, cancellationToken))
+                await foreach (var chunk in StreamChatCompletionWithFunctionsAsync(request, apiKey, onToolExecutingEvent, cancellationToken))
                 {
                     yield return chunk;
                 }
@@ -307,6 +309,7 @@ namespace ConduitLLM.Core
         private async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionWithFunctionsAsync(
             ChatCompletionRequest request,
             string? apiKey,
+            Func<object, CancellationToken, Task>? onToolExecutingEvent,
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
         {
             if (_functionDiscoveryService == null || _agenticOrchestrationService == null)
@@ -448,22 +451,28 @@ namespace ConduitLLM.Core
                     break;
                 }
 
-                // Send function execution status chunks
+                // Send function execution status events (via callback)
                 var toolCallsList = accumulatedToolCalls.OrderBy(kv => kv.Key).Select(kv => kv.Value).ToList();
 
-                foreach (var toolCall in toolCallsList)
+                if (onToolExecutingEvent != null)
                 {
-                    yield return new FunctionExecutionStatusChunk
+                    foreach (var toolCall in toolCallsList)
                     {
-                        Id = chatCompletionId.ToString(),
-                        Object = "chat.completion.chunk",
-                        Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                        Model = request.Model,
-                        ChunkType = "function_execution",
-                        ToolCallId = toolCall.Id,
-                        FunctionName = toolCall.Function.Name,
-                        Status = "started"
-                    };
+                        try
+                        {
+                            await onToolExecutingEvent(new
+                            {
+                                tool_call_id = toolCall.Id,
+                                function_name = toolCall.Function.Name,
+                                status = "started"
+                            }, cancellationToken);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error emitting tool-executing event for {ToolCallId}", toolCall.Id);
+                            // Continue streaming even if SSE event emission fails
+                        }
+                    }
                 }
 
                 // Execute tool calls (this pauses streaming)
@@ -476,21 +485,29 @@ namespace ConduitLLM.Core
                     iteration,
                     cancellationToken);
 
-                // Send completion status for each function
-                foreach (var summary in executionResult.FunctionCallSummaries)
+                // Send completion status for each function (via callback)
+                if (onToolExecutingEvent != null)
                 {
-                    yield return new FunctionExecutionStatusChunk
+                    foreach (var summary in executionResult.FunctionCallSummaries)
                     {
-                        Id = chatCompletionId.ToString(),
-                        Object = "chat.completion.chunk",
-                        Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                        Model = request.Model,
-                        ChunkType = "function_execution",
-                        ToolCallId = summary.ToolCallId,
-                        FunctionName = summary.FunctionName,
-                        Status = summary.Success ? "completed" : "failed",
-                        Cost = summary.Cost
-                    };
+                        try
+                        {
+                            await onToolExecutingEvent(new
+                            {
+                                tool_call_id = summary.ToolCallId,
+                                function_name = summary.FunctionName,
+                                status = summary.Success ? "completed" : "failed",
+                                cost = summary.Cost,
+                                error_message = summary.ErrorMessage,
+                                function_execution_id = summary.FunctionExecutionId
+                            }, cancellationToken);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error emitting tool-executing event for {ToolCallId}", summary.ToolCallId);
+                            // Continue streaming even if SSE event emission fails
+                        }
+                    }
                 }
 
                 // Create the assistant message with tool calls
