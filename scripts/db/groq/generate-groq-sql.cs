@@ -1,5 +1,24 @@
 #!/usr/bin/env -S dotnet run
 
+// ==================================================================================
+// DEPRECATION NOTICE
+// ==================================================================================
+// This script is DEPRECATED and has been migrated to the consolidated provider
+// system. Please use the unified script instead:
+//
+// NEW LOCATION: scripts/db/providers/
+// NEW COMMAND:  ./generate-provider-sql.cs groq
+//
+// The consolidated system provides:
+// - Zero code duplication across providers
+// - Centralized configuration in provider-config.json
+// - Easier maintenance (bug fixes apply to all providers)
+// - Same SQL output, better architecture
+//
+// Migration completed: 2025-11-22
+// This script will be removed in a future release.
+// ==================================================================================
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -13,6 +32,14 @@ using System.Threading.Tasks;
 var outputFilename = args.Length > 0 ? args[0] : "groq-models.sql";
 
 Console.WriteLine("=== Groq Models SQL Generator ===");
+Console.WriteLine();
+Console.ForegroundColor = ConsoleColor.Yellow;
+Console.WriteLine("⚠️  DEPRECATION WARNING");
+Console.WriteLine("This script has been migrated to: scripts/db/providers/");
+Console.WriteLine("Use: ./generate-provider-sql.cs groq");
+Console.WriteLine("This script will be removed in a future release.");
+Console.ResetColor();
+Console.WriteLine();
 Console.WriteLine($"Output file: {outputFilename}");
 Console.WriteLine();
 

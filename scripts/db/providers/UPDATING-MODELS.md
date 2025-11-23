@@ -1,52 +1,66 @@
-# Updating SambaNova Models JSON
+# Updating Provider Models JSON
 
-This document provides step-by-step instructions for updating `sambanova-models.json` when SambaNova releases new models or updates specifications. These instructions are designed to be followed by either humans or LLMs (like Claude Code).
+This document provides step-by-step instructions for updating provider model JSON files (`{provider}-models.json`) when providers release new models or update specifications. These instructions are designed to be followed by either humans or LLMs (like Claude Code).
 
 ## When to Update
 
-Update the JSON file when:
-- SambaNova announces new models
+Update a provider's JSON file when:
+- The provider announces new models
 - Model specifications change (context windows, pricing, capabilities)
 - Models are deprecated or moved between production/preview status
 - New capabilities are added to existing models
 
-## Data Sources
+## Provider-Specific Data Sources
 
-### Primary Sources (Always Check These)
+Before updating, check `provider-config.json` for provider metadata (ProviderType, URLs), then consult provider-specific documentation:
+
+### Cerebras
+1. **Model List**: https://inference-docs.cerebras.ai/models/overview
+2. **Pricing**: https://www.cerebras.ai/pricing
+3. **Performance**: https://artificialanalysis.ai/providers/cerebras
+4. **Notes**: Small model catalog (4 production models), fast updates
+
+### Groq
+1. **Model List**: https://console.groq.com/docs/models
+2. **Pricing**: https://groq.com/pricing
+3. **Performance**: https://artificialanalysis.ai/providers/groq
+4. **Notes**: Moderate catalog (12 models), ultra-fast LPU inference, vision support (3 models), function calling (5 models)
+
+### SambaNova
+1. **Model List**: https://docs.sambanova.ai/docs/en/models/sambacloud-models
+2. **Pricing**: https://cloud.sambanova.ai/plans/pricing (dynamically loaded - wait for full render)
+3. **Performance**: https://artificialanalysis.ai/providers/sambanova
+4. **Notes**: Larger catalog (12+ models), includes audio/vision/embeddings
+
+### General Sources (All Providers)
 
 1. **Model List and Specifications**
-   - URL: https://docs.sambanova.ai/docs/en/models/sambacloud-models
-   - Contains: Model names, context windows, multimodal capabilities
-   - Check: Production and Preview sections
+   - Check provider's official documentation for model names, context windows, and capabilities
+   - Look for production vs preview/experimental sections
 
 2. **Pricing Information**
-   - URL: https://cloud.sambanova.ai/plans/pricing
-   - Contains: Input/output pricing per million tokens
-   - Note: Pricing is dynamically loaded - you must view the fully rendered page
-   - Alternative: Use web search for "SambaNova pricing 2025" if page doesn't load
+   - Find provider's pricing page (per million tokens)
+   - If pricing page doesn't load, use web search: "[Provider] [model-name] pricing per million tokens"
+   - Check provider blog announcements for new model pricing
 
 3. **API Documentation**
-   - URL: https://docs.sambanova.ai/
-   - Contains: API compatibility, parameter support, endpoint details
-   - Check: OpenAI compatibility, function calling support
-
-### Secondary Sources (For Additional Details)
+   - Verify OpenAI API compatibility
+   - Check function calling/tool use support
+   - Confirm streaming support
 
 4. **Model Cards and Announcements**
-   - Search: "[Model Name] SambaNova announcement"
+   - Search: "[Model Name] [Provider] announcement"
    - Contains: Parameter counts, tokenizer details, special features
-   - Example: "DeepSeek-V3 SambaNova" or "Llama 4 Maverick SambaNova"
 
 5. **Artificial Analysis**
-   - URL: https://artificialanalysis.ai/providers/sambanova
-   - Contains: Performance benchmarks, pricing comparisons
-   - Useful for: Verifying pricing, finding speed metrics
+   - URL: https://artificialanalysis.ai/providers/[provider-name]
+   - Contains: Performance benchmarks, pricing comparisons, speed metrics
 
 ## Step-by-Step Update Process
 
 ### Step 1: Fetch Current Model List
 
-Visit https://docs.sambanova.ai/docs/en/models/sambacloud-models
+Visit the provider's official model documentation (see Provider-Specific Data Sources above).
 
 For each model listed, record:
 - **Model ID**: The exact identifier used in API calls (e.g., `Meta-Llama-3.3-70B-Instruct`)
@@ -71,15 +85,15 @@ Preview Models:
 
 ### Step 2: Fetch Pricing Data
 
-Visit https://cloud.sambanova.ai/plans/pricing and wait for the pricing table to fully load.
+Visit the provider's pricing page (see Provider-Specific Data Sources above) and wait for the pricing table to fully load.
 
 For each model, record:
 - **Input Price**: Cost per million input tokens (USD)
 - **Output Price**: Cost per million output tokens (USD)
 
 If the pricing page doesn't load or pricing is missing:
-1. Use web search: "SambaNova [model-name] pricing per million tokens"
-2. Check SambaNova blog announcements
+1. Use web search: "[Provider] [model-name] pricing per million tokens"
+2. Check provider blog announcements
 3. Look for pricing in API documentation
 
 **Known Pricing Patterns:**
@@ -141,10 +155,10 @@ For each model, determine boolean capabilities:
 #### supportsChat
 - **true** for: All instruct/chat models, conversational models
 - **false** for: Base models, embedding models, pure audio transcription
-- Default: **true** (most SambaNova models are chat-optimized)
+- Default: **true** (most provider models are chat-optimized)
 
 #### supportsStreaming
-- **true** for: All text generation models (SambaNova supports streaming)
+- **true** for: All text generation models (most providers support streaming)
 - **false** for: Embedding models, audio transcription (batch only)
 - Default: **true**
 
@@ -192,13 +206,13 @@ If parameter count is not in the name:
 Speed is measured in tokens per second (tokens/sec):
 
 **Sources:**
-1. SambaNova announcements (they often highlight speed)
-2. Artificial Analysis benchmarks: https://artificialanalysis.ai/providers/sambanova
+1. Provider announcements (many providers highlight speed)
+2. Artificial Analysis benchmarks: https://artificialanalysis.ai/providers/[provider-name]
 3. Model documentation
 
 **If speed data is unavailable:**
 - Set to `null` (do not guess)
-- SambaNova is known for fast inference, but actual numbers vary by model
+- Note: Actual inference speed varies by model and provider infrastructure
 
 ### Step 8: Write Notes Field
 
@@ -263,7 +277,7 @@ Each model entry follows this structure:
 
 Before saving the updated JSON, verify:
 
-- [ ] All model IDs match exactly with SambaNova API (case-sensitive)
+- [ ] All model IDs match exactly with provider's API (case-sensitive)
 - [ ] Pricing is in USD per million tokens (not per 1K tokens)
 - [ ] Context windows are in token count (not "128k" string)
 - [ ] Tokenizer types match the enum values in `MapTokenizerTypeToEnum()`
@@ -281,8 +295,12 @@ After updating the JSON:
 
 1. Run the SQL generator:
 ```bash
-cd /home/nbn/cim/Conduit
-./scripts/db/sambanova/generate-sambanova-sql.cs
+cd /home/nbn/cim/Conduit/scripts/db/providers
+./generate-provider-sql.cs <provider>
+
+# Examples:
+./generate-provider-sql.cs cerebras
+./generate-provider-sql.cs sambanova
 ```
 
 2. Verify the output:
@@ -292,8 +310,8 @@ cd /home/nbn/cim/Conduit
 
 3. Review generated SQL:
 ```bash
-head -n 50 sambanova-models.sql
-grep "Model:" sambanova-models.sql | wc -l
+head -n 50 <provider>-models.sql
+grep "Model:" <provider>-models.sql | wc -l
 ```
 
 ## Common Pitfalls
@@ -304,7 +322,7 @@ grep "Model:" sambanova-models.sql | wc -l
 
 3. **Context Window vs Max Output**: Some models have different input/output limits. Check documentation carefully.
 
-4. **Tokenizer Types**: Must match the enum in `generate-sambanova-sql.cs`. Check the `MapTokenizerTypeToEnum()` function for valid values.
+4. **Tokenizer Types**: Must match the enum in `generate-provider-sql.cs`. Check the `MapTokenizerTypeToEnum()` function for valid values.
 
 5. **Preview vs Production**: Keep preview models clearly marked in notes and verify their status hasn't changed to production.
 
@@ -314,7 +332,7 @@ grep "Model:" sambanova-models.sql | wc -l
 
 ## Example Update Process
 
-**Scenario**: SambaNova announces "Llama-3.4-70B-Instruct" in production.
+**Scenario**: Provider announces "Llama-3.4-70B-Instruct" in production.
 
 1. **Check model docs**: Find it listed in production with 128K context
 2. **Check pricing page**: See $0.65 input / $1.30 output per million tokens
@@ -352,19 +370,20 @@ grep "Model:" sambanova-models.sql | wc -l
 If you encounter issues:
 
 1. **Check existing entries**: Look at similar models in the JSON for patterns
-2. **Review tokenizer mapping**: Check `generate-sambanova-sql.cs` for valid tokenizer enum values
-3. **Search model documentation**: "[Model Name] SambaNova specifications"
-4. **Check Groq approach**: See `scripts/db/groq/groq-models.json` for similar patterns
+2. **Review tokenizer mapping**: Check `generate-provider-sql.cs` for valid tokenizer enum values
+3. **Search model documentation**: "[Model Name] [Provider] specifications"
+4. **Check other providers**: See other `*-models.json` files in this directory for similar patterns
 5. **Verify with humans**: When in doubt about capabilities, research thoroughly or ask
 
 ## Automation Potential
 
 This process could be partially automated by:
-- Scraping the SambaNova docs page for model list and context windows
-- Polling the pricing API endpoint (if public)
-- Using LLM to classify capabilities based on model names and descriptions
+- Scraping provider docs pages for model lists and context windows
+- Polling pricing API endpoints (if public)
+- Using LLMs to classify capabilities based on model names and descriptions
 
 However, manual verification is still recommended for:
 - Pricing accuracy (financial impact)
 - Function calling support (technical capability that varies)
 - New model families (tokenizer types may differ)
+- Provider-specific quirks and limitations

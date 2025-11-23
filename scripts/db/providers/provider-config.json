@@ -1,0 +1,20 @@
+{
+  "cerebras": {
+    "providerType": 9,
+    "websiteUrl": "https://cerebras.ai",
+    "modelCardUrl": "https://inference-docs.cerebras.ai/models/overview",
+    "supportsAudio": false
+  },
+  "groq": {
+    "providerType": 2,
+    "websiteUrl": "https://groq.com",
+    "modelCardUrl": "https://console.groq.com/docs/models",
+    "supportsAudio": false
+  },
+  "sambanova": {
+    "providerType": 10,
+    "websiteUrl": "https://sambanova.ai",
+    "modelCardUrl": "https://docs.sambanova.ai/docs/en/models/sambacloud-models",
+    "supportsAudio": true
+  }
+}

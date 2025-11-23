@@ -1,5 +1,13 @@
 # Groq Models SQL Generator
 
+> **⚠️ DEPRECATION NOTICE**
+> This script has been migrated to the consolidated provider system at `scripts/db/providers/`.
+> Please use `./generate-provider-sql.cs groq` instead.
+> This directory will be removed in a future release.
+> See: [scripts/db/providers/README.md](../providers/README.md) for migration details.
+
+---
+
 This directory contains scripts for generating SQL to populate Groq models in the Conduit database.
 
 ## Overview

@@ -10,20 +10,102 @@ using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 
 // Parse command-line arguments
-var outputFilename = args.Length > 0 ? args[0] : "sambanova-models.sql";
+if (args.Length == 0)
+{
+    Console.WriteLine("❌ Error: Provider name required");
+    Console.WriteLine();
+    Console.WriteLine("Usage: dotnet script generate-provider-sql.cs <provider> [output-file]");
+    Console.WriteLine();
+    Console.WriteLine("Examples:");
+    Console.WriteLine("  dotnet script generate-provider-sql.cs cerebras");
+    Console.WriteLine("  dotnet script generate-provider-sql.cs sambanova sambanova-models.sql");
+    Console.WriteLine();
+    Console.WriteLine("Available providers are defined in provider-config.json");
+    return;
+}
 
-Console.WriteLine("=== SambaNova Models SQL Generator ===");
+var providerName = args[0].ToLower();
+var outputFilename = args.Length > 1 ? args[1] : $"{providerName}-models.sql";
+
+Console.WriteLine($"=== Provider Models SQL Generator ===");
+Console.WriteLine($"Provider: {providerName}");
 Console.WriteLine($"Output file: {outputFilename}");
 Console.WriteLine();
 
+// Load provider configuration
+ProviderConfig? providerConfig = null;
+var configSearchPaths = new[]
+{
+    "scripts/db/providers/provider-config.json",  // From repo root
+    "provider-config.json",                        // Same directory as script
+    Path.Combine(AppContext.BaseDirectory, "provider-config.json")  // Script execution directory
+};
+
+string? configPath = null;
+foreach (var path in configSearchPaths)
+{
+    if (File.Exists(path))
+    {
+        configPath = path;
+        break;
+    }
+}
+
+if (configPath == null)
+{
+    Console.WriteLine($"❌ Error: provider-config.json not found");
+    Console.WriteLine($"   Searched locations:");
+    foreach (var path in configSearchPaths)
+    {
+        Console.WriteLine($"   - {Path.GetFullPath(path)}");
+    }
+    return;
+}
+
+try
+{
+    var configContent = await File.ReadAllTextAsync(configPath);
+    var configDoc = JsonDocument.Parse(configContent);
+
+    if (!configDoc.RootElement.TryGetProperty(providerName, out var providerElement))
+    {
+        Console.WriteLine($"❌ Error: Provider '{providerName}' not found in provider-config.json");
+        Console.WriteLine();
+        Console.WriteLine("Available providers:");
+        foreach (var prop in configDoc.RootElement.EnumerateObject())
+        {
+            Console.WriteLine($"  - {prop.Name}");
+        }
+        return;
+    }
+
+    providerConfig = new ProviderConfig
+    {
+        Name = providerName,
+        ProviderType = providerElement.GetProperty("providerType").GetInt32(),
+        WebsiteUrl = providerElement.GetProperty("websiteUrl").GetString() ?? "",
+        ModelCardUrl = providerElement.GetProperty("modelCardUrl").GetString() ?? "",
+        SupportsAudio = providerElement.GetProperty("supportsAudio").GetBoolean()
+    };
+
+    Console.WriteLine($"✅ Loaded configuration for {providerName}");
+    Console.WriteLine($"   Provider Type: {providerConfig.ProviderType}");
+    Console.WriteLine($"   Website: {providerConfig.WebsiteUrl}");
+    Console.WriteLine();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"❌ Error loading provider configuration: {ex.Message}");
+    return;
+}
+
 // Load models from JSON file
-// Try multiple locations to find sambanova-models.json
 string? jsonPath = null;
 var searchPaths = new[]
 {
-    "scripts/db/sambanova/sambanova-models.json",  // From repo root
-    "sambanova-models.json",                        // Same directory as script
-    Path.Combine(AppContext.BaseDirectory, "sambanova-models.json")  // Script execution directory
+    $"scripts/db/providers/{providerName}-models.json",  // From repo root
+    $"{providerName}-models.json",                        // Same directory as script
+    Path.Combine(AppContext.BaseDirectory, $"{providerName}-models.json")  // Script execution directory
 };
 
 foreach (var path in searchPaths)
@@ -37,7 +119,7 @@ foreach (var path in searchPaths)
 
 if (jsonPath == null)
 {
-    Console.WriteLine($"❌ Error: sambanova-models.json not found");
+    Console.WriteLine($"❌ Error: {providerName}-models.json not found");
     Console.WriteLine($"   Searched locations:");
     foreach (var path in searchPaths)
     {
@@ -50,20 +132,20 @@ var jsonContent = await File.ReadAllTextAsync(jsonPath);
 var jsonDoc = JsonDocument.Parse(jsonContent);
 var modelsNode = jsonDoc.RootElement.GetProperty("models");
 
-var models = new List<SambaNovaModel>();
+var models = new List<ProviderModel>();
 
 foreach (var modelProp in modelsNode.EnumerateObject())
 {
     var modelId = modelProp.Name;
     var modelData = modelProp.Value;
 
-    var model = new SambaNovaModel
+    var model = new ProviderModel
     {
         ModelId = modelId,
         Name = modelData.GetProperty("name").GetString() ?? modelId,
         Family = modelData.GetProperty("family").GetString() ?? "Unknown",
         Series = modelData.GetProperty("series").GetString() ?? "Unknown Series",
-        Owner = modelData.GetProperty("owner").GetString() ?? "sambanova",
+        Owner = modelData.GetProperty("owner").GetString() ?? providerName,
         MaxInputTokens = modelData.GetProperty("maxInputTokens").GetInt32(),
         MaxOutputTokens = modelData.GetProperty("maxOutputTokens").GetInt32(),
         TokenizerType = modelData.GetProperty("tokenizerType").GetString() ?? "None",
@@ -72,7 +154,7 @@ foreach (var modelProp in modelsNode.EnumerateObject())
         SupportsVision = modelData.GetProperty("supportsVision").GetBoolean(),
         SupportsFunctionCalling = modelData.GetProperty("supportsFunctionCalling").GetBoolean(),
         SupportsEmbeddings = modelData.GetProperty("supportsEmbeddings").GetBoolean(),
-        SupportsAudio = modelData.GetProperty("supportsAudio").GetBoolean(),
+        SupportsAudio = modelData.TryGetProperty("supportsAudio", out var audio) ? audio.GetBoolean() : false,
         InputPricePerMillion = modelData.GetProperty("inputPricePerMillion").GetDouble(),
         OutputPricePerMillion = modelData.GetProperty("outputPricePerMillion").GetDouble(),
         SpeedTokensPerSec = modelData.TryGetProperty("speedTokensPerSec", out var speed) && speed.ValueKind != JsonValueKind.Null ? speed.GetInt32() : (int?)null,
@@ -82,11 +164,11 @@ foreach (var modelProp in modelsNode.EnumerateObject())
     models.Add(model);
 }
 
-Console.WriteLine($"Loaded {models.Count} models from {jsonPath}");
+Console.WriteLine($"✅ Loaded {models.Count} models from {jsonPath}");
 Console.WriteLine();
 
 // Generate SQL
-await GenerateSQLOutput(models, outputFilename);
+await GenerateSQLOutput(models, outputFilename, providerConfig);
 
 Console.WriteLine();
 Console.WriteLine("=== Generation Complete ===");
@@ -97,13 +179,14 @@ Console.WriteLine("To execute:");
 Console.WriteLine($"  psql -h localhost -U conduit -d conduit_db < {outputFilename}");
 
 // SQL Generation
-static async Task GenerateSQLOutput(List<SambaNovaModel> models, string outputFilename)
+static async Task GenerateSQLOutput(List<ProviderModel> models, string outputFilename, ProviderConfig config)
 {
     var sql = new StringBuilder();
 
-    sql.AppendLine("-- Auto-generated SQL for SambaNova models");
+    sql.AppendLine($"-- Auto-generated SQL for {config.Name} models");
     sql.AppendLine($"-- Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
     sql.AppendLine($"-- Total Models: {models.Count}");
+    sql.AppendLine($"-- Provider Type: {config.ProviderType}");
     sql.AppendLine();
     sql.AppendLine("-- NOTE: This script uses ON CONFLICT DO NOTHING to preserve manual changes.");
     sql.AppendLine("-- If you need to update existing records, remove the ON CONFLICT clauses.");
@@ -114,9 +197,9 @@ static async Task GenerateSQLOutput(List<SambaNovaModel> models, string outputFi
     foreach (var model in models)
     {
         var tokenizerTypeEnum = MapTokenizerTypeToEnum(model.TokenizerType);
-        var standardParameters = "{}"; // SambaNova uses standard OpenAI-compatible parameters
+        var standardParameters = "{}"; // Providers use standard OpenAI-compatible parameters
         var description = model.Notes != null ? $"'{EscapeSqlString(model.Notes)}'" : "NULL";
-        var modelCardUrl = "https://docs.sambanova.ai/docs/en/models/sambacloud-models";
+        var modelCardUrl = config.ModelCardUrl;
 
         sql.AppendLine($"-- Model: {model.ModelId}");
         sql.AppendLine();
@@ -134,7 +217,7 @@ static async Task GenerateSQLOutput(List<SambaNovaModel> models, string outputFi
         // Insert or get author
         sql.AppendLine($"  -- Insert or get author");
         sql.AppendLine($"  INSERT INTO \"ModelAuthors\" (\"Name\", \"Description\", \"WebsiteUrl\")");
-        sql.AppendLine($"  VALUES ('{EscapeSqlString(model.Owner)}', NULL, 'https://sambanova.ai')");
+        sql.AppendLine($"  VALUES ('{EscapeSqlString(model.Owner)}', NULL, '{config.WebsiteUrl}')");
         sql.AppendLine($"  ON CONFLICT (\"Name\") DO NOTHING;");
         sql.AppendLine();
         sql.AppendLine($"  SELECT \"Id\" INTO v_author_id FROM \"ModelAuthors\" WHERE \"Name\" = '{EscapeSqlString(model.Owner)}';");
@@ -207,7 +290,7 @@ static async Task GenerateSQLOutput(List<SambaNovaModel> models, string outputFi
         sql.AppendLine($"    \"ModelId\", \"Identifier\", \"Provider\", \"IsEnabled\",");
         sql.AppendLine($"    \"MaxInputTokens\", \"MaxOutputTokens\", \"IsPrimary\", \"ModelCostId\"");
         sql.AppendLine($"  ) VALUES (");
-        sql.AppendLine($"    v_model_id, '{EscapeSqlString(model.ModelId)}', 10, true,");
+        sql.AppendLine($"    v_model_id, '{EscapeSqlString(model.ModelId)}', {config.ProviderType}, true,");
         sql.AppendLine($"    {model.MaxInputTokens}, {model.MaxOutputTokens}, true, v_cost_id");
         sql.AppendLine($"  )");
         sql.AppendLine($"  ON CONFLICT (\"Provider\", \"Identifier\") DO UPDATE SET");
@@ -221,7 +304,7 @@ static async Task GenerateSQLOutput(List<SambaNovaModel> models, string outputFi
 
     sql.AppendLine("COMMIT;");
     sql.AppendLine();
-    sql.AppendLine($"-- Successfully generated SQL for {models.Count} SambaNova models");
+    sql.AppendLine($"-- Successfully generated SQL for {models.Count} {config.Name} models");
 
     // Write to file
     await File.WriteAllTextAsync(outputFilename, sql.ToString());
@@ -265,8 +348,17 @@ static string EscapeSqlString(string value)
     return value.Replace("'", "''");
 }
 
-// Data model
-record SambaNovaModel
+// Data models
+record ProviderConfig
+{
+    public string Name { get; init; } = "";
+    public int ProviderType { get; init; }
+    public string WebsiteUrl { get; init; } = "";
+    public string ModelCardUrl { get; init; } = "";
+    public bool SupportsAudio { get; init; }
+}
+
+record ProviderModel
 {
     public string ModelId { get; init; } = "";
     public string Name { get; init; } = "";
