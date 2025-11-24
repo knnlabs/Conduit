@@ -57,7 +57,9 @@ namespace ConduitLLM.Core.Extensions
             services.AddSingleton<TService>();
 
             // Register the wrapper as a hosted service
-            services.AddHostedService(serviceProvider =>
+            // Use AddSingleton instead of AddHostedService to allow multiple instances
+            // AddHostedService uses TryAddEnumerable which only registers the first LeaderElectedServiceWrapper
+            services.AddSingleton<IHostedService>(serviceProvider =>
             {
                 var innerService = serviceProvider.GetRequiredService<TService>();
                 var leaderElectionService = serviceProvider.GetRequiredService<ILeaderElectionService>();
@@ -80,7 +82,9 @@ namespace ConduitLLM.Core.Extensions
             where TService : class, IHostedService
         {
             // Register the wrapper as a hosted service
-            services.AddHostedService(serviceProvider =>
+            // Use AddSingleton instead of AddHostedService to allow multiple instances
+            // AddHostedService uses TryAddEnumerable which only registers the first LeaderElectedServiceWrapper
+            services.AddSingleton<IHostedService>(serviceProvider =>
             {
                 var innerService = implementationFactory(serviceProvider);
                 var leaderElectionService = serviceProvider.GetRequiredService<ILeaderElectionService>();

@@ -65,7 +65,7 @@ namespace ConduitLLM.Http.Services
         private readonly IHubContext<WebhookDeliveryHub> _hubContext;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<WebhookDeliveryNotificationService> _logger;
-        private readonly IWebhookMetricsService? _metricsService;
+        private IWebhookMetricsService? _metricsService;
         
         private Timer? _statisticsTimer;
 
@@ -77,21 +77,24 @@ namespace ConduitLLM.Http.Services
             _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            
-            // Try to get the metrics service if available (might be null in development)
-            using var scope = _serviceProvider.CreateScope();
-            _metricsService = scope.ServiceProvider.GetService<IWebhookMetricsService>();
+
+            // Metrics service will be resolved on first use, not in constructor
+            _metricsService = null;
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
+            // Initialize metrics service now that DI container is fully built
+            using var scope = _serviceProvider.CreateScope();
+            _metricsService = scope.ServiceProvider.GetService<IWebhookMetricsService>();
+
             // Start periodic statistics broadcasting
             _statisticsTimer = new Timer(
                 async _ => await BroadcastStatisticsAsync(),
                 null,
                 TimeSpan.FromMinutes(1),
                 TimeSpan.FromMinutes(1));
-            
+
             _logger.LogInformation("WebhookDeliveryNotificationService started");
             return Task.CompletedTask;
         }

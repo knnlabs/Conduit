@@ -46,7 +46,7 @@ namespace ConduitLLM.Core.Services
         /// <summary>
         /// Gets the unique service name used for leader election
         /// </summary>
-        protected string ServiceName => _serviceName;
+        public string ServiceName => _serviceName;
 
         /// <summary>
         /// Main execution loop with leader election

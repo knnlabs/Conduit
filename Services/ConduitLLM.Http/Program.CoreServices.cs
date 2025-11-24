@@ -1,3 +1,4 @@
+using System.Linq;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Services;
@@ -11,11 +12,13 @@ using ConduitLLM.Http.Services;
 using ConduitLLM.Providers.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Hosting;
 using Polly;
 using Polly.Extensions.Http;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using MassTransit;
+using Microsoft.AspNetCore.SignalR;
 
 public partial class Program
 {
@@ -64,8 +67,22 @@ public partial class Program
         // Billing audit service for comprehensive billing event tracking - with leader election
         builder.Services.AddSingleton<ConduitLLM.Configuration.Interfaces.IBillingAuditService, ConduitLLM.Configuration.Services.BillingAuditService>();
         builder.Services.AddLeaderElectedHostedService<ConduitLLM.Configuration.Services.BillingAuditService>(
-            provider => provider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IBillingAuditService>() as ConduitLLM.Configuration.Services.BillingAuditService 
-            ?? throw new InvalidOperationException("BillingAuditService must implement IHostedService"),
+            provider => {
+                try
+                {
+                    Console.WriteLine("[Leader Election] Resolving BillingAuditService...");
+                    var service = provider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IBillingAuditService>() as ConduitLLM.Configuration.Services.BillingAuditService
+                        ?? throw new InvalidOperationException("BillingAuditService must implement IHostedService");
+                    Console.WriteLine("[Leader Election] ✓ Successfully resolved BillingAuditService");
+                    return service;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Leader Election] ✗ FAILED to resolve BillingAuditService: {ex.GetType().Name}: {ex.Message}");
+                    Console.WriteLine($"[Leader Election] Stack trace: {ex.StackTrace}");
+                    throw;
+                }
+            },
             "BillingAuditService");
 
         // Provider error tracking service
@@ -247,9 +264,27 @@ public partial class Program
         builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IWebhookDeliveryService, ConduitLLM.Http.Services.WebhookDeliveryService>();
 
         // Register Distributed Spend Notification Service (Redis-based for multi-instance consistency) - with leader election
+        Console.WriteLine("[Service Registration] Registering DistributedSpendNotificationService...");
+        // Register as singleton via interface using two-parameter syntax to avoid auto-discovery
         builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.ISpendNotificationService, ConduitLLM.Http.Services.SpendNotification.DistributedSpendNotificationService>();
+        Console.WriteLine("[Service Registration] Adding leader-elected hosted service for DistributedSpendNotificationService...");
         builder.Services.AddLeaderElectedHostedService<ConduitLLM.Http.Services.SpendNotification.DistributedSpendNotificationService>(
-            sp => (ConduitLLM.Http.Services.SpendNotification.DistributedSpendNotificationService)sp.GetRequiredService<ConduitLLM.Core.Interfaces.ISpendNotificationService>(),
+            sp => {
+                try
+                {
+                    Console.WriteLine("[Leader Election] Resolving DistributedSpendNotificationService...");
+                    var service = sp.GetRequiredService<ConduitLLM.Core.Interfaces.ISpendNotificationService>() as ConduitLLM.Http.Services.SpendNotification.DistributedSpendNotificationService
+                        ?? throw new InvalidOperationException("DistributedSpendNotificationService must implement IHostedService");
+                    Console.WriteLine("[Leader Election] ✓ Successfully resolved DistributedSpendNotificationService");
+                    return service;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Leader Election] ✗ FAILED to resolve DistributedSpendNotificationService: {ex.GetType().Name}: {ex.Message}");
+                    Console.WriteLine($"[Leader Election] Stack trace: {ex.StackTrace}");
+                    throw;
+                }
+            },
             "SpendNotificationService");
 
         // Register Webhook Metrics Service (Redis-based when available)
@@ -286,9 +321,32 @@ public partial class Program
         });
         
         // Register Webhook Delivery Notification Service - with leader election
-        builder.Services.AddSingleton<ConduitLLM.Http.Services.IWebhookDeliveryNotificationService, ConduitLLM.Http.Services.WebhookDeliveryNotificationService>();
+        Console.WriteLine("[Service Registration] Registering WebhookDeliveryNotificationService as singleton...");
+        // Use factory to prevent auto-discovery by ASP.NET Core
+        builder.Services.AddSingleton<ConduitLLM.Http.Services.IWebhookDeliveryNotificationService>(sp =>
+        {
+            var hubContext = sp.GetRequiredService<IHubContext<ConduitLLM.Http.Hubs.WebhookDeliveryHub>>();
+            var serviceProvider = sp;
+            var logger = sp.GetRequiredService<ILogger<ConduitLLM.Http.Services.WebhookDeliveryNotificationService>>();
+            return new ConduitLLM.Http.Services.WebhookDeliveryNotificationService(hubContext, serviceProvider, logger);
+        });
+        Console.WriteLine("[Service Registration] Adding leader-elected hosted service for WebhookDeliveryNotificationService...");
         builder.Services.AddLeaderElectedHostedService<ConduitLLM.Http.Services.WebhookDeliveryNotificationService>(
-            sp => (ConduitLLM.Http.Services.WebhookDeliveryNotificationService)sp.GetRequiredService<ConduitLLM.Http.Services.IWebhookDeliveryNotificationService>(),
+            sp => {
+                try
+                {
+                    Console.WriteLine("[Leader Election] Resolving WebhookDeliveryNotificationService...");
+                    var service = (ConduitLLM.Http.Services.WebhookDeliveryNotificationService)sp.GetRequiredService<ConduitLLM.Http.Services.IWebhookDeliveryNotificationService>();
+                    Console.WriteLine("[Leader Election] ✓ Successfully resolved WebhookDeliveryNotificationService");
+                    return service;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Leader Election] ✗ FAILED to resolve WebhookDeliveryNotificationService: {ex.GetType().Name}: {ex.Message}");
+                    Console.WriteLine($"[Leader Election] Stack trace: {ex.StackTrace}");
+                    throw;
+                }
+            },
             "WebhookDeliveryNotificationService");
 
         // Model Capability Service is registered via ServiceCollectionExtensions

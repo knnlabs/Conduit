@@ -84,9 +84,32 @@ public partial class Program
         builder.Services.AddScoped<ConduitLLM.Http.Authentication.ISignalRAuthenticationService, ConduitLLM.Http.Authentication.SignalRAuthenticationService>();
 
         // Register Metrics Aggregation Service and Hub - with leader election
-        builder.Services.AddSingleton<ConduitLLM.Http.Hubs.IMetricsAggregationService, ConduitLLM.Http.Services.MetricsAggregationService>();
+        Console.WriteLine("[Service Registration] Registering MetricsAggregationService as singleton...");
+        // Use factory to prevent auto-discovery by ASP.NET Core
+        builder.Services.AddSingleton<ConduitLLM.Http.Hubs.IMetricsAggregationService>(sp =>
+        {
+            var serviceProvider = sp;
+            var logger = sp.GetRequiredService<ILogger<ConduitLLM.Http.Services.MetricsAggregationService>>();
+            var hubContext = sp.GetRequiredService<IHubContext<ConduitLLM.Http.Hubs.MetricsHub>>();
+            return new ConduitLLM.Http.Services.MetricsAggregationService(serviceProvider, logger, hubContext);
+        });
+        Console.WriteLine("[Service Registration] Adding leader-elected hosted service for MetricsAggregationService...");
         builder.Services.AddLeaderElectedHostedService<ConduitLLM.Http.Services.MetricsAggregationService>(
-            sp => (ConduitLLM.Http.Services.MetricsAggregationService)sp.GetRequiredService<ConduitLLM.Http.Hubs.IMetricsAggregationService>(),
+            sp => {
+                try
+                {
+                    Console.WriteLine("[Leader Election] Resolving MetricsAggregationService...");
+                    var service = (ConduitLLM.Http.Services.MetricsAggregationService)sp.GetRequiredService<ConduitLLM.Http.Hubs.IMetricsAggregationService>();
+                    Console.WriteLine("[Leader Election] ✓ Successfully resolved MetricsAggregationService");
+                    return service;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Leader Election] ✗ FAILED to resolve MetricsAggregationService: {ex.GetType().Name}: {ex.Message}");
+                    Console.WriteLine($"[Leader Election] Stack trace: {ex.StackTrace}");
+                    throw;
+                }
+            },
             "MetricsAggregationService");
 
         // Register Business Metrics Background Service - with leader election
@@ -162,7 +185,8 @@ public partial class Program
         builder.Services.AddSingleton<ConduitLLM.Configuration.Interfaces.IRedisCircuitBreaker, ConduitLLM.Configuration.Services.RedisCircuitBreaker>();
 
         // Register batch spend update service for optimized Virtual Key operations
-        builder.Services.AddSingleton<ConduitLLM.Configuration.Services.BatchSpendUpdateService>(serviceProvider =>
+        // Use factory to prevent auto-discovery by ASP.NET Core - register ONLY via interface
+        builder.Services.AddSingleton<IBatchSpendUpdateService>(serviceProvider =>
         {
             var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Configuration.Services.BatchSpendUpdateService>>();
             var serviceScopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
@@ -171,7 +195,7 @@ public partial class Program
             var alertingService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IBillingAlertingService>();
             var circuitBreaker = serviceProvider.GetService<ConduitLLM.Configuration.Interfaces.IRedisCircuitBreaker>();
             var batchService = new ConduitLLM.Configuration.Services.BatchSpendUpdateService(serviceScopeFactory, redisConnectionFactory, options, logger, alertingService, circuitBreaker);
-            
+
             // Wire up cache invalidation event if Redis cache is available
             var cache = serviceProvider.GetService<ConduitLLM.Core.Interfaces.IVirtualKeyCache>();
             if (cache != null)
@@ -189,13 +213,26 @@ public partial class Program
                     }
                 };
             }
-            
+
             return batchService;
         });
-        builder.Services.AddSingleton<IBatchSpendUpdateService>(serviceProvider =>
-            serviceProvider.GetRequiredService<ConduitLLM.Configuration.Services.BatchSpendUpdateService>());
+        Console.WriteLine("[Service Registration] Adding leader-elected hosted service for BatchSpendUpdateService...");
         builder.Services.AddLeaderElectedHostedService<ConduitLLM.Configuration.Services.BatchSpendUpdateService>(
-            serviceProvider => serviceProvider.GetRequiredService<ConduitLLM.Configuration.Services.BatchSpendUpdateService>(),
+            sp => {
+                try
+                {
+                    Console.WriteLine("[Leader Election] Resolving BatchSpendUpdateService...");
+                    var service = (ConduitLLM.Configuration.Services.BatchSpendUpdateService)sp.GetRequiredService<IBatchSpendUpdateService>();
+                    Console.WriteLine("[Leader Election] ✓ Successfully resolved BatchSpendUpdateService");
+                    return service;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Leader Election] ✗ FAILED to resolve BatchSpendUpdateService: {ex.GetType().Name}: {ex.Message}");
+                    Console.WriteLine($"[Leader Election] Stack trace: {ex.StackTrace}");
+                    throw;
+                }
+            },
             "BatchSpendUpdateService");
     }
 }
