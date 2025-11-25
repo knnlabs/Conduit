@@ -21,6 +21,8 @@ interface ModelCostListParams {
   pageSize?: number;
   provider?: string;
   isActive?: boolean;
+  /** Filter by model type (chat, image, video, embedding, audio) */
+  modelType?: string;
 }
 
 interface ModelCostOverviewParams {

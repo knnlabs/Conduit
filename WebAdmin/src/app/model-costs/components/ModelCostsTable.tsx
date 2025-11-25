@@ -36,7 +36,7 @@ import {
 import { modals } from '@mantine/modals';
 import { useModelCostsApi } from '../hooks/useModelCostsApi';
 import { ModelCost } from '../types/modelCost';
-import { PricingModel } from '@knn_labs/conduit-admin-client';
+import { PricingModel, ModelType } from '@knn_labs/conduit-admin-client';
 import { EditModelCostModalV2 } from './EditModelCostModalV2';
 import { ViewModelCostModal } from './ViewModelCostModal';
 import { formatters } from '@/lib/utils/formatters';
@@ -60,20 +60,22 @@ export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: M
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<string | null>('true');
+  const [modelTypeFilter, setModelTypeFilter] = useState<ModelType | null>(null);
   
   // Modal state
   const [editingCost, setEditingCost] = useState<ModelCost | null>(null);
   const [viewingCost, setViewingCost] = useState<ModelCost | null>(null);
 
-  // Fetch data
+  // Fetch data - modelTypeFilter is passed to server for server-side filtering
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['model-costs', page, pageSize, activeFilter],
+    queryKey: ['model-costs', page, pageSize, activeFilter, modelTypeFilter],
     queryFn: () => fetchModelCosts(page, pageSize, {
       isActive: (() => {
         if (activeFilter === 'true') return true;
         if (activeFilter === 'false') return false;
         return undefined;
       })(),
+      modelType: modelTypeFilter ?? undefined,
     }),
   });
 
@@ -93,16 +95,17 @@ export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: M
   // Enrich model costs with provider information
   const { enrichedCosts, isLoading: enrichmentLoading } = useEnrichedModelCosts(data?.items);
 
-  // Filter data client-side for search
+  // Filter data client-side for search only (model type filtering is done server-side)
   const filteredData = enrichedCosts.filter((cost) => {
+    // Apply search filter
     if (!searchTerm) return true;
     const search = searchTerm.toLowerCase();
     return (
       cost.costName.toLowerCase().includes(search) ||
       cost.associatedModelAliases.some((alias: string) => alias.toLowerCase().includes(search)) ||
       cost.modelType.toLowerCase().includes(search) ||
-      cost.providers.some(p => 
-        p.providerName.toLowerCase().includes(search) || 
+      cost.providers.some(p =>
+        p.providerName.toLowerCase().includes(search) ||
         p.providerType.toLowerCase().includes(search)
       )
     );
@@ -251,9 +254,29 @@ export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: M
               style={{ flex: 1 }}
             />
             <Select
+              placeholder="Model Type"
+              value={modelTypeFilter}
+              onChange={(value) => {
+                setModelTypeFilter(value as ModelType | null);
+                setPage(1); // Reset to first page when filter changes
+              }}
+              data={[
+                { value: ModelType.Chat, label: 'Chat' },
+                { value: ModelType.Image, label: 'Image' },
+                { value: ModelType.Video, label: 'Video' },
+                { value: ModelType.Audio, label: 'Audio' },
+                { value: ModelType.Embedding, label: 'Embedding' },
+              ]}
+              clearable
+              w={150}
+            />
+            <Select
               placeholder="Status"
               value={activeFilter}
-              onChange={setActiveFilter}
+              onChange={(value) => {
+                setActiveFilter(value);
+                setPage(1); // Reset to first page when filter changes
+              }}
               data={[
                 { value: 'true', label: 'Active' },
                 { value: 'false', label: 'Inactive' },

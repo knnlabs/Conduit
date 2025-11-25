@@ -126,6 +126,8 @@ export interface ModelCostFilters extends FilterOptions {
   maxInputCost?: number;
   minOutputCost?: number;
   maxOutputCost?: number;
+  /** Filter by model type (chat, image, video, embedding, audio) */
+  modelType?: string;
 }
 
 export interface ModelCostCalculation {

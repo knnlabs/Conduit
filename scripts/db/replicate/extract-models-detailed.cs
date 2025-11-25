@@ -114,8 +114,13 @@ foreach (var model in models)
 
     try
     {
+        // Fetch schema page for parameters
         var schemaUrl = $"https://replicate.com/{model.Owner}/{model.Name}/api/schema";
         var schemaHtml = await httpClient.GetStringAsync(schemaUrl);
+
+        // Fetch main model page for pricing info
+        var modelPageUrl = $"https://replicate.com/{model.Owner}/{model.Name}";
+        var modelPageHtml = await httpClient.GetStringAsync(modelPageUrl);
 
         var modelFamily = DetectModelFamily(model.Name);
 
@@ -156,6 +161,9 @@ foreach (var model in models)
 
         var (inputSchema, maxOutputTokens) = ExtractSchemaFromPage(schemaHtml, modelType);
 
+        // Extract pricing from main model page
+        var pricing = ExtractPricingFromPage(modelPageHtml, modelType);
+
         var detailedModel = new DetailedModel
         {
             Owner = model.Owner,
@@ -170,7 +178,8 @@ foreach (var model in models)
             MaxInputTokens = null,  // Requires manual lookup from official docs
             TokenizerType = "None", // Requires manual configuration per model family
             ModelType = modelType,
-            Capabilities = capabilities
+            Capabilities = capabilities,
+            Pricing = pricing
         };
 
         detailedModels.Add(detailedModel);
@@ -195,14 +204,22 @@ if (outputFormat == "sql" && modelType == "text")
 {
     try
     {
-        var tokenLimitsPath = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? ".", "replicate-token-limits.json");
-        if (!File.Exists(tokenLimitsPath))
+        // Try multiple locations to find the token limits file
+        var searchPaths = new[]
         {
-            // Try current directory
-            tokenLimitsPath = "replicate-token-limits.json";
-        }
+            // Relative to the script location (when running via ./scripts/db/replicate/...)
+            Path.Combine(Path.GetDirectoryName(Environment.GetCommandLineArgs().FirstOrDefault(a => a.EndsWith(".cs")) ?? "") ?? ".", "replicate-token-limits.json"),
+            // scripts/db/replicate/ relative to current directory
+            "scripts/db/replicate/replicate-token-limits.json",
+            // Current directory
+            "replicate-token-limits.json",
+            // Assembly location
+            Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? ".", "replicate-token-limits.json")
+        };
 
-        if (File.Exists(tokenLimitsPath))
+        var tokenLimitsPath = searchPaths.FirstOrDefault(File.Exists);
+
+        if (tokenLimitsPath != null)
         {
             var tokenLimitsJson = await File.ReadAllTextAsync(tokenLimitsPath);
             var tokenLimitsDoc = JsonDocument.Parse(tokenLimitsJson);
@@ -289,6 +306,32 @@ else
         Console.WriteLine($"TokenizerType: {model.TokenizerType} (⚠️  requires manual configuration)");
     }
 
+    // Output pricing information
+    Console.WriteLine("Pricing:");
+    if (model.Pricing != null)
+    {
+        if (model.Pricing.Hardware != null)
+            Console.WriteLine($"  - Hardware: {model.Pricing.Hardware}");
+        if (model.Pricing.CostPerSecond.HasValue)
+            Console.WriteLine($"  - Cost per second: ${model.Pricing.CostPerSecond:F6}");
+        if (model.Pricing.CostPerImage.HasValue)
+            Console.WriteLine($"  - Cost per image: ${model.Pricing.CostPerImage:F4}");
+        if (model.Pricing.CostPerVideo.HasValue)
+            Console.WriteLine($"  - Cost per video: ${model.Pricing.CostPerVideo:F4}");
+        if (model.Pricing.InputCostPerMillionTokens.HasValue)
+            Console.WriteLine($"  - Input cost (per million tokens): ${model.Pricing.InputCostPerMillionTokens:F2}");
+        if (model.Pricing.OutputCostPerMillionTokens.HasValue)
+            Console.WriteLine($"  - Output cost (per million tokens): ${model.Pricing.OutputCostPerMillionTokens:F2}");
+        if (model.Pricing.MedianPredictionCost.HasValue)
+            Console.WriteLine($"  - Median prediction cost: ${model.Pricing.MedianPredictionCost:F4}");
+        if (model.Pricing.PricingDescription != null)
+            Console.WriteLine($"  - Description: {model.Pricing.PricingDescription}");
+    }
+    else
+    {
+        Console.WriteLine("  - (pricing not found)");
+    }
+
     // Output Parameters JSON
     if (model.InputSchema != null && model.InputSchema.Count > 0)
     {
@@ -352,6 +395,44 @@ if (detailedModels.Any() && detailedModels.First().ModelType == "text")
     Console.WriteLine();
     Console.WriteLine("Recommended: Create a reference file (e.g., replicate-token-limits.json) mapping");
     Console.WriteLine("model identifiers to their context windows and tokenizer types.");
+}
+
+// Add pricing extraction summary
+Console.WriteLine();
+Console.WriteLine("=== Pricing Extraction Summary ===");
+Console.WriteLine();
+var withPricing = detailedModels.Count(m => m.Pricing != null);
+var withoutPricing = detailedModels.Count(m => m.Pricing == null);
+var withImageCost = detailedModels.Count(m => m.Pricing?.CostPerImage.HasValue == true);
+var withVideoCost = detailedModels.Count(m => m.Pricing?.CostPerVideo.HasValue == true);
+var withTokenCost = detailedModels.Count(m => m.Pricing?.InputCostPerMillionTokens.HasValue == true);
+var withSecondCost = detailedModels.Count(m => m.Pricing?.CostPerSecond.HasValue == true);
+
+Console.WriteLine($"Pricing extracted: {withPricing} models");
+Console.WriteLine($"Pricing not found: {withoutPricing} models");
+Console.WriteLine();
+Console.WriteLine($"Pricing types found:");
+Console.WriteLine($"  - Per image: {withImageCost} models");
+Console.WriteLine($"  - Per video: {withVideoCost} models");
+Console.WriteLine($"  - Per million tokens: {withTokenCost} models");
+Console.WriteLine($"  - Per second (compute time): {withSecondCost} models");
+
+// List hardware types found
+var hardwareTypes = detailedModels
+    .Where(m => m.Pricing?.Hardware != null)
+    .Select(m => m.Pricing!.Hardware!)
+    .Distinct()
+    .OrderBy(h => h)
+    .ToList();
+if (hardwareTypes.Any())
+{
+    Console.WriteLine();
+    Console.WriteLine($"Hardware types ({hardwareTypes.Count}):");
+    foreach (var hw in hardwareTypes)
+    {
+        var count = detailedModels.Count(m => m.Pricing?.Hardware == hw);
+        Console.WriteLine($"  - {hw}: {count} models");
+    }
 }
 } // End of console output else block
 
@@ -575,6 +656,164 @@ static int? ExtractMaxOutputTokens(JsonNode inputProperties)
     }
 
     return null;
+}
+
+static PricingInfo? ExtractPricingFromPage(string html, string modelType)
+{
+    try
+    {
+        decimal? costPerSecond = null;
+        decimal? costPerImage = null;
+        decimal? costPerVideo = null;
+        decimal? inputCostPerMillion = null;
+        decimal? outputCostPerMillion = null;
+        decimal? medianCost = null;
+        string? hardware = null;
+        string? billingMetric = null;
+        string? pricingDescription = null;
+
+        // Extract "price" field (per-second cost) - pattern: "price":"$X.XXXX per second"
+        var priceMatch = Regex.Match(html, @"""price""\s*:\s*""\$?([\d.]+)\s*per\s*second""", RegexOptions.IgnoreCase);
+        if (priceMatch.Success && decimal.TryParse(priceMatch.Groups[1].Value, out var perSec))
+        {
+            costPerSecond = perSec;
+        }
+
+        // Extract p50price (median prediction cost) - pattern: "p50price":"$X.XXXX"
+        var p50Match = Regex.Match(html, @"""p50price""\s*:\s*""\$?([\d.]+)""");
+        if (p50Match.Success && decimal.TryParse(p50Match.Groups[1].Value, out var p50))
+        {
+            medianCost = p50;
+        }
+
+        // Extract hardware type - pattern: "hardware":"H100" or similar
+        var hardwareMatch = Regex.Match(html, @"""hardware""\s*:\s*""([^""]+)""");
+        if (hardwareMatch.Success)
+        {
+            hardware = hardwareMatch.Groups[1].Value;
+        }
+
+        // Extract per-image pricing - pattern: "$X.XX" with "per output image" or "image_output_count"
+        var perImageMatch = Regex.Match(html, @"""price""\s*:\s*""\$?([\d.]+)""\s*,\s*""title""\s*:\s*""per\s*output\s*image""", RegexOptions.IgnoreCase);
+        bool perThousand = false;
+        if (!perImageMatch.Success)
+        {
+            // Try "per thousand output images" format (e.g., "$3 per thousand output images")
+            perImageMatch = Regex.Match(html, @"""price""\s*:\s*""\$?([\d.]+)""\s*,\s*""title""\s*:\s*""per\s*thousand\s*output\s*images""", RegexOptions.IgnoreCase);
+            if (perImageMatch.Success) perThousand = true;
+        }
+        if (!perImageMatch.Success)
+        {
+            // Try alternate pattern with metric field
+            perImageMatch = Regex.Match(html, @"""metric""\s*:\s*""(?:image_output_count|output_image_count)""\s*[^}]*""price""\s*:\s*""\$?([\d.]+)""", RegexOptions.IgnoreCase);
+        }
+        if (!perImageMatch.Success)
+        {
+            // Try pattern with price first
+            perImageMatch = Regex.Match(html, @"""price""\s*:\s*""\$?([\d.]+)""[^}]*""metric""\s*:\s*""(?:image_output_count|output_image_count)""", RegexOptions.IgnoreCase);
+        }
+        if (!perImageMatch.Success)
+        {
+            // Try "per 1000 output images" format
+            perImageMatch = Regex.Match(html, @"""price""\s*:\s*""\$?([\d.]+)""\s*,\s*""title""\s*:\s*""per\s*1000\s*output\s*images""", RegexOptions.IgnoreCase);
+            if (perImageMatch.Success) perThousand = true;
+        }
+        if (perImageMatch.Success && decimal.TryParse(perImageMatch.Groups[1].Value, out var imgCost))
+        {
+            // Convert "per thousand" to "per image"
+            costPerImage = perThousand ? imgCost / 1000m : imgCost;
+            billingMetric = "output_image_count";
+        }
+
+        // Extract per-video pricing - pattern: "$X.XX" with "per output video" or "video_output_count"
+        var perVideoMatch = Regex.Match(html, @"""price""\s*:\s*""\$?([\d.]+)""\s*,\s*""title""\s*:\s*""per\s*output\s*video""", RegexOptions.IgnoreCase);
+        bool perThousandVideo = false;
+        if (!perVideoMatch.Success)
+        {
+            // Try "per thousand output videos" format
+            perVideoMatch = Regex.Match(html, @"""price""\s*:\s*""\$?([\d.]+)""\s*,\s*""title""\s*:\s*""per\s*thousand\s*output\s*videos""", RegexOptions.IgnoreCase);
+            if (perVideoMatch.Success) perThousandVideo = true;
+        }
+        if (!perVideoMatch.Success)
+        {
+            perVideoMatch = Regex.Match(html, @"""metric""\s*:\s*""(?:video_output_count|output_video_count)""\s*[^}]*""price""\s*:\s*""\$?([\d.]+)""", RegexOptions.IgnoreCase);
+        }
+        if (perVideoMatch.Success && decimal.TryParse(perVideoMatch.Groups[1].Value, out var vidCost))
+        {
+            // Convert "per thousand" to "per video"
+            costPerVideo = perThousandVideo ? vidCost / 1000m : vidCost;
+            billingMetric = "output_video_count";
+        }
+
+        // Extract token-based pricing for text models
+        // Replicate's billingConfig JSON format: "price":"$9.50","title":"per million input tokens"
+        // Pattern 1: Look for price before "per million input tokens" title
+        var inputTokenMatch = Regex.Match(html, @"""price""\s*:\s*""\$?([\d.]+)""\s*,\s*""title""\s*:\s*""per\s+million\s+input\s+tokens""", RegexOptions.IgnoreCase);
+        if (!inputTokenMatch.Success)
+        {
+            // Pattern 2: metric field followed by price
+            inputTokenMatch = Regex.Match(html, @"""metric""\s*:\s*""token_input_count""[^}]*""price""\s*:\s*""\$?([\d.]+)""", RegexOptions.IgnoreCase);
+        }
+        if (!inputTokenMatch.Success)
+        {
+            // Pattern 3: fallback to simple "per million input tokens" text near a price
+            inputTokenMatch = Regex.Match(html, @"\$?([\d.]+)\s*per\s*million\s*input\s*tokens", RegexOptions.IgnoreCase);
+        }
+        if (inputTokenMatch.Success && decimal.TryParse(inputTokenMatch.Groups[1].Value, out var inCost))
+        {
+            inputCostPerMillion = inCost;
+            billingMetric = "tokens";
+        }
+
+        // Pattern 1: Look for price before "per million output tokens" title
+        var outputTokenMatch = Regex.Match(html, @"""price""\s*:\s*""\$?([\d.]+)""\s*,\s*""title""\s*:\s*""per\s+million\s+output\s+tokens""", RegexOptions.IgnoreCase);
+        if (!outputTokenMatch.Success)
+        {
+            // Pattern 2: metric field followed by price
+            outputTokenMatch = Regex.Match(html, @"""metric""\s*:\s*""token_output_count""[^}]*""price""\s*:\s*""\$?([\d.]+)""", RegexOptions.IgnoreCase);
+        }
+        if (!outputTokenMatch.Success)
+        {
+            // Pattern 3: fallback to simple "per million output tokens" text near a price
+            outputTokenMatch = Regex.Match(html, @"\$?([\d.]+)\s*per\s*million\s*output\s*tokens", RegexOptions.IgnoreCase);
+        }
+        if (outputTokenMatch.Success && decimal.TryParse(outputTokenMatch.Groups[1].Value, out var outCost))
+        {
+            outputCostPerMillion = outCost;
+        }
+
+        // Extract pricing description (e.g., "or 40 images for $1")
+        var descMatch = Regex.Match(html, @"""description""\s*:\s*""(or\s+\d+\s+\w+\s+for\s+\$[\d.]+)""", RegexOptions.IgnoreCase);
+        if (descMatch.Success)
+        {
+            pricingDescription = descMatch.Groups[1].Value;
+        }
+
+        // Only return pricing info if we found something useful
+        if (costPerSecond.HasValue || costPerImage.HasValue || costPerVideo.HasValue ||
+            inputCostPerMillion.HasValue || medianCost.HasValue)
+        {
+            return new PricingInfo
+            {
+                CostPerSecond = costPerSecond,
+                CostPerImage = costPerImage,
+                CostPerVideo = costPerVideo,
+                InputCostPerMillionTokens = inputCostPerMillion,
+                OutputCostPerMillionTokens = outputCostPerMillion,
+                MedianPredictionCost = medianCost,
+                Hardware = hardware,
+                BillingMetric = billingMetric,
+                PricingDescription = pricingDescription
+            };
+        }
+
+        return null;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"  ⚠️  Pricing extraction error: {ex.Message}");
+        return null;
+    }
 }
 
 static string ExtractJsonObject(string content, int startIndex)
@@ -1226,14 +1465,59 @@ static async Task GenerateSQLOutput(List<DetailedModel> models, string modelType
         sql.AppendLine($"  FROM series WHERE series.\"Name\" = '{EscapeSqlString(model.SeriesName)}'");
         sql.AppendLine($"  ON CONFLICT DO NOTHING");
         sql.AppendLine($"  RETURNING \"Id\", \"Name\"");
+        sql.AppendLine($"),");
+        sql.AppendLine();
+
+        // Step 4: Insert ModelCost (if pricing available)
+        var pricingModel = DeterminePricingModel(model);
+        var costName = $"Replicate - {model.ModelName}";
+        var costModelType = model.ModelType == "text" ? "chat" : model.ModelType;
+
+        // Get pricing values with defaults for required fields
+        var inputCost = model.Pricing?.InputCostPerMillionTokens ?? 0m;
+        var outputCost = model.Pricing?.OutputCostPerMillionTokens ?? 0m;
+
+        // Build PricingConfiguration JSON for video models with per-video pricing
+        string? pricingConfig = null;
+        if (model.ModelType == "video" && model.Pricing?.CostPerVideo.HasValue == true)
+        {
+            // Format: {"flatRate": 0.45} for simple per-video pricing
+            pricingConfig = $"{{\"flatRate\": {model.Pricing.CostPerVideo.Value.ToString(CultureInfo.InvariantCulture)}}}";
+        }
+
+        sql.AppendLine($"modelcost AS (");
+        sql.AppendLine($"  INSERT INTO \"ModelCosts\" (");
+        sql.AppendLine($"    \"CostName\", \"PricingModel\", \"InputCostPerMillionTokens\", \"OutputCostPerMillionTokens\",");
+        sql.AppendLine($"    \"ImageCostPerImage\", \"VideoCostPerSecond\", \"PricingConfiguration\", \"ModelType\", \"IsActive\",");
+        sql.AppendLine($"    \"EffectiveDate\", \"Description\", \"Priority\", \"SupportsBatchProcessing\", \"CreatedAt\", \"UpdatedAt\"");
+        sql.AppendLine($"  )");
+        sql.AppendLine($"  VALUES (");
+        sql.AppendLine($"    '{EscapeSqlString(costName)}',");
+        sql.AppendLine($"    {pricingModel},");  // PricingModel enum value
+        sql.AppendLine($"    {inputCost.ToString(CultureInfo.InvariantCulture)},");  // Required field, default 0
+        sql.AppendLine($"    {outputCost.ToString(CultureInfo.InvariantCulture)},");  // Required field, default 0
+        sql.AppendLine($"    {FormatNullableDecimal(model.Pricing?.CostPerImage)},");
+        sql.AppendLine($"    {FormatNullableDecimal(model.Pricing?.CostPerSecond)},");  // VideoCostPerSecond uses per-second rate
+        sql.AppendLine($"    {(pricingConfig != null ? $"'{EscapeSqlString(pricingConfig)}'" : "NULL")},");  // PricingConfiguration JSON
+        sql.AppendLine($"    '{costModelType}',");
+        sql.AppendLine($"    true,");
+        sql.AppendLine($"    NOW(),");
+        sql.AppendLine($"    'Auto-generated from Replicate{(model.Pricing?.Hardware != null ? $" ({model.Pricing.Hardware})" : "")}',");
+        sql.AppendLine($"    0,");
+        sql.AppendLine($"    false,");  // SupportsBatchProcessing - Replicate doesn't support batch API
+        sql.AppendLine($"    NOW(),");
+        sql.AppendLine($"    NOW()");
+        sql.AppendLine($"  )");
+        sql.AppendLine($"  ON CONFLICT DO NOTHING");
+        sql.AppendLine($"  RETURNING \"Id\"");
         sql.AppendLine($")");
         sql.AppendLine();
 
-        // Step 4: Insert ModelProviderTypeAssociation
+        // Step 5: Insert ModelProviderTypeAssociation with ModelCostId
         // CORRECT TABLE NAME: ModelIdentifiers (FluentAPI override for backward compatibility)
         sql.AppendLine($"INSERT INTO \"ModelIdentifiers\" (");
         sql.AppendLine($"  \"ModelId\", \"Identifier\", \"Provider\", \"IsEnabled\",");
-        sql.AppendLine($"  \"MaxInputTokens\", \"MaxOutputTokens\", \"IsPrimary\"");
+        sql.AppendLine($"  \"MaxInputTokens\", \"MaxOutputTokens\", \"IsPrimary\", \"ModelCostId\"");
         sql.AppendLine($")");
         sql.AppendLine($"SELECT");
         sql.AppendLine($"  model.\"Id\",");
@@ -1242,8 +1526,9 @@ static async Task GenerateSQLOutput(List<DetailedModel> models, string modelType
         sql.AppendLine($"  true,");
         sql.AppendLine($"  {FormatNullableInt(maxInputTokens)},");
         sql.AppendLine($"  {FormatNullableInt(maxOutputTokens)},");
-        sql.AppendLine($"  true");
-        sql.AppendLine($"FROM model WHERE model.\"Name\" = '{EscapeSqlString(model.ModelName)}'");
+        sql.AppendLine($"  true,");
+        sql.AppendLine($"  modelcost.\"Id\"");
+        sql.AppendLine($"FROM model, modelcost WHERE model.\"Name\" = '{EscapeSqlString(model.ModelName)}'");
         sql.AppendLine($"ON CONFLICT (\"Provider\", \"Identifier\") DO NOTHING;");
         sql.AppendLine();
     }
@@ -1295,6 +1580,43 @@ static int MapTokenizerTypeToEnum(string tokenizerType)
 static string FormatBool(bool value) => value ? "true" : "false";
 
 static string FormatNullableInt(int? value) => value.HasValue ? value.Value.ToString() : "NULL";
+
+static string FormatNullableDecimal(decimal? value) => value.HasValue ? value.Value.ToString(CultureInfo.InvariantCulture) : "NULL";
+
+/// <summary>
+/// Determines the PricingModel enum value based on model type and available pricing data
+/// </summary>
+static int DeterminePricingModel(DetailedModel model)
+{
+    // PricingModel enum values:
+    // Standard = 0 (token-based)
+    // PerVideo = 1 (flat rate per video)
+    // PerSecondVideo = 2 (per second video)
+    // InferenceSteps = 3 (per step image)
+    // TieredTokens = 4 (context-tiered tokens)
+    // PerImage = 5 (per image)
+
+    if (model.ModelType == "text")
+    {
+        // Text models use standard token-based pricing
+        return 0; // Standard
+    }
+    else if (model.ModelType == "video")
+    {
+        // Video models - check if we have per-video or per-second pricing
+        if (model.Pricing?.CostPerVideo.HasValue == true)
+            return 1; // PerVideo
+        else
+            return 2; // PerSecondVideo (default for video)
+    }
+    else if (model.ModelType == "image")
+    {
+        // Image models - PerImage pricing
+        return 5; // PerImage
+    }
+
+    return 0; // Default to Standard
+}
 
 static string EscapeSqlString(string value)
 {
@@ -1395,6 +1717,7 @@ record DetailedModel
     public int? MaxOutputTokens { get; init; }
     public int? MaxInputTokens { get; init; }
     public string TokenizerType { get; init; } = "None";
+    public PricingInfo? Pricing { get; init; }
 }
 
 record ModelCapabilities
@@ -1406,4 +1729,37 @@ record ModelCapabilities
     public bool SupportsFunctionCalling { get; init; }
     public bool SupportsVideoGeneration { get; init; }
     public bool SupportsStreaming { get; init; }
+}
+
+/// <summary>
+/// Pricing information extracted from Replicate model pages
+/// </summary>
+record PricingInfo
+{
+    /// <summary>Cost per second of compute time</summary>
+    public decimal? CostPerSecond { get; init; }
+
+    /// <summary>Cost per output image (for image models)</summary>
+    public decimal? CostPerImage { get; init; }
+
+    /// <summary>Cost per output video (for video models)</summary>
+    public decimal? CostPerVideo { get; init; }
+
+    /// <summary>Cost per million input tokens (for text models)</summary>
+    public decimal? InputCostPerMillionTokens { get; init; }
+
+    /// <summary>Cost per million output tokens (for text models)</summary>
+    public decimal? OutputCostPerMillionTokens { get; init; }
+
+    /// <summary>Median price per prediction (p50)</summary>
+    public decimal? MedianPredictionCost { get; init; }
+
+    /// <summary>Hardware type (e.g., H100, A40, CPU)</summary>
+    public string? Hardware { get; init; }
+
+    /// <summary>Billing metric (e.g., output_image_count, time)</summary>
+    public string? BillingMetric { get; init; }
+
+    /// <summary>Raw pricing description from Replicate</summary>
+    public string? PricingDescription { get; init; }
 }

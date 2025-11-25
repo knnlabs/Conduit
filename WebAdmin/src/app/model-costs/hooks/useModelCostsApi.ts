@@ -15,20 +15,22 @@ export function useModelCostsApi() {
   const [isExporting, setIsExporting] = useState(false);
 
   const fetchModelCosts = async (page = 1, pageSize = 50, filters?: ModelCostFilters): Promise<ModelCostListResponse> => {
-    const result = await withAdminClient(client => 
+    const result = await withAdminClient(client =>
       client.modelCosts.list({
         page,
         pageSize,
         provider: filters?.providerId,
         isActive: filters?.isActive,
+        modelType: filters?.modelType,
       })
     );
-    
+
     return {
       items: result.items,
       totalCount: result.totalCount,
       page: result.page,
       pageSize: result.pageSize,
+      totalPages: result.totalPages ?? Math.ceil(result.totalCount / result.pageSize),
     } as ModelCostListResponse;
   };
 

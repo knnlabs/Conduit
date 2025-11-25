@@ -34,20 +34,31 @@ namespace ConduitLLM.Admin.Controllers
         }
 
         /// <summary>
-        /// Gets all model costs with optional pagination
+        /// Gets all model costs with optional pagination and filtering
         /// </summary>
         /// <param name="page">Page number (1-based)</param>
         /// <param name="pageSize">Number of items per page</param>
+        /// <param name="modelType">Optional filter by model type (chat, image, video, embedding, audio)</param>
         /// <returns>List of all model costs or paginated response</returns>
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<ModelCostDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetAllModelCosts([FromQuery] int? page = null, [FromQuery] int? pageSize = null)
+        public async Task<IActionResult> GetAllModelCosts(
+            [FromQuery] int? page = null,
+            [FromQuery] int? pageSize = null,
+            [FromQuery] string? modelType = null)
         {
             try
             {
                 var modelCosts = await _modelCostService.GetAllModelCostsAsync();
-                
+
+                // Apply modelType filter if provided
+                if (!string.IsNullOrWhiteSpace(modelType))
+                {
+                    modelCosts = modelCosts.Where(c =>
+                        string.Equals(c.ModelType, modelType, StringComparison.OrdinalIgnoreCase));
+                }
+
                 // If pagination parameters are provided, return paginated response
                 if (page.HasValue && pageSize.HasValue)
                 {
@@ -56,7 +67,7 @@ namespace ConduitLLM.Admin.Controllers
                         .Skip((page.Value - 1) * pageSize.Value)
                         .Take(pageSize.Value)
                         .ToList();
-                    
+
                     var paginatedResponse = new
                     {
                         items = items,
@@ -65,10 +76,10 @@ namespace ConduitLLM.Admin.Controllers
                         pageSize = pageSize.Value,
                         totalPages = (int)Math.Ceiling(totalCount / (double)pageSize.Value)
                     };
-                    
+
                     return Ok(paginatedResponse);
                 }
-                
+
                 // Otherwise return all items (backward compatibility)
                 return Ok(modelCosts);
             }

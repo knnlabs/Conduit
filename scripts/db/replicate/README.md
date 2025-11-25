@@ -80,7 +80,7 @@ The script intelligently maps Replicate's OpenAPI schema types to Conduit parame
 | `integer` or `number` | `number` | Numeric input |
 
 **Special Handling:**
-- Aspect ratios get enhanced labels: `"1:1"` ’ `"1:1 (Square)"`
+- Aspect ratios get enhanced labels: `"1:1"` ï¿½ `"1:1 (Square)"`
 - Width/height sliders use 32-pixel steps
 - Prompt and seed fields are excluded (handled separately by UI)
 
@@ -92,9 +92,9 @@ The script detects model families by:
 3. Titlecasing the result
 
 **Examples:**
-- `flux-dev-lora` ’ `Flux`
-- `sdxl-turbo-v1.0` ’ `Sdxl`
-- `stable-diffusion-3-medium` ’ `Stable Diffusion`
+- `flux-dev-lora` ï¿½ `Flux`
+- `sdxl-turbo-v1.0` ï¿½ `Sdxl`
+- `stable-diffusion-3-medium` ï¿½ `Stable Diffusion`
 
 ### 5. Series Name Determination
 
@@ -104,9 +104,9 @@ Series names group related models:
 - Different owner variants: `"{Family} Series ({Descriptor})"` (e.g., "Flux Series (Optimized)")
 
 **Variant Descriptors:**
-- `prunaai` ’ "Optimized"
-- `fermatresearch` ’ "ControlNet"
-- Other authors ’ Titlecased owner name
+- `prunaai` ï¿½ "Optimized"
+- `fermatresearch` ï¿½ "ControlNet"
+- Other authors ï¿½ Titlecased owner name
 
 ### 6. Token Limit Handling (Text Models)
 
@@ -128,7 +128,51 @@ For text/LLM models, the script:
 }
 ```
 
-### 7. SQL Generation
+### 7. Pricing Extraction
+
+The script automatically extracts pricing information from Replicate model pages:
+
+**Extracted Pricing Data:**
+| Field | Description | Example |
+|-------|-------------|---------|
+| `CostPerSecond` | Compute time cost | $0.001525/sec |
+| `CostPerImage` | Per-image generation cost | $0.025/image |
+| `CostPerVideo` | Per-video generation cost | $0.50/video |
+| `InputCostPerMillionTokens` | LLM input token cost | $9.50/M tokens |
+| `OutputCostPerMillionTokens` | LLM output token cost | $9.50/M tokens |
+| `MedianPredictionCost` | p50 prediction cost | $0.0047 |
+| `Hardware` | GPU/CPU type | H100, A40, CPU |
+
+**Pricing Models by Type:**
+| Model Type | Pricing Model | Primary Cost Field |
+|------------|--------------|-------------------|
+| Text/LLM | Standard (0) | `InputCostPerMillionTokens`, `OutputCostPerMillionTokens` |
+| Image | PerImage (5) | `ImageCostPerImage` |
+| Video (flat) | PerVideo (1) | `CostPerVideo` |
+| Video (time) | PerSecondVideo (2) | `VideoCostPerSecond` |
+
+**SQL Output:**
+When generating SQL with `--output sql`, the script creates:
+1. `ModelCosts` records with extracted pricing data
+2. Links `ModelIdentifiers` to `ModelCosts` via `ModelCostId` foreign key
+
+**Console Output:**
+Pricing information is displayed for each model:
+```
+Pricing:
+  - Hardware: H100
+  - Cost per second: $0.001525
+  - Cost per image: $0.0250
+  - Median prediction cost: $0.0047
+  - Description: or 40 images for $1
+```
+
+Plus a summary at the end showing:
+- Total models with/without pricing
+- Breakdown by pricing type (per-image, per-video, per-token, per-second)
+- Hardware types and their frequency
+
+### 8. SQL Generation
 
 The script generates transactional SQL with CTEs (Common Table Expressions):
 
@@ -166,17 +210,40 @@ model AS (
   FROM series WHERE series."Name" = 'Flux Series'
   ON CONFLICT DO NOTHING
   RETURNING "Id", "Name"
+),
+modelcost AS (
+  INSERT INTO "ModelCosts" (
+    "CostName", "PricingModel", "InputCostPerMillionTokens", "OutputCostPerMillionTokens",
+    "ImageCostPerImage", "VideoCostPerSecond", "ModelType", "IsActive",
+    "EffectiveDate", "Description", "Priority", "CreatedAt", "UpdatedAt"
+  )
+  VALUES (
+    'Replicate - flux-dev',
+    5,  -- PricingModel.PerImage
+    NULL, NULL,
+    0.025,  -- $0.025 per image
+    NULL,
+    'image',
+    true,
+    NOW(),
+    'Auto-generated from Replicate (H100)',
+    0,
+    NOW(), NOW()
+  )
+  ON CONFLICT DO NOTHING
+  RETURNING "Id"
 )
 INSERT INTO "ModelIdentifiers" (
   "ModelId", "Identifier", "Provider", "IsEnabled",
-  "MaxInputTokens", "MaxOutputTokens", "IsPrimary"
+  "MaxInputTokens", "MaxOutputTokens", "IsPrimary", "ModelCostId"
 )
 SELECT
   model."Id",
   'black-forest-labs/flux-dev',
   3,  -- ProviderType.Replicate
-  true, NULL, NULL, true
-FROM model WHERE model."Name" = 'flux-dev'
+  true, NULL, NULL, true,
+  modelcost."Id"
+FROM model, modelcost WHERE model."Name" = 'flux-dev'
 ON CONFLICT ("Provider", "Identifier") DO NOTHING;
 
 COMMIT;
@@ -187,6 +254,8 @@ COMMIT;
 - Preserves manual changes to existing records
 - Creates proper foreign key relationships
 - Sets appropriate capabilities based on model type
+- **Creates ModelCosts records with extracted pricing data**
+- **Links ModelIdentifiers to ModelCosts for cost tracking**
 
 ## Model Capabilities
 
@@ -312,7 +381,7 @@ Map to Conduit's `TokenizerType` enum:
 
 ### Schema Extraction Failures
 
-**Symptom:** `  Schema parsing error` or `(schema extraction failed)`
+**Symptom:** `ï¿½ Schema parsing error` or `(schema extraction failed)`
 
 **Causes:**
 - Replicate changed their HTML structure
