@@ -439,6 +439,9 @@ qlconfig.yml
 
 # CSS linting cache
 .stylelintcache
+
+# SQL seed and model files
+db-seed.sql
 functions-seed.sql
 replicate-images-models.sql
 replicate-text-models.sql
