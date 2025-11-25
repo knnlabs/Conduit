@@ -66,7 +66,6 @@ export default function FunctionConfigurationsPage() {
     description: '',
     defaultExecutionMode: FunctionExecutionMode.Synchronous,
     timeoutSeconds: 30,
-    cacheTtlMinutes: undefined,
     isEnabled: true,
     metadata: '',
     parameterSchema: '',
@@ -134,7 +133,6 @@ export default function FunctionConfigurationsPage() {
         description: formData.description,
         defaultExecutionMode: formData.defaultExecutionMode,
         timeoutSeconds: formData.timeoutSeconds,
-        cacheTtlMinutes: formData.cacheTtlMinutes,
         isEnabled: formData.isEnabled,
         metadata: formData.metadata,
         parameterSchema: formData.parameterSchema,
@@ -221,7 +219,6 @@ export default function FunctionConfigurationsPage() {
       description: config.description ?? '',
       defaultExecutionMode: config.defaultExecutionMode,
       timeoutSeconds: config.timeoutSeconds,
-      cacheTtlMinutes: config.cacheTtlMinutes,
       isEnabled: config.isEnabled,
       metadata: config.metadata ?? '',
       parameterSchema: config.parameterSchema ?? '',
@@ -242,7 +239,6 @@ export default function FunctionConfigurationsPage() {
       description: '',
       defaultExecutionMode: FunctionExecutionMode.Synchronous,
       timeoutSeconds: 30,
-      cacheTtlMinutes: undefined,
       isEnabled: true,
       metadata: '',
       parameterSchema: '',
@@ -488,17 +484,6 @@ export default function FunctionConfigurationsPage() {
             value={formData.timeoutSeconds}
             onChange={(value) => setFormData({ ...formData, timeoutSeconds: Number(value) })}
             min={1}
-          />
-
-          <NumberInput
-            label="Cache TTL (minutes)"
-            description="Cache duration for function discovery results. Leave empty to disable caching for this function."
-            placeholder="e.g., 60 for 1 hour"
-            value={formData.cacheTtlMinutes ?? undefined}
-            onChange={(value) => setFormData({ ...formData, cacheTtlMinutes: value !== '' ? Number(value) : undefined })}
-            min={1}
-            max={10080}
-            allowDecimal={false}
           />
 
           <Checkbox

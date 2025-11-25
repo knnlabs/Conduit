@@ -7,6 +7,7 @@ using ConduitLLM.Core.Controllers;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
+using ConduitLLM.Http.Constants;
 using ConduitLLM.Http.Services;
 
 using MassTransit;
@@ -114,11 +115,42 @@ namespace ConduitLLM.Http.Controllers
 
             try
             {
+                // Extract virtual key ID for function execution billing
+                int? virtualKeyId = null;
+                var virtualKeyIdClaim = User.FindFirst("VirtualKeyId")?.Value;
+                if (!string.IsNullOrEmpty(virtualKeyIdClaim) && int.TryParse(virtualKeyIdClaim, out var keyId))
+                {
+                    virtualKeyId = keyId;
+                }
+
                 // Non-streaming path
                 if (request.Stream != true)
                 {
                     _logger.LogInformation("Handling non-streaming request.");
-                    var response = await _conduit.CreateChatCompletionAsync(request, null, cancellationToken);
+                    var response = await _conduit.CreateChatCompletionAsync(request, null, virtualKeyId, cancellationToken);
+
+                    // Capture function execution results for request logging metadata (non-streaming)
+                    if (response.AgenticMetrics?.FunctionCalls != null && response.AgenticMetrics.FunctionCalls.Count > 0)
+                    {
+                        var functionExecutionResults = response.AgenticMetrics.FunctionCalls
+                            .Select(fc => new FunctionExecutionResultForLogging
+                            {
+                                ToolCallId = fc.ToolCallId,
+                                FunctionName = fc.FunctionName,
+                                Status = fc.Success ? "completed" : "failed",
+                                Cost = fc.Cost,
+                                ErrorMessage = fc.ErrorMessage,
+                                FunctionExecutionId = fc.FunctionExecutionId
+                            })
+                            .ToList();
+
+                        HttpContext.Items[HttpContextKeys.ChatFunctionCalls] = functionExecutionResults;
+                        HttpContext.Items[HttpContextKeys.ChatFunctionCost] = response.AgenticMetrics.TotalFunctionCost;
+                        _logger.LogDebug(
+                            "Stored {Count} function execution results for non-streaming request logging, total cost: {Cost:C}",
+                            functionExecutionResults.Count, response.AgenticMetrics.TotalFunctionCost);
+                    }
+
                     return Ok(response);
                 }
                 else
@@ -153,19 +185,51 @@ namespace ConduitLLM.Http.Controllers
                     {
                         ConduitLLM.Core.Models.Usage? streamingUsage = null;
                         string? streamingModel = null;
-                        
+
                         // Accumulate content for usage estimation if needed
                         var contentAccumulator = new StringBuilder();
-                        
+
+                        // Accumulate tool calls for request logging
+                        var accumulatedToolCalls = new Dictionary<int, ConduitLLM.Core.Models.ToolCall>();
+
+                        // Accumulate function execution results for request logging metadata
+                        var functionExecutionResults = new List<FunctionExecutionResultForLogging>();
+                        decimal totalFunctionCost = 0m;
+
                         var chunkCount = 0;
                         var firstChunkTime = DateTime.UtcNow;
-                        
+
                         await foreach (var chunk in _conduit.StreamChatCompletionAsync(
                             request,
                             null,
-                            onToolExecutingEvent: async (eventData, ct) =>
+                            virtualKeyId,
+                            async (eventData, ct) =>
                             {
+                                // Write to SSE stream
                                 await sseWriter.WriteToolExecutingEventAsync(eventData, ct);
+
+                                // Capture completed/failed events for request logging
+                                // Use reflection to safely extract properties from anonymous object
+                                var eventType = eventData.GetType();
+                                var statusProp = eventType.GetProperty("status");
+                                if (statusProp != null)
+                                {
+                                    var status = statusProp.GetValue(eventData)?.ToString();
+                                    if (status == "completed" || status == "failed")
+                                    {
+                                        var result = new FunctionExecutionResultForLogging
+                                        {
+                                            ToolCallId = eventType.GetProperty("tool_call_id")?.GetValue(eventData)?.ToString(),
+                                            FunctionName = eventType.GetProperty("function_name")?.GetValue(eventData)?.ToString(),
+                                            Status = status,
+                                            Cost = eventType.GetProperty("cost")?.GetValue(eventData) as decimal?,
+                                            ErrorMessage = eventType.GetProperty("error_message")?.GetValue(eventData)?.ToString(),
+                                            FunctionExecutionId = eventType.GetProperty("function_execution_id")?.GetValue(eventData) as Guid?
+                                        };
+                                        functionExecutionResults.Add(result);
+                                        totalFunctionCost += result.Cost ?? 0m;
+                                    }
+                                }
                             },
                             cancellationToken))
                         {
@@ -186,7 +250,45 @@ namespace ConduitLLM.Http.Controllers
                                     }
                                 }
                             }
-                            
+
+                            // Accumulate tool calls from streaming chunks for request logging
+                            if (chunk.Choices?.Count > 0 && chunk.Choices[0].Delta?.ToolCalls is { } toolCallDeltas)
+                            {
+                                foreach (var toolCallChunk in toolCallDeltas)
+                                {
+                                    if (!accumulatedToolCalls.ContainsKey(toolCallChunk.Index))
+                                    {
+                                        // New tool call
+                                        accumulatedToolCalls[toolCallChunk.Index] = new ConduitLLM.Core.Models.ToolCall
+                                        {
+                                            Id = toolCallChunk.Id ?? string.Empty,
+                                            Type = toolCallChunk.Type ?? "function",
+                                            Function = new ConduitLLM.Core.Models.FunctionCall
+                                            {
+                                                Name = toolCallChunk.Function?.Name ?? string.Empty,
+                                                Arguments = toolCallChunk.Function?.Arguments ?? string.Empty
+                                            }
+                                        };
+                                    }
+                                    else
+                                    {
+                                        // Append to existing tool call (arguments come in chunks)
+                                        var existing = accumulatedToolCalls[toolCallChunk.Index];
+                                        if (!string.IsNullOrEmpty(toolCallChunk.Function?.Arguments))
+                                        {
+                                            if (existing.Function != null)
+                                            {
+                                                existing.Function.Arguments += toolCallChunk.Function.Arguments;
+                                            }
+                                        }
+                                        if (!string.IsNullOrEmpty(toolCallChunk.Function?.Name) && existing.Function != null)
+                                        {
+                                            existing.Function.Name = toolCallChunk.Function.Name;
+                                        }
+                                    }
+                                }
+                            }
+
                             // Check for usage data in chunk (comes in final chunk for OpenAI-compatible APIs)
                             if (chunk.Usage != null)
                             {
@@ -300,6 +402,26 @@ namespace ConduitLLM.Http.Controllers
                         else if (contentAccumulator.Length == 0)
                         {
                             _logger.LogWarning("No content accumulated from streaming response, cannot estimate usage");
+                        }
+
+                        // Store accumulated tool calls for request logging
+                        if (accumulatedToolCalls.Count > 0)
+                        {
+                            HttpContext.Items["StreamingChatToolCalls"] = accumulatedToolCalls
+                                .OrderBy(kv => kv.Key)
+                                .Select(kv => kv.Value)
+                                .ToList();
+                            _logger.LogDebug("Stored {Count} accumulated tool calls for request logging", accumulatedToolCalls.Count);
+                        }
+
+                        // Store function execution results for request logging metadata
+                        if (functionExecutionResults.Count > 0)
+                        {
+                            HttpContext.Items[HttpContextKeys.ChatFunctionCalls] = functionExecutionResults;
+                            HttpContext.Items[HttpContextKeys.ChatFunctionCost] = totalFunctionCost;
+                            _logger.LogDebug(
+                                "Stored {Count} function execution results for request logging, total cost: {Cost:C}",
+                                functionExecutionResults.Count, totalFunctionCost);
                         }
 
                         // Always write final metrics with token usage data
@@ -455,5 +577,43 @@ namespace ConduitLLM.Http.Controllers
                 });
             }
         }
+    }
+
+    /// <summary>
+    /// Helper class to capture function execution results for request logging.
+    /// This data is stored in HttpContext.Items during streaming and used by
+    /// the UsageTrackingMiddleware to populate request log metadata.
+    /// </summary>
+    public class FunctionExecutionResultForLogging
+    {
+        /// <summary>
+        /// The tool call ID from the LLM response
+        /// </summary>
+        public string? ToolCallId { get; set; }
+
+        /// <summary>
+        /// Name of the function that was executed
+        /// </summary>
+        public string? FunctionName { get; set; }
+
+        /// <summary>
+        /// Execution status: "completed" or "failed"
+        /// </summary>
+        public string? Status { get; set; }
+
+        /// <summary>
+        /// Cost of the function execution
+        /// </summary>
+        public decimal? Cost { get; set; }
+
+        /// <summary>
+        /// Error message if the function failed
+        /// </summary>
+        public string? ErrorMessage { get; set; }
+
+        /// <summary>
+        /// ID of the FunctionExecution record for audit/drill-down
+        /// </summary>
+        public Guid? FunctionExecutionId { get; set; }
     }
 }

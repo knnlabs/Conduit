@@ -69,5 +69,11 @@ namespace ConduitLLM.Configuration.DTOs
         /// Timestamp of when the request was made
         /// </summary>
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// Optional metadata as JSON for request-type-specific details.
+        /// Used for functions, images, video, audio, and other execution types.
+        /// </summary>
+        public string? Metadata { get; set; }
     }
 }

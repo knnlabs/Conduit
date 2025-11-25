@@ -119,6 +119,8 @@ export function getExecutionStateName(state: ExecutionState): string {
       return 'Failed';
     case ExecutionState.Cancelled:
       return 'Cancelled';
+    case ExecutionState.TimedOut:
+      return 'Timed Out';
     default:
       return `Unknown (${String(state)})`;
   }
@@ -136,6 +138,8 @@ export function getExecutionStateColor(state: ExecutionState): string {
       return 'text-red-600 bg-red-50';
     case ExecutionState.Cancelled:
       return 'text-gray-600 bg-gray-50';
+    case ExecutionState.TimedOut:
+      return 'text-orange-600 bg-orange-50';
     default:
       return 'text-gray-600 bg-gray-50';
   }

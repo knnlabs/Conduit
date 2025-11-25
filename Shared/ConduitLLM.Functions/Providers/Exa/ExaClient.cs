@@ -6,6 +6,7 @@ using ConduitLLM.Functions.Enums;
 using ConduitLLM.Functions.Interfaces;
 using ConduitLLM.Functions.Models;
 using ConduitLLM.Functions.Providers.Exa.Models;
+using ConduitLLM.Functions.Utilities;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Functions.Providers.Exa;
@@ -141,51 +142,51 @@ public partial class ExaClient : IFunctionClient
 
         var request = new ExaSearchRequest
         {
-            Query = queryObj.ToString()!
+            Query = JsonElementConverter.ConvertToString(queryObj)!
         };
 
         // Map optional parameters
         if (parameters.TryGetValue("type", out var typeObj))
-            request.Type = typeObj.ToString();
+            request.Type = JsonElementConverter.ConvertToString(typeObj);
 
         if (parameters.TryGetValue("numResults", out var numObj))
-            request.NumResults = Convert.ToInt32(numObj);
+            request.NumResults = JsonElementConverter.ConvertToInt32(numObj);
 
         if (parameters.TryGetValue("category", out var catObj))
-            request.Category = catObj.ToString();
+            request.Category = JsonElementConverter.ConvertToString(catObj);
 
-        if (parameters.TryGetValue("includeDomains", out var incObj) && incObj is List<string> incDomains)
-            request.IncludeDomains = incDomains;
+        if (parameters.TryGetValue("includeDomains", out var incObj))
+            request.IncludeDomains = JsonElementConverter.ConvertToStringList(incObj);
 
-        if (parameters.TryGetValue("excludeDomains", out var excObj) && excObj is List<string> excDomains)
-            request.ExcludeDomains = excDomains;
+        if (parameters.TryGetValue("excludeDomains", out var excObj))
+            request.ExcludeDomains = JsonElementConverter.ConvertToStringList(excObj);
 
         if (parameters.TryGetValue("startCrawlDate", out var startCrawlObj))
-            request.StartCrawlDate = startCrawlObj.ToString();
+            request.StartCrawlDate = JsonElementConverter.ConvertToString(startCrawlObj);
 
         if (parameters.TryGetValue("endCrawlDate", out var endCrawlObj))
-            request.EndCrawlDate = endCrawlObj.ToString();
+            request.EndCrawlDate = JsonElementConverter.ConvertToString(endCrawlObj);
 
         if (parameters.TryGetValue("startPublishedDate", out var startPubObj))
-            request.StartPublishedDate = startPubObj.ToString();
+            request.StartPublishedDate = JsonElementConverter.ConvertToString(startPubObj);
 
         if (parameters.TryGetValue("endPublishedDate", out var endPubObj))
-            request.EndPublishedDate = endPubObj.ToString();
+            request.EndPublishedDate = JsonElementConverter.ConvertToString(endPubObj);
 
         if (parameters.TryGetValue("text", out var textObj))
-            request.Text = textObj;
+            request.Text = JsonElementConverter.ConvertJsonElement(textObj);
 
         if (parameters.TryGetValue("highlights", out var highlightsObj))
-            request.Highlights = highlightsObj;
+            request.Highlights = JsonElementConverter.ConvertJsonElement(highlightsObj);
 
         if (parameters.TryGetValue("summary", out var summaryObj))
-            request.Summary = summaryObj;
+            request.Summary = JsonElementConverter.ConvertJsonElement(summaryObj);
 
         if (parameters.TryGetValue("livecrawl", out var livecrawlObj))
-            request.Livecrawl = livecrawlObj.ToString();
+            request.Livecrawl = JsonElementConverter.ConvertToString(livecrawlObj);
 
         if (parameters.TryGetValue("userLocation", out var locationObj))
-            request.UserLocation = locationObj.ToString();
+            request.UserLocation = JsonElementConverter.ConvertToString(locationObj);
 
         return request;
     }

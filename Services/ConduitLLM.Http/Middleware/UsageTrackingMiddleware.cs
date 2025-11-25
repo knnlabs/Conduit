@@ -4,7 +4,10 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration;
+using ConduitLLM.Http.Constants;
+using ConduitLLM.Http.Controllers;
 using ConduitLLM.Http.Services;
+using ConduitLLM.Http.Utilities;
 using Prometheus;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 
@@ -115,14 +118,15 @@ namespace ConduitLLM.Http.Middleware
             if (context.Response.StatusCode >= 400)
                 return false;
 
-            // Only track completion endpoints
+            // Only track completion endpoints and function executions
             var path = context.Request.Path.Value?.ToLowerInvariant() ?? "";
-            return path.Contains("/completions") || 
-                   path.Contains("/embeddings") || 
+            return path.Contains("/completions") ||
+                   path.Contains("/embeddings") ||
                    path.Contains("/images/generations") ||
                    path.Contains("/audio/transcriptions") ||
                    path.Contains("/audio/speech") ||
-                   path.Contains("/videos/generations");
+                   path.Contains("/videos/generations") ||
+                   path.Contains("/functions/execute");
         }
 
         private async Task ProcessResponseAsync(
@@ -137,11 +141,19 @@ namespace ConduitLLM.Http.Middleware
         {
             var endpointType = UsageExtractor.DetermineRequestType(context.Request.Path);
             using var extractionTimer = UsageMetrics.UsageExtractionTime.WithLabels(endpointType).NewTimer();
-            
+
             try
             {
                 responseBody.Seek(0, SeekOrigin.Begin);
-                
+
+                // Handle function execution requests specially (they don't have standard usage data)
+                if (endpointType == "function")
+                {
+                    await ProcessFunctionResponseAsync(context, responseBody, batchSpendService, requestLogService,
+                        virtualKeyService, billingAuditService);
+                    return;
+                }
+
                 // Parse the response JSON
                 using var jsonDocument = await JsonDocument.ParseAsync(responseBody);
                 var root = jsonDocument.RootElement;
@@ -195,7 +207,7 @@ namespace ConduitLLM.Http.Middleware
                 // Reset stream position after JsonDocument.ParseAsync for tool usage extraction
                 responseBody.Seek(0, SeekOrigin.Begin);
 
-                // Extract and calculate tool usage costs
+                // Extract and calculate tool usage costs (provider-hosted tools like Groq code_interpreter)
                 var toolUsageData = ExtractToolUsageFromResponse(responseBody, providerTypeEnum);
                 decimal? toolCost = null;
                 string? toolUsageJson = null;
@@ -207,37 +219,55 @@ namespace ConduitLLM.Http.Middleware
                     _logger.LogDebug("Tool usage detected: {ToolUsageJson}, Cost: ${ToolCost}", toolUsageJson, toolCost);
                 }
 
+                // Extract chat tool calls (user-defined function/tool calls in the response)
+                string? chatToolCallsJson = null;
+                if (endpointType == "chat")
+                {
+                    responseBody.Seek(0, SeekOrigin.Begin);
+                    using var reader = new StreamReader(responseBody, leaveOpen: true);
+                    var responseText = reader.ReadToEnd();
+                    var chatToolCalls = UsageExtractor.ExtractChatToolCalls(responseText, _logger);
+                    chatToolCallsJson = UsageExtractor.SerializeChatToolCalls(chatToolCalls);
+
+                    if (chatToolCallsJson != null)
+                    {
+                        _logger.LogDebug("Chat tool calls detected: {ChatToolCallsJson}", chatToolCallsJson);
+                    }
+                }
+
                 // Add tool cost to total cost
                 var totalCost = cost + (toolCost ?? 0m);
-                
-                if (totalCost <= 0)
-                {
-                    _logger.LogDebug("Zero total cost calculated for {Model} with usage {Usage}, tool cost: ${ToolCost}", 
-                        model, JsonSerializer.Serialize(usage), toolCost);
-                    UsageMetrics.UsageTrackingFailures.WithLabels("zero_cost", endpointType).Inc();
-                    LogZeroCostBilling(context, model, usage, totalCost, providerType, billingAuditService, toolUsageJson, toolCost);
-                    return;
-                }
 
                 // Update metrics
                 UsageMetrics.UsageTrackingRequests.WithLabels(endpointType, "success").Inc();
-                
+
                 if (usage.PromptTokens.HasValue)
                     UsageMetrics.UsageTrackingTokens.WithLabels(model, providerType, "prompt").Inc(usage.PromptTokens.Value);
-                
+
                 if (usage.CompletionTokens.HasValue)
                     UsageMetrics.UsageTrackingTokens.WithLabels(model, providerType, "completion").Inc(usage.CompletionTokens.Value);
-                
+
                 UsageMetrics.UsageTrackingCosts.WithLabels(model, providerType, endpointType).Inc(Convert.ToDouble(totalCost));
 
-                // Update spend using batch service (with total cost including tools)
-                await SpendUpdateHelper.UpdateSpendAsync(virtualKeyId, totalCost, batchSpendService, virtualKeyService, _logger);
+                // Update spend using batch service only if there's a cost
+                if (totalCost > 0)
+                {
+                    await SpendUpdateHelper.UpdateSpendAsync(virtualKeyId, totalCost, batchSpendService, virtualKeyService, _logger);
+                    LogSuccessfulBilling(context, model, usage, totalCost, providerType, billingAuditService, toolUsageJson, toolCost);
+                }
+                else
+                {
+                    _logger.LogDebug("Zero total cost calculated for {Model} with usage {Usage}, tool cost: ${ToolCost}",
+                        model, JsonSerializer.Serialize(usage), toolCost);
+                    UsageMetrics.ZeroCostEvents.WithLabels(model, "zero_cost").Inc();
+                    LogZeroCostBilling(context, model, usage, totalCost, providerType, billingAuditService, toolUsageJson, toolCost);
+                }
 
-                // Log the request
-                await LogRequestAsync(context, virtualKeyId, model, usage, totalCost, requestLogService);
-                
-                // Audit log successful billing (including tool usage data)
-                LogSuccessfulBilling(context, model, usage, totalCost, providerType, billingAuditService, toolUsageJson, toolCost);
+                // Build metadata: prefer chat tool calls, fall back to provider tool usage
+                var metadata = chatToolCallsJson ?? toolUsageJson;
+
+                // Always log the request regardless of cost
+                await LogRequestAsync(context, virtualKeyId, model, usage, totalCost, requestLogService, metadata);
             }
             catch (JsonException ex)
             {
@@ -299,7 +329,7 @@ namespace ConduitLLM.Http.Middleware
                 ? parsedProviderType 
                 : ProviderType.OpenAI;
             
-            // Extract tool usage from streaming context if available
+            // Extract tool usage from streaming context if available (provider-hosted tools)
             var toolUsageData = context.Items.TryGetValue("StreamingToolUsage", out var toolObj)
                 ? toolObj as ToolUsageData
                 : null;
@@ -314,34 +344,79 @@ namespace ConduitLLM.Http.Middleware
                 _logger.LogDebug("Streaming tool usage detected: {ToolUsageJson}, Cost: ${ToolCost}", toolUsageJson, toolCost);
             }
 
-            // Calculate base cost and add tool cost
+            // Extract function execution results from streaming context (richer data with execution status)
+            string? chatToolCallsJson = null;
+            decimal functionExecutionCost = 0m;
+
+            if (endpointType == "chat" && context.Items.TryGetValue(HttpContextKeys.ChatFunctionCalls, out var functionResultsObj)
+                && functionResultsObj is List<FunctionExecutionResultForLogging> functionResults
+                && functionResults.Count > 0)
+            {
+                // Use richer function execution data (includes status, cost, execution ID)
+                chatToolCallsJson = FunctionExecutionSerializer.SerializeFunctionExecutionResults(functionResults);
+
+                // Get total function cost from HttpContext
+                if (context.Items.TryGetValue(HttpContextKeys.ChatFunctionCost, out var funcCostObj)
+                    && funcCostObj is decimal funcCost)
+                {
+                    functionExecutionCost = funcCost;
+                }
+
+                _logger.LogDebug("Streaming function executions detected: {Count} functions, total cost: {Cost:C}",
+                    functionResults.Count, functionExecutionCost);
+            }
+            // Fallback to basic tool call info if no execution results available
+            else if (endpointType == "chat" && context.Items.TryGetValue("StreamingChatToolCalls", out var streamingToolCallsObj)
+                && streamingToolCallsObj is List<ConduitLLM.Core.Models.ToolCall> streamingToolCalls
+                && streamingToolCalls.Count > 0)
+            {
+                // Convert to ChatToolCallData format (basic info only - no execution results)
+                var chatToolCallData = new ChatToolCallData
+                {
+                    ToolCalls = streamingToolCalls.Select(tc => new ChatToolCallItem
+                    {
+                        Id = tc.Id,
+                        Type = tc.Type,
+                        FunctionName = tc.Function?.Name,
+                        HasArguments = !string.IsNullOrEmpty(tc.Function?.Arguments)
+                    }).ToList()
+                };
+                chatToolCallsJson = UsageExtractor.SerializeChatToolCalls(chatToolCallData);
+                _logger.LogDebug("Streaming chat tool calls detected (basic): {ChatToolCallsJson}", chatToolCallsJson);
+            }
+
+            // Calculate base cost and add tool cost (both provider tools and function executions)
             var baseCost = await costCalculationService.CalculateCostAsync(model, usage);
-            var cost = baseCost + (toolCost ?? 0m);
-            
+            var cost = baseCost + (toolCost ?? 0m) + functionExecutionCost;
+
+            // Update metrics
+            UsageMetrics.UsageTrackingRequests.WithLabels(endpointType + "_stream", "success").Inc();
+
+            if (usage.PromptTokens.HasValue)
+                UsageMetrics.UsageTrackingTokens.WithLabels(model, providerType, "prompt").Inc(usage.PromptTokens.Value);
+
+            if (usage.CompletionTokens.HasValue)
+                UsageMetrics.UsageTrackingTokens.WithLabels(model, providerType, "completion").Inc(usage.CompletionTokens.Value);
+
+            UsageMetrics.UsageTrackingCosts.WithLabels(model, providerType, endpointType + "_stream").Inc(Convert.ToDouble(cost));
+
+            // Update spend only if there's a cost
             if (cost > 0)
             {
-                // Update metrics
-                UsageMetrics.UsageTrackingRequests.WithLabels(endpointType + "_stream", "success").Inc();
-                
-                if (usage.PromptTokens.HasValue)
-                    UsageMetrics.UsageTrackingTokens.WithLabels(model, providerType, "prompt").Inc(usage.PromptTokens.Value);
-                
-                if (usage.CompletionTokens.HasValue)
-                    UsageMetrics.UsageTrackingTokens.WithLabels(model, providerType, "completion").Inc(usage.CompletionTokens.Value);
-                
-                UsageMetrics.UsageTrackingCosts.WithLabels(model, providerType, endpointType + "_stream").Inc(Convert.ToDouble(cost));
-                
                 await SpendUpdateHelper.UpdateSpendAsync(virtualKeyId, cost, batchSpendService, virtualKeyService, _logger);
-                await LogRequestAsync(context, virtualKeyId, model, usage, cost, requestLogService);
-                
                 LogStreamingBilling(context, model, usage, cost, providerType, isEstimated, billingAuditService, toolUsageJson, toolCost);
             }
             else
             {
-                UsageMetrics.UsageTrackingFailures.WithLabels("zero_cost_streaming", endpointType).Inc();
-                LogZeroCostBilling(context, model, usage, cost, providerType, billingAuditService, toolUsageJson, toolCost);
                 UsageMetrics.ZeroCostEvents.WithLabels(model ?? "unknown", "streaming_zero").Inc();
+                LogZeroCostBilling(context, model, usage, cost, providerType, billingAuditService, toolUsageJson, toolCost);
             }
+
+            // Build metadata: prefer chat tool calls, fall back to provider tool usage
+            var metadata = chatToolCallsJson ?? toolUsageJson;
+
+            // Always log the request regardless of cost
+            await LogRequestAsync(context, virtualKeyId, model, usage, cost, requestLogService, metadata);
         }
 
         private async Task LogRequestAsync(
@@ -350,12 +425,13 @@ namespace ConduitLLM.Http.Middleware
             string model,
             Usage usage,
             decimal cost,
-            IRequestLogService requestLogService)
+            IRequestLogService requestLogService,
+            string? metadata = null)
         {
             try
             {
                 var requestType = UsageExtractor.DetermineRequestType(context.Request.Path);
-                
+
                 var logRequest = new LogRequestDto
                 {
                     VirtualKeyId = virtualKeyId,
@@ -368,11 +444,12 @@ namespace ConduitLLM.Http.Middleware
                     UserId = context.User?.Identity?.Name,
                     ClientIp = context.Connection.RemoteIpAddress?.ToString(),
                     RequestPath = context.Request.Path.ToString(),
-                    StatusCode = context.Response.StatusCode
+                    StatusCode = context.Response.StatusCode,
+                    Metadata = metadata
                 };
 
                 await requestLogService.LogRequestAsync(logRequest);
-                
+
                 _logger.LogInformation(
                     "Tracked usage for VirtualKey {VirtualKeyId}: Model={Model}, PromptTokens={PromptTokens}, CompletionTokens={CompletionTokens}, Cost={Cost:C}",
                     virtualKeyId, model, usage.PromptTokens, usage.CompletionTokens, cost);
@@ -381,6 +458,112 @@ namespace ConduitLLM.Http.Middleware
             {
                 _logger.LogError(ex, "Failed to log request for VirtualKey {VirtualKeyId}", virtualKeyId);
                 // Don't throw - logging failure shouldn't break the request
+            }
+        }
+
+        /// <summary>
+        /// Process function execution responses and log them with function-specific metadata.
+        /// </summary>
+        private async Task ProcessFunctionResponseAsync(
+            HttpContext context,
+            MemoryStream responseBody,
+            IBatchSpendUpdateService batchSpendService,
+            IRequestLogService requestLogService,
+            IVirtualKeyService virtualKeyService,
+            IBillingAuditService billingAuditService)
+        {
+            try
+            {
+                // Get virtual key ID
+                var virtualKeyId = (int)context.Items["VirtualKeyId"]!;
+
+                // Get function configuration info from HttpContext.Items (set by FunctionsController)
+                var functionConfigId = context.Items.TryGetValue("FunctionConfigurationId", out var configIdObj)
+                    ? configIdObj as int? ?? 0
+                    : 0;
+                var functionName = context.Items.TryGetValue("FunctionConfigurationName", out var nameObj)
+                    ? nameObj?.ToString() ?? "unknown"
+                    : "unknown";
+                var executionId = context.Items.TryGetValue("FunctionExecutionId", out var execIdObj)
+                    ? execIdObj as Guid? ?? Guid.Empty
+                    : Guid.Empty;
+
+                // Parse the response to get cost and state
+                using var jsonDocument = await JsonDocument.ParseAsync(responseBody);
+                var root = jsonDocument.RootElement;
+
+                decimal cost = 0;
+                string state = "unknown";
+                string? errorMessage = null;
+
+                if (root.TryGetProperty("actualCost", out var actualCostElement))
+                {
+                    cost = actualCostElement.ValueKind == JsonValueKind.Number
+                        ? actualCostElement.GetDecimal()
+                        : 0;
+                }
+                else if (root.TryGetProperty("estimatedCost", out var estimatedCostElement))
+                {
+                    cost = estimatedCostElement.ValueKind == JsonValueKind.Number
+                        ? estimatedCostElement.GetDecimal()
+                        : 0;
+                }
+
+                if (root.TryGetProperty("state", out var stateElement))
+                {
+                    state = stateElement.GetString() ?? "unknown";
+                }
+
+                if (root.TryGetProperty("errorMessage", out var errorElement) && errorElement.ValueKind == JsonValueKind.String)
+                {
+                    errorMessage = errorElement.GetString();
+                }
+
+                // Build metadata JSON for function execution
+                var metadata = JsonSerializer.Serialize(new
+                {
+                    type = "function",
+                    functionConfigurationId = functionConfigId,
+                    functionName,
+                    executionId,
+                    state,
+                    errorMessage
+                });
+
+                // Get provider type for metrics
+                var providerType = context.Items.TryGetValue("ProviderType", out var providerTypeObj)
+                    ? providerTypeObj?.ToString() ?? "unknown"
+                    : "unknown";
+
+                // Update metrics
+                UsageMetrics.UsageTrackingRequests.WithLabels("function", "success").Inc();
+                UsageMetrics.UsageTrackingCosts.WithLabels(functionName, providerType, "function").Inc(Convert.ToDouble(cost));
+
+                // Update spend if there's a cost
+                if (cost > 0)
+                {
+                    await SpendUpdateHelper.UpdateSpendAsync(virtualKeyId, cost, batchSpendService, virtualKeyService, _logger);
+                }
+
+                // Create a Usage object with zero tokens (functions don't use tokens)
+                var usage = new Usage
+                {
+                    PromptTokens = 0,
+                    CompletionTokens = 0,
+                    TotalTokens = 0
+                };
+
+                // Log the request with function metadata
+                await LogRequestAsync(context, virtualKeyId, functionName, usage, cost, requestLogService, metadata);
+
+                _logger.LogInformation(
+                    "Tracked function execution for VirtualKey {VirtualKeyId}: Function={FunctionName}, ExecutionId={ExecutionId}, Cost={Cost:C}",
+                    virtualKeyId, functionName, executionId, cost);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to process function response for usage tracking");
+                UsageMetrics.UsageTrackingFailures.WithLabels("function_processing_error", "function").Inc();
             }
         }
 

@@ -47,6 +47,8 @@ function getExecutionStateBadgeColor(state: ExecutionState): string {
       return 'red';
     case ExecutionState.Cancelled:
       return 'gray';
+    case ExecutionState.TimedOut:
+      return 'orange';
     default:
       return 'gray';
   }

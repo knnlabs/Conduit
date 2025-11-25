@@ -80,7 +80,7 @@ namespace ConduitLLM.Http.Middleware
         public static string DetermineRequestType(PathString path)
         {
             var pathValue = path.Value?.ToLowerInvariant() ?? "";
-            
+
             if (pathValue.Contains("/chat/completions"))
                 return "chat";
             if (pathValue.Contains("/completions"))
@@ -95,7 +95,9 @@ namespace ConduitLLM.Http.Middleware
                 return "tts";
             if (pathValue.Contains("/videos/generations"))
                 return "video";
-            
+            if (pathValue.Contains("/functions/execute"))
+                return "function";
+
             return "other";
         }
 
@@ -113,6 +115,117 @@ namespace ConduitLLM.Http.Middleware
             }
             
             return 0;
+        }
+
+        /// <summary>
+        /// Extracts tool_calls from a chat completion response (OpenAI-style format).
+        /// This captures function/tool calls made by the LLM in the response.
+        /// </summary>
+        /// <param name="responseBody">The full response body as a string</param>
+        /// <param name="logger">Logger for error reporting</param>
+        /// <returns>Chat tool call data or null if no tool calls were made</returns>
+        public static ChatToolCallData? ExtractChatToolCalls(string responseBody, ILogger logger)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(responseBody);
+                var root = doc.RootElement;
+
+                // Check for choices array
+                if (!root.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
+                    return null;
+
+                var toolCalls = new List<ChatToolCallItem>();
+
+                // Iterate through all choices
+                foreach (var choice in choices.EnumerateArray())
+                {
+                    // Get the message object
+                    if (!choice.TryGetProperty("message", out var message))
+                        continue;
+
+                    // Check for tool_calls array (modern format)
+                    if (message.TryGetProperty("tool_calls", out var toolCallsArray))
+                    {
+                        foreach (var toolCall in toolCallsArray.EnumerateArray())
+                        {
+                            var item = new ChatToolCallItem();
+
+                            if (toolCall.TryGetProperty("id", out var id))
+                                item.Id = id.GetString();
+
+                            if (toolCall.TryGetProperty("type", out var type))
+                                item.Type = type.GetString();
+
+                            if (toolCall.TryGetProperty("function", out var function))
+                            {
+                                if (function.TryGetProperty("name", out var name))
+                                    item.FunctionName = name.GetString();
+
+                                // Don't store arguments - they may contain sensitive data
+                                // Just note that arguments were present
+                                if (function.TryGetProperty("arguments", out _))
+                                    item.HasArguments = true;
+                            }
+
+                            toolCalls.Add(item);
+                        }
+                    }
+
+                    // Check for legacy function_call format
+                    if (message.TryGetProperty("function_call", out var functionCall))
+                    {
+                        var item = new ChatToolCallItem
+                        {
+                            Type = "function"
+                        };
+
+                        if (functionCall.TryGetProperty("name", out var name))
+                            item.FunctionName = name.GetString();
+
+                        if (functionCall.TryGetProperty("arguments", out _))
+                            item.HasArguments = true;
+
+                        toolCalls.Add(item);
+                    }
+                }
+
+                if (toolCalls.Count > 0)
+                {
+                    return new ChatToolCallData { ToolCalls = toolCalls };
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to extract tool_calls from chat completion response");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Serializes chat tool call data to JSON for storage in metadata.
+        /// </summary>
+        /// <param name="data">The chat tool call data</param>
+        /// <returns>JSON string representation</returns>
+        public static string? SerializeChatToolCalls(ChatToolCallData? data)
+        {
+            if (data == null || data.ToolCalls.Count == 0)
+                return null;
+
+            return JsonSerializer.Serialize(new
+            {
+                type = "chat_with_tools",
+                toolCallCount = data.ToolCalls.Count,
+                toolCalls = data.ToolCalls.Select(tc => new
+                {
+                    id = tc.Id,
+                    type = tc.Type,
+                    functionName = tc.FunctionName,
+                    hasArguments = tc.HasArguments
+                })
+            }, new JsonSerializerOptions { WriteIndented = false });
         }
 
         /// <summary>
@@ -238,5 +351,42 @@ namespace ConduitLLM.Http.Middleware
         /// Duration of tool usage (for time-based billing like code execution)
         /// </summary>
         public decimal? Duration { get; set; }
+    }
+
+    /// <summary>
+    /// Represents tool/function calls extracted from a chat completion response.
+    /// </summary>
+    public class ChatToolCallData
+    {
+        /// <summary>
+        /// List of tool calls made by the LLM in the response.
+        /// </summary>
+        public List<ChatToolCallItem> ToolCalls { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Represents a single tool/function call from a chat completion response.
+    /// </summary>
+    public class ChatToolCallItem
+    {
+        /// <summary>
+        /// The unique ID of the tool call (e.g., "call_abc123")
+        /// </summary>
+        public string? Id { get; set; }
+
+        /// <summary>
+        /// The type of tool call (typically "function")
+        /// </summary>
+        public string? Type { get; set; }
+
+        /// <summary>
+        /// The name of the function being called
+        /// </summary>
+        public string? FunctionName { get; set; }
+
+        /// <summary>
+        /// Whether arguments were provided (we don't store actual arguments for privacy)
+        /// </summary>
+        public bool HasArguments { get; set; }
     }
 }

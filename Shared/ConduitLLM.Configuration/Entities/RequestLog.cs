@@ -87,4 +87,12 @@ public class RequestLog
     /// Optional status code of the response
     /// </summary>
     public int? StatusCode { get; set; }
+
+    /// <summary>
+    /// Optional metadata as JSON for request-type-specific details.
+    /// Used for functions, images, video, audio, and other execution types
+    /// that have additional fields beyond the standard token-based schema.
+    /// </summary>
+    [Column(TypeName = "jsonb")]
+    public string? Metadata { get; set; }
 }

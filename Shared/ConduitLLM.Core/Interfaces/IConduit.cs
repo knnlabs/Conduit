@@ -13,11 +13,13 @@ namespace ConduitLLM.Core.Interfaces
         /// </summary>
         /// <param name="request">The chat completion request, including the target model alias.</param>
         /// <param name="apiKey">Optional API key to override the configured key for this request.</param>
+        /// <param name="virtualKeyId">Optional virtual key ID for function execution billing. Required when using function calling.</param>
         /// <param name="cancellationToken">A token to cancel the operation.</param>
         /// <returns>The chat completion response from the selected LLM provider.</returns>
         Task<ChatCompletionResponse> CreateChatCompletionAsync(
             ChatCompletionRequest request,
             string? apiKey = null,
+            int? virtualKeyId = null,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -25,12 +27,14 @@ namespace ConduitLLM.Core.Interfaces
         /// </summary>
         /// <param name="request">The chat completion request, including the target model alias.</param>
         /// <param name="apiKey">Optional API key to override the configured key for this request.</param>
+        /// <param name="virtualKeyId">Optional virtual key ID for function execution billing. Required when using function calling.</param>
         /// <param name="onToolExecutingEvent">Optional callback invoked when tool execution status changes (started, completed, failed). Used to emit real-time SSE events for agentic workflows.</param>
         /// <param name="cancellationToken">A token to cancel the operation.</param>
         /// <returns>An asynchronous enumerable of chat completion chunks from the selected LLM provider.</returns>
         IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
             ChatCompletionRequest request,
             string? apiKey = null,
+            int? virtualKeyId = null,
             Func<object, CancellationToken, Task>? onToolExecutingEvent = null,
             CancellationToken cancellationToken = default);
 

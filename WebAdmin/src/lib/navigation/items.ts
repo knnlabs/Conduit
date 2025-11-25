@@ -15,6 +15,7 @@ import {
   IconEye,
   IconBrain,
   IconAlertCircle,
+  IconListDetails,
 } from '@tabler/icons-react';
 import { NavigationSection } from '@/types/navigation';
 
@@ -140,6 +141,14 @@ export const navigationSections: NavigationSection[] = [
         href: '/cost-dashboard',
         description: 'Usage costs and analytics',
         color: 'orange',
+      },
+      {
+        id: 'request-logs',
+        label: 'Request Logs',
+        icon: IconListDetails,
+        href: '/request-logs',
+        description: 'View individual API request details',
+        color: 'cyan',
       },
       {
         id: 'usage-analytics',

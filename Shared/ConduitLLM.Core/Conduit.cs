@@ -57,6 +57,7 @@ namespace ConduitLLM.Core
         /// </summary>
         /// <param name="request">The chat completion request, including the target model alias.</param>
         /// <param name="apiKey">Optional API key to override the configured key for this request.</param>
+        /// <param name="virtualKeyId">Optional virtual key ID for function execution billing. Required when using function calling.</param>
         /// <param name="cancellationToken">A token to cancel the operation.</param>
         /// <returns>The chat completion response from the selected LLM provider.</returns>
         /// <exception cref="ArgumentNullException">Thrown if the request is null.</exception>
@@ -67,6 +68,7 @@ namespace ConduitLLM.Core
         public async Task<ChatCompletionResponse> CreateChatCompletionAsync(
             ChatCompletionRequest request,
             string? apiKey = null,
+            int? virtualKeyId = null,
             CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(request);
@@ -81,7 +83,7 @@ namespace ConduitLLM.Core
             // Check if function calling is requested
             if (request.FunctionConfigurationIds?.Any() == true)
             {
-                return await CreateChatCompletionWithFunctionsAsync(request, apiKey, cancellationToken);
+                return await CreateChatCompletionWithFunctionsAsync(request, apiKey, virtualKeyId ?? 0, cancellationToken);
             }
 
             // Get the appropriate client from the factory based on the model alias in the request
@@ -98,6 +100,7 @@ namespace ConduitLLM.Core
         /// </summary>
         /// <param name="request">The chat completion request, including the target model alias.</param>
         /// <param name="apiKey">Optional API key to override the configured key for this request.</param>
+        /// <param name="virtualKeyId">Optional virtual key ID for function execution billing. Required when using function calling.</param>
         /// <param name="onToolExecutingEvent">Optional callback invoked when tool execution status changes (started, completed, failed). Used to emit real-time SSE events for agentic workflows.</param>
         /// <param name="cancellationToken">A token to cancel the operation.</param>
         /// <returns>An asynchronous enumerable of chat completion chunks from the selected LLM provider.</returns>
@@ -109,6 +112,7 @@ namespace ConduitLLM.Core
         public async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
             ChatCompletionRequest request,
             string? apiKey = null,
+            int? virtualKeyId = null,
             Func<object, CancellationToken, Task>? onToolExecutingEvent = null,
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
@@ -127,7 +131,7 @@ namespace ConduitLLM.Core
             if (hasFunctionConfigs)
             {
                 // Use streaming agentic loop
-                await foreach (var chunk in StreamChatCompletionWithFunctionsAsync(request, apiKey, onToolExecutingEvent, cancellationToken))
+                await foreach (var chunk in StreamChatCompletionWithFunctionsAsync(request, apiKey, virtualKeyId ?? 0, onToolExecutingEvent, cancellationToken))
                 {
                     yield return chunk;
                 }
@@ -146,9 +150,14 @@ namespace ConduitLLM.Core
         /// <summary>
         /// Creates a chat completion with function calling support and optional agentic mode.
         /// </summary>
+        /// <param name="request">The chat completion request.</param>
+        /// <param name="apiKey">Optional API key override.</param>
+        /// <param name="virtualKeyId">The virtual key ID for function execution billing.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
         private async Task<ChatCompletionResponse> CreateChatCompletionWithFunctionsAsync(
             ChatCompletionRequest request,
             string? apiKey,
+            int virtualKeyId,
             CancellationToken cancellationToken)
         {
             if (_functionDiscoveryService == null || _agenticOrchestrationService == null)
@@ -156,11 +165,6 @@ namespace ConduitLLM.Core
                 throw new InvalidOperationException(
                     "Function calling requires FunctionDiscoveryService and AgenticOrchestrationService to be configured.");
             }
-
-            // NOTE: We need virtualKeyId for function execution, but it's not available in this layer
-            // The virtualKeyId will be obtained from HttpContext in the controller layer
-            // For now, we'll use a placeholder value of 0, which should be replaced by the controller
-            var virtualKeyId = 0; // This will be injected by the controller
 
             var chatCompletionId = Guid.NewGuid();
             var requestId = Guid.NewGuid().ToString();
@@ -306,9 +310,15 @@ namespace ConduitLLM.Core
         /// Streams a chat completion with function calling support and optional agentic mode.
         /// Pauses streaming to execute functions, then resumes for the next iteration.
         /// </summary>
+        /// <param name="request">The chat completion request.</param>
+        /// <param name="apiKey">Optional API key override.</param>
+        /// <param name="virtualKeyId">The virtual key ID for function execution billing.</param>
+        /// <param name="onToolExecutingEvent">Optional callback for tool execution events.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
         private async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionWithFunctionsAsync(
             ChatCompletionRequest request,
             string? apiKey,
+            int virtualKeyId,
             Func<object, CancellationToken, Task>? onToolExecutingEvent,
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
         {
@@ -318,8 +328,6 @@ namespace ConduitLLM.Core
                     "Function calling requires FunctionDiscoveryService and AgenticOrchestrationService to be configured.");
             }
 
-            // NOTE: Virtual key ID placeholder - should be set by controller
-            var virtualKeyId = 0;
             var chatCompletionId = Guid.NewGuid();
             var requestId = Guid.NewGuid().ToString();
 

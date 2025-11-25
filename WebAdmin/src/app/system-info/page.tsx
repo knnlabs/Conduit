@@ -28,14 +28,14 @@ import {
 } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
-import { SystemInfoDto, LLMCacheControlDto, GlobalSettingDto, GlobalSettingCacheStats, FunctionDiscoveryCacheStatistics } from '@knn_labs/conduit-admin-client';
+import { SystemInfoDto, LLMCacheControlDto, GlobalSettingDto, GlobalSettingCacheStats } from '@knn_labs/conduit-admin-client';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { formatUptime } from './helpers';
 import { SystemOverviewTab } from './SystemOverviewTab';
 import { SystemServicesTab } from './SystemServicesTab';
 import { SystemEnvironmentTab } from './SystemEnvironmentTab';
 import { SystemDependenciesTab } from './SystemDependenciesTab';
-import { GlobalSettingsTab } from './GlobalSettingsTab';
+import { GlobalSettingsTab, type FunctionDiscoveryCacheStatistics } from './GlobalSettingsTab';
 import { modals } from '@mantine/modals';
 
 
@@ -319,19 +319,14 @@ export default function SystemInfoPage() {
   };
 
   const fetchFunctionDiscoveryCache = async () => {
-    try {
-      const stats = await withAdminClient(client => client.system.getFunctionDiscoveryCacheStats());
-      setFunctionDiscoveryCacheStats(stats);
-    } catch (error) {
-      // Silently fail - cache stats are optional
-      console.warn('Failed to fetch function discovery cache stats:', error);
-      setFunctionDiscoveryCacheStats(null);
-    }
+    // Function discovery cache stats endpoint doesn't exist in SDK yet
+    // Set to null until the backend endpoint is implemented
+    setFunctionDiscoveryCacheStats(null);
   };
 
   const handleInvalidateFunctionDiscoveryCache = async () => {
     try {
-      await withAdminClient(client => client.system.invalidateFunctionDiscoveryCache());
+      await withAdminClient(client => client.system.invalidateDiscoveryCache());
 
       notifications.show({
         title: 'Success',

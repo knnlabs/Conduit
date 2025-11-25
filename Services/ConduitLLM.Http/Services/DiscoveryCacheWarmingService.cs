@@ -208,26 +208,34 @@ namespace ConduitLLM.Http.Services
                         id = mapping.ModelAlias,
                         provider = mapping.Provider?.ProviderType.ToString().ToLowerInvariant(),
                         display_name = mapping.ModelAlias,
-                        
+
                         // Metadata
                         description = mapping.ModelProviderTypeAssociation?.Model?.Description ?? string.Empty,
                         model_card_url = mapping.ModelProviderTypeAssociation?.Model?.ModelCardUrl ?? string.Empty,
-                        max_tokens = maxInputTokens, // Context window size
+                        max_tokens = maxInputTokens + maxOutputTokens, // Total context window size
                         max_input_tokens = maxInputTokens,
                         max_output_tokens = maxOutputTokens,
                         tokenizer_type = caps.TokenizerType.ToString().ToLowerInvariant(),
-                        
+
                         // UI Parameters from Model or Series
                         parameters = mapping.ModelProviderTypeAssociation?.Model?.ModelParameters ?? mapping.ModelProviderTypeAssociation?.Model?.Series?.Parameters ?? "{}",
-                        
-                        // Capabilities (flat boolean flags)
-                        supports_chat = caps.SupportsChat,
-                        supports_streaming = caps.SupportsStreaming,
-                        supports_vision = caps.SupportsVision,
-                        supports_function_calling = caps.SupportsFunctionCalling,
-                        supports_video_generation = caps.SupportsVideoGeneration,
-                        supports_image_generation = caps.SupportsImageGeneration,
-                        supports_embeddings = caps.SupportsEmbeddings
+
+                        // Capabilities (nested object as expected by SDK)
+                        capabilities = new
+                        {
+                            chat = caps.SupportsChat,
+                            chat_stream = caps.SupportsStreaming,
+                            embeddings = caps.SupportsEmbeddings,
+                            image_generation = caps.SupportsImageGeneration,
+                            vision = caps.SupportsVision,
+                            video_generation = caps.SupportsVideoGeneration,
+                            video_understanding = false, // Not yet supported
+                            function_calling = caps.SupportsFunctionCalling,
+                            tool_use = caps.SupportsFunctionCalling, // Same as function calling for now
+                            json_mode = false, // Not yet tracked
+                            max_tokens = maxInputTokens + maxOutputTokens,
+                            max_output_tokens = maxOutputTokens
+                        }
                     });
                 }
 

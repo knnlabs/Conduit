@@ -30,7 +30,8 @@ namespace ConduitLLM.Admin.Services
                 ClientIp = log.ClientIp,
                 RequestPath = log.RequestPath,
                 StatusCode = log.StatusCode,
-                Timestamp = log.Timestamp
+                Timestamp = log.Timestamp,
+                Metadata = log.Metadata
             };
         }
 

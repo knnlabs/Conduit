@@ -80,5 +80,11 @@ namespace ConduitLLM.Configuration.DTOs
         /// Total tokens (input + output)
         /// </summary>
         public int TotalTokens => InputTokens + OutputTokens;
+
+        /// <summary>
+        /// Optional metadata as JSON for request-type-specific details.
+        /// Used for functions, images, video, audio, and other execution types.
+        /// </summary>
+        public string? Metadata { get; set; }
     }
 }

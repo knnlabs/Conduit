@@ -113,6 +113,7 @@ public class FunctionsController : EventPublishingControllerBase
             HttpContext.Items["ProviderId"] = configuration.ProviderType;
             HttpContext.Items["ProviderType"] = configuration.ProviderType;
             HttpContext.Items["FunctionConfigurationId"] = configuration.Id;
+            HttpContext.Items["FunctionConfigurationName"] = configuration.ConfigurationName;
 
             _logger.LogInformation(
                 "Executing function {FunctionName} (config {ConfigId}) for virtual key {VirtualKeyId}",

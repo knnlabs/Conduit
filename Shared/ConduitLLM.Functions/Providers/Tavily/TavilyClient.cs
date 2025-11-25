@@ -6,6 +6,7 @@ using ConduitLLM.Functions.Enums;
 using ConduitLLM.Functions.Interfaces;
 using ConduitLLM.Functions.Models;
 using ConduitLLM.Functions.Providers.Tavily.Models;
+using ConduitLLM.Functions.Utilities;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Functions.Providers.Tavily;
@@ -142,54 +143,54 @@ public partial class TavilyClient : IFunctionClient
 
         var request = new TavilySearchRequest
         {
-            Query = queryObj.ToString()!
+            Query = JsonElementConverter.ConvertToString(queryObj)!
         };
 
         // Map optional parameters
         if (parameters.TryGetValue("topic", out var topicObj))
-            request.Topic = topicObj.ToString();
+            request.Topic = JsonElementConverter.ConvertToString(topicObj);
 
         if (parameters.TryGetValue("search_depth", out var depthObj))
-            request.SearchDepth = depthObj.ToString();
+            request.SearchDepth = JsonElementConverter.ConvertToString(depthObj);
 
         if (parameters.TryGetValue("max_results", out var maxObj))
-            request.MaxResults = Convert.ToInt32(maxObj);
+            request.MaxResults = JsonElementConverter.ConvertToInt32(maxObj);
 
         if (parameters.TryGetValue("include_answer", out var answerObj))
-            request.IncludeAnswer = answerObj;
+            request.IncludeAnswer = JsonElementConverter.ConvertJsonElement(answerObj);
 
         if (parameters.TryGetValue("include_raw_content", out var rawContentObj))
-            request.IncludeRawContent = rawContentObj;
+            request.IncludeRawContent = JsonElementConverter.ConvertJsonElement(rawContentObj);
 
         if (parameters.TryGetValue("include_images", out var imagesObj))
-            request.IncludeImages = Convert.ToBoolean(imagesObj);
+            request.IncludeImages = JsonElementConverter.ConvertToBoolean(imagesObj);
 
         if (parameters.TryGetValue("include_image_descriptions", out var imageDescObj))
-            request.IncludeImageDescriptions = Convert.ToBoolean(imageDescObj);
+            request.IncludeImageDescriptions = JsonElementConverter.ConvertToBoolean(imageDescObj);
 
         if (parameters.TryGetValue("include_favicon", out var faviconObj))
-            request.IncludeFavicon = Convert.ToBoolean(faviconObj);
+            request.IncludeFavicon = JsonElementConverter.ConvertToBoolean(faviconObj);
 
         if (parameters.TryGetValue("time_range", out var timeRangeObj))
-            request.TimeRange = timeRangeObj.ToString();
+            request.TimeRange = JsonElementConverter.ConvertToString(timeRangeObj);
 
         if (parameters.TryGetValue("start_date", out var startDateObj))
-            request.StartDate = startDateObj.ToString();
+            request.StartDate = JsonElementConverter.ConvertToString(startDateObj);
 
         if (parameters.TryGetValue("end_date", out var endDateObj))
-            request.EndDate = endDateObj.ToString();
+            request.EndDate = JsonElementConverter.ConvertToString(endDateObj);
 
-        if (parameters.TryGetValue("include_domains", out var incDomainsObj) && incDomainsObj is List<string> incDomains)
-            request.IncludeDomains = incDomains;
+        if (parameters.TryGetValue("include_domains", out var incDomainsObj))
+            request.IncludeDomains = JsonElementConverter.ConvertToStringList(incDomainsObj);
 
-        if (parameters.TryGetValue("exclude_domains", out var excDomainsObj) && excDomainsObj is List<string> excDomains)
-            request.ExcludeDomains = excDomains;
+        if (parameters.TryGetValue("exclude_domains", out var excDomainsObj))
+            request.ExcludeDomains = JsonElementConverter.ConvertToStringList(excDomainsObj);
 
         if (parameters.TryGetValue("country", out var countryObj))
-            request.Country = countryObj.ToString();
+            request.Country = JsonElementConverter.ConvertToString(countryObj);
 
         if (parameters.TryGetValue("auto_parameters", out var autoParamsObj))
-            request.AutoParameters = Convert.ToBoolean(autoParamsObj);
+            request.AutoParameters = JsonElementConverter.ConvertToBoolean(autoParamsObj);
 
         return request;
     }

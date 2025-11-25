@@ -28,7 +28,18 @@ import {
   IconChartBar,
 } from '@tabler/icons-react';
 import { useState } from 'react';
-import type { GlobalSettingDto, GlobalSettingCacheStats, FunctionDiscoveryCacheStatistics } from '@knn_labs/conduit-admin-client';
+import type { GlobalSettingDto, GlobalSettingCacheStats } from '@knn_labs/conduit-admin-client';
+
+/**
+ * Function discovery cache statistics - local type definition
+ * This data comes from the backend's function discovery cache endpoint
+ */
+export interface FunctionDiscoveryCacheStatistics {
+  isEnabled: boolean;
+  totalEntries: number;
+  cacheHits: number;
+  cacheMisses: number;
+}
 
 interface GlobalSettingsTabProps {
   settings: GlobalSettingDto[];
