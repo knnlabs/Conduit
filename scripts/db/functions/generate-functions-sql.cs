@@ -288,11 +288,11 @@ static async Task GenerateSQLOutput(List<FunctionConfiguration> configurations, 
             sql.AppendLine($"  IF v_cost_id IS NULL THEN");
             sql.AppendLine($"    -- Insert new cost configuration");
             sql.AppendLine($"    INSERT INTO \"FunctionCosts\" (");
-            sql.AppendLine($"      \"CostName\", \"PricingModel\", \"CostPerExecution\", \"CostPerResult\",");
+            sql.AppendLine($"      \"CostName\", \"ProviderType\", \"Purpose\", \"PricingModel\", \"CostPerExecution\", \"CostPerResult\",");
             sql.AppendLine($"      \"CostPerToken\", \"CostPerMinute\", \"TieredPricing\", \"PricingConfiguration\",");
             sql.AppendLine($"      \"IsActive\", \"EffectiveDate\", \"Priority\", \"CreatedAt\", \"UpdatedAt\"");
             sql.AppendLine($"    ) VALUES (");
-            sql.AppendLine($"      '{EscapeSqlString(config.CostConfiguration.CostName)}', {config.CostConfiguration.PricingModelId},");
+            sql.AppendLine($"      '{EscapeSqlString(config.CostConfiguration.CostName)}', {config.ProviderTypeId}, {config.PurposeId}, {config.CostConfiguration.PricingModelId},");
             sql.AppendLine($"      {costPerExecution}, {costPerResult}, {costPerToken}, {costPerMinute},");
             sql.AppendLine($"      {tieredPricing}::jsonb, {pricingConfiguration}::jsonb,");
             sql.AppendLine($"      {FormatBool(config.CostConfiguration.IsActive)}, NOW(), {config.CostConfiguration.Priority},");
@@ -302,6 +302,8 @@ static async Task GenerateSQLOutput(List<FunctionConfiguration> configurations, 
             sql.AppendLine($"  ELSE");
             sql.AppendLine($"    -- Update existing cost configuration");
             sql.AppendLine($"    UPDATE \"FunctionCosts\" SET");
+            sql.AppendLine($"      \"ProviderType\" = {config.ProviderTypeId},");
+            sql.AppendLine($"      \"Purpose\" = {config.PurposeId},");
             sql.AppendLine($"      \"PricingModel\" = {config.CostConfiguration.PricingModelId},");
             sql.AppendLine($"      \"CostPerExecution\" = {costPerExecution},");
             sql.AppendLine($"      \"CostPerResult\" = {costPerResult},");

@@ -14,10 +14,25 @@
       "timeoutSeconds": 30,
       "maxRetries": 3,
       "costConfiguration": {
-        "costName": "Exa Neural Search - Standard Pricing (1-25 results)",
-        "pricingModel": "FlatRate",
-        "pricingModelId": 1,
-        "costPerExecution": 0.005,
+        "costName": "Exa Neural Search - Hybrid Pricing",
+        "pricingModel": "Hybrid",
+        "pricingModelId": 6,
+        "pricingConfiguration": {
+          "searchCosts": {
+            "neural": {
+              "tier1": { "maxResults": 25, "cost": 0.005 },
+              "tier2": { "maxResults": null, "cost": 0.025 }
+            },
+            "keyword": { "cost": 0.0025 },
+            "auto": { "fallbackToKeyword": false }
+          },
+          "contentRetrievalCosts": { "costPer1000Pages": 1.0 },
+          "contentExtractionCosts": {
+            "text": 0.001,
+            "highlights": 0.001,
+            "summary": 0.001
+          }
+        },
         "isActive": true,
         "priority": 1
       },
@@ -120,10 +135,25 @@
       "timeoutSeconds": 30,
       "maxRetries": 3,
       "costConfiguration": {
-        "costName": "Exa Keyword Search - Standard Pricing (1-100 results)",
-        "pricingModel": "FlatRate",
-        "pricingModelId": 1,
-        "costPerExecution": 0.0025,
+        "costName": "Exa Keyword Search - Hybrid Pricing",
+        "pricingModel": "Hybrid",
+        "pricingModelId": 6,
+        "pricingConfiguration": {
+          "searchCosts": {
+            "neural": {
+              "tier1": { "maxResults": 25, "cost": 0.005 },
+              "tier2": { "maxResults": null, "cost": 0.025 }
+            },
+            "keyword": { "cost": 0.0025 },
+            "auto": { "fallbackToKeyword": true }
+          },
+          "contentRetrievalCosts": { "costPer1000Pages": 1.0 },
+          "contentExtractionCosts": {
+            "text": 0.001,
+            "highlights": 0.001,
+            "summary": 0.001
+          }
+        },
         "isActive": true,
         "priority": 1
       },
@@ -221,10 +251,25 @@
       "timeoutSeconds": 60,
       "maxRetries": 3,
       "costConfiguration": {
-        "costName": "Exa Content Retrieval - Per Page Pricing",
-        "pricingModel": "PerResult",
-        "pricingModelId": 2,
-        "costPerResult": 0.001,
+        "costName": "Exa Content Retrieval - Hybrid Pricing",
+        "pricingModel": "Hybrid",
+        "pricingModelId": 6,
+        "pricingConfiguration": {
+          "searchCosts": {
+            "neural": {
+              "tier1": { "maxResults": 25, "cost": 0.005 },
+              "tier2": { "maxResults": null, "cost": 0.025 }
+            },
+            "keyword": { "cost": 0.0025 },
+            "auto": { "fallbackToKeyword": true }
+          },
+          "contentRetrievalCosts": { "costPer1000Pages": 1.0 },
+          "contentExtractionCosts": {
+            "text": 0.001,
+            "highlights": 0.001,
+            "summary": 0.001
+          }
+        },
         "isActive": true,
         "priority": 1
       },
@@ -284,10 +329,19 @@
       "timeoutSeconds": 30,
       "maxRetries": 3,
       "costConfiguration": {
-        "costName": "Tavily General Search - Basic Depth (1 credit)",
-        "pricingModel": "FlatRate",
-        "pricingModelId": 1,
-        "costPerExecution": 0.0075,
+        "costName": "Tavily General Search - Credit-Based Pricing",
+        "pricingModel": "Hybrid",
+        "pricingModelId": 6,
+        "pricingConfiguration": {
+          "costPerCredit": 0.008,
+          "basicSearchCredits": 1,
+          "advancedSearchCredits": 2,
+          "autoParametersCredits": 2,
+          "chargeForAnswerGeneration": false,
+          "answerGenerationCost": 0,
+          "chargeForImageResults": false,
+          "costPerImage": 0
+        },
         "isActive": true,
         "priority": 1
       },
@@ -365,10 +419,19 @@
       "timeoutSeconds": 30,
       "maxRetries": 3,
       "costConfiguration": {
-        "costName": "Tavily News Search - Basic Depth (1 credit)",
-        "pricingModel": "FlatRate",
-        "pricingModelId": 1,
-        "costPerExecution": 0.0075,
+        "costName": "Tavily News Search - Credit-Based Pricing",
+        "pricingModel": "Hybrid",
+        "pricingModelId": 6,
+        "pricingConfiguration": {
+          "costPerCredit": 0.008,
+          "basicSearchCredits": 1,
+          "advancedSearchCredits": 2,
+          "autoParametersCredits": 2,
+          "chargeForAnswerGeneration": false,
+          "answerGenerationCost": 0,
+          "chargeForImageResults": false,
+          "costPerImage": 0
+        },
         "isActive": true,
         "priority": 1
       },
@@ -444,10 +507,19 @@
       "timeoutSeconds": 30,
       "maxRetries": 3,
       "costConfiguration": {
-        "costName": "Tavily Finance Search - Basic Depth (1 credit)",
-        "pricingModel": "FlatRate",
-        "pricingModelId": 1,
-        "costPerExecution": 0.0075,
+        "costName": "Tavily Finance Search - Credit-Based Pricing",
+        "pricingModel": "Hybrid",
+        "pricingModelId": 6,
+        "pricingConfiguration": {
+          "costPerCredit": 0.008,
+          "basicSearchCredits": 1,
+          "advancedSearchCredits": 2,
+          "autoParametersCredits": 2,
+          "chargeForAnswerGeneration": false,
+          "answerGenerationCost": 0,
+          "chargeForImageResults": false,
+          "costPerImage": 0
+        },
         "isActive": true,
         "priority": 1
       },
@@ -520,10 +592,19 @@
       "timeoutSeconds": 45,
       "maxRetries": 3,
       "costConfiguration": {
-        "costName": "Tavily Answer Generation - Advanced Depth (2 credits)",
-        "pricingModel": "FlatRate",
-        "pricingModelId": 1,
-        "costPerExecution": 0.015,
+        "costName": "Tavily Answer Generation - Credit-Based Pricing",
+        "pricingModel": "Hybrid",
+        "pricingModelId": 6,
+        "pricingConfiguration": {
+          "costPerCredit": 0.008,
+          "basicSearchCredits": 1,
+          "advancedSearchCredits": 2,
+          "autoParametersCredits": 2,
+          "chargeForAnswerGeneration": false,
+          "answerGenerationCost": 0,
+          "chargeForImageResults": false,
+          "costPerImage": 0
+        },
         "isActive": true,
         "priority": 1
       },
