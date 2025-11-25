@@ -48,4 +48,28 @@ public static class HttpContextKeys
     /// Key for storing the request start time for latency calculation.
     /// </summary>
     public const string RequestStartTime = "RequestStartTime";
+
+    /// <summary>
+    /// Key for storing the model name from image generation request (before provider mapping).
+    /// Value type: string
+    /// </summary>
+    public const string ImageRequestModel = "ImageRequestModel";
+
+    /// <summary>
+    /// Key for storing the quality setting from image generation request.
+    /// Value type: string (e.g., "standard", "hd")
+    /// </summary>
+    public const string ImageRequestQuality = "ImageRequestQuality";
+
+    /// <summary>
+    /// Key for storing the size/resolution from image generation request.
+    /// Value type: string (e.g., "1024x1024", "1792x1024")
+    /// </summary>
+    public const string ImageRequestSize = "ImageRequestSize";
+
+    /// <summary>
+    /// Key for storing the number of images requested.
+    /// Value type: int
+    /// </summary>
+    public const string ImageRequestN = "ImageRequestN";
 }

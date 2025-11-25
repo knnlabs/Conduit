@@ -1,4 +1,5 @@
 using ConduitLLM.Core.Models;
+using ConduitLLM.Http.Constants;
 
 using Microsoft.AspNetCore.Mvc;
 
@@ -50,7 +51,14 @@ namespace ConduitLLM.Http.Controllers
                 }
                 
                 var modelName = request.Model;
-                
+
+                // Store image request details for usage tracking
+                // These are stored before mapping lookup since request.Model may be updated later
+                HttpContext.Items[HttpContextKeys.ImageRequestModel] = modelName;
+                HttpContext.Items[HttpContextKeys.ImageRequestQuality] = request.Quality;
+                HttpContext.Items[HttpContextKeys.ImageRequestSize] = request.Size;
+                HttpContext.Items[HttpContextKeys.ImageRequestN] = request.N;
+
                 // First check model mappings for image generation capability
                 var mapping = await _modelMappingService.GetMappingByModelAliasAsync(modelName);
                 bool supportsImageGen = false;

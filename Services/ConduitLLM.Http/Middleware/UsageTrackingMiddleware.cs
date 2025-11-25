@@ -154,6 +154,14 @@ namespace ConduitLLM.Http.Middleware
                     return;
                 }
 
+                // Handle image generation requests specially (they typically don't have usage data)
+                if (endpointType == "image")
+                {
+                    await ProcessImageResponseAsync(context, responseBody, costCalculationService, batchSpendService,
+                        requestLogService, virtualKeyService, billingAuditService);
+                    return;
+                }
+
                 // Parse the response JSON
                 using var jsonDocument = await JsonDocument.ParseAsync(responseBody);
                 var root = jsonDocument.RootElement;
@@ -564,6 +572,141 @@ namespace ConduitLLM.Http.Middleware
             {
                 _logger.LogError(ex, "Failed to process function response for usage tracking");
                 UsageMetrics.UsageTrackingFailures.WithLabels("function_processing_error", "function").Inc();
+            }
+        }
+
+        /// <summary>
+        /// Process image generation responses and log them with image-specific metadata.
+        /// Image responses typically don't have standard usage data in the response,
+        /// so we extract details from HttpContext.Items (set by the controller) and the response data array.
+        /// </summary>
+        private async Task ProcessImageResponseAsync(
+            HttpContext context,
+            MemoryStream responseBody,
+            ICostCalculationService costCalculationService,
+            IBatchSpendUpdateService batchSpendService,
+            IRequestLogService requestLogService,
+            IVirtualKeyService virtualKeyService,
+            IBillingAuditService billingAuditService)
+        {
+            try
+            {
+                // Get virtual key ID
+                var virtualKeyId = (int)context.Items["VirtualKeyId"]!;
+
+                // Get image request details from HttpContext.Items (set by ImagesController)
+                var quality = context.Items.TryGetValue(HttpContextKeys.ImageRequestQuality, out var qualityObj)
+                    ? qualityObj?.ToString()
+                    : null;
+                var size = context.Items.TryGetValue(HttpContextKeys.ImageRequestSize, out var sizeObj)
+                    ? sizeObj?.ToString()
+                    : null;
+                var requestedN = context.Items.TryGetValue(HttpContextKeys.ImageRequestN, out var nObj)
+                    ? nObj as int? ?? 1
+                    : 1;
+
+                // Get provider type for metrics
+                var providerType = context.Items.TryGetValue("ProviderType", out var providerTypeObj)
+                    ? providerTypeObj?.ToString() ?? "unknown"
+                    : "unknown";
+
+                // Parse the response to count actual images generated and check for usage/model data
+                int actualImageCount = requestedN; // Default to requested count
+                Usage? responseUsage = null;
+                string? responseModel = null;
+
+                using var jsonDocument = await JsonDocument.ParseAsync(responseBody);
+                var root = jsonDocument.RootElement;
+
+                // Try to get model from response (some providers may include it)
+                if (root.TryGetProperty("model", out var modelElement))
+                {
+                    responseModel = modelElement.GetString();
+                }
+
+                // Count actual images from the data array
+                if (root.TryGetProperty("data", out var dataArray) && dataArray.ValueKind == JsonValueKind.Array)
+                {
+                    actualImageCount = dataArray.GetArrayLength();
+                }
+
+                // Check if the response includes usage data (some providers may include it)
+                if (root.TryGetProperty("usage", out var usageElement))
+                {
+                    responseUsage = UsageExtractor.ExtractUsage(usageElement, _logger);
+                }
+
+                // Resolve model: prefer HttpContext.Items (original request model alias), then response, then "unknown"
+                var model = context.Items.TryGetValue(HttpContextKeys.ImageRequestModel, out var modelObj)
+                    ? modelObj?.ToString()
+                    : null;
+                if (string.IsNullOrEmpty(model))
+                {
+                    model = responseModel ?? "unknown";
+                }
+
+                // Build usage object - prefer response usage if available, otherwise construct from request data
+                var usage = responseUsage ?? new Usage
+                {
+                    ImageCount = actualImageCount,
+                    ImageQuality = quality,
+                    ImageResolution = size
+                };
+
+                // Ensure image count is set even if response usage was used
+                if (!usage.ImageCount.HasValue || usage.ImageCount.Value == 0)
+                {
+                    usage.ImageCount = actualImageCount;
+                }
+                if (string.IsNullOrEmpty(usage.ImageQuality))
+                {
+                    usage.ImageQuality = quality;
+                }
+                if (string.IsNullOrEmpty(usage.ImageResolution))
+                {
+                    usage.ImageResolution = size;
+                }
+
+                // Calculate cost
+                var cost = await costCalculationService.CalculateCostAsync(model, usage);
+
+                // Build metadata JSON for image generation
+                var metadata = JsonSerializer.Serialize(new
+                {
+                    type = "image",
+                    imageCount = actualImageCount,
+                    quality = quality ?? "standard",
+                    size = size ?? "unknown",
+                    style = context.Items.TryGetValue("ImageRequestStyle", out var styleObj) ? styleObj?.ToString() : null
+                });
+
+                // Update metrics
+                UsageMetrics.UsageTrackingRequests.WithLabels("image", "success").Inc();
+                UsageMetrics.UsageTrackingCosts.WithLabels(model, providerType, "image").Inc(Convert.ToDouble(cost));
+
+                // Update spend if there's a cost
+                if (cost > 0)
+                {
+                    await SpendUpdateHelper.UpdateSpendAsync(virtualKeyId, cost, batchSpendService, virtualKeyService, _logger);
+                    LogSuccessfulBilling(context, model, usage, cost, providerType, billingAuditService);
+                }
+                else
+                {
+                    UsageMetrics.ZeroCostEvents.WithLabels(model, "image_zero").Inc();
+                    LogZeroCostBilling(context, model, usage, cost, providerType, billingAuditService);
+                }
+
+                // Log the request with image metadata
+                await LogRequestAsync(context, virtualKeyId, model, usage, cost, requestLogService, metadata);
+
+                _logger.LogInformation(
+                    "Tracked image generation for VirtualKey {VirtualKeyId}: Model={Model}, Images={ImageCount}, Quality={Quality}, Size={Size}, Cost={Cost:C}",
+                    virtualKeyId, model, actualImageCount, quality ?? "standard", size ?? "default", cost);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to process image response for usage tracking");
+                UsageMetrics.UsageTrackingFailures.WithLabels("image_processing_error", "image").Inc();
             }
         }
 
