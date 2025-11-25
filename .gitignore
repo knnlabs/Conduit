@@ -439,3 +439,9 @@ qlconfig.yml
 
 # CSS linting cache
 .stylelintcache
+functions-seed.sql
+replicate-images-models.sql
+replicate-text-models.sql
+replicate-video-models.sql
+scripts/db/replicate/replicate-text-models.sql
+scripts/db/replicate/replicate-video-models.sql

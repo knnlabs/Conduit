@@ -318,6 +318,8 @@ else
             Console.WriteLine($"  - Cost per image: ${model.Pricing.CostPerImage:F4}");
         if (model.Pricing.CostPerVideo.HasValue)
             Console.WriteLine($"  - Cost per video: ${model.Pricing.CostPerVideo:F4}");
+        if (model.Pricing.CostPerVideoSecond.HasValue)
+            Console.WriteLine($"  - Cost per second of video: ${model.Pricing.CostPerVideoSecond:F4}");
         if (model.Pricing.InputCostPerMillionTokens.HasValue)
             Console.WriteLine($"  - Input cost (per million tokens): ${model.Pricing.InputCostPerMillionTokens:F2}");
         if (model.Pricing.OutputCostPerMillionTokens.HasValue)
@@ -405,6 +407,7 @@ var withPricing = detailedModels.Count(m => m.Pricing != null);
 var withoutPricing = detailedModels.Count(m => m.Pricing == null);
 var withImageCost = detailedModels.Count(m => m.Pricing?.CostPerImage.HasValue == true);
 var withVideoCost = detailedModels.Count(m => m.Pricing?.CostPerVideo.HasValue == true);
+var withVideoSecondCost = detailedModels.Count(m => m.Pricing?.CostPerVideoSecond.HasValue == true);
 var withTokenCost = detailedModels.Count(m => m.Pricing?.InputCostPerMillionTokens.HasValue == true);
 var withSecondCost = detailedModels.Count(m => m.Pricing?.CostPerSecond.HasValue == true);
 
@@ -413,7 +416,8 @@ Console.WriteLine($"Pricing not found: {withoutPricing} models");
 Console.WriteLine();
 Console.WriteLine($"Pricing types found:");
 Console.WriteLine($"  - Per image: {withImageCost} models");
-Console.WriteLine($"  - Per video: {withVideoCost} models");
+Console.WriteLine($"  - Per video (flat rate): {withVideoCost} models");
+Console.WriteLine($"  - Per second of video: {withVideoSecondCost} models");
 Console.WriteLine($"  - Per million tokens: {withTokenCost} models");
 Console.WriteLine($"  - Per second (compute time): {withSecondCost} models");
 
@@ -745,6 +749,31 @@ static PricingInfo? ExtractPricingFromPage(string html, string modelType)
             billingMetric = "output_video_count";
         }
 
+        // Extract per-second video pricing - pattern: "$X.XX" with "second of output video" or "video_output_duration_seconds"
+        // This is different from compute-time per-second pricing (CostPerSecond)
+        decimal? costPerVideoSecond = null;
+        var perVideoSecondMatch = Regex.Match(html, @"""price""\s*:\s*""\$?([\d.]+)""\s*,\s*""title""\s*:\s*""(?:per\s+)?second\s+of\s+output\s+video""", RegexOptions.IgnoreCase);
+        if (!perVideoSecondMatch.Success)
+        {
+            // Try metric-based pattern: video_output_duration_seconds
+            perVideoSecondMatch = Regex.Match(html, @"""metric""\s*:\s*""video_output_duration_seconds""[^}]*""price""\s*:\s*""\$?([\d.]+)""", RegexOptions.IgnoreCase);
+        }
+        if (!perVideoSecondMatch.Success)
+        {
+            // Try alternate order: price before metric
+            perVideoSecondMatch = Regex.Match(html, @"""price""\s*:\s*""\$?([\d.]+)""[^}]*""metric""\s*:\s*""video_output_duration_seconds""", RegexOptions.IgnoreCase);
+        }
+        if (!perVideoSecondMatch.Success)
+        {
+            // Try "per second of video" variant
+            perVideoSecondMatch = Regex.Match(html, @"""price""\s*:\s*""\$?([\d.]+)""\s*,\s*""title""\s*:\s*""per\s+second\s+of\s+video""", RegexOptions.IgnoreCase);
+        }
+        if (perVideoSecondMatch.Success && decimal.TryParse(perVideoSecondMatch.Groups[1].Value, out var vidSecCost))
+        {
+            costPerVideoSecond = vidSecCost;
+            billingMetric = "video_output_duration_seconds";
+        }
+
         // Extract token-based pricing for text models
         // Replicate's billingConfig JSON format: "price":"$9.50","title":"per million input tokens"
         // Pattern 1: Look for price before "per million input tokens" title
@@ -791,13 +820,14 @@ static PricingInfo? ExtractPricingFromPage(string html, string modelType)
 
         // Only return pricing info if we found something useful
         if (costPerSecond.HasValue || costPerImage.HasValue || costPerVideo.HasValue ||
-            inputCostPerMillion.HasValue || medianCost.HasValue)
+            costPerVideoSecond.HasValue || inputCostPerMillion.HasValue || medianCost.HasValue)
         {
             return new PricingInfo
             {
                 CostPerSecond = costPerSecond,
                 CostPerImage = costPerImage,
                 CostPerVideo = costPerVideo,
+                CostPerVideoSecond = costPerVideoSecond,
                 InputCostPerMillionTokens = inputCostPerMillion,
                 OutputCostPerMillionTokens = outputCostPerMillion,
                 MedianPredictionCost = medianCost,
@@ -1497,7 +1527,9 @@ static async Task GenerateSQLOutput(List<DetailedModel> models, string modelType
         sql.AppendLine($"    {inputCost.ToString(CultureInfo.InvariantCulture)},");  // Required field, default 0
         sql.AppendLine($"    {outputCost.ToString(CultureInfo.InvariantCulture)},");  // Required field, default 0
         sql.AppendLine($"    {FormatNullableDecimal(model.Pricing?.CostPerImage)},");
-        sql.AppendLine($"    {FormatNullableDecimal(model.Pricing?.CostPerSecond)},");  // VideoCostPerSecond uses per-second rate
+        // For video models, prefer CostPerVideoSecond (per second of output video) over CostPerSecond (compute time)
+        var videoCostPerSecond = model.Pricing?.CostPerVideoSecond ?? model.Pricing?.CostPerSecond;
+        sql.AppendLine($"    {FormatNullableDecimal(videoCostPerSecond)},");  // VideoCostPerSecond - cost per second of video output
         sql.AppendLine($"    {(pricingConfig != null ? $"'{EscapeSqlString(pricingConfig)}'" : "NULL")},");  // PricingConfiguration JSON
         sql.AppendLine($"    '{costModelType}',");
         sql.AppendLine($"    true,");
@@ -1742,8 +1774,11 @@ record PricingInfo
     /// <summary>Cost per output image (for image models)</summary>
     public decimal? CostPerImage { get; init; }
 
-    /// <summary>Cost per output video (for video models)</summary>
+    /// <summary>Cost per output video (for video models with flat rate)</summary>
     public decimal? CostPerVideo { get; init; }
+
+    /// <summary>Cost per second of output video (for video models with per-second billing)</summary>
+    public decimal? CostPerVideoSecond { get; init; }
 
     /// <summary>Cost per million input tokens (for text models)</summary>
     public decimal? InputCostPerMillionTokens { get; init; }
