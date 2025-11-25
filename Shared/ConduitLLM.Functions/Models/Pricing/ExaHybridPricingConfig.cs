@@ -3,18 +3,19 @@ using System.Text.Json.Serialization;
 namespace ConduitLLM.Functions.Models.Pricing;
 
 /// <summary>
-/// Pricing configuration for Exa.ai search API using hybrid pricing model.
+/// Pricing configuration schema for Exa.ai search API using hybrid pricing model.
 /// Combines search costs (tiered by result count and search type) with content extraction costs.
 /// </summary>
 /// <remarks>
-/// Exa pricing structure (as of 2025):
-/// - Neural search (1-25 results): $0.005
-/// - Neural search (26-100 results): $0.025
-/// - Keyword search (any count): $0.0025
-/// - Content retrieval (get contents): $1.00 per 1000 pieces of content
-/// - Text extraction: $0.001 per page
-/// - Highlights extraction: $0.001 per page
-/// - Summary generation: $0.001 per page
+/// This class defines the structure for Exa pricing configuration.
+/// Actual pricing values must be provided via seed data or admin configuration.
+/// All fields default to 0 - functions without cost configuration are free.
+///
+/// Exa pricing structure:
+/// - Neural search: tiered by result count
+/// - Keyword search: flat rate
+/// - Content retrieval: per 1000 pieces of content
+/// - Text/Highlights/Summary extraction: per page
 ///
 /// This configuration is stored as JSON in FunctionCost.PricingConfiguration.
 /// </remarks>
@@ -132,10 +133,10 @@ public class ContentRetrievalCosts
 {
     /// <summary>
     /// Base cost per 1000 pieces of content retrieved (pages including subpages).
-    /// Default: $1.00 per 1000 pieces.
+    /// Must be configured via seed data or admin UI.
     /// </summary>
     [JsonPropertyName("costPer1000Pages")]
-    public decimal CostPer1000Pages { get; set; } = 1.00m;
+    public decimal CostPer1000Pages { get; set; }
 }
 
 /// <summary>

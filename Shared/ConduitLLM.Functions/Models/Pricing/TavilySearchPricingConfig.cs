@@ -3,13 +3,17 @@ using System.Text.Json.Serialization;
 namespace ConduitLLM.Functions.Models.Pricing;
 
 /// <summary>
-/// Pricing configuration for Tavily search API using credit-based pricing model.
+/// Pricing configuration schema for Tavily search API using credit-based pricing model.
 /// </summary>
 /// <remarks>
-/// Tavily pricing structure (as of 2025):
-/// - Basic search: 1 credit ($0.008 default)
-/// - Advanced search: 2 credits ($0.016 default)
-/// - Auto-parameters addon: 2 credits ($0.016 default)
+/// This class defines the structure for Tavily pricing configuration.
+/// Actual pricing values must be provided via seed data or admin configuration.
+/// All fields default to 0 - functions without cost configuration are free.
+///
+/// Tavily pricing structure:
+/// - Basic search: N credits
+/// - Advanced search: N credits
+/// - Auto-parameters addon: N credits (optional)
 /// - All content extraction (raw content, images, answer) included in search cost
 ///
 /// Unlike Exa, Tavily does not charge separately for content extraction.
@@ -20,34 +24,34 @@ namespace ConduitLLM.Functions.Models.Pricing;
 public class TavilySearchPricingConfig
 {
     /// <summary>
-    /// Cost per credit in USD (default: $0.008).
-    /// Based on Tavily's pay-as-you-go pricing.
+    /// Cost per credit in USD.
+    /// Must be configured via seed data or admin UI.
     /// </summary>
     [JsonPropertyName("costPerCredit")]
-    public decimal CostPerCredit { get; set; } = 0.008m;
+    public decimal CostPerCredit { get; set; }
 
     /// <summary>
-    /// Credits consumed by basic search (default: 1).
+    /// Credits consumed by basic search.
     /// Basic search provides quick results with standard depth.
     /// </summary>
     [JsonPropertyName("basicSearchCredits")]
-    public int BasicSearchCredits { get; set; } = 1;
+    public int BasicSearchCredits { get; set; }
 
     /// <summary>
-    /// Credits consumed by advanced search (default: 2).
+    /// Credits consumed by advanced search.
     /// Advanced search provides more comprehensive results with deeper analysis.
     /// Supports content chunks (1-3 chunks per source).
     /// </summary>
     [JsonPropertyName("advancedSearchCredits")]
-    public int AdvancedSearchCredits { get; set; } = 2;
+    public int AdvancedSearchCredits { get; set; }
 
     /// <summary>
-    /// Additional credits for auto-parameters feature (default: 2).
+    /// Additional credits for auto-parameters feature.
     /// When enabled, Tavily automatically configures optimal search parameters.
     /// Null means not supported or not charged separately.
     /// </summary>
     [JsonPropertyName("autoParametersCredits")]
-    public int? AutoParametersCredits { get; set; } = 2;
+    public int? AutoParametersCredits { get; set; }
 
     /// <summary>
     /// Whether to charge for answer generation separately.
