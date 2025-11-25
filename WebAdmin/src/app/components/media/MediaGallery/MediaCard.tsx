@@ -91,20 +91,16 @@ export function MediaCard({
 
   // Normal media display
   return (
-    <Card 
-      shadow={shadow} 
-      padding={padding} 
-      radius={radius} 
+    <Card
+      shadow={shadow}
+      padding={padding}
+      radius={radius}
       withBorder={withBorder}
       onClick={onClick}
       style={{ cursor: onClick ? 'pointer' : 'default' }}
     >
-      {children && (
-        <Card.Section>
-          {children}
-        </Card.Section>
-      )}
-      
+      {children}
+
       {(prompt ?? metadata ?? actions) && (
         <Stack gap="sm" mt={children ? 'md' : 0}>
           {prompt && (
@@ -112,9 +108,9 @@ export function MediaCard({
               {prompt}
             </Text>
           )}
-          
+
           {metadata}
-          
+
           {actions}
         </Stack>
       )}

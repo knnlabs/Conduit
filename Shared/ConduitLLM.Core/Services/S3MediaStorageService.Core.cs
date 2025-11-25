@@ -67,7 +67,11 @@ namespace ConduitLLM.Core.Services
             var config = new AmazonS3Config
             {
                 ForcePathStyle = _options.ForcePathStyle,
-                UseHttp = false
+                UseHttp = false,
+                // Disable automatic checksum calculation for R2 compatibility
+                // AWS SDK v4 adds CRC32 checksums by default which R2 doesn't fully support
+                RequestChecksumCalculation = Amazon.Runtime.RequestChecksumCalculation.WHEN_REQUIRED,
+                ResponseChecksumValidation = Amazon.Runtime.ResponseChecksumValidation.WHEN_REQUIRED
             };
 
             if (!string.IsNullOrEmpty(_options.ServiceUrl))
