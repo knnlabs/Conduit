@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Http.Hubs;
@@ -11,10 +12,12 @@ namespace ConduitLLM.Http.EventHandlers
 {
     /// <summary>
     /// Handles VideoGenerationCompleted events to update task status and track completion metrics.
+    /// Also updates the RequestLog with the actual cost after video generation completes.
     /// </summary>
     public class VideoGenerationCompletedHandler : IConsumer<VideoGenerationCompleted>
     {
         private readonly IAsyncTaskService _asyncTaskService;
+        private readonly IRequestLogRepository _requestLogRepository;
         private readonly IMemoryCache _progressCache;
         private readonly IHubContext<VideoGenerationHub> _hubContext;
         private readonly ILogger<VideoGenerationCompletedHandler> _logger;
@@ -23,11 +26,13 @@ namespace ConduitLLM.Http.EventHandlers
 
         public VideoGenerationCompletedHandler(
             IAsyncTaskService asyncTaskService,
+            IRequestLogRepository requestLogRepository,
             IMemoryCache progressCache,
             IHubContext<VideoGenerationHub> hubContext,
             ILogger<VideoGenerationCompletedHandler> logger)
         {
             _asyncTaskService = asyncTaskService;
+            _requestLogRepository = requestLogRepository;
             _progressCache = progressCache;
             _hubContext = hubContext;
             _logger = logger;
@@ -57,13 +62,46 @@ namespace ConduitLLM.Http.EventHandlers
                 };
 
                 await _asyncTaskService.UpdateTaskStatusAsync(
-                    message.RequestId, 
-                    TaskState.Completed, 
+                    message.RequestId,
+                    TaskState.Completed,
                     progress: 100,
                     result: result,
                     error: null,
                     cancellationToken: context.CancellationToken);
-                
+
+                // Update the RequestLog with the actual cost and metadata
+                // The middleware logged the request with $0 cost because duration wasn't known at submission time
+                try
+                {
+                    var updated = await _requestLogRepository.UpdateCostByTaskIdAsync(
+                        taskId: message.RequestId,
+                        cost: message.Cost,
+                        modelName: message.Model,
+                        durationSeconds: message.Duration,
+                        resolution: message.Resolution,
+                        cancellationToken: context.CancellationToken);
+
+                    if (updated)
+                    {
+                        _logger.LogInformation(
+                            "Updated RequestLog for task {TaskId} with actual cost ${Cost} (duration: {Duration}s)",
+                            message.RequestId, message.Cost, message.Duration);
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "Could not find RequestLog for task {TaskId} to update cost - log may not exist or taskId not stored in metadata",
+                            message.RequestId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Log but don't fail the handler - the video was generated successfully
+                    _logger.LogError(ex,
+                        "Failed to update RequestLog cost for task {TaskId}, actual cost ${Cost} may not be reflected in logs",
+                        message.RequestId, message.Cost);
+                }
+
                 // Clear progress cache for this task
                 var progressCacheKey = $"{ProgressCacheKeyPrefix}{message.RequestId}";
                 _progressCache.Remove(progressCacheKey);

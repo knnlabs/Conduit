@@ -798,10 +798,17 @@ namespace ConduitLLM.Http.Middleware
                 string? responseModel = null;
                 double? actualDuration = null;
                 string? actualResolution = null;
+                string? taskId = null;
 
                 responseBody.Seek(0, SeekOrigin.Begin);
                 using var jsonDocument = await JsonDocument.ParseAsync(responseBody);
                 var root = jsonDocument.RootElement;
+
+                // Try to get task ID from async response (for cost correction later)
+                if (root.TryGetProperty("taskId", out var taskIdElement))
+                {
+                    taskId = taskIdElement.GetString();
+                }
 
                 // Try to get model from response
                 if (root.TryGetProperty("model", out var modelElement))
@@ -882,9 +889,11 @@ namespace ConduitLLM.Http.Middleware
                 }
 
                 // Build metadata JSON for video generation
+                // Include taskId for async requests so we can update cost/duration later
                 var metadata = JsonSerializer.Serialize(new
                 {
                     type = "video",
+                    taskId = taskId,
                     videoCount = actualVideoCount,
                     durationSeconds = usage.VideoDurationSeconds,
                     resolution = usage.VideoResolution ?? "unknown",

@@ -105,5 +105,24 @@ namespace ConduitLLM.Configuration.Interfaces
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Usage statistics for the specified date range</returns>
         Task<UsageStatisticsDto> GetUsageStatisticsAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Updates the cost and metadata of a request log by task ID.
+        /// Used to correct async video/image request logs after generation completes.
+        /// </summary>
+        /// <param name="taskId">The task ID stored in the metadata</param>
+        /// <param name="cost">The actual cost to set</param>
+        /// <param name="modelName">The model name to set (if different from original)</param>
+        /// <param name="durationSeconds">The actual duration in seconds (for video)</param>
+        /// <param name="resolution">The actual resolution (for video/image)</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>True if the update was successful, false if the request log was not found</returns>
+        Task<bool> UpdateCostByTaskIdAsync(
+            string taskId,
+            decimal cost,
+            string? modelName = null,
+            double? durationSeconds = null,
+            string? resolution = null,
+            CancellationToken cancellationToken = default);
     }
 }

@@ -403,5 +403,118 @@ namespace ConduitLLM.Configuration.Repositories
                 throw;
             }
         }
+
+        /// <inheritdoc/>
+        public async Task<bool> UpdateCostByTaskIdAsync(
+            string taskId,
+            decimal cost,
+            string? modelName = null,
+            double? durationSeconds = null,
+            string? resolution = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrEmpty(taskId))
+            {
+                throw new ArgumentException("Task ID cannot be null or empty", nameof(taskId));
+            }
+
+            try
+            {
+                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+                // Find the request log by task ID in the metadata JSONB column
+                // Using PostgreSQL JSONB ->> operator to extract text value
+                var requestLog = await dbContext.RequestLogs
+                    .FromSqlRaw(
+                        @"SELECT * FROM ""RequestLogs"" WHERE ""Metadata"" ->> 'taskId' = {0} LIMIT 1",
+                        taskId)
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                if (requestLog == null)
+                {
+                    _logger.LogWarning("Request log not found for task ID {TaskId}", LogSanitizer.SanitizeObject(taskId));
+                    return false;
+                }
+
+                // Update the cost
+                requestLog.Cost = cost;
+
+                // Update model name if provided and different
+                if (!string.IsNullOrEmpty(modelName) && modelName != "unknown")
+                {
+                    requestLog.ModelName = modelName;
+                }
+
+                // Update metadata with actual values
+                if (!string.IsNullOrEmpty(requestLog.Metadata))
+                {
+                    try
+                    {
+                        using var jsonDoc = System.Text.Json.JsonDocument.Parse(requestLog.Metadata);
+                        var root = jsonDoc.RootElement;
+
+                        // Build updated metadata
+                        var updatedMetadata = new Dictionary<string, object?>();
+
+                        // Copy existing properties
+                        foreach (var prop in root.EnumerateObject())
+                        {
+                            updatedMetadata[prop.Name] = GetJsonElementValue(prop.Value);
+                        }
+
+                        // Update with actual values
+                        if (durationSeconds.HasValue)
+                        {
+                            updatedMetadata["durationSeconds"] = durationSeconds.Value;
+                        }
+                        if (!string.IsNullOrEmpty(resolution))
+                        {
+                            updatedMetadata["resolution"] = resolution;
+                        }
+                        updatedMetadata["costCorrected"] = true;
+                        updatedMetadata["costCorrectedAt"] = DateTime.UtcNow.ToString("O");
+
+                        requestLog.Metadata = System.Text.Json.JsonSerializer.Serialize(updatedMetadata);
+                    }
+                    catch (System.Text.Json.JsonException ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to parse metadata for task ID {TaskId}, skipping metadata update",
+                            LogSanitizer.SanitizeObject(taskId));
+                    }
+                }
+
+                // Save changes
+                dbContext.RequestLogs.Update(requestLog);
+                var rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
+
+                _logger.LogInformation(
+                    "Updated request log for task {TaskId}: Cost=${Cost}, Model={Model}, Duration={Duration}s",
+                    LogSanitizer.SanitizeObject(taskId), cost, modelName ?? requestLog.ModelName, durationSeconds);
+
+                return rowsAffected > 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating request log for task ID {TaskId}", LogSanitizer.SanitizeObject(taskId));
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Helper method to extract value from JsonElement for metadata reconstruction
+        /// </summary>
+        private static object? GetJsonElementValue(System.Text.Json.JsonElement element)
+        {
+            return element.ValueKind switch
+            {
+                System.Text.Json.JsonValueKind.String => element.GetString(),
+                System.Text.Json.JsonValueKind.Number => element.TryGetInt64(out var longVal) ? longVal : element.GetDouble(),
+                System.Text.Json.JsonValueKind.True => true,
+                System.Text.Json.JsonValueKind.False => false,
+                System.Text.Json.JsonValueKind.Null => null,
+                System.Text.Json.JsonValueKind.Array => element.EnumerateArray().Select(GetJsonElementValue).ToArray(),
+                _ => element.GetRawText()
+            };
+        }
     }
 }
