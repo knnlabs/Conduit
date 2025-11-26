@@ -74,7 +74,7 @@ namespace ConduitLLM.Http.Services
         private readonly IDistributedCache _cache;
         private readonly ILogger<EphemeralKeyService> _logger;
         private const string KeyPrefix = "ephemeral:";
-        private const int TTLSeconds = 300; // 5 minutes
+        private const int TTLSeconds = 900; // 15 minutes - longer for video generation which can take several minutes
         
         // Use a static key for encryption - in production this should come from configuration
         // This is just for data protection at rest in Redis
