@@ -201,7 +201,7 @@ function RulesBasedPricingSection({ modelCost }: { modelCost: ModelCostDto }) {
           <Text size="sm" fw={600} mb="sm">Pricing Rules ({config.rules.length})</Text>
           <Stack gap="xs">
             {config.rules.map((rule: PricingRuleConfig, index: number) => (
-              <Card key={index} withBorder p="sm" bg="gray.0">
+              <Card key={index} withBorder p="sm" bg="var(--mantine-color-default-hover)">
                 <Group justify="space-between" mb="xs">
                   <Text size="sm" fw={500}>
                     {rule.description ?? `Rule ${index + 1}`}

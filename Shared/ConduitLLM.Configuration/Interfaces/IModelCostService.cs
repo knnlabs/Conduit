@@ -24,6 +24,14 @@ public interface IModelCostService
     Task<ModelCost?> GetCostForModelAsync(string modelId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets a model cost by its ID. This is the preferred lookup method when the ID is known.
+    /// </summary>
+    /// <param name="modelCostId">The ID of the model cost to retrieve</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The model cost or null if not found</returns>
+    Task<ModelCost?> GetCostByIdAsync(int modelCostId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Lists all model costs in the system
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>

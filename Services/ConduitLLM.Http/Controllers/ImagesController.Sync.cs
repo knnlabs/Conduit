@@ -67,13 +67,19 @@ namespace ConduitLLM.Http.Controllers
                 {
                     // Check if the mapping indicates image generation support
                     supportsImageGen = mapping.ModelProviderTypeAssociation?.Model?.SupportsImageGeneration ?? false;
-                    
-                    _logger.LogInformation("Model {Model} mapping found, supports image generation: {Supports}", 
+
+                    _logger.LogInformation("Model {Model} mapping found, supports image generation: {Supports}",
                         modelName, supportsImageGen);
-                    
+
                     // Store provider info for usage tracking
                     HttpContext.Items["ProviderId"] = mapping.ProviderId;
                     HttpContext.Items["ProviderType"] = mapping.Provider?.ProviderType;
+
+                    // Store ModelCostId for direct cost lookup (preferred over string matching)
+                    if (mapping.ModelProviderTypeAssociation?.ModelCostId != null)
+                    {
+                        HttpContext.Items[HttpContextKeys.ModelCostId] = mapping.ModelProviderTypeAssociation.ModelCostId;
+                    }
                 }
                 else
                 {

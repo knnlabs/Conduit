@@ -147,6 +147,71 @@ public partial class CostCalculationService : ICostCalculationService
         return calculatedCost;
     }
 
+    /// <inheritdoc />
+    public async Task<decimal> CalculateCostByIdAsync(int modelCostId, Usage usage, CancellationToken cancellationToken = default)
+    {
+        if (usage == null)
+        {
+            _logger.LogWarning("Usage data is null for ModelCostId {ModelCostId}. Cannot calculate cost.", modelCostId);
+            return 0m;
+        }
 
+        var modelCost = await _modelCostService.GetCostByIdAsync(modelCostId, cancellationToken);
 
+        if (modelCost == null)
+        {
+            _logger.LogWarning("Cost information not found for ModelCostId {ModelCostId}. Returning 0 cost.", modelCostId);
+            return 0m;
+        }
+
+        // Use the cost name as the model identifier for logging purposes
+        var modelIdentifier = modelCost.CostName ?? $"ModelCostId:{modelCostId}";
+
+        decimal calculatedCost = 0m;
+
+        // Handle polymorphic pricing models (same logic as string-based lookup)
+        switch (modelCost.PricingModel)
+        {
+            case PricingModel.Standard:
+                calculatedCost = await CalculateStandardCostAsync(modelIdentifier, modelCost, usage);
+                break;
+            case PricingModel.PerVideo:
+                calculatedCost = await CalculatePerVideoCostAsync(modelIdentifier, modelCost, usage);
+                break;
+            case PricingModel.PerSecondVideo:
+                calculatedCost = await CalculatePerSecondVideoCostAsync(modelIdentifier, modelCost, usage);
+                break;
+            case PricingModel.InferenceSteps:
+                calculatedCost = await CalculateInferenceStepsCostAsync(modelIdentifier, modelCost, usage);
+                break;
+            case PricingModel.TieredTokens:
+                calculatedCost = await CalculateTieredTokensCostAsync(modelIdentifier, modelCost, usage);
+                break;
+            case PricingModel.PerImage:
+                calculatedCost = await CalculatePerImageCostAsync(modelIdentifier, modelCost, usage);
+                break;
+            case PricingModel.RulesBased:
+                calculatedCost = await CalculateRulesBasedCostAsync(modelIdentifier, modelCost, usage);
+                break;
+            default:
+                _logger.LogWarning("Unknown pricing model {PricingModel} for ModelCostId {ModelCostId}. Using standard calculation.",
+                    modelCost.PricingModel, modelCostId);
+                calculatedCost = await CalculateStandardCostAsync(modelIdentifier, modelCost, usage);
+                break;
+        }
+
+        // Apply batch processing discount if applicable
+        if (usage.IsBatch == true && modelCost.SupportsBatchProcessing && modelCost.BatchProcessingMultiplier.HasValue)
+        {
+            var originalCost = calculatedCost;
+            calculatedCost *= modelCost.BatchProcessingMultiplier!.Value;
+            _logger.LogDebug("Applied batch processing discount for ModelCostId {ModelCostId}. Original: {OriginalCost}, Discounted: {DiscountedCost}, Multiplier: {Multiplier}",
+                modelCostId, originalCost, calculatedCost, modelCost.BatchProcessingMultiplier.Value);
+        }
+
+        _logger.LogDebug("Calculated cost for ModelCostId {ModelCostId} ({CostName}) using pricing model {PricingModel} is {CalculatedCost}",
+            modelCostId, modelCost.CostName, modelCost.PricingModel, calculatedCost);
+
+        return calculatedCost;
+    }
 }

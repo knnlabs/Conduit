@@ -213,12 +213,21 @@ namespace ConduitLLM.Http.Middleware
                     : "unknown";
 
                 // Parse provider type enum for tool usage parsing
-                var providerTypeEnum = Enum.TryParse<ProviderType>(providerType, true, out var parsedProviderType) 
-                    ? parsedProviderType 
+                var providerTypeEnum = Enum.TryParse<ProviderType>(providerType, true, out var parsedProviderType)
+                    ? parsedProviderType
                     : ProviderType.OpenAI; // Default fallback
 
-                // Calculate base cost from token usage
-                var cost = await costCalculationService.CalculateCostAsync(model, usage);
+                // Calculate base cost from token usage - prefer ID-based lookup if ModelCostId is available
+                decimal cost;
+                if (context.Items.TryGetValue(HttpContextKeys.ModelCostId, out var modelCostIdObj) &&
+                    modelCostIdObj is int modelCostId)
+                {
+                    cost = await costCalculationService.CalculateCostByIdAsync(modelCostId, usage);
+                }
+                else
+                {
+                    cost = await costCalculationService.CalculateCostAsync(model, usage);
+                }
 
                 // Reset stream position after JsonDocument.ParseAsync for tool usage extraction
                 responseBody.Seek(0, SeekOrigin.Begin);
@@ -402,7 +411,17 @@ namespace ConduitLLM.Http.Middleware
             }
 
             // Calculate base cost and add tool cost (both provider tools and function executions)
-            var baseCost = await costCalculationService.CalculateCostAsync(model, usage);
+            // Prefer ID-based lookup if ModelCostId is available
+            decimal baseCost;
+            if (context.Items.TryGetValue(HttpContextKeys.ModelCostId, out var modelCostIdObj) &&
+                modelCostIdObj is int modelCostId)
+            {
+                baseCost = await costCalculationService.CalculateCostByIdAsync(modelCostId, usage);
+            }
+            else
+            {
+                baseCost = await costCalculationService.CalculateCostAsync(model, usage);
+            }
             var cost = baseCost + (toolCost ?? 0m) + functionExecutionCost;
 
             // Update metrics
@@ -675,8 +694,17 @@ namespace ConduitLLM.Http.Middleware
                     usage.ImageResolution = size;
                 }
 
-                // Calculate cost
-                var cost = await costCalculationService.CalculateCostAsync(model, usage);
+                // Calculate cost - prefer ID-based lookup if ModelCostId is available
+                decimal cost;
+                if (context.Items.TryGetValue(HttpContextKeys.ModelCostId, out var modelCostIdObj) &&
+                    modelCostIdObj is int modelCostId)
+                {
+                    cost = await costCalculationService.CalculateCostByIdAsync(modelCostId, usage);
+                }
+                else
+                {
+                    cost = await costCalculationService.CalculateCostAsync(model, usage);
+                }
 
                 // Build metadata JSON for image generation
                 var metadata = JsonSerializer.Serialize(new
@@ -841,8 +869,17 @@ namespace ConduitLLM.Http.Middleware
                     usage.PricingParameters = pricingParameters;
                 }
 
-                // Calculate cost
-                var cost = await costCalculationService.CalculateCostAsync(model, usage);
+                // Calculate cost - prefer ID-based lookup if ModelCostId is available
+                decimal cost;
+                if (context.Items.TryGetValue(HttpContextKeys.ModelCostId, out var modelCostIdObj) &&
+                    modelCostIdObj is int modelCostId)
+                {
+                    cost = await costCalculationService.CalculateCostByIdAsync(modelCostId, usage);
+                }
+                else
+                {
+                    cost = await costCalculationService.CalculateCostAsync(model, usage);
+                }
 
                 // Build metadata JSON for video generation
                 var metadata = JsonSerializer.Serialize(new

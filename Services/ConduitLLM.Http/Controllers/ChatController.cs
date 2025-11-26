@@ -86,6 +86,12 @@ namespace ConduitLLM.Http.Controllers
                 {
                     HttpContext.Items["ProviderId"] = modelMapping.ProviderId;
                     HttpContext.Items["ProviderType"] = modelMapping.Provider?.ProviderType;
+
+                    // Store ModelCostId for direct cost lookup (preferred over string matching)
+                    if (modelMapping.ModelProviderTypeAssociation?.ModelCostId != null)
+                    {
+                        HttpContext.Items[HttpContextKeys.ModelCostId] = modelMapping.ModelProviderTypeAssociation.ModelCostId;
+                    }
                 }
             }
             catch (Exception ex)

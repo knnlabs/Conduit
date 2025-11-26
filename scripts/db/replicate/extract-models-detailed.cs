@@ -1517,7 +1517,7 @@ static async Task GenerateSQLOutput(List<DetailedModel> models, string modelType
         sql.AppendLine($"modelcost AS (");
         sql.AppendLine($"  INSERT INTO \"ModelCosts\" (");
         sql.AppendLine($"    \"CostName\", \"PricingModel\", \"InputCostPerMillionTokens\", \"OutputCostPerMillionTokens\",");
-        sql.AppendLine($"    \"ImageCostPerImage\", \"VideoCostPerSecond\", \"PricingConfiguration\", \"ModelType\", \"IsActive\",");
+        sql.AppendLine($"    \"PricingConfiguration\", \"ModelType\", \"IsActive\",");
         sql.AppendLine($"    \"EffectiveDate\", \"Description\", \"Priority\", \"SupportsBatchProcessing\", \"CreatedAt\", \"UpdatedAt\"");
         sql.AppendLine($"  )");
         sql.AppendLine($"  VALUES (");
@@ -1525,11 +1525,7 @@ static async Task GenerateSQLOutput(List<DetailedModel> models, string modelType
         sql.AppendLine($"    {pricingModel},");  // PricingModel enum value
         sql.AppendLine($"    {inputCost.ToString(CultureInfo.InvariantCulture)},");  // Required field, default 0
         sql.AppendLine($"    {outputCost.ToString(CultureInfo.InvariantCulture)},");  // Required field, default 0
-        sql.AppendLine($"    {FormatNullableDecimal(model.Pricing?.CostPerImage)},");
-        // For video models, prefer CostPerVideoSecond (per second of output video) over CostPerSecond (compute time)
-        var videoCostPerSecond = model.Pricing?.CostPerVideoSecond ?? model.Pricing?.CostPerSecond;
-        sql.AppendLine($"    {FormatNullableDecimal(videoCostPerSecond)},");  // VideoCostPerSecond - cost per second of video output
-        sql.AppendLine($"    {(pricingConfig != null ? $"'{EscapeSqlString(pricingConfig)}'" : "NULL")},");  // PricingConfiguration JSON
+        sql.AppendLine($"    {(pricingConfig != null ? $"'{EscapeSqlString(pricingConfig)}'" : "NULL")},");  // PricingConfiguration JSON (stores image/video pricing)
         sql.AppendLine($"    '{costModelType}',");
         sql.AppendLine($"    true,");
         sql.AppendLine($"    NOW(),");

@@ -103,6 +103,50 @@ public class ModelCostService : IModelCostService
     }
 
     /// <inheritdoc />
+    public async Task<ModelCost?> GetCostByIdAsync(int modelCostId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            string cacheKey = $"{CacheKeyPrefix}Id_{modelCostId}";
+
+            // Try hybrid cache first
+            var cachedCost = await GetFromHybridCacheAsync<ModelCost?>(cacheKey);
+            if (cachedCost != null)
+            {
+                _logger.LogDebug("Cache hit for model cost ID: {ModelCostId}", modelCostId);
+                return cachedCost;
+            }
+
+            _logger.LogDebug("Cache miss for model cost ID: {ModelCostId}, querying database", modelCostId);
+
+            var modelCost = await _modelCostRepository.GetByIdAsync(modelCostId, cancellationToken);
+
+            if (modelCost == null)
+            {
+                _logger.LogDebug("No model cost found for ID: {ModelCostId}", modelCostId);
+                return null;
+            }
+
+            // Validate the cost is active and within date range
+            var now = DateTime.UtcNow;
+            if (!modelCost.IsActive || modelCost.EffectiveDate > now ||
+                (modelCost.ExpiryDate.HasValue && modelCost.ExpiryDate.Value <= now))
+            {
+                _logger.LogDebug("Model cost ID {ModelCostId} exists but is not active or outside date range", modelCostId);
+                return null;
+            }
+
+            await SetInHybridCacheAsync(cacheKey, modelCost);
+            return modelCost;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting cost by ID {ModelCostId}", modelCostId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<List<ModelCost>> ListModelCostsAsync(CancellationToken cancellationToken = default)
     {
         try

@@ -50,6 +50,13 @@ public static class HttpContextKeys
     public const string RequestStartTime = "RequestStartTime";
 
     /// <summary>
+    /// Key for storing the ModelCost ID for cost calculation.
+    /// This is the preferred lookup key as it uses direct ID matching instead of string matching.
+    /// Value type: int?
+    /// </summary>
+    public const string ModelCostId = "ModelCostId";
+
+    /// <summary>
     /// Key for storing the model name from image generation request (before provider mapping).
     /// Value type: string
     /// </summary>

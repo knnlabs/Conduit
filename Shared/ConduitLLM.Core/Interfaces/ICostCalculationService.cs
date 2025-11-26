@@ -17,6 +17,16 @@ public interface ICostCalculationService
     Task<decimal> CalculateCostAsync(string modelId, Usage usage, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Calculates the estimated cost of an LLM operation using a direct ModelCost ID lookup.
+    /// This is the preferred method when the ModelCostId is known, as it avoids string matching.
+    /// </summary>
+    /// <param name="modelCostId">The ID of the ModelCost record to use for pricing.</param>
+    /// <param name="usage">The usage data returned by the provider.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The calculated cost as a decimal, or 0 if cost cannot be determined.</returns>
+    Task<decimal> CalculateCostByIdAsync(int modelCostId, Usage usage, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Calculates a refund for a previous LLM operation.
     /// </summary>
     /// <param name="modelId">The specific model ID used in the original operation.</param>
