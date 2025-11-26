@@ -255,6 +255,69 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         }
 
         [Fact]
+        public async Task PublishCompletedEvent_ShouldIncludeAllBillingFields()
+        {
+            // Arrange
+            var request = CreateTestEventRequest();
+            var context = CreateConsumeContext(request);
+            var response = CreateTestResponse();
+
+            // Setup specific cost for verification
+            CostServiceMock.Setup(x => x.CalculateCostAsync(
+                It.IsAny<string>(),
+                It.IsAny<Usage>(),
+                It.IsAny<CancellationToken>()))
+                .ReturnsAsync(0.34m);
+
+            SetupSuccessfulGeneration(response);
+
+            // Act
+            await Orchestrator.Consume(context.Object);
+
+            // Assert - Verify all billing-critical fields are populated
+            PublishEndpointMock.Verify(x => x.Publish(
+                It.Is<VideoGenerationCompleted>(e =>
+                    e.RequestId == request.RequestId &&
+                    e.Cost == 0.34m &&
+                    e.Model == request.Model &&
+                    e.Duration == 5 && // From request.Parameters.Duration
+                    e.Resolution == "1280x720" && // From request.Parameters.Size
+                    e.Provider == "Test Provider" && // From ModelMappingService mock
+                    e.GenerationDuration > TimeSpan.Zero),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task PublishCompletedEvent_WithDefaultParameters_ShouldUseDefaults()
+        {
+            // Arrange - Request without duration/size specified
+            var request = new VideoGenerationRequested
+            {
+                RequestId = "test-task-id",
+                Model = "test-model",
+                Prompt = "Generate a test video",
+                VirtualKeyId = "1",
+                IsAsync = true,
+                Parameters = null, // No parameters
+                CorrelationId = "test-correlation-id"
+            };
+            var context = CreateConsumeContext(request);
+            var response = CreateTestResponse();
+
+            SetupSuccessfulGeneration(response);
+
+            // Act
+            await Orchestrator.Consume(context.Object);
+
+            // Assert - Should use default values (5 seconds, 1280x720)
+            PublishEndpointMock.Verify(x => x.Publish(
+                It.Is<VideoGenerationCompleted>(e =>
+                    e.Duration == 5 && // Default duration
+                    e.Resolution == "1280x720"), // Default resolution
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
         public async Task PublishFailedEvent_WithRetryableError_ShouldIncludeRetryInfo()
         {
             // Arrange

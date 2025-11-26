@@ -388,12 +388,39 @@ namespace ConduitLLM.Core.Services
             GenerationModelInfo modelInfo,
             TimeSpan duration)
         {
+            // Get video duration from request parameters (default to 5 if not specified)
+            var videoDuration = request.Parameters?.Duration ?? 5;
+            var resolution = request.Parameters?.Size ?? "1280x720";
+
+            // Extract file size from processed media metadata if available
+            long fileSize = 0;
+            string? previewUrl = null;
+            if (media.Items?.Any() == true)
+            {
+                var firstItem = media.Items.First();
+                if (firstItem.Metadata.TryGetValue("fileSize", out var fileSizeObj) && fileSizeObj is long fs)
+                {
+                    fileSize = fs;
+                }
+                if (firstItem.Metadata.TryGetValue("thumbnailUrl", out var thumbObj) && thumbObj is string thumb)
+                {
+                    previewUrl = thumb;
+                }
+            }
+
             await _publishEndpoint.Publish(new VideoGenerationCompleted
             {
                 RequestId = request.RequestId,
                 VideoUrl = media.Url ?? string.Empty,
-                CompletedAt = DateTime.UtcNow,
+                PreviewUrl = previewUrl,
+                Duration = videoDuration,
+                Resolution = resolution,
+                FileSize = fileSize,
                 GenerationDuration = duration,
+                Cost = cost,
+                Provider = modelInfo.ProviderName,
+                Model = request.Model,
+                CompletedAt = DateTime.UtcNow,
                 CorrelationId = request.CorrelationId
             });
         }

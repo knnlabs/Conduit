@@ -41,9 +41,9 @@ namespace ConduitLLM.Tests.Http.Services
             Assert.NotNull(result);
             Assert.NotNull(result.EphemeralKey);
             Assert.StartsWith("ek_", result.EphemeralKey);
-            Assert.Equal(300, result.ExpiresInSeconds);
+            Assert.Equal(900, result.ExpiresInSeconds);
             Assert.True(result.ExpiresAt > DateTimeOffset.UtcNow);
-            Assert.True(result.ExpiresAt <= DateTimeOffset.UtcNow.AddSeconds(301));
+            Assert.True(result.ExpiresAt <= DateTimeOffset.UtcNow.AddSeconds(901));
 
             // Verify cache was called
             _mockCache.Verify(x => x.SetAsync(

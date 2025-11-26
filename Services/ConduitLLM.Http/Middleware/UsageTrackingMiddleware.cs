@@ -120,6 +120,12 @@ namespace ConduitLLM.Http.Middleware
 
             // Only track completion endpoints and function executions
             var path = context.Request.Path.Value?.ToLowerInvariant() ?? "";
+
+            // Exclude polling/task status endpoints - these are not billable requests
+            // The actual generation request is billed, not the status checks
+            if (path.Contains("/tasks/") || path.Contains("/status"))
+                return false;
+
             return path.Contains("/completions") ||
                    path.Contains("/embeddings") ||
                    path.Contains("/images/generations") ||
