@@ -378,14 +378,14 @@ export function ViewModelCostModal({ isOpen, modelCost, onClose }: ViewModelCost
   const { enrichedCosts } = useEnrichedModelCosts([modelCost]);
   const enrichedCost = enrichedCosts[0] ?? modelCost;
 
-  const typeConfig = MODEL_TYPE_CONFIG[modelCost.modelType as ModelType] ?? {
+  const typeConfig = MODEL_TYPE_CONFIG[modelCost.modelType] ?? {
     label: modelCost.modelType,
     icon: <IconCurrencyDollar size={18} />,
     color: 'gray'
   };
 
   const renderPricingSection = () => {
-    switch (modelCost.modelType as ModelType) {
+    switch (modelCost.modelType) {
       case ModelType.Chat:
         return <ChatPricingSection modelCost={modelCost} />;
       case ModelType.Embedding:

@@ -22,7 +22,7 @@ jest.mock('next/image', () => ({
   default: (props: { src: string; alt: string; [key: string]: unknown }) => {
     const React = require('react');
     const { src, alt, ...rest } = props;
-    // eslint-disable-next-line @next/next/no-img-element
+     
     return React.createElement('img', { src, alt, ...(rest as Record<string, string>) });
   },
 }));

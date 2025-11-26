@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Table, TextInput, Select, Group, ActionIcon, Badge, Text, Tooltip, Stack, HoverCard } from '@mantine/core';
 import {
   IconEdit,
@@ -21,11 +21,11 @@ import { DeleteModelModal } from './DeleteModelModal';
 import { ModelCostPreviewModal } from './ModelCostPreviewModal';
 import { ModelCostEditorModal } from './ModelCostEditorModal';
 import { useModelSeries } from '@/hooks/useModelSeries';
-import type { ModelCostDto } from '@knn_labs/conduit-admin-client';
+import { useModelMappings } from '@/hooks/useModelMappingsApi';
+import type { ModelCostDto, ModelDto } from '@knn_labs/conduit-admin-client';
 import { extractCapabilities, getErrorMessage } from '@/utils/typeGuards';
 import { CapabilityIcons } from '@/components/common/CapabilityIcons';
 import { getTokenizerDisplayName } from '@/lib/utils/tokenizerTypes';
-import type { ModelDto } from '@knn_labs/conduit-admin-client';
 
 // Extended model type with provider mapping status and details
 type ModelWithMappingStatus = ModelDto & { 
@@ -64,6 +64,20 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
 
   const { executeWithAdmin } = useAdminClient();
   const { seriesNames } = useModelSeries(models);
+  const { mappings: modelMappings } = useModelMappings();
+
+  // Build Set of model aliases for O(1) lookup
+  const mappedModelAliases = useMemo(() => {
+    return new Set(
+      modelMappings.map(m => m.modelAlias?.toLowerCase() ?? '')
+    );
+  }, [modelMappings]);
+
+  // Check if a model has a routing mapping configured
+  const hasModelMapping = (modelName: string | null | undefined): boolean => {
+    if (!modelName) return false;
+    return mappedModelAliases.has(modelName.toLowerCase());
+  };
 
   const loadModels = async () => {
     try {
@@ -398,7 +412,17 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
               <Table.Tr key={model.id}>
                 <Table.Td>
                   <Group gap="xs">
-                    <Text fw={500}>{model.name ?? 'Unnamed'}</Text>
+                    <Text
+                      fw={500}
+                      c={hasModelMapping(model.name) ? 'blue' : undefined}
+                    >
+                      {model.name ?? 'Unnamed'}
+                    </Text>
+                    {hasModelMapping(model.name) && (
+                      <Tooltip label="Has routing mapping configured">
+                        <Badge size="xs" color="blue" variant="dot">Mapped</Badge>
+                      </Tooltip>
+                    )}
                     {renderParameterWarning(model)}
                   </Group>
                 </Table.Td>

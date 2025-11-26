@@ -25,7 +25,7 @@ import {
   IconSettings,
   IconAdjustments,
 } from '@tabler/icons-react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   PricingModel,
   ModelType,
@@ -38,6 +38,7 @@ import {
 import { useAdminClient } from '@/lib/client/adminClient';
 import { extractCapabilities } from '@/utils/typeGuards';
 import { PricingModelSelector } from '@/app/model-costs/components/PricingModelSelector';
+import { ModelMappingSelector } from '@/app/model-costs/components/ModelMappingSelector';
 
 interface ModelCostEditorModalProps {
   isOpen: boolean;
@@ -53,6 +54,8 @@ interface FormValues {
   priority: number;
   isActive: boolean;
   description: string;
+  // Model provider mappings - which models this cost applies to
+  modelProviderMappingIds: number[];
   // Token pricing
   inputCostPerMillionTokens: number;
   outputCostPerMillionTokens: number;
@@ -92,6 +95,19 @@ export function ModelCostEditorModal({
   const isEditing = !!existingCost;
   const inferredModelType = useMemo(() => getModelTypeFromCapabilities(model), [model]);
 
+  // Fetch existing mappings when editing a cost
+  const { data: existingMappings, isLoading: mappingsLoading } = useQuery({
+    queryKey: ['model-cost-mappings', existingCost?.id],
+    queryFn: async () => {
+      if (!existingCost?.id) return [];
+      const mappings = await executeWithAdmin(client =>
+        client.modelCosts.getMappingsByCostId(existingCost.id)
+      );
+      return mappings.map(m => m.modelProviderMappingId);
+    },
+    enabled: isOpen && !!existingCost?.id,
+  });
+
   const form = useForm<FormValues>({
     initialValues: {
       costName: '',
@@ -99,6 +115,7 @@ export function ModelCostEditorModal({
       priority: 0,
       isActive: true,
       description: '',
+      modelProviderMappingIds: [],
       inputCostPerMillionTokens: 0,
       outputCostPerMillionTokens: 0,
       cachedInputCostPerMillionTokens: 0,
@@ -128,6 +145,11 @@ export function ModelCostEditorModal({
       return;
     }
 
+    // When editing, wait for mappings to load before initializing
+    if (existingCost && mappingsLoading) {
+      return;
+    }
+
     formInitializedRef.current = true;
 
     if (existingCost) {
@@ -137,6 +159,7 @@ export function ModelCostEditorModal({
         priority: existingCost.priority ?? 0,
         isActive: existingCost.isActive ?? true,
         description: existingCost.description ?? '',
+        modelProviderMappingIds: existingMappings ?? [],
         inputCostPerMillionTokens: existingCost.inputCostPerMillionTokens ?? 0,
         outputCostPerMillionTokens: existingCost.outputCostPerMillionTokens ?? 0,
         cachedInputCostPerMillionTokens: existingCost.cachedInputCostPerMillionTokens ?? 0,
@@ -155,7 +178,7 @@ export function ModelCostEditorModal({
       form.setFieldValue('modelType', inferredModelType);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [isOpen, mappingsLoading, existingMappings]);
 
   const saveMutation = useMutation({
     mutationFn: async (values: FormValues) => {
@@ -182,17 +205,14 @@ export function ModelCostEditorModal({
             pricingConfiguration: values.pricingModel !== PricingModel.Standard ? values.pricingConfiguration : undefined,
             supportsBatchProcessing: values.supportsBatchProcessing,
             batchProcessingMultiplier: values.supportsBatchProcessing && values.batchProcessingMultiplier > 0 ? values.batchProcessingMultiplier : undefined,
-            // Keep existing model mappings
-            modelProviderMappingIds: [],
+            modelProviderMappingIds: values.modelProviderMappingIds,
           };
 
           await executeWithAdmin(client =>
             client.modelCosts.update(existingCost.id, updateData)
           );
         } else {
-          // Create new cost - need to get the model's provider type association
-          // For now, we create without associations - user can add them later
-          // Note: isActive is not available on create - it defaults to true
+          // Create new cost with selected model mappings
           const createData: CreateModelCostDto = {
             costName: values.costName,
             modelType: values.modelType,
@@ -208,7 +228,7 @@ export function ModelCostEditorModal({
             pricingConfiguration: values.pricingModel !== PricingModel.Standard ? values.pricingConfiguration : undefined,
             supportsBatchProcessing: values.supportsBatchProcessing,
             batchProcessingMultiplier: values.supportsBatchProcessing && values.batchProcessingMultiplier > 0 ? values.batchProcessingMultiplier : undefined,
-            modelProviderMappingIds: [],
+            modelProviderMappingIds: values.modelProviderMappingIds,
           };
 
           await executeWithAdmin(client =>
@@ -265,6 +285,14 @@ export function ModelCostEditorModal({
       }
       size="xl"
     >
+      {isEditing && mappingsLoading ? (
+        <Center py="xl">
+          <Stack align="center" gap="sm">
+            <Loader size="md" />
+            <Text size="sm" c="dimmed">Loading pricing configuration...</Text>
+          </Stack>
+        </Center>
+      ) : (
       <form onSubmit={handleSubmit}>
         <Stack gap="md">
           {error && (
@@ -323,6 +351,15 @@ export function ModelCostEditorModal({
                   placeholder="Optional notes about this pricing"
                   {...form.getInputProps('description')}
                   rows={2}
+                />
+
+                <Divider label="Model Mappings" labelPosition="center" />
+
+                <ModelMappingSelector
+                  value={form.values.modelProviderMappingIds}
+                  onChange={(ids) => form.setFieldValue('modelProviderMappingIds', ids)}
+                  description="Select model provider mappings that should use this pricing configuration"
+                  placeholder="Select models to apply this cost to..."
                 />
               </Stack>
             </Tabs.Panel>
@@ -451,6 +488,7 @@ export function ModelCostEditorModal({
           </Group>
         </Stack>
       </form>
+      )}
     </Modal>
   );
 }
