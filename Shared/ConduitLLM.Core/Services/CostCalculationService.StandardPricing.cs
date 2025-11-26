@@ -1,5 +1,3 @@
-using System.Text.Json;
-
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Models;
 
@@ -75,57 +73,8 @@ public partial class CostCalculationService
                 usage.ReasoningTokens.Value, reasoningRate);
         }
 
-        // Add image generation cost if applicable
-        if (modelCost.ImageCostPerImage.HasValue && usage.ImageCount.HasValue)
-        {
-            var imageCost = usage.ImageCount.Value * modelCost.ImageCostPerImage.Value;
-            
-            // Apply quality multiplier if available
-            if (!string.IsNullOrEmpty(modelCost.ImageQualityMultipliers) && 
-                !string.IsNullOrEmpty(usage.ImageQuality))
-            {
-                try
-                {
-                    var qualityMultipliers = JsonSerializer.Deserialize<Dictionary<string, decimal>>(modelCost.ImageQualityMultipliers);
-                    if (qualityMultipliers != null && qualityMultipliers.TryGetValue(usage.ImageQuality.ToLowerInvariant(), out var multiplier))
-                    {
-                        imageCost *= multiplier;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to parse ImageQualityMultipliers for model {ModelId}", modelId);
-                }
-            }
-            
-            calculatedCost += imageCost;
-        }
-
-        // Add video generation cost if applicable
-        if (modelCost.VideoCostPerSecond.HasValue && usage.VideoDurationSeconds.HasValue)
-        {
-            var baseCost = (decimal)usage.VideoDurationSeconds.Value * modelCost.VideoCostPerSecond.Value;
-            
-            // Apply resolution multiplier if available
-            if (!string.IsNullOrEmpty(modelCost.VideoResolutionMultipliers) && 
-                !string.IsNullOrEmpty(usage.VideoResolution))
-            {
-                try
-                {
-                    var resolutionMultipliers = JsonSerializer.Deserialize<Dictionary<string, decimal>>(modelCost.VideoResolutionMultipliers);
-                    if (resolutionMultipliers != null && resolutionMultipliers.TryGetValue(usage.VideoResolution, out var multiplier))
-                    {
-                        baseCost *= multiplier;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to parse VideoResolutionMultipliers for model {ModelId}", modelId);
-                }
-            }
-            
-            calculatedCost += baseCost;
-        }
+        // Image and video generation costs are now handled via RulesBased pricing configuration
+        // Use PricingModel.PerImage, PricingModel.PerVideo, or PricingModel.PerSecondVideo instead
 
         // Add search unit cost if applicable
         if (usage.SearchUnits.HasValue && usage.SearchUnits.Value > 0 && modelCost.CostPerSearchUnit.HasValue)
@@ -143,19 +92,8 @@ public partial class CostCalculationService
                 searchCost);
         }
 
-        // Add inference step cost if applicable (for image generation)
-        if (usage.InferenceSteps.HasValue && usage.InferenceSteps.Value > 0 && modelCost.CostPerInferenceStep.HasValue)
-        {
-            var stepCost = usage.InferenceSteps.Value * modelCost.CostPerInferenceStep.Value;
-            calculatedCost += stepCost;
-            
-            _logger.LogDebug(
-                "Inference step cost calculation for model {ModelId}: {Steps} steps × ${CostPerStep} = ${Total}",
-                modelId,
-                usage.InferenceSteps.Value,
-                modelCost.CostPerInferenceStep.Value,
-                stepCost);
-        }
+        // Inference step costs are now handled via RulesBased pricing configuration
+        // Use PricingModel.InferenceSteps instead
 
         // Batch processing discount is now applied in the main CalculateCostAsync method for all pricing models
 

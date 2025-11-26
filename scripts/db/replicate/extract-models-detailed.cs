@@ -1507,12 +1507,11 @@ static async Task GenerateSQLOutput(List<DetailedModel> models, string modelType
         var inputCost = model.Pricing?.InputCostPerMillionTokens ?? 0m;
         var outputCost = model.Pricing?.OutputCostPerMillionTokens ?? 0m;
 
-        // Build PricingConfiguration JSON for video models with per-video pricing
+        // Generate PricingConfiguration JSON for RulesBased models (video and image)
         string? pricingConfig = null;
-        if (model.ModelType == "video" && model.Pricing?.CostPerVideo.HasValue == true)
+        if (pricingModel == 6) // RulesBased
         {
-            // Format: {"flatRate": 0.45} for simple per-video pricing
-            pricingConfig = $"{{\"flatRate\": {model.Pricing.CostPerVideo.Value.ToString(CultureInfo.InvariantCulture)}}}";
+            pricingConfig = GeneratePricingConfiguration(model);
         }
 
         sql.AppendLine($"modelcost AS (");
@@ -1616,35 +1615,122 @@ static string FormatNullableInt(int? value) => value.HasValue ? value.Value.ToSt
 static string FormatNullableDecimal(decimal? value) => value.HasValue ? value.Value.ToString(CultureInfo.InvariantCulture) : "NULL";
 
 /// <summary>
+/// Generates a RulesBased pricing configuration JSON string for the model.
+/// This creates a flexible pricing structure using the new rules-based engine.
+/// </summary>
+static string GeneratePricingConfiguration(DetailedModel model)
+{
+    // Build the rules-based pricing configuration
+    var sb = new StringBuilder();
+    sb.Append("{");
+    sb.Append("\"version\":\"1.0\",");
+
+    if (model.ModelType == "video")
+    {
+        // Video pricing: per-second with optional resolution-based rules
+        sb.Append("\"pricingType\":\"per_second\",");
+        sb.Append("\"unitField\":\"VideoDurationSeconds\",");
+
+        // Use extracted per-video-second rate or default
+        var baseRate = model.Pricing?.CostPerVideoSecond ?? model.Pricing?.CostPerSecond ?? 0.05m;
+        sb.Append($"\"defaultRate\":{baseRate.ToString(CultureInfo.InvariantCulture)},");
+
+        // Add basic rules for common resolutions (can be customized later via Admin UI)
+        sb.Append("\"rules\":[");
+
+        // Create resolution-based rules if we have pricing data
+        var rules = new List<string>();
+
+        // Standard resolution rules - most video models have higher costs for higher resolutions
+        // These are sensible defaults based on typical Replicate video model pricing
+        if (baseRate > 0)
+        {
+            // 1080p typically costs more
+            rules.Add("{\"conditions\":{\"resolution\":\"1080p\"},\"rate\":" +
+                (baseRate * 1.5m).ToString(CultureInfo.InvariantCulture) +
+                ",\"priority\":2,\"description\":\"1080p HD video\"}");
+
+            // 720p is the baseline
+            rules.Add("{\"conditions\":{\"resolution\":\"720p\"},\"rate\":" +
+                baseRate.ToString(CultureInfo.InvariantCulture) +
+                ",\"priority\":1,\"description\":\"720p video\"}");
+
+            // 480p is cheaper
+            rules.Add("{\"conditions\":{\"resolution\":\"480p\"},\"rate\":" +
+                (baseRate * 0.75m).ToString(CultureInfo.InvariantCulture) +
+                ",\"priority\":0,\"description\":\"480p video\"}");
+        }
+
+        sb.Append(string.Join(",", rules));
+        sb.Append("]");
+    }
+    else if (model.ModelType == "image")
+    {
+        // Image pricing: per-unit (per image) with optional quality/resolution rules
+        sb.Append("\"pricingType\":\"per_unit\",");
+        sb.Append("\"unitField\":\"ImageCount\",");
+
+        // Use extracted per-image rate or default
+        var baseRate = model.Pricing?.CostPerImage ?? 0.01m;
+        sb.Append($"\"defaultRate\":{baseRate.ToString(CultureInfo.InvariantCulture)},");
+
+        // Add basic rules for common quality settings
+        sb.Append("\"rules\":[");
+
+        var rules = new List<string>();
+
+        if (baseRate > 0)
+        {
+            // HD quality typically costs more
+            rules.Add("{\"conditions\":{\"quality\":\"hd\"},\"rate\":" +
+                (baseRate * 2.0m).ToString(CultureInfo.InvariantCulture) +
+                ",\"priority\":1,\"description\":\"HD quality image\"}");
+
+            // Standard quality is the baseline
+            rules.Add("{\"conditions\":{\"quality\":\"standard\"},\"rate\":" +
+                baseRate.ToString(CultureInfo.InvariantCulture) +
+                ",\"priority\":0,\"description\":\"Standard quality image\"}");
+        }
+
+        sb.Append(string.Join(",", rules));
+        sb.Append("]");
+    }
+    else
+    {
+        // Text models shouldn't reach here, but provide a fallback
+        sb.Append("\"pricingType\":\"per_unit\",");
+        sb.Append("\"unitField\":\"PromptTokens\",");
+        sb.Append("\"defaultRate\":0.0,");
+        sb.Append("\"rules\":[]");
+    }
+
+    sb.Append("}");
+    return sb.ToString();
+}
+
+/// <summary>
 /// Determines the PricingModel enum value based on model type and available pricing data
 /// </summary>
 static int DeterminePricingModel(DetailedModel model)
 {
     // PricingModel enum values:
     // Standard = 0 (token-based)
-    // PerVideo = 1 (flat rate per video)
-    // PerSecondVideo = 2 (per second video)
+    // PerVideo = 1 (flat rate per video) - DEPRECATED, use RulesBased
+    // PerSecondVideo = 2 (per second video) - DEPRECATED, use RulesBased
     // InferenceSteps = 3 (per step image)
     // TieredTokens = 4 (context-tiered tokens)
-    // PerImage = 5 (per image)
+    // PerImage = 5 (per image) - DEPRECATED, use RulesBased
+    // RulesBased = 6 (flexible rules-based pricing)
 
     if (model.ModelType == "text")
     {
         // Text models use standard token-based pricing
         return 0; // Standard
     }
-    else if (model.ModelType == "video")
+    else if (model.ModelType == "video" || model.ModelType == "image")
     {
-        // Video models - check if we have per-video or per-second pricing
-        if (model.Pricing?.CostPerVideo.HasValue == true)
-            return 1; // PerVideo
-        else
-            return 2; // PerSecondVideo (default for video)
-    }
-    else if (model.ModelType == "image")
-    {
-        // Image models - PerImage pricing
-        return 5; // PerImage
+        // Video and image models use RulesBased pricing for flexibility
+        return 6; // RulesBased
     }
 
     return 0; // Default to Standard

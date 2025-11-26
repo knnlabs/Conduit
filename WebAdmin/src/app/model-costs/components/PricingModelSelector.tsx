@@ -1,8 +1,10 @@
 'use client';
 
-import { Select, JsonInput, Stack, Text, Alert } from '@mantine/core';
-import { IconInfoCircle } from '@tabler/icons-react';
+import { useState } from 'react';
+import { Select, JsonInput, Stack, Text, Alert, Tabs, Badge, Group } from '@mantine/core';
+import { IconInfoCircle, IconCode, IconSettings } from '@tabler/icons-react';
 import { PricingModel } from '@knn_labs/conduit-admin-client';
+import { PricingRulesEditor } from './pricing-rules';
 
 interface PricingModelSelectorProps {
   pricingModel: PricingModel;
@@ -13,6 +15,7 @@ interface PricingModelSelectorProps {
 
 const PRICING_MODEL_OPTIONS = [
   { value: String(PricingModel.Standard), label: 'Standard (Per Token)' },
+  { value: String(PricingModel.RulesBased), label: 'Rules-Based (Flexible)' },
   { value: String(PricingModel.PerVideo), label: 'Per Video (Flat Rate)' },
   { value: String(PricingModel.PerSecondVideo), label: 'Per Second Video' },
   { value: String(PricingModel.InferenceSteps), label: 'Inference Steps' },
@@ -22,6 +25,22 @@ const PRICING_MODEL_OPTIONS = [
 
 const getDefaultConfiguration = (model: PricingModel): string => {
   switch (model) {
+    case PricingModel.RulesBased:
+      return JSON.stringify({
+        version: '1.0',
+        pricingType: 'per_unit',
+        unitField: 'ImageCount',
+        defaultRate: 0.04,
+        rules: [
+          {
+            conditions: { resolution: '1080p' },
+            rate: 0.06,
+            priority: 1,
+            description: '1080p pricing'
+          }
+        ]
+      }, null, 2);
+
     case PricingModel.PerVideo:
       return JSON.stringify({
         rates: {
@@ -81,6 +100,8 @@ const getPricingModelDescription = (model: PricingModel): string => {
   switch (model) {
     case PricingModel.Standard:
       return 'Standard per-token pricing for text models. Most common for chat and completion models.';
+    case PricingModel.RulesBased:
+      return 'Flexible rules-based pricing with parameter conditions. Best for complex pricing like resolution-based tiers, audio features, or multi-dimensional pricing.';
     case PricingModel.PerVideo:
       return 'Flat rate pricing based on video resolution and duration combinations (e.g., MiniMax).';
     case PricingModel.PerSecondVideo:
@@ -102,11 +123,13 @@ export function PricingModelSelector({
   onPricingModelChange,
   onConfigurationChange
 }: PricingModelSelectorProps) {
+  const [editorMode, setEditorMode] = useState<'visual' | 'json'>('visual');
+
   const handleModelChange = (value: string | null) => {
     if (value) {
       const model = Number(value) as PricingModel;
       onPricingModelChange(model);
-      
+
       // Set default configuration for the selected model
       if (model !== PricingModel.Standard) {
         onConfigurationChange(getDefaultConfiguration(model));
@@ -117,18 +140,27 @@ export function PricingModelSelector({
   };
 
   const requiresConfiguration = pricingModel !== PricingModel.Standard;
+  const isRulesBased = pricingModel === PricingModel.RulesBased;
   const description = getPricingModelDescription(pricingModel);
 
   return (
     <Stack gap="md">
-      <Select
-        label="Pricing Model"
-        description="Select how costs are calculated for this model"
-        value={String(pricingModel)}
-        onChange={handleModelChange}
-        data={PRICING_MODEL_OPTIONS}
-        required
-      />
+      <Group align="flex-end">
+        <Select
+          label="Pricing Model"
+          description="Select how costs are calculated for this model"
+          value={String(pricingModel)}
+          onChange={handleModelChange}
+          data={PRICING_MODEL_OPTIONS}
+          required
+          style={{ flex: 1 }}
+        />
+        {isRulesBased && (
+          <Badge color="blue" variant="light" size="lg">
+            Recommended for video/image
+          </Badge>
+        )}
+      </Group>
 
       {description && (
         <Alert icon={<IconInfoCircle size={16} />} variant="light">
@@ -136,7 +168,52 @@ export function PricingModelSelector({
         </Alert>
       )}
 
-      {requiresConfiguration && (
+      {isRulesBased && (
+        <Tabs value={editorMode} onChange={(v) => setEditorMode(v as 'visual' | 'json')}>
+          <Tabs.List>
+            <Tabs.Tab value="visual" leftSection={<IconSettings size={16} />}>
+              Visual Editor
+            </Tabs.Tab>
+            <Tabs.Tab value="json" leftSection={<IconCode size={16} />}>
+              JSON Editor
+            </Tabs.Tab>
+          </Tabs.List>
+
+          <Tabs.Panel value="visual" pt="md">
+            <PricingRulesEditor
+              initialConfig={pricingConfiguration}
+              onChange={onConfigurationChange}
+            />
+          </Tabs.Panel>
+
+          <Tabs.Panel value="json" pt="md">
+            <JsonInput
+              label="Pricing Configuration (JSON)"
+              description="Edit the raw JSON configuration"
+              value={pricingConfiguration}
+              onChange={onConfigurationChange}
+              autosize
+              minRows={10}
+              maxRows={25}
+              formatOnBlur
+              required
+              error={(() => {
+                if (!pricingConfiguration) {
+                  return 'Configuration is required';
+                }
+                try {
+                  JSON.parse(pricingConfiguration);
+                  return null;
+                } catch {
+                  return 'Invalid JSON format';
+                }
+              })()}
+            />
+          </Tabs.Panel>
+        </Tabs>
+      )}
+
+      {requiresConfiguration && !isRulesBased && (
         <JsonInput
           label="Pricing Configuration"
           description="JSON configuration for the selected pricing model"

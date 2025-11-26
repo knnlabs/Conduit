@@ -49,20 +49,16 @@ namespace ConduitLLM.Admin.Services
                                 InputCostPerMillionTokens = modelCost.InputCostPerMillionTokens,
                                 OutputCostPerMillionTokens = modelCost.OutputCostPerMillionTokens,
                                 EmbeddingCostPerMillionTokens = modelCost.EmbeddingCostPerMillionTokens,
-                                ImageCostPerImage = modelCost.ImageCostPerImage,
-                                VideoCostPerSecond = modelCost.VideoCostPerSecond,
-                                VideoResolutionMultipliers = modelCost.VideoResolutionMultipliers,
-                                ImageResolutionMultipliers = modelCost.ImageResolutionMultipliers,
                                 BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
                                 SupportsBatchProcessing = modelCost.SupportsBatchProcessing,
                                 CostPerSearchUnit = modelCost.CostPerSearchUnit,
-                                CostPerInferenceStep = modelCost.CostPerInferenceStep,
-                                DefaultInferenceSteps = modelCost.DefaultInferenceSteps
+                                CachedInputCostPerMillionTokens = modelCost.CachedInputCostPerMillionTokens,
+                                CachedInputWriteCostPerMillionTokens = modelCost.CachedInputWriteCostPerMillionTokens
                             };
 
                             existingModelCost.UpdateFrom(updateDto);
                             await _modelCostRepository.UpdateAsync(existingModelCost);
-                            
+
                             // Publish ModelCostChanged event for updated model cost
                             await PublishEventAsync(
                                 new ModelCostChanged
@@ -179,15 +175,11 @@ namespace ConduitLLM.Admin.Services
                                 InputCostPerMillionTokens = modelCost.InputCostPerMillionTokens,
                                 OutputCostPerMillionTokens = modelCost.OutputCostPerMillionTokens,
                                 EmbeddingCostPerMillionTokens = modelCost.EmbeddingCostPerMillionTokens,
-                                ImageCostPerImage = modelCost.ImageCostPerImage,
-                                VideoCostPerSecond = modelCost.VideoCostPerSecond,
-                                VideoResolutionMultipliers = modelCost.VideoResolutionMultipliers,
-                                ImageResolutionMultipliers = modelCost.ImageResolutionMultipliers,
                                 BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
                                 SupportsBatchProcessing = modelCost.SupportsBatchProcessing,
                                 CostPerSearchUnit = modelCost.CostPerSearchUnit,
-                                CostPerInferenceStep = modelCost.CostPerInferenceStep,
-                                DefaultInferenceSteps = modelCost.DefaultInferenceSteps
+                                CachedInputCostPerMillionTokens = modelCost.CachedInputCostPerMillionTokens,
+                                CachedInputWriteCostPerMillionTokens = modelCost.CachedInputWriteCostPerMillionTokens
                             };
 
                             existingModelCost.UpdateFrom(updateDto);

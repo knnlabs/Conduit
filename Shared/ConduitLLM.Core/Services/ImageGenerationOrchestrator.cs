@@ -192,9 +192,38 @@ namespace ConduitLLM.Core.Services
 
         protected override Usage CreateUsageObject(ImageGenerationRequested request, ProcessedMedia media)
         {
+            // Build pricing parameters for rules-based pricing
+            var pricingParameters = new Dictionary<string, object>
+            {
+                ["count"] = media.Count
+            };
+
+            // Add resolution/size if provided
+            if (!string.IsNullOrEmpty(request.Request.Size))
+            {
+                pricingParameters["resolution"] = request.Request.Size;
+                pricingParameters["image_resolution"] = request.Request.Size;
+            }
+
+            // Add quality if provided
+            if (!string.IsNullOrEmpty(request.Request.Quality))
+            {
+                pricingParameters["quality"] = request.Request.Quality.ToLowerInvariant();
+                pricingParameters["image_quality"] = request.Request.Quality.ToLowerInvariant();
+            }
+
+            // Add style if provided
+            if (!string.IsNullOrEmpty(request.Request.Style))
+            {
+                pricingParameters["style"] = request.Request.Style.ToLowerInvariant();
+            }
+
             return new Usage
             {
-                ImageCount = media.Count
+                ImageCount = media.Count,
+                ImageResolution = request.Request.Size,
+                ImageQuality = request.Request.Quality,
+                PricingParameters = pricingParameters
             };
         }
 

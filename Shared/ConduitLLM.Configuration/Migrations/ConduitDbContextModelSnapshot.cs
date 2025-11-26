@@ -788,17 +788,11 @@ namespace ConduitLLM.Configuration.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
 
-                    b.Property<decimal?>("CostPerInferenceStep")
-                        .HasColumnType("decimal(18, 8)");
-
                     b.Property<decimal?>("CostPerSearchUnit")
                         .HasColumnType("decimal(18, 8)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<int?>("DefaultInferenceSteps")
-                        .HasColumnType("integer");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
@@ -812,15 +806,6 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.Property<DateTime?>("ExpiryDate")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<decimal?>("ImageCostPerImage")
-                        .HasColumnType("decimal(18, 4)");
-
-                    b.Property<string>("ImageQualityMultipliers")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ImageResolutionMultipliers")
-                        .HasColumnType("text");
 
                     b.Property<decimal>("InputCostPerMillionTokens")
                         .HasColumnType("decimal(18, 10)");
@@ -853,12 +838,6 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<decimal?>("VideoCostPerSecond")
-                        .HasColumnType("decimal(18, 4)");
-
-                    b.Property<string>("VideoResolutionMultipliers")
-                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -1055,6 +1034,89 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("VirtualKeyId");
 
                     b.ToTable("Notifications");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.PricingAuditEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("AppliedRate")
+                        .HasColumnType("decimal(10, 8)");
+
+                    b.Property<decimal>("CalculatedCost")
+                        .HasColumnType("decimal(10, 6)");
+
+                    b.Property<string>("InputParameters")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValue("{}");
+
+                    b.Property<string>("MatchedRule")
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("ModelCostId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ModelId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("PricingType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("decimal(10, 4)");
+
+                    b.Property<string>("RequestId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("Timestamp")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<bool>("UsedDefaultRate")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("VirtualKeyId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ModelId")
+                        .HasDatabaseName("IX_PricingAuditEvents_ModelId");
+
+                    b.HasIndex("PricingType")
+                        .HasDatabaseName("IX_PricingAuditEvents_PricingType");
+
+                    b.HasIndex("RequestId")
+                        .HasDatabaseName("IX_PricingAuditEvents_RequestId");
+
+                    b.HasIndex("Timestamp")
+                        .HasDatabaseName("IX_PricingAuditEvents_Timestamp");
+
+                    b.HasIndex("VirtualKeyId")
+                        .HasDatabaseName("IX_PricingAuditEvents_VirtualKeyId");
+
+                    b.HasIndex("ModelId", "Timestamp")
+                        .HasDatabaseName("IX_PricingAuditEvents_ModelId_Timestamp");
+
+                    b.HasIndex("PricingType", "Timestamp")
+                        .HasDatabaseName("IX_PricingAuditEvents_PricingType_Timestamp");
+
+                    b.HasIndex("VirtualKeyId", "Timestamp")
+                        .HasDatabaseName("IX_PricingAuditEvents_VirtualKeyId_Timestamp");
+
+                    b.ToTable("PricingAuditEvents", (string)null);
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.Provider", b =>
@@ -2039,6 +2101,17 @@ namespace ConduitLLM.Configuration.Migrations
                         .WithMany("Notifications")
                         .HasForeignKey("VirtualKeyId")
                         .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("VirtualKey");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.PricingAuditEvent", b =>
+                {
+                    b.HasOne("ConduitLLM.Configuration.Entities.VirtualKey", "VirtualKey")
+                        .WithMany()
+                        .HasForeignKey("VirtualKeyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("VirtualKey");
                 });

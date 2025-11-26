@@ -301,14 +301,72 @@ namespace ConduitLLM.Core.Services
 
         protected override Usage CreateUsageObject(VideoGenerationRequested request, ProcessedMedia media)
         {
+            var resolution = request.Parameters?.Size ?? "1280x720";
+            var duration = request.Parameters?.Duration ?? 5;
+
+            // Build pricing parameters for rules-based pricing
+            var pricingParameters = new Dictionary<string, object>
+            {
+                ["resolution"] = NormalizeResolution(resolution),
+                ["duration"] = duration
+            };
+
+            // Add optional parameters that may affect pricing
+            if (request.Parameters?.Fps.HasValue == true)
+            {
+                pricingParameters["fps"] = request.Parameters.Fps.Value;
+            }
+
+            if (!string.IsNullOrEmpty(request.Parameters?.Style))
+            {
+                pricingParameters["style"] = request.Parameters.Style;
+            }
+
+            // Include provider-specific options that may affect pricing (e.g., audio, aspect_ratio)
+            if (request.Parameters?.ProviderOptions != null)
+            {
+                foreach (var option in request.Parameters.ProviderOptions)
+                {
+                    // Copy pricing-relevant options
+                    var key = option.Key.ToLowerInvariant();
+                    if (key is "audio" or "with_audio" or "aspect_ratio" or "quality" or "motion_bucket_id")
+                    {
+                        pricingParameters[key] = option.Value;
+                    }
+                }
+            }
+
             return new Usage
             {
                 PromptTokens = 0,
                 CompletionTokens = 0,
                 TotalTokens = 0,
-                VideoDurationSeconds = request.Parameters?.Duration ?? 5,
-                VideoResolution = request.Parameters?.Size ?? "1280x720"
+                VideoDurationSeconds = duration,
+                VideoResolution = resolution,
+                PricingParameters = pricingParameters
             };
+        }
+
+        /// <summary>
+        /// Normalizes video resolution to standard format (e.g., "1920x1080" -> "1080p").
+        /// </summary>
+        private static string NormalizeResolution(string resolution)
+        {
+            if (string.IsNullOrEmpty(resolution))
+                return resolution;
+
+            // Already normalized (e.g., "1080p", "720p")
+            if (resolution.EndsWith("p", StringComparison.OrdinalIgnoreCase))
+                return resolution.ToLowerInvariant();
+
+            // Parse "WIDTHxHEIGHT" format
+            var parts = resolution.ToLowerInvariant().Split('x');
+            if (parts.Length == 2 && int.TryParse(parts[1], out var height))
+            {
+                return $"{height}p";
+            }
+
+            return resolution;
         }
 
         protected override async Task PublishStartedEventAsync(VideoGenerationRequested request)

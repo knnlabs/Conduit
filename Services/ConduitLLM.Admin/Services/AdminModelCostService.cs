@@ -314,8 +314,6 @@ namespace ConduitLLM.Admin.Services
                     changedProperties.Add(nameof(modelCost.OutputCostPerMillionTokens));
                 if (existingModelCost.EmbeddingCostPerMillionTokens != modelCost.EmbeddingCostPerMillionTokens)
                     changedProperties.Add(nameof(modelCost.EmbeddingCostPerMillionTokens));
-                if (existingModelCost.ImageCostPerImage != modelCost.ImageCostPerImage)
-                    changedProperties.Add(nameof(modelCost.ImageCostPerImage));
 
                 // Update entity
                 existingModelCost.UpdateFrom(modelCost);

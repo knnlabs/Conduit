@@ -139,57 +139,16 @@ namespace ConduitLLM.Http.Services
                 InputCostPerMillionTokens = cost.InputCostPerMillionTokens,
                 OutputCostPerMillionTokens = cost.OutputCostPerMillionTokens,
                 EmbeddingCostPerMillionTokens = cost.EmbeddingCostPerMillionTokens,
-                ImageCostPerImage = cost.ImageCostPerImage,
-                VideoCostPerSecond = cost.VideoCostPerSecond,
                 BatchProcessingMultiplier = cost.BatchProcessingMultiplier,
                 SupportsBatchProcessing = cost.SupportsBatchProcessing,
                 CachedInputCostPerMillionTokens = cost.CachedInputCostPerMillionTokens,
                 CachedInputWriteCostPerMillionTokens = cost.CachedInputWriteCostPerMillionTokens,
                 CostPerSearchUnit = cost.CostPerSearchUnit,
-                CostPerInferenceStep = cost.CostPerInferenceStep,
-                DefaultInferenceSteps = cost.DefaultInferenceSteps,
                 ModelType = cost.ModelType,
                 IsActive = cost.IsActive,
                 Priority = cost.Priority,
                 Description = cost.Description
             };
-
-            // Parse JSON multipliers
-            if (!string.IsNullOrEmpty(cost.VideoResolutionMultipliers))
-            {
-                try
-                {
-                    cached.VideoResolutionMultipliers = JsonSerializer.Deserialize<Dictionary<string, decimal>>(cost.VideoResolutionMultipliers);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to parse VideoResolutionMultipliers for cost {CostName}", cost.CostName);
-                }
-            }
-
-            if (!string.IsNullOrEmpty(cost.ImageQualityMultipliers))
-            {
-                try
-                {
-                    cached.ImageQualityMultipliers = JsonSerializer.Deserialize<Dictionary<string, decimal>>(cost.ImageQualityMultipliers);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to parse ImageQualityMultipliers for cost {CostName}", cost.CostName);
-                }
-            }
-
-            if (!string.IsNullOrEmpty(cost.ImageResolutionMultipliers))
-            {
-                try
-                {
-                    cached.ImageResolutionMultipliers = JsonSerializer.Deserialize<Dictionary<string, decimal>>(cost.ImageResolutionMultipliers);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to parse ImageResolutionMultipliers for cost {CostName}", cost.CostName);
-                }
-            }
 
             // Parse pricing configuration based on pricing model
             if (!string.IsNullOrEmpty(cost.PricingConfiguration))

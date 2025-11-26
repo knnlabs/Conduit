@@ -144,12 +144,31 @@ The script automatically extracts pricing information from Replicate model pages
 | `Hardware` | GPU/CPU type | H100, A40, CPU |
 
 **Pricing Models by Type:**
-| Model Type | Pricing Model | Primary Cost Field |
+| Model Type | Pricing Model | Configuration |
 |------------|--------------|-------------------|
 | Text/LLM | Standard (0) | `InputCostPerMillionTokens`, `OutputCostPerMillionTokens` |
-| Image | PerImage (5) | `ImageCostPerImage` |
-| Video (flat) | PerVideo (1) | `CostPerVideo` |
-| Video (time) | PerSecondVideo (2) | `VideoCostPerSecond` |
+| Image | RulesBased (6) | `PricingConfiguration` JSON with quality rules |
+| Video | RulesBased (6) | `PricingConfiguration` JSON with resolution rules |
+
+**RulesBased Pricing:**
+Video and image models use the flexible RulesBased pricing engine (PricingModel = 6) with `PricingConfiguration` JSON. This allows for:
+- Resolution-based pricing for videos (e.g., 1080p costs more than 720p)
+- Quality-based pricing for images (e.g., HD vs standard)
+- Easy customization via the Admin UI without code changes
+
+Example video pricing configuration:
+```json
+{
+  "version": "1.0",
+  "pricingType": "per_second",
+  "unitField": "VideoDurationSeconds",
+  "defaultRate": 0.05,
+  "rules": [
+    {"conditions": {"resolution": "1080p"}, "rate": 0.075, "priority": 2, "description": "1080p HD video"},
+    {"conditions": {"resolution": "720p"}, "rate": 0.05, "priority": 1, "description": "720p video"}
+  ]
+}
+```
 
 **SQL Output:**
 When generating SQL with `--output sql`, the script creates:
@@ -214,20 +233,22 @@ model AS (
 modelcost AS (
   INSERT INTO "ModelCosts" (
     "CostName", "PricingModel", "InputCostPerMillionTokens", "OutputCostPerMillionTokens",
-    "ImageCostPerImage", "VideoCostPerSecond", "ModelType", "IsActive",
-    "EffectiveDate", "Description", "Priority", "CreatedAt", "UpdatedAt"
+    "ImageCostPerImage", "VideoCostPerSecond", "PricingConfiguration", "ModelType", "IsActive",
+    "EffectiveDate", "Description", "Priority", "SupportsBatchProcessing", "CreatedAt", "UpdatedAt"
   )
   VALUES (
     'Replicate - flux-dev',
-    5,  -- PricingModel.PerImage
-    NULL, NULL,
-    0.025,  -- $0.025 per image
-    NULL,
+    6,  -- PricingModel.RulesBased
+    0, 0,
+    NULL,  -- ImageCostPerImage (deprecated for RulesBased)
+    NULL,  -- VideoCostPerSecond (deprecated for RulesBased)
+    '{"version":"1.0","pricingType":"per_unit","unitField":"ImageCount","defaultRate":0.025,"rules":[{"conditions":{"quality":"hd"},"rate":0.05,"priority":1,"description":"HD quality image"},{"conditions":{"quality":"standard"},"rate":0.025,"priority":0,"description":"Standard quality image"}]}',
     'image',
     true,
     NOW(),
     'Auto-generated from Replicate (H100)',
     0,
+    false,
     NOW(), NOW()
   )
   ON CONFLICT DO NOTHING
@@ -254,7 +275,8 @@ COMMIT;
 - Preserves manual changes to existing records
 - Creates proper foreign key relationships
 - Sets appropriate capabilities based on model type
-- **Creates ModelCosts records with extracted pricing data**
+- **Creates ModelCosts records with RulesBased pricing configurations**
+- **Generates flexible PricingConfiguration JSON for video and image models**
 - **Links ModelIdentifiers to ModelCosts for cost tracking**
 
 ## Model Capabilities

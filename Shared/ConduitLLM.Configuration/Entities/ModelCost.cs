@@ -95,17 +95,6 @@ public class ModelCost
     public decimal? EmbeddingCostPerMillionTokens { get; set; }
 
     /// <summary>
-    /// Gets or sets the cost per image for image generation requests, if applicable.
-    /// </summary>
-    /// <remarks>
-    /// This represents the cost in USD for generating each image.
-    /// Nullable because not all models support image generation.
-    /// Stored with moderate precision (decimal 18,4) as image costs are typically higher than token costs.
-    /// </remarks>
-    [Column(TypeName = "decimal(18, 4)")]
-    public decimal? ImageCostPerImage { get; set; }
-
-    /// <summary>
     /// Gets or sets the creation timestamp of this cost record.
     /// </summary>
     /// <remarks>
@@ -176,29 +165,6 @@ public class ModelCost
 
 
     /// <summary>
-    /// Gets or sets the base cost per second for video generation, if applicable.
-    /// </summary>
-    /// <remarks>
-    /// This represents the base cost in USD for generating each second of video.
-    /// The actual cost may be adjusted based on resolution using VideoResolutionMultipliers.
-    /// Nullable because not all models support video generation.
-    /// Stored with moderate precision (decimal 18,4) for video generation costs.
-    /// </remarks>
-    [Column(TypeName = "decimal(18, 4)")]
-    public decimal? VideoCostPerSecond { get; set; }
-
-    /// <summary>
-    /// Gets or sets the resolution-based cost multipliers for video generation.
-    /// </summary>
-    /// <remarks>
-    /// JSON object containing resolution-to-multiplier mappings.
-    /// Example: {"720p": 1.0, "1080p": 1.5, "4k": 2.5}
-    /// The base VideoCostPerSecond is multiplied by these values based on the requested resolution.
-    /// Stored as JSON text in the database.
-    /// </remarks>
-    public string? VideoResolutionMultipliers { get; set; }
-
-    /// <summary>
     /// Gets or sets the cost multiplier for batch processing operations, if applicable.
     /// </summary>
     /// <remarks>
@@ -220,28 +186,6 @@ public class ModelCost
     /// Default is false for backward compatibility.
     /// </remarks>
     public bool SupportsBatchProcessing { get; set; }
-
-    /// <summary>
-    /// Gets or sets the quality-based cost multipliers for image generation.
-    /// </summary>
-    /// <remarks>
-    /// JSON object containing quality-to-multiplier mappings.
-    /// Example: {"standard": 1.0, "hd": 2.0}
-    /// The base ImageCostPerImage is multiplied by these values based on the requested quality.
-    /// Stored as JSON text in the database.
-    /// </remarks>
-    public string? ImageQualityMultipliers { get; set; }
-
-    /// <summary>
-    /// Gets or sets the resolution-based cost multipliers for image generation.
-    /// </summary>
-    /// <remarks>
-    /// JSON object containing resolution-to-multiplier mappings.
-    /// Example: {"1024x1024": 1.0, "1792x1024": 1.5, "1024x1792": 1.5}
-    /// The base ImageCostPerImage is multiplied by these values based on the requested resolution.
-    /// Stored as JSON text in the database.
-    /// </remarks>
-    public string? ImageResolutionMultipliers { get; set; }
 
     /// <summary>
     /// Gets or sets the cost per million cached input tokens for prompt caching, if applicable.
@@ -285,33 +229,6 @@ public class ModelCost
     /// </remarks>
     [Column(TypeName = "decimal(18, 8)")]
     public decimal? CostPerSearchUnit { get; set; }
-
-    /// <summary>
-    /// Gets or sets the cost per inference step for image generation models, if applicable.
-    /// </summary>
-    /// <remarks>
-    /// This represents the cost in USD for each inference step during image generation.
-    /// Used by providers like Fireworks that charge based on the number of iterative refinement steps.
-    /// Different models require different numbers of steps to generate an image.
-    /// Example: FLUX.1[schnell] uses 4 steps × $0.00035/step = $0.0014 per image.
-    /// Example: SDXL typically uses 30 steps × $0.00013/step = $0.0039 per image.
-    /// Nullable because not all image models use step-based pricing.
-    /// Stored with moderate precision (decimal 18,8) to accommodate per-step costs.
-    /// </remarks>
-    [Column(TypeName = "decimal(18, 8)")]
-    public decimal? CostPerInferenceStep { get; set; }
-
-    /// <summary>
-    /// Gets or sets the default number of inference steps for this model.
-    /// </summary>
-    /// <remarks>
-    /// Indicates the standard number of iterative refinement steps this model uses for image generation.
-    /// Used when the client request doesn't specify a custom step count.
-    /// Different models have different optimal step counts for quality vs speed tradeoffs.
-    /// Example: FLUX.1[schnell] uses 4 steps for fast generation, SDXL uses 30 steps for higher quality.
-    /// Nullable because not all models use step-based generation or have configurable steps.
-    /// </remarks>
-    public int? DefaultInferenceSteps { get; set; }
 
     /// <summary>
     /// Gets or sets the cost per million reasoning tokens for models with reasoning capabilities.

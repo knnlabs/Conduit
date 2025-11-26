@@ -2,21 +2,26 @@
 
 import { useState, useEffect } from 'react';
 import { Table, TextInput, Select, Group, ActionIcon, Badge, Text, Tooltip, Stack, HoverCard } from '@mantine/core';
-import { 
-  IconEdit, 
-  IconTrash, 
-  IconSearch, 
-  IconEye, 
+import {
+  IconEdit,
+  IconTrash,
+  IconSearch,
+  IconEye,
   IconLink,
   IconAlertTriangle,
-  IconAlertCircle
+  IconAlertCircle,
+  IconCurrencyDollar,
+  IconReceiptDollar
 } from '@tabler/icons-react';
 import { useAdminClient } from '@/lib/client/adminClient';
 import { notifications } from '@mantine/notifications';
 import { EditModelModal } from './EditModelModal';
 import { ViewModelModal } from './ViewModelModal';
 import { DeleteModelModal } from './DeleteModelModal';
+import { ModelCostPreviewModal } from './ModelCostPreviewModal';
+import { ModelCostEditorModal } from './ModelCostEditorModal';
 import { useModelSeries } from '@/hooks/useModelSeries';
+import type { ModelCostDto } from '@knn_labs/conduit-admin-client';
 import { extractCapabilities, getErrorMessage } from '@/utils/typeGuards';
 import { CapabilityIcons } from '@/components/common/CapabilityIcons';
 import { getTokenizerDisplayName } from '@/lib/utils/tokenizerTypes';
@@ -53,7 +58,10 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  
+  const [costPreviewModalOpen, setCostPreviewModalOpen] = useState(false);
+  const [costEditorModalOpen, setCostEditorModalOpen] = useState(false);
+  const [existingModelCost, setExistingModelCost] = useState<ModelCostDto | null>(null);
+
   const { executeWithAdmin } = useAdminClient();
   const { seriesNames } = useModelSeries(models);
 
@@ -175,6 +183,43 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
   const handleDelete = (model: ModelDto) => {
     setSelectedModel(model);
     setDeleteModalOpen(true);
+  };
+
+  const handleViewCost = (model: ModelDto) => {
+    setSelectedModel(model);
+    setCostPreviewModalOpen(true);
+  };
+
+  const handleEditCost = async (model: ModelDto) => {
+    setSelectedModel(model);
+
+    // Fetch existing cost for this model
+    try {
+      const result = await executeWithAdmin(client =>
+        client.modelCosts.list({ pageSize: 200 })
+      );
+
+      const items: ModelCostDto[] = Array.isArray(result)
+        ? result as ModelCostDto[]
+        : (result?.items ?? []);
+
+      // Find a cost that has this model's name in its associated aliases
+      const modelNameLower = model.name?.toLowerCase() ?? '';
+      const matchingCost = items.find((cost: ModelCostDto) =>
+        cost.associatedModelAliases?.some((alias: string) => {
+          const aliasLower = alias.toLowerCase();
+          return aliasLower === modelNameLower ||
+                 aliasLower.endsWith(`/${modelNameLower}`);
+        })
+      );
+
+      setExistingModelCost(matchingCost ?? null);
+    } catch (err) {
+      console.warn('Failed to fetch existing model cost:', err);
+      setExistingModelCost(null);
+    }
+
+    setCostEditorModalOpen(true);
   };
 
   const handleDeleteSuccess = () => {
@@ -382,6 +427,24 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
                 </Table.Td>
                 <Table.Td>
                   <Group gap="xs">
+                    <Tooltip label="View Pricing">
+                      <ActionIcon
+                        variant="subtle"
+                        color="green"
+                        onClick={() => handleViewCost(model)}
+                      >
+                        <IconCurrencyDollar size={16} />
+                      </ActionIcon>
+                    </Tooltip>
+                    <Tooltip label="Edit Pricing">
+                      <ActionIcon
+                        variant="subtle"
+                        color="teal"
+                        onClick={() => void handleEditCost(model)}
+                      >
+                        <IconReceiptDollar size={16} />
+                      </ActionIcon>
+                    </Tooltip>
                     <Tooltip label="View">
                       <ActionIcon
                         variant="subtle"
@@ -449,6 +512,33 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
               setSelectedModel(null);
             }}
             onSuccess={handleDeleteSuccess}
+          />
+
+          <ModelCostPreviewModal
+            isOpen={costPreviewModalOpen}
+            model={selectedModel}
+            onClose={() => {
+              setCostPreviewModalOpen(false);
+              setSelectedModel(null);
+            }}
+          />
+
+          <ModelCostEditorModal
+            isOpen={costEditorModalOpen}
+            model={selectedModel}
+            existingCost={existingModelCost}
+            onClose={() => {
+              setCostEditorModalOpen(false);
+              setExistingModelCost(null);
+              setSelectedModel(null);
+            }}
+            onSuccess={() => {
+              setCostEditorModalOpen(false);
+              setExistingModelCost(null);
+              setSelectedModel(null);
+              void loadModels();
+              onRefresh?.();
+            }}
           />
         </>
       )}

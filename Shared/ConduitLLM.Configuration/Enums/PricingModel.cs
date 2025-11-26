@@ -39,6 +39,14 @@ namespace ConduitLLM.Configuration
         /// Per-image pricing with quality and resolution multipliers.
         /// Used by image generation models (DALL-E, Stable Diffusion, etc.).
         /// </summary>
-        PerImage = 5
+        PerImage = 5,
+
+        /// <summary>
+        /// Flexible rules-based pricing using JSON configuration.
+        /// Supports complex pricing scenarios with parameter-based conditions.
+        /// Used for models with multi-dimensional pricing (resolution + audio, tiered rates, etc.).
+        /// Configuration stored in ModelCost.PricingConfiguration as JSON.
+        /// </summary>
+        RulesBased = 6
     }
 }

@@ -85,6 +85,35 @@ public partial class Program
             },
             "BillingAuditService");
 
+        // Pricing rules engine services for flexible rules-based pricing
+        builder.Services.AddScoped<ConduitLLM.Core.Services.IPricingRulesEvaluator, ConduitLLM.Core.Services.PricingRulesEvaluator>();
+        builder.Services.AddScoped<ConduitLLM.Core.Services.IPricingRulesValidator, ConduitLLM.Core.Services.PricingRulesValidator>();
+
+        // Cached pricing rules service for parsed configuration caching
+        builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.ICachedPricingRulesService, ConduitLLM.Core.Services.CachedPricingRulesService>();
+        Console.WriteLine("[Conduit] Pricing rules engine services registered");
+
+        // Pricing audit service for rules-based pricing evaluation tracking - with leader election
+        builder.Services.AddSingleton<ConduitLLM.Configuration.Interfaces.IPricingAuditService, ConduitLLM.Configuration.Services.PricingAuditService>();
+        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Configuration.Services.PricingAuditService>(
+            provider => {
+                try
+                {
+                    Console.WriteLine("[Leader Election] Resolving PricingAuditService...");
+                    var service = provider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IPricingAuditService>() as ConduitLLM.Configuration.Services.PricingAuditService
+                        ?? throw new InvalidOperationException("PricingAuditService must implement IHostedService");
+                    Console.WriteLine("[Leader Election] ✓ Successfully resolved PricingAuditService");
+                    return service;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Leader Election] ✗ FAILED to resolve PricingAuditService: {ex.GetType().Name}: {ex.Message}");
+                    Console.WriteLine($"[Leader Election] Stack trace: {ex.StackTrace}");
+                    throw;
+                }
+            },
+            "PricingAuditService");
+
         // Provider error tracking service
         builder.Services.AddSingleton<IRedisErrorStore, RedisErrorStore>();
         builder.Services.AddSingleton<IProviderErrorTrackingService, ProviderErrorTrackingService>();

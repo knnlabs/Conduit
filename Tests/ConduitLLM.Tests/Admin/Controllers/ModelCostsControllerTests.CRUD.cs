@@ -17,16 +17,24 @@ namespace ConduitLLM.Tests.Admin.Controllers
         public void Constructor_WithNullService_ShouldThrowArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => 
-                new ModelCostsController(null!, _mockLogger.Object));
+            Assert.Throws<ArgumentNullException>(() =>
+                new ModelCostsController(null!, _mockValidator.Object, _mockLogger.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullValidator_ShouldThrowArgumentNullException()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() =>
+                new ModelCostsController(_mockService.Object, null!, _mockLogger.Object));
         }
 
         [Fact]
         public void Constructor_WithNullLogger_ShouldThrowArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => 
-                new ModelCostsController(_mockService.Object, null!));
+            Assert.Throws<ArgumentNullException>(() =>
+                new ModelCostsController(_mockService.Object, _mockValidator.Object, null!));
         }
 
         #endregion

@@ -175,7 +175,6 @@ public class ModelCostService : IModelCostService
             existingCost.EmbeddingCostPerMillionTokens = modelCost.EmbeddingCostPerMillionTokens;
             existingCost.CachedInputCostPerMillionTokens = modelCost.CachedInputCostPerMillionTokens;
             existingCost.CachedInputWriteCostPerMillionTokens = modelCost.CachedInputWriteCostPerMillionTokens;
-            existingCost.ImageCostPerImage = modelCost.ImageCostPerImage;
             existingCost.UpdatedAt = DateTime.UtcNow;
 
             bool result = await _modelCostRepository.UpdateAsync(existingCost, cancellationToken);

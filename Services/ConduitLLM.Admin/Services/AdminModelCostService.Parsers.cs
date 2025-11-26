@@ -23,15 +23,11 @@ namespace ConduitLLM.Admin.Services
                 InputCostPerMillionTokens = mc.InputCostPerMillionTokens,
                 OutputCostPerMillionTokens = mc.OutputCostPerMillionTokens,
                 EmbeddingCostPerMillionTokens = mc.EmbeddingCostPerMillionTokens,
-                ImageCostPerImage = mc.ImageCostPerImage,
-                VideoCostPerSecond = mc.VideoCostPerSecond,
-                VideoResolutionMultipliers = mc.VideoResolutionMultipliers,
-                ImageResolutionMultipliers = mc.ImageResolutionMultipliers,
                 BatchProcessingMultiplier = mc.BatchProcessingMultiplier,
                 SupportsBatchProcessing = mc.SupportsBatchProcessing,
                 CostPerSearchUnit = mc.CostPerSearchUnit,
-                CostPerInferenceStep = mc.CostPerInferenceStep,
-                DefaultInferenceSteps = mc.DefaultInferenceSteps
+                CachedInputCostPerMillionTokens = mc.CachedInputCostPerMillionTokens,
+                CachedInputWriteCostPerMillionTokens = mc.CachedInputWriteCostPerMillionTokens
             });
 
             return JsonSerializer.Serialize(exportData, new JsonSerializerOptions
@@ -43,7 +39,7 @@ namespace ConduitLLM.Admin.Services
         private string GenerateCsvExport(List<ModelCost> modelCosts)
         {
             var csv = new StringBuilder();
-            csv.AppendLine("Cost Name,Pricing Model,Pricing Configuration,Input Cost (per million tokens),Output Cost (per million tokens),Embedding Cost (per million tokens),Image Cost (per image),Video Cost (per second),Video Resolution Multipliers,Image Resolution Multipliers,Batch Processing Multiplier,Supports Batch Processing,Search Unit Cost (per 1K units),Inference Step Cost,Default Inference Steps");
+            csv.AppendLine("Cost Name,Pricing Model,Pricing Configuration,Input Cost (per million tokens),Output Cost (per million tokens),Embedding Cost (per million tokens),Batch Processing Multiplier,Supports Batch Processing,Search Unit Cost (per 1K units),Cached Input Cost (per million tokens),Cached Write Cost (per million tokens)");
 
             foreach (var modelCost in modelCosts.OrderBy(mc => mc.CostName))
             {
@@ -53,15 +49,11 @@ namespace ConduitLLM.Admin.Services
                     $"{modelCost.InputCostPerMillionTokens:F6}," +
                     $"{modelCost.OutputCostPerMillionTokens:F6}," +
                     $"{(modelCost.EmbeddingCostPerMillionTokens.HasValue ? modelCost.EmbeddingCostPerMillionTokens.Value.ToString("F6") : "")}," +
-                    $"{(modelCost.ImageCostPerImage?.ToString("F4") ?? "")}," +
-                    $"{(modelCost.VideoCostPerSecond?.ToString("F4") ?? "")}," +
-                    $"{EscapeCsvValue(modelCost.VideoResolutionMultipliers ?? "")}," +
-                    $"{EscapeCsvValue(modelCost.ImageResolutionMultipliers ?? "")}," +
                     $"{(modelCost.BatchProcessingMultiplier?.ToString("F4") ?? "")}," +
                     $"{(modelCost.SupportsBatchProcessing ? "Yes" : "No")}," +
                     $"{(modelCost.CostPerSearchUnit?.ToString("F6") ?? "")}," +
-                    $"{(modelCost.CostPerInferenceStep?.ToString("F6") ?? "")}," +
-                    $"{(modelCost.DefaultInferenceSteps?.ToString() ?? "")}");
+                    $"{(modelCost.CachedInputCostPerMillionTokens?.ToString("F6") ?? "")}," +
+                    $"{(modelCost.CachedInputWriteCostPerMillionTokens?.ToString("F6") ?? "")}");
             }
 
             return csv.ToString();
@@ -82,15 +74,11 @@ namespace ConduitLLM.Admin.Services
                     InputCostPerMillionTokens = d.InputCostPerMillionTokens,
                     OutputCostPerMillionTokens = d.OutputCostPerMillionTokens,
                     EmbeddingCostPerMillionTokens = d.EmbeddingCostPerMillionTokens,
-                    ImageCostPerImage = d.ImageCostPerImage,
-                    VideoCostPerSecond = d.VideoCostPerSecond,
-                    VideoResolutionMultipliers = d.VideoResolutionMultipliers,
-                    ImageResolutionMultipliers = d.ImageResolutionMultipliers,
                     BatchProcessingMultiplier = d.BatchProcessingMultiplier,
                     SupportsBatchProcessing = d.SupportsBatchProcessing,
                     CostPerSearchUnit = d.CostPerSearchUnit,
-                    CostPerInferenceStep = d.CostPerInferenceStep,
-                    DefaultInferenceSteps = d.DefaultInferenceSteps
+                    CachedInputCostPerMillionTokens = d.CachedInputCostPerMillionTokens,
+                    CachedInputWriteCostPerMillionTokens = d.CachedInputWriteCostPerMillionTokens
                 }).ToList();
             }
             catch (JsonException ex)
@@ -130,15 +118,11 @@ namespace ConduitLLM.Admin.Services
                         InputCostPerMillionTokens = parts.Length > 3 && decimal.TryParse(parts[3], out var inputCost) ? inputCost : 0,
                         OutputCostPerMillionTokens = parts.Length > 4 && decimal.TryParse(parts[4], out var outputCost) ? outputCost : 0,
                         EmbeddingCostPerMillionTokens = parts.Length > 5 && decimal.TryParse(parts[5], out var embeddingCost) ? embeddingCost : null,
-                        ImageCostPerImage = parts.Length > 6 && decimal.TryParse(parts[6], out var imageCost) ? imageCost : null,
-                        VideoCostPerSecond = parts.Length > 7 && decimal.TryParse(parts[7], out var videoCost) ? videoCost : null,
-                        VideoResolutionMultipliers = parts.Length > 8 ? UnescapeCsvValue(parts[8]) : null,
-                        ImageResolutionMultipliers = parts.Length > 9 ? UnescapeCsvValue(parts[9]) : null,
-                        BatchProcessingMultiplier = parts.Length > 10 && decimal.TryParse(parts[10], out var batchMultiplier) ? batchMultiplier : null,
-                        SupportsBatchProcessing = parts.Length > 11 && (parts[11].Trim().ToLower() == "yes" || parts[11].Trim().ToLower() == "true"),
-                        CostPerSearchUnit = parts.Length > 12 && decimal.TryParse(parts[12], out var searchUnitCost) ? searchUnitCost : null,
-                        CostPerInferenceStep = parts.Length > 13 && decimal.TryParse(parts[13], out var inferenceStepCost) ? inferenceStepCost : null,
-                        DefaultInferenceSteps = parts.Length > 14 && int.TryParse(parts[14], out var defaultSteps) ? defaultSteps : null
+                        BatchProcessingMultiplier = parts.Length > 6 && decimal.TryParse(parts[6], out var batchMultiplier) ? batchMultiplier : null,
+                        SupportsBatchProcessing = parts.Length > 7 && (parts[7].Trim().ToLower() == "yes" || parts[7].Trim().ToLower() == "true"),
+                        CostPerSearchUnit = parts.Length > 8 && decimal.TryParse(parts[8], out var searchUnitCost) ? searchUnitCost : null,
+                        CachedInputCostPerMillionTokens = parts.Length > 9 && decimal.TryParse(parts[9], out var cachedInputCost) ? cachedInputCost : null,
+                        CachedInputWriteCostPerMillionTokens = parts.Length > 10 && decimal.TryParse(parts[10], out var cachedWriteCost) ? cachedWriteCost : null
                     };
 
                     modelCosts.Add(modelCost);

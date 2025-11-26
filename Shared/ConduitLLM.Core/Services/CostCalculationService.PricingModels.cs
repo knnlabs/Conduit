@@ -254,4 +254,100 @@ public partial class CostCalculationService
     }
 
     // Audio calculation methods removed - audio functionality has been removed from the system
+
+    private async Task<decimal> CalculateRulesBasedCostAsync(string modelId, ModelCost modelCost, Usage usage)
+    {
+        if (_pricingRulesEvaluator == null)
+        {
+            _logger.LogError("Rules-based pricing requested for model {ModelId} but no PricingRulesEvaluator is configured", modelId);
+            throw new InvalidOperationException($"Rules-based pricing is not configured for model {modelId}");
+        }
+
+        // Get pricing rules configuration (preferably from cache)
+        PricingRulesConfig? config = null;
+
+        // Try to get from cache first
+        if (_cachedPricingRulesService != null && !string.IsNullOrEmpty(modelCost.PricingConfiguration))
+        {
+            config = await _cachedPricingRulesService.GetConfigAsync(modelCost.Id, modelCost.PricingConfiguration);
+            if (config != null)
+            {
+                _logger.LogDebug("Using cached pricing rules configuration for model {ModelId}", modelId);
+            }
+        }
+
+        // Fallback to direct parsing if cache is not available or returned null
+        if (config == null && !string.IsNullOrEmpty(modelCost.PricingConfiguration))
+        {
+            try
+            {
+                config = JsonSerializer.Deserialize<PricingRulesConfig>(modelCost.PricingConfiguration, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+                _logger.LogDebug("Parsed pricing rules configuration directly for model {ModelId}", modelId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to parse rules-based pricing configuration for model {ModelId}", modelId);
+                throw new InvalidOperationException($"Invalid rules-based pricing configuration for model {modelId}");
+            }
+        }
+
+        if (config == null)
+        {
+            _logger.LogError("No rules-based pricing configuration for model {ModelId}", modelId);
+            throw new InvalidOperationException($"No rules-based pricing configuration for model {modelId}");
+        }
+
+        // Get pricing parameters from Usage (fallback to empty dictionary)
+        var parameters = usage.PricingParameters ?? new Dictionary<string, object>();
+
+        // Add any missing parameters from standard usage fields
+        // This allows using rules-based pricing even when providers don't set PricingParameters
+        if (!parameters.ContainsKey("resolution") && !string.IsNullOrEmpty(usage.VideoResolution))
+        {
+            parameters["resolution"] = NormalizeResolution(usage.VideoResolution);
+        }
+        if (!parameters.ContainsKey("image_resolution") && !string.IsNullOrEmpty(usage.ImageResolution))
+        {
+            parameters["image_resolution"] = usage.ImageResolution;
+        }
+        if (!parameters.ContainsKey("image_quality") && !string.IsNullOrEmpty(usage.ImageQuality))
+        {
+            parameters["image_quality"] = usage.ImageQuality;
+        }
+
+        // Evaluate rules synchronously (audit logging is handled in UsageTrackingMiddleware if needed)
+        var result = _pricingRulesEvaluator.Evaluate(config, parameters, usage);
+
+        _logger.LogInformation(
+            "Rules-based pricing evaluated: Model={ModelId}, Rate={Rate}, Qty={Quantity}, Cost=${Cost:F6}, Rule={Rule}, UsedDefault={UsedDefault}",
+            modelId, result.Rate, result.Quantity, result.Cost,
+            result.MatchedRule?.Description ?? "none", result.UsedDefaultRate);
+
+        return result.Cost;
+    }
+
+    /// <summary>
+    /// Normalizes video resolution to standard format (e.g., "1920x1080" -> "1080p").
+    /// </summary>
+    private static string NormalizeResolution(string resolution)
+    {
+        if (string.IsNullOrEmpty(resolution))
+            return resolution;
+
+        // Already normalized
+        if (resolution.EndsWith("p", StringComparison.OrdinalIgnoreCase))
+            return resolution.ToLowerInvariant();
+
+        // Parse "WIDTHxHEIGHT" format
+        var parts = resolution.ToLowerInvariant().Split('x');
+        if (parts.Length == 2 && int.TryParse(parts[1], out var height))
+        {
+            return $"{height}p";
+        }
+
+        return resolution;
+    }
 }

@@ -158,59 +158,8 @@ public partial class CostCalculationService
                 refundUsage.ReasoningTokens.Value, reasoningRate);
         }
 
-        // Handle image generation refunds
-        if (modelCost.ImageCostPerImage.HasValue && refundUsage.ImageCount.HasValue && refundUsage.ImageCount.Value > 0)
-        {
-            var imageRefund = refundUsage.ImageCount.Value * modelCost.ImageCostPerImage.Value;
-            
-            // Apply quality multiplier if available
-            if (!string.IsNullOrEmpty(modelCost.ImageQualityMultipliers) && 
-                !string.IsNullOrEmpty(refundUsage.ImageQuality))
-            {
-                try
-                {
-                    var qualityMultipliers = JsonSerializer.Deserialize<Dictionary<string, decimal>>(modelCost.ImageQualityMultipliers);
-                    if (qualityMultipliers != null && qualityMultipliers.TryGetValue(refundUsage.ImageQuality.ToLowerInvariant(), out var multiplier))
-                    {
-                        imageRefund *= multiplier;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to parse ImageQualityMultipliers for refund calculation");
-                }
-            }
-            
-            breakdown.ImageRefund = imageRefund;
-            totalRefund += breakdown.ImageRefund;
-        }
-
-        // Handle video generation refunds
-        if (modelCost.VideoCostPerSecond.HasValue && refundUsage.VideoDurationSeconds.HasValue && refundUsage.VideoDurationSeconds.Value > 0)
-        {
-            var videoRefund = (decimal)refundUsage.VideoDurationSeconds.Value * modelCost.VideoCostPerSecond.Value;
-            
-            // Apply resolution multiplier if available
-            if (!string.IsNullOrEmpty(modelCost.VideoResolutionMultipliers) && 
-                !string.IsNullOrEmpty(refundUsage.VideoResolution))
-            {
-                try
-                {
-                    var resolutionMultipliers = JsonSerializer.Deserialize<Dictionary<string, decimal>>(modelCost.VideoResolutionMultipliers);
-                    if (resolutionMultipliers != null && resolutionMultipliers.TryGetValue(refundUsage.VideoResolution, out var multiplier))
-                    {
-                        videoRefund *= multiplier;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to parse VideoResolutionMultipliers for refund calculation");
-                }
-            }
-            
-            breakdown.VideoRefund = videoRefund;
-            totalRefund += breakdown.VideoRefund;
-        }
+        // Image and video refunds are now handled via RulesBased pricing configuration
+        // The refund amount is calculated using the same rules engine as the original cost
 
         // Handle search unit refunds
         if (modelCost.CostPerSearchUnit.HasValue && refundUsage.SearchUnits.HasValue && refundUsage.SearchUnits.Value > 0)
@@ -229,20 +178,7 @@ public partial class CostCalculationService
                 searchRefund);
         }
 
-        // Handle inference step refunds (for image generation)
-        if (modelCost.CostPerInferenceStep.HasValue && refundUsage.InferenceSteps.HasValue && refundUsage.InferenceSteps.Value > 0)
-        {
-            var stepRefund = refundUsage.InferenceSteps.Value * modelCost.CostPerInferenceStep.Value;
-            breakdown.InferenceStepRefund = stepRefund;
-            totalRefund += stepRefund;
-            
-            _logger.LogDebug(
-                "Inference step refund for model {ModelId}: {Steps} steps × ${CostPerStep} = ${Total}",
-                modelId,
-                refundUsage.InferenceSteps.Value,
-                modelCost.CostPerInferenceStep.Value,
-                stepRefund);
-        }
+        // Inference step refunds are now handled via RulesBased pricing configuration
 
         // Apply batch processing discount if applicable
         if (refundUsage.IsBatch == true && modelCost.SupportsBatchProcessing && modelCost.BatchProcessingMultiplier.HasValue)

@@ -168,6 +168,23 @@ public class Usage
     public Dictionary<string, object>? Metadata { get; set; }
 
     /// <summary>
+    /// Parameters used for rules-based pricing evaluation.
+    /// </summary>
+    /// <remarks>
+    /// Contains key-value pairs that are matched against pricing rule conditions.
+    /// These parameters typically correspond to ModelSeries.Parameters definitions.
+    /// Common parameters include:
+    /// - resolution: Normalized resolution (e.g., "1080p", "720p", "480p")
+    /// - with_audio: Boolean for audio feature in video generation
+    /// - aspect_ratio: Video/image aspect ratio (e.g., "16:9", "9:16")
+    /// - quality: Quality tier (e.g., "standard", "hd")
+    /// The pricing rules engine evaluates these against rule conditions to determine rates.
+    /// </remarks>
+    [JsonPropertyName("pricing_parameters")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, object>? PricingParameters { get; set; }
+
+    /// <summary>
     /// Extension data to capture additional provider-specific fields not defined in the model.
     /// </summary>
     /// <remarks>

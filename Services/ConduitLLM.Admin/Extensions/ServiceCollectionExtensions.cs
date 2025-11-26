@@ -197,9 +197,23 @@ public static class ServiceCollectionExtensions
         // Register billing audit service for comprehensive billing event tracking - with leader election
         services.AddSingleton<ConduitLLM.Configuration.Interfaces.IBillingAuditService, ConduitLLM.Configuration.Services.BillingAuditService>();
         services.AddLeaderElectedHostedService<ConduitLLM.Configuration.Services.BillingAuditService>(
-            provider => provider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IBillingAuditService>() as ConduitLLM.Configuration.Services.BillingAuditService 
+            provider => provider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IBillingAuditService>() as ConduitLLM.Configuration.Services.BillingAuditService
             ?? throw new InvalidOperationException("BillingAuditService must implement IHostedService"),
             "BillingAuditService");
+
+        // Register pricing rules engine services
+        services.AddScoped<ConduitLLM.Core.Services.IPricingRulesEvaluator, ConduitLLM.Core.Services.PricingRulesEvaluator>();
+        services.AddScoped<ConduitLLM.Core.Services.IPricingRulesValidator, ConduitLLM.Core.Services.PricingRulesValidator>();
+
+        // Register cached pricing rules service for parsed configuration caching
+        services.AddSingleton<ConduitLLM.Core.Interfaces.ICachedPricingRulesService, ConduitLLM.Core.Services.CachedPricingRulesService>();
+
+        // Register pricing audit service for rules-based pricing event tracking - with leader election
+        services.AddSingleton<ConduitLLM.Configuration.Interfaces.IPricingAuditService, ConduitLLM.Configuration.Services.PricingAuditService>();
+        services.AddLeaderElectedHostedService<ConduitLLM.Configuration.Services.PricingAuditService>(
+            provider => provider.GetRequiredService<ConduitLLM.Configuration.Interfaces.IPricingAuditService>() as ConduitLLM.Configuration.Services.PricingAuditService
+            ?? throw new InvalidOperationException("PricingAuditService must implement IHostedService"),
+            "PricingAuditService");
 
         // Register Redis error store with deferred resolution
         // IConnectionMultiplexer will be registered by AddRedisDataProtection in Program.cs after this method

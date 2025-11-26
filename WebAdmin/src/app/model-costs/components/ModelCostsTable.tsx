@@ -150,6 +150,7 @@ export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: M
       [PricingModel.PerImage]: { label: 'Per Image', color: 'pink', icon: <IconPhoto size={14} /> },
       [PricingModel.PerMinuteAudio]: { label: 'Per Minute', color: 'cyan', icon: <IconMicrophone size={14} /> },
       [PricingModel.PerThousandCharacters]: { label: 'Per 1K Chars', color: 'lime', icon: <IconLetterT size={14} /> },
+      [PricingModel.RulesBased]: { label: 'Rules-Based', color: 'blue', icon: <IconAdjustments size={14} /> },
     };
     
     const badge = badges[model];

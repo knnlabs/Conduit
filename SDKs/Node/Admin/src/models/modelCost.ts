@@ -10,8 +10,10 @@ export enum PricingModel {
   InferenceSteps = 3,
   TieredTokens = 4,
   PerImage = 5,
-  PerMinuteAudio = 6,
-  PerThousandCharacters = 7
+  /** Flexible rules-based pricing using JSON configuration */
+  RulesBased = 6,
+  PerMinuteAudio = 7,
+  PerThousandCharacters = 8
 }
 
 export interface ModelCostDto {

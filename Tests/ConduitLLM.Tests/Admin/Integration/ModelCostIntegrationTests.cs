@@ -4,6 +4,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Core.Services;
 
 using MassTransit;
 
@@ -29,6 +30,7 @@ namespace ConduitLLM.Tests.Admin.Integration
         private readonly AdminModelCostService _service;
         private readonly ModelCostsController _controller;
         private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
+        private readonly Mock<IPricingRulesValidator> _mockPricingValidator;
         private readonly Mock<ILogger<AdminModelCostService>> _mockServiceLogger;
         private readonly Mock<ILogger<ModelCostsController>> _mockControllerLogger;
         private readonly Mock<ILogger<ModelCostRepository>> _mockCostRepoLogger;
@@ -61,6 +63,7 @@ namespace ConduitLLM.Tests.Admin.Integration
 
             // Setup mocks for non-essential dependencies
             _mockPublishEndpoint = new Mock<IPublishEndpoint>();
+            _mockPricingValidator = new Mock<IPricingRulesValidator>();
             _mockServiceLogger = new Mock<ILogger<AdminModelCostService>>();
             _mockControllerLogger = new Mock<ILogger<ModelCostsController>>();
 
@@ -73,7 +76,7 @@ namespace ConduitLLM.Tests.Admin.Integration
                 _mockServiceLogger.Object);
 
             // Create controller with real service
-            _controller = new ModelCostsController(_service, _mockControllerLogger.Object);
+            _controller = new ModelCostsController(_service, _mockPricingValidator.Object, _mockControllerLogger.Object);
         }
 
         public void Dispose()

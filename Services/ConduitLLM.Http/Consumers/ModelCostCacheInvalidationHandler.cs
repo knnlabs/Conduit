@@ -6,24 +6,28 @@ using MassTransit;
 namespace ConduitLLM.Http.Consumers
 {
     /// <summary>
-    /// Handles ModelCostChanged events for future cache invalidation
-    /// Currently logs events for monitoring until cache implementation is added
+    /// Handles ModelCostChanged events for cache invalidation.
+    /// Invalidates both the model cost cache and pricing rules cache.
     /// </summary>
     public class ModelCostCacheInvalidationHandler : IConsumer<ModelCostChanged>
     {
         private readonly IModelCostCache? _modelCostCache;
+        private readonly ICachedPricingRulesService? _pricingRulesCache;
         private readonly ILogger<ModelCostCacheInvalidationHandler> _logger;
 
         /// <summary>
         /// Initializes a new instance of the ModelCostCacheInvalidationHandler
         /// </summary>
         /// <param name="modelCostCache">Optional model cost cache</param>
+        /// <param name="pricingRulesCache">Optional pricing rules cache</param>
         /// <param name="logger">Logger for diagnostics</param>
         public ModelCostCacheInvalidationHandler(
             IModelCostCache? modelCostCache,
+            ICachedPricingRulesService? pricingRulesCache,
             ILogger<ModelCostCacheInvalidationHandler> logger)
         {
             _modelCostCache = modelCostCache;
+            _pricingRulesCache = pricingRulesCache;
             _logger = logger;
         }
 
@@ -59,7 +63,7 @@ namespace ConduitLLM.Http.Consumers
                     @event.CostName);
             }
 
-            // Invalidate cache if available
+            // Invalidate model cost cache if available
             if (_modelCostCache != null)
             {
                 try
@@ -72,6 +76,22 @@ namespace ConduitLLM.Http.Consumers
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error invalidating model cost cache");
+                }
+            }
+
+            // Invalidate pricing rules cache if available
+            if (_pricingRulesCache != null && @event.ModelCostId > 0)
+            {
+                try
+                {
+                    _pricingRulesCache.InvalidateCache(@event.ModelCostId);
+                    _logger.LogInformation(
+                        "Pricing rules cache invalidated for ModelCostId: {ModelCostId}",
+                        @event.ModelCostId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error invalidating pricing rules cache for ModelCostId: {ModelCostId}", @event.ModelCostId);
                 }
             }
         }

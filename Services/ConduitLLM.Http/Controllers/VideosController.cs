@@ -1,8 +1,10 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using ConduitLLM.Http.Authorization;
+using ConduitLLM.Http.Constants;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Constants;
@@ -89,6 +91,9 @@ namespace ConduitLLM.Http.Controllers
                         Detail = "Virtual key not found in request context"
                     });
                 }
+
+                // Store video request parameters for usage tracking and pricing
+                StoreVideoRequestParameters(request);
 
                 // Get provider info for usage tracking
                 try
@@ -515,6 +520,140 @@ namespace ConduitLLM.Http.Controllers
                     Detail = "An error occurred while cancelling the task"
                 });
             }
+        }
+
+        /// <summary>
+        /// Stores video request parameters in HttpContext.Items for usage tracking and pricing.
+        /// Extracts standard parameters (size, duration, fps) and builds pricing parameters
+        /// from ExtensionData for rules-based pricing evaluation.
+        /// </summary>
+        private void StoreVideoRequestParameters(VideoGenerationRequest request)
+        {
+            // Store standard request parameters
+            HttpContext.Items[HttpContextKeys.VideoRequestModel] = request.Model;
+            HttpContext.Items[HttpContextKeys.VideoRequestN] = request.N;
+
+            if (!string.IsNullOrEmpty(request.Size))
+            {
+                HttpContext.Items[HttpContextKeys.VideoRequestSize] = request.Size;
+            }
+
+            if (request.Duration.HasValue)
+            {
+                HttpContext.Items[HttpContextKeys.VideoRequestDuration] = request.Duration.Value;
+            }
+
+            if (request.Fps.HasValue)
+            {
+                HttpContext.Items[HttpContextKeys.VideoRequestFps] = request.Fps.Value;
+            }
+
+            if (!string.IsNullOrEmpty(request.Style))
+            {
+                HttpContext.Items[HttpContextKeys.VideoRequestStyle] = request.Style;
+            }
+
+            // Build pricing parameters dictionary for rules-based pricing
+            var pricingParameters = new Dictionary<string, object>();
+
+            // Add resolution (normalized to common format like "1080p")
+            if (!string.IsNullOrEmpty(request.Size))
+            {
+                pricingParameters["resolution"] = NormalizeResolution(request.Size);
+            }
+
+            // Add duration if specified
+            if (request.Duration.HasValue)
+            {
+                pricingParameters["duration"] = request.Duration.Value;
+            }
+
+            // Add FPS if specified
+            if (request.Fps.HasValue)
+            {
+                pricingParameters["fps"] = request.Fps.Value;
+            }
+
+            // Add style if specified
+            if (!string.IsNullOrEmpty(request.Style))
+            {
+                pricingParameters["style"] = request.Style;
+            }
+
+            // Extract additional pricing parameters from ExtensionData
+            if (request.ExtensionData != null)
+            {
+                // Common pricing-relevant parameters from various video providers
+                ExtractExtensionParameter(request.ExtensionData, "with_audio", pricingParameters);
+                ExtractExtensionParameter(request.ExtensionData, "audio", pricingParameters);
+                ExtractExtensionParameter(request.ExtensionData, "aspect_ratio", pricingParameters);
+                ExtractExtensionParameter(request.ExtensionData, "quality", pricingParameters);
+                ExtractExtensionParameter(request.ExtensionData, "num_inference_steps", pricingParameters);
+                ExtractExtensionParameter(request.ExtensionData, "guidance_scale", pricingParameters);
+                ExtractExtensionParameter(request.ExtensionData, "motion_bucket_id", pricingParameters);
+            }
+
+            HttpContext.Items[HttpContextKeys.VideoRequestPricingParameters] = pricingParameters;
+
+            _logger.LogDebug(
+                "Stored video request parameters: Model={Model}, Size={Size}, Duration={Duration}, N={N}, PricingParams={PricingParamsCount}",
+                request.Model, request.Size, request.Duration, request.N, pricingParameters.Count);
+        }
+
+        /// <summary>
+        /// Extracts a parameter from ExtensionData and adds it to the pricing parameters dictionary.
+        /// </summary>
+        private static void ExtractExtensionParameter(
+            Dictionary<string, JsonElement> extensionData,
+            string parameterName,
+            Dictionary<string, object> pricingParameters)
+        {
+            if (!extensionData.TryGetValue(parameterName, out var element))
+                return;
+
+            object? value = element.ValueKind switch
+            {
+                JsonValueKind.True => true,
+                JsonValueKind.False => false,
+                JsonValueKind.Number when element.TryGetInt32(out var intVal) => intVal,
+                JsonValueKind.Number when element.TryGetDouble(out var dblVal) => dblVal,
+                JsonValueKind.String => element.GetString(),
+                _ => null
+            };
+
+            if (value != null)
+            {
+                pricingParameters[parameterName] = value;
+            }
+        }
+
+        /// <summary>
+        /// Normalizes video resolution to standard format (e.g., "1920x1080" → "1080p").
+        /// </summary>
+        private static string NormalizeResolution(string resolution)
+        {
+            if (string.IsNullOrEmpty(resolution))
+                return resolution;
+
+            // Already normalized format
+            if (resolution.EndsWith("p", StringComparison.OrdinalIgnoreCase))
+                return resolution.ToLowerInvariant();
+
+            // Parse "WIDTHxHEIGHT" format
+            var parts = resolution.ToLowerInvariant().Split('x');
+            if (parts.Length == 2 && int.TryParse(parts[1], out var height))
+            {
+                return height switch
+                {
+                    >= 2160 => "4k",
+                    >= 1080 => "1080p",
+                    >= 720 => "720p",
+                    >= 480 => "480p",
+                    _ => $"{height}p"
+                };
+            }
+
+            return resolution;
         }
     }
 

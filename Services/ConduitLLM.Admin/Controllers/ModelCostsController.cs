@@ -3,6 +3,8 @@ using System.Text;
 
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Core.Models.Pricing;
+using ConduitLLM.Core.Services;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,18 +20,22 @@ namespace ConduitLLM.Admin.Controllers
     public class ModelCostsController : ControllerBase
     {
         private readonly IAdminModelCostService _modelCostService;
+        private readonly IPricingRulesValidator _pricingRulesValidator;
         private readonly ILogger<ModelCostsController> _logger;
 
         /// <summary>
         /// Initializes a new instance of the ModelCostsController
         /// </summary>
         /// <param name="modelCostService">The model cost service</param>
+        /// <param name="pricingRulesValidator">The pricing rules validator</param>
         /// <param name="logger">The logger</param>
         public ModelCostsController(
             IAdminModelCostService modelCostService,
+            IPricingRulesValidator pricingRulesValidator,
             ILogger<ModelCostsController> logger)
         {
             _modelCostService = modelCostService ?? throw new ArgumentNullException(nameof(modelCostService));
+            _pricingRulesValidator = pricingRulesValidator ?? throw new ArgumentNullException(nameof(pricingRulesValidator));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -482,5 +488,102 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
+
+        /// <summary>
+        /// Validates a pricing rules configuration JSON
+        /// </summary>
+        /// <param name="id">The ID of the model cost (used to retrieve associated model's parameter schema)</param>
+        /// <param name="request">The pricing configuration to validate</param>
+        /// <returns>Validation result with errors and warnings</returns>
+        [HttpPost("{id}/validate-pricing-rules")]
+        [ProducesResponseType(typeof(ValidationResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ValidatePricingRules(
+            int id,
+            [FromBody] ValidatePricingRulesRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.PricingConfiguration))
+            {
+                return BadRequest(new ErrorResponseDto("Pricing configuration is required"));
+            }
+
+            try
+            {
+                // Verify the model cost exists
+                var modelCost = await _modelCostService.GetModelCostByIdAsync(id);
+                if (modelCost == null)
+                {
+                    return NotFound(new ErrorResponseDto("Model cost not found"));
+                }
+
+                // Get parameter schema from associated model if available
+                string? parameterSchema = null;
+                if (!string.IsNullOrEmpty(request.ParameterSchema))
+                {
+                    // Use provided schema (for testing or when model schema is known)
+                    parameterSchema = request.ParameterSchema;
+                }
+                // TODO: In the future, we could look up the model's parameter schema from ModelSeries
+
+                // Validate the configuration
+                var result = _pricingRulesValidator.ValidateJson(request.PricingConfiguration, parameterSchema);
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error validating pricing rules for model cost {Id}", id);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            }
+        }
+
+        /// <summary>
+        /// Validates a pricing rules configuration JSON without a model cost context
+        /// </summary>
+        /// <param name="request">The pricing configuration to validate</param>
+        /// <returns>Validation result with errors and warnings</returns>
+        [HttpPost("validate-pricing-rules")]
+        [ProducesResponseType(typeof(ValidationResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public IActionResult ValidatePricingRulesStandalone([FromBody] ValidatePricingRulesRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.PricingConfiguration))
+            {
+                return BadRequest(new ErrorResponseDto("Pricing configuration is required"));
+            }
+
+            try
+            {
+                var result = _pricingRulesValidator.ValidateJson(
+                    request.PricingConfiguration,
+                    request.ParameterSchema);
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error validating pricing rules");
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Request model for validating pricing rules
+    /// </summary>
+    public class ValidatePricingRulesRequest
+    {
+        /// <summary>
+        /// The pricing configuration JSON to validate
+        /// </summary>
+        public string PricingConfiguration { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Optional parameter schema JSON for validation against model parameters
+        /// </summary>
+        public string? ParameterSchema { get; set; }
     }
 }

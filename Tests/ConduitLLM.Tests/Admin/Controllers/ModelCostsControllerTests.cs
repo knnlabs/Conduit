@@ -1,5 +1,6 @@
 using ConduitLLM.Admin.Controllers;
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Core.Services;
 
 using Microsoft.Extensions.Logging;
 
@@ -17,6 +18,7 @@ namespace ConduitLLM.Tests.Admin.Controllers
     public partial class ModelCostsControllerTests
     {
         private readonly Mock<IAdminModelCostService> _mockService;
+        private readonly Mock<IPricingRulesValidator> _mockValidator;
         private readonly Mock<ILogger<ModelCostsController>> _mockLogger;
         private readonly ModelCostsController _controller;
         private readonly ITestOutputHelper _output;
@@ -25,8 +27,9 @@ namespace ConduitLLM.Tests.Admin.Controllers
         {
             _output = output;
             _mockService = new Mock<IAdminModelCostService>();
+            _mockValidator = new Mock<IPricingRulesValidator>();
             _mockLogger = new Mock<ILogger<ModelCostsController>>();
-            _controller = new ModelCostsController(_mockService.Object, _mockLogger.Object);
+            _controller = new ModelCostsController(_mockService.Object, _mockValidator.Object, _mockLogger.Object);
         }
 
     }

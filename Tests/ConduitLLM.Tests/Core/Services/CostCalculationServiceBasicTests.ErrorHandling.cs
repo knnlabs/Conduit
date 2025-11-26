@@ -77,17 +77,13 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 PromptTokens = 1000,
                 CompletionTokens = 500,
-                TotalTokens = 1500,
-                ImageCount = 5,
-                VideoDurationSeconds = 10.0
+                TotalTokens = 1500
             };
             var modelCost = new ModelCost
             {
                 CostName = modelId,
                 InputCostPerMillionTokens = 0m,
-                OutputCostPerMillionTokens = 0m,
-                ImageCostPerImage = 0m,
-                VideoCostPerSecond = 0m
+                OutputCostPerMillionTokens = 0m
             };
 
             _modelCostServiceMock

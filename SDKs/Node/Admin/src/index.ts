@@ -196,6 +196,8 @@ export {
   FetchFunctionCostsService,
   FetchFunctionExecutionsService
 } from './services/FetchFunctionsService';
+export { FetchPricingService } from './services/FetchPricingService';
+export * from './models/pricing';
 
 // SignalR Hub Clients
 export { NavigationStateHubClient } from './signalr/NavigationStateHubClient';

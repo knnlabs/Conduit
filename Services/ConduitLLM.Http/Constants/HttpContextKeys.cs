@@ -72,4 +72,50 @@ public static class HttpContextKeys
     /// Value type: int
     /// </summary>
     public const string ImageRequestN = "ImageRequestN";
+
+    #region Video Request Keys
+
+    /// <summary>
+    /// Key for storing the model name from video generation request (before provider mapping).
+    /// Value type: string
+    /// </summary>
+    public const string VideoRequestModel = "VideoRequestModel";
+
+    /// <summary>
+    /// Key for storing the size/resolution from video generation request.
+    /// Value type: string (e.g., "1920x1080", "1280x720")
+    /// </summary>
+    public const string VideoRequestSize = "VideoRequestSize";
+
+    /// <summary>
+    /// Key for storing the duration from video generation request.
+    /// Value type: int (seconds)
+    /// </summary>
+    public const string VideoRequestDuration = "VideoRequestDuration";
+
+    /// <summary>
+    /// Key for storing the FPS from video generation request.
+    /// Value type: int
+    /// </summary>
+    public const string VideoRequestFps = "VideoRequestFps";
+
+    /// <summary>
+    /// Key for storing the style from video generation request.
+    /// Value type: string
+    /// </summary>
+    public const string VideoRequestStyle = "VideoRequestStyle";
+
+    /// <summary>
+    /// Key for storing the number of videos requested.
+    /// Value type: int
+    /// </summary>
+    public const string VideoRequestN = "VideoRequestN";
+
+    /// <summary>
+    /// Key for storing additional pricing parameters extracted from video generation request.
+    /// Value type: Dictionary&lt;string, object&gt;
+    /// </summary>
+    public const string VideoRequestPricingParameters = "VideoRequestPricingParameters";
+
+    #endregion
 }

@@ -47,6 +47,11 @@ namespace ConduitLLM.Configuration
         public virtual DbSet<BillingAuditEvent> BillingAuditEvents { get; set; } = null!;
 
         /// <summary>
+        /// Database set for pricing audit events (rules-based pricing)
+        /// </summary>
+        public virtual DbSet<PricingAuditEvent> PricingAuditEvents { get; set; } = null!;
+
+        /// <summary>
         /// Database set for virtual key spend history
         /// </summary>
         public virtual DbSet<VirtualKeySpendHistory> VirtualKeySpendHistory { get; set; } = null!;
@@ -470,6 +475,9 @@ namespace ConduitLLM.Configuration
 
             // Apply BillingAuditEvent configuration
             modelBuilder.ApplyConfiguration(new EntityConfigurations.BillingAuditEventConfiguration());
+
+            // Apply PricingAuditEvent configuration (rules-based pricing)
+            modelBuilder.ApplyConfiguration(new EntityConfigurations.PricingAuditEventConfiguration());
 
             // Note: ModelProviderMapping and Provider are now included in test environments
             // as they are required by the application code during tests

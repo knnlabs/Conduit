@@ -44,31 +44,6 @@ namespace ConduitLLM.Core.Models
         public decimal? EmbeddingCostPerMillionTokens { get; set; }
 
         /// <summary>
-        /// Cost per image for image generation requests, if applicable.
-        /// </summary>
-        public decimal? ImageCostPerImage { get; set; }
-
-        /// <summary>
-        /// Cost per second for video generation requests, if applicable.
-        /// </summary>
-        public decimal? VideoCostPerSecond { get; set; }
-
-        /// <summary>
-        /// Resolution-based cost multipliers for video generation.
-        /// </summary>
-        public Dictionary<string, decimal>? VideoResolutionMultipliers { get; set; }
-
-        /// <summary>
-        /// Quality-based cost multipliers for image generation.
-        /// </summary>
-        public Dictionary<string, decimal>? ImageQualityMultipliers { get; set; }
-
-        /// <summary>
-        /// Resolution-based cost multipliers for image generation.
-        /// </summary>
-        public Dictionary<string, decimal>? ImageResolutionMultipliers { get; set; }
-
-        /// <summary>
         /// Cost multiplier for batch processing operations, if applicable.
         /// </summary>
         public decimal? BatchProcessingMultiplier { get; set; }
@@ -92,17 +67,6 @@ namespace ConduitLLM.Core.Models
         /// Cost per search unit for reranking models, if applicable.
         /// </summary>
         public decimal? CostPerSearchUnit { get; set; }
-
-        /// <summary>
-        /// Cost per inference step for image generation models, if applicable.
-        /// </summary>
-        public decimal? CostPerInferenceStep { get; set; }
-
-        /// <summary>
-        /// Default number of inference steps for this model.
-        /// </summary>
-        public int? DefaultInferenceSteps { get; set; }
-
 
         /// <summary>
         /// Model type for categorization.

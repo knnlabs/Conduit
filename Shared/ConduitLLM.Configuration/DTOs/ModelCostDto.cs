@@ -67,11 +67,6 @@ namespace ConduitLLM.Configuration.DTOs
         public decimal? EmbeddingCostPerMillionTokens { get; set; }
 
         /// <summary>
-        /// Cost per image for image generation requests in USD, if applicable
-        /// </summary>
-        public decimal? ImageCostPerImage { get; set; }
-
-        /// <summary>
         /// Creation timestamp of this cost record
         /// </summary>
         public DateTime CreatedAt { get; set; }
@@ -122,20 +117,6 @@ namespace ConduitLLM.Configuration.DTOs
 
 
         /// <summary>
-        /// Cost per second for video generation in USD, if applicable
-        /// </summary>
-        public decimal? VideoCostPerSecond { get; set; }
-
-        /// <summary>
-        /// Resolution-based cost multipliers for video generation as JSON string
-        /// </summary>
-        /// <remarks>
-        /// JSON object containing resolution-to-multiplier mappings.
-        /// Example: {"720p": 1.0, "1080p": 1.5, "4k": 2.5}
-        /// </remarks>
-        public string? VideoResolutionMultipliers { get; set; }
-
-        /// <summary>
         /// Cost multiplier for batch processing operations, if applicable
         /// </summary>
         /// <remarks>
@@ -152,24 +133,6 @@ namespace ConduitLLM.Configuration.DTOs
         /// When true, requests can be processed through batch endpoints with the BatchProcessingMultiplier discount applied.
         /// </remarks>
         public bool SupportsBatchProcessing { get; set; }
-
-        /// <summary>
-        /// Quality-based cost multipliers for image generation as JSON string
-        /// </summary>
-        /// <remarks>
-        /// JSON object containing quality-to-multiplier mappings.
-        /// Example: {"standard": 1.0, "hd": 2.0}
-        /// </remarks>
-        public string? ImageQualityMultipliers { get; set; }
-
-        /// <summary>
-        /// Resolution-based cost multipliers for image generation as JSON string
-        /// </summary>
-        /// <remarks>
-        /// JSON object containing resolution-to-multiplier mappings.
-        /// Example: {"1024x1024": 1.0, "1792x1024": 1.5, "1024x1792": 1.5}
-        /// </remarks>
-        public string? ImageResolutionMultipliers { get; set; }
 
         /// <summary>
         /// Cost per million cached input tokens for prompt caching in USD, if applicable
@@ -201,25 +164,5 @@ namespace ConduitLLM.Configuration.DTOs
         /// </remarks>
         public decimal? CostPerSearchUnit { get; set; }
 
-        /// <summary>
-        /// Cost per inference step for image generation models in USD, if applicable
-        /// </summary>
-        /// <remarks>
-        /// Used by providers like Fireworks that charge based on the number of iterative refinement steps.
-        /// Different models require different numbers of steps to generate an image.
-        /// Example: FLUX.1[schnell] uses 4 steps × $0.00035/step = $0.0014 per image.
-        /// Example: SDXL typically uses 30 steps × $0.00013/step = $0.0039 per image.
-        /// </remarks>
-        public decimal? CostPerInferenceStep { get; set; }
-
-        /// <summary>
-        /// Default number of inference steps for this model
-        /// </summary>
-        /// <remarks>
-        /// Indicates the standard number of iterative refinement steps this model uses for image generation.
-        /// Used when the client request doesn't specify a custom step count.
-        /// Example: FLUX.1[schnell] uses 4 steps for fast generation, SDXL uses 30 steps for higher quality.
-        /// </remarks>
-        public int? DefaultInferenceSteps { get; set; }
     }
 }

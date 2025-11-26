@@ -1,10 +1,10 @@
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 
 using Microsoft.Extensions.Logging;
 
-using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Core.Services;
 
 /// <summary>
@@ -32,17 +32,27 @@ public partial class CostCalculationService : ICostCalculationService
 {
     private readonly IModelCostService _modelCostService;
     private readonly ILogger<CostCalculationService> _logger;
+    private readonly IPricingRulesEvaluator? _pricingRulesEvaluator;
+    private readonly ICachedPricingRulesService? _cachedPricingRulesService;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CostCalculationService"/> class.
     /// </summary>
     /// <param name="modelCostService">The service for retrieving model cost information.</param>
     /// <param name="logger">The logger for recording diagnostic information.</param>
+    /// <param name="pricingRulesEvaluator">Optional evaluator for rules-based pricing.</param>
+    /// <param name="cachedPricingRulesService">Optional service for caching parsed pricing rules configurations.</param>
     /// <exception cref="ArgumentNullException">Thrown when modelCostService or logger is null.</exception>
-    public CostCalculationService(IModelCostService modelCostService, ILogger<CostCalculationService> logger)
+    public CostCalculationService(
+        IModelCostService modelCostService,
+        ILogger<CostCalculationService> logger,
+        IPricingRulesEvaluator? pricingRulesEvaluator = null,
+        ICachedPricingRulesService? cachedPricingRulesService = null)
     {
         _modelCostService = modelCostService ?? throw new ArgumentNullException(nameof(modelCostService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _pricingRulesEvaluator = pricingRulesEvaluator;
+        _cachedPricingRulesService = cachedPricingRulesService;
     }
 
     /// <inheritdoc />
@@ -112,6 +122,9 @@ public partial class CostCalculationService : ICostCalculationService
                 break;
             case PricingModel.PerImage:
                 calculatedCost = await CalculatePerImageCostAsync(modelId, modelCost, usage);
+                break;
+            case PricingModel.RulesBased:
+                calculatedCost = await CalculateRulesBasedCostAsync(modelId, modelCost, usage);
                 break;
             default:
                 _logger.LogWarning("Unknown pricing model {PricingModel} for model {ModelId}. Using standard calculation.", modelCost.PricingModel, modelId);

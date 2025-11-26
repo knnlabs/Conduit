@@ -296,18 +296,11 @@ namespace ConduitLLM.Admin.Extensions
                 InputCostPerMillionTokens = modelCost.InputCostPerMillionTokens,
                 OutputCostPerMillionTokens = modelCost.OutputCostPerMillionTokens,
                 EmbeddingCostPerMillionTokens = modelCost.EmbeddingCostPerMillionTokens,
-                ImageCostPerImage = modelCost.ImageCostPerImage,
-                VideoCostPerSecond = modelCost.VideoCostPerSecond,
-                VideoResolutionMultipliers = modelCost.VideoResolutionMultipliers,
-                ImageResolutionMultipliers = modelCost.ImageResolutionMultipliers,
                 BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
                 SupportsBatchProcessing = modelCost.SupportsBatchProcessing,
-                ImageQualityMultipliers = modelCost.ImageQualityMultipliers,
                 CachedInputCostPerMillionTokens = modelCost.CachedInputCostPerMillionTokens,
                 CachedInputWriteCostPerMillionTokens = modelCost.CachedInputWriteCostPerMillionTokens,
                 CostPerSearchUnit = modelCost.CostPerSearchUnit,
-                CostPerInferenceStep = modelCost.CostPerInferenceStep,
-                DefaultInferenceSteps = modelCost.DefaultInferenceSteps,
                 CreatedAt = modelCost.CreatedAt,
                 UpdatedAt = modelCost.UpdatedAt,
                 ModelType = modelCost.ModelType,
@@ -339,18 +332,11 @@ namespace ConduitLLM.Admin.Extensions
                 InputCostPerMillionTokens = dto.InputCostPerMillionTokens,
                 OutputCostPerMillionTokens = dto.OutputCostPerMillionTokens,
                 EmbeddingCostPerMillionTokens = dto.EmbeddingCostPerMillionTokens,
-                ImageCostPerImage = dto.ImageCostPerImage,
-                VideoCostPerSecond = dto.VideoCostPerSecond,
-                VideoResolutionMultipliers = dto.VideoResolutionMultipliers,
-                ImageResolutionMultipliers = dto.ImageResolutionMultipliers,
                 BatchProcessingMultiplier = dto.BatchProcessingMultiplier,
                 SupportsBatchProcessing = dto.SupportsBatchProcessing,
-                ImageQualityMultipliers = dto.ImageQualityMultipliers,
                 CachedInputCostPerMillionTokens = dto.CachedInputCostPerMillionTokens,
                 CachedInputWriteCostPerMillionTokens = dto.CachedInputWriteCostPerMillionTokens,
                 CostPerSearchUnit = dto.CostPerSearchUnit,
-                CostPerInferenceStep = dto.CostPerInferenceStep,
-                DefaultInferenceSteps = dto.DefaultInferenceSteps,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -380,18 +366,11 @@ namespace ConduitLLM.Admin.Extensions
             entity.InputCostPerMillionTokens = dto.InputCostPerMillionTokens;
             entity.OutputCostPerMillionTokens = dto.OutputCostPerMillionTokens;
             entity.EmbeddingCostPerMillionTokens = dto.EmbeddingCostPerMillionTokens;
-            entity.ImageCostPerImage = dto.ImageCostPerImage;
-            entity.VideoCostPerSecond = dto.VideoCostPerSecond;
-            entity.VideoResolutionMultipliers = dto.VideoResolutionMultipliers;
-            entity.ImageResolutionMultipliers = dto.ImageResolutionMultipliers;
             entity.BatchProcessingMultiplier = dto.BatchProcessingMultiplier;
             entity.SupportsBatchProcessing = dto.SupportsBatchProcessing;
-            entity.ImageQualityMultipliers = dto.ImageQualityMultipliers;
             entity.CachedInputCostPerMillionTokens = dto.CachedInputCostPerMillionTokens;
             entity.CachedInputWriteCostPerMillionTokens = dto.CachedInputWriteCostPerMillionTokens;
             entity.CostPerSearchUnit = dto.CostPerSearchUnit;
-            entity.CostPerInferenceStep = dto.CostPerInferenceStep;
-            entity.DefaultInferenceSteps = dto.DefaultInferenceSteps;
             entity.UpdatedAt = DateTime.UtcNow;
 
             return entity;

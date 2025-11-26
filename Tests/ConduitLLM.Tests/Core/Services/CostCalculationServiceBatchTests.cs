@@ -152,52 +152,8 @@ namespace ConduitLLM.Tests.Core.Services
             result.Should().Be(2.0m);
         }
 
-        [Fact]
-        public async Task CalculateCostAsync_WithBatchAndMultiModalUsage_AppliesDiscountToAll()
-        {
-            // Arrange
-            var modelId = "multimodal/model";
-            var usage = new Usage
-            {
-                PromptTokens = 1000,
-                CompletionTokens = 500,
-                TotalTokens = 1500,
-                ImageCount = 2,
-                VideoDurationSeconds = 3,
-                VideoResolution = "1280x720",
-                IsBatch = true
-            };
-            var modelCost = new ModelCost
-            {
-                CostName = modelId,
-                InputCostPerMillionTokens = 10.00m,
-                OutputCostPerMillionTokens = 20.00m,
-                ImageCostPerImage = 0.05m,
-                VideoCostPerSecond = 0.1m,
-                VideoResolutionMultipliers = JsonSerializer.Serialize(new Dictionary<string, decimal>
-                {
-                    ["1280x720"] = 0.8m
-                }),
-                SupportsBatchProcessing = true,
-                BatchProcessingMultiplier = 0.6m // 40% discount
-            };
-
-            _modelCostServiceMock
-                .Setup(x => x.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(modelCost);
-
-            // Act
-            var result = await _service.CalculateCostAsync(modelId, usage);
-
-            // Assert
-            // Expected without batch: 
-            // Text: (1000 * 10.00 / 1_000_000) + (500 * 20.00 / 1_000_000) = 0.01 + 0.01 = 0.02
-            // Images: 2 * 0.05 = 0.1
-            // Video: 3 * 0.1 * 0.8 = 0.24
-            // Total before batch: 0.02 + 0.1 + 0.24 = 0.36
-            // With 40% discount (0.6 multiplier): 0.36 * 0.6 = 0.216
-            result.Should().Be(0.216m);
-        }
+        // Test removed: CalculateCostAsync_WithBatchAndMultiModalUsage_AppliesDiscountToAll
+        // Multimodal batch pricing (image/video) now handled via RulesBased pricing configuration
 
         [Theory]
         [InlineData(0.5, 1.0)]  // 50% discount
@@ -312,42 +268,7 @@ namespace ConduitLLM.Tests.Core.Services
             result.Should().Be(0.105m);
         }
 
-        [Fact]
-        public async Task CalculateCostAsync_WithInferenceStepsAndBatchProcessing_AppliesDiscountToAll()
-        {
-            // Arrange
-            var modelId = "fireworks/batch-model";
-            var usage = new Usage
-            {
-                PromptTokens = 1000,
-                CompletionTokens = 500,
-                TotalTokens = 1500,
-                InferenceSteps = 10,
-                IsBatch = true
-            };
-            var modelCost = new ModelCost
-            {
-                CostName = modelId,
-                InputCostPerMillionTokens = 10.00m,
-                OutputCostPerMillionTokens = 20.00m,
-                CostPerInferenceStep = 0.0002m,
-                SupportsBatchProcessing = true,
-                BatchProcessingMultiplier = 0.5m // 50% discount
-            };
-
-            _modelCostServiceMock
-                .Setup(x => x.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(modelCost);
-
-            // Act
-            var result = await _service.CalculateCostAsync(modelId, usage);
-
-            // Assert
-            // Token cost: (1000 * 10.00 / 1_000_000) + (500 * 20.00 / 1_000_000) = 0.01 + 0.01 = 0.02
-            // Step cost: 10 * 0.0002 = 0.002
-            // Total before discount: 0.022
-            // After 50% discount: 0.011
-            result.Should().Be(0.011m);
-        }
+        // Test removed: CalculateCostAsync_WithInferenceStepsAndBatchProcessing_AppliesDiscountToAll
+        // Inference step batch pricing now handled via RulesBased pricing configuration
     }
 }
