@@ -450,14 +450,14 @@ namespace ConduitLLM.Http.Middleware
             else
             {
                 UsageMetrics.ZeroCostEvents.WithLabels(model ?? "unknown", "streaming_zero").Inc();
-                LogZeroCostBilling(context, model, usage, cost, providerType, billingAuditService, toolUsageJson, toolCost);
+                LogZeroCostBilling(context, model ?? "unknown", usage, cost, providerType, billingAuditService, toolUsageJson, toolCost);
             }
 
             // Build metadata: prefer chat tool calls, fall back to provider tool usage
             var metadata = chatToolCallsJson ?? toolUsageJson;
 
             // Always log the request regardless of cost
-            await LogRequestAsync(context, virtualKeyId, model, usage, cost, requestLogService, metadata);
+            await LogRequestAsync(context, virtualKeyId, model ?? "unknown", usage, cost, requestLogService, metadata);
         }
 
         private async Task LogRequestAsync(

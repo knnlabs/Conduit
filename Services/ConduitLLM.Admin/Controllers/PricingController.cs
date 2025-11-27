@@ -746,18 +746,31 @@ namespace ConduitLLM.Admin.Controllers
     /// </summary>
     public class PricingAuditEventDto
     {
+        /// <summary>Unique identifier for the audit event.</summary>
         public long Id { get; set; }
+        /// <summary>When the pricing event occurred.</summary>
         public DateTime Timestamp { get; set; }
+        /// <summary>The virtual key ID associated with this event.</summary>
         public int VirtualKeyId { get; set; }
+        /// <summary>The model identifier used for pricing.</summary>
         public string ModelId { get; set; } = string.Empty;
+        /// <summary>The model cost configuration ID that was applied.</summary>
         public int ModelCostId { get; set; }
+        /// <summary>The type of pricing applied (e.g., token, image, audio).</summary>
         public string PricingType { get; set; } = string.Empty;
+        /// <summary>JSON representation of input parameters used for pricing calculation.</summary>
         public string InputParameters { get; set; } = string.Empty;
+        /// <summary>The pricing rule that matched, if any.</summary>
         public string? MatchedRule { get; set; }
+        /// <summary>Whether the default rate was used instead of a specific rule.</summary>
         public bool UsedDefaultRate { get; set; }
+        /// <summary>The rate that was applied for pricing.</summary>
         public decimal AppliedRate { get; set; }
+        /// <summary>The quantity (tokens, images, seconds, etc.) being priced.</summary>
         public decimal Quantity { get; set; }
+        /// <summary>The final calculated cost.</summary>
         public decimal CalculatedCost { get; set; }
+        /// <summary>The request ID for correlation, if available.</summary>
         public string? RequestId { get; set; }
     }
 
