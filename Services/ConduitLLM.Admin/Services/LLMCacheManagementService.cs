@@ -116,17 +116,23 @@ namespace ConduitLLM.Admin.Services
                     "Persisted LLM cache state to GlobalSetting: Enabled={Enabled}",
                     enabled);
 
-                await _publishEndpoint.Publish(new LLMCacheToggleEvent
+                // Get the setting to obtain its ID for the event
+                var savedSetting = await _globalSettingRepository.GetByKeyAsync(LLM_CACHE_SETTING_KEY, cancellationToken);
+                var settingId = savedSetting?.Id ?? 0;
+
+                // Publish GlobalSettingChanged event for cache invalidation across all instances
+                // This uses the existing event infrastructure that GlobalSettingCacheInvalidationHandler consumes
+                await _publishEndpoint.Publish(new GlobalSettingChanged
                 {
-                    Enabled = enabled,
-                    ToggledBy = changedBy,
-                    ToggledAt = toggleTime,
-                    Reason = reason,
-                    ApplyImmediately = true
+                    SettingId = settingId,
+                    SettingKey = LLM_CACHE_SETTING_KEY,
+                    ChangeType = "Updated",
+                    ChangedProperties = new[] { "Value" },
+                    CorrelationId = Guid.NewGuid().ToString()
                 }, cancellationToken);
 
                 _logger.LogInformation(
-                    "Published LLMCacheToggleEvent: Enabled={Enabled}, ChangedBy={ChangedBy}",
+                    "Published GlobalSettingChanged for LLM cache toggle: Enabled={Enabled}, ChangedBy={ChangedBy}",
                     enabled, changedBy);
 
                 return new LLMCacheControlDto

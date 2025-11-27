@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -20,6 +21,7 @@ namespace ConduitLLM.Core.Caching
         private readonly ILLMClient _innerClient;
         private readonly ICacheManager _cacheManager;
         private readonly ICacheMetricsService _metricsService;
+        private readonly IGlobalSettingsCacheService _globalSettingsCache;
         private readonly IOptionsMonitor<CacheOptions> _cacheOptions;
         private readonly ILogger<CachingLLMClient> _logger;
 
@@ -32,18 +34,21 @@ namespace ConduitLLM.Core.Caching
         /// <param name="innerClient">The inner LLM client to decorate</param>
         /// <param name="cacheManager">The cache manager</param>
         /// <param name="metricsService">The cache metrics service</param>
-        /// <param name="cacheOptions">The cache options</param>
+        /// <param name="globalSettingsCache">The global settings cache for runtime-toggleable LLM caching</param>
+        /// <param name="cacheOptions">The cache options for cache key generation and expiration</param>
         /// <param name="logger">The logger</param>
         public CachingLLMClient(
             ILLMClient innerClient,
             ICacheManager cacheManager,
             ICacheMetricsService metricsService,
+            IGlobalSettingsCacheService globalSettingsCache,
             IOptionsMonitor<CacheOptions> cacheOptions,
             ILogger<CachingLLMClient> logger)
         {
             _innerClient = innerClient ?? throw new ArgumentNullException(nameof(innerClient));
             _cacheManager = cacheManager ?? throw new ArgumentNullException(nameof(cacheManager));
             _metricsService = metricsService ?? throw new ArgumentNullException(nameof(metricsService));
+            _globalSettingsCache = globalSettingsCache ?? throw new ArgumentNullException(nameof(globalSettingsCache));
             _cacheOptions = cacheOptions ?? throw new ArgumentNullException(nameof(cacheOptions));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
@@ -55,8 +60,10 @@ namespace ConduitLLM.Core.Caching
             CancellationToken cancellationToken = default)
         {
             // Skip caching if disabled or for streaming requests
-            // Use CurrentValue for runtime-updated configuration
-            if (!_cacheOptions.CurrentValue.LLMCachingEnabled || (request.Stream.HasValue && request.Stream.Value))
+            // LLM caching toggle is read from GlobalSettings via GlobalSettingsCacheService
+            // which is automatically invalidated when Admin API changes the setting
+            var llmCachingEnabled = await _globalSettingsCache.GetLLMCachingEnabledAsync();
+            if (!llmCachingEnabled || (request.Stream.HasValue && request.Stream.Value))
             {
                 return await _innerClient.CreateChatCompletionAsync(request, apiKey, cancellationToken);
             }
@@ -130,7 +137,8 @@ namespace ConduitLLM.Core.Caching
             CancellationToken cancellationToken = default)
         {
             // Skip caching if disabled
-            if (!_cacheOptions.CurrentValue.LLMCachingEnabled)
+            var llmCachingEnabled = await _globalSettingsCache.GetLLMCachingEnabledAsync();
+            if (!llmCachingEnabled)
             {
                 return await _innerClient.ListModelsAsync(apiKey, cancellationToken);
             }

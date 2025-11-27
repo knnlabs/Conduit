@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Caching;
 using ConduitLLM.Core.Interfaces;
@@ -19,26 +20,39 @@ namespace ConduitLLM.Tests.Core.Caching
         private readonly Mock<ILLMClient> _mockInnerClient;
         private readonly Mock<ICacheManager> _mockCacheManager;
         private readonly Mock<ICacheMetricsService> _mockMetricsService;
+        private readonly Mock<IGlobalSettingsCacheService> _mockGlobalSettingsCache;
         private readonly Mock<IOptionsMonitor<CacheOptions>> _mockOptions;
         private readonly Mock<ILogger<CachingLLMClient>> _mockLogger;
         private readonly CacheOptions _cacheOptions;
+        private bool _llmCachingEnabled;
 
         public CachingLLMClientTests()
         {
             _mockInnerClient = new Mock<ILLMClient>();
             _mockCacheManager = new Mock<ICacheManager>();
             _mockMetricsService = new Mock<ICacheMetricsService>();
+            _mockGlobalSettingsCache = new Mock<IGlobalSettingsCacheService>();
             _mockOptions = new Mock<IOptionsMonitor<CacheOptions>>();
             _mockLogger = new Mock<ILogger<CachingLLMClient>>();
 
             _cacheOptions = new CacheOptions
             {
-                LLMCachingEnabled = true,
                 IsEnabled = true,
                 DefaultExpirationMinutes = 60
             };
 
             _mockOptions.Setup(x => x.CurrentValue).Returns(_cacheOptions);
+
+            // Default: caching enabled - tests can change this via SetLLMCachingEnabled
+            _llmCachingEnabled = true;
+            _mockGlobalSettingsCache
+                .Setup(x => x.GetLLMCachingEnabledAsync())
+                .ReturnsAsync(() => _llmCachingEnabled);
+        }
+
+        private void SetLLMCachingEnabled(bool enabled)
+        {
+            _llmCachingEnabled = enabled;
         }
 
         private CachingLLMClient CreateClient()
@@ -47,6 +61,7 @@ namespace ConduitLLM.Tests.Core.Caching
                 _mockInnerClient.Object,
                 _mockCacheManager.Object,
                 _mockMetricsService.Object,
+                _mockGlobalSettingsCache.Object,
                 _mockOptions.Object,
                 _mockLogger.Object);
         }
@@ -57,7 +72,7 @@ namespace ConduitLLM.Tests.Core.Caching
         public async Task CreateChatCompletionAsync_CachingDisabled_BypassesCache()
         {
             // Arrange
-            _cacheOptions.LLMCachingEnabled = false;
+            SetLLMCachingEnabled(false);
             var client = CreateClient();
 
             var request = new ChatCompletionRequest
@@ -98,7 +113,7 @@ namespace ConduitLLM.Tests.Core.Caching
         public async Task CreateChatCompletionAsync_CachingEnabled_UsesCacheOnHit()
         {
             // Arrange
-            _cacheOptions.LLMCachingEnabled = true;
+            SetLLMCachingEnabled(true);
             var client = CreateClient();
 
             var request = new ChatCompletionRequest
@@ -147,7 +162,7 @@ namespace ConduitLLM.Tests.Core.Caching
         public async Task CreateChatCompletionAsync_CachingEnabled_CallsProviderOnMiss()
         {
             // Arrange
-            _cacheOptions.LLMCachingEnabled = true;
+            SetLLMCachingEnabled(true);
             var client = CreateClient();
 
             var request = new ChatCompletionRequest
@@ -192,7 +207,7 @@ namespace ConduitLLM.Tests.Core.Caching
         public async Task CreateChatCompletionAsync_RuntimeToggle_RespectsCurrentValue()
         {
             // Arrange
-            _cacheOptions.LLMCachingEnabled = false;
+            SetLLMCachingEnabled(false);
             var client = CreateClient();
 
             var request = new ChatCompletionRequest
@@ -220,8 +235,8 @@ namespace ConduitLLM.Tests.Core.Caching
             // Act: First call with caching disabled
             await client.CreateChatCompletionAsync(request);
 
-            // Change configuration at runtime
-            _cacheOptions.LLMCachingEnabled = true;
+            // Change configuration at runtime (simulates GlobalSettingsCacheService being invalidated)
+            SetLLMCachingEnabled(true);
 
             _mockCacheManager
                 .Setup(x => x.GetAsync<ChatCompletionResponse>(It.IsAny<string>(), CacheRegion.LLMCompletion, default))
@@ -241,7 +256,7 @@ namespace ConduitLLM.Tests.Core.Caching
         public async Task CreateChatCompletionAsync_StreamingRequest_AlwaysBypassesCache()
         {
             // Arrange
-            _cacheOptions.LLMCachingEnabled = true;
+            SetLLMCachingEnabled(true);
             var client = CreateClient();
 
             var request = new ChatCompletionRequest
@@ -286,7 +301,7 @@ namespace ConduitLLM.Tests.Core.Caching
         public async Task ListModelsAsync_CachingDisabled_CallsInnerClient()
         {
             // Arrange
-            _cacheOptions.LLMCachingEnabled = false;
+            SetLLMCachingEnabled(false);
             var client = CreateClient();
 
             var models = new List<string> { "gpt-4", "gpt-3.5-turbo" };
@@ -309,7 +324,7 @@ namespace ConduitLLM.Tests.Core.Caching
         public async Task ListModelsAsync_CachingEnabled_UsesCacheWithLongTTL()
         {
             // Arrange
-            _cacheOptions.LLMCachingEnabled = true;
+            SetLLMCachingEnabled(true);
             var client = CreateClient();
 
             var models = new List<string> { "gpt-4", "gpt-3.5-turbo" };
@@ -346,7 +361,7 @@ namespace ConduitLLM.Tests.Core.Caching
         public async Task CreateChatCompletionAsync_CacheError_FallsBackToProvider()
         {
             // Arrange
-            _cacheOptions.LLMCachingEnabled = true;
+            SetLLMCachingEnabled(true);
             var client = CreateClient();
 
             var request = new ChatCompletionRequest

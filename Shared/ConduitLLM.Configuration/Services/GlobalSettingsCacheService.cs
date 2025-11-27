@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using ConduitLLM.Configuration.DTOs.Cache;
 using ConduitLLM.Configuration.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -22,11 +23,13 @@ public class GlobalSettingsCacheService : IHostedService, IGlobalSettingsCacheSe
     private const string KEY_MAX_AGENTIC_ITERATIONS = "Agentic.MaxIterations";
     private const string KEY_MIN_AGENTIC_ITERATIONS = "Agentic.MinIterations";
     private const string KEY_DEFAULT_AGENTIC_ENABLED = "Agentic.DefaultEnabled";
+    private const string KEY_LLM_CACHING_ENABLED = "LLM.Caching.Enabled";
 
     // Default values
     private const int DEFAULT_MAX_AGENTIC_ITERATIONS = 5;
     private const int DEFAULT_MIN_AGENTIC_ITERATIONS = 1;
     private const bool DEFAULT_AGENTIC_ENABLED = true;
+    private const bool DEFAULT_LLM_CACHING_ENABLED = false;
 
     // Validation constants
     private const int MIN_VALID_ITERATIONS = 1;
@@ -162,6 +165,51 @@ public class GlobalSettingsCacheService : IHostedService, IGlobalSettingsCacheSe
         _logger.LogWarning("Failed to parse default agentic enabled value '{Value}', using default: {Default}",
             value, DEFAULT_AGENTIC_ENABLED);
         return DEFAULT_AGENTIC_ENABLED;
+    }
+
+    public async Task<bool> GetLLMCachingEnabledAsync()
+    {
+        var value = await GetSettingAsync(KEY_LLM_CACHING_ENABLED);
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            _logger.LogDebug("LLM caching enabled setting not found, using default: {Default}", DEFAULT_LLM_CACHING_ENABLED);
+            return DEFAULT_LLM_CACHING_ENABLED;
+        }
+
+        // The value is stored as JSON metadata, try to parse it
+        try
+        {
+            var metadata = System.Text.Json.JsonSerializer.Deserialize<LLMCacheMetadata>(value);
+            if (metadata != null)
+            {
+                return metadata.Enabled;
+            }
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            // Fall back to direct boolean parsing if not JSON
+        }
+
+        if (bool.TryParse(value, out var enabled))
+        {
+            return enabled;
+        }
+
+        // Try parsing common string representations
+        var normalized = value.Trim().ToLowerInvariant();
+        if (normalized == "1" || normalized == "yes" || normalized == "on")
+        {
+            return true;
+        }
+        if (normalized == "0" || normalized == "no" || normalized == "off")
+        {
+            return false;
+        }
+
+        _logger.LogWarning("Failed to parse LLM caching enabled value '{Value}', using default: {Default}",
+            value, DEFAULT_LLM_CACHING_ENABLED);
+        return DEFAULT_LLM_CACHING_ENABLED;
     }
 
     public async Task InvalidateSettingAsync(string settingKey)

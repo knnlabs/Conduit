@@ -150,6 +150,11 @@ namespace ConduitLLM.Tests.Admin.Services
             var changedBy = "admin@test.com";
             var reason = "Enabling for production";
 
+            // Setup: Return a setting with ID after upsert
+            _mockGlobalSettingRepository
+                .Setup(x => x.GetByKeyAsync(LLM_CACHE_SETTING_KEY, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new GlobalSetting { Id = 42, Key = LLM_CACHE_SETTING_KEY, Value = "{}" });
+
             // Act
             var result = await _service.ToggleLLMCacheAsync(true, changedBy, reason);
 
@@ -169,13 +174,12 @@ namespace ConduitLLM.Tests.Admin.Services
                     It.IsAny<CancellationToken>()),
                 Times.Once);
 
-            // Verify event published
+            // Verify GlobalSettingChanged event published (for cache invalidation)
             _mockPublishEndpoint.Verify(
                 x => x.Publish(
-                    It.Is<LLMCacheToggleEvent>(e =>
-                        e.Enabled == true &&
-                        e.ToggledBy == changedBy &&
-                        e.Reason == reason),
+                    It.Is<GlobalSettingChanged>(e =>
+                        e.SettingKey == LLM_CACHE_SETTING_KEY &&
+                        e.ChangeType == "Updated"),
                     It.IsAny<CancellationToken>()),
                 Times.Once);
         }
@@ -186,6 +190,11 @@ namespace ConduitLLM.Tests.Admin.Services
             // Arrange
             var changedBy = "admin@test.com";
             var reason = "Disabling for debugging";
+
+            // Setup: Return a setting with ID after upsert
+            _mockGlobalSettingRepository
+                .Setup(x => x.GetByKeyAsync(LLM_CACHE_SETTING_KEY, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new GlobalSetting { Id = 42, Key = LLM_CACHE_SETTING_KEY, Value = "{}" });
 
             // Act
             var result = await _service.ToggleLLMCacheAsync(false, changedBy, reason);
@@ -205,10 +214,10 @@ namespace ConduitLLM.Tests.Admin.Services
                     It.IsAny<CancellationToken>()),
                 Times.Once);
 
-            // Verify event published
+            // Verify GlobalSettingChanged event published
             _mockPublishEndpoint.Verify(
                 x => x.Publish(
-                    It.Is<LLMCacheToggleEvent>(e => e.Enabled == false),
+                    It.Is<GlobalSettingChanged>(e => e.SettingKey == LLM_CACHE_SETTING_KEY),
                     It.IsAny<CancellationToken>()),
                 Times.Once);
         }
@@ -218,6 +227,11 @@ namespace ConduitLLM.Tests.Admin.Services
         {
             // Arrange
             var changedBy = "admin@test.com";
+
+            // Setup: Return a setting with ID after upsert
+            _mockGlobalSettingRepository
+                .Setup(x => x.GetByKeyAsync(LLM_CACHE_SETTING_KEY, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new GlobalSetting { Id = 42, Key = LLM_CACHE_SETTING_KEY, Value = "{}" });
 
             // Act
             var result = await _service.ToggleLLMCacheAsync(true, changedBy, null);
@@ -275,6 +289,11 @@ namespace ConduitLLM.Tests.Admin.Services
                     (key, value, desc, ct) => capturedJson = value)
                 .ReturnsAsync(true);
 
+            // Setup: Return a setting with ID after upsert
+            _mockGlobalSettingRepository
+                .Setup(x => x.GetByKeyAsync(LLM_CACHE_SETTING_KEY, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new GlobalSetting { Id = 42, Key = LLM_CACHE_SETTING_KEY, Value = "{}" });
+
             // Act
             await _service.ToggleLLMCacheAsync(true, changedBy, reason);
 
@@ -291,6 +310,11 @@ namespace ConduitLLM.Tests.Admin.Services
         [Fact]
         public async Task ToggleLLMCacheAsync_LogsWarning()
         {
+            // Setup: Return a setting with ID after upsert
+            _mockGlobalSettingRepository
+                .Setup(x => x.GetByKeyAsync(LLM_CACHE_SETTING_KEY, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new GlobalSetting { Id = 42, Key = LLM_CACHE_SETTING_KEY, Value = "{}" });
+
             // Act
             await _service.ToggleLLMCacheAsync(true, "admin", "Test");
 

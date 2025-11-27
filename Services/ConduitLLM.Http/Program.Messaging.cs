@@ -47,9 +47,9 @@ public partial class Program
             x.AddConsumer<ConduitLLM.Core.Consumers.FunctionConfigurationCacheInvalidationHandler>();
             x.AddConsumer<ConduitLLM.Core.Consumers.FunctionDiscoveryCacheInvalidationRequestHandler>();
 
-            // Add LLM cache toggle consumer for runtime caching control
-            x.AddConsumer<ConduitLLM.Http.Consumers.LLMCacheToggleConsumer>();
-            
+            // LLM cache toggle now uses GlobalSettingChanged event via GlobalSettingCacheInvalidationHandler
+            // (registered above) - no separate consumer needed
+
             // Add async task cache invalidation handler
             x.AddConsumer<ConduitLLM.Http.EventHandlers.AsyncTaskCacheInvalidationHandler>();
             x.AddConsumer<ConduitLLM.Http.Consumers.ModelCostCacheInvalidationHandler>();
