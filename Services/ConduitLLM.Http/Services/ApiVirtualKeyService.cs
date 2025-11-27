@@ -3,6 +3,7 @@ using ConduitLLM.Core.Extensions;
 
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Interfaces;
 
 namespace ConduitLLM.Http.Services
@@ -261,8 +262,14 @@ namespace ConduitLLM.Http.Services
                 // Reset the group's spent amount (add back what was spent)
                 if (group.LifetimeSpent > 0)
                 {
-                    await _groupRepository.AdjustBalanceAsync(group.Id, group.LifetimeSpent);
-                    
+                    await _groupRepository.AdjustBalanceAsync(
+                        group.Id,
+                        group.LifetimeSpent,
+                        $"Spend reset for virtual key #{virtualKey.Id}",
+                        "System",
+                        ReferenceType.System,
+                        virtualKey.Id.ToString());
+
                     // Reset lifetime spent
                     group.LifetimeSpent = 0;
                     group.UpdatedAt = DateTime.UtcNow;
@@ -421,8 +428,14 @@ namespace ConduitLLM.Http.Services
                 }
 
                 // Update the group balance
-                var newBalance = await _groupRepository.AdjustBalanceAsync(group.Id, -cost);
-                
+                var newBalance = await _groupRepository.AdjustBalanceAsync(
+                    group.Id,
+                    -cost,
+                    $"API usage by virtual key #{keyId}",
+                    "System",
+                    ReferenceType.VirtualKey,
+                    keyId.ToString());
+
                 // Update virtual key timestamp
                 virtualKey.UpdatedAt = DateTime.UtcNow;
                 bool success = await _virtualKeyRepository.UpdateAsync(virtualKey);

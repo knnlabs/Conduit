@@ -264,10 +264,108 @@ namespace ConduitLLM.Tests.Integration
         {
             // Arrange
             var nonExistentGroupId = 9999;
-            
+
             // Act & Assert
             await Assert.ThrowsAsync<InvalidOperationException>(async () =>
                 await _repository.AdjustBalanceAsync(nonExistentGroupId, -10m, "Test", "User"));
+        }
+
+        [Fact]
+        public async Task AdjustBalance_WithVirtualKeyReferenceType_ShouldCreateCorrectTransaction()
+        {
+            // Arrange
+            var initialBalance = 100m;
+            var usageAmount = 15.75m;
+            var expectedBalance = initialBalance - usageAmount;
+            var virtualKeyId = 42;
+
+            var group = new VirtualKeyGroup
+            {
+                GroupName = "Test Group",
+                Balance = initialBalance,
+                LifetimeCreditsAdded = initialBalance,
+                LifetimeSpent = 0
+            };
+
+            var groupId = await _repository.CreateAsync(group);
+
+            // Act
+            var newBalance = await _repository.AdjustBalanceAsync(
+                groupId,
+                -usageAmount,
+                $"API usage by virtual key #{virtualKeyId}",
+                "System",
+                ReferenceType.VirtualKey,
+                virtualKeyId.ToString());
+
+            // Assert
+            Assert.Equal(expectedBalance, newBalance);
+
+            // Verify transaction was created with VirtualKey reference type
+            var transactions = await _dbContext.VirtualKeyGroupTransactions
+                .Where(t => t.VirtualKeyGroupId == groupId && t.TransactionType == TransactionType.Debit)
+                .ToListAsync();
+
+            Assert.Single(transactions);
+            var transaction = transactions.First();
+
+            Assert.Equal(TransactionType.Debit, transaction.TransactionType);
+            Assert.Equal(usageAmount, transaction.Amount);
+            Assert.Equal(expectedBalance, transaction.BalanceAfter);
+            Assert.Equal($"API usage by virtual key #{virtualKeyId}", transaction.Description);
+            Assert.Equal("System", transaction.InitiatedBy);
+            Assert.Equal(ReferenceType.VirtualKey, transaction.ReferenceType);
+            Assert.Equal(virtualKeyId.ToString(), transaction.ReferenceId);
+        }
+
+        [Fact]
+        public async Task AdjustBalance_WithSystemReferenceType_ShouldCreateCorrectTransaction()
+        {
+            // Arrange
+            var initialBalance = 50m;
+            var creditAmount = 25m;
+            var expectedBalance = initialBalance + creditAmount;
+            var virtualKeyId = 123;
+
+            var group = new VirtualKeyGroup
+            {
+                GroupName = "Test Group",
+                Balance = initialBalance,
+                LifetimeCreditsAdded = initialBalance,
+                LifetimeSpent = 25m
+            };
+
+            var groupId = await _repository.CreateAsync(group);
+
+            // Act - Simulate spend reset (credits added back by system)
+            var newBalance = await _repository.AdjustBalanceAsync(
+                groupId,
+                creditAmount,
+                $"Spend reset for virtual key #{virtualKeyId}",
+                "System",
+                ReferenceType.System,
+                virtualKeyId.ToString());
+
+            // Assert
+            Assert.Equal(expectedBalance, newBalance);
+
+            // Verify transaction was created with System reference type
+            var transactions = await _dbContext.VirtualKeyGroupTransactions
+                .Where(t => t.VirtualKeyGroupId == groupId
+                    && t.TransactionType == TransactionType.Credit
+                    && t.ReferenceType == ReferenceType.System)
+                .ToListAsync();
+
+            Assert.Single(transactions);
+            var transaction = transactions.First();
+
+            Assert.Equal(TransactionType.Credit, transaction.TransactionType);
+            Assert.Equal(creditAmount, transaction.Amount);
+            Assert.Equal(expectedBalance, transaction.BalanceAfter);
+            Assert.Equal($"Spend reset for virtual key #{virtualKeyId}", transaction.Description);
+            Assert.Equal("System", transaction.InitiatedBy);
+            Assert.Equal(ReferenceType.System, transaction.ReferenceType);
+            Assert.Equal(virtualKeyId.ToString(), transaction.ReferenceId);
         }
 
         public void Dispose()

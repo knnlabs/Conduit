@@ -128,21 +128,27 @@ public class VirtualKeyGroupRepository : IVirtualKeyGroupRepository
     /// <inheritdoc />
     public async Task<decimal> AdjustBalanceAsync(int groupId, decimal amount)
     {
-        return await AdjustBalanceAsync(groupId, amount, null, null);
+        return await AdjustBalanceAsync(groupId, amount, null, null, ReferenceType.Manual, null);
     }
 
     /// <inheritdoc />
     public async Task<decimal> AdjustBalanceAsync(int groupId, decimal amount, string? description, string? initiatedBy)
+    {
+        return await AdjustBalanceAsync(groupId, amount, description, initiatedBy, ReferenceType.Manual, null);
+    }
+
+    /// <inheritdoc />
+    public async Task<decimal> AdjustBalanceAsync(int groupId, decimal amount, string? description, string? initiatedBy, ReferenceType referenceType, string? referenceId = null)
     {
         var group = await GetByIdAsync(groupId);
         if (group == null)
         {
             throw new InvalidOperationException($"Virtual key group {groupId} not found");
         }
-        
+
         var previousBalance = group.Balance;
         group.Balance += amount;
-        
+
         if (amount > 0)
         {
             group.LifetimeCreditsAdded += amount;
@@ -151,7 +157,7 @@ public class VirtualKeyGroupRepository : IVirtualKeyGroupRepository
         {
             group.LifetimeSpent += Math.Abs(amount);
         }
-        
+
         group.UpdatedAt = DateTime.UtcNow;
 
         // Create transaction record
@@ -160,19 +166,19 @@ public class VirtualKeyGroupRepository : IVirtualKeyGroupRepository
             amount,
             group.Balance,
             amount > 0 ? TransactionType.Credit : TransactionType.Debit,
-            ReferenceType.Manual,
+            referenceType,
             description ?? (amount > 0 ? "Credits added" : "Usage deducted"),
-            null,
+            referenceId,
             initiatedBy ?? "System"
         );
 
         _context.VirtualKeyGroupTransactions.Add(transaction);
-        
+
         await _context.SaveChangesAsync();
-        
-        _logger.LogInformation("Adjusted balance for group {GroupId} by {Amount}. Previous: {PreviousBalance}, New: {Balance}", 
-            groupId, amount, previousBalance, group.Balance);
-        
+
+        _logger.LogInformation("Adjusted balance for group {GroupId} by {Amount}. Previous: {PreviousBalance}, New: {Balance}, ReferenceType: {ReferenceType}",
+            groupId, amount, previousBalance, group.Balance, referenceType);
+
         return group.Balance;
     }
 

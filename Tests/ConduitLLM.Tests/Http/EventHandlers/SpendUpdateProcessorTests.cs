@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Http.EventHandlers;
@@ -87,9 +88,15 @@ namespace ConduitLLM.Tests.Http.EventHandlers
             _groupRepositoryMock
                 .Setup(r => r.GetByIdAsync(1))
                 .Returns(Task.FromResult(group));
-            
+
             _groupRepositoryMock
-                .Setup(r => r.AdjustBalanceAsync(1, -50m))
+                .Setup(r => r.AdjustBalanceAsync(
+                    1,
+                    -50m,
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    ReferenceType.VirtualKey,
+                    It.IsAny<string>()))
                 .Returns(Task.FromResult(50m)); // New balance
 
             var @event = new SpendUpdateRequested
@@ -108,8 +115,14 @@ namespace ConduitLLM.Tests.Http.EventHandlers
             await _processor.Consume(context.Object);
 
             // Assert
-            // Verify group balance was adjusted
-            _groupRepositoryMock.Verify(r => r.AdjustBalanceAsync(1, -50m), Times.Once);
+            // Verify group balance was adjusted with correct reference type
+            _groupRepositoryMock.Verify(r => r.AdjustBalanceAsync(
+                1,
+                -50m,
+                "API usage by virtual key #123",
+                "System",
+                ReferenceType.VirtualKey,
+                "123"), Times.Once);
 
             _publishEndpointMock.Verify(p => p.Publish(It.Is<SpendUpdated>(su =>
                 su.KeyId == 123 &&
@@ -271,10 +284,16 @@ namespace ConduitLLM.Tests.Http.EventHandlers
             _groupRepositoryMock
                 .Setup(r => r.GetByIdAsync(1))
                 .Returns(Task.FromResult(group));
-            
+
             // AdjustBalanceAsync returns negative balance indicating failure
             _groupRepositoryMock
-                .Setup(r => r.AdjustBalanceAsync(1, -30m))
+                .Setup(r => r.AdjustBalanceAsync(
+                    1,
+                    -30m,
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    ReferenceType.VirtualKey,
+                    It.IsAny<string>()))
                 .Returns(Task.FromResult(-1m));
 
             var @event = new SpendUpdateRequested

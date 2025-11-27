@@ -1,5 +1,6 @@
 using MassTransit;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Interfaces;
 
 namespace ConduitLLM.Http.EventHandlers
@@ -98,9 +99,15 @@ namespace ConduitLLM.Http.EventHandlers
                 var previousSpend = group.LifetimeSpent;
                 var newSpend = previousSpend + request.Amount;
                 var previousBalance = group.Balance;
-                
+
                 // Update the group balance and lifetime spent
-                var newBalance = await groupRepository.AdjustBalanceAsync(group.Id, -request.Amount);
+                var newBalance = await groupRepository.AdjustBalanceAsync(
+                    group.Id,
+                    -request.Amount,
+                    $"API usage by virtual key #{request.KeyId}",
+                    "System",
+                    ReferenceType.VirtualKey,
+                    request.KeyId.ToString());
                 
                 var success = newBalance >= 0; // Success if we got a valid balance back
                 

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Caching.Distributed;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Interfaces;
 
 namespace ConduitLLM.Http.EventHandlers
@@ -77,8 +78,14 @@ namespace ConduitLLM.Http.EventHandlers
             }
 
             // Update the group balance and lifetime spent
-            var newBalance = await _groupRepository.AdjustBalanceAsync(group.Id, -message.Amount);
-            
+            var newBalance = await _groupRepository.AdjustBalanceAsync(
+                group.Id,
+                -message.Amount,
+                $"API usage by virtual key #{message.KeyId}",
+                "System",
+                ReferenceType.VirtualKey,
+                message.KeyId.ToString());
+
             // Update virtual key's updated timestamp
             virtualKey.UpdatedAt = DateTime.UtcNow;
             await _virtualKeyRepository.UpdateAsync(virtualKey);

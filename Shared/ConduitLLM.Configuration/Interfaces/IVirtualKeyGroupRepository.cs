@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Enums;
 
 namespace ConduitLLM.Configuration.Interfaces;
 
@@ -72,6 +73,18 @@ public interface IVirtualKeyGroupRepository
     /// <param name="initiatedBy">User who initiated the transaction</param>
     /// <returns>The new balance after adjustment</returns>
     Task<decimal> AdjustBalanceAsync(int groupId, decimal amount, string? description, string? initiatedBy);
+
+    /// <summary>
+    /// Adjusts the balance of a virtual key group with full transaction details including reference type
+    /// </summary>
+    /// <param name="groupId">The group ID</param>
+    /// <param name="amount">The amount to adjust (positive for credit, negative for debit)</param>
+    /// <param name="description">Description of the transaction</param>
+    /// <param name="initiatedBy">User who initiated the transaction</param>
+    /// <param name="referenceType">The type of reference that triggered this transaction</param>
+    /// <param name="referenceId">Optional reference ID (e.g., virtual key ID)</param>
+    /// <returns>The new balance after adjustment</returns>
+    Task<decimal> AdjustBalanceAsync(int groupId, decimal amount, string? description, string? initiatedBy, ReferenceType referenceType, string? referenceId = null);
 
     /// <summary>
     /// Gets groups with low balance (below threshold)
