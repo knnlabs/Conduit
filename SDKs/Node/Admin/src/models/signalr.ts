@@ -7,7 +7,6 @@ import {
 } from '@knn_labs/conduit-common';
 
 import type { ConfigValue, ExtendedMetadata } from './common-types';
-import { ProviderType } from './providerType';
 
 // Re-export for backward compatibility
 export {
@@ -34,51 +33,6 @@ export interface SignalRConnectionOptions {
   onReconnecting?: (error?: Error) => void;
   onReconnected?: (connectionId?: string) => void;
   onClose?: (error?: Error) => void;
-}
-
-/**
- * SignalR endpoints for Admin API
- */
-export const SignalREndpoints = {
-  NavigationState: '/hubs/navigation-state',
-  // AdminNotifications endpoint removed - AdminNotificationHub has been removed from the backend
-} as const;
-
-/**
- * Navigation state update event
- */
-export interface NavigationStateUpdateEvent {
-  timestamp: string;
-  changedEntities: {
-    modelMappings?: boolean;
-    providers?: boolean;
-    virtualKeys?: boolean;
-    settings?: boolean;
-  };
-  summary: {
-    totalProviders: number;
-    enabledProviders: number;
-    totalMappings: number;
-    activeMappings: number;
-    totalVirtualKeys: number;
-    activeVirtualKeys: number;
-  };
-}
-
-/**
- * Model discovered event
- */
-export interface ModelDiscoveredEvent {
-  providerId: number;
-  providerType: ProviderType;
-  model: {
-    id: string;
-    name: string;
-    capabilities: string[];
-    contextWindow?: number;
-    maxOutput?: number;
-  };
-  timestamp: string;
 }
 
 /**
@@ -135,28 +89,4 @@ export interface AdminNotificationEvent {
     data?: ExtendedMetadata;
   }[];
   timestamp: string;
-}
-
-/**
- * Hub server interfaces
- */
-export interface INavigationStateHubServer {
-  SubscribeToUpdates(groupName?: string): Promise<void>;
-  UnsubscribeFromUpdates(groupName?: string): Promise<void>;
-}
-
-/**
- * Hub client interfaces
- */
-export interface INavigationStateHubClient {
-  onNavigationStateUpdate(callback: (event: NavigationStateUpdateEvent) => void): void;
-  onModelDiscovered(callback: (event: ModelDiscoveredEvent) => void): void;
-}
-
-// AdminNotificationHub interfaces removed - hub has been deprecated
-
-// Placeholder interface for backward compatibility
-export interface IAdminNotificationHubClient {
-  // Hub has been removed from backend
-  onAdminNotification(callback: (event: AdminNotificationEvent) => void): void;
 }

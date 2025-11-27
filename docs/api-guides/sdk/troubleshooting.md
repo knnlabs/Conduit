@@ -366,7 +366,7 @@ Error: Failed to start the connection
 
 ```typescript
 // Debug connection URL
-const hubUrl = `${process.env.NEXT_PUBLIC_CONDUIT_API_URL}/hubs/navigation-state`;
+const hubUrl = `${process.env.NEXT_PUBLIC_CONDUIT_API_URL}/hubs/video-generation`;
 console.log('Connecting to:', hubUrl);
 
 // Ensure no trailing slash

@@ -54,9 +54,7 @@ public partial class Program
             x.AddConsumer<ConduitLLM.Http.EventHandlers.AsyncTaskCacheInvalidationHandler>();
             x.AddConsumer<ConduitLLM.Http.Consumers.ModelCostCacheInvalidationHandler>();
             
-            // Add navigation state event consumers for real-time updates
-            x.AddConsumer<ConduitLLM.Http.Consumers.ModelMappingChangedNotificationConsumer>();
-            // Provider health consumer removed
+            // Navigation state event consumers removed - WebAdmin uses React Query instead of SignalR for model mapping updates
             
             // Add settings refresh consumers for runtime configuration updates
             x.AddConsumer<ConduitLLM.Http.EventHandlers.ModelMappingCacheInvalidationHandler>();

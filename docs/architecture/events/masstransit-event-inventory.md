@@ -136,7 +136,7 @@ All events use `PartitionKey = VirtualKeyId.ToString()`:
 
 - **ModelMappingChanged** - Provider-to-model mappings
   - Consumed by `ModelMappingCacheInvalidationHandler`
-  - Consumed by `ModelMappingChangedNotificationConsumer` (SignalR real-time updates)
+  - Consumed by `ModelMappingCacheInvalidationConsumer` (cache manager invalidation)
 
 - **IpFilterChanged** - Security policy updates
   - Consumed by `IpFilterCacheInvalidationHandler`
@@ -216,7 +216,7 @@ Task Complete → WebhookDeliveryRequested → Consumer → Circuit Breaker Chec
 3. **Billing Audit Events** - `BillingAuditEvent` entity exists but no MassTransit events
    - Appears to be handled directly via `IBillingAuditService`
 
-4. **Navigation State** - `NavigationStateEventConsumer` exists but no corresponding event definition found
+4. **Navigation State** - Removed (WebAdmin uses React Query instead of SignalR for model mapping updates)
 
 5. **Video Progress Events** - `VideoProgressEvents.cs` file referenced but not read (may contain additional events)
 
@@ -226,7 +226,7 @@ Task Complete → WebhookDeliveryRequested → Consumer → Circuit Breaker Chec
 
 ### **High Priority**
 1. **Add Provider Health Events** - Re-enable health monitoring events for real-time status
-2. **Document Navigation State Events** - Clarify what triggers `NavigationStateEventConsumer`
+2. **~~Document Navigation State Events~~** - Removed (was dead code, WebAdmin uses React Query)
 3. **Add Billing Audit Events** - Enable distributed audit log processing
 
 ### **Medium Priority**

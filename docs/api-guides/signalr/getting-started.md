@@ -36,12 +36,12 @@ Conduit has different hubs for different features:
 
 | Feature | Hub Name | Use Case |
 |---------|----------|----------|
-| `navigation-state` | Real-time UI navigation updates | WebAdmin state synchronization |
-| `image-generation` | Image creation progress | Track DALL-E, Stable Diffusion tasks |
 | `video-generation` | Video creation progress | Track video generation tasks |
+| `image-generation` | Image creation progress | Track DALL-E, Stable Diffusion tasks |
 | `tasks` | General async operations | Any long-running operation |
+| `notifications` | System notifications | Rate limit warnings, service status |
 
-For this guide, we'll use the **navigation-state** hub as it's the simplest to get started with.
+For this guide, we'll use the **video-generation** hub as it's commonly used for media generation tracking.
 
 ### Step 2: Basic Connection (JavaScript)
 
@@ -50,7 +50,7 @@ For this guide, we'll use the **navigation-state** hub as it's the simplest to g
 import * as signalR from '@microsoft/signalr';
 
 const virtualKey = 'condt_your_virtual_key_here';
-const hubUrl = 'https://api.conduit.im/hubs/navigation-state';
+const hubUrl = 'https://api.conduit.im/hubs/video-generation';
 
 // Create connection
 const connection = new signalR.HubConnectionBuilder()
@@ -65,7 +65,7 @@ const connection = new signalR.HubConnectionBuilder()
 async function connect() {
     try {
         await connection.start();
-        console.log('✅ Connected to navigation-state hub');
+        console.log('✅ Connected to video-generation hub');
     } catch (err) {
         console.error('❌ Connection failed:', err);
     }
@@ -77,9 +77,17 @@ connect();
 ### Step 3: Listen for Events
 
 ```javascript
-// Listen for navigation state updates
-connection.on('NavigationStateUpdated', (data) => {
-    console.log('📡 Navigation update received:', data);
+// Listen for video generation progress
+connection.on('taskProgress', (data) => {
+    console.log('📡 Progress update:', data.progress, '%');
+});
+
+connection.on('taskCompleted', (data) => {
+    console.log('✅ Video ready:', data.videoUrl);
+});
+
+connection.on('taskFailed', (data) => {
+    console.error('❌ Generation failed:', data.error);
 });
 
 // Listen for connection status
@@ -104,10 +112,10 @@ connection.onclose((error) => {
 
 Run your code and you should see:
 ```
-✅ Connected to navigation-state hub
+✅ Connected to video-generation hub
 ```
 
-If you're using the WebAdmin, navigate around and you should see navigation updates in your console.
+Start a video generation task and you should see progress updates in your console.
 
 ## Working with Task-Based Hubs
 
@@ -386,7 +394,7 @@ const connection = new signalR.HubConnectionBuilder()
     <script>
         const virtualKey = 'condt_your_key_here';
         const connection = new signalR.HubConnectionBuilder()
-            .withUrl('https://api.conduit.im/hubs/navigation-state', {
+            .withUrl('https://api.conduit.im/hubs/video-generation', {
                 accessTokenFactory: () => virtualKey
             })
             .build();
@@ -404,15 +412,19 @@ const connection = new signalR.HubConnectionBuilder()
         connection.start()
             .then(() => {
                 updateStatus('Connected ✅');
-                addMessage('Connected to navigation-state hub');
+                addMessage('Connected to video-generation hub');
             })
             .catch(err => {
                 updateStatus('Failed ❌');
                 addMessage(`Connection error: ${err}`);
             });
 
-        connection.on('NavigationStateUpdated', (data) => {
-            addMessage(`Navigation update: ${JSON.stringify(data)}`);
+        connection.on('taskProgress', (data) => {
+            addMessage(`Progress: ${data.progress}%`);
+        });
+
+        connection.on('taskCompleted', (data) => {
+            addMessage(`Completed: ${data.videoUrl}`);
         });
     </script>
 </body>

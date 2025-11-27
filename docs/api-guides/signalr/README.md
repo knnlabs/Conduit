@@ -14,8 +14,6 @@ Comprehensive documentation for SignalR/WebSocket real-time features in Conduit.
 
 Conduit uses SignalR for real-time bidirectional communication between clients and servers. This enables:
 
-- **Real-time navigation state updates** - Track user journey through conversations
-- **Live streaming responses** - Stream AI responses as they're generated
 - **Media generation progress** - Monitor image/video generation status
 - **System notifications** - Receive alerts and updates
 - **Multi-instance synchronization** - Redis backplane for horizontal scaling
@@ -28,7 +26,7 @@ Conduit uses SignalR for real-time bidirectional communication between clients a
 import { HubConnectionBuilder } from '@microsoft/signalr';
 
 const connection = new HubConnectionBuilder()
-  .withUrl('https://api.conduit.ai/hubs/navigation-state', {
+  .withUrl('https://api.conduit.ai/hubs/video-generation', {
     accessTokenFactory: () => virtualKey
   })
   .withAutomaticReconnect()
@@ -41,13 +39,12 @@ await connection.start();
 
 | Hub | Endpoint | Purpose |
 |-----|----------|---------|
-| NavigationState | `/hubs/navigation-state` | User journey tracking |
 | VideoGeneration | `/hubs/video-generation` | Video creation progress |
 | ImageGeneration | `/hubs/image-generation` | Image creation progress |
-| Notifications | `/hubs/notifications` | System alerts |
-| Admin | `/hubs/admin` | Admin real-time updates |
-| Health | `/hubs/health` | System health monitoring |
-| ContentGeneration | `/hubs/content-generation` | Unified media updates |
+| SystemNotifications | `/hubs/notifications` | System alerts |
+| Tasks | `/hubs/tasks` | General async task tracking |
+| Metrics | `/hubs/metrics` | Admin metrics dashboard |
+| HealthMonitoring | `/hubs/health-monitoring` | System health monitoring |
 
 ## Documentation Structure
 

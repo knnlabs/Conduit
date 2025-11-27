@@ -217,11 +217,12 @@ await connection.invoke('SubscribeToTask', taskId);
 - RequestFailed(requestId, error)
 ```
 
-#### Navigation State Hub (`/hubs/navigation-state`)
+#### System Notification Hub (`/hubs/notifications`)
 ```javascript
-// Events (WebAdmin specific)
-- NavigationStateChanged(state)
-- PageDataUpdated(pageData)
+// Events
+- OnProviderHealth(notification)
+- OnRateLimit(notification)
+- OnSystemAnnouncement(notification)
 ```
 
 ### Connection Authentication

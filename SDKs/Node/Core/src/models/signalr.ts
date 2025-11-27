@@ -24,7 +24,7 @@ export const SignalREndpoints = {
   TaskHub: '/hubs/tasks',
   VideoGenerationHub: '/hubs/video-generation',
   ImageGenerationHub: '/hubs/image-generation',
-  NavigationStateHub: '/hubs/navigation-state'
+  NotificationsHub: '/hubs/notifications'
 } as const;
 
 /**

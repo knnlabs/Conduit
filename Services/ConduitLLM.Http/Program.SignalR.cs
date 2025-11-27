@@ -148,8 +148,7 @@ public partial class Program
             Console.WriteLine("[Conduit] SignalR configured without Redis backplane (single-instance mode)");
         }
 
-        // Register navigation state notification service
-        builder.Services.AddSingleton<INavigationStateNotificationService, NavigationStateNotificationService>();
+        // Navigation state notification service removed - WebAdmin uses React Query instead of SignalR for model mapping updates
 
         // Register settings refresh service for runtime configuration updates
         builder.Services.AddSingleton<ISettingsRefreshService, SettingsRefreshService>();

@@ -83,7 +83,7 @@ export * from './models/system';
 export * from './models/metrics';
 export * from './models/databaseBackup';
 export * from './models/signalr';
-export * from './models/notifications';
+// notifications model removed - was only used by deleted SignalR services
 export * from './models/monitoring';
 export * from './models/security';
 // Re-export securityExtended types except ExportParams and ExportResult (conflicts with analytics)
@@ -188,8 +188,7 @@ export type {
   UpdateProviderTool,
   ProviderOption as ToolProviderOption
 } from './services/ProviderToolsService';
-export { SignalRService } from './services/SignalRService';
-export { RealtimeNotificationsService } from './services/RealtimeNotificationsService';
+// SignalR services removed - WebAdmin uses React Query instead of SignalR for data fetching
 export {
   FetchFunctionConfigurationsService,
   FetchFunctionCredentialsService,
@@ -199,8 +198,7 @@ export {
 export { FetchPricingService } from './services/FetchPricingService';
 export * from './models/pricing';
 
-// SignalR Hub Clients
-export { NavigationStateHubClient } from './signalr/NavigationStateHubClient';
+// SignalR Hub Clients removed - WebAdmin uses React Query instead of SignalR for data fetching
 
 // Utilities
 export * from './utils/errors';

@@ -108,35 +108,8 @@ const connection = new signalR.HubConnectionBuilder()
 Admin authentication uses master key authentication for internal administrative hubs.
 
 #### Supported Hubs
-- **Navigation State Hub** (`/hubs/navigation-state`) - WebAdmin navigation state updates
-
-#### Implementation
-
-```csharp
-[AdminHubAuthorization]
-public class NavigationStateHub : SecureHub
-{
-    public NavigationStateHub(
-        ILogger<NavigationStateHub> logger,
-        IServiceProvider serviceProvider)
-        : base(logger, serviceProvider)
-    {
-    }
-    
-    protected override string GetHubName() => "NavigationStateHub";
-    
-    public async Task SubscribeToVirtualKeys()
-    {
-        // Verify admin privileges
-        if (!await IsAdminAsync())
-        {
-            throw new HubException("Admin privileges required");
-        }
-        
-        await Groups.AddToGroupAsync(Context.ConnectionId, "virtual-keys");
-    }
-}
-```
+- **Metrics Hub** (`/hubs/metrics`) - Admin metrics dashboard
+- **Health Monitoring Hub** (`/hubs/health-monitoring`) - System health monitoring
 
 #### Client Implementation
 
@@ -144,13 +117,12 @@ public class NavigationStateHub : SecureHub
 ```javascript
 // Admin hub authentication using master key
 const connection = new signalR.HubConnectionBuilder()
-    .withUrl("/hubs/navigation-state", {
+    .withUrl("/hubs/metrics", {
         accessTokenFactory: () => "your_master_key_here"
     })
     .build();
 
 await connection.start();
-await connection.invoke("SubscribeToVirtualKeys");
 ```
 
 #### Authentication Methods Supported
@@ -484,7 +456,7 @@ console.log("Virtual key authentication successful");
 
 // Test admin authentication
 const adminConnection = new signalR.HubConnectionBuilder()
-    .withUrl("/hubs/navigation-state", {
+    .withUrl("/hubs/metrics", {
         accessTokenFactory: () => TEST_MASTER_KEY
     })
     .build();
