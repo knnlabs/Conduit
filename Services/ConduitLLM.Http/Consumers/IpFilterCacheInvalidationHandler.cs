@@ -6,8 +6,8 @@ using MassTransit;
 namespace ConduitLLM.Http.Consumers
 {
     /// <summary>
-    /// Handles IpFilterChanged events for future cache invalidation
-    /// Currently logs events for monitoring until cache implementation is added
+    /// Handles IpFilterChanged events for cache invalidation.
+    /// Invalidates the Redis-based IP filter cache when filters are modified.
     /// </summary>
     public class IpFilterCacheInvalidationHandler : IConsumer<IpFilterChanged>
     {
@@ -71,8 +71,7 @@ namespace ConduitLLM.Http.Consumers
             {
                 try
                 {
-                    // Since the IpFilterChanged event structure is not fully defined yet,
-                    // we'll do a conservative approach and clear all filters
+                    // Clear all filters to ensure consistency across global and key-specific caches
                     await _ipFilterCache.ClearAllFiltersAsync();
                     _logger.LogInformation("IP filter cache cleared due to filter change event");
                 }

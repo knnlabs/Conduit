@@ -68,8 +68,7 @@ namespace ConduitLLM.Http.Consumers
             {
                 try
                 {
-                    // Since the ModelCostChanged event structure is not fully defined yet,
-                    // we'll do a conservative approach and clear all model costs
+                    // Clear all model costs to ensure cache consistency
                     await _modelCostCache.ClearAllModelCostsAsync();
                     _logger.LogInformation("Model cost cache cleared due to cost change event");
                 }
