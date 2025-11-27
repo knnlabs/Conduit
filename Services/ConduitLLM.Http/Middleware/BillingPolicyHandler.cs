@@ -2,6 +2,7 @@ using System.Text.Json;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Http.Constants;
 
 namespace ConduitLLM.Http.Middleware
 {
@@ -141,26 +142,57 @@ namespace ConduitLLM.Http.Middleware
         /// <summary>
         /// Logs billing event for zero cost calculations.
         /// </summary>
-        public static void LogZeroCostBilling(HttpContext context, string model, Usage usage, decimal cost, 
+        public static void LogZeroCostBilling(HttpContext context, string model, Usage usage, decimal cost,
             string providerType, IBillingAuditService billingAuditService)
         {
-            LogZeroCostBilling(context, model, usage, cost, providerType, billingAuditService, null, null);
+            LogZeroCostBilling(context, model, usage, cost, providerType, billingAuditService, null, null, null);
         }
 
         /// <summary>
         /// Logs billing event for zero cost calculations, including optional tool usage.
         /// </summary>
-        public static void LogZeroCostBilling(HttpContext context, string model, Usage usage, decimal cost, 
+        public static void LogZeroCostBilling(HttpContext context, string model, Usage usage, decimal cost,
             string providerType, IBillingAuditService billingAuditService,
             string? toolUsageJson, decimal? toolCost)
         {
+            LogZeroCostBilling(context, model, usage, cost, providerType, billingAuditService, toolUsageJson, toolCost, null);
+        }
+
+        /// <summary>
+        /// Logs billing event for zero cost calculations, including optional tool usage and logger for enhanced diagnostics.
+        /// </summary>
+        public static void LogZeroCostBilling(HttpContext context, string model, Usage usage, decimal cost,
+            string providerType, IBillingAuditService billingAuditService,
+            string? toolUsageJson, decimal? toolCost, ILogger? logger)
+        {
             var virtualKeyId = (int)context.Items["VirtualKeyId"]!;
-            
+
             // Determine if this is a missing tool cost config scenario
             var eventType = toolUsageJson != null && (!toolCost.HasValue || toolCost.Value == 0)
                 ? BillingAuditEventType.ToolUsageMissingCostConfig
                 : BillingAuditEventType.ZeroCostSkipped;
-            
+
+            // Get ModelCostId from context if available
+            var modelCostIdInfo = context.Items.TryGetValue(HttpContextKeys.ModelCostId, out var mcIdObj) && mcIdObj is int mcId
+                ? mcId.ToString()
+                : "(not found in context)";
+
+            // Log detailed information to help troubleshoot zero cost issues
+            var failureReason = eventType == BillingAuditEventType.ToolUsageMissingCostConfig
+                ? "Tool usage detected but no cost configuration found"
+                : $"Zero cost calculated - potential billing issue. ModelCostId={modelCostIdInfo}";
+
+            // Log at Information level for visibility in production
+            logger?.LogInformation(
+                "Zero cost billing event for VirtualKeyId {VirtualKeyId}: Model={Model}, Provider={ProviderType}, " +
+                "Path={RequestPath}, RequestId={RequestId}, ModelCostId={ModelCostId}. " +
+                "Usage: PromptTokens={PromptTokens}, CompletionTokens={CompletionTokens}, ImageCount={ImageCount}, " +
+                "ImageQuality={ImageQuality}, ImageResolution={ImageResolution}. " +
+                "This may indicate a missing or misconfigured cost entry.",
+                virtualKeyId, model, providerType, context.Request.Path, context.TraceIdentifier, modelCostIdInfo,
+                usage.PromptTokens, usage.CompletionTokens, usage.ImageCount,
+                usage.ImageQuality, usage.ImageResolution);
+
             billingAuditService.LogBillingEvent(new BillingAuditEvent
             {
                 EventType = eventType,
@@ -174,14 +206,12 @@ namespace ConduitLLM.Http.Middleware
                 HttpStatusCode = context.Response.StatusCode,
                 ToolUsageJson = toolUsageJson,
                 ToolUsageCost = toolCost,
-                FailureReason = eventType == BillingAuditEventType.ToolUsageMissingCostConfig 
-                    ? "Tool usage detected but no cost configuration found" 
-                    : null
+                FailureReason = failureReason
             });
-            
+
             // Increment metrics
             UsageMetrics.BillingAuditEvents.WithLabels(eventType.ToString(), providerType ?? "unknown").Inc();
-            
+
             if (eventType == BillingAuditEventType.ToolUsageMissingCostConfig)
             {
                 UsageMetrics.BillingRevenueLoss.WithLabels("ToolUsageMissingCostConfig", "missing_tool_config").Inc();

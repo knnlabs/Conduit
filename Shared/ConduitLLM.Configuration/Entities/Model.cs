@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Configuration.Entities
 {
@@ -42,7 +43,12 @@ namespace ConduitLLM.Configuration.Entities
         /// <summary>
         /// Navigation property to the model series.
         /// </summary>
+        /// <remarks>
+        /// JsonIgnore is applied to prevent circular reference during serialization.
+        /// The cycle is: Model → Series → Models → Model
+        /// </remarks>
         [ForeignKey("ModelSeriesId")]
+        [JsonIgnore]
         public ModelSeries Series { get; set; } = new ModelSeries();
         
         /// <summary>
@@ -105,6 +111,11 @@ namespace ConduitLLM.Configuration.Entities
         /// <summary>
         /// Navigation property for all identifiers associated with this model.
         /// </summary>
+        /// <remarks>
+        /// JsonIgnore is applied to prevent circular reference during serialization.
+        /// The cycle is: Model → Identifiers → ModelProviderTypeAssociation → Model
+        /// </remarks>
+        [JsonIgnore]
         public virtual ICollection<ModelProviderTypeAssociation> Identifiers { get; set; } = new List<ModelProviderTypeAssociation>();
 
         /// <summary>

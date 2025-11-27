@@ -974,10 +974,10 @@ namespace ConduitLLM.Http.Middleware
             }
         }
 
-        private void LogZeroCostBilling(HttpContext context, string model, Usage usage, decimal cost, 
+        private void LogZeroCostBilling(HttpContext context, string model, Usage usage, decimal cost,
             string providerType, IBillingAuditService billingAuditService, string? toolUsageJson = null, decimal? toolCost = null)
         {
-            BillingPolicyHandler.LogZeroCostBilling(context, model, usage, cost, providerType, billingAuditService, toolUsageJson, toolCost);
+            BillingPolicyHandler.LogZeroCostBilling(context, model, usage, cost, providerType, billingAuditService, toolUsageJson, toolCost, _logger);
         }
 
         private void LogMissingUsageData(HttpContext context, IBillingAuditService billingAuditService)

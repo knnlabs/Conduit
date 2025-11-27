@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Configuration.Entities
 {
@@ -29,6 +30,11 @@ namespace ConduitLLM.Configuration.Entities
         /// <summary>
         /// Navigation property for all model series by this author.
         /// </summary>
+        /// <remarks>
+        /// JsonIgnore is applied to prevent circular reference during serialization.
+        /// The cycle is: ModelAuthor → ModelSeries → Author → ModelAuthor
+        /// </remarks>
+        [JsonIgnore]
         public virtual ICollection<ModelSeries> ModelSeries { get; set; } = new List<ModelSeries>();
     }
 }

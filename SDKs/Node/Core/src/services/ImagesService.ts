@@ -13,7 +13,7 @@ import {
   DEFAULT_POLLING_OPTIONS
 } from '../models/images';
 import { validateImageGenerationRequest } from '../utils/validation';
-import { API_ENDPOINTS, CONTENT_TYPES } from '../constants';
+import { API_ENDPOINTS, CONTENT_TYPES, TIMEOUT_CONFIG } from '../constants';
 
 /**
  * Service for image generation, editing, and variation operations.
@@ -85,10 +85,15 @@ export class ImagesService extends FetchBasedClient {
   ): Promise<ImageGenerationResponse> {
     validateImageGenerationRequest(request);
 
+    // Use a longer timeout for image generation as providers like Replicate
+    // can take several minutes to complete image generation
     return this.post<ImageGenerationResponse, ImageGenerationRequest>(
       API_ENDPOINTS.V1.IMAGES.GENERATIONS,
       request,
-      options
+      {
+        ...options,
+        timeout: options?.timeout ?? TIMEOUT_CONFIG.IMAGE_GENERATION,
+      }
     );
   }
 
@@ -145,11 +150,13 @@ export class ImagesService extends FetchBasedClient {
       formData.append('user', request.user);
     }
 
+    // Use a longer timeout for image editing operations
     return this.post<ImageEditResponse, FormData>(
       API_ENDPOINTS.V1.IMAGES.EDITS,
       formData,
       {
         ...options,
+        timeout: options?.timeout ?? TIMEOUT_CONFIG.IMAGE_GENERATION,
         headers: {
           ...options?.headers,
           'Content-Type': CONTENT_TYPES.FORM_DATA,
@@ -206,11 +213,13 @@ export class ImagesService extends FetchBasedClient {
       formData.append('user', request.user);
     }
 
+    // Use a longer timeout for image variation operations
     return this.post<ImageVariationResponse, FormData>(
       API_ENDPOINTS.V1.IMAGES.VARIATIONS,
       formData,
       {
         ...options,
+        timeout: options?.timeout ?? TIMEOUT_CONFIG.IMAGE_GENERATION,
         headers: {
           ...options?.headers,
           'Content-Type': CONTENT_TYPES.FORM_DATA,

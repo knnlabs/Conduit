@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Configuration.Entities;
 
@@ -253,6 +254,9 @@ public class ModelCost
     /// <remarks>
     /// This navigation property represents the one-to-many relationship between ModelCost and ModelProviderTypeAssociation.
     /// One cost configuration can be used by multiple model-provider combinations.
+    /// JsonIgnore is applied to prevent circular reference during serialization.
+    /// The cycle is: ModelCost → ModelProviderTypeAssociations → ModelProviderTypeAssociation → ModelCost
     /// </remarks>
+    [JsonIgnore]
     public virtual ICollection<ModelProviderTypeAssociation> ModelProviderTypeAssociations { get; set; } = new List<ModelProviderTypeAssociation>();
 }

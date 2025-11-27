@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Configuration.Entities
 {
@@ -97,7 +98,12 @@ namespace ConduitLLM.Configuration.Entities
         /// <summary>
         /// Navigation property to the cost configuration for this model on this provider.
         /// </summary>
+        /// <remarks>
+        /// JsonIgnore is applied to prevent circular reference during serialization.
+        /// The cycle is: ModelProviderTypeAssociation → ModelCost → ModelProviderTypeAssociations → ...
+        /// </remarks>
         [ForeignKey("ModelCostId")]
+        [JsonIgnore]
         public virtual ModelCost? ModelCost { get; set; }
 
         /// <summary>
@@ -108,7 +114,12 @@ namespace ConduitLLM.Configuration.Entities
         /// <summary>
         /// Navigation property to the associated Model.
         /// </summary>
+        /// <remarks>
+        /// JsonIgnore is applied to prevent circular reference during serialization.
+        /// The cycle is: ModelProviderTypeAssociation → Model → Identifiers → ModelProviderTypeAssociation
+        /// </remarks>
         [ForeignKey("ModelId")]
+        [JsonIgnore]
         public virtual Model Model { get; set; } = null!;
 
         /// <summary>

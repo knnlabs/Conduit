@@ -96,7 +96,11 @@ public partial class CostCalculationService : ICostCalculationService
 
         if (modelCost == null)
         {
-            _logger.LogWarning("Cost information not found for model {ModelId}. Returning 0 cost.", modelId);
+            _logger.LogWarning(
+                "Cost information not found for model {ModelId}. Returning 0 cost. " +
+                "This may indicate a missing cost configuration or cache lookup failure. " +
+                "Usage details: PromptTokens={PromptTokens}, CompletionTokens={CompletionTokens}, ImageCount={ImageCount}",
+                modelId, usage.PromptTokens, usage.CompletionTokens, usage.ImageCount);
             return 0m;
         }
 
@@ -141,8 +145,24 @@ public partial class CostCalculationService : ICostCalculationService
                 modelId, originalCost, calculatedCost, modelCost.BatchProcessingMultiplier.Value);
         }
 
-        _logger.LogDebug("Calculated cost for model {ModelId} using pricing model {PricingModel} is {CalculatedCost}",
-            modelId, modelCost.PricingModel, calculatedCost);
+        // Log at Information level when cost is 0 to aid troubleshooting billing issues
+        if (calculatedCost == 0m)
+        {
+            _logger.LogInformation(
+                "Zero cost calculated for model {ModelId}. PricingModel={PricingModel}, " +
+                "ModelCostId={ModelCostId}, CostName={CostName}, IsActive={IsActive}. " +
+                "Usage: PromptTokens={PromptTokens}, CompletionTokens={CompletionTokens}, ImageCount={ImageCount}, " +
+                "VideoDurationSeconds={VideoDurationSeconds}. " +
+                "Pricing: InputCost={InputCost}, OutputCost={OutputCost}",
+                modelId, modelCost.PricingModel, modelCost.Id, modelCost.CostName, modelCost.IsActive,
+                usage.PromptTokens, usage.CompletionTokens, usage.ImageCount, usage.VideoDurationSeconds,
+                modelCost.InputCostPerMillionTokens, modelCost.OutputCostPerMillionTokens);
+        }
+        else
+        {
+            _logger.LogDebug("Calculated cost for model {ModelId} using pricing model {PricingModel} is {CalculatedCost}",
+                modelId, modelCost.PricingModel, calculatedCost);
+        }
 
         return calculatedCost;
     }
@@ -160,7 +180,11 @@ public partial class CostCalculationService : ICostCalculationService
 
         if (modelCost == null)
         {
-            _logger.LogWarning("Cost information not found for ModelCostId {ModelCostId}. Returning 0 cost.", modelCostId);
+            _logger.LogWarning(
+                "Cost information not found for ModelCostId {ModelCostId}. Returning 0 cost. " +
+                "This may indicate the cost record was deleted or a cache lookup failure. " +
+                "Usage details: PromptTokens={PromptTokens}, CompletionTokens={CompletionTokens}, ImageCount={ImageCount}",
+                modelCostId, usage.PromptTokens, usage.CompletionTokens, usage.ImageCount);
             return 0m;
         }
 
@@ -209,8 +233,24 @@ public partial class CostCalculationService : ICostCalculationService
                 modelCostId, originalCost, calculatedCost, modelCost.BatchProcessingMultiplier.Value);
         }
 
-        _logger.LogDebug("Calculated cost for ModelCostId {ModelCostId} ({CostName}) using pricing model {PricingModel} is {CalculatedCost}",
-            modelCostId, modelCost.CostName, modelCost.PricingModel, calculatedCost);
+        // Log at Information level when cost is 0 to aid troubleshooting billing issues
+        if (calculatedCost == 0m)
+        {
+            _logger.LogInformation(
+                "Zero cost calculated for ModelCostId {ModelCostId}. CostName={CostName}, PricingModel={PricingModel}, " +
+                "IsActive={IsActive}. Usage: PromptTokens={PromptTokens}, CompletionTokens={CompletionTokens}, " +
+                "ImageCount={ImageCount}, VideoDurationSeconds={VideoDurationSeconds}. " +
+                "Pricing: InputCost={InputCost}, OutputCost={OutputCost}, PricingConfiguration={PricingConfig}",
+                modelCostId, modelCost.CostName, modelCost.PricingModel, modelCost.IsActive,
+                usage.PromptTokens, usage.CompletionTokens, usage.ImageCount, usage.VideoDurationSeconds,
+                modelCost.InputCostPerMillionTokens, modelCost.OutputCostPerMillionTokens,
+                modelCost.PricingConfiguration ?? "(none)");
+        }
+        else
+        {
+            _logger.LogDebug("Calculated cost for ModelCostId {ModelCostId} ({CostName}) using pricing model {PricingModel} is {CalculatedCost}",
+                modelCostId, modelCost.CostName, modelCost.PricingModel, calculatedCost);
+        }
 
         return calculatedCost;
     }

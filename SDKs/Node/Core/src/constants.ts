@@ -426,6 +426,25 @@ export const IMAGE_SIZES = {
 export type ImageSize = typeof IMAGE_SIZES[keyof typeof IMAGE_SIZES];
 
 /**
+ * Timeout configuration constants.
+ * These values are used to configure request timeouts for different types of operations.
+ */
+export const TIMEOUT_CONFIG = {
+  /** Default timeout for general API requests (60 seconds) */
+  DEFAULT: 60000,
+  /** Timeout for image generation requests (5 minutes) - image providers like Replicate can take several minutes */
+  IMAGE_GENERATION: 300000,
+  /** Timeout for video generation requests (10 minutes) - video generation typically takes longer */
+  VIDEO_GENERATION: 600000,
+  /** Timeout for audio operations (5 minutes) */
+  AUDIO: 300000,
+  /** Timeout for streaming requests (10 minutes) */
+  STREAMING: 600000,
+} as const;
+
+export type TimeoutConfigKey = keyof typeof TIMEOUT_CONFIG;
+
+/**
  * Image validation helpers.
  */
 export const ImageValidationHelpers = {

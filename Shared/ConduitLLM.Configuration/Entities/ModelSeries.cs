@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Configuration.Entities
 {
@@ -16,7 +17,12 @@ namespace ConduitLLM.Configuration.Entities
         /// <summary>
         /// The author of the model series (e.g., OpenAI, Anthropic, etc.)
         /// </summary>
+        /// <remarks>
+        /// JsonIgnore is applied to prevent circular reference during serialization.
+        /// The cycle is: ModelSeries → Author → ModelSeries
+        /// </remarks>
         [ForeignKey("AuthorId")]
+        [JsonIgnore]
         public ModelAuthor Author { get; set; } = new ModelAuthor();
 
         /// <summary>
@@ -64,6 +70,11 @@ namespace ConduitLLM.Configuration.Entities
         /// <summary>
         /// Navigation property for models in this series.
         /// </summary>
+        /// <remarks>
+        /// JsonIgnore is applied to prevent circular reference during serialization.
+        /// The cycle is: ModelSeries → Models → Model → Series → ModelSeries
+        /// </remarks>
+        [JsonIgnore]
         public virtual ICollection<Model> Models { get; set; } = new List<Model>();
     }
 }
