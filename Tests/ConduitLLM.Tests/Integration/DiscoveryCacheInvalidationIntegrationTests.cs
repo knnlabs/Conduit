@@ -11,8 +11,8 @@ using Moq;
 using Xunit;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Http.EventHandlers;
-using ConduitLLM.Http.Interfaces;
+using ConduitLLM.Core.Models;
+using ConduitLLM.Http.Consumers;
 
 namespace ConduitLLM.Tests.Integration
 {
@@ -33,13 +33,13 @@ namespace ConduitLLM.Tests.Integration
             // Add MassTransit test harness
             services.AddMassTransitTestHarness(cfg =>
             {
-                cfg.AddConsumer<ModelMappingCacheInvalidationHandler>();
+                cfg.AddConsumer<ModelMappingCacheInvalidationConsumer>();
             });
 
             // Add mock services
-            services.AddSingleton(Mock.Of<ISettingsRefreshService>());
+            services.AddSingleton(Mock.Of<ICacheManager>());
             services.AddSingleton(Mock.Of<IDiscoveryCacheService>());
-            services.AddSingleton(Mock.Of<ILogger<ModelMappingCacheInvalidationHandler>>());
+            services.AddSingleton(Mock.Of<ILogger<ModelMappingCacheInvalidationConsumer>>());
 
             _serviceProvider = services.BuildServiceProvider();
             _harness = _serviceProvider.GetRequiredService<ITestHarness>();
@@ -64,14 +64,14 @@ namespace ConduitLLM.Tests.Integration
         public async Task Should_Process_ModelMappingChanged_Event_And_Invalidate_Cache()
         {
             // Arrange
-            var mockSettingsService = Mock.Get(_serviceProvider.GetRequiredService<ISettingsRefreshService>());
-            var mockCacheService = Mock.Get(_serviceProvider.GetRequiredService<IDiscoveryCacheService>());
+            var mockCacheManager = Mock.Get(_serviceProvider.GetRequiredService<ICacheManager>());
+            var mockDiscoveryCache = Mock.Get(_serviceProvider.GetRequiredService<IDiscoveryCacheService>());
 
-            mockSettingsService
-                .Setup(x => x.RefreshModelMappingsAsync())
-                .Returns(Task.CompletedTask);
+            mockCacheManager
+                .Setup(x => x.RemoveManyAsync(It.IsAny<IEnumerable<string>>(), CacheRegion.ModelMetadata, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(3);
 
-            mockCacheService
+            mockDiscoveryCache
                 .Setup(x => x.InvalidateAllDiscoveryAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
@@ -89,16 +89,16 @@ namespace ConduitLLM.Tests.Integration
             await _harness.Bus.Publish(@event);
 
             // Wait for the message to be consumed
-            Assert.True(await _harness.Consumed.Any<ModelMappingChanged>(x => 
+            Assert.True(await _harness.Consumed.Any<ModelMappingChanged>(x =>
                 x.Context.Message.MappingId == @event.MappingId));
 
             // Assert
-            var consumerHarness = _harness.GetConsumerHarness<ModelMappingCacheInvalidationHandler>();
+            var consumerHarness = _harness.GetConsumerHarness<ModelMappingCacheInvalidationConsumer>();
             Assert.True(await consumerHarness.Consumed.Any<ModelMappingChanged>());
 
-            // Verify the handler called the services
-            mockSettingsService.Verify(x => x.RefreshModelMappingsAsync(), Times.Once);
-            mockCacheService.Verify(x => x.InvalidateAllDiscoveryAsync(It.IsAny<CancellationToken>()), Times.Once);
+            // Verify the consumer called the cache services
+            mockCacheManager.Verify(x => x.RemoveManyAsync(It.IsAny<IEnumerable<string>>(), CacheRegion.ModelMetadata, It.IsAny<CancellationToken>()), Times.Once);
+            mockDiscoveryCache.Verify(x => x.InvalidateAllDiscoveryAsync(It.IsAny<CancellationToken>()), Times.Once);
 
             // Verify no faults occurred (Failed property may not exist in test harness)
             // The test passes if no exceptions were thrown
@@ -108,14 +108,14 @@ namespace ConduitLLM.Tests.Integration
         public async Task Should_Handle_Multiple_Events_In_Sequence()
         {
             // Arrange
-            var mockSettingsService = Mock.Get(_serviceProvider.GetRequiredService<ISettingsRefreshService>());
-            var mockCacheService = Mock.Get(_serviceProvider.GetRequiredService<IDiscoveryCacheService>());
+            var mockCacheManager = Mock.Get(_serviceProvider.GetRequiredService<ICacheManager>());
+            var mockDiscoveryCache = Mock.Get(_serviceProvider.GetRequiredService<IDiscoveryCacheService>());
 
-            mockSettingsService
-                .Setup(x => x.RefreshModelMappingsAsync())
-                .Returns(Task.CompletedTask);
+            mockCacheManager
+                .Setup(x => x.RemoveManyAsync(It.IsAny<IEnumerable<string>>(), CacheRegion.ModelMetadata, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(3);
 
-            mockCacheService
+            mockDiscoveryCache
                 .Setup(x => x.InvalidateAllDiscoveryAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
@@ -136,40 +136,40 @@ namespace ConduitLLM.Tests.Integration
             foreach (var evt in events)
             {
                 var mappingId = evt.MappingId;
-                Assert.True(await _harness.Consumed.Any<ModelMappingChanged>(x => 
+                Assert.True(await _harness.Consumed.Any<ModelMappingChanged>(x =>
                     x.Context.Message.MappingId == mappingId));
             }
 
             // Assert
-            mockSettingsService.Verify(x => x.RefreshModelMappingsAsync(), Times.Exactly(3));
-            mockCacheService.Verify(x => x.InvalidateAllDiscoveryAsync(It.IsAny<CancellationToken>()), Times.Exactly(3));
+            mockCacheManager.Verify(x => x.RemoveManyAsync(It.IsAny<IEnumerable<string>>(), CacheRegion.ModelMetadata, It.IsAny<CancellationToken>()), Times.Exactly(3));
+            mockDiscoveryCache.Verify(x => x.InvalidateAllDiscoveryAsync(It.IsAny<CancellationToken>()), Times.Exactly(3));
 
             // Verify no faults occurred (Failed property may not exist in test harness)
             // The test passes if no exceptions were thrown
         }
 
         [Fact]
-        public async Task Should_Retry_On_Transient_Failure()
+        public async Task Should_Continue_Processing_On_Cache_Failure()
         {
             // Arrange
-            var mockSettingsService = Mock.Get(_serviceProvider.GetRequiredService<ISettingsRefreshService>());
-            var mockCacheService = Mock.Get(_serviceProvider.GetRequiredService<IDiscoveryCacheService>());
+            var mockCacheManager = Mock.Get(_serviceProvider.GetRequiredService<ICacheManager>());
+            var mockDiscoveryCache = Mock.Get(_serviceProvider.GetRequiredService<IDiscoveryCacheService>());
 
-            var callCount = 0;
-            mockSettingsService
-                .Setup(x => x.RefreshModelMappingsAsync())
+            var cacheCallCount = 0;
+            mockCacheManager
+                .Setup(x => x.RemoveManyAsync(It.IsAny<IEnumerable<string>>(), CacheRegion.ModelMetadata, It.IsAny<CancellationToken>()))
                 .Returns(() =>
                 {
-                    callCount++;
-                    if (callCount == 1)
+                    cacheCallCount++;
+                    if (cacheCallCount == 1)
                     {
-                        // Fail on first attempt
+                        // Fail on first attempt - but consumer should continue to discovery cache
                         throw new InvalidOperationException("Transient error");
                     }
-                    return Task.CompletedTask;
+                    return Task.FromResult(3);
                 });
 
-            mockCacheService
+            mockDiscoveryCache
                 .Setup(x => x.InvalidateAllDiscoveryAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
@@ -186,41 +186,37 @@ namespace ConduitLLM.Tests.Integration
             // Act
             await _harness.Bus.Publish(@event);
 
-            // Wait for retry and successful consumption
-            await Task.Delay(TimeSpan.FromSeconds(2)); // Allow time for retry
+            // Wait for consumption
+            await Task.Delay(TimeSpan.FromSeconds(2));
 
-            // Assert
-            // The handler should be called twice due to retry
-            Assert.True(callCount >= 1, "Handler should have been called at least once");
-            
-            // Check if the message was eventually consumed (might fail and be moved to error queue)
-            var consumed = await _harness.Consumed.Any<ModelMappingChanged>(x => 
+            // Assert - consumer should NOT throw on cache failure, so message is consumed
+            var consumed = await _harness.Consumed.Any<ModelMappingChanged>(x =>
                 x.Context.Message.MappingId == @event.MappingId);
-            
-            // In a test harness, retries might not work exactly as in production
-            // Just verify the message was consumed
+
             Assert.True(consumed);
+            // Discovery cache should still be called even if model mapping cache failed
+            mockDiscoveryCache.Verify(x => x.InvalidateAllDiscoveryAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce);
         }
 
         [Fact]
         public async Task Should_Process_Events_From_Multiple_Publishers_Concurrently()
         {
             // Arrange
-            var mockSettingsService = Mock.Get(_serviceProvider.GetRequiredService<ISettingsRefreshService>());
-            var mockCacheService = Mock.Get(_serviceProvider.GetRequiredService<IDiscoveryCacheService>());
+            var mockCacheManager = Mock.Get(_serviceProvider.GetRequiredService<ICacheManager>());
+            var mockDiscoveryCache = Mock.Get(_serviceProvider.GetRequiredService<IDiscoveryCacheService>());
 
-            var refreshCount = 0;
+            var cacheRemoveCount = 0;
             var invalidateCount = 0;
 
-            mockSettingsService
-                .Setup(x => x.RefreshModelMappingsAsync())
+            mockCacheManager
+                .Setup(x => x.RemoveManyAsync(It.IsAny<IEnumerable<string>>(), CacheRegion.ModelMetadata, It.IsAny<CancellationToken>()))
                 .Returns(() =>
                 {
-                    Interlocked.Increment(ref refreshCount);
-                    return Task.CompletedTask;
+                    Interlocked.Increment(ref cacheRemoveCount);
+                    return Task.FromResult(3);
                 });
 
-            mockCacheService
+            mockDiscoveryCache
                 .Setup(x => x.InvalidateAllDiscoveryAsync(It.IsAny<CancellationToken>()))
                 .Returns(() =>
                 {
@@ -256,7 +252,7 @@ namespace ConduitLLM.Tests.Integration
             await Task.Delay(TimeSpan.FromSeconds(2));
 
             // Assert
-            Assert.Equal(10, refreshCount);
+            Assert.Equal(10, cacheRemoveCount);
             Assert.Equal(10, invalidateCount);
 
             // Verify no faults occurred (Failed property may not exist in test harness)
@@ -267,16 +263,16 @@ namespace ConduitLLM.Tests.Integration
         public async Task Should_Maintain_Event_Order_Per_Model()
         {
             // Arrange
-            var mockSettingsService = Mock.Get(_serviceProvider.GetRequiredService<ISettingsRefreshService>());
-            var mockCacheService = Mock.Get(_serviceProvider.GetRequiredService<IDiscoveryCacheService>());
+            var mockCacheManager = Mock.Get(_serviceProvider.GetRequiredService<ICacheManager>());
+            var mockDiscoveryCache = Mock.Get(_serviceProvider.GetRequiredService<IDiscoveryCacheService>());
 
             var processedEvents = new List<string>();
 
-            mockSettingsService
-                .Setup(x => x.RefreshModelMappingsAsync())
-                .Returns(Task.CompletedTask);
+            mockCacheManager
+                .Setup(x => x.RemoveManyAsync(It.IsAny<IEnumerable<string>>(), CacheRegion.ModelMetadata, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(3);
 
-            mockCacheService
+            mockDiscoveryCache
                 .Setup(x => x.InvalidateAllDiscoveryAsync(It.IsAny<CancellationToken>()))
                 .Callback(() =>
                 {
@@ -308,9 +304,9 @@ namespace ConduitLLM.Tests.Integration
 
             // Assert
             Assert.Equal(4, processedEvents.Count);
-            
+
             // Verify events were processed (order might not be guaranteed in test harness)
-            mockCacheService.Verify(x => x.InvalidateAllDiscoveryAsync(It.IsAny<CancellationToken>()), Times.Exactly(4));
+            mockDiscoveryCache.Verify(x => x.InvalidateAllDiscoveryAsync(It.IsAny<CancellationToken>()), Times.Exactly(4));
         }
     }
 }

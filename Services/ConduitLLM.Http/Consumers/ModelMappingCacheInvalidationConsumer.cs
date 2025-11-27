@@ -7,8 +7,9 @@ using MassTransit;
 namespace ConduitLLM.Http.Consumers
 {
     /// <summary>
-    /// Consumes ModelMappingChanged events to invalidate cached model provider mappings.
-    /// Ensures cache consistency across distributed deployments when model mappings are modified.
+    /// Consumes ModelMappingChanged events to invalidate cached model provider mappings
+    /// and discovery cache. Ensures cache consistency across distributed deployments
+    /// when model mappings are modified.
     /// </summary>
     /// <remarks>
     /// This consumer listens to all model mapping changes (Create, Update, Delete) and
@@ -21,9 +22,12 @@ namespace ConduitLLM.Http.Consumers
     /// - AdminModelProviderMappingService.CreateBulkMappingsAsync
     ///
     /// Cache Invalidation Strategy:
-    /// - Invalidates by model alias (most common lookup)
-    /// - Invalidates by mapping ID
-    /// - Invalidates the "all mappings" cache
+    /// - Model Mapping Cache (CacheRegion.ModelMetadata):
+    ///   - Invalidates by model alias (most common lookup)
+    ///   - Invalidates by mapping ID
+    ///   - Invalidates the "all mappings" cache
+    /// - Discovery Cache (CacheRegion.ModelDiscovery):
+    ///   - Invalidates all discovery entries since model availability may have changed
     ///
     /// This ensures that all API endpoints using cached mappings will get fresh data
     /// on the next request after a configuration change.
@@ -31,6 +35,7 @@ namespace ConduitLLM.Http.Consumers
     public class ModelMappingCacheInvalidationConsumer : IConsumer<ModelMappingChanged>
     {
         private readonly ICacheManager _cacheManager;
+        private readonly IDiscoveryCacheService _discoveryCacheService;
         private readonly ILogger<ModelMappingCacheInvalidationConsumer> _logger;
 
         // Cache configuration - must match CachedModelProviderMappingService
@@ -41,9 +46,11 @@ namespace ConduitLLM.Http.Consumers
 
         public ModelMappingCacheInvalidationConsumer(
             ICacheManager cacheManager,
+            IDiscoveryCacheService discoveryCacheService,
             ILogger<ModelMappingCacheInvalidationConsumer> logger)
         {
             _cacheManager = cacheManager ?? throw new ArgumentNullException(nameof(cacheManager));
+            _discoveryCacheService = discoveryCacheService ?? throw new ArgumentNullException(nameof(discoveryCacheService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -54,6 +61,21 @@ namespace ConduitLLM.Http.Consumers
         {
             var @event = context.Message;
 
+            _logger.LogInformation(
+                "Processing ModelMappingChanged event: MappingId={MappingId}, ModelAlias={ModelAlias}, ChangeType={ChangeType}",
+                @event.MappingId,
+                @event.ModelAlias,
+                @event.ChangeType);
+
+            // Invalidate model mapping cache
+            await InvalidateModelMappingCacheAsync(@event);
+
+            // Invalidate discovery cache - model availability may have changed
+            await InvalidateDiscoveryCacheAsync(@event);
+        }
+
+        private async Task InvalidateModelMappingCacheAsync(ModelMappingChanged @event)
+        {
             try
             {
                 var keysToRemove = new List<string>();
@@ -74,24 +96,44 @@ namespace ConduitLLM.Http.Consumers
                 var removed = await _cacheManager.RemoveManyAsync(keysToRemove, Region);
 
                 _logger.LogInformation(
-                    "Invalidated {Count} cache entries for model mapping change: " +
-                    "MappingId={MappingId}, ModelAlias={ModelAlias}, ChangeType={ChangeType}, CorrelationId={CorrelationId}",
+                    "Invalidated {Count} model mapping cache entries for {ChangeType} of {ModelAlias} (MappingId={MappingId})",
                     removed,
-                    @event.MappingId,
-                    @event.ModelAlias,
                     @event.ChangeType,
-                    @event.CorrelationId);
+                    @event.ModelAlias,
+                    @event.MappingId);
             }
             catch (Exception ex)
             {
                 // Log error but don't throw - cache invalidation failures shouldn't break the event flow
                 _logger.LogError(ex,
-                    "Failed to invalidate cache for model mapping change: " +
-                    "MappingId={MappingId}, ModelAlias={ModelAlias}, ChangeType={ChangeType}, CorrelationId={CorrelationId}",
+                    "Failed to invalidate model mapping cache: MappingId={MappingId}, ModelAlias={ModelAlias}, ChangeType={ChangeType}",
                     @event.MappingId,
                     @event.ModelAlias,
+                    @event.ChangeType);
+            }
+        }
+
+        private async Task InvalidateDiscoveryCacheAsync(ModelMappingChanged @event)
+        {
+            try
+            {
+                // Invalidate all discovery cache entries since model availability may have changed
+                // This covers all capability-filtered queries (chat, vision, image_generation, etc.)
+                await _discoveryCacheService.InvalidateAllDiscoveryAsync();
+
+                _logger.LogInformation(
+                    "Invalidated discovery cache after {ChangeType} of {ModelAlias}",
                     @event.ChangeType,
-                    @event.CorrelationId);
+                    @event.ModelAlias);
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't throw - cache invalidation failures shouldn't break the event flow
+                _logger.LogError(ex,
+                    "Failed to invalidate discovery cache: MappingId={MappingId}, ModelAlias={ModelAlias}, ChangeType={ChangeType}",
+                    @event.MappingId,
+                    @event.ModelAlias,
+                    @event.ChangeType);
             }
         }
     }
