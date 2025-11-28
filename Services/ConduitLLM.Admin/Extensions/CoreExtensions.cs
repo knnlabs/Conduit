@@ -53,12 +53,6 @@ namespace ConduitLLM.Admin.Extensions
             services.AddDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>(options =>
             {
                 options.UseNpgsql(dbConnectionString);
-                // Suppress PendingModelChangesWarning in production
-                var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
-                if (environment == "Production")
-                {
-                    options.ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
-                }
             });
             
             // Also add scoped registration from factory for services that need direct injection
