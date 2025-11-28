@@ -10,18 +10,53 @@ using StackExchange.Redis;
 namespace ConduitLLM.Core.Services
 {
     /// <summary>
-    /// Redis-based implementation of leader election service using distributed locks
+    /// Redis-based implementation of leader election service using distributed locks.
+    /// Implements fencing tokens to prevent split-brain scenarios.
     /// </summary>
-    public class RedisLeaderElectionService : ILeaderElectionService, IDisposable
+    public class RedisLeaderElectionService : ILeaderElectionService, IAsyncDisposable, IDisposable
     {
         private readonly IConnectionMultiplexer _redis;
         private readonly ILogger<RedisLeaderElectionService> _logger;
         private readonly string _instanceId;
         private readonly TimeSpan _leadershipTtl;
         private readonly TimeSpan _renewalInterval;
-        private readonly ConcurrentDictionary<string, Timer> _renewalTimers;
-        private readonly ConcurrentDictionary<string, bool> _activeLeaderships;
+        private readonly ConcurrentDictionary<string, MaintenanceState> _maintenanceStates;
+        private readonly ConcurrentDictionary<string, LeadershipState> _leadershipStates;
+        private readonly SemaphoreSlim _disposeLock;
         private bool _disposed;
+
+        /// <summary>
+        /// Tracks the state of leadership maintenance for a service
+        /// </summary>
+        private sealed class MaintenanceState : IDisposable
+        {
+            public CancellationTokenSource CancellationTokenSource { get; }
+            public Task? MaintenanceTask { get; set; }
+            private bool _disposed;
+
+            public MaintenanceState()
+            {
+                CancellationTokenSource = new CancellationTokenSource();
+            }
+
+            public void Dispose()
+            {
+                if (_disposed) return;
+                _disposed = true;
+                CancellationTokenSource.Cancel();
+                CancellationTokenSource.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Tracks the leadership state including fencing token
+        /// </summary>
+        private sealed class LeadershipState
+        {
+            public bool IsLeader { get; set; }
+            public long FencingToken { get; set; }
+            public DateTime LastRenewal { get; set; }
+        }
 
         public RedisLeaderElectionService(
             IConnectionMultiplexer redis,
@@ -29,48 +64,67 @@ namespace ConduitLLM.Core.Services
         {
             _redis = redis ?? throw new ArgumentNullException(nameof(redis));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            
+
             // Generate unique instance ID
             _instanceId = $"{Environment.MachineName}:{Process.GetCurrentProcess().Id}:{Guid.NewGuid():N}";
-            
+
             // Configure TTL and renewal intervals
             _leadershipTtl = TimeSpan.FromSeconds(60);
             _renewalInterval = TimeSpan.FromSeconds(30); // Renew at half the TTL
-            
-            _renewalTimers = new ConcurrentDictionary<string, Timer>();
-            _activeLeaderships = new ConcurrentDictionary<string, bool>();
-            
+
+            _maintenanceStates = new ConcurrentDictionary<string, MaintenanceState>();
+            _leadershipStates = new ConcurrentDictionary<string, LeadershipState>();
+            _disposeLock = new SemaphoreSlim(1, 1);
+
             _logger.LogInformation("Leader election service initialized with instance ID: {InstanceId}", _instanceId);
         }
 
         /// <inheritdoc/>
-        public async Task<bool> TryAcquireLeadershipAsync(string serviceName, CancellationToken cancellationToken = default)
+        public async Task<LeadershipAcquisitionResult> TryAcquireLeadershipAsync(string serviceName, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(serviceName))
                 throw new ArgumentException("Service name cannot be null or empty", nameof(serviceName));
 
             var lockKey = GetLockKey(serviceName);
-            var db = _redis.GetDatabase();
+            var fencingKey = GetFencingKey(serviceName);
 
             try
             {
-                // Try to acquire the lock with SET NX (only if not exists) and EX (expiration)
-                var acquired = await db.StringSetAsync(
-                    lockKey,
-                    _instanceId,
-                    _leadershipTtl,
-                    When.NotExists,
-                    CommandFlags.None);
+                var db = _redis.GetDatabase();
 
-                if (acquired)
+                // Lua script to atomically:
+                // 1. Try to acquire the lock (SET NX EX)
+                // 2. If acquired, increment and return the fencing token
+                var acquireScript = @"
+                    if redis.call('SET', KEYS[1], ARGV[1], 'NX', 'EX', ARGV[2]) then
+                        local token = redis.call('INCR', KEYS[2])
+                        return token
+                    else
+                        return -1
+                    end";
+
+                var result = await db.ScriptEvaluateAsync(
+                    acquireScript,
+                    new RedisKey[] { lockKey, fencingKey },
+                    new RedisValue[] { _instanceId, (int)_leadershipTtl.TotalSeconds });
+
+                var fencingToken = (long)result;
+
+                if (fencingToken > 0)
                 {
-                    _activeLeaderships[serviceName] = true;
+                    var state = _leadershipStates.GetOrAdd(serviceName, _ => new LeadershipState());
+                    state.IsLeader = true;
+                    state.FencingToken = fencingToken;
+                    state.LastRenewal = DateTime.UtcNow;
+
                     _logger.LogInformation(
-                        "Leadership acquired for service {ServiceName} by instance {InstanceId}",
-                        serviceName, _instanceId);
-                    
+                        "Leadership acquired for service {ServiceName} by instance {InstanceId} with fencing token {FencingToken}",
+                        serviceName, _instanceId, fencingToken);
+
                     // Start automatic renewal
                     await StartLeadershipMaintenanceAsync(serviceName, cancellationToken);
+
+                    return LeadershipAcquisitionResult.Success(fencingToken);
                 }
                 else
                 {
@@ -78,14 +132,19 @@ namespace ConduitLLM.Core.Services
                     _logger.LogDebug(
                         "Failed to acquire leadership for service {ServiceName}. Current leader: {CurrentLeader}",
                         serviceName, currentLeader);
-                }
 
-                return acquired;
+                    return LeadershipAcquisitionResult.Failure();
+                }
+            }
+            catch (RedisConnectionException ex)
+            {
+                _logger.LogError(ex, "Redis connection error acquiring leadership for service {ServiceName}", serviceName);
+                return LeadershipAcquisitionResult.Failure();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error acquiring leadership for service {ServiceName}", serviceName);
-                return false;
+                return LeadershipAcquisitionResult.Failure();
             }
         }
 
@@ -96,17 +155,18 @@ namespace ConduitLLM.Core.Services
                 throw new ArgumentException("Service name cannot be null or empty", nameof(serviceName));
 
             var lockKey = GetLockKey(serviceName);
-            var db = _redis.GetDatabase();
 
             try
             {
-                // Stop renewal timer first
+                // Stop renewal first
                 await StopLeadershipMaintenanceAsync(serviceName);
+
+                var db = _redis.GetDatabase();
 
                 // Only delete if we own the lock (atomic check and delete)
                 var script = @"
-                    if redis.call('get', KEYS[1]) == ARGV[1] then
-                        return redis.call('del', KEYS[1])
+                    if redis.call('GET', KEYS[1]) == ARGV[1] then
+                        return redis.call('DEL', KEYS[1])
                     else
                         return 0
                     end";
@@ -118,10 +178,12 @@ namespace ConduitLLM.Core.Services
 
                 if ((long)result == 1)
                 {
-                    _activeLeaderships.TryRemove(serviceName, out _);
-                    _logger.LogInformation(
-                        "Leadership released for service {ServiceName} by instance {InstanceId}",
-                        serviceName, _instanceId);
+                    if (_leadershipStates.TryRemove(serviceName, out _))
+                    {
+                        _logger.LogInformation(
+                            "Leadership released for service {ServiceName} by instance {InstanceId}",
+                            serviceName, _instanceId);
+                    }
                 }
                 else
                 {
@@ -134,6 +196,11 @@ namespace ConduitLLM.Core.Services
             {
                 _logger.LogError(ex, "Error releasing leadership for service {ServiceName}", serviceName);
             }
+            finally
+            {
+                // Always clean up local state
+                _leadershipStates.TryRemove(serviceName, out _);
+            }
         }
 
         /// <inheritdoc/>
@@ -143,17 +210,30 @@ namespace ConduitLLM.Core.Services
                 throw new ArgumentException("Service name cannot be null or empty", nameof(serviceName));
 
             var lockKey = GetLockKey(serviceName);
-            var db = _redis.GetDatabase();
 
             try
             {
+                var db = _redis.GetDatabase();
                 var currentLeader = await db.StringGetAsync(lockKey);
                 var isLeader = currentLeader == _instanceId;
-                
-                // Update local cache
-                _activeLeaderships[serviceName] = isLeader;
-                
+
+                // Update local state
+                if (_leadershipStates.TryGetValue(serviceName, out var state))
+                {
+                    state.IsLeader = isLeader;
+                }
+
                 return isLeader;
+            }
+            catch (RedisConnectionException ex)
+            {
+                _logger.LogError(ex, "Redis connection error checking leadership status for service {ServiceName}", serviceName);
+                // On connection error, assume we lost leadership for safety
+                if (_leadershipStates.TryGetValue(serviceName, out var state))
+                {
+                    state.IsLeader = false;
+                }
+                return false;
             }
             catch (Exception ex)
             {
@@ -169,10 +249,10 @@ namespace ConduitLLM.Core.Services
                 throw new ArgumentException("Service name cannot be null or empty", nameof(serviceName));
 
             var lockKey = GetLockKey(serviceName);
-            var db = _redis.GetDatabase();
 
             try
             {
+                var db = _redis.GetDatabase();
                 var currentLeader = await db.StringGetAsync(lockKey);
                 return currentLeader.HasValue ? currentLeader.ToString() : null;
             }
@@ -184,23 +264,74 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
+        public Task<long?> GetCurrentFencingTokenAsync(string serviceName, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(serviceName))
+                throw new ArgumentException("Service name cannot be null or empty", nameof(serviceName));
+
+            if (_leadershipStates.TryGetValue(serviceName, out var state) && state.IsLeader)
+            {
+                return Task.FromResult<long?>(state.FencingToken);
+            }
+
+            return Task.FromResult<long?>(null);
+        }
+
+        /// <inheritdoc/>
+        public async Task<bool> ValidateFencingTokenAsync(string serviceName, long fencingToken, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(serviceName))
+                throw new ArgumentException("Service name cannot be null or empty", nameof(serviceName));
+
+            // First check local state
+            if (!_leadershipStates.TryGetValue(serviceName, out var state) || !state.IsLeader)
+            {
+                return false;
+            }
+
+            // Verify our fencing token matches
+            if (state.FencingToken != fencingToken)
+            {
+                _logger.LogWarning(
+                    "Fencing token mismatch for service {ServiceName}. Expected: {Expected}, Got: {Actual}",
+                    serviceName, state.FencingToken, fencingToken);
+                return false;
+            }
+
+            // Verify we still hold the lock in Redis
+            var isStillLeader = await IsLeaderAsync(serviceName, cancellationToken);
+            if (!isStillLeader)
+            {
+                _logger.LogWarning(
+                    "Fencing token validation failed - no longer leader for service {ServiceName}",
+                    serviceName);
+                state.IsLeader = false;
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <inheritdoc/>
         public Task StartLeadershipMaintenanceAsync(string serviceName, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(serviceName))
                 throw new ArgumentException("Service name cannot be null or empty", nameof(serviceName));
 
-            // Stop any existing timer
-            StopLeadershipMaintenanceAsync(serviceName).Wait();
+            // Stop any existing maintenance first
+            StopMaintenanceInternal(serviceName);
 
-            // Create new renewal timer
-            var timer = new Timer(
-                async _ => await RenewLeadershipAsync(serviceName),
-                null,
-                _renewalInterval,
-                _renewalInterval);
+            var maintenanceState = new MaintenanceState();
 
-            _renewalTimers[serviceName] = timer;
-            
+            // Link the provided cancellation token
+            var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+                maintenanceState.CancellationTokenSource.Token,
+                cancellationToken);
+
+            maintenanceState.MaintenanceTask = RunMaintenanceLoopAsync(serviceName, linkedCts.Token, linkedCts);
+
+            _maintenanceStates[serviceName] = maintenanceState;
+
             _logger.LogDebug(
                 "Started leadership maintenance for service {ServiceName} with renewal interval {RenewalInterval}",
                 serviceName, _renewalInterval);
@@ -209,31 +340,94 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
-        public Task StopLeadershipMaintenanceAsync(string serviceName)
+        public async Task StopLeadershipMaintenanceAsync(string serviceName)
         {
             if (string.IsNullOrWhiteSpace(serviceName))
                 throw new ArgumentException("Service name cannot be null or empty", nameof(serviceName));
 
-            if (_renewalTimers.TryRemove(serviceName, out var timer))
+            if (_maintenanceStates.TryRemove(serviceName, out var state))
             {
-                timer?.Dispose();
+                state.CancellationTokenSource.Cancel();
+
+                // Wait for the maintenance task to complete
+                if (state.MaintenanceTask != null)
+                {
+                    try
+                    {
+                        await state.MaintenanceTask.WaitAsync(TimeSpan.FromSeconds(5));
+                    }
+                    catch (TimeoutException)
+                    {
+                        _logger.LogWarning("Maintenance task for service {ServiceName} did not complete in time", serviceName);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Expected
+                    }
+                }
+
+                state.Dispose();
                 _logger.LogDebug("Stopped leadership maintenance for service {ServiceName}", serviceName);
             }
-
-            return Task.CompletedTask;
         }
 
-        private async Task RenewLeadershipAsync(string serviceName)
+        private void StopMaintenanceInternal(string serviceName)
+        {
+            if (_maintenanceStates.TryRemove(serviceName, out var state))
+            {
+                state.Dispose();
+            }
+        }
+
+        private async Task RunMaintenanceLoopAsync(string serviceName, CancellationToken cancellationToken, CancellationTokenSource linkedCts)
+        {
+            try
+            {
+                using var timer = new PeriodicTimer(_renewalInterval);
+
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    try
+                    {
+                        if (!await timer.WaitForNextTickAsync(cancellationToken))
+                        {
+                            break;
+                        }
+
+                        await RenewLeadershipAsync(serviceName, cancellationToken);
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected during shutdown
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error in maintenance loop for service {ServiceName}", serviceName);
+            }
+            finally
+            {
+                linkedCts.Dispose();
+            }
+        }
+
+        private async Task RenewLeadershipAsync(string serviceName, CancellationToken cancellationToken)
         {
             var lockKey = GetLockKey(serviceName);
-            var db = _redis.GetDatabase();
 
             try
             {
+                var db = _redis.GetDatabase();
+
                 // Atomic check and extend TTL
                 var script = @"
-                    if redis.call('get', KEYS[1]) == ARGV[1] then
-                        return redis.call('expire', KEYS[1], ARGV[2])
+                    if redis.call('GET', KEYS[1]) == ARGV[1] then
+                        return redis.call('EXPIRE', KEYS[1], ARGV[2])
                     else
                         return 0
                     end";
@@ -245,6 +439,11 @@ namespace ConduitLLM.Core.Services
 
                 if ((long)result == 1)
                 {
+                    if (_leadershipStates.TryGetValue(serviceName, out var state))
+                    {
+                        state.LastRenewal = DateTime.UtcNow;
+                    }
+
                     _logger.LogTrace(
                         "Leadership renewed for service {ServiceName} by instance {InstanceId}",
                         serviceName, _instanceId);
@@ -252,25 +451,47 @@ namespace ConduitLLM.Core.Services
                 else
                 {
                     // Lost leadership
-                    _activeLeaderships.TryRemove(serviceName, out _);
-                    await StopLeadershipMaintenanceAsync(serviceName);
-                    
-                    _logger.LogWarning(
-                        "Lost leadership for service {ServiceName}. Stopping renewal.",
-                        serviceName);
+                    await HandleLeadershipLostAsync(serviceName);
                 }
+            }
+            catch (RedisConnectionException ex)
+            {
+                _logger.LogError(ex, "Redis connection error renewing leadership for service {ServiceName}", serviceName);
+                // On connection error, we can't confirm we still hold the lock
+                // Mark as not leader for safety
+                await HandleLeadershipLostAsync(serviceName);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error renewing leadership for service {ServiceName}", serviceName);
-                
+
                 // On error, check if we're still the leader
-                if (!await IsLeaderAsync(serviceName))
+                try
                 {
-                    _activeLeaderships.TryRemove(serviceName, out _);
-                    await StopLeadershipMaintenanceAsync(serviceName);
+                    if (!await IsLeaderAsync(serviceName, cancellationToken))
+                    {
+                        await HandleLeadershipLostAsync(serviceName);
+                    }
+                }
+                catch
+                {
+                    // If we can't check, assume we lost leadership
+                    await HandleLeadershipLostAsync(serviceName);
                 }
             }
+        }
+
+        private async Task HandleLeadershipLostAsync(string serviceName)
+        {
+            _logger.LogWarning("Lost leadership for service {ServiceName}. Stopping renewal.", serviceName);
+
+            if (_leadershipStates.TryGetValue(serviceName, out var state))
+            {
+                state.IsLeader = false;
+            }
+
+            // Stop maintenance to prevent further renewal attempts
+            StopMaintenanceInternal(serviceName);
         }
 
         private string GetLockKey(string serviceName)
@@ -278,34 +499,104 @@ namespace ConduitLLM.Core.Services
             return $"leader:{serviceName}";
         }
 
-        public void Dispose()
+        private string GetFencingKey(string serviceName)
         {
-            if (_disposed)
-                return;
+            return $"leader:{serviceName}:fence";
+        }
 
-            _disposed = true;
+        public async ValueTask DisposeAsync()
+        {
+            if (_disposed) return;
 
-            // Release all active leaderships
-            foreach (var serviceName in _activeLeaderships.Keys)
+            await _disposeLock.WaitAsync();
+            try
             {
+                if (_disposed) return;
+                _disposed = true;
+
+                // Release all active leaderships
+                var releaseTasks = new List<Task>();
+                foreach (var serviceName in _leadershipStates.Keys.ToList())
+                {
+                    releaseTasks.Add(ReleaseLeadershipAsync(serviceName));
+                }
+
                 try
                 {
-                    ReleaseLeadershipAsync(serviceName).Wait(TimeSpan.FromSeconds(5));
+                    await Task.WhenAll(releaseTasks).WaitAsync(TimeSpan.FromSeconds(10));
+                }
+                catch (TimeoutException)
+                {
+                    _logger.LogWarning("Timed out waiting for leadership releases during disposal");
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error releasing leadership for service {ServiceName} during disposal", serviceName);
+                    _logger.LogError(ex, "Error releasing leaderships during disposal");
                 }
-            }
 
-            // Dispose all timers
-            foreach (var timer in _renewalTimers.Values)
+                // Dispose all maintenance states
+                foreach (var state in _maintenanceStates.Values)
+                {
+                    state.Dispose();
+                }
+
+                _maintenanceStates.Clear();
+                _leadershipStates.Clear();
+            }
+            finally
             {
-                timer?.Dispose();
+                _disposeLock.Release();
+                _disposeLock.Dispose();
             }
+        }
 
-            _renewalTimers.Clear();
-            _activeLeaderships.Clear();
+        public void Dispose()
+        {
+            if (_disposed) return;
+
+            // Synchronously dispose - this is a fallback, prefer DisposeAsync
+            _disposeLock.Wait();
+            try
+            {
+                if (_disposed) return;
+                _disposed = true;
+
+                // Cancel all maintenance tasks
+                foreach (var state in _maintenanceStates.Values)
+                {
+                    state.Dispose();
+                }
+
+                // Best-effort release of leaderships
+                var db = _redis.GetDatabase();
+                foreach (var serviceName in _leadershipStates.Keys)
+                {
+                    try
+                    {
+                        var lockKey = GetLockKey(serviceName);
+                        var script = @"
+                            if redis.call('GET', KEYS[1]) == ARGV[1] then
+                                return redis.call('DEL', KEYS[1])
+                            else
+                                return 0
+                            end";
+
+                        db.ScriptEvaluate(script, new RedisKey[] { lockKey }, new RedisValue[] { _instanceId });
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error releasing leadership for service {ServiceName} during disposal", serviceName);
+                    }
+                }
+
+                _maintenanceStates.Clear();
+                _leadershipStates.Clear();
+            }
+            finally
+            {
+                _disposeLock.Release();
+                _disposeLock.Dispose();
+            }
         }
     }
 }
