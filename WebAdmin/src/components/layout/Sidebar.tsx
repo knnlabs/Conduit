@@ -32,8 +32,8 @@ const navigationSections = [
       { id: 'dashboard', label: 'Dashboard', href: '/', icon: IconDashboard },
       { id: 'virtualkeys', label: 'Virtual Keys', href: '/virtualkeys', icon: IconKey },
       { id: 'virtualkeys-groups', label: 'Virtual Key Groups', href: '/virtualkeys/groups', icon: IconUsers },
-      { id: 'virtualkeys-discovery-preview', label: 'Discovery Preview', href: '/virtualkeys/discovery-preview', icon: IconEye },
       { id: 'request-logs', label: 'Request Logs', href: '/request-logs', icon: IconListDetails },
+      { id: 'usage-analytics', label: 'Usage Analytics', href: '/usage-analytics', icon: IconChartBar },
     ]
   },
   {
@@ -59,24 +59,18 @@ const navigationSections = [
     items: [
       { id: 'ip-filtering', label: 'IP Filtering', href: '/ip-filtering', icon: IconShield },
       { id: 'system-info', label: 'System Info', href: '/system-info', icon: IconInfoCircle },
+      { id: 'virtualkeys-discovery-preview', label: 'Discovery Preview', href: '/virtualkeys/discovery-preview', icon: IconEye },
+      { id: 'media-assets', label: 'Media Assets', href: '/media-assets', icon: IconDatabase },
+      { id: 'media-cleanup', label: 'Media Cleanup', href: '/media-assets/cleanup-status', icon: IconCoin },
       { id: 'provider-errors', label: 'Provider Errors', href: '/provider-errors', icon: IconBugOff },
     ]
   },
   {
-    title: 'Media & Communication',
+    title: 'Playground',
     items: [
       { id: 'images', label: 'Images', href: '/images', icon: IconPhoto },
       { id: 'videos', label: 'Videos', href: '/videos', icon: IconVideo },
       { id: 'chat', label: 'Chat', href: '/chat', icon: IconMessage },
-      { id: 'media-assets', label: 'Media Assets', href: '/media-assets', icon: IconDatabase },
-    ]
-  },
-  {
-    title: 'Analytics & Reporting',
-    items: [
-      { id: 'usage-analytics', label: 'Usage Analytics', href: '/usage-analytics', icon: IconChartBar },
-      { id: 'cost-dashboard', label: 'Cost Dashboard', href: '/cost-dashboard', icon: IconCoin },
-      { id: 'model-costs', label: 'Model Pricing', href: '/model-costs', icon: IconCoin },
     ]
   }
 ];

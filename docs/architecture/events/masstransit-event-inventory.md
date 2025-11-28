@@ -77,11 +77,8 @@ All events use `PartitionKey = VirtualKeyId`:
   - Uses `PartitionKey = TaskId` for ordered delivery per task
   - Consumed by `WebhookDeliveryConsumer` with exponential backoff and circuit breakers
 
-**Media Cleanup Chain:** (Consumer-driven event flow)
-- `MediaRetentionPolicyConsumer` → Evaluates retention policies
-- `MediaCleanupBatchConsumer` → Batches media for deletion
-- `R2BatchDeleteConsumer` → Executes R2/S3 batch deletes (rate-limited for free tier)
-- `MediaCleanupScheduleConsumer` → Schedules periodic cleanup scans
+**Media Cleanup:** (Admin API - unified BackgroundService)
+- `MediaCleanupService` → Single background service with distributed locking that handles scheduling, retention evaluation, and deletion directly (no MassTransit events used)
 
 ---
 
@@ -266,10 +263,8 @@ The system handles **1,000+ async tasks/minute** with proper backpressure and fa
 | `video-generation-events` | 25 | 50 | Quorum | Video generation orchestration |
 | `image-generation-events` | 25 | 50 | Quorum + SAC* | Image generation orchestration |
 | `spend-update-events` | 10 | 1 | Quorum + SAC* | Ordered spend updates |
-| `media-retention-checks` | 5 | 3 | Quorum | Retention policy evaluation |
-| `media-cleanup-batches` | 10 | 5 | Quorum | Media deletion batches |
-| `r2-batch-operations` | 2 | 1 | Quorum + SAC* | R2 rate-limited operations |
-| `media-cleanup-schedule` | 1 | 1 | Quorum + SAC* | Cleanup scheduling |
+| ~~`media-retention-checks`~~ | - | - | - | *Removed - now handled by MediaCleanupService* |
+| ~~`media-cleanup-batches`~~ | - | - | - | *Removed - now handled by MediaCleanupService* |
 
 *SAC = Single Active Consumer
 

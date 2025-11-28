@@ -11,7 +11,7 @@ namespace ConduitLLM.Admin.Controllers
     /// </summary>
     [ApiController]
     [Route("api/admin/media-retention")]
-    [Authorize(Policy = "RequireAdminKey")]
+    [Authorize(Policy = "MasterKeyPolicy")]
     public class MediaRetentionController : ControllerBase
     {
         private readonly IConfigurationDbContext _context;
@@ -52,7 +52,6 @@ namespace ConduitLLM.Admin.Controllers
                     SoftDeleteGracePeriodDays = p.SoftDeleteGracePeriodDays,
                     RespectRecentAccess = p.RespectRecentAccess,
                     RecentAccessWindowDays = p.RecentAccessWindowDays,
-                    IsProTier = p.IsProTier,
                     IsDefault = p.IsDefault,
                     MaxStorageSizeBytes = p.MaxStorageSizeBytes,
                     MaxFileCount = p.MaxFileCount,
@@ -97,7 +96,6 @@ namespace ConduitLLM.Admin.Controllers
                 SoftDeleteGracePeriodDays = policy.SoftDeleteGracePeriodDays,
                 RespectRecentAccess = policy.RespectRecentAccess,
                 RecentAccessWindowDays = policy.RecentAccessWindowDays,
-                IsProTier = policy.IsProTier,
                 IsDefault = policy.IsDefault,
                 MaxStorageSizeBytes = policy.MaxStorageSizeBytes,
                 MaxFileCount = policy.MaxFileCount,
@@ -152,7 +150,6 @@ namespace ConduitLLM.Admin.Controllers
                 SoftDeleteGracePeriodDays = request.SoftDeleteGracePeriodDays,
                 RespectRecentAccess = request.RespectRecentAccess,
                 RecentAccessWindowDays = request.RecentAccessWindowDays,
-                IsProTier = request.IsProTier,
                 IsDefault = request.IsDefault,
                 MaxStorageSizeBytes = request.MaxStorageSizeBytes,
                 MaxFileCount = request.MaxFileCount,
@@ -177,7 +174,6 @@ namespace ConduitLLM.Admin.Controllers
                 SoftDeleteGracePeriodDays = policy.SoftDeleteGracePeriodDays,
                 RespectRecentAccess = policy.RespectRecentAccess,
                 RecentAccessWindowDays = policy.RecentAccessWindowDays,
-                IsProTier = policy.IsProTier,
                 IsDefault = policy.IsDefault,
                 MaxStorageSizeBytes = policy.MaxStorageSizeBytes,
                 MaxFileCount = policy.MaxFileCount,
@@ -229,7 +225,6 @@ namespace ConduitLLM.Admin.Controllers
             policy.SoftDeleteGracePeriodDays = request.SoftDeleteGracePeriodDays ?? policy.SoftDeleteGracePeriodDays;
             policy.RespectRecentAccess = request.RespectRecentAccess ?? policy.RespectRecentAccess;
             policy.RecentAccessWindowDays = request.RecentAccessWindowDays ?? policy.RecentAccessWindowDays;
-            policy.IsProTier = request.IsProTier ?? policy.IsProTier;
             policy.IsDefault = request.IsDefault ?? policy.IsDefault;
             policy.MaxStorageSizeBytes = request.MaxStorageSizeBytes ?? policy.MaxStorageSizeBytes;
             policy.MaxFileCount = request.MaxFileCount ?? policy.MaxFileCount;
@@ -251,7 +246,6 @@ namespace ConduitLLM.Admin.Controllers
                 SoftDeleteGracePeriodDays = policy.SoftDeleteGracePeriodDays,
                 RespectRecentAccess = policy.RespectRecentAccess,
                 RecentAccessWindowDays = policy.RecentAccessWindowDays,
-                IsProTier = policy.IsProTier,
                 IsDefault = policy.IsDefault,
                 MaxStorageSizeBytes = policy.MaxStorageSizeBytes,
                 MaxFileCount = policy.MaxFileCount,
@@ -332,6 +326,46 @@ namespace ConduitLLM.Admin.Controllers
         }
 
         /// <summary>
+        /// Sets a policy as the new default retention policy.
+        /// Only one policy can be the default at a time.
+        /// </summary>
+        /// <param name="id">Policy ID to set as default</param>
+        /// <returns>Success result</returns>
+        [HttpPost("policies/{id}/set-default")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> SetDefaultPolicy(int id)
+        {
+            var policy = await _context.MediaRetentionPolicies.FindAsync(id);
+            if (policy == null)
+            {
+                return NotFound(new { message = $"Policy with ID {id} not found" });
+            }
+
+            if (!policy.IsActive)
+            {
+                return BadRequest(new { message = "Cannot set an inactive policy as default" });
+            }
+
+            // Clear existing default
+            var currentDefault = await _context.MediaRetentionPolicies
+                .FirstOrDefaultAsync(p => p.IsDefault && p.Id != id);
+            if (currentDefault != null)
+            {
+                currentDefault.IsDefault = false;
+            }
+
+            // Set new default
+            policy.IsDefault = true;
+            policy.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Set retention policy {PolicyId} '{PolicyName}' as default", policy.Id, policy.Name);
+
+            return Ok(new { message = $"'{policy.Name}' is now the default retention policy" });
+        }
+
+        /// <summary>
         /// Trigger a manual media cleanup for a specific virtual key group.
         /// </summary>
         /// <param name="groupId">Virtual key group ID</param>
@@ -408,12 +442,7 @@ namespace ConduitLLM.Admin.Controllers
         /// Gets or sets the window in days for considering recent access.
         /// </summary>
         public int RecentAccessWindowDays { get; set; }
-        
-        /// <summary>
-        /// Gets or sets a value indicating whether this is a pro tier policy.
-        /// </summary>
-        public bool IsProTier { get; set; }
-        
+
         /// <summary>
         /// Gets or sets a value indicating whether this is the default policy.
         /// </summary>
@@ -526,22 +555,17 @@ namespace ConduitLLM.Admin.Controllers
         /// Gets or sets the window in days for considering recent access.
         /// </summary>
         public int RecentAccessWindowDays { get; set; } = 7;
-        
-        /// <summary>
-        /// Gets or sets a value indicating whether this is a pro tier policy.
-        /// </summary>
-        public bool IsProTier { get; set; }
-        
+
         /// <summary>
         /// Gets or sets a value indicating whether this is the default policy.
         /// </summary>
         public bool IsDefault { get; set; }
-        
+
         /// <summary>
         /// Gets or sets the maximum storage size in bytes allowed for this policy.
         /// </summary>
         public long? MaxStorageSizeBytes { get; set; }
-        
+
         /// <summary>
         /// Gets or sets the maximum number of files allowed for this policy.
         /// </summary>
@@ -592,12 +616,7 @@ namespace ConduitLLM.Admin.Controllers
         /// Gets or sets the window in days for considering recent access.
         /// </summary>
         public int? RecentAccessWindowDays { get; set; }
-        
-        /// <summary>
-        /// Gets or sets a value indicating whether this is a pro tier policy.
-        /// </summary>
-        public bool? IsProTier { get; set; }
-        
+
         /// <summary>
         /// Gets or sets a value indicating whether this is the default policy.
         /// </summary>

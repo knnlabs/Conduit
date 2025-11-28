@@ -15,7 +15,7 @@ namespace ConduitLLM.Configuration.Entities
         public int Id { get; set; }
 
         /// <summary>
-        /// Name of the retention policy (e.g., "Default", "Pro Tier", "Enterprise").
+        /// Name of the retention policy (e.g., "Default", "Standard", "Enterprise").
         /// </summary>
         [Required]
         [MaxLength(100)]
@@ -62,11 +62,6 @@ namespace ConduitLLM.Configuration.Entities
         /// Only applies if RespectRecentAccess is true.
         /// </summary>
         public int RecentAccessWindowDays { get; set; } = 7;
-
-        /// <summary>
-        /// Indicates if this is a pro/premium tier policy with extended retention.
-        /// </summary>
-        public bool IsProTier { get; set; } = false;
 
         /// <summary>
         /// Indicates if this is the default policy for new virtual key groups.

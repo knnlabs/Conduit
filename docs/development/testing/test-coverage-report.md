@@ -39,11 +39,11 @@
    - Rate Limiting Services
    - Virtual Key Services
 
-3. **Background Services** (0% coverage)
-   - HealthMonitoringService
-   - MaintenanceTasksBackgroundService
-   - MediaCleanupBackgroundService
-   - MetricsReportingBackgroundService
+3. **Background Services** (partial coverage)
+   - HealthMonitoringService (0%)
+   - MaintenanceTasksBackgroundService (0%)
+   - MediaCleanupService (covered - see MediaCleanupServiceTests)
+   - MetricsReportingBackgroundService (0%)
 
 4. **Event-Driven Architecture** (0% coverage)
    - All event handlers

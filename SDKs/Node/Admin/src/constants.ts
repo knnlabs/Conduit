@@ -188,6 +188,18 @@ export const ENDPOINTS = {
       ORPHANED: '/api/admin/Media/cleanup/orphaned',
       PRUNE: '/api/admin/Media/cleanup/prune',
     },
+    // Media Cleanup Service Status endpoints
+    CLEANUP_SERVICE: {
+      STATUS: '/api/admin/media-cleanup/status',
+      ENABLED: '/api/admin/media-cleanup/enabled',
+      SIMPLE_RETENTION: '/api/admin/media-cleanup/simple-retention',
+    },
+    // Media Retention Policy endpoints
+    RETENTION_POLICIES: {
+      BASE: '/api/admin/media-retention/policies',
+      BY_ID: (id: number) => `/api/admin/media-retention/policies/${id}`,
+      SET_DEFAULT: (id: number) => `/api/admin/media-retention/policies/${id}/set-default`,
+    },
   },
 
   // Database Management

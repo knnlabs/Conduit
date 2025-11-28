@@ -145,6 +145,9 @@ public partial class Program
         // Check if RabbitMQ is configured
         var useRabbitMq = !string.IsNullOrEmpty(rabbitMqConfig.Host) && rabbitMqConfig.Host != "localhost";
 
+        // Add media lifecycle services (scheduler, storage, distributed locking)
+        builder.Services.AddMediaLifecycleServices(builder.Configuration);
+
         // Register MassTransit event bus for Admin API
         builder.Services.AddMassTransit(x =>
         {
@@ -192,7 +195,6 @@ public partial class Program
                 Console.WriteLine("  - GlobalSettingChanged events (triggers cache invalidation in all instances)");
                 Console.WriteLine("[ConduitLLM.Admin] Event consuming ENABLED - Admin services will consume:");
                 Console.WriteLine("  - GlobalSettingChanged events (keeps Admin API cache synchronized)");
-                Console.WriteLine("  - ProviderHealthChanged events (forwards to Admin SignalR clients)");
             }
             else
             {
@@ -218,7 +220,6 @@ public partial class Program
                 Console.WriteLine("  - Without RabbitMQ, only the local Core API instance will be notified");
                 Console.WriteLine("[ConduitLLM.Admin] Event consuming ENABLED - Admin services will consume:");
                 Console.WriteLine("  - GlobalSettingChanged events (keeps Admin API cache synchronized)");
-                Console.WriteLine("  - ProviderHealthChanged events (forwards to Admin SignalR clients)");
             }
         });
 
@@ -270,6 +271,9 @@ public partial class Program
 
         // Run database migrations
         await app.RunDatabaseMigrationAsync();
+
+        // Seed default data (e.g., default retention policy)
+        await app.SeedDefaultDataAsync();
 
         // Configure the HTTP request pipeline
         if (app.Environment.IsDevelopment())

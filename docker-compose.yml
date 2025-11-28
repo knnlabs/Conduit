@@ -172,6 +172,15 @@ services:
       CacheInvalidation__BatchWindow: "00:00:00.100"  # 100ms
       CacheInvalidation__MaxBatchSize: "100"
       CacheInvalidation__EnableCoalescing: "true"
+      # Media Lifecycle Configuration (Admin API runs the cleanup service)
+      MediaLifecycle__SchedulerMode: "AdminApi"  # Run cleanup on Admin API
+      MediaLifecycle__DryRunMode: "true"  # Set to false to enable actual deletions
+      MediaLifecycle__ScheduleIntervalMinutes: "5"  # How often to run cleanup
+      MediaLifecycle__EnableSoftDelete: "true"
+      MediaLifecycle__SoftDeleteGracePeriodDays: "7"
+      MediaLifecycle__TestVirtualKeyGroups__0: "1"  # Test with group ID 1
+      MediaLifecycle__MaxBatchSize: "50"
+      MediaLifecycle__MonthlyDeleteBudget: "500000"
       # Discovery Cache configuration
       Discovery__CacheDurationMinutes: "360"  # 6 hours
       Discovery__EnableCaching: "true"
