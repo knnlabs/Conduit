@@ -1,4 +1,5 @@
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Core.Utilities;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.DTOs.IpFilter;
@@ -19,24 +20,34 @@ namespace ConduitLLM.Admin.Services;
 public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterService
 {
     private readonly IIpFilterRepository _ipFilterRepository;
+    private readonly IGlobalSettingRepository _globalSettingRepository;
     private readonly IOptionsMonitor<IpFilterOptions> _ipFilterOptions;
     private readonly ILogger<AdminIpFilterService> _logger;
+
+    // Setting keys for IP filter configuration
+    private const string SettingKeyEnabled = "IpFilter:Enabled";
+    private const string SettingKeyDefaultAllow = "IpFilter:DefaultAllow";
+    private const string SettingKeyBypassForAdminUi = "IpFilter:BypassForAdminUi";
+    private const string SettingKeyExcludedEndpoints = "IpFilter:ExcludedEndpoints";
 
     /// <summary>
     /// Initializes a new instance of the AdminIpFilterService class
     /// </summary>
     /// <param name="ipFilterRepository">The IP filter repository</param>
+    /// <param name="globalSettingRepository">The global settings repository for persisting IP filter settings</param>
     /// <param name="ipFilterOptions">The IP filter options</param>
     /// <param name="publishEndpoint">Optional event publishing endpoint (null if MassTransit not configured)</param>
     /// <param name="logger">The logger</param>
     public AdminIpFilterService(
         IIpFilterRepository ipFilterRepository,
+        IGlobalSettingRepository globalSettingRepository,
         IOptionsMonitor<IpFilterOptions> ipFilterOptions,
         IPublishEndpoint? publishEndpoint,
         ILogger<AdminIpFilterService> logger)
         : base(publishEndpoint, logger)
     {
         _ipFilterRepository = ipFilterRepository ?? throw new ArgumentNullException(nameof(ipFilterRepository));
+        _globalSettingRepository = globalSettingRepository ?? throw new ArgumentNullException(nameof(globalSettingRepository));
         _ipFilterOptions = ipFilterOptions ?? throw new ArgumentNullException(nameof(ipFilterOptions));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
@@ -288,41 +299,75 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     }
 
     /// <inheritdoc/>
-    public Task<IpFilterSettingsDto> GetIpFilterSettingsAsync()
+    public async Task<IpFilterSettingsDto> GetIpFilterSettingsAsync()
     {
         try
         {
             _logger.LogInformation("Getting IP filter settings");
 
+            // Try to get settings from database first
+            var enabledSetting = await _globalSettingRepository.GetByKeyAsync(SettingKeyEnabled);
+            var defaultAllowSetting = await _globalSettingRepository.GetByKeyAsync(SettingKeyDefaultAllow);
+            var bypassAdminUiSetting = await _globalSettingRepository.GetByKeyAsync(SettingKeyBypassForAdminUi);
+            var excludedEndpointsSetting = await _globalSettingRepository.GetByKeyAsync(SettingKeyExcludedEndpoints);
+
+            // Fall back to config file options if database settings don't exist
             var options = _ipFilterOptions.CurrentValue;
 
             var settings = new IpFilterSettingsDto
             {
-                IsEnabled = options.Enabled,
-                DefaultAllow = options.DefaultAllow,
-                BypassForAdminUi = options.BypassForAdminUi,
-                ExcludedEndpoints = options.ExcludedEndpoints.ToList()
+                IsEnabled = enabledSetting != null
+                    ? bool.TryParse(enabledSetting.Value, out var enabled) && enabled
+                    : options.Enabled,
+
+                DefaultAllow = defaultAllowSetting != null
+                    ? bool.TryParse(defaultAllowSetting.Value, out var defaultAllow) && defaultAllow
+                    : options.DefaultAllow,
+
+                BypassForAdminUi = bypassAdminUiSetting != null
+                    ? bool.TryParse(bypassAdminUiSetting.Value, out var bypass) && bypass
+                    : options.BypassForAdminUi,
+
+                ExcludedEndpoints = excludedEndpointsSetting != null
+                    ? DeserializeExcludedEndpoints(excludedEndpointsSetting.Value)
+                    : options.ExcludedEndpoints.ToList()
             };
 
-            return Task.FromResult(settings);
+            return settings;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting IP filter settings");
 
             // Return default settings on error
-            return Task.FromResult(new IpFilterSettingsDto
+            return new IpFilterSettingsDto
             {
                 IsEnabled = false,
                 DefaultAllow = true,
                 BypassForAdminUi = true,
                 ExcludedEndpoints = new List<string> { "/api/v1/health" }
-            });
+            };
+        }
+    }
+
+    /// <summary>
+    /// Deserializes the excluded endpoints JSON string to a list
+    /// </summary>
+    private List<string> DeserializeExcludedEndpoints(string json)
+    {
+        try
+        {
+            var endpoints = System.Text.Json.JsonSerializer.Deserialize<List<string>>(json);
+            return endpoints ?? new List<string> { "/api/v1/health" };
+        }
+        catch
+        {
+            return new List<string> { "/api/v1/health" };
         }
     }
 
     /// <inheritdoc/>
-    public Task<(bool Success, string? ErrorMessage)> UpdateIpFilterSettingsAsync(IpFilterSettingsDto settings)
+    public async Task<(bool Success, string? ErrorMessage)> UpdateIpFilterSettingsAsync(IpFilterSettingsDto settings)
     {
         try
         {
@@ -335,23 +380,51 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
                 settings.ExcludedEndpoints = new List<string>();
             }
 
-            // In a real implementation, we would update the appsettings.json file or a database settings table
-            // For now, we'll just log the settings and return success
+            // Persist settings to database using GlobalSettingRepository
+            await _globalSettingRepository.UpsertAsync(
+                SettingKeyEnabled,
+                settings.IsEnabled.ToString(),
+                "Whether IP filtering is enabled");
 
-            // Example code for updating a database-stored setting:
-            // await _settingsRepository.UpdateSettingAsync("IpFilter:Enabled", settings.IsEnabled.ToString());
-            // await _settingsRepository.UpdateSettingAsync("IpFilter:DefaultAllow", settings.DefaultAllow.ToString());
-            // await _settingsRepository.UpdateSettingAsync("IpFilter:BypassForAdminUi", settings.BypassForAdminUi.ToString());
-            // await _settingsRepository.UpdateSettingAsync("IpFilter:ExcludedEndpoints", JsonSerializer.Serialize(settings.ExcludedEndpoints));
+            await _globalSettingRepository.UpsertAsync(
+                SettingKeyDefaultAllow,
+                settings.DefaultAllow.ToString(),
+                "Default filter mode when no specific rules match (true = allow, false = deny)");
 
-            _logger.LogWarning("IP filter settings updated in memory only - actual settings update implementation needed");
+            await _globalSettingRepository.UpsertAsync(
+                SettingKeyBypassForAdminUi,
+                settings.BypassForAdminUi.ToString(),
+                "Whether to bypass filtering for admin UI access");
 
-            return Task.FromResult<(bool Success, string? ErrorMessage)>((true, null));
+            await _globalSettingRepository.UpsertAsync(
+                SettingKeyExcludedEndpoints,
+                System.Text.Json.JsonSerializer.Serialize(settings.ExcludedEndpoints),
+                "List of endpoints to exclude from IP filtering");
+
+            _logger.LogInformation("IP filter settings updated successfully in database");
+
+            // Publish event for cache invalidation across services
+            await PublishEventAsync(
+                new IpFilterChanged
+                {
+                    FilterId = 0, // Settings change, not a specific filter
+                    IpAddressOrCidr = "*",
+                    FilterType = "settings",
+                    IsEnabled = settings.IsEnabled,
+                    ChangeType = "SettingsUpdated",
+                    ChangedProperties = new[] { "IsEnabled", "DefaultAllow", "BypassForAdminUi", "ExcludedEndpoints" },
+                    Description = "IP filter settings updated",
+                    CorrelationId = Guid.NewGuid().ToString()
+                },
+                "update IP filter settings",
+                new { IsEnabled = settings.IsEnabled, DefaultAllow = settings.DefaultAllow });
+
+            return (true, null);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating IP filter settings");
-            return Task.FromResult<(bool Success, string? ErrorMessage)>((false, "An unexpected error occurred"));
+            return (false, "An unexpected error occurred while saving settings");
         }
     }
 
@@ -383,36 +456,57 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
 
             // Get all enabled IP filters
             var filters = await GetEnabledFiltersAsync();
+            var filtersList = filters.ToList();
 
-            // Check whitelist (allow) filters
-            var whitelistFilters = filters.Where(f => f.FilterType == IpFilterConstants.WHITELIST).ToList();
-            foreach (var filter in whitelistFilters)
-            {
-                if (IpAddressMatchesFilter(ipAddress, filter.IpAddressOrCidr))
-                {
-                    return new IpCheckResult { IsAllowed = true };
-                }
-            }
+            var hasWhitelist = filtersList.Any(f => f.FilterType == IpFilterConstants.WHITELIST);
+            var hasBlacklist = filtersList.Any(f => f.FilterType == IpFilterConstants.BLACKLIST);
 
-            // Check blacklist (deny) filters
-            var blacklistFilters = filters.Where(f => f.FilterType == IpFilterConstants.BLACKLIST).ToList();
-            foreach (var filter in blacklistFilters)
+            // Check blacklist FIRST - if IP is blacklisted, deny immediately
+            // This is the correct order: blacklist takes precedence
+            if (hasBlacklist)
             {
-                if (IpAddressMatchesFilter(ipAddress, filter.IpAddressOrCidr))
+                foreach (var filter in filtersList.Where(f => f.FilterType == IpFilterConstants.BLACKLIST))
                 {
-                    return new IpCheckResult
+                    if (IpAddressHelper.IsIpInRange(ipAddress, filter.IpAddressOrCidr))
                     {
-                        IsAllowed = false,
-                        DeniedReason = $"IP address matched deny filter: {filter.Description}"
-                    };
+                        _logger.LogWarning("IP {IpAddress} is blacklisted by rule {Rule}",
+                            LoggingSanitizer.S(ipAddress), LoggingSanitizer.S(filter.IpAddressOrCidr));
+                        return new IpCheckResult
+                        {
+                            IsAllowed = false,
+                            DeniedReason = $"IP address matched deny filter: {filter.Description ?? filter.IpAddressOrCidr}"
+                        };
+                    }
                 }
             }
 
-            // No matches found, use default policy
+            // Check whitelist - if there's a whitelist, IP must be in it
+            if (hasWhitelist)
+            {
+                foreach (var filter in filtersList.Where(f => f.FilterType == IpFilterConstants.WHITELIST))
+                {
+                    if (IpAddressHelper.IsIpInRange(ipAddress, filter.IpAddressOrCidr))
+                    {
+                        _logger.LogDebug("IP {IpAddress} is whitelisted by rule {Rule}",
+                            LoggingSanitizer.S(ipAddress), LoggingSanitizer.S(filter.IpAddressOrCidr));
+                        return new IpCheckResult { IsAllowed = true };
+                    }
+                }
+
+                // Has whitelist but IP not in it
+                _logger.LogWarning("IP {IpAddress} is not in whitelist", LoggingSanitizer.S(ipAddress));
+                return new IpCheckResult
+                {
+                    IsAllowed = false,
+                    DeniedReason = "IP address did not match any allow filters"
+                };
+            }
+
+            // No whitelist and not blacklisted - use default policy
             return new IpCheckResult
             {
                 IsAllowed = settings.DefaultAllow,
-                DeniedReason = settings.DefaultAllow ? null : "IP address did not match any allow filters"
+                DeniedReason = settings.DefaultAllow ? null : "IP address did not match any allow filters (default deny)"
             };
         }
         catch (Exception ex)
@@ -443,105 +537,21 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
             Description = entity.Description,
             IsEnabled = entity.IsEnabled,
             CreatedAt = entity.CreatedAt,
-            UpdatedAt = entity.UpdatedAt
+            UpdatedAt = entity.UpdatedAt,
+            CreatedBy = entity.CreatedBy,
+            UpdatedBy = entity.UpdatedBy
         };
     }
 
     /// <summary>
-    /// Validates if a string is a valid IP address or CIDR notation
+    /// Validates if a string is a valid IP address or CIDR notation.
+    /// Delegates to IpAddressHelper for consistent validation.
     /// </summary>
     /// <param name="ipAddressOrCidr">The string to validate</param>
     /// <returns>True if valid, false otherwise</returns>
     private bool IsValidIpAddressOrCidr(string ipAddressOrCidr)
     {
-        if (string.IsNullOrWhiteSpace(ipAddressOrCidr))
-        {
-            return false;
-        }
-
-        try
-        {
-            // Check if it's a CIDR notation (e.g., 192.168.1.0/24)
-            if (ipAddressOrCidr.Contains('/'))
-            {
-                var parts = ipAddressOrCidr.Split('/');
-                if (parts.Length != 2)
-                {
-                    return false;
-                }
-
-                // Validate IP part
-                if (!System.Net.IPAddress.TryParse(parts[0], out _))
-                {
-                    return false;
-                }
-
-                // Validate prefix length
-                if (!int.TryParse(parts[1], out int prefixLength))
-                {
-                    return false;
-                }
-
-                // For IPv4, prefix length should be between 0 and 32
-                // For IPv6, prefix length should be between 0 and 128
-                // We'll accept 0-128 for simplicity
-                return prefixLength >= 0 && prefixLength <= 128;
-            }
-            else
-            {
-                // It's a simple IP address
-                return System.Net.IPAddress.TryParse(ipAddressOrCidr, out _);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error validating IP address or CIDR: {IpAddressOrCidr}", LoggingSanitizer.S(ipAddressOrCidr));
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// Checks if an IP address matches a filter (exact match or CIDR range)
-    /// </summary>
-    /// <param name="ipAddress">The IP address to check</param>
-    /// <param name="filterValue">The filter value (IP address or CIDR notation)</param>
-    /// <returns>True if the IP matches the filter, false otherwise</returns>
-    private bool IpAddressMatchesFilter(string ipAddress, string filterValue)
-    {
-        // Simple exact match
-        if (ipAddress == filterValue)
-        {
-            return true;
-        }
-
-        // If the filter is a CIDR range
-        if (filterValue.Contains('/'))
-        {
-            try
-            {
-                // This is a simplified implementation that would need to be replaced
-                // with actual CIDR range matching logic in a production environment
-
-                var parts = filterValue.Split('/');
-                if (parts.Length != 2)
-                {
-                    return false;
-                }
-
-                var networkAddress = parts[0];
-
-                // For a very basic check, see if the IP starts with the same network portion
-                // This is NOT accurate for real CIDR matching and is just a placeholder
-                return ipAddress.StartsWith(networkAddress.Substring(0, networkAddress.LastIndexOf('.')));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Error checking IP {IpAddress} against CIDR {CidrRange}", LoggingSanitizer.S(ipAddress), LoggingSanitizer.S(filterValue));
-                return false;
-            }
-        }
-
-        return false;
+        return IpAddressHelper.IsValidIpAddressOrCidr(ipAddressOrCidr);
     }
 
     /// <inheritdoc/>

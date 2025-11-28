@@ -55,4 +55,14 @@ public class IpFilterDto
     /// Date when the filter was last updated
     /// </summary>
     public DateTime UpdatedAt { get; set; }
+
+    /// <summary>
+    /// Username or identifier of who created the filter
+    /// </summary>
+    public string? CreatedBy { get; set; }
+
+    /// <summary>
+    /// Username or identifier of who last updated the filter
+    /// </summary>
+    public string? UpdatedBy { get; set; }
 }

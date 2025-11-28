@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Utilities;
 using ConduitLLM.Http.Services;
 using ConduitLLM.Security.Interfaces;
 
@@ -25,9 +26,9 @@ namespace ConduitLLM.Http.Middleware
         /// </summary>
         public async Task InvokeAsync(HttpContext context, ISecurityService securityService, ISecurityEventMonitoringService? securityEventMonitoring = null)
         {
-            var clientIp = GetClientIpAddress(context);
+            var clientIp = IpAddressHelper.GetClientIpAddress(context);
             var endpoint = context.Request.Path.Value ?? "";
-            
+
             // Pass along any authentication failure info from VirtualKeyAuthenticationMiddleware
             if (context.Response.StatusCode == 401)
             {
@@ -39,20 +40,20 @@ namespace ConduitLLM.Http.Middleware
 
             if (!result.IsAllowed)
             {
-                _logger.LogWarning("Request blocked: {Reason} for path {Path} from IP {IP}", 
-                    result.Reason, 
+                _logger.LogWarning("Request blocked: {Reason} for path {Path} from IP {IP}",
+                    result.Reason,
                     context.Request.Path,
-                    context.Connection.RemoteIpAddress);
+                    clientIp);
 
                 // Record security events based on the reason
                 if (securityEventMonitoring != null)
                 {
                     var virtualKey = context.Items["AttemptedKey"] as string ?? "";
-                    
+
                     if (result.Reason.Contains("rate limit", StringComparison.OrdinalIgnoreCase))
                     {
-                        var limitType = result.Headers.ContainsKey("X-RateLimit-Scope") 
-                            ? result.Headers["X-RateLimit-Scope"] 
+                        var limitType = result.Headers.ContainsKey("X-RateLimit-Scope")
+                            ? result.Headers["X-RateLimit-Scope"]
                             : "general";
                         securityEventMonitoring.RecordRateLimitViolation(clientIp, virtualKey, endpoint, limitType);
                     }
@@ -67,7 +68,7 @@ namespace ConduitLLM.Http.Middleware
                 }
 
                 context.Response.StatusCode = result.StatusCode ?? 403;
-                
+
                 // Add any response headers
                 foreach (var header in result.Headers)
                 {
@@ -75,8 +76,8 @@ namespace ConduitLLM.Http.Middleware
                 }
 
                 // Return JSON error response
-                await context.Response.WriteAsJsonAsync(new 
-                { 
+                await context.Response.WriteAsJsonAsync(new
+                {
                     error = result.Reason,
                     code = result.StatusCode
                 });
@@ -84,31 +85,6 @@ namespace ConduitLLM.Http.Middleware
             }
 
             await _next(context);
-        }
-
-        private string GetClientIpAddress(HttpContext context)
-        {
-            // Check X-Forwarded-For header first (for reverse proxies)
-            var forwardedFor = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
-            if (!string.IsNullOrEmpty(forwardedFor))
-            {
-                // Take the first IP in the chain
-                var ip = forwardedFor.Split(',').First().Trim();
-                if (System.Net.IPAddress.TryParse(ip, out _))
-                {
-                    return ip;
-                }
-            }
-
-            // Check X-Real-IP header
-            var realIp = context.Request.Headers["X-Real-IP"].FirstOrDefault();
-            if (!string.IsNullOrEmpty(realIp) && System.Net.IPAddress.TryParse(realIp, out _))
-            {
-                return realIp;
-            }
-
-            // Fall back to direct connection IP
-            return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         }
     }
 

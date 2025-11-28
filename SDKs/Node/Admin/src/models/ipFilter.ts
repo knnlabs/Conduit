@@ -83,18 +83,39 @@ export interface IpFilterFilters extends FilterOptions {
 }
 
 export interface IpFilterStatistics {
-  totalFilters: number;
-  enabledFilters: number;
-  allowFilters: number;
-  denyFilters: number;
-  totalMatches: number;
-  recentMatches: {
+  /** Total number of IP filter rules */
+  totalRules: number;
+  /** Number of enabled rules */
+  enabledRules: number;
+  /** Number of disabled rules */
+  disabledRules: number;
+  /** Number of whitelist (allow) rules */
+  whitelistRules: number;
+  /** Number of blacklist (deny) rules */
+  blacklistRules: number;
+  /** Total number of blocked requests (requires server-side tracking) */
+  totalBlockedRequests: number;
+  /** When rules were last updated */
+  lastUpdated: string;
+  /** @deprecated Use totalRules */
+  totalFilters?: number;
+  /** @deprecated Use enabledRules */
+  enabledFilters?: number;
+  /** @deprecated Use whitelistRules */
+  allowFilters?: number;
+  /** @deprecated Use blacklistRules */
+  denyFilters?: number;
+  /** @deprecated Requires server-side tracking */
+  totalMatches?: number;
+  /** @deprecated Requires server-side tracking */
+  recentMatches?: {
     timestamp: string;
     ipAddress: string;
     filterName: string;
     action: 'allowed' | 'denied';
   }[];
-  topMatchedFilters: {
+  /** @deprecated Requires server-side tracking */
+  topMatchedFilters?: {
     filterId: number;
     filterName: string;
     matchCount: number;
@@ -118,10 +139,25 @@ export interface BulkIpFilterResponse {
 }
 
 export interface IpFilterValidationResult {
+  /** Whether the IP/CIDR is valid */
   isValid: boolean;
-  errors: string[];
-  warnings: string[];
+  /** Error message if invalid */
+  error?: string;
+  /** Parsed IP address portion */
+  ipAddress?: string;
+  /** Parsed CIDR prefix length */
+  prefixLength?: number;
+  /** Whether the IP is IPv6 */
+  isIpv6?: boolean;
+  /** Normalized CIDR string */
+  normalizedCidr?: string;
+  /** @deprecated Use error */
+  errors?: string[];
+  /** @deprecated Not currently implemented */
+  warnings?: string[];
+  /** @deprecated Not currently implemented */
   suggestedCidr?: string;
+  /** @deprecated Requires server-side implementation */
   overlappingFilters?: {
     id: number;
     name: string;

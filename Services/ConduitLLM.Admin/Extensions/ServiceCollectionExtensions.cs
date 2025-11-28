@@ -109,11 +109,12 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAdminIpFilterService>(serviceProvider =>
         {
             var ipFilterRepository = serviceProvider.GetRequiredService<IIpFilterRepository>();
+            var globalSettingRepository = serviceProvider.GetRequiredService<IGlobalSettingRepository>();
             var ipFilterOptions = serviceProvider.GetRequiredService<IOptionsMonitor<IpFilterOptions>>();
             var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
             var logger = serviceProvider.GetRequiredService<ILogger<AdminIpFilterService>>();
-            
-            return new AdminIpFilterService(ipFilterRepository, ipFilterOptions, publishEndpoint, logger);
+
+            return new AdminIpFilterService(ipFilterRepository, globalSettingRepository, ipFilterOptions, publishEndpoint, logger);
         });
         services.AddScoped<IAdminSystemInfoService, AdminSystemInfoService>();
         services.AddScoped<IAdminNotificationService, AdminNotificationService>();

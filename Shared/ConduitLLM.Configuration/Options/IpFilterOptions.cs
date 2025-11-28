@@ -1,7 +1,8 @@
 namespace ConduitLLM.Configuration.Options;
 
 /// <summary>
-/// Configuration options for IP filtering
+/// Configuration options for IP filtering.
+/// IP filtering supports both IPv4 and IPv6 addresses and CIDR ranges.
 /// </summary>
 public class IpFilterOptions
 {
@@ -19,11 +20,6 @@ public class IpFilterOptions
     /// Default filter mode when no specific rules match (true = allow, false = deny)
     /// </summary>
     public bool DefaultAllow { get; set; } = true;
-
-    /// <summary>
-    /// Whether to enable IPv6 filtering support
-    /// </summary>
-    public bool EnableIpv6 { get; set; } = true;
 
     /// <summary>
     /// Whether to bypass filtering for admin UI access (leave true for safety)
