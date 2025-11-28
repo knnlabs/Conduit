@@ -26,6 +26,13 @@ namespace ConduitLLM.Admin.Services
         // Rate limiter for concurrent storage operations
         private static readonly SemaphoreSlim _rateLimiter = new(5, 5);
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MediaCleanupService"/> class.
+        /// </summary>
+        /// <param name="serviceScopeFactory">Factory for creating service scopes</param>
+        /// <param name="lockService">Distributed lock service for leader election</param>
+        /// <param name="options">Media lifecycle configuration options</param>
+        /// <param name="logger">Logger instance</param>
         public MediaCleanupService(
             IServiceScopeFactory serviceScopeFactory,
             IDistributedLockService lockService,
@@ -39,6 +46,7 @@ namespace ConduitLLM.Admin.Services
             _instanceId = Guid.NewGuid().ToString("N")[..8];
         }
 
+        /// <inheritdoc />
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             if (!_options.IsSchedulerEnabled)
@@ -554,6 +562,7 @@ namespace ConduitLLM.Admin.Services
             }
         }
 
+        /// <inheritdoc />
         public override async Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation(

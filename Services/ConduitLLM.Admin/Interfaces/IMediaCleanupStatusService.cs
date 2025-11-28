@@ -20,6 +20,7 @@ namespace ConduitLLM.Admin.Interfaces
         /// <param name="durationSeconds">Duration of the run</param>
         /// <param name="status">Status message (e.g., "Completed", "Partial", "Failed")</param>
         /// <param name="leaderInstanceId">ID of the instance that ran the cleanup</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         Task RecordRunCompletionAsync(
             int filesDeleted,
             long bytesFreed,
@@ -50,6 +51,7 @@ namespace ConduitLLM.Admin.Interfaces
         /// Pass null to clear the override and use policy-based retention.
         /// </summary>
         /// <param name="days">Retention days (1-365), or null to clear</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         Task SetSimpleRetentionOverrideAsync(int? days, CancellationToken cancellationToken = default);
     }
 }
