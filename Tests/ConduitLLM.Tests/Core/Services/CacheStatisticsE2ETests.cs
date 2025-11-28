@@ -198,12 +198,12 @@ namespace ConduitLLM.Tests.Core.Services
                     return setData[keyStr].Remove(value.ToString());
                 });
 
-            // String operations
-            _mockDatabase.Setup(db => db.StringSetAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<TimeSpan?>(), It.IsAny<bool>(), It.IsAny<When>(), It.IsAny<CommandFlags>()))
-                .ReturnsAsync((RedisKey key, RedisValue value, TimeSpan? expiry, bool keepTtl, When when, CommandFlags flags) =>
+            // String operations - overload with Expiration and ValueCondition types
+            _mockDatabase.Setup(db => db.StringSetAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<Expiration>(), It.IsAny<ValueCondition>(), It.IsAny<CommandFlags>()))
+                .Returns((RedisKey key, RedisValue value, Expiration expiry, ValueCondition when, CommandFlags flags) =>
                 {
                     stringData[key.ToString()] = value.ToString();
-                    return true;
+                    return Task.FromResult(true);
                 });
 
             _mockDatabase.Setup(db => db.StringGetAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))

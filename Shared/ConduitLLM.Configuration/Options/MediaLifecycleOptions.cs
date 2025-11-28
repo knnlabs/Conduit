@@ -23,20 +23,9 @@ namespace ConduitLLM.Configuration.Options
         public bool Enabled { get; set; } = false;
 
         /// <summary>
-        /// Legacy scheduler mode for backwards compatibility.
-        /// Use the simpler 'Enabled' property instead.
-        /// Values: "Disabled", "Enabled" (or legacy "AdminApi", "CoreApi", "Any")
+        /// Determines if the scheduler should run.
         /// </summary>
-        [Obsolete("Use the 'Enabled' property instead. This property is kept for backwards compatibility.")]
-        public string SchedulerMode { get; set; } = "Disabled";
-
-        /// <summary>
-        /// Determines if the scheduler should run based on Enabled property or legacy SchedulerMode.
-        /// </summary>
-        public bool IsSchedulerEnabled =>
-            Enabled ||
-            (!string.IsNullOrEmpty(SchedulerMode) &&
-             !SchedulerMode.Equals("Disabled", StringComparison.OrdinalIgnoreCase));
+        public bool IsSchedulerEnabled => Enabled;
 
         /// <summary>
         /// Interval between scheduled cleanup runs in minutes.

@@ -220,14 +220,15 @@ namespace ConduitLLM.Tests.Core.Services
                     }
                 });
 
-            _mockDatabase.Setup(db => db.StringSetAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<TimeSpan?>(), It.IsAny<bool>(), It.IsAny<When>(), It.IsAny<CommandFlags>()))
-                .ReturnsAsync((RedisKey key, RedisValue value, TimeSpan? expiry, bool keepTtl, When when, CommandFlags flags) =>
+            // StringSetAsync - overload with Expiration and ValueCondition types
+            _mockDatabase.Setup(db => db.StringSetAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<Expiration>(), It.IsAny<ValueCondition>(), It.IsAny<CommandFlags>()))
+                .Returns((RedisKey key, RedisValue value, Expiration expiry, ValueCondition when, CommandFlags flags) =>
                 {
                     lock (_redisData)
                     {
                         _redisData[$"string:{key}"] = value.ToString();
-                        return true;
                     }
+                    return Task.FromResult(true);
                 });
 
             // Add mock for hash set operations (alerts)

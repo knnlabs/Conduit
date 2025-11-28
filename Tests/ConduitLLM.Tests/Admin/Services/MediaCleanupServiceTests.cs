@@ -426,42 +426,6 @@ namespace ConduitLLM.Tests.Admin.Services
 
         #endregion
 
-        #region Legacy Configuration Tests
-
-        [Fact]
-        public void IsSchedulerEnabled_WithLegacySchedulerModeEnabled_ReturnsTrue()
-        {
-            // Arrange
-#pragma warning disable CS0618 // Type or member is obsolete
-            var options = new MediaLifecycleOptions
-            {
-                Enabled = false,
-                SchedulerMode = "AdminApi" // Legacy enabled mode
-            };
-#pragma warning restore CS0618
-
-            // Assert
-            options.IsSchedulerEnabled.Should().BeTrue();
-        }
-
-        [Fact]
-        public void IsSchedulerEnabled_WithLegacySchedulerModeDisabled_ReturnsFalse()
-        {
-            // Arrange
-#pragma warning disable CS0618 // Type or member is obsolete
-            var options = new MediaLifecycleOptions
-            {
-                Enabled = false,
-                SchedulerMode = "Disabled"
-            };
-#pragma warning restore CS0618
-
-            // Assert
-            options.IsSchedulerEnabled.Should().BeFalse();
-        }
-
-        #endregion
-
         #region Retention Policy Tests
 
         [Fact]

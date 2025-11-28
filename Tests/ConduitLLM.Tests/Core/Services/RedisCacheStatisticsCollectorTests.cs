@@ -38,6 +38,10 @@ namespace ConduitLLM.Tests.Core.Services
                 .ReturnsAsync(0L);
             _mockDatabase.Setup(db => db.PublishAsync(It.IsAny<RedisChannel>(), It.IsAny<RedisValue>(), It.IsAny<CommandFlags>()))
                 .ReturnsAsync(1L);
+            // Main 5-parameter overload (key, value, expiry, when, flags) - THIS IS WHAT THE CODE USES
+            _mockDatabase.Setup(db => db.StringSetAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<TimeSpan?>(), It.IsAny<When>(), It.IsAny<CommandFlags>()))
+                .ReturnsAsync(true);
+            // 6-parameter overload with keepTtl
             _mockDatabase.Setup(db => db.StringSetAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<TimeSpan?>(), It.IsAny<bool>(), It.IsAny<When>(), It.IsAny<CommandFlags>()))
                 .ReturnsAsync(true);
             _mockDatabase.Setup(db => db.SetAddAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<CommandFlags>()))
@@ -233,13 +237,14 @@ namespace ConduitLLM.Tests.Core.Services
                 It.IsAny<CommandFlags>()), Times.Once);
 
             // Verify heartbeat is set (can be called twice - once from RegisterInstanceAsync and once from timer)
-            _mockDatabase.Verify(db => db.StringSetAsync(
-                It.Is<RedisKey>(k => k.ToString().Contains("heartbeat") && k.ToString().Contains("test-instance")),
-                It.IsAny<RedisValue>(),
-                It.IsAny<TimeSpan?>(),
-                It.IsAny<bool>(),
-                It.IsAny<When>(),
-                CommandFlags.None), Times.AtLeastOnce);
+            // Use invocation inspection since Moq overload resolution can be tricky with multiple StringSetAsync overloads
+            var heartbeatInvocations = _mockDatabase.Invocations
+                .Where(i => i.Method.Name == "StringSetAsync" &&
+                       i.Arguments.Count > 0 &&
+                       i.Arguments[0].ToString().Contains("heartbeat") &&
+                       i.Arguments[0].ToString().Contains("test-instance"))
+                .ToList();
+            Assert.True(heartbeatInvocations.Count >= 1, "StringSetAsync should be called at least once with heartbeat key");
         }
 
         [Fact]
