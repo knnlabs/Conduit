@@ -32,11 +32,11 @@ Created [ConduitLLM.Core/Utilities/SpanHelper.cs](../ConduitLLM.Core/Utilities/S
 ### 2. Authentication Path Optimizations
 
 **Files Updated** (6 files):
-1. [VirtualKeyAuthenticationHandler.cs](../ConduitLLM.Http/Authentication/VirtualKeyAuthenticationHandler.cs)
-2. [EphemeralKeyAuthenticationHandler.cs](../ConduitLLM.Http/Authentication/EphemeralKeyAuthenticationHandler.cs)
-3. [BackendAuthenticationHandler.cs](../ConduitLLM.Http/Authentication/BackendAuthenticationHandler.cs)
-4. [VirtualKeySignalRAuthenticationHandler.cs](../ConduitLLM.Http/Authentication/VirtualKeySignalRAuthenticationHandler.cs)
-5. [VirtualKeyHubFilter.cs](../ConduitLLM.Http/Authentication/VirtualKeyHubFilter.cs)
+1. [VirtualKeyAuthenticationHandler.cs](../ConduitLLM.Gateway/Authentication/VirtualKeyAuthenticationHandler.cs)
+2. [EphemeralKeyAuthenticationHandler.cs](../ConduitLLM.Gateway/Authentication/EphemeralKeyAuthenticationHandler.cs)
+3. [BackendAuthenticationHandler.cs](../ConduitLLM.Gateway/Authentication/BackendAuthenticationHandler.cs)
+4. [VirtualKeySignalRAuthenticationHandler.cs](../ConduitLLM.Gateway/Authentication/VirtualKeySignalRAuthenticationHandler.cs)
+5. [VirtualKeyHubFilter.cs](../ConduitLLM.Gateway/Authentication/VirtualKeyHubFilter.cs)
 6. [MasterKeyAuthenticationHandler.cs](../ConduitLLM.Admin/Security/MasterKeyAuthenticationHandler.cs)
 
 **Optimizations Applied**:
@@ -142,11 +142,11 @@ The single failing test (`DeleteConfigurationAsync_ExistingConfig_SoftDeletesSuc
 ### Modified Files (10)
 1. `ConduitLLM.Core/Extensions/LoggingSanitizer.cs`
 2. `ConduitLLM.Providers/Helpers/UrlBuilder.cs`
-3. `ConduitLLM.Http/Authentication/VirtualKeyAuthenticationHandler.cs`
-4. `ConduitLLM.Http/Authentication/EphemeralKeyAuthenticationHandler.cs`
-5. `ConduitLLM.Http/Authentication/BackendAuthenticationHandler.cs`
-6. `ConduitLLM.Http/Authentication/VirtualKeySignalRAuthenticationHandler.cs`
-7. `ConduitLLM.Http/Authentication/VirtualKeyHubFilter.cs`
+3. `ConduitLLM.Gateway/Authentication/VirtualKeyAuthenticationHandler.cs`
+4. `ConduitLLM.Gateway/Authentication/EphemeralKeyAuthenticationHandler.cs`
+5. `ConduitLLM.Gateway/Authentication/BackendAuthenticationHandler.cs`
+6. `ConduitLLM.Gateway/Authentication/VirtualKeySignalRAuthenticationHandler.cs`
+7. `ConduitLLM.Gateway/Authentication/VirtualKeyHubFilter.cs`
 8. `ConduitLLM.Admin/Security/MasterKeyAuthenticationHandler.cs`
 9. `ConduitLLM.Benchmarks/Program.cs`
 10. `ConduitLLM.Benchmarks/ConduitLLM.Benchmarks.csproj`

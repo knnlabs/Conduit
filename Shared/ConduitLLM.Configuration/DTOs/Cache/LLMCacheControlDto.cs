@@ -26,7 +26,7 @@ namespace ConduitLLM.Configuration.DTOs.Cache
         public string? LastChangeReason { get; set; }
 
         /// <summary>
-        /// Number of active ConduitLLM.Http instances (if available)
+        /// Number of active ConduitLLM.Gateway instances (if available)
         /// </summary>
         public int? ActiveInstances { get; set; }
     }

@@ -105,7 +105,7 @@ jobs:
             dockerfile: WebAdmin/Dockerfile
           - service: http
             context: .
-            dockerfile: Services/ConduitLLM.Http/Dockerfile
+            dockerfile: Services/ConduitLLM.Gateway/Dockerfile
           - service: admin
             context: .
             dockerfile: Services/ConduitLLM.Admin/Dockerfile

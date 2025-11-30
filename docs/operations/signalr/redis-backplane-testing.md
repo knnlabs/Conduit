@@ -40,7 +40,7 @@ services:
   api-1:
     build:
       context: .
-      dockerfile: ConduitLLM.Http/Dockerfile
+      dockerfile: ConduitLLM.Gateway/Dockerfile
     environment:
       - ASPNETCORE_URLS=http://+:5000
       - ConnectionStrings__Database=Host=postgres;Database=conduit;Username=conduit;Password=conduit123
@@ -55,7 +55,7 @@ services:
   api-2:
     build:
       context: .
-      dockerfile: ConduitLLM.Http/Dockerfile
+      dockerfile: ConduitLLM.Gateway/Dockerfile
     environment:
       - ASPNETCORE_URLS=http://+:5000
       - ConnectionStrings__Database=Host=postgres;Database=conduit;Username=conduit;Password=conduit123
@@ -70,7 +70,7 @@ services:
   api-3:
     build:
       context: .
-      dockerfile: ConduitLLM.Http/Dockerfile
+      dockerfile: ConduitLLM.Gateway/Dockerfile
     environment:
       - ASPNETCORE_URLS=http://+:5000
       - ConnectionStrings__Database=Host=postgres;Database=conduit;Username=conduit;Password=conduit123
@@ -149,21 +149,21 @@ export ASPNETCORE_URLS=http://localhost:5000
 export ConnectionStrings__Database="Host=localhost;Database=conduit;Username=conduit;Password=conduit123"
 export ConnectionStrings__RedisSignalR="localhost:6379,abortConnect=false,connectTimeout=5000,syncTimeout=5000"
 export CONDUIT_SKIP_DATABASE_INIT=false  # Only for first instance
-dotnet run --project ConduitLLM.Http
+dotnet run --project ConduitLLM.Gateway
 
 # Terminal 4: Second API instance
 export ASPNETCORE_URLS=http://localhost:5001
 export ConnectionStrings__Database="Host=localhost;Database=conduit;Username=conduit;Password=conduit123"
 export ConnectionStrings__RedisSignalR="localhost:6379,abortConnect=false,connectTimeout=5000,syncTimeout=5000"
 export CONDUIT_SKIP_DATABASE_INIT=true
-dotnet run --project ConduitLLM.Http
+dotnet run --project ConduitLLM.Gateway
 
 # Terminal 5: Third API instance
 export ASPNETCORE_URLS=http://localhost:5002
 export ConnectionStrings__Database="Host=localhost;Database=conduit;Username=conduit;Password=conduit123"
 export ConnectionStrings__RedisSignalR="localhost:6379,abortConnect=false,connectTimeout=5000,syncTimeout=5000"
 export CONDUIT_SKIP_DATABASE_INIT=true
-dotnet run --project ConduitLLM.Http
+dotnet run --project ConduitLLM.Gateway
 ```
 
 ## Testing Tools

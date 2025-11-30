@@ -10,7 +10,7 @@ COPY */*.csproj ./
 RUN find . -name "*.csproj" -exec dirname {} \; | xargs -I {} mkdir -p {}
 
 # Copy project files to correct locations
-COPY Services/ConduitLLM.Http/*.csproj ./Services/ConduitLLM.Http/
+COPY Services/ConduitLLM.Gateway/*.csproj ./Services/ConduitLLM.Gateway/
 COPY Shared/ConduitLLM.Configuration/*.csproj ./Shared/ConduitLLM.Configuration/
 COPY Shared/ConduitLLM.Core/*.csproj ./Shared/ConduitLLM.Core/
 COPY Shared/ConduitLLM.Security/*.csproj ./Shared/ConduitLLM.Security/

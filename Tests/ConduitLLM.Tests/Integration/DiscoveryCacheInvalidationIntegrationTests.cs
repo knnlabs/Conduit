@@ -12,7 +12,7 @@ using Xunit;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
-using ConduitLLM.Http.Consumers;
+using ConduitLLM.Gateway.Consumers;
 
 namespace ConduitLLM.Tests.Integration
 {

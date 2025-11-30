@@ -91,7 +91,7 @@ Location: `ConduitLLM.Configuration/Services/ModelCostService.cs`
 - Caches frequently accessed pricing data
 
 **3. Business Metrics Service**
-Location: `ConduitLLM.Http/Services/BusinessMetricsService.cs`
+Location: `ConduitLLM.Gateway/Services/BusinessMetricsService.cs`
 
 - Tracks virtual key spend
 - Monitors budget utilization
@@ -99,7 +99,7 @@ Location: `ConduitLLM.Http/Services/BusinessMetricsService.cs`
 - Exports Prometheus metrics
 
 **4. Redis Model Cost Cache**
-Location: `ConduitLLM.Http/Services/RedisModelCostCache.cs`
+Location: `ConduitLLM.Gateway/Services/RedisModelCostCache.cs`
 
 - 5-minute cache TTL
 - Automatic invalidation on cost updates

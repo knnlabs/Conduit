@@ -6,6 +6,9 @@ services:
   api:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      # OpenTelemetry tracing configuration
+      Telemetry__OtlpEndpoint: "http://jaeger:4317"
+      Telemetry__TracingEnabled: "true"
       # Batch Cache Invalidation configuration (development settings)
       CacheInvalidation__BatchingEnabled: "true"
       CacheInvalidation__BatchWindow: "00:00:00.050"  # 50ms - Faster for development
@@ -34,6 +37,9 @@ services:
   admin:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      # OpenTelemetry tracing configuration
+      Telemetry__OtlpEndpoint: "http://jaeger:4317"
+      Telemetry__TracingEnabled: "true"
       # Batch Cache Invalidation configuration (development settings)
       CacheInvalidation__BatchingEnabled: "true"
       CacheInvalidation__BatchWindow: "00:00:00.050"  # 50ms - Faster for development
@@ -133,6 +139,21 @@ services:
         condition: service_healthy
       api:
         condition: service_healthy
+
+  # Jaeger for distributed tracing visualization
+  jaeger:
+    image: jaegertracing/all-in-one:1.53
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"   # Jaeger UI
+      - "4317:4317"     # OTLP gRPC receiver
+      - "4318:4318"     # OTLP HTTP receiver
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:16686"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 # MinIO services removed - using Cloudflare R2 instead
 # To use MinIO instead of R2, see docker-compose.minio.yml

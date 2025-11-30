@@ -6,7 +6,7 @@ using MassTransit;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
-using ConduitLLM.Http.Services;
+using ConduitLLM.Gateway.Services;
 
 namespace ConduitLLM.Tests.Integration
 {
@@ -37,7 +37,7 @@ namespace ConduitLLM.Tests.Integration
             // Configure MassTransit with in-memory transport
             services.AddMassTransit(x =>
             {
-                x.AddConsumer<ConduitLLM.Http.EventHandlers.VirtualKeyCacheInvalidationHandler>();
+                x.AddConsumer<ConduitLLM.Gateway.EventHandlers.VirtualKeyCacheInvalidationHandler>();
                 
                 x.UsingInMemory((context, cfg) =>
                 {

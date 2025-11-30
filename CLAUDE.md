@@ -209,7 +209,7 @@ dotnet test
 dotnet test --filter "FullyQualifiedName=ConduitLLM.Tests.TestClassName.TestMethodName"
 
 # Individual projects
-dotnet build ConduitLLM.Http    # Core API
+dotnet build ConduitLLM.Gateway    # Core API
 dotnet build ConduitLLM.Admin   # Admin API
 
 # SDKs

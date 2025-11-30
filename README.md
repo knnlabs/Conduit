@@ -84,7 +84,7 @@ ConduitLLM follows a modular architecture with distinct components handling spec
 flowchart LR
     WebAdmin["WebAdmin(Admin Dashboard)"]
     AdminAPI["ConduitLLM.Admin(Admin API)"]
-    Http["ConduitLLM.Http(API Gateway)"]
+    Http["ConduitLLM.Gateway(API Gateway)"]
     Core["ConduitLLM.Core(Orchestration)"]
     Providers["ConduitLLM.Providers(Provider Logic)"]
     Config["ConduitLLM.Configuration(Entities & DTOs)"]
@@ -105,7 +105,7 @@ flowchart LR
 
 ### Components
 
-- **ConduitLLM.Http**: OpenAI-compatible REST API gateway handling authentication and request forwarding
+- **ConduitLLM.Gateway**: OpenAI-compatible REST API gateway handling authentication and request forwarding
 - **WebAdmin**: Next.js-based admin interface for configuration and monitoring
 - **ConduitLLM.Core**: Central orchestration logic, interfaces, and routing strategies
 - **ConduitLLM.Providers**: Provider-specific implementations for different LLM services
@@ -147,7 +147,7 @@ As of May 2025, ConduitLLM is distributed as three separate Docker images:
 
 - **WebAdmin Image**: The Next.js-based admin dashboard (`WebAdmin`)
 - **Admin API Image**: The administrative API service (`ConduitLLM.Admin`) 
-- **Http Image**: The OpenAI-compatible REST API gateway (`ConduitLLM.Http`)
+- **Http Image**: The OpenAI-compatible REST API gateway (`ConduitLLM.Gateway`)
 
 Each service is built, tagged, and published as an independent container:
 

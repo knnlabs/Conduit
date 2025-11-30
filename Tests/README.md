@@ -293,7 +293,7 @@ When adding new tests:
 
 - **Core Logic**: See `ConduitLLM.Core/README.md`
 - **Provider Info**: See `ConduitLLM.Providers/README.md`
-- **API Usage**: See `ConduitLLM.Http/README.md`
+- **API Usage**: See `ConduitLLM.Gateway/README.md`
 - **Configuration**: See `ConduitLLM.Configuration/README.md`
 - **Main Documentation**: See root `README.md` and `docs/` directory
 

@@ -30,7 +30,7 @@ MinIO provides S3-compatible storage that perfectly simulates CDN behavior local
    
    # For local development
    source .env.local
-   dotnet run --project ConduitLLM.Http
+   dotnet run --project ConduitLLM.Gateway
    ```
 
 5. **Access MinIO Console:**

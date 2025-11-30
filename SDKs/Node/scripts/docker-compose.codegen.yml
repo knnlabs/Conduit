@@ -16,7 +16,7 @@ services:
   core-api:
     build:
       context: ../../..
-      dockerfile: ConduitLLM.Http/Dockerfile
+      dockerfile: ConduitLLM.Gateway/Dockerfile
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       ASPNETCORE_ENVIRONMENT: Development

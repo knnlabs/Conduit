@@ -7,7 +7,7 @@ using FluentAssertions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Http.Services;
+using ConduitLLM.Gateway.Services;
 
 namespace ConduitLLM.Tests.Core.Services
 {

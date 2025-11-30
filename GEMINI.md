@@ -136,7 +136,7 @@ dotnet build
 dotnet test
 
 # Build individual projects
-dotnet build ConduitLLM.Http    # Core API
+dotnet build ConduitLLM.Gateway    # Core API
 dotnet build ConduitLLM.Admin   # Admin API
 
 # Build SDKs

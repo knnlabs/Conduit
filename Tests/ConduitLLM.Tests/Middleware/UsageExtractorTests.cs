@@ -1,5 +1,5 @@
 using System.Text.Json;
-using ConduitLLM.Http.Middleware;
+using ConduitLLM.Gateway.Middleware;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Moq;

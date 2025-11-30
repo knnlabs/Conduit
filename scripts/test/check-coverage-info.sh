@@ -86,7 +86,7 @@ check_service_coverage() {
 }
 
 check_service_coverage "Core Services" "ConduitLLM.Core"
-check_service_coverage "HTTP API" "ConduitLLM.Http"
+check_service_coverage "Gateway API" "ConduitLLM.Gateway"
 check_service_coverage "Admin API" "ConduitLLM.Admin"
 
 echo ""

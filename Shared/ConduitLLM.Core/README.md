@@ -11,7 +11,7 @@ The ConduitLLM system follows a modular architecture:
 - **ConduitLLM.Core**: Central orchestration, interfaces, models, routing, and provider abstraction
 - **ConduitLLM.Providers**: Provider-specific implementations for OpenAI, Anthropic, Google, and other LLM services
 - **ConduitLLM.Configuration**: Centralized configuration management and validation
-- **ConduitLLM.Http**: RESTful API layer for external integrations
+- **ConduitLLM.Gateway**: RESTful API layer for external integrations
 - **ConduitLLM.Security**: Authentication, authorization, and security utilities
 - **ConduitLLM.Admin**: Administrative interface and management tools
 
@@ -369,13 +369,13 @@ dotnet test
 
 # Run specific test project
 dotnet test ConduitLLM.Tests
-dotnet test ConduitLLM.Http.Tests
+dotnet test ConduitLLM.Gateway.Tests
 dotnet test ConduitLLM.Admin.Tests
 ```
 
 ### Testing Strategy
 - **Unit Tests**: Core logic validation in `ConduitLLM.Tests`
-- **Integration Tests**: API testing in `ConduitLLM.Http.Tests`
+- **Integration Tests**: API testing in `ConduitLLM.Gateway.Tests`
 - **Admin Tests**: Administrative interface testing in `ConduitLLM.Admin.Tests`
 - **Load Testing**: Performance and scalability validation
 - **Provider Tests**: Individual provider integration validation

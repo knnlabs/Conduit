@@ -393,7 +393,7 @@ var processedResults = largeStructCollection
 - Check authentication/authorization middleware placement
 
 **Mitigation**:
-- Review `ConduitLLM.Http/Program.cs:23` middleware configuration
+- Review `ConduitLLM.Gateway/Program.cs:23` middleware configuration
 - Test authentication flows
 - Verify CORS and security headers
 
@@ -749,7 +749,7 @@ public class ApiKeySanitizer
 - `ConduitLLM.Configuration/DTOs/*.cs`
 
 **API Endpoints (Minimal API Candidates)**:
-- `ConduitLLM.Http/Controllers/HealthController.cs` (if exists)
+- `ConduitLLM.Gateway/Controllers/HealthController.cs` (if exists)
 - Simple status/version endpoints
 - Webhook endpoints
 

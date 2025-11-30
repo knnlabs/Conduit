@@ -1,6 +1,6 @@
 # ConduitLLM.Security
 
-This project contains shared security services, interfaces, and middleware used by both the Core API (ConduitLLM.Http) and Admin API (ConduitLLM.Admin).
+This project contains shared security services, interfaces, and middleware used by both the Core API (ConduitLLM.Gateway) and Admin API (ConduitLLM.Admin).
 
 ## Overview
 

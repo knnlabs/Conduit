@@ -144,7 +144,7 @@ dotnet build --configuration Release  # Production build
 
 ### Project-Specific Builds
 ```bash
-dotnet build ConduitLLM.Http           # Core API
+dotnet build ConduitLLM.Gateway           # Core API
 dotnet build ConduitLLM.Admin          # Admin API
 dotnet build WebAdmin          # WebAdmin backend
 ```

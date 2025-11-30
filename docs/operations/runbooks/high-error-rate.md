@@ -39,7 +39,7 @@ docker logs conduit-api --tail 1000 | grep "StatusCode=504"
 ### 3. Check External Dependencies
 ```bash
 # Database connectivity
-docker exec conduit-api dotnet exec ConduitLLM.Http.dll --test-db
+docker exec conduit-api dotnet exec ConduitLLM.Gateway.dll --test-db
 
 # Redis connectivity
 redis-cli ping
@@ -56,7 +56,7 @@ docker stats conduit-api --no-stream
 free -h
 
 # CPU usage
-top -p $(pgrep -f ConduitLLM.Http)
+top -p $(pgrep -f ConduitLLM.Gateway)
 
 # Disk I/O
 iostat -x 1 5

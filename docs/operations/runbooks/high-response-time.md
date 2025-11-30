@@ -84,7 +84,7 @@ time curl -X POST https://api.openai.com/v1/chat/completions \
 docker stats conduit-api --no-stream
 
 # Thread pool starvation
-docker exec conduit-api dotnet-counters monitor -n ConduitLLM.Http --counters System.Runtime
+docker exec conduit-api dotnet-counters monitor -n ConduitLLM.Gateway --counters System.Runtime
 
 # Network latency
 ping -c 10 database-host
@@ -259,7 +259,7 @@ curl -s http://localhost/metrics | grep conduit_http_request_duration_seconds_su
    export CONDUITLLM__FEATURES__PROFILING=true
    
    # Collect profiles regularly
-   dotnet-trace collect -p $(pgrep ConduitLLM.Http) --duration 00:00:30
+   dotnet-trace collect -p $(pgrep ConduitLLM.Gateway) --duration 00:00:30
    ```
 
 ## Related Runbooks

@@ -102,7 +102,7 @@ check_service_coverage() {
 
 # Critical services with their minimum thresholds
 check_service_coverage "Core Services" "ConduitLLM.Core" 40
-check_service_coverage "HTTP API" "ConduitLLM.Http" 35
+check_service_coverage "Gateway API" "ConduitLLM.Gateway" 35
 check_service_coverage "Admin API" "ConduitLLM.Admin" 35
 
 echo ""

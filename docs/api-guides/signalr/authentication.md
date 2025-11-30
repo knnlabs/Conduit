@@ -501,7 +501,7 @@ Enable debug logging to troubleshoot authentication issues:
   "Logging": {
     "LogLevel": {
       "Microsoft.AspNetCore.SignalR": "Debug",
-      "ConduitLLM.Http.Authentication": "Debug"
+      "ConduitLLM.Gateway.Authentication": "Debug"
     }
   }
 }

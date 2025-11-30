@@ -7,7 +7,7 @@ COPY Conduit.sln .
 COPY Shared/ConduitLLM.Configuration/*.csproj ./Shared/ConduitLLM.Configuration/
 COPY Shared/ConduitLLM.Core/*.csproj ./Shared/ConduitLLM.Core/
 COPY Shared/ConduitLLM.Providers/*.csproj ./Shared/ConduitLLM.Providers/
-COPY Services/ConduitLLM.Http/*.csproj ./Services/ConduitLLM.Http/
+COPY Services/ConduitLLM.Gateway/*.csproj ./Services/ConduitLLM.Gateway/
 COPY WebAdmin/*.csproj ./WebAdmin/
 # Add other projects referenced by the solution for restore step
 COPY Tests/ConduitLLM.Tests/*.csproj ./Tests/ConduitLLM.Tests/
@@ -26,12 +26,12 @@ RUN dotnet restore WebAdmin.csproj # Ensure project-specific restore before publ
 RUN dotnet publish WebAdmin.csproj -c Release -o /app/publish/webadmin --no-restore
 
 # Publish the Http API project
-WORKDIR /src/Services/ConduitLLM.Http
-RUN dotnet restore ConduitLLM.Http.csproj # Ensure project-specific restore before publish
+WORKDIR /src/Services/ConduitLLM.Gateway
+RUN dotnet restore ConduitLLM.Gateway.csproj # Ensure project-specific restore before publish
 # Temporarily remove conflicting file from WebAdmin source *before* publishing Http
 # The WebAdmin project is already published correctly with its appsettings.json
 RUN rm ../../WebAdmin/appsettings.json
-RUN dotnet publish ConduitLLM.Http.csproj -c Release -o /app/publish/http --no-restore
+RUN dotnet publish ConduitLLM.Gateway.csproj -c Release -o /app/publish/http --no-restore
 
 # Stage 2: Final runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:10.0

@@ -12,6 +12,7 @@ using MassTransit; // Added for event bus infrastructure
 
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 using Prometheus;
 using Scalar.AspNetCore;
@@ -235,8 +236,11 @@ public partial class Program
             },
             "ConnectionPoolWarmer");
 
-        // Configure OpenTelemetry metrics
-        builder.Services.AddOpenTelemetry()
+        // Configure OpenTelemetry metrics and tracing
+        var otlpEndpoint = builder.Configuration["Telemetry:OtlpEndpoint"] ?? "http://localhost:4317";
+        var tracingEnabled = builder.Configuration.GetValue<bool>("Telemetry:TracingEnabled", true);
+
+        var otelBuilder = builder.Services.AddOpenTelemetry()
             .WithMetrics(meterProviderBuilder =>
             {
                 meterProviderBuilder
@@ -249,6 +253,34 @@ public partial class Program
                     .AddMeter("Microsoft.AspNetCore.Server.Kestrel")
                     .AddPrometheusExporter();
             });
+
+        // Add distributed tracing when enabled
+        if (tracingEnabled)
+        {
+            otelBuilder.WithTracing(tracerProviderBuilder =>
+            {
+                tracerProviderBuilder
+                    .SetResourceBuilder(ResourceBuilder.CreateDefault()
+                        .AddService(serviceName: "ConduitLLM.Admin", serviceVersion: "1.0.0"))
+                    .AddAspNetCoreInstrumentation(options =>
+                    {
+                        // Filter out health check endpoints to reduce noise
+                        options.Filter = httpContext =>
+                            !httpContext.Request.Path.StartsWithSegments("/health") &&
+                            !httpContext.Request.Path.StartsWithSegments("/metrics");
+                    })
+                    .AddHttpClientInstrumentation()
+                    .AddOtlpExporter(options =>
+                    {
+                        options.Endpoint = new Uri(otlpEndpoint);
+                    });
+            });
+            Console.WriteLine($"[ConduitLLM.Admin] OpenTelemetry tracing enabled - exporting to {otlpEndpoint}");
+        }
+        else
+        {
+            Console.WriteLine("[ConduitLLM.Admin] OpenTelemetry tracing disabled (set Telemetry:TracingEnabled=true to enable)");
+        }
 
         // Add monitoring services - with leader election
         builder.Services.AddLeaderElectedHostedService<ConduitLLM.Admin.Services.AdminOperationsMetricsService>("AdminOperationsMetricsService");

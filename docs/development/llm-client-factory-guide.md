@@ -33,7 +33,7 @@ Task<ILLMClient> CreateTestClient(...)                    // For credential test
 ## Current Service Registrations
 
 ### **Core API**
-**File:** `ConduitLLM.Http/Program.CoreServices.cs` (Line 181)
+**File:** `ConduitLLM.Gateway/Program.CoreServices.cs` (Line 181)
 ```csharp
 builder.Services.AddScoped<ILLMClientFactory, ConduitLLM.Providers.DatabaseAwareLLMClientFactory>();
 ```

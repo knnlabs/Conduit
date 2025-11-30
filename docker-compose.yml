@@ -52,7 +52,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: Services/ConduitLLM.Http/Dockerfile
+      dockerfile: Services/ConduitLLM.Gateway/Dockerfile
     depends_on:
       postgres:
         condition: service_healthy

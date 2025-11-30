@@ -9,7 +9,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConduitLLM.Providers", "Sha
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConduitLLM.Configuration", "Shared\ConduitLLM.Configuration\ConduitLLM.Configuration.csproj", "{9609B6C6-B67D-4747-BC26-16C0D4506982}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConduitLLM.Http", "Services\ConduitLLM.Http\ConduitLLM.Http.csproj", "{28E1AD04-67E6-43B9-9553-E61ED4F49965}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConduitLLM.Gateway", "Services\ConduitLLM.Gateway\ConduitLLM.Gateway.csproj", "{28E1AD04-67E6-43B9-9553-E61ED4F49965}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConduitLLM.Tests", "Tests\ConduitLLM.Tests\ConduitLLM.Tests.csproj", "{DEA5022E-5467-46C6-9942-F8082AE61F6C}"
 EndProject

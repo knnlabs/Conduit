@@ -251,7 +251,7 @@ Coverage history is maintained in:
 ### Priority Areas
 
 1. **ConduitLLM.Core**: Business logic and service layer
-2. **ConduitLLM.Http**: API endpoints and controllers
+2. **ConduitLLM.Gateway**: API endpoints and controllers
 3. **ConduitLLM.Admin**: Administrative functions
 4. **Security Services**: Authentication and authorization
 5. **Financial Services**: Billing and spend tracking
